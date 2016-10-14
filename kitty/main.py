@@ -9,20 +9,23 @@ import struct
 import signal
 from gettext import gettext as _
 
-from PyQt5.Qt import (
-    QApplication, Qt, QMainWindow, QSocketNotifier, QMessageBox
-)
+from PyQt5.QtCore import Qt, QSocketNotifier
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
+from .config import load_config
 from .constants import appname, str_version
+from .term import TerminalWidget
 
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, opts):
         QMainWindow.__init__(self)
         self.setWindowTitle(appname)
         sys.excepthook = self.on_unhandled_error
         self.handle_unix_signals()
+        self.terminal = TerminalWidget(opts, self)
+        self.setCentralWidget(self.terminal)
 
     def on_unhandled_error(self, etype, value, tb):
         if etype == KeyboardInterrupt:
@@ -72,14 +75,13 @@ def option_parser():
 
 def main():
     args = option_parser().parse_args()
-    if args.config:
-        args.config = os.path.abspath(args.config)
+    opts = load_config(args.config)
     os.chdir(args.directory)
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
     app = QApplication([appname])
     app.setOrganizationName(args.cls)
     app.setApplicationName(args.name)
-    w = MainWindow()
+    w = MainWindow(opts)
     w.show()
     try:
         app.exec_()
