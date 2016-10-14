@@ -12,7 +12,7 @@ from gettext import gettext as _
 from PyQt5.QtCore import Qt, QSocketNotifier
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
-from .config import load_config
+from .config import load_config, validate_font
 from .constants import appname, str_version
 from .term import TerminalWidget
 
@@ -67,7 +67,8 @@ def option_parser():
     a = parser.add_argument
     a('--name', default=appname, help=_('Set the name part of the WM_CLASS property'))
     a('--class', default=appname, dest='cls', help=_('Set the class part of the WM_CLASS property'))
-    a('-c', '--config', default=None, help=_('Specify a path to the config file to use'))
+    a('--config', default=None, help=_('Specify a path to the config file to use'))
+    a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     return parser
@@ -75,12 +76,19 @@ def option_parser():
 
 def main():
     args = option_parser().parse_args()
+    if args.cmd:
+        exec(args.cmd)
+        return
     opts = load_config(args.config)
     os.chdir(args.directory)
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
     app = QApplication([appname])
     app.setOrganizationName(args.cls)
     app.setApplicationName(args.name)
+    try:
+        validate_font(opts)
+    except ValueError as err:
+        raise SystemExit(str(err)) from None
     w = MainWindow(opts)
     w.show()
     try:
