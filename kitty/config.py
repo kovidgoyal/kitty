@@ -5,6 +5,8 @@
 import re
 from collections import namedtuple
 
+from PyQt5.QtGui import QFont, QFontInfo
+
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 
 defaults = {}
@@ -15,6 +17,8 @@ foreground       #dddddd
 foreground_bold  #ffffff
 cursor           #dddddd
 background       #000000
+font_family      monospace
+font_size        system
 
 # black
 color0   #000000
@@ -63,7 +67,11 @@ def load_config(path):
     if not path:
         return defaults
     ans = defaults._asdict()
-    with open(path) as f:
+    try:
+        f = open(path)
+    except FileNotFoundError:
+        return defaults
+    with f:
         for line in f:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -74,3 +82,8 @@ def load_config(path):
                 if key in ans:
                     ans[key] = val
     return Options(**ans)
+
+
+def validate_font(opts):
+    if not QFontInfo(QFont(opts.font_family)).fixedPitch():
+        raise ValueError('The font specified in the configuration "{}" is not a monospace font'.format(opts.font_family))

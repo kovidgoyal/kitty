@@ -13,7 +13,7 @@ from PyQt5.QtCore import Qt, QSocketNotifier
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import load_config, validate_font
-from .constants import appname, str_version
+from .constants import appname, str_version, config_dir
 from .term import TerminalWidget
 
 
@@ -67,7 +67,7 @@ def option_parser():
     a = parser.add_argument
     a('--name', default=appname, help=_('Set the name part of the WM_CLASS property'))
     a('--class', default=appname, dest='cls', help=_('Set the class part of the WM_CLASS property'))
-    a('--config', default=None, help=_('Specify a path to the config file to use'))
+    a('--config', default=os.path.join(config_dir, 'kitty.conf'), help=_('Specify a path to the config file to use'))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
