@@ -1,0 +1,3 @@
+kitty - A terminal emulator
+============================
+

@@ -1,0 +1,4 @@
+*.js
+*.pyj-cached
+.build-cache
+tags
