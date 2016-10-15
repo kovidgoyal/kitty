@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import load_config, validate_font
 from .constants import appname, str_version, config_dir
-from .term import TerminalWidget
+from .boss import Boss
 
 
 class MainWindow(QMainWindow):
@@ -24,8 +24,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(appname)
         sys.excepthook = self.on_unhandled_error
         self.handle_unix_signals()
-        self.terminal = TerminalWidget(opts, self)
-        self.setCentralWidget(self.terminal)
+        self.boss = Boss(opts, self)
+        self.setCentralWidget(self.boss.term)
 
     def on_unhandled_error(self, etype, value, tb):
         if etype == KeyboardInterrupt:
@@ -35,7 +35,6 @@ class MainWindow(QMainWindow):
             msg = str(value)
         except Exception:
             msg = repr(value)
-        msg = '<p>' + msg + '<br>' + _('Click "Show details" for more information')
         QMessageBox.critical(self, _('Unhandled exception'), msg)
 
     def handle_unix_signals(self):
