@@ -4,7 +4,7 @@
 
 from typing import Tuple, Iterator, Union
 
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QRect
+from PyQt5.QtCore import pyqtSignal, QTimer, QRect
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
 from PyQt5.QtWidgets import QWidget
 
@@ -23,6 +23,7 @@ class TerminalWidget(QWidget):
 
     relayout_lines = pyqtSignal(object, object)
     cells_per_line = 80
+    scroll_amount = 0
 
     def __init__(self, opts, linebuf, parent=None):
         QWidget.__init__(self, parent)
@@ -49,6 +50,7 @@ class TerminalWidget(QWidget):
         self.font_metrics = fm = QFontMetrics(self.font())
         self.cell_height = fm.lineSpacing()
         self.cell_width = ascii_width(fm)
+        self.baseline_offset = fm.ascent()
         self.do_layout()
 
     def do_layout(self):
@@ -80,7 +82,9 @@ class TerminalWidget(QWidget):
 
     def line(self, screen_line: int) -> Union[Line, None]:
         try:
-            lpos = len(self.linebuf) - self.lines_per_screen
+            if self.lines_per_screen > len(self.linebuf):
+                return self.linebuf[screen_line]
+            lpos = max(0, len(self.linebuf) - self.lines_per_screen - self.scroll_amount)
             return self.linebuf[lpos]
         except IndexError:
             pass
@@ -100,9 +104,6 @@ class TerminalWidget(QWidget):
                     p.restore()
 
     def paint_cell(self, painter: QPainter, line: Line, col: int, y: int) -> None:
-        char = line.char[col]
-        if not char:
-            return
         x = self.cell_positions[col]
         r = QRect(x, y, self.cell_width, self.cell_height)
         t, r, g, b = line.fg[col]
@@ -112,4 +113,6 @@ class TerminalWidget(QWidget):
         bg = as_color(line.bg[col], self.ansi_bg)
         if bg is not None:
             painter.fillRect(r, bg)
-        painter.drawText(r, Qt.AlignHCenter | Qt.AlignBaseline | Qt.TextSingleLine, char)
+        char = line.char[col]
+        if char:
+            painter.drawText(x, y + self.baseline_offset, char)
