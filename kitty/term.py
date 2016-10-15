@@ -105,14 +105,13 @@ class TerminalWidget(QWidget):
 
     def paint_cell(self, painter: QPainter, line: Line, col: int, y: int) -> None:
         x = self.cell_positions[col]
-        r = QRect(x, y, self.cell_width, self.cell_height)
-        t, r, g, b = line.fg[col]
         fg = as_color(line.fg[col], self.ansi_fg)
         if fg is not None:
             painter.setPen(QPen(fg))
         bg = as_color(line.bg[col], self.ansi_bg)
         if bg is not None:
+            r = QRect(x, y, self.cell_width, self.cell_height)
             painter.fillRect(r, bg)
         char = line.char[col]
         if char:
-            painter.drawText(x, y + self.baseline_offset, char)
+            painter.drawText(x, y + self.baseline_offset, chr(char))

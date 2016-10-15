@@ -28,7 +28,5 @@ class Boss(QObject):
         if previous == cells_per_line:
             return
         old = self.linebuf.copy()
-        print(list(old))
         self.linebuf.clear()
         self.linebuf.extend(rewrap_lines(old, cells_per_line))
-        print(list(self.linebuf))

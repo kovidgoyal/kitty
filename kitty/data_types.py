@@ -2,12 +2,24 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import array
 from typing import Tuple, Dict, Union, Iterator, Sequence
+from itertools import repeat
 
-from numpy import zeros, dtype
 from PyQt5.QtGui import QColor
 
-color_type = dtype([('type', 'u1'), ('r', 'u1'), ('g', 'u1'), ('b', 'u1')])
+code = 'I' if array.array('I').itemsize >= 4 else 'L'
+
+
+def get_zeroes(sz: int) -> Tuple[array.array]:
+    if get_zeroes.current_size != sz:
+        get_zeroes.current_size = sz
+        get_zeroes.ans = (
+            array.array('B', repeat(0, sz)),
+            array.array(code, repeat(0, sz)),
+        )
+    return get_zeroes.ans
+get_zeroes.current_size = None
 
 
 class Line:
@@ -16,16 +28,17 @@ class Line:
     continued = False
 
     def __init__(self, sz: int):
-        self.char = zeros(sz, 'U1')
-        self.fg = zeros(sz, color_type)
-        self.bg = zeros(sz, color_type)
-        self.bold = zeros(sz, bool)
-        self.italic = zeros(sz, bool)
-        self.reverse = zeros(sz, bool)
-        self.strikethrough = zeros(sz, bool)
-        self.decoration = zeros(sz, 'u1')
-        self.decoration_fg = zeros(sz, color_type)
-        self.width = zeros(sz, 'u1')
+        z1, z4 = get_zeroes(sz)
+        self.char = z4[:]
+        self.fg = z4[:]
+        self.bg = z4[:]
+        self.bold = z1[:]
+        self.italic = z1[:]
+        self.reverse = z1[:]
+        self.strikethrough = z1[:]
+        self.decoration = z1[:]
+        self.decoration_fg = z4[:]
+        self.width = z1[:]
 
     def __len__(self):
         return len(self.char)
@@ -42,15 +55,22 @@ class Line:
         to.decoration_fg[dest] = self.decoration_fg[src]
         to.width[dest] = self.width[src]
 
+    def __str__(self) -> str:
+        return ''.join(map(ord, self.char)).rstrip('\0')
+
     def __repr__(self) -> str:
-        return repr(''.join(self.char))
+        return repr(str(self))
 
 
-def as_color(entry: Tuple[int, int, int, int], color_table: Dict[int, QColor]) -> Union[QColor, None]:
-    t, r, g, b = entry
+def as_color(entry: int, color_table: Dict[int, QColor]) -> Union[QColor, None]:
+    t = entry & 0xff
     if t == 1:
+        r = (entry >> 8) & 0xff
         return color_table.get(r)
     if t == 2:
+        r = (entry >> 8) & 0xff
+        g = (entry >> 16) & 0xff
+        b = (entry >> 24) & 0xff
         return QColor(r, g, b)
 
 
