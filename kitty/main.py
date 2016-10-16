@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
 
     def shutdown(self):
         self.close()
+        self.boss.shutdown()
 
 
 def option_parser():
