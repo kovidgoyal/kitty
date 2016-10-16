@@ -141,6 +141,12 @@ class Line:
             if clear_char:
                 self.width[at], self.char[at] = repeat(1, num), repeat(ord(char), num)
 
+    def cursor_from(self, x: int, ypos: int=0) -> Cursor:
+        c = Cursor(x, ypos)
+        c.fg, c.bg, c.decoration, c.decoration_fg = self.fg[x], self.bg[x], self.decoration[x], self.decoration_fg[x]
+        c.bold, c.italic, c.reverse, c.strikethrough = bool(self.bold[x]), bool(self.italic[x]), bool(self.reverse[x]), bool(self.strikethrough[x])
+        return c
+
     def copy_slice(self, src, dest, num):
         src, dest = slice(src, src + num), slice(dest, dest + num)
         for a in (self.char, self.fg, self.bg, self.bold, self.italic, self.reverse, self.strikethrough, self.decoration, self.decoration_fg, self.width):

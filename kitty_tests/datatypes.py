@@ -30,5 +30,10 @@ class TestDataTypes(BaseTest):
         self.ae(c, c)
         c2 = c.copy()
         self.ae(c, c.copy())
-        c2.bold = False
+        c2.bold = c2.hidden = False
         self.assertNotEqual(c, c2)
+        l.apply_cursor(c2, 3)
+        self.ae(c2, l.cursor_from(3, ypos=c2.y))
+        l.apply_cursor(c2, 0, len(l))
+        for i in range(len(l)):
+            self.ae(c2, l.cursor_from(i, ypos=c2.y))
