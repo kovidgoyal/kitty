@@ -45,8 +45,7 @@ class Cursor:
 
 class Line:
 
-    __slots__ = 'char fg bg bold italic reverse strikethrough decoration decoration_fg width'.split()
-    continued = False
+    __slots__ = 'char fg bg bold italic reverse strikethrough decoration decoration_fg width continued'.split()
 
     def __init__(self, sz: int, other=None):
         if other is None:
@@ -61,6 +60,7 @@ class Line:
             self.decoration = z1[:]
             self.decoration_fg = z4[:]
             self.width = z1[:]
+            self.continued = False
         else:
             self.char = other.char[:]
             self.fg = other.fg[:]
@@ -149,7 +149,7 @@ class Line:
             self.copy_slice(src_start, dest_start, snum)
 
     def __str__(self) -> str:
-        return ''.join(map(ord, filter(None, self.char)))
+        return ''.join(map(chr, filter(None, self.char)))
 
     def __repr__(self) -> str:
         return repr(str(self))
