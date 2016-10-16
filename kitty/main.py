@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 import struct
+import pwd
 import signal
 from gettext import gettext as _
 
@@ -68,6 +69,7 @@ def option_parser():
     a('--class', default=appname, dest='cls', help=_('Set the class part of the WM_CLASS property'))
     a('--config', default=os.path.join(config_dir, 'kitty.conf'), help=_('Specify a path to the config file to use'))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
+    a('--exec', '-e', default=pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh', help=_('Run the specified command instead of the shell'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     return parser
