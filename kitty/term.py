@@ -2,14 +2,15 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Tuple, Iterator, Union
+from typing import Tuple, Iterator, Union, Sequence
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
 from PyQt5.QtWidgets import QWidget
 
-from .config import build_ansi_color_tables
+from .config import build_ansi_color_tables, Options
 from .data_types import Line, as_color
+from .utils import set_current_font_metrics
 
 
 def ascii_width(fm: QFontMetrics) -> int:
@@ -21,11 +22,11 @@ def ascii_width(fm: QFontMetrics) -> int:
 
 class TerminalWidget(QWidget):
 
-    relayout_lines = pyqtSignal(object, object)
+    relayout_lines = pyqtSignal(object, object, object, object)
     cells_per_line = 80
-    scroll_amount = 0
+    lines_per_screen = 24
 
-    def __init__(self, opts, linebuf, parent=None):
+    def __init__(self, opts: Options, linebuf: Sequence[Line], parent: QWidget=None):
         QWidget.__init__(self, parent)
         self.linebuf = linebuf
         self.setAutoFillBackground(True)
@@ -50,14 +51,15 @@ class TerminalWidget(QWidget):
         self.font_metrics = fm = QFontMetrics(self.font())
         self.cell_height = fm.lineSpacing()
         self.cell_width = ascii_width(fm)
+        set_current_font_metrics(fm, self.cell_width)
         self.baseline_offset = fm.ascent()
         self.do_layout()
 
     def do_layout(self):
         previous, self.cells_per_line = self.cells_per_line, self.width() // self.cell_width
-        if previous != self.cells_per_line:
-            self.relayout_lines.emit(previous, self.cells_per_line)
-        self.lines_per_screen = self.height() // self.cell_height
+        previousl, self.lines_per_screen = self.lines_per_screen, self.height() // self.cell_height
+        if (previous, previousl) != (self.cells_per_line, self.lines_per_screen):
+            self.relayout_lines.emit(previous, self.cells_per_line, previousl, self.lines_per_screen)
         self.hmargin = (self.width() - self.cells_per_line * self.cell_width) // 2
         self.vmargin = (self.height() % self.cell_height) // 2
         self.line_positions = tuple(self.vmargin + i * self.cell_height for i in range(self.lines_per_screen))
@@ -82,10 +84,7 @@ class TerminalWidget(QWidget):
 
     def line(self, screen_line: int) -> Union[Line, None]:
         try:
-            if self.lines_per_screen > len(self.linebuf):
-                return self.linebuf[screen_line]
-            lpos = max(0, len(self.linebuf) - self.lines_per_screen - self.scroll_amount)
-            return self.linebuf[lpos]
+            return self.linebuf[screen_line]
         except IndexError:
             pass
 
@@ -113,5 +112,5 @@ class TerminalWidget(QWidget):
             r = QRect(x, y, self.cell_width, self.cell_height)
             painter.fillRect(r, bg)
         char = line.char[col]
-        if char:
+        if char not in (0, 32):  # 32 = <space>
             painter.drawText(x, y + self.baseline_offset, chr(char))
