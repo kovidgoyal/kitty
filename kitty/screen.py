@@ -43,11 +43,12 @@ class Screen(QObject):
     update_line_range = pyqtSignal(object, object)
     update_cell_range = pyqtSignal(object, object, object)
     line_added_to_history = pyqtSignal()
+    write_to_child = pyqtSignal(object)
     _notify_cursor_position = True
 
-    def __init__(self, opts, write_to_child, columns: int=80, lines: int=24, parent=None):
+    def __init__(self, opts, columns: int=80, lines: int=24, parent=None):
         QObject.__init__(self, parent)
-        self.write_process_input = write_to_child
+        self.write_process_input = self.write_to_child.emit
         self.savepoints = deque()
         self.columns = columns
         self.lines = lines
