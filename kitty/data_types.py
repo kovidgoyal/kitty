@@ -72,6 +72,7 @@ class Line:
             self.decoration = other.decoration[:]
             self.decoration_fg = other.decoration_fg[:]
             self.width = other.width[:]
+            self.continued = other.continued
 
     def __eq__(self, other):
         if not isinstance(other, Line):
