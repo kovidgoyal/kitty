@@ -28,6 +28,7 @@ Savepoint = namedtuple("Savepoint", [
     "origin",
     "wrap"
 ])
+IGNORED_CATEGORIES = ('Cc', 'Cf', 'Cn', 'Cs')
 
 
 class Screen(QObject):
@@ -298,7 +299,7 @@ class Screen(QObject):
         self._notify_cursor_position = False
         try:
             for char in self._decode(data):
-                if unicodedata.category(char) in ('Cc', 'Cf', 'Cn', 'Cs'):
+                if unicodedata.category(char) in IGNORED_CATEGORIES:
                     continue
                 char_width = wcwidth(char)
 
