@@ -832,10 +832,20 @@ class Screen(QObject):
 
         .. versionadded:: 0.5.0
         """
-        # We only implement "primary" DA which is the only DA request
-        # VT102 understood, see ``VT102ID`` in ``linux/drivers/tty/vt.c``.
-        if mode == 0:
-            self.write_process_input(ctrl.CSI + b"?6c")
+        # Use the same responses as libvte v0.46 running in termite
+        # Ignore mode since vte seems to ignore it
+        if kwargs.get('secondary') == '>':
+            # http://www.vt100.net/docs/vt510-rm/DA2.html
+            # If you implement xterm keycode querying you can change this to
+            # mimic xterm instead (>41;327;0c) then vim wont need terminfo to
+            # get keycodes (see :help xterm-codes)
+            self.write_process_input(ctrl.CSI + b'>1;4600;0c')
+        else:
+            # xterm gives: [[?64;1;2;6;9;15;18;21;22c
+            # use the simpler vte response, since we dont support
+            # windowing/horizontal scrolling etc.
+            # [[?64;1;2;6;9;15;18;21;22c
+            self.write_process_input(ctrl.CSI + b"?62c")
 
     def report_device_status(self, mode):
         """Reports terminal status or cursor position.

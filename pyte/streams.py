@@ -297,7 +297,7 @@ class Stream(object):
                 #        arguments.
                 params = []
                 current = bytearray()
-                private = False
+                private = secondary = False
                 while True:
                     char = yield
                     if char == b"?":
@@ -305,8 +305,7 @@ class Stream(object):
                     elif char in ALLOWED_IN_CSI:
                         basic_dispatch[char]()
                     elif char in SP_OR_GT:
-                        # We don't handle secondary DA atm.
-                        pass
+                        secondary = char.decode('ascii')  # Added by Kovid
                     elif char in CAN_OR_SUB:
                         # If CAN or SUB is received during a sequence, the
                         # current sequence is aborted; terminal displays
@@ -325,7 +324,10 @@ class Stream(object):
                             if private:
                                 csi_dispatch[char](*params, private=True)
                             else:
-                                csi_dispatch[char](*params)
+                                if secondary:  # Added by Kovid
+                                    csi_dispatch[char](*params, secondary=secondary)
+                                else:
+                                    csi_dispatch[char](*params)
                             break  # CSI is finished.
             elif char == OSC:
                 code = yield
