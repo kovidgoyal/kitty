@@ -4,7 +4,7 @@
 
 from . import BaseTest, set_text_in_line
 
-from kitty.data_types import Line
+from kitty.data_types import Line, Cursor
 
 
 class TestDataTypes(BaseTest):
@@ -13,6 +13,7 @@ class TestDataTypes(BaseTest):
         t = 'Testing with simple text'
         l = Line(len(t))
         set_text_in_line(l, t)
+        self.ae(l, l)
         self.ae(str(l), t)
         self.ae(str(l.copy()), t)
         l.continued = False
@@ -21,3 +22,13 @@ class TestDataTypes(BaseTest):
         self.ae(l, l2)
         l2.char[1] = 23
         self.assertNotEqual(l, l2)
+
+        c = Cursor(3, 5)
+        c.hidden = True
+        c.bold = c.italic = c.reverse = c.strikethrough = True
+        c.fg = c.bg = c.decoration_fg = 0x0101
+        self.ae(c, c)
+        c2 = c.copy()
+        self.ae(c, c.copy())
+        c2.bold = False
+        self.assertNotEqual(c, c2)

@@ -40,7 +40,19 @@ class Cursor:
         ans.hidden = self.hidden
         ans.fg, ans.bg, ans.decoration_fg = self.fg, self.bg, self.decoration_fg
         ans.bold, ans.italic, ans.reverse, ans.strikethrough = self.bold, self.italic, self.reverse, self.strikethrough
+        ans.decoration = self.decoration
         return ans
+
+    def __eq__(self, other):
+        if not isinstance(other, Cursor):
+            return False
+        for x in self.__slots__:
+            if getattr(self, x) != getattr(other, x):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class Line:
