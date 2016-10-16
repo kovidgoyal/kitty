@@ -2,18 +2,27 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from PyQt5.QtCore import QObject
+import os
+import io
+
+from PyQt5.QtCore import QObject, QSocketNotifier
 
 from .screen import Screen
 from .term import TerminalWidget
-from .utils import resize_pty, hangup
+from .utils import resize_pty, hangup, create_pty
 
 
 class Boss(QObject):
 
-    def __init__(self, opts, parent=None):
+    def __init__(self, opts, parent):
         QObject.__init__(self, parent)
-        self.screen = Screen(opts, parent=self)
+        self.write_buf = memoryview(b'')
+        self.read_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Read, self)
+        self.read_notifier.activated.connect(self.read_ready)
+        self.write_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Write, self)
+        self.write_notifier.setEnabled(False)
+        self.write_notifier.activated.connect(self.write_ready)
+        self.screen = Screen(opts, self.write_to_child, parent=self)
         self.term = TerminalWidget(opts, self.screen.linebuf, parent)
         self.term.relayout_lines.connect(self.relayout_lines)
         resize_pty(self.screen.columns, self.screen.lines)
@@ -21,6 +30,25 @@ class Boss(QObject):
     def apply_opts(self, opts):
         self.screen.apply_opts(opts)
         self.term.apply_opts(opts)
+
+    def read_ready(self, read_fd):
+        data = os.read(read_fd, io.DEFAULT_BUFFER_SIZE)
+        if not data:
+            # EOF
+            self.parent().child_process_died()
+            return
+
+    def write_ready(self, write_fd):
+        while self.write_buf:
+            n = os.write(write_fd, io.DEFAULT_BUFFER_SIZE)
+            if not n:
+                return
+            self.write_buf = self.write_buf[n:]
+        self.write_notifier.setEnabled(False)
+
+    def write_to_child(self, data):
+        self.write_buf = memoryview(self.write_buf.tobytes() + data)
+        self.write_notifier.setEnabled(True)
 
     def relayout_lines(self, previous, cells_per_line, previousl, lines_per_screen):
         self.screen.resize(lines_per_screen, cells_per_line)

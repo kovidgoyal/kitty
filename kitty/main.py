@@ -59,6 +59,9 @@ class MainWindow(QMainWindow):
             if signal.SIGINT in signals or signal.SIGTERM in signals:
                 self.shutdown()
 
+    def child_process_died(self):
+        self.shutdown()
+
     def shutdown(self):
         self.close()
         self.boss.shutdown()

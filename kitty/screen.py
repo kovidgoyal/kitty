@@ -45,8 +45,9 @@ class Screen(QObject):
     line_added_to_history = pyqtSignal()
     _notify_cursor_position = True
 
-    def __init__(self, opts, columns: int=80, lines: int=24, parent=None):
+    def __init__(self, opts, write_to_child, columns: int=80, lines: int=24, parent=None):
         QObject.__init__(self, parent)
+        self.write_process_input = write_to_child
         self.savepoints = deque()
         self.columns = columns
         self.lines = lines
@@ -854,16 +855,6 @@ class Screen(QObject):
                 y -= self.margins.top
             self.write_process_input(
                 ctrl.CSI + "{0};{1}R".format(y, x).encode())
-
-    def write_process_input(self, data):
-        """Writes data to the process running inside the terminal.
-
-        By default is a noop.
-
-        :param bytes data: data to write to the process ``stdin``.
-
-        .. versionadded:: 0.5.0
-        """
 
     def debug(self, *args, **kwargs):
         """Endpoint for unrecognized escape sequences.

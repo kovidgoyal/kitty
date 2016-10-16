@@ -36,6 +36,7 @@ def create_pty():
     if not hasattr(create_pty, 'master'):
         create_pty.master, create_pty.slave = os.openpty()
         fcntl.fcntl(create_pty.slave, fcntl.F_SETFD, fcntl.fcntl(create_pty.slave, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
+        # Note that master and slave are in blocking mode
     return create_pty.master, create_pty.slave
 
 
