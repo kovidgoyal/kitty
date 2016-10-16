@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from .config import load_config, validate_font
 from .constants import appname, str_version, config_dir
 from .boss import Boss
+from .utils import fork_child
 
 
 class MainWindow(QMainWindow):
@@ -70,7 +71,7 @@ def option_parser():
     a('--class', default=appname, dest='cls', help=_('Set the class part of the WM_CLASS property'))
     a('--config', default=os.path.join(config_dir, 'kitty.conf'), help=_('Specify a path to the config file to use'))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
-    a('--exec', '-e', default=pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh', help=_('Run the specified command instead of the shell'))
+    a('--exec', '-e', dest='child', default=pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh', help=_('Run the specified command instead of the shell'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     return parser
@@ -81,8 +82,10 @@ def main():
     if args.cmd:
         exec(args.cmd)
         return
+    # Ensure the child process gets no environment from Qt
     opts = load_config(args.config)
-    os.chdir(args.directory)
+    fork_child(args.child, args.directory, opts)
+
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
     app = QApplication([appname])
     app.setOrganizationName(args.cls)
