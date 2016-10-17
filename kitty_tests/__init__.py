@@ -8,12 +8,3 @@ from unittest import TestCase
 class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
-
-
-def set_text_in_line(line, text, offset=0):
-    pos = offset
-    for ch in text:
-        line.set_char(pos, ch)
-        pos += 1
-        if pos >= len(line):
-            break

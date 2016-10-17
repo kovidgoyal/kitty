@@ -4,7 +4,7 @@
 
 import codecs
 
-from . import BaseTest, set_text_in_line
+from . import BaseTest
 
 from kitty.data_types import Line, Cursor
 from kitty.utils import is_simple_string, wcwidth
@@ -15,7 +15,7 @@ class TestDataTypes(BaseTest):
     def test_line_ops(self):
         t = 'Testing with simple text'
         l = Line(len(t))
-        set_text_in_line(l, t)
+        l.set_text(t, 0, len(t), Cursor())
         self.ae(l, l)
         self.ae(str(l), t)
         self.ae(str(l.copy()), t)
@@ -49,7 +49,7 @@ class TestDataTypes(BaseTest):
 
         t = '0123456789'
         lo = Line(len(t))
-        set_text_in_line(lo, t)
+        lo.set_text(t, 0, len(t), Cursor())
         l = lo.copy()
         l.right_shift(4, 2)
         self.ae(str(l), '0123454567')
@@ -75,6 +75,14 @@ class TestDataTypes(BaseTest):
         l.set_decoration(0, q.decoration)
         c = l.cursor_from(0)
         self.ae(c, q)
+        l = Line(len(t))
+        l.set_text(t, 0, len(t), q)
+        self.ae(l.cursor_from(0), q)
+        l.set_text('axyb', 1, 2, Cursor(3))
+        self.ae(str(l), '012xy56789')
+        l = Line(1)
+        l.set_char(0, 'x', cursor=q)
+        self.ae(l.cursor_from(0), q)
 
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode

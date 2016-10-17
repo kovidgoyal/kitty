@@ -112,6 +112,10 @@ class Line:
         to.bg[dest] = self.bg[src]
         to.decoration_fg[dest] = self.decoration_fg[src]
 
+    def cursor_to_attrs(self, c: Cursor) -> int:
+        return ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
+            ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
+
     def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
         for i in range(at, at + num):
             self.fg[i] = c.fg
@@ -121,8 +125,7 @@ class Line:
             ch = ord(char) if clear_char else sc & CHAR_MASK
             sattrs = sc >> ATTRS_SHIFT
             w = 1 if clear_char else sattrs & WIDTH_MASK
-            attrs = w | ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
-                ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
+            attrs = w | self.cursor_to_attrs(c)
             self.char[i] = (ch & CHAR_MASK) | (attrs << ATTRS_SHIFT)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
@@ -135,6 +138,17 @@ class Line:
         c.reverse = bool((attrs >> REVERSE_SHIFT) & 0b1)
         c.strikethrough = bool((attrs >> STRIKE_SHIFT) & 0b1)
         return c
+
+    def set_text(self, text: str, offset_in_text: int, sz: int, cursor: Cursor) -> None:
+        ' Set the specified text in this line, with attributes taken from the cursor '
+        attrs = self.cursor_to_attrs(cursor) | 1
+        fg, bg, dfg = cursor.fg, cursor.bg, cursor.decoration_fg
+        dx = cursor.x
+        for cpos in range(offset_in_text, offset_in_text + sz):
+            ch = ord(text[cpos]) & CHAR_MASK
+            self.char[dx] = ch | (attrs << ATTRS_SHIFT)
+            self.fg[dx], self.bg[dx], self.decoration_fg[dx] = fg, bg, dfg
+            dx += 1
 
     def copy_slice(self, src, dest, num):
         src, dest = slice(src, src + num), slice(dest, dest + num)
@@ -164,10 +178,14 @@ class Line:
     def width(self, i):
         return (self.char[i] >> ATTRS_SHIFT) & 0b11
 
-    def set_char(self, i, ch, width=1):
-        c = self.char[i]
-        a = c >> ATTRS_SHIFT
-        a = (a & ~WIDTH_MASK) | (width & WIDTH_MASK)
+    def set_char(self, i: int, ch: str, width: int=1, cursor: Cursor=None) -> None:
+        if cursor is None:
+            c = self.char[i]
+            a = (c >> ATTRS_SHIFT) & ~WIDTH_MASK
+        else:
+            a = self.cursor_to_attrs(cursor)
+            self.fg[i], self.bg[i], self.decoration_fg[i] = cursor.fg, cursor.bg, cursor.decoration_fg
+        a |= width & WIDTH_MASK
         self.char[i] = (a << ATTRS_SHIFT) | (ord(ch) & CHAR_MASK)
 
     def set_bold(self, i, val):
