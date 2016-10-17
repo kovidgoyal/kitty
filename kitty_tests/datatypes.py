@@ -61,3 +61,14 @@ class TestDataTypes(BaseTest):
         l = lo.copy()
         l.left_shift(7, 3)
         self.ae(str(l), t)
+
+        l = Line(1)
+        l.set_decoration(0, 2)
+        q = Cursor()
+        for x in 'bold italic reverse strikethrough'.split():
+            getattr(l, 'set_' + x)(0, True)
+            setattr(q, x, True)
+        q.decoration = 2
+        l.set_decoration(0, q.decoration)
+        c = l.cursor_from(0)
+        self.ae(c, q)

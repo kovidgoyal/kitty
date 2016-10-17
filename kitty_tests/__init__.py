@@ -13,8 +13,7 @@ class BaseTest(TestCase):
 def set_text_in_line(line, text, offset=0):
     pos = offset
     for ch in text:
-        line.char[pos] = ord(ch)
-        line.width[pos] = 1
+        line.set_char(pos, ch)
         pos += 1
         if pos >= len(line):
             break

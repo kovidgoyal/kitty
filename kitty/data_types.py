@@ -15,7 +15,6 @@ def get_zeroes(sz: int) -> Tuple[array.array]:
     if get_zeroes.current_size != sz:
         get_zeroes.current_size = sz
         get_zeroes.ans = (
-            array.array('B', repeat(0, sz)),
             array.array(code, repeat(0, sz)),
             array.array(code, repeat(32, sz)),
         )
@@ -58,36 +57,36 @@ class Cursor:
         return self.__class__.__name__ + '({})'.format(', '.join(
             '{}={}'.format(x, getattr(self, x)) for x in self.__slots__))
 
+CHAR_MASK = 0xFFFFFF
+ATTRS_SHIFT = 24
+ATTRS_MASK = 0xFF << ATTRS_SHIFT
+WIDTH_MASK = 0xFF
+DECORATION_SHIFT = 2
+BOLD_SHIFT, ITALIC_SHIFT, REVERSE_SHIFT, STRIKE_SHIFT = range(DECORATION_SHIFT + 2, DECORATION_SHIFT + 6)
+DECORATION_MASK = 1 << DECORATION_SHIFT
+BOLD_MASK = 1 << BOLD_SHIFT
+ITALIC_MASK = 1 << ITALIC_SHIFT
+REVERSE_MASK = 1 << REVERSE_SHIFT
+STRIKE_MASK = 1 << STRIKE_SHIFT
+
 
 class Line:
 
-    __slots__ = 'char fg bg bold italic reverse strikethrough decoration decoration_fg width continued'.split()
+    __slots__ = 'char fg bg decoration_fg continued'.split()
 
     def __init__(self, sz: int, other=None):
         if other is None:
-            z1, z4, spaces = get_zeroes(sz)
+            z4, spaces = get_zeroes(sz)
             self.char = spaces[:]
             self.fg = z4[:]
             self.bg = z4[:]
-            self.bold = z1[:]
-            self.italic = z1[:]
-            self.reverse = z1[:]
-            self.strikethrough = z1[:]
-            self.decoration = z1[:]
             self.decoration_fg = z4[:]
-            self.width = z1[:]
             self.continued = False
         else:
             self.char = other.char[:]
             self.fg = other.fg[:]
             self.bg = other.bg[:]
-            self.bold = other.bold[:]
-            self.italic = other.italic[:]
-            self.reverse = other.reverse[:]
-            self.strikethrough = other.strikethrough[:]
-            self.decoration = other.decoration[:]
             self.decoration_fg = other.decoration_fg[:]
-            self.width = other.width[:]
             self.continued = other.continued
 
     def __eq__(self, other):
@@ -111,36 +110,35 @@ class Line:
         to.char[dest] = self.char[src]
         to.fg[dest] = self.fg[src]
         to.bg[dest] = self.bg[src]
-        to.bold[dest] = self.bold[src]
-        to.italic[dest] = self.italic[src]
-        to.reverse[dest] = self.reverse[src]
-        to.strikethrough[dest] = self.strikethrough[src]
-        to.decoration[dest] = self.decoration[src]
         to.decoration_fg[dest] = self.decoration_fg[src]
-        to.width[dest] = self.width[src]
 
     def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
         for i in range(at, at + num):
             self.fg[i] = c.fg
             self.bg[i] = c.bg
-            self.bold[i] = c.bold
-            self.italic[i] = c.italic
-            self.reverse[i] = c.reverse
-            self.strikethrough[i] = c.strikethrough
-            self.decoration[i] = c.decoration
             self.decoration_fg[i] = c.decoration_fg
-            if clear_char:
-                self.width[i], self.char[i] = 1, ord(char)
+            sc = self.char[i]
+            ch = ord(char) if clear_char else sc & CHAR_MASK
+            sattrs = sc >> ATTRS_SHIFT
+            w = 1 if clear_char else sattrs & WIDTH_MASK
+            attrs = w | ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
+                ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
+            self.char[i] = (ch & CHAR_MASK) | (attrs << ATTRS_SHIFT)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
-        c.fg, c.bg, c.decoration, c.decoration_fg = self.fg[x], self.bg[x], self.decoration[x], self.decoration_fg[x]
-        c.bold, c.italic, c.reverse, c.strikethrough = bool(self.bold[x]), bool(self.italic[x]), bool(self.reverse[x]), bool(self.strikethrough[x])
+        c.fg, c.bg, c.decoration_fg = self.fg[x], self.bg[x], self.decoration_fg[x]
+        attrs = self.char[x] >> ATTRS_SHIFT
+        c.decoration = (attrs >> DECORATION_SHIFT) & 0b11
+        c.bold = bool((attrs >> BOLD_SHIFT) & 0b1)
+        c.italic = bool((attrs >> ITALIC_SHIFT) & 0b1)
+        c.reverse = bool((attrs >> REVERSE_SHIFT) & 0b1)
+        c.strikethrough = bool((attrs >> STRIKE_SHIFT) & 0b1)
         return c
 
     def copy_slice(self, src, dest, num):
         src, dest = slice(src, src + num), slice(dest, dest + num)
-        for a in (self.char, self.fg, self.bg, self.bold, self.italic, self.reverse, self.strikethrough, self.decoration, self.decoration_fg, self.width):
+        for a in (self.char, self.fg, self.bg, self.decoration_fg):
             a[dest] = a[src]
 
     def right_shift(self, at: int, num: int) -> None:
@@ -158,10 +156,49 @@ class Line:
             self.copy_slice(src_start, dest_start, snum)
 
     def __str__(self) -> str:
-        return ''.join(map(chr, filter(None, self.char)))
+        return ''.join(map(lambda c: chr(c & CHAR_MASK), filter(None, self.char)))
 
     def __repr__(self) -> str:
         return repr(str(self))
+
+    def width(self, i):
+        return (self.char[i] >> ATTRS_SHIFT) & 0b11
+
+    def set_char(self, i, ch, width=1):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~WIDTH_MASK) | (width & WIDTH_MASK)
+        self.char[i] = (a << ATTRS_SHIFT) | (ord(ch) & CHAR_MASK)
+
+    def set_bold(self, i, val):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~BOLD_MASK) | ((val & 0b1) << BOLD_SHIFT)
+        self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
+
+    def set_italic(self, i, val):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~ITALIC_MASK) | ((val & 0b1) << ITALIC_SHIFT)
+        self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
+
+    def set_reverse(self, i, val):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~REVERSE_MASK) | ((val & 0b1) << REVERSE_SHIFT)
+        self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
+
+    def set_strikethrough(self, i, val):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~STRIKE_MASK) | ((val & 0b1) << STRIKE_SHIFT)
+        self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
+
+    def set_decoration(self, i, val):
+        c = self.char[i]
+        a = c >> ATTRS_SHIFT
+        a = (a & ~DECORATION_MASK) | ((val & 0b11) << DECORATION_SHIFT)
+        self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
 
 
 def as_color(entry: int, color_table: Dict[int, QColor]) -> Union[QColor, None]:
@@ -177,7 +214,7 @@ def as_color(entry: int, color_table: Dict[int, QColor]) -> Union[QColor, None]:
 
 
 def copy_char(src: Line, dest: Line, src_pos: int, dest_pos: int) -> None:
-    for i in range(src.width[src_pos]):
+    for i in range(src.width(src_pos)):
         src.copy_char(src_pos + i, dest, dest_pos + i)
 
 
@@ -188,7 +225,7 @@ def rewrap_lines(lines: Sequence[Line], width: int) -> Iterator[Line]:
         for i, src in enumerate(lines):
             current_src_pos = 0
             while current_src_pos <= src_limit:
-                cw = src.width[current_src_pos]
+                cw = src.width(current_src_pos)
                 if cw == 0:
                     # Hard line break, start a new line
                     yield current_line
