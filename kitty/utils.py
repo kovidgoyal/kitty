@@ -8,22 +8,28 @@ import struct
 import shlex
 import fcntl
 import signal
+import ctypes
 from functools import lru_cache
 
 from PyQt5.QtGui import QFontMetrics
 
 current_font_metrics = cell_width = None
+libc = ctypes.CDLL(None)
+wcwidth_native = libc.wcwidth
+del libc
+wcwidth_native.argtypes = [ctypes.c_wchar]
+wcwidth_native.restype = ctypes.c_int
 
 
 @lru_cache(maxsize=2**13)
 def wcwidth(c: str) -> int:
     if current_font_metrics is None:
-        return 1
+        return min(2, wcwidth_native(c))
     w = current_font_metrics.widthChar(c)
     cells, extra = divmod(w, cell_width)
     if extra > 0.1 * cell_width:
         cells += 1
-    return cells
+    return min(2, cells)
 
 
 def set_current_font_metrics(fm: QFontMetrics, cw: int) -> None:
