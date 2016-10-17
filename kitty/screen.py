@@ -12,7 +12,8 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 from pyte import charsets as cs, control as ctrl, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
-from .utils import wcwidth
+from .utils import wcwidth, is_simple_string
+from .unicode import ignore_pat
 
 
 #: A container for screen's scroll margins.
@@ -28,7 +29,6 @@ Savepoint = namedtuple("Savepoint", [
     "origin",
     "wrap"
 ])
-IGNORED_CATEGORIES = ('Cc', 'Cf', 'Cn', 'Cs')
 
 
 class Screen(QObject):
@@ -292,64 +292,75 @@ class Screen(QObject):
             return self.utf8_decoder.decode(data)
         return "".join(self.g0_charset[b] for b in data)
 
-    def draw(self, data: bytes):
+    def _fast_draw(self, data: str) -> None:
+        while data:
+            pass  # TODO: Implement me
+
+    def _draw_char(self, char: str, char_width: int) -> None:
+        # If this was the last column in a line and auto wrap mode is
+        # enabled, move the cursor to the beginning of the next line,
+        # otherwise replace characters already displayed with newly
+        # entered.
+        if self.cursor.x + char_width > self.columns - 1:
+            if mo.DECAWM in self.mode:
+                self.carriage_return()
+                self.linefeed()
+                self.linebuf[self.cursor.y].continued = True
+            else:
+                extra = self.cursor.x + char_width + 1 - self.columns
+                self.cursor.x -= extra
+
+        # If Insert mode is set, new characters move old characters to
+        # the right, otherwise terminal is in Replace mode and new
+        # characters replace old characters at cursor position.
+        do_insert = mo.IRM in self.mode and char_width > 0
+        if do_insert:
+            self.insert_characters(char_width)
+
+        cx = self.cursor.x
+        line = self.linebuf[self.cursor.y]
+        if char_width:
+            line.char[cx], line.width[cx] = ord(char), char_width
+            if char_width > 1:
+                for i in range(1, char_width):
+                    line.char[cx + i] = line.width[cx + i] = 0
+            line.apply_cursor(self.cursor, cx, char_width)
+        elif unicodedata.combining(char):
+            # A zero-cell character is combined with the previous
+            # character either on this or preceeding line.
+            if cx:
+                last = chr(line.char[cx - 1])
+                normalized = unicodedata.normalize("NFC", last + char)
+                line.char[cx - 1] = ord(normalized)
+            elif self.cursor.y:
+                lline = self.linebuf[self.cursor.y - 1]
+                last = chr(lline.char[self.columns - 1])
+                normalized = unicodedata.normalize("NFC", last + char)
+                lline.char[self.columns - 1] = ord(normalized)
+
+        # .. note:: We can't use :meth:`cursor_forward()`, because that
+        #           way, we'll never know when to linefeed.
+        if char_width > 0:
+            self.cursor.x = min(self.cursor.x + char_width, self.columns - 1)
+            if not do_insert:
+                self.update_cell_range(self.cursor.y, cx, self.cursor.x)
+
+    def draw(self, data: bytes) -> None:
         """ Displays decoded characters at the current cursor position and
         creates new lines as need if DECAWM is set.  """
         orig_x, orig_y = self.cursor.x, self.cursor.y
         self._notify_cursor_position = False
+        data = self._decode(data)
         try:
-            for char in self._decode(data):
-                if unicodedata.category(char) in IGNORED_CATEGORIES:
-                    continue
-                char_width = wcwidth(char)
-
-                # If this was the last column in a line and auto wrap mode is
-                # enabled, move the cursor to the beginning of the next line,
-                # otherwise replace characters already displayed with newly
-                # entered.
-                if self.cursor.x + char_width > self.columns - 1:
-                    if mo.DECAWM in self.mode:
-                        self.carriage_return()
-                        self.linefeed()
-                        self.linebuf[self.cursor.y].continued = True
-                    else:
-                        extra = self.cursor.x + char_width + 1 - self.columns
-                        self.cursor.x -= extra
-
-                # If Insert mode is set, new characters move old characters to
-                # the right, otherwise terminal is in Replace mode and new
-                # characters replace old characters at cursor position.
-                do_insert = mo.IRM in self.mode and char_width > 0
-                if do_insert:
-                    self.insert_characters(char_width)
-
-                cx = self.cursor.x
-                line = self.linebuf[self.cursor.y]
-                if char_width:
-                    line.char[cx], line.width[cx] = ord(char), char_width
-                    if char_width > 1:
-                        for i in range(1, char_width):
-                            line.char[cx + i] = line.width[cx + i] = 0
-                    line.apply_cursor(self.cursor, cx, char_width)
-                elif unicodedata.combining(char):
-                    # A zero-cell character is combined with the previous
-                    # character either on this or preceeding line.
-                    if cx:
-                        last = chr(line.char[cx - 1])
-                        normalized = unicodedata.normalize("NFC", last + char)
-                        line.char[cx - 1] = ord(normalized)
-                    elif self.cursor.y:
-                        lline = self.linebuf[self.cursor.y - 1]
-                        last = chr(lline.char[self.columns - 1])
-                        normalized = unicodedata.normalize("NFC", last + char)
-                        lline.char[self.columns - 1] = ord(normalized)
-
-                # .. note:: We can't use :meth:`cursor_forward()`, because that
-                #           way, we'll never know when to linefeed.
-                if char_width > 0:
-                    self.cursor.x = min(self.cursor.x + char_width, self.columns - 1)
-                    if not do_insert:
-                        self.update_cell_range(self.cursor.y, cx, self.cursor.x)
+            if is_simple_string(data):
+                return self._fast_draw(data)
+            data = ignore_pat.sub('', data)
+            if data:
+                widths = list(map(wcwidth, data))
+                if sum(widths) == len(data):
+                    return self._fast_draw(data)
+                for char, char_width in zip(data, widths):
+                    self._draw_char(char, char_width)
         finally:
             self._notify_cursor_position = True
         if orig_x != self.cursor.x or orig_y != self.cursor.y:
@@ -527,6 +538,7 @@ class Screen(QObject):
             x = self.cursor.x
             num = min(self.columns - x, count)
             line = self.linebuf[y]
+            # TODO: Handle wide chars that get split at the right edge.
             line.right_shift(x, num)
             line.apply_cursor(self.cursor, x, num, clear_char=True)
             self.update_cell_range(y, x, self.columns)
@@ -546,6 +558,7 @@ class Screen(QObject):
         if top <= y <= bottom:
             x = self.cursor.x
             num = min(self.columns - x, count)
+            # TODO: Handle deletion of wide chars
             line = self.linebuf[y]
             line.left_shift(x, num)
             line.apply_cursor(self.cursor, self.columns - num, num, clear_char=True)
