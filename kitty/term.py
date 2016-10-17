@@ -9,7 +9,7 @@ from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
 from PyQt5.QtWidgets import QWidget
 
 from .config import build_ansi_color_tables, Options
-from .data_types import Line, as_color
+from .data_types import Line
 from .utils import set_current_font_metrics
 
 
@@ -44,7 +44,7 @@ class TerminalWidget(QWidget):
         self.setPalette(pal)
         self.current_bg = pal.color(pal.Window)
         self.current_fg = pal.color(pal.WindowText)
-        self.ansi_fg, self.ansi_bg = build_ansi_color_tables(opts)
+        build_ansi_color_tables(opts)
         f = QFont(opts.font_family)
         f.setPointSizeF(opts.font_size)
         self.setFont(f)
@@ -104,10 +104,10 @@ class TerminalWidget(QWidget):
 
     def paint_cell(self, painter: QPainter, line: Line, col: int, y: int) -> None:
         x = self.cell_positions[col]
-        fg = as_color(line.fg[col], self.ansi_fg)
+        c = line.cursor_from(x)
+        fg, bg, decoration_fg = c.colors()
         if fg is not None:
             painter.setPen(QPen(fg))
-        bg = as_color(line.bg[col], self.ansi_bg)
         if bg is not None:
             r = QRect(x, y, self.cell_width, self.cell_height)
             painter.fillRect(r, bg)

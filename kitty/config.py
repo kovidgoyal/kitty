@@ -124,4 +124,13 @@ def build_ansi_color_tables(opts: Options) -> Tuple[dict, dict]:
     bg = {40 + i: getattr(opts, 'color{}'.format(i)) for i in range(8)}
     bg[49] = opts.background
     bg.update({100 + i: getattr(opts, 'color{}'.format(i + 8)) for i in range(8)})
-    return fg, bg
+    build_ansi_color_tables.fg, build_ansi_color_tables.bg = fg, bg
+build_ansi_color_tables(defaults)
+
+
+def fg_color_table():
+    return build_ansi_color_tables.fg
+
+
+def bg_color_table():
+    return build_ansi_color_tables.bg

@@ -8,6 +8,8 @@ from itertools import repeat
 
 from PyQt5.QtGui import QColor
 
+from .config import fg_color_table, bg_color_table
+
 code = 'I' if array.array('I').itemsize >= 4 else 'L'
 lcode = 'L' if array.array('L').itemsize >= 8 else 'Q'
 
@@ -58,6 +60,9 @@ class Cursor:
     def __repr__(self):
         return self.__class__.__name__ + '({})'.format(', '.join(
             '{}={}'.format(x, getattr(self, x)) for x in self.__slots__))
+
+    def colors(self):
+        return as_color(self.fg, fg_color_table()), as_color(self.bg, bg_color_table()), as_color(self.decoration_fg, fg_color_table())
 
 CHAR_MASK = 0xFFFFFF
 ATTRS_SHIFT = 24
