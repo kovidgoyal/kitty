@@ -27,3 +27,5 @@ def _get_config_dir():
     return ans
 config_dir = _get_config_dir()
 del _get_config_dir
+
+terminfo_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'terminfo')

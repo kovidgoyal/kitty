@@ -14,6 +14,8 @@ from functools import lru_cache
 
 from PyQt5.QtGui import QFontMetrics
 
+from .constants import terminfo_dir
+
 current_font_metrics = cell_width = None
 libc = ctypes.CDLL(None)
 wcwidth_native = libc.wcwidth
@@ -64,6 +66,7 @@ def fork_child(cmd, cwd, opts):
         os.close(os.open(os.ttyname(1), os.O_RDWR))
         os.environ['TERM'] = opts.term
         os.environ['COLORTERM'] = 'truecolor'
+        os.environ['TERMINFO'] = terminfo_dir
         os.execvp(argv[0], argv)
     else:
         os.close(slave)
