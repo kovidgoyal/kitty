@@ -9,12 +9,14 @@ from itertools import repeat
 from PyQt5.QtGui import QColor
 
 code = 'I' if array.array('I').itemsize >= 4 else 'L'
+lcode = 'L' if array.array('L').itemsize >= 8 else 'Q'
 
 
 def get_zeroes(sz: int) -> Tuple[array.array]:
     if get_zeroes.current_size != sz:
         get_zeroes.current_size = sz
         get_zeroes.ans = (
+            array.array(lcode, repeat(0, sz)),
             array.array(code, repeat(0, sz)),
             array.array(code, repeat(32, sz)),
         )
@@ -68,24 +70,24 @@ BOLD_MASK = 1 << BOLD_SHIFT
 ITALIC_MASK = 1 << ITALIC_SHIFT
 REVERSE_MASK = 1 << REVERSE_SHIFT
 STRIKE_MASK = 1 << STRIKE_SHIFT
+COL_MASK = 0xFFFFFFFF
+COL_SHIFT = 32
 
 
 class Line:
 
-    __slots__ = 'char fg bg decoration_fg continued'.split()
+    __slots__ = 'char color decoration_fg continued'.split()
 
     def __init__(self, sz: int, other=None):
         if other is None:
-            z4, spaces = get_zeroes(sz)
+            z8, z4, spaces = get_zeroes(sz)
             self.char = spaces[:]
-            self.fg = z4[:]
-            self.bg = z4[:]
+            self.color = z8[:]
             self.decoration_fg = z4[:]
             self.continued = False
         else:
             self.char = other.char[:]
-            self.fg = other.fg[:]
-            self.bg = other.bg[:]
+            self.color = other.color[:]
             self.decoration_fg = other.decoration_fg[:]
             self.continued = other.continued
 
@@ -108,8 +110,7 @@ class Line:
 
     def copy_char(self, src: int, to, dest: int) -> None:
         to.char[dest] = self.char[src]
-        to.fg[dest] = self.fg[src]
-        to.bg[dest] = self.bg[src]
+        to.color[dest] = self.color[src]
         to.decoration_fg[dest] = self.decoration_fg[src]
 
     def cursor_to_attrs(self, c: Cursor) -> int:
@@ -118,11 +119,10 @@ class Line:
 
     def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
         for i in range(at, at + num):
-            self.fg[i] = c.fg
-            self.bg[i] = c.bg
+            self.color[i] = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
             self.decoration_fg[i] = c.decoration_fg
             sc = self.char[i]
-            ch = ord(char) if clear_char else sc & CHAR_MASK
+            ch = ord(char) if clear_char else sc
             sattrs = sc >> ATTRS_SHIFT
             w = 1 if clear_char else sattrs & WIDTH_MASK
             attrs = w | self.cursor_to_attrs(c)
@@ -130,7 +130,10 @@ class Line:
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
-        c.fg, c.bg, c.decoration_fg = self.fg[x], self.bg[x], self.decoration_fg[x]
+        c.decoration_fg = self.decoration_fg[x]
+        col = self.color[x]
+        c.fg = col & COL_MASK
+        c.bg = col >> COL_SHIFT
         attrs = self.char[x] >> ATTRS_SHIFT
         c.decoration = (attrs >> DECORATION_SHIFT) & 0b11
         c.bold = bool((attrs >> BOLD_SHIFT) & 0b1)
@@ -143,16 +146,17 @@ class Line:
         ' Set the specified text in this line, with attributes taken from the cursor '
         attrs = self.cursor_to_attrs(cursor) | 1
         fg, bg, dfg = cursor.fg, cursor.bg, cursor.decoration_fg
+        col = (fg & COL_MASK) | ((bg & COL_MASK) << COL_SHIFT)
         dx = cursor.x
         for cpos in range(offset_in_text, offset_in_text + sz):
             ch = ord(text[cpos]) & CHAR_MASK
             self.char[dx] = ch | (attrs << ATTRS_SHIFT)
-            self.fg[dx], self.bg[dx], self.decoration_fg[dx] = fg, bg, dfg
+            self.color[dx], self.decoration_fg[dx] = col, dfg
             dx += 1
 
     def copy_slice(self, src, dest, num):
         src, dest = slice(src, src + num), slice(dest, dest + num)
-        for a in (self.char, self.fg, self.bg, self.decoration_fg):
+        for a in (self.char, self.color, self.decoration_fg):
             a[dest] = a[src]
 
     def right_shift(self, at: int, num: int) -> None:
@@ -184,7 +188,8 @@ class Line:
             a = (c >> ATTRS_SHIFT) & ~WIDTH_MASK
         else:
             a = self.cursor_to_attrs(cursor)
-            self.fg[i], self.bg[i], self.decoration_fg[i] = cursor.fg, cursor.bg, cursor.decoration_fg
+            col = (cursor.fg & COL_MASK) | ((cursor.bg & COL_MASK) << COL_SHIFT)
+            self.color[i], self.decoration_fg[i] = col, cursor.decoration_fg
         a |= width & WIDTH_MASK
         self.char[i] = (a << ATTRS_SHIFT) | (ord(ch) & CHAR_MASK)
 
