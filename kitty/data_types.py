@@ -54,6 +54,10 @@ class Cursor:
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __repr__(self):
+        return self.__class__.__name__ + '({})'.format(', '.join(
+            '{}={}'.format(x, getattr(self, x)) for x in self.__slots__))
+
 
 class Line:
 
@@ -116,30 +120,17 @@ class Line:
         to.width[dest] = self.width[src]
 
     def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
-        if num < 2:
-            self.fg[at] = c.fg
-            self.bg[at] = c.bg
-            self.bold[at] = c.bold
-            self.italic[at] = c.italic
-            self.reverse[at] = c.reverse
-            self.strikethrough[at] = c.strikethrough
-            self.decoration[at] = c.decoration
-            self.decoration_fg[at] = c.decoration_fg
+        for i in range(at, at + num):
+            self.fg[i] = c.fg
+            self.bg[i] = c.bg
+            self.bold[i] = c.bold
+            self.italic[i] = c.italic
+            self.reverse[i] = c.reverse
+            self.strikethrough[i] = c.strikethrough
+            self.decoration[i] = c.decoration
+            self.decoration_fg[i] = c.decoration_fg
             if clear_char:
-                self.width[at], self.char[at] = 1, ord(char)
-        else:
-            num = min(len(self) - at, num)
-            at = slice(at, at + num)
-            self.fg[at] = repeat(c.fg, num)
-            self.bg[at] = repeat(c.bg, num)
-            self.bold[at] = repeat(c.bold, num)
-            self.italic[at] = repeat(c.italic, num)
-            self.reverse[at] = repeat(c.reverse, num)
-            self.strikethrough[at] = repeat(c.strikethrough, num)
-            self.decoration[at] = repeat(c.decoration, num)
-            self.decoration_fg[at] = repeat(c.decoration_fg, num)
-            if clear_char:
-                self.width[at], self.char[at] = repeat(1, num), repeat(ord(char), num)
+                self.width[i], self.char[i] = 1, ord(char)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
