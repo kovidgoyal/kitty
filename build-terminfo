@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+
+import os
+base = os.path.dirname(os.path.abspath(__file__))
+os.chdir(base)
+os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
+os.execvp('tic', 'tic terminfo/kitty.terminfo'.split())

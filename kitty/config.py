@@ -32,7 +32,7 @@ for name in 'foreground foreground_bold background cursor'.split():
 
 
 for line in '''
-term xterm-termite
+term xterm-kitty
 foreground       #dddddd
 foreground_bold  #ffffff
 cursor           #dddddd
