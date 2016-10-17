@@ -2,9 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import codecs
+
 from . import BaseTest, set_text_in_line
 
 from kitty.data_types import Line, Cursor
+from kitty.utils import is_simple_string, wcwidth
 
 
 class TestDataTypes(BaseTest):
@@ -72,3 +75,11 @@ class TestDataTypes(BaseTest):
         l.set_decoration(0, q.decoration)
         c = l.cursor_from(0)
         self.ae(c, q)
+
+    def test_utils(self):
+        d = codecs.getincrementaldecoder('utf-8')('strict').decode
+        self.ae(tuple(map(wcwidth, 'a1\0コ')), (1, 1, 0, 2))
+        for s in ('abd38453*(+\n\t\f\r !\0~[]{}()"\':;<>/?ASD`',):
+            self.assertTrue(is_simple_string(s))
+            self.assertTrue(is_simple_string(d(s.encode('utf-8'))))
+        self.assertFalse(is_simple_string('a1コ'))

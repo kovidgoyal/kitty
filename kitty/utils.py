@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import sys
 import termios
 import struct
 import shlex
@@ -82,3 +83,10 @@ def hangup():
         pgrp = os.getpgid(pid)
         os.killpg(pgrp, signal.SIGHUP)
         os.close(create_pty()[0])
+
+base_size = sys.getsizeof('')
+
+
+def is_simple_string(x):
+    ' We use the fact that python stores unicode strings with a 1-byte representation when possible '
+    return sys.getsizeof(x) == base_size + len(x)
