@@ -86,7 +86,9 @@ def run_cli(suite, verbosity=4):
     r = unittest.TextTestRunner
     r.resultclass = unittest.TextTestResult
     init_env()
-    result = r(verbosity=verbosity).run(suite)
+    runner = r(verbosity=verbosity)
+    runner.tb_locals = True
+    result = runner.run(suite)
     if not result.wasSuccessful():
         raise SystemExit(1)
 

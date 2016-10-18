@@ -36,20 +36,17 @@ class Screen(QObject):
        See standard ECMA-48, Section 6.1.1 http://www.ecma-international.org/publications/standards/Ecma-048.htm
        for a description of the presentational component, implemented by ``Screen``.
     """
-    cursor_changed = pyqtSignal(object)
-    cursor_position_changed = pyqtSignal(object, object, object)
-    update_screen = pyqtSignal()
+
     title_changed = pyqtSignal(object)
     icon_changed = pyqtSignal(object)
-    update_line_range = pyqtSignal(object, object)
-    update_cell_range = pyqtSignal(object, object, object)
-    line_added_to_history = pyqtSignal()
     write_to_child = pyqtSignal(object)
     _notify_cursor_position = True
 
-    def __init__(self, opts, columns: int=80, lines: int=24, parent=None):
+    def __init__(self, opts, tracker, columns: int=80, lines: int=24, parent=None):
         QObject.__init__(self, parent)
         self.write_process_input = self.write_to_child.emit
+        for attr in 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split():
+            setattr(self, attr, getattr(tracker, attr))
         self.savepoints = deque()
         self.columns = columns
         self.lines = lines
@@ -69,7 +66,7 @@ class Screen(QObject):
 
     def notify_cursor_position(self, x, y):
         if self._notify_cursor_position:
-            self.cursor_position_changed.emit(self.cursor, x, y)
+            self.cursor_position_changed(self.cursor, x, y)
 
     @property
     def display(self) -> Sequence[str]:
@@ -108,7 +105,7 @@ class Screen(QObject):
         self.tabstops = set(range(7, self.columns, 8))
 
         self.cursor = Cursor(0, 0)
-        self.cursor_changed.emit(self.cursor)
+        self.cursor_changed(self.cursor)
         self.cursor_position()
 
     def resize(self, lines: int, columns: int):
@@ -193,13 +190,13 @@ class Screen(QObject):
             for line in self.linebuf:
                 for i in range(len(line)):
                     line.reverse[i] = True
-            self.update_screen.emit()
+            self.update_screen()
             self.select_graphic_rendition(7)  # +reverse.
 
         # Make the cursor visible.
         if mo.DECTCEM in modes and self.cursor.hidden:
             self.cursor.hidden = False
-            self.cursor_changed.emit(self.cursor)
+            self.cursor_changed(self.cursor)
 
     def reset_mode(self, *modes, private=False):
         """Resets (disables) a given list of modes.
@@ -228,13 +225,13 @@ class Screen(QObject):
             for line in self.linebuf:
                 for i in range(len(line)):
                     line.reverse[i] = False
-            self.update_screen.emit()
+            self.update_screen()
             self.select_graphic_rendition(27)  # -reverse.
 
         # Hide the cursor.
         if mo.DECTCEM in modes and not self.cursor.hidden:
             self.cursor.hidden = True
-            self.cursor_changed.emit(self.cursor)
+            self.cursor_changed(self.cursor)
 
     def define_charset(self, code, mode):
         """Defines ``G0`` or ``G1`` charset.
@@ -293,57 +290,76 @@ class Screen(QObject):
         return "".join(self.g0_charset[b] for b in data)
 
     def _fast_draw(self, data: str) -> None:
-        while data:
-            pass  # TODO: Implement me
+        do_insert = mo.IRM in self.mode
+        pos = 0
+        while pos < len(data):
+            space_left_in_line = self.columns - self.cursor.x
+            len_left = len(data) - pos
+            if space_left_in_line < 1:
+                if mo.DECAWM in self.mode:
+                    self.carriage_return()
+                    self.linefeed()
+                    self.linebuf[self.cursor.y].continued = True
+                    space_left_in_line = self.columns
+                else:
+                    space_left_in_line = min(len_left, self.columns)
+                    self.cursor.x = self.columns - space_left_in_line
+            write_sz = min(len_left, space_left_in_line)
+            line = self.linebuf[self.cursor.y]
+            if do_insert:
+                line.right_shift(self.cursor.x, write_sz)
+            line.set_text(data, pos, write_sz, self.cursor)
+            pos += write_sz
+            cx = self.cursor.x
+            self.cursor.x += write_sz
+            right = self.columns - 1 if do_insert else max(0, min(self.cursor.x - 1, self.columns - 1))
+            self.update_cell_range(self.cursor.y, cx, right)
 
     def _draw_char(self, char: str, char_width: int) -> None:
         # If this was the last column in a line and auto wrap mode is
         # enabled, move the cursor to the beginning of the next line,
         # otherwise replace characters already displayed with newly
         # entered.
-        if self.cursor.x + char_width > self.columns - 1:
+        space_left_in_line = self.columns - self.cursor.x
+        if space_left_in_line < char_width:
             if mo.DECAWM in self.mode:
                 self.carriage_return()
                 self.linefeed()
                 self.linebuf[self.cursor.y].continued = True
+                space_left_in_line = self.columns
             else:
-                extra = self.cursor.x + char_width + 1 - self.columns
-                self.cursor.x -= extra
+                self.cursor.x = self.columns - char_width
+                space_left_in_line = char_width
 
-        # If Insert mode is set, new characters move old characters to
-        # the right, otherwise terminal is in Replace mode and new
-        # characters replace old characters at cursor position.
-        do_insert = mo.IRM in self.mode and char_width > 0
-        if do_insert:
-            self.insert_characters(char_width)
+        do_insert = mo.IRM in self.mode
 
         cx = self.cursor.x
         line = self.linebuf[self.cursor.y]
-        if char_width:
-            line.char[cx], line.width[cx] = ord(char), char_width
-            if char_width > 1:
-                for i in range(1, char_width):
-                    line.char[cx + i] = line.width[cx + i] = 0
-            line.apply_cursor(self.cursor, cx, char_width)
+        if char_width > 0:
+            if do_insert:
+                line.right_shift(self.cursor.x, char_width)
+            line.set_char(cx, char, char_width, self.cursor)
+            if char_width == 2:
+                line.set_char(cx, '\0', 0, self.cursor)
         elif unicodedata.combining(char):
             # A zero-cell character is combined with the previous
             # character either on this or preceeding line.
             if cx:
-                last = chr(line.char[cx - 1])
+                last = line.char_at(cx - 1)
                 normalized = unicodedata.normalize("NFC", last + char)
-                line.char[cx - 1] = ord(normalized)
+                line.set_char(cx - 1, normalized[0])
             elif self.cursor.y:
                 lline = self.linebuf[self.cursor.y - 1]
-                last = chr(lline.char[self.columns - 1])
+                last = chr(lline.char_at(self.columns - 1))
                 normalized = unicodedata.normalize("NFC", last + char)
-                lline.char[self.columns - 1] = ord(normalized)
+                lline.set_char(self.columns - 1, normalized[0])
 
         # .. note:: We can't use :meth:`cursor_forward()`, because that
         #           way, we'll never know when to linefeed.
         if char_width > 0:
-            self.cursor.x = min(self.cursor.x + char_width, self.columns - 1)
-            if not do_insert:
-                self.update_cell_range(self.cursor.y, cx, self.cursor.x)
+            self.cursor.x = min(self.cursor.x + char_width, self.columns)
+            right = self.columns - 1 if do_insert else max(0, min(self.cursor.x - 1, self.columns - 1))
+            self.update_cell_range(self.cursor.y, cx, right)
 
     def draw(self, data: bytes) -> None:
         """ Displays decoded characters at the current cursor position and
@@ -395,8 +411,8 @@ class Screen(QObject):
         if self.cursor.y == bottom:
             self.tophistorybuf.append(self.linebuf.pop(top))
             self.linebuf.insert(bottom, Line(self.columns))
-            self.line_added_to_history.emit()
-            self.update_screen.emit()
+            self.line_added_to_history()
+            self.update_screen()
         else:
             self.cursor_down()
 
@@ -409,7 +425,7 @@ class Screen(QObject):
         if self.cursor.y == top:
             self.linebuf.pop(bottom)
             self.linebuf.insert(top, Line(self.columns))
-            self.update_screen.emit()
+            self.update_screen()
         else:
             self.cursor_up()
 
@@ -473,7 +489,7 @@ class Screen(QObject):
                 self.set_mode(mo.DECAWM)
 
             self.cursor = savepoint.cursor
-            self.cursor_changed.emit(self.cursor)
+            self.cursor_changed(self.cursor)
             self.ensure_bounds(use_margins=True)
         else:
             # If nothing was saved, the cursor moves to home position;
@@ -498,7 +514,7 @@ class Screen(QObject):
                               min(bottom + 1, self.cursor.y + count)):
                 self.linebuf.pop(bottom)
                 self.linebuf.insert(line, Line(self.columns))
-            self.update_line_range.emit(self.cursor.y, bottom)
+            self.update_line_range(self.cursor.y, bottom)
 
             self.carriage_return()
 
@@ -518,7 +534,7 @@ class Screen(QObject):
             for _ in range(min(bottom - self.cursor.y + 1, count)):
                 self.linebuf.pop(self.cursor.y)
                 self.linebuf.insert(bottom, Line(self.columns))
-            self.update_line_range.emit(self.cursor.y, bottom)
+            self.update_line_range(self.cursor.y, bottom)
 
             self.carriage_return()
 

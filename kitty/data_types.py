@@ -187,6 +187,9 @@ class Line:
     def width(self, i):
         return (self.char[i] >> ATTRS_SHIFT) & 0b11
 
+    def char_at(self, i):
+        return chr(self.char[i] & CHAR_MASK)
+
     def set_char(self, i: int, ch: str, width: int=1, cursor: Cursor=None) -> None:
         if cursor is None:
             c = self.char[i]
