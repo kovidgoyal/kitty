@@ -81,7 +81,7 @@ COL_SHIFT = 32
 
 class Line:
 
-    __slots__ = 'char color decoration_fg continued'.split()
+    __slots__ = 'char color decoration_fg continued combining_chars'.split()
 
     def __init__(self, sz: int, other=None):
         if other is None:
@@ -90,11 +90,13 @@ class Line:
             self.color = z8[:]
             self.decoration_fg = z4[:]
             self.continued = False
+            self.combining_chars = {}
         else:
             self.char = other.char[:]
             self.color = other.color[:]
             self.decoration_fg = other.decoration_fg[:]
             self.continued = other.continued
+            self.combining_chars = other.combining_chars.copy()
 
     def __eq__(self, other):
         if not isinstance(other, Line):
@@ -102,7 +104,7 @@ class Line:
         for x in self.__slots__:
             if getattr(self, x) != getattr(other, x):
                 return False
-        return self.continued == other.continued
+        return True
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -117,6 +119,10 @@ class Line:
         to.char[dest] = self.char[src]
         to.color[dest] = self.color[src]
         to.decoration_fg[dest] = self.decoration_fg[src]
+        to.combining_chars.pop(dest, None)
+        cc = self.combining_chars.get(src)
+        if cc is not None:
+            to.combining_chars[dest] = cc
 
     def cursor_to_attrs(self, c: Cursor) -> int:
         return ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
@@ -132,6 +138,8 @@ class Line:
             w = 1 if clear_char else sattrs & WIDTH_MASK
             attrs = w | self.cursor_to_attrs(c)
             self.char[i] = (ch & CHAR_MASK) | (attrs << ATTRS_SHIFT)
+            if clear_char:
+                self.combining_chars.pop(i, None)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
@@ -158,8 +166,19 @@ class Line:
             self.char[dx] = ch | (attrs << ATTRS_SHIFT)
             self.color[dx], self.decoration_fg[dx] = col, dfg
             dx += 1
+        if self.combining_chars:
+            for i in range(cursor.x, cursor.x + sz):
+                self.combining_chars.pop(i, None)
 
     def copy_slice(self, src, dest, num):
+        if self.combining_chars:
+            scc = self.combining_chars.copy()
+            for i in range(num):
+                cc = scc.get(src + i)
+                if cc is None:
+                    self.combining_chars.pop(dest + i, None)
+                else:
+                    self.combining_chars[dest + i] = cc
         src, dest = slice(src, src + num), slice(dest, dest + num)
         for a in (self.char, self.color, self.decoration_fg):
             a[dest] = a[src]
@@ -178,8 +197,12 @@ class Line:
         if snum:
             self.copy_slice(src_start, dest_start, snum)
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.text_at(i)
+
     def __str__(self) -> str:
-        return ''.join(map(lambda c: chr(c & CHAR_MASK), filter(None, self.char)))
+        return ''.join(self)
 
     def __repr__(self) -> str:
         return repr(str(self))
@@ -187,8 +210,15 @@ class Line:
     def width(self, i):
         return (self.char[i] >> ATTRS_SHIFT) & 0b11
 
-    def char_at(self, i):
-        return chr(self.char[i] & CHAR_MASK)
+    def text_at(self, i):
+        ch = self.char[i] & CHAR_MASK
+        if ch:
+            ans = chr(ch)
+            cc = self.combining_chars.get(i)
+            if cc is not None:
+                ans += cc
+            return ans
+        return ''
 
     def set_char(self, i: int, ch: str, width: int=1, cursor: Cursor=None) -> None:
         if cursor is None:
@@ -200,6 +230,11 @@ class Line:
             self.color[i], self.decoration_fg[i] = col, cursor.decoration_fg
         a |= width & WIDTH_MASK
         self.char[i] = (a << ATTRS_SHIFT) | (ord(ch) & CHAR_MASK)
+        self.combining_chars.pop(i, None)
+
+    def add_combining_char(self, i: int, ch: str):
+        # TODO: Handle the case when i is the second cell of a double-width char
+        self.combining_chars[i] = self.combining_chars.get(i, '') + ch
 
     def set_bold(self, i, val):
         c = self.char[i]

@@ -111,6 +111,6 @@ class TerminalWidget(QWidget):
         if bg is not None:
             r = QRect(x, y, self.cell_width, self.cell_height)
             painter.fillRect(r, bg)
-        char = line.char[col]
-        if char not in (0, 32):  # 32 = <space>
-            painter.drawText(x, y + self.baseline_offset, chr(char))
+        text = line.text_at(col)
+        if text.rstrip():
+            painter.drawText(x, y + self.baseline_offset, text)

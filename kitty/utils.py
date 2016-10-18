@@ -10,6 +10,7 @@ import shlex
 import fcntl
 import signal
 import ctypes
+import unicodedata
 from functools import lru_cache
 
 from PyQt5.QtGui import QFontMetrics
@@ -26,6 +27,8 @@ wcwidth_native.restype = ctypes.c_int
 
 @lru_cache(maxsize=2**13)
 def wcwidth(c: str) -> int:
+    if unicodedata.combining(c):
+        return 0
     if current_font_metrics is None:
         return min(2, wcwidth_native(c))
     w = current_font_metrics.widthChar(c)

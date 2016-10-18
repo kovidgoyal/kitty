@@ -289,7 +289,7 @@ class Screen(QObject):
             return self.utf8_decoder.decode(data)
         return "".join(self.g0_charset[b] for b in data)
 
-    def _fast_draw(self, data: str) -> None:
+    def _draw_fast(self, data: str) -> None:
         do_insert = mo.IRM in self.mode
         pos = 0
         while pos < len(data):
@@ -302,8 +302,10 @@ class Screen(QObject):
                     self.linebuf[self.cursor.y].continued = True
                     space_left_in_line = self.columns
                 else:
-                    space_left_in_line = min(len_left, self.columns)
-                    self.cursor.x = self.columns - space_left_in_line
+                    space_left_in_line = 1
+                    len_left = 1
+                    pos = len(data) - 1
+                    self.cursor.x = self.columns - 1
             write_sz = min(len_left, space_left_in_line)
             line = self.linebuf[self.cursor.y]
             if do_insert:
@@ -316,20 +318,14 @@ class Screen(QObject):
             self.update_cell_range(self.cursor.y, cx, right)
 
     def _draw_char(self, char: str, char_width: int) -> None:
-        # If this was the last column in a line and auto wrap mode is
-        # enabled, move the cursor to the beginning of the next line,
-        # otherwise replace characters already displayed with newly
-        # entered.
         space_left_in_line = self.columns - self.cursor.x
         if space_left_in_line < char_width:
             if mo.DECAWM in self.mode:
                 self.carriage_return()
                 self.linefeed()
                 self.linebuf[self.cursor.y].continued = True
-                space_left_in_line = self.columns
             else:
                 self.cursor.x = self.columns - char_width
-                space_left_in_line = char_width
 
         do_insert = mo.IRM in self.mode
 
@@ -339,27 +335,22 @@ class Screen(QObject):
             if do_insert:
                 line.right_shift(self.cursor.x, char_width)
             line.set_char(cx, char, char_width, self.cursor)
+            self.cursor.x += 1
             if char_width == 2:
-                line.set_char(cx, '\0', 0, self.cursor)
-        elif unicodedata.combining(char):
-            # A zero-cell character is combined with the previous
-            # character either on this or preceeding line.
-            if cx:
-                last = line.char_at(cx - 1)
-                normalized = unicodedata.normalize("NFC", last + char)
-                line.set_char(cx - 1, normalized[0])
-            elif self.cursor.y:
-                lline = self.linebuf[self.cursor.y - 1]
-                last = chr(lline.char_at(self.columns - 1))
-                normalized = unicodedata.normalize("NFC", last + char)
-                lline.set_char(self.columns - 1, normalized[0])
-
-        # .. note:: We can't use :meth:`cursor_forward()`, because that
-        #           way, we'll never know when to linefeed.
-        if char_width > 0:
-            self.cursor.x = min(self.cursor.x + char_width, self.columns)
+                line.set_char(self.cursor.x, '\0', 0, self.cursor)
+                self.cursor.x += 1
             right = self.columns - 1 if do_insert else max(0, min(self.cursor.x - 1, self.columns - 1))
             self.update_cell_range(self.cursor.y, cx, right)
+        elif unicodedata.combining(char):
+            # A zero-cell character is combined with the previous
+            # character either on this or the preceeding line.
+            if cx > 0:
+                line.add_combining_char(cx - 1, char)
+                self.update_cell_range(self.cursor.y, cx - 1, cx - 1)
+            elif self.cursor.y > 0:
+                lline = self.linebuf[self.cursor.y - 1]
+                lline.add_combining_char(self.columns - 1, char)
+                self.update_cell_range(self.cursor.y - 1, self.columns - 1, self.columns - 1)
 
     def draw(self, data: bytes) -> None:
         """ Displays decoded characters at the current cursor position and
@@ -369,12 +360,12 @@ class Screen(QObject):
         data = self._decode(data)
         try:
             if is_simple_string(data):
-                return self._fast_draw(data)
+                return self._draw_fast(data)
             data = ignore_pat.sub('', data)
             if data:
                 widths = list(map(wcwidth, data))
                 if sum(widths) == len(data):
-                    return self._fast_draw(data)
+                    return self._draw_fast(data)
                 for char, char_width in zip(data, widths):
                     self._draw_char(char, char_width)
         finally:
