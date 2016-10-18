@@ -18,7 +18,7 @@ def merge_ranges(ranges: Set[Tuple[int]]) -> Iterator[Tuple[int]]:
         low, high = sorted_intervals[0]
 
         for iv in sorted_intervals[1:]:
-            if iv[0] <= high:  # new interval overlaps current run
+            if iv[0] <= high + 1:  # new interval overlaps current run or borders it
                 high = max(high, iv[1])  # merge with the current run
             else:  # current run is over
                 yield low, high  # yield accumulated interval
