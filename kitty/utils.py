@@ -66,7 +66,8 @@ def fork_child(cmd, cwd, opts):
         os.close(os.open(os.ttyname(1), os.O_RDWR))
         os.environ['TERM'] = opts.term
         os.environ['COLORTERM'] = 'truecolor'
-        os.environ['TERMINFO'] = terminfo_dir
+        if os.path.isdir(terminfo_dir):
+            os.environ['TERMINFO'] = terminfo_dir
         os.execvp(argv[0], argv)
     else:
         os.close(slave)
