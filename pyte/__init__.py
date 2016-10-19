@@ -26,12 +26,12 @@
 from __future__ import absolute_import
 
 __all__ = ("Screen", "DiffScreen", "HistoryScreen",
-           "Stream", "ByteStream", "DebugStream")
+           "Stream", "DebugStream")
 
 import io
 
 from .screens import Screen, DiffScreen, HistoryScreen
-from .streams import Stream, ByteStream, DebugStream
+from .streams import Stream, DebugStream
 
 
 if __debug__:
