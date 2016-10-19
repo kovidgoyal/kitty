@@ -8,6 +8,7 @@ from itertools import repeat
 
 from PyQt5.QtGui import QColor
 
+from pyte.graphics import FG_BG_256
 from .config import fg_color_table, bg_color_table
 
 code = 'I' if array.array('I').itemsize >= 4 else 'L'
@@ -34,6 +35,9 @@ class Cursor:
         self.x = x
         self.y = y
         self.hidden = False
+        self.reset_display_attrs()
+
+    def reset_display_attrs(self):
         self.fg = self.bg = self.decoration_fg = 0
         self.bold = self.italic = self.reverse = self.strikethrough = False
         self.decoration = 0
@@ -283,6 +287,9 @@ def as_color(entry: int, color_table: Dict[int, QColor]) -> Union[QColor, None]:
         r = (entry >> 8) & 0xff
         return color_table.get(r)
     if t == 2:
+        r = (entry >> 8) & 0xff
+        return QColor(*FG_BG_256[r])
+    if t == 3:
         r = (entry >> 8) & 0xff
         g = (entry >> 16) & 0xff
         b = (entry >> 24) & 0xff

@@ -23,7 +23,7 @@ from __future__ import unicode_literals
 #: >>> text[9]
 #: '+strikethrough'
 TEXT = {
-    1: "+bold" ,
+    1: "+bold",
     3: "+italics",
     4: "+underscore",
     7: "+reverse",
@@ -33,6 +33,19 @@ TEXT = {
     24: "-underscore",
     27: "-reverse",
     29: "-strikethrough",
+}
+
+DISPLAY = {
+    1: ("bold", True),
+    3: ("italic", True),
+    4: ("decoration", 1),
+    7: ("reverse", True),
+    9: ("strikethrough", True),
+    22: ("bold", False),
+    23: ("italic", False),
+    24: ("decoration", 0),
+    27: ("reverse", False),
+    29: ("strikethrough", False),
 }
 
 #: A mapping of ANSI foreground color codes to color names.
@@ -145,5 +158,3 @@ for i in range(217):
 for i in range(1, 22):
     v = 8 + i * 10
     FG_BG_256.append((v, v, v))
-
-FG_BG_256 = ["{0:02x}{1:02x}{2:02x}".format(r, g, b) for r, g, b in FG_BG_256]

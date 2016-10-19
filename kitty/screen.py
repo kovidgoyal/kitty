@@ -31,6 +31,15 @@ Savepoint = namedtuple("Savepoint", [
 ])
 
 
+def wrap_cursor_position(x, y, lines, columns):
+    if x >= columns:
+        if y < lines - 1:
+            x, y = 0, y + 1
+        else:
+            x, y = x - 1, y
+    return x, y
+
+
 class Screen(QObject):
     """
        See standard ECMA-48, Section 6.1.1 http://www.ecma-international.org/publications/standards/Ecma-048.htm
@@ -66,11 +75,7 @@ class Screen(QObject):
 
     def notify_cursor_position(self, x, y):
         if self._notify_cursor_position:
-            if x >= self.columns:
-                if y < self.lines - 1:
-                    x, y = 0, y + 1
-                else:
-                    x, y = x - 1, y
+            x, y = wrap_cursor_position(x, y, self.lines, self.columns)
             self.cursor_position_changed(self.cursor, x, y)
 
     @property
@@ -770,7 +775,7 @@ class Screen(QObject):
         """
         self.cursor_back(count, move_direction=1)
 
-    def cursor_position(self, line=None, column=None):
+    def cursor_position(self, line=1, column=1):
         """Set the cursor to a specific `line` and `column`.
 
         Cursor is allowed to move out of the scrolling region only when
@@ -782,6 +787,7 @@ class Screen(QObject):
         """
         column = (column or 1) - 1
         line = (line or 1) - 1
+        x, y = self.cursor.x, self.cursor.y
 
         # If origin mode (DECOM) is set, line number are relative to
         # the top scrolling margin.
@@ -794,21 +800,25 @@ class Screen(QObject):
 
         self.cursor.x, self.cursor.y = column, line
         self.ensure_bounds()
+        if y != self.cursor.y or x != self.cursor.x:
+            self.notify_cursor_position(x, y)
 
-    def cursor_to_column(self, column=None):
+    def cursor_to_column(self, column=1):
         """Moves cursor to a specific column in the current line.
 
         :param int column: column number to move the cursor to.
         """
-        self.cursor.x = (column or 1) - 1
+        x, self.cursor.x = self.cursor.x, (column or 1) - 1
         self.ensure_bounds()
+        if x != self.cursor.x:
+            self.notify_cursor_position(x, self.cursor.y)
 
-    def cursor_to_line(self, line=None):
+    def cursor_to_line(self, line=1):
         """Moves cursor to a specific line in the current column.
 
         :param int line: line number to move the cursor to.
         """
-        self.cursor.y = (line or 1) - 1
+        y, self.cursor.y = self.cursor.y, (line or 1) - 1
 
         # If origin mode (DECOM) is set, line number are relative to
         # the top scrolling margin.
@@ -819,62 +829,60 @@ class Screen(QObject):
             # region?
 
         self.ensure_bounds()
+        if y != self.cursor.y:
+            self.notify_cursor_position(self.cursor.x, y)
 
     def bell(self, *args):
-        """Bell stub -- the actual implementation should probably be
-        provided by the end-user.
-        """
+        """ Audbile bell """
+        try:
+            with open('/dev/tty', 'wb') as f:
+                f.write(b'\x07')
+        except EnvironmentError:
+            pass
 
     def alignment_display(self):
         """Fills screen with uppercase E's for screen focus and alignment."""
-        for line in self.buffer:
-            for column, char in enumerate(line):
-                line[column] = char._replace(data="E")
+        for i in range(self.lines):
+            self.linebuf[i].clear_text(0, self.columns, 'E')
 
     def select_graphic_rendition(self, *attrs):
         """Set display attributes.
 
         :param list attrs: a list of display attributes to set.
         """
-        replace = {}
+        attrs = list(reversed(attrs or (0,)))
 
-        if not attrs:
-            attrs = [0]
-        else:
-            attrs = list(reversed(attrs))
+        c = self.cursor
 
         while attrs:
             attr = attrs.pop()
             if attr in g.FG_ANSI:
-                replace["fg"] = g.FG_ANSI[attr]
-            elif attr in g.BG:
-                replace["bg"] = g.BG_ANSI[attr]
-            elif attr in g.TEXT:
-                attr = g.TEXT[attr]
-                replace[attr[1:]] = attr.startswith("+")
+                c.fg = (attr << 8) | 1
+            elif attr in g.BG_ANSI:
+                c.bg = (attr << 8) | 1
+            elif attr in g.DISPLAY:
+                attr, val = g.TEXT[attr]
+                setattr(c, attr, val)
             elif not attr:
-                replace = self.default_char._asdict()
+                c.reset_display_attrs()
             elif attr in g.FG_AIXTERM:
-                replace.update(fg=g.FG_AIXTERM[attr], bold=True)
+                c.fg = g.FG_AIXTERM[attr]
             elif attr in g.BG_AIXTERM:
-                replace.update(bg=g.BG_AIXTERM[attr], bold=True)
+                c.bg = g.BG_AIXTERM[attr]
             elif attr in (g.FG_256, g.BG_256):
                 key = "fg" if attr == g.FG_256 else "bg"
                 n = attrs.pop()
                 try:
                     if n == 5:    # 256.
-                        m = attrs.pop()
-                        replace[key] = g.FG_BG_256[m]
+                        setattr(c, key, (attrs.pop() << 8) | 2)
                     elif n == 2:  # 24bit.
                         # This is somewhat non-standard but is nonetheless
                         # supported in quite a few terminals. See discussion
                         # here https://gist.github.com/XVilka/8346728.
-                        replace[key] = "{0:02x}{1:02x}{2:02x}".format(
-                            attrs.pop(), attrs.pop(), attrs.pop())
+                        r, gr, b = attrs.pop() << 8, attrs.pop() << 16, attrs.pop() << 24
+                        setattr(c, key, r | gr | b | 3)
                 except IndexError:
                     pass
-
-        self.cursor.attrs = self.cursor.attrs._replace(**replace)
 
     def report_device_attributes(self, mode=0, **kwargs):
         """Reports terminal identity.
@@ -907,14 +915,13 @@ class Screen(QObject):
         if mode == 5:    # Request for terminal status.
             self.write_process_input(ctrl.CSI + b"0n")
         elif mode == 6:  # Request for cursor position.
-            x = self.cursor.x + 1
-            y = self.cursor.y + 1
+            x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, self.lines, self.columns)
+            x, y = x + 1, y + 1
 
             # "Origin mode (DECOM) selects line numbering."
             if mo.DECOM in self.mode:
                 y -= self.margins.top
-            self.write_process_input(
-                ctrl.CSI + "{0};{1}R".format(y, x).encode())
+            self.write_process_input(ctrl.CSI + "{0};{1}R".format(y, x).encode('ascii'))
 
     def debug(self, *args, **kwargs):
         """Endpoint for unrecognized escape sequences.
