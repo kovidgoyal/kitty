@@ -56,7 +56,6 @@ class ChangeTracker(QObject):
 
     def cursor_position_changed(self, cursor: Cursor, x: int, y: int) -> None:
         self.changed_cursor = cursor
-        self.changed_cells[y].add((x, x))
         self.dirty()
 
     def update_screen(self):
