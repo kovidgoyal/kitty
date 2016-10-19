@@ -153,7 +153,7 @@ class TestScreen(BaseTest):
         init()
         s.erase_in_line(1)
         self.ae(str(s.linebuf[0]), '  cde')
-        self.assertChanges(t, cells={0: ((0, 2),)})
+        self.assertChanges(t, cells={0: ((0, 1),)})
         init()
         s.erase_in_line(2)
         self.ae(str(s.linebuf[0]), '     ')
@@ -161,3 +161,34 @@ class TestScreen(BaseTest):
         init()
         s.erase_in_line(2, private=True)
         self.ae((False, False, False, False, False), tuple(map(lambda i: s.linebuf[0].cursor_from(i).bold, range(5))))
+
+    def test_erase_in_screen(self):
+        s, t = self.create_screen()
+
+        def init():
+            s.reset()
+            s.draw(b'12345' * 5)
+            t.reset()
+            s.cursor.x, s.cursor.y = 2, 1
+            s.cursor.bold = True
+
+        init()
+        s.erase_in_display()
+        self.ae(s.display, ('12345', '12   ', '     ', '     ', '     '))
+        self.assertChanges(t, lines={2, 3, 4}, cells={1: ((2, 4),)})
+
+        init()
+        s.erase_in_display(1)
+        self.ae(s.display, ('     ', '   45', '12345', '12345', '12345'))
+        self.assertChanges(t, lines={0}, cells={1: ((0, 2),)})
+
+        init()
+        s.erase_in_display(2)
+        self.ae(s.display, ('     ', '     ', '     ', '     ', '     '))
+        self.assertChanges(t, lines=set(range(5)))
+        self.assertTrue(s.linebuf[0].cursor_from(1).bold)
+        init()
+        s.erase_in_display(2, private=True)
+        self.ae(s.display, ('     ', '     ', '     ', '     ', '     '))
+        self.assertChanges(t, lines=set(range(5)))
+        self.assertFalse(s.linebuf[0].cursor_from(1).bold)

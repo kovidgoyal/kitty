@@ -70,7 +70,7 @@ class Screen(QObject):
 
     @property
     def display(self) -> Sequence[str]:
-        return [str(l) for l in self.linebuf]
+        return tuple(map(str, self.linebuf))
 
     def reset(self):
         """Resets the terminal to its initial state.
@@ -630,7 +630,7 @@ class Screen(QObject):
                 line.clear_text(s, n)
             else:
                 line.apply_cursor(c, s, n, clear_char=True)
-            self.update_cell_range(y, s, min(s + n, self.columns - 1))
+            self.update_cell_range(y, s, min(s + n, self.columns) - 1)
 
     def erase_in_display(self, how=0, private=False):
         """Erases display in a specific way.
@@ -643,28 +643,33 @@ class Screen(QObject):
               including cursor position.
             * ``2`` -- Erases complete display. All lines are erased
               and changed to single-width. Cursor does not move.
-        :param bool private: when ``True`` character attributes are left
-                             unchanged **not implemented**.
+        :param bool private: when ``True`` character attributes are left unchanged
         """
         if how == 0:
             # a) erase from cursor to the end of the display, including
             #    the cursor,
-            interval = range(self.cursor.y + 1, self.lines)
+            interval = self.cursor.y + 1, self.lines
         elif how == 1:
             # b) erase from the beginning of the display to the cursor,
             #    including it,
-            interval = range(self.cursor.y)
+            interval = 0, self.cursor.y
         elif how == 2:
             # c) erase the whole display.
-            interval = range(self.lines)
+            interval = 0, self.lines
+        else:
+            return
 
-        for line in interval:
-            self.buffer[line][:] = \
-                (self.cursor.attrs for _ in range(self.columns))
+        if interval[1] > interval[0]:
+            for line in range(*interval):
+                if private:
+                    self.linebuf[line].clear_text(0, self.columns)
+                else:
+                    self.linebuf[line].apply_cursor(self.cursor, 0, self.columns, clear_char=True)
+            self.update_line_range(interval[0], interval[1] - 1)
 
-        # In case of 0 or 1 we have to erase the line with the cursor.
-        if how == 0 or how == 1:
-            self.erase_in_line(how)
+        # In case of 0 or 1 we have to erase the line with the cursor also
+        if how != 2:
+            self.erase_in_line(how, private=private)
 
     def set_tab_stop(self):
         """Sets a horizontal tab stop at cursor position."""

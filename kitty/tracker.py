@@ -81,7 +81,7 @@ class ChangeTracker(QObject):
         else:
             if self.changed_lines:
                 for y in self.changed_lines:
-                    del self.changed_cells[y]
+                    self.changed_cells.pop(y, None)
             for y, cell_ranges in self.changed_cells.items():
                 self.changed_cells[y] = tuple(merge_ranges(cell_ranges))
         changes = {'screen': self.screen_changed, 'cursor': self.changed_cursor, 'lines': self.changed_lines,
