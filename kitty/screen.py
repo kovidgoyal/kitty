@@ -543,12 +543,13 @@ class Screen(QObject):
         y = self.cursor.y
         if top <= y <= bottom:
             x = self.cursor.x
+            # TODO: Check what to do if x is on the second char of a wide char
+            # pair.
             num = min(self.columns - x, count)
             line = self.linebuf[y]
-            # TODO: Handle wide chars that get split at the right edge.
             line.right_shift(x, num)
             line.apply_cursor(self.cursor, x, num, clear_char=True)
-            self.update_cell_range(y, x, self.columns)
+            self.update_cell_range(y, x, self.columns - 1)
 
     def delete_characters(self, count=1):
         """Deletes the indicated # of characters, starting with the
@@ -565,15 +566,19 @@ class Screen(QObject):
         if top <= y <= bottom:
             x = self.cursor.x
             num = min(self.columns - x, count)
-            # TODO: Handle deletion of wide chars
+            # TODO: Check if we need to count wide chars as one or two chars
+            # for this control code. Also, what happens if we start deleting
+            # at the second cell of a wide character, or delete only the first
+            # cell of a wide character?
             line = self.linebuf[y]
             line.left_shift(x, num)
             line.apply_cursor(self.cursor, self.columns - num, num, clear_char=True)
+            self.update_cell_range(y, x, self.columns - 1)
 
-    def erase_characters(self, count=None):
+    def erase_characters(self, count=1):
         """Erases the indicated # of characters, starting with the
         character at cursor position. Character attributes are set
-        cursor attributes. The cursor remains in the same position.
+        to cursor attributes. The cursor remains in the same position.
 
         :param int count: number of characters to erase.
 
@@ -585,10 +590,11 @@ class Screen(QObject):
            to all ``erase_*()`` and ``delete_*()`` methods.
         """
         count = count or 1
-
-        for column in range(self.cursor.x,
-                            min(self.cursor.x + count, self.columns)):
-            self.buffer[self.cursor.y][column] = self.cursor.attrs
+        x, y = self.cursor.x, self.cursor.y
+        # TODO: Same set of wide character questions as for delete_characters()
+        num = min(self.columns - x, count)
+        self.linebuf[y].apply_cursor(self.cursor, x, num, clear_char=True)
+        self.update_cell_range(y, x, min(x + num, self.columns) - 1)
 
     def erase_in_line(self, how=0, private=False):
         """Erases a line in a specific way.
@@ -601,22 +607,30 @@ class Screen(QObject):
               including cursor position.
             * ``2`` -- Erases complete line.
         :param bool private: when ``True`` character attributes are left
-                             unchanged **not implemented**.
+                             unchanged.
         """
+        s = n = 0
         if how == 0:
             # a) erase from the cursor to the end of line, including
             #    the cursor,
-            interval = range(self.cursor.x, self.columns)
+            s, n = self.cursor.x, self.columns - self.cursor.x
         elif how == 1:
             # b) erase from the beginning of the line to the cursor,
             #    including it,
-            interval = range(self.cursor.x + 1)
+            s, n = 0, self.cursor.x + 1
         elif how == 2:
             # c) erase the entire line.
-            interval = range(self.columns)
-
-        for column in interval:
-            self.buffer[self.cursor.y][column] = self.cursor.attrs
+            s, n = 0, self.columns
+        if n - s:
+            # TODO: Same set of questions as for delete_characters()
+            y = self.cursor.y
+            line = self.linebuf[y]
+            c = None if private else self.cursor
+            if private:
+                line.clear_text(s, n)
+            else:
+                line.apply_cursor(c, s, n, clear_char=True)
+            self.update_cell_range(y, s, min(s + n, self.columns - 1))
 
     def erase_in_display(self, how=0, private=False):
         """Erases display in a specific way.

@@ -129,7 +129,7 @@ class Line:
             ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
 
     def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
-        for i in range(at, at + num):
+        for i in range(at, min(len(self), at + num)):
             self.color[i] = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
             self.decoration_fg[i] = c.decoration_fg
             sc = self.char[i]
@@ -170,6 +170,12 @@ class Line:
             for i in range(cursor.x, cursor.x + sz):
                 self.combining_chars.pop(i, None)
 
+    def clear_text(self, start, num, clear_char=' '):
+        ' Clear the text in the specified range, preserving existing attributes '
+        ch = ord(clear_char) & CHAR_MASK
+        for i in range(start, min(len(self), start + num)):
+            self.char[i] = (self.char[i] & ~CHAR_MASK) | ch
+
     def copy_slice(self, src, dest, num):
         if self.combining_chars:
             scc = self.combining_chars.copy()
@@ -189,6 +195,10 @@ class Line:
         dnum = min(ls - dest_start, ls)
         if dnum:
             self.copy_slice(src_start, dest_start, dnum)
+            # Check if a wide character was split at the right edge
+            w = (self.char[-1] >> ATTRS_SHIFT) & 0b11
+            if w != 1:
+                self.char[-1] = (w << ATTRS_SHIFT) | ord(' ')
 
     def left_shift(self, at: int, num: int) -> None:
         src_start, dest_start = at + num, at
