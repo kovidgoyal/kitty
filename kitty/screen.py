@@ -66,6 +66,11 @@ class Screen(QObject):
 
     def notify_cursor_position(self, x, y):
         if self._notify_cursor_position:
+            if x >= self.columns:
+                if y < self.lines - 1:
+                    x, y = 0, y + 1
+                else:
+                    x, y = x - 1, y
             self.cursor_position_changed(self.cursor, x, y)
 
     @property
@@ -707,59 +712,63 @@ class Screen(QObject):
         self.cursor.x = max(0, min(self.cursor.x, self.columns - 1))
         self.cursor.y = max(top, min(self.cursor.y, bottom))
 
-    def cursor_up(self, count=None):
+    def cursor_up(self, count=1, do_carriage_return=False, move_direction=-1):
         """Moves cursor up the indicated # of lines in same column.
         Cursor stops at top margin.
 
         :param int count: number of lines to skip.
         """
-        self.cursor.y -= count or 1
+        x, y = self.cursor.x, self.cursor.y
+        self.cursor.y += move_direction * (count or 1)
         self.ensure_bounds(use_margins=True)
+        if do_carriage_return:
+            self.cursor.x = 0
+        if y != self.cursor.y or x != self.cursor.x:
+            self.notify_cursor_position(x, y)
 
-    def cursor_up1(self, count=None):
+    def cursor_up1(self, count=1):
         """Moves cursor up the indicated # of lines to column 1. Cursor
         stops at bottom margin.
 
         :param int count: number of lines to skip.
         """
-        self.cursor_up(count)
-        self.carriage_return()
+        self.cursor_up(count, do_carriage_return=True)
 
-    def cursor_down(self, count=None):
+    def cursor_down(self, count=1):
         """Moves cursor down the indicated # of lines in same column.
         Cursor stops at bottom margin.
 
         :param int count: number of lines to skip.
         """
-        self.cursor.y += count or 1
-        self.ensure_bounds(use_margins=True)
+        self.cursor_up(count, move_direction=1)
 
-    def cursor_down1(self, count=None):
+    def cursor_down1(self, count=1):
         """Moves cursor down the indicated # of lines to column 1.
         Cursor stops at bottom margin.
 
         :param int count: number of lines to skip.
         """
-        self.cursor_down(count)
-        self.carriage_return()
+        self.cursor_up(count, do_carriage_return=True, move_direction=1)
 
-    def cursor_back(self, count=None):
+    def cursor_back(self, count=1, move_direction=-1):
         """Moves cursor left the indicated # of columns. Cursor stops
         at left margin.
 
         :param int count: number of columns to skip.
         """
-        self.cursor.x -= count or 1
+        x = self.cursor.x
+        self.cursor.x += move_direction * (count or 1)
         self.ensure_bounds()
+        if x != self.cursor.x:
+            self.notify_cursor_position(x, self.cursor.y)
 
-    def cursor_forward(self, count=None):
+    def cursor_forward(self, count=1):
         """Moves cursor right the indicated # of columns. Cursor stops
         at right margin.
 
         :param int count: number of columns to skip.
         """
-        self.cursor.x += count or 1
-        self.ensure_bounds()
+        self.cursor_back(count, move_direction=1)
 
     def cursor_position(self, line=None, column=None):
         """Set the cursor to a specific `line` and `column`.
