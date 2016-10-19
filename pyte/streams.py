@@ -174,20 +174,11 @@ class Stream(object):
         if screen is self.listener:
             self.listener = None
 
-    def feed(self, data):
+    def feed(self, data: bytes) -> None:
         """Consumes a string and advances the state as necessary.
 
         :param bytes data: a blob of data to feed from.
         """
-        if isinstance(data, str):
-            warnings.warn("As of version 0.6.0 ``pyte.streams.Stream.feed``"
-                          "requires input in bytes. This warnings will become "
-                          "and error in 0.6.1.")
-            data = data.encode("utf-8")
-        elif not isinstance(data, bytes):
-            raise TypeError("{0} requires bytes input"
-                            .format(self.__class__.__name__))
-
         send = self._parser.send
         draw = self.listener.draw
         match_text = self._text_pattern.match
@@ -199,7 +190,7 @@ class Stream(object):
         while offset < length:
             if taking_plain_text:
                 match = match_text(data, offset)
-                if match:
+                if match is not None:
                     start, offset = match.span()
                     draw(data[start:offset])
                 else:
@@ -346,20 +337,6 @@ class Stream(object):
                     listener.set_title(param)
             elif char not in NUL_OR_DEL:
                 draw(char)
-
-
-class ByteStream(Stream):
-    def __init__(self, *args, **kwargs):
-        warnings.warn("As of version 0.6.0 ``pyte.streams.ByteStream`` is an "
-                      "alias for ``pyte.streams.Stream``. The former will be "
-                      "removed in pyte 0.6.1.", DeprecationWarning)
-
-        if kwargs.pop("encodings", None):
-            warnings.warn(
-                "As of version 0.6.0 ``pyte.streams.ByteStream`` no longer "
-                "decodes input.", DeprecationWarning)
-
-        super(ByteStream, self).__init__(*args, **kwargs)
 
 
 class DebugStream(Stream):
