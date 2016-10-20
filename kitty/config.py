@@ -26,6 +26,7 @@ def to_font_size(x):
 type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
+    'cursor_opacity': float,
 }
 for name in 'foreground foreground_bold background cursor'.split():
     type_map[name] = to_qcolor
@@ -35,7 +36,8 @@ for line in '''
 term xterm-kitty
 foreground       #dddddd
 foreground_bold  #ffffff
-cursor           #dddddd
+cursor           #eeeeee
+cursor_opacity   0.8
 background       #000000
 font_family      monospace
 font_size        10.0
