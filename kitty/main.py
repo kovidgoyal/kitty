@@ -17,6 +17,7 @@ from .config import load_config, validate_font
 from .constants import appname, str_version, config_dir
 from .boss import Boss
 from .utils import fork_child
+from .keys import KeyFilter
 
 
 class MainWindow(QMainWindow):
@@ -105,6 +106,8 @@ def main():
 
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
     app = QApplication([appname])
+    keyfilter = KeyFilter(app)
+    app.installEventFilter(keyfilter)
     app.setOrganizationName(args.cls)
     app.setApplicationName(args.name)
     try:
@@ -122,4 +125,6 @@ def main():
         pr.disable()
     else:
         ret = run_app()
-        return ret
+    app.installEventFilter(None)
+    del keyfilter
+    return ret

@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QObject, QEvent
 
 CTRL_MASK = 0b10011111
 
@@ -20,3 +20,35 @@ def key_event_to_data(ev, mods):
         else:
             data.extend(t)
     return bytes(data)
+
+
+class KeyFilter(QObject):
+
+    def __init__(self, parent=None):
+        QObject.__init__(self, parent)
+        self.disabled = False
+
+    @property
+    def disable_filtering(self):
+        return self
+
+    def __enter__(self):
+        self.disabled = True
+
+    def __exit__(self, *args):
+        self.disabled = False
+
+    def eventFilter(self, watched, event):
+        if self.disabled:
+            return False
+        etype = event.type()
+        if etype == QEvent.KeyPress:
+            # We use a global event filter to prevent Qt from re-painting the
+            # entire terminal widget on a Tab key press
+            app = self.parent()
+            window, fw = app.activeWindow(), app.focusWidget()
+            if hasattr(window, 'boss') and fw is window.boss.term:
+                window.boss.term.keyPressEvent(event)
+                if event.isAccepted():
+                    return True
+        return False

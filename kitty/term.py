@@ -105,6 +105,7 @@ class TerminalWidget(QWidget):
 
     def update_screen(self, changes):
         self.cursor = changes['cursor'] or self.cursor
+
         if changes['screen']:
             self.pending_update += self.rect()
         else:
@@ -217,3 +218,5 @@ class TerminalWidget(QWidget):
         if data:
             self.send_data_to_child.emit(data)
             ev.accept()
+            return
+        return QWidget.keyPressEvent(self, ev)
