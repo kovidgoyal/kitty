@@ -54,7 +54,7 @@ class ChangeTracker(QObject):
         self.changed_cursor = cursor
         self.dirty()
 
-    def cursor_position_changed(self, cursor: Cursor, x: int, y: int) -> None:
+    def cursor_position_changed(self, cursor: Cursor) -> None:
         self.changed_cursor = cursor
         self.dirty()
 

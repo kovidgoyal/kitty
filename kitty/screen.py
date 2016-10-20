@@ -73,10 +73,9 @@ class Screen(QObject):
         return ("{0}({1}, {2})".format(self.__class__.__name__,
                                        self.columns, self.lines))
 
-    def notify_cursor_position(self, x, y):
+    def notify_cursor_position(self):
         if self._notify_cursor_position:
-            x, y = wrap_cursor_position(x, y, self.lines, self.columns)
-            self.cursor_position_changed(self.cursor, x, y)
+            self.cursor_position_changed(self.cursor)
 
     @property
     def display(self) -> Sequence[str]:
@@ -381,7 +380,7 @@ class Screen(QObject):
         finally:
             self._notify_cursor_position = True
         if orig_x != self.cursor.x or orig_y != self.cursor.y:
-            self.notify_cursor_position(orig_x, orig_y)
+            self.notify_cursor_position()
 
     def set_title(self, param):
         """Sets terminal title.
@@ -401,7 +400,7 @@ class Screen(QObject):
         """Move the cursor to the beginning of the current line."""
         x, self.cursor.x = self.cursor.x, 0
         if x != self.cursor.x:
-            self.notify_cursor_position(x, self.cursor.y)
+            self.notify_cursor_position()
 
     def index(self):
         """Move the cursor down one line in the same column. If the
@@ -453,8 +452,8 @@ class Screen(QObject):
             column = self.columns - 1
 
         if column != self.cursor.x:
-            x, self.cursor.x = self.cursor.x, column
-            self.notify_cursor_position(x, self.cursor.y)
+            self.cursor.x = column
+            self.notify_cursor_position()
 
     def backspace(self):
         """Move cursor to the left one or keep it in it's position if
@@ -729,7 +728,7 @@ class Screen(QObject):
         if do_carriage_return:
             self.cursor.x = 0
         if y != self.cursor.y or x != self.cursor.x:
-            self.notify_cursor_position(x, y)
+            self.notify_cursor_position()
 
     def cursor_up1(self, count=1):
         """Moves cursor up the indicated # of lines to column 1. Cursor
@@ -765,7 +764,7 @@ class Screen(QObject):
         self.cursor.x += move_direction * (count or 1)
         self.ensure_bounds()
         if x != self.cursor.x:
-            self.notify_cursor_position(x, self.cursor.y)
+            self.notify_cursor_position()
 
     def cursor_forward(self, count=1):
         """Moves cursor right the indicated # of columns. Cursor stops
@@ -801,7 +800,7 @@ class Screen(QObject):
         self.cursor.x, self.cursor.y = column, line
         self.ensure_bounds()
         if y != self.cursor.y or x != self.cursor.x:
-            self.notify_cursor_position(x, y)
+            self.notify_cursor_position()
 
     def cursor_to_column(self, column=1):
         """Moves cursor to a specific column in the current line.
@@ -811,7 +810,7 @@ class Screen(QObject):
         x, self.cursor.x = self.cursor.x, (column or 1) - 1
         self.ensure_bounds()
         if x != self.cursor.x:
-            self.notify_cursor_position(x, self.cursor.y)
+            self.notify_cursor_position()
 
     def cursor_to_line(self, line=1):
         """Moves cursor to a specific line in the current column.
@@ -830,7 +829,7 @@ class Screen(QObject):
 
         self.ensure_bounds()
         if y != self.cursor.y:
-            self.notify_cursor_position(self.cursor.x, y)
+            self.notify_cursor_position()
 
     def bell(self, *args):
         """ Audbile bell """
