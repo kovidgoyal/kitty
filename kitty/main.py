@@ -24,13 +24,13 @@ class MainWindow(QMainWindow):
 
     report_error = pyqtSignal(object)
 
-    def __init__(self, opts):
+    def __init__(self, opts, dump_commands):
         QMainWindow.__init__(self)
         self.setWindowTitle(appname)
         sys.excepthook = self.on_unhandled_error
         self.report_error.connect(self.show_error, type=Qt.QueuedConnection)
         self.handle_unix_signals()
-        self.boss = Boss(opts, self)
+        self.boss = Boss(opts, self, dump_commands)
         self.setCentralWidget(self.boss.term)
 
     def on_unhandled_error(self, etype, value, tb):
@@ -85,6 +85,7 @@ def option_parser():
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
+    a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
     return parser
 
 
@@ -114,7 +115,7 @@ def main():
         validate_font(opts)
     except ValueError as err:
         raise SystemExit(str(err)) from None
-    w = MainWindow(opts)
+    w = MainWindow(opts, args.dump_commands)
     w.show()
     if args.profile:
         import cProfile

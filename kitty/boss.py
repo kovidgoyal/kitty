@@ -7,16 +7,13 @@ import io
 
 from PyQt5.QtCore import QObject, QSocketNotifier
 
-from .screen import Screen
 from .term import TerminalWidget
 from .utils import resize_pty, hangup, create_pty
-from .tracker import ChangeTracker
-from pyte.streams import Stream
 
 
 class Boss(QObject):
 
-    def __init__(self, opts, parent):
+    def __init__(self, opts, parent, dump_commands):
         QObject.__init__(self, parent)
         self.shutting_down = False
         self.write_buf = memoryview(b'')
@@ -25,17 +22,13 @@ class Boss(QObject):
         self.write_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Write, self)
         self.write_notifier.setEnabled(False)
         self.write_notifier.activated.connect(self.write_ready)
-        self.tracker = ChangeTracker(self)
-        self.screen = s = Screen(opts, self.tracker, parent=self)
-        self.stream = Stream(s)
-        s.write_to_child.connect(self.write_to_child)
-        self.term = TerminalWidget(opts, self.tracker, self.screen.linebuf, parent)
+        self.term = TerminalWidget(opts, parent, dump_commands)
         self.term.relayout_lines.connect(self.relayout_lines)
         self.term.send_data_to_child.connect(self.write_to_child)
-        resize_pty(self.screen.columns, self.screen.lines)
+        self.term.write_to_child.connect(self.write_to_child)
+        resize_pty(80, 24)
 
     def apply_opts(self, opts):
-        self.screen.apply_opts(opts)
         self.term.apply_opts(opts)
 
     def read_ready(self, read_fd):
@@ -50,7 +43,7 @@ class Boss(QObject):
             self.read_notifier.setEnabled(False)
             self.parent().child_process_died()
             return
-        self.stream.feed(data)
+        self.term.feed(data)
 
     def write_ready(self, write_fd):
         if not self.shutting_down:
@@ -65,8 +58,7 @@ class Boss(QObject):
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
         self.write_notifier.setEnabled(True)
 
-    def relayout_lines(self, previous, cells_per_line, previousl, lines_per_screen):
-        self.screen.resize(lines_per_screen, cells_per_line)
+    def relayout_lines(self, cells_per_line, lines_per_screen):
         resize_pty(cells_per_line, lines_per_screen)
 
     def shutdown(self):

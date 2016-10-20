@@ -69,6 +69,9 @@ class Screen(QObject):
         if sz != self.tophistorybuf.maxlen:
             self.tophistorybuf = deque(self.tophistorybuf, maxlen=sz)
 
+    def line(self, i):
+        return self.linebuf[i]
+
     def __repr__(self):
         return ("{0}({1}, {2})".format(self.__class__.__name__,
                                        self.columns, self.lines))

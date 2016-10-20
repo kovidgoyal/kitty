@@ -362,7 +362,10 @@ class DebugStream(Stream):
                       default, which means -- debug all events).
     """
 
-    def __init__(self, to=sys.stdout, only=(), *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        to = kwargs.pop('to', sys.stdout)
+        only = kwargs.pop('only', ())
+
         def safe_str(chunk):
             if isinstance(chunk, bytes):
                 chunk = chunk.decode("utf-8")
@@ -375,6 +378,7 @@ class DebugStream(Stream):
             pass
 
         class Bugger(object):
+
             def __getattr__(self, event):
                 if only and event not in only:
                     return noop

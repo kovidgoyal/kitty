@@ -4,18 +4,20 @@
 
 from functools import lru_cache
 from itertools import product
-from typing import Tuple, Iterator, Sequence
+from typing import Tuple, Iterator
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
-from .data_types import Line, Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
+from .data_types import Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
 from .utils import set_current_font_metrics
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
 from .keys import key_event_to_data
+from .screen import Screen
+from pyte.streams import Stream, DebugStream
 
 
 def ascii_width(fm: QFontMetrics) -> int:
@@ -41,18 +43,24 @@ def pixmap_for_text(text, color, default_fg, font, w, h, baseline):
 
 class TerminalWidget(QWidget):
 
-    relayout_lines = pyqtSignal(object, object, object, object)
+    relayout_lines = pyqtSignal(object, object)
+    write_to_child = pyqtSignal(object)
     send_data_to_child = pyqtSignal(object)
     cells_per_line = 80
     lines_per_screen = 24
 
-    def __init__(self, opts: Options, tracker: ChangeTracker, linebuf: Sequence[Line], parent: QWidget=None):
+    def __init__(self, opts: Options, parent: QWidget=None, dump_commands: bool=False):
         QWidget.__init__(self, parent)
+        self.cursor = Cursor()
+        self.tracker = ChangeTracker(self)
+        self.tracker.dirtied.connect(self.update_screen)
+        sclass = DebugStream if dump_commands else Stream
+        self.screen = Screen(opts, self.tracker, parent=self)
+        self.screen.write_to_child.connect(self.write_to_child)
+        self.stream = sclass(self.screen)
+        self.feed = self.stream.feed
         self.last_drew_cursor_at = (0, 0)
         self.setFocusPolicy(Qt.WheelFocus)
-        tracker.dirtied.connect(self.update_screen)
-        self.linebuf = linebuf
-        self.cursor = Cursor()
         self.setAutoFillBackground(True)
         self.apply_opts(opts)
         self.debounce_resize_timer = t = QTimer(self)
@@ -66,6 +74,7 @@ class TerminalWidget(QWidget):
         self.pending_update = QRegion()
 
     def apply_opts(self, opts):
+        self.screen.apply_opts(opts)
         self.opts = opts
         pixmap_for_text.cache_clear()
         pal = self.palette()
@@ -97,7 +106,8 @@ class TerminalWidget(QWidget):
         self.line_width = self.cells_per_line * self.cell_width
         self.layout_size = self.size()
         if (previous, previousl) != (self.cells_per_line, self.lines_per_screen):
-            self.relayout_lines.emit(previous, self.cells_per_line, previousl, self.lines_per_screen)
+            self.screen.resize(self.lines_per_screen, self.cells_per_line)
+            self.relayout_lines.emit(self.cells_per_line, self.lines_per_screen)
         self.update()
 
     def resizeEvent(self, ev):
@@ -180,7 +190,7 @@ class TerminalWidget(QWidget):
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
         self.last_drew_cursor_at = x, y
-        line = self.linebuf[x]
+        line = self.screen.line(x)
         colors = line.basic_cell_data(y)[2]
         if colors & HAS_BG_MASK:
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
@@ -193,7 +203,7 @@ class TerminalWidget(QWidget):
             painter.drawRect(r)
 
     def paint_cell(self, painter: QPainter, col: int, row: int) -> None:
-        line = self.linebuf[row]
+        line = self.screen.line(row)
         ch, attrs, colors = line.basic_cell_data(col)
         x, y = self.cell_positions[col], self.line_positions[row]
         if colors & HAS_BG_MASK and (col != self.last_drew_cursor_at[0] or row != self.last_drew_cursor_at[1]):
