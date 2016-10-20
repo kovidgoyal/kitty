@@ -34,7 +34,11 @@ def wcwidth(c: str) -> int:
         return 0
     if current_font_metrics is None:
         return min(2, wcwidth_native(c))
-    w = current_font_metrics.widthChar(c)
+    try:
+        w = current_font_metrics.widthChar(c)
+    except ValueError:
+        # Happens for non-BMP unicode chars
+        w = current_font_metrics.width(c)
     cells, extra = divmod(w, cell_width)
     if extra > 0.1 * cell_width:
         cells += 1
