@@ -131,6 +131,11 @@ class Screen(QObject):
         self.linebuf.clear()
         self.lines, self.columns = lines, columns
         self.linebuf[:] = rewrap_lines(old_lines, self.columns)
+        if (len(self.linebuf) > self.lines):
+            self.tophistorybuf.extend(self.linebuf[:len(self.linebuf) - self.line])
+            del self.linebuf[:len(self.linebuf) - self.line]
+        while len(self.linebuf) < self.lines:
+            self.linebuf.append(Line(self.columns))
         extra = len(self.linebuf) - self.lines
         if extra > 0:
             self.tophistorybuf.extend(self.linebuf[:extra])
