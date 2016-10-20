@@ -176,9 +176,10 @@ class TerminalWidget(QWidget):
         p = QPainter(self)
 
         try:
-            self.paint_cursor(p)
+            self.paint_cursor(p, r)
         except Exception:
-            pass
+            import traceback
+            traceback.print_exc()
 
         for lnum, cnum in self.dirty_cells(r):
             try:
@@ -186,11 +187,15 @@ class TerminalWidget(QWidget):
             except Exception:
                 pass
 
-    def paint_cursor(self, painter):
+    def paint_cursor(self, painter, region):
+        if self.cursor.hidden:
+            return
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
+        if not region.intersects(r):
+            return
         self.last_drew_cursor_at = x, y
-        line = self.screen.line(x)
+        line = self.screen.line(y)
         colors = line.basic_cell_data(y)[2]
         if colors & HAS_BG_MASK:
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
