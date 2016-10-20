@@ -11,6 +11,7 @@ import signal
 from gettext import gettext as _
 
 from PyQt5.QtCore import Qt, QSocketNotifier, pyqtSignal
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import load_config, validate_font
@@ -31,6 +32,8 @@ class MainWindow(QMainWindow):
         self.report_error.connect(self.show_error, type=Qt.QueuedConnection)
         self.handle_unix_signals()
         self.boss = Boss(opts, self, dump_commands)
+        self.boss.term.title_changed.connect(self.setWindowTitle)
+        self.boss.term.icon_changed.connect(lambda name: self.setWindowIcon(QIcon.fromTheme(name)))
         self.setCentralWidget(self.boss.term)
 
     def on_unhandled_error(self, etype, value, tb):

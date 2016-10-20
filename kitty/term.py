@@ -8,7 +8,7 @@ from typing import Tuple, Iterator
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen, QPixmap
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QApplication
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
 from .data_types import Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
@@ -18,6 +18,7 @@ from .screen import wrap_cursor_position
 from .keys import key_event_to_data
 from .screen import Screen
 from pyte.streams import Stream, DebugStream
+from pyte import modes as mo
 
 
 def ascii_width(fm: QFontMetrics) -> int:
@@ -45,6 +46,8 @@ class TerminalWidget(QWidget):
 
     relayout_lines = pyqtSignal(object, object)
     write_to_child = pyqtSignal(object)
+    title_changed = pyqtSignal(object)
+    icon_changed = pyqtSignal(object)
     send_data_to_child = pyqtSignal(object)
     cells_per_line = 80
     lines_per_screen = 24
@@ -56,7 +59,8 @@ class TerminalWidget(QWidget):
         self.tracker.dirtied.connect(self.update_screen)
         sclass = DebugStream if dump_commands else Stream
         self.screen = Screen(opts, self.tracker, parent=self)
-        self.screen.write_to_child.connect(self.write_to_child)
+        for s in 'write_to_child title_changed icon_changed'.split():
+            getattr(self.screen, s).connect(getattr(self, s))
         self.stream = sclass(self.screen)
         self.feed = self.stream.feed
         self.last_drew_cursor_at = (0, 0)
@@ -235,3 +239,17 @@ class TerminalWidget(QWidget):
             ev.accept()
             return
         return QWidget.keyPressEvent(self, ev)
+
+    def mousePressEvent(self, ev):
+        if ev.button() == Qt.MiddleButton:
+            c = QApplication.clipboard()
+            if c.supportsSelection():
+                text = c.text(c.Selection)
+                if text:
+                    text = text.encode('utf-8')
+                    if self.screen.in_bracketed_paste_mode():
+                        text = mo.BRACKETED_PASTE_START + text + mo.BRACKETED_PASTE_END
+                    self.send_data_to_child.emit(text)
+                ev.accept()
+                return
+        return QWidget.mousePressEvent(self, ev)

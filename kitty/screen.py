@@ -222,6 +222,9 @@ class Screen(QObject):
             self.cursor.hidden = False
             self.cursor_changed(self.cursor)
 
+    def in_bracketed_paste_mode(self):
+        return mo.BRACKETED_PASTE in self.mode
+
     def reset_mode(self, *modes, private=False):
         """Resets (disables) a given list of modes.
 

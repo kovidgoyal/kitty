@@ -58,3 +58,9 @@ DECAWM = 7 << 5
 #: *Column Mode*: selects the number of columns per line (80 or 132)
 #: on the screen.
 DECCOLM = 3 << 5
+
+#: Bracketed paste mode
+# http://cirw.in/blog/bracketed-paste
+BRACKETED_PASTE = 2004 << 5
+BRACKETED_PASTE_START = '\033[200~'.encode('ascii')
+BRACKETED_PASTE_END = '\033[201~'.encode('ascii')
