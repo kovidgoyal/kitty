@@ -22,11 +22,11 @@
 
 from __future__ import absolute_import, unicode_literals
 
+from functools import wraps
 import itertools
 import os
 import re
 import sys
-import warnings
 from collections import defaultdict
 
 from . import control as ctrl, escape as esc
@@ -157,11 +157,6 @@ class Stream(object):
                 if not hasattr(screen, event):
                     error_message = "{0} is missing {1}".format(screen, event)
                     raise TypeError(error_message)
-        if self.listener is not None:
-            warnings.warn("As of version 0.6.0 the listener queue is "
-                          "restricted to a single element. Existing "
-                          "listener {0} will be replaced."
-                          .format(self.listener), DeprecationWarning)
 
         self.listener = screen
         self._parser = self._parser_fsm()
@@ -362,9 +357,8 @@ class DebugStream(Stream):
                       default, which means -- debug all events).
     """
 
-    def __init__(self, *args, **kwargs):
-        to = kwargs.pop('to', sys.stdout)
-        only = kwargs.pop('only', ())
+    def __init__(self, screen, to=sys.stdout, only=()):
+        stream = super(DebugStream, self)
 
         def safe_str(chunk):
             if isinstance(chunk, bytes):
@@ -374,22 +368,20 @@ class DebugStream(Stream):
 
             return chunk
 
-        def noop(*args, **kwargs):
-            pass
-
-        class Bugger(object):
+        class Bugger:
 
             def __getattr__(self, event):
-                if only and event not in only:
-                    return noop
 
+                @wraps(getattr(screen, event))
                 def inner(*args, **kwargs):
-                    to.write(event.upper() + " ")
-                    to.write("; ".join(map(safe_str, args)))
-                    to.write(" ")
-                    to.write(", ".join("{0}: {1}".format(k, safe_str(v))
-                                       for k, v in kwargs.items()))
-                    to.write(os.linesep)
-                return inner
+                    if not only or event in only:
+                        to.write(event.upper() + " ")
+                        to.write("; ".join(map(safe_str, args)))
+                        to.write(" ")
+                        to.write(", ".join("{0}: {1}".format(k, safe_str(v))
+                                           for k, v in kwargs.items()))
+                        to.write(os.linesep)
+                    getattr(screen, event)(*args, **kwargs)
 
-        super(DebugStream, self).__init__(Bugger(), *args, **kwargs)
+                return inner
+        stream.__init__(Bugger())
