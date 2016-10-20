@@ -156,7 +156,7 @@ class TerminalWidget(QWidget):
             self.hmargin, self.line_positions[l], self.cell_width * self.cells_per_line, self.cell_height)))
         cells = (c for c in range(self.cells_per_line) if region.intersects(QRect(
             self.cell_positions[c], self.vmargin, self.cell_width, self.cell_height * self.lines_per_screen)))
-        yield from product(lines, cells)
+        return product(lines, cells)
 
     def paintEvent(self, ev):
         if self.size() != self.layout_size:
