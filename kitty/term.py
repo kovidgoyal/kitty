@@ -32,6 +32,7 @@ class TerminalWidget(QWidget):
 
     def __init__(self, opts: Options, tracker: ChangeTracker, linebuf: Sequence[Line], parent: QWidget=None):
         QWidget.__init__(self, parent)
+        self.last_drew_cursor_at = (0, 0)
         self.setFocusPolicy(Qt.WheelFocus)
         tracker.dirtied.connect(self.update_screen)
         self.linebuf = linebuf
@@ -67,41 +68,60 @@ class TerminalWidget(QWidget):
     def do_layout(self):
         previous, self.cells_per_line = self.cells_per_line, self.width() // self.cell_width
         previousl, self.lines_per_screen = self.lines_per_screen, self.height() // self.cell_height
-        if (previous, previousl) != (self.cells_per_line, self.lines_per_screen):
-            self.relayout_lines.emit(previous, self.cells_per_line, previousl, self.lines_per_screen)
         self.hmargin = (self.width() - self.cells_per_line * self.cell_width) // 2
         self.vmargin = (self.height() % self.cell_height) // 2
         self.line_positions = tuple(self.vmargin + i * self.cell_height for i in range(self.lines_per_screen))
         self.cell_positions = tuple(self.hmargin + i * self.cell_width for i in range(self.cells_per_line))
+        self.line_width = self.cells_per_line * self.cell_width
         self.layout_size = self.size()
+        if (previous, previousl) != (self.cells_per_line, self.lines_per_screen):
+            self.relayout_lines.emit(previous, self.cells_per_line, previousl, self.lines_per_screen)
         self.update()
 
     def resizeEvent(self, ev):
         self.debounce_resize_timer.start()
 
     def update_screen(self, changes):
-        old_cursor, self.cursor = self.cursor, changes['cursor'] or self.cursor
+        self.cursor = changes['cursor'] or self.cursor
         if changes['screen']:
             self.update()
             return
         cell_positions, line_positions, cell_width, cell_height = self.cell_positions, self.line_positions, self.cell_width, self.cell_height
-        old_x, old_y = wrap_cursor_position(old_cursor.x, old_cursor.y, len(line_positions), len(cell_positions))
-        del old_cursor
+        old_x, old_y = self.last_drew_cursor_at
         rects = []
         for lnum in changes['lines']:
-            rects.append(QRect(cell_positions[0], line_positions[lnum], cell_positions[-1] - cell_positions[0] + cell_width, cell_height))
+            try:
+                rects.append(QRect(cell_positions[0], line_positions[lnum], self.line_width, cell_height))
+            except IndexError:
+                continue
         old_cursor_added = old_y in changes['lines']
+        cursor_added = self.cursor.y in changes['lines']
         for lnum, ranges in changes['cells'].items():
             for start, stop in ranges:
-                rects.append(QRect(cell_positions[start], line_positions[lnum], cell_width * (stop - start + 1), cell_height))
+                try:
+                    rects.append(QRect(cell_positions[start], line_positions[lnum], cell_width * (stop - start + 1), cell_height))
+                except IndexError:
+                    continue
                 if not old_cursor_added and old_y == lnum and (start <= old_x <= stop):
                     old_cursor_added = True
+                if not cursor_added and self.cursor.y == lnum and (start <= self.cursor.x <= stop):
+                    cursor_added = True
         rects.sort(key=lambda r: (r.y(), r.x()))
         reg = QRegion()
         for r in rects:
             reg += r
+        if not cursor_added:
+            try:
+                reg += QRect(cell_positions[self.cursor.x], line_positions[self.cursor.y], cell_width, cell_height)
+            except IndexError:
+                pass
+            if self.cursor.y == old_y and self.cursor.x == old_x:
+                old_cursor_added = True
         if not old_cursor_added:
-            reg += QRect(cell_positions[old_x], line_positions[old_y], cell_width, cell_height)
+            try:
+                reg += QRect(cell_positions[old_x], line_positions[old_y], cell_width, cell_height)
+            except IndexError:
+                pass
         self.update(reg)
 
     def dirty_lines(self, region: QRegion) -> Iterator[Tuple[int, QRegion]]:
@@ -151,6 +171,7 @@ class TerminalWidget(QWidget):
     def paint_cursor(self, painter):
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
+        self.last_drew_cursor_at = x, y
         if self.hasFocus():
             painter.fillRect(r, self.cursor_color)
         else:
