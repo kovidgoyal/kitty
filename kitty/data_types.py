@@ -6,8 +6,6 @@ import array
 from typing import Tuple, Dict, Union, Iterator, Sequence
 from itertools import repeat
 
-from PyQt5.QtGui import QColor
-
 from pyte.graphics import FG_BG_256
 from .config import fg_color_table, bg_color_table
 
@@ -305,19 +303,19 @@ class Line:
         self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
 
 
-def as_color(entry: int, color_table: Dict[int, QColor]) -> Union[QColor, None]:
+def as_color(entry: int, color_table: Dict[int, Tuple[int]]) -> Union[Tuple[int], None]:
     t = entry & 0xff
     if t == 1:
         r = (entry >> 8) & 0xff
         return color_table.get(r)
     if t == 2:
         r = (entry >> 8) & 0xff
-        return QColor(*FG_BG_256[r])
+        return FG_BG_256[r]
     if t == 3:
         r = (entry >> 8) & 0xff
         g = (entry >> 16) & 0xff
         b = (entry >> 24) & 0xff
-        return QColor(r, g, b)
+        return r, g, b
 
 
 def copy_char(src: Line, dest: Line, src_pos: int, dest_pos: int) -> None:

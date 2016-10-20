@@ -120,13 +120,13 @@ def validate_font(opts: Options):
 
 def build_ansi_color_tables(opts: Options) -> Tuple[dict, dict]:
     def col(i):
-        return QColor(getattr(opts, 'color{}'.format(i)))
+        return QColor(getattr(opts, 'color{}'.format(i))).getRgb()[:3]
     fg = {30 + i: col(i) for i in range(8)}
     fg[39] = opts.foreground
     fg.update({90 + i: col(i + 8) for i in range(8)})
-    fg[99] = opts.foreground_bold
+    fg[99] = opts.foreground_bold.getRgb()[:3]
     bg = {40 + i: col(i) for i in range(8)}
-    bg[49] = opts.background
+    bg[49] = opts.background.getRgb()[:3]
     bg.update({100 + i: col(i + 8) for i in range(8)})
     build_ansi_color_tables.fg, build_ansi_color_tables.bg = fg, bg
 build_ansi_color_tables(defaults)

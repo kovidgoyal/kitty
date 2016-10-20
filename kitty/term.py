@@ -2,10 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from functools import lru_cache
 from typing import Tuple, Iterator, Sequence
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
-from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
+from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen, QPixmap
 from PyQt5.QtWidgets import QWidget
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
@@ -21,6 +22,20 @@ def ascii_width(fm: QFontMetrics) -> int:
     for i in range(32, 128):
         ans = max(ans, fm.widthChar(chr(i)))
     return ans
+
+
+@lru_cache(maxsize=2**11)
+def pixmap_for_text(text, color, default_fg, font, w, h, baseline):
+    p = QPixmap(w, h)
+    p.fill(Qt.transparent)
+    fg = as_color(color & COL_MASK, fg_color_table()) or default_fg
+    painter = QPainter(p)
+    painter.setFont(font)
+    painter.setPen(QPen(QColor(*fg)))
+    painter.setRenderHints(QPainter.TextAntialiasing | QPainter.Antialiasing)
+    painter.drawText(0, baseline, text)
+    painter.end()
+    return p
 
 
 class TerminalWidget(QWidget):
@@ -46,14 +61,15 @@ class TerminalWidget(QWidget):
 
     def apply_opts(self, opts):
         self.opts = opts
+        pixmap_for_text.cache_clear()
         pal = self.palette()
         pal.setColor(pal.Window, QColor(opts.background))
         pal.setColor(pal.WindowText, QColor(opts.foreground))
         self.setPalette(pal)
         self.current_bg = pal.color(pal.Window)
-        self.current_fg = pal.color(pal.WindowText)
+        self.current_fg = pal.color(pal.WindowText).getRgb()[:3]
         build_ansi_color_tables(opts)
-        f = QFont(opts.font_family)
+        self.current_font = f = QFont(opts.font_family)
         f.setPointSizeF(opts.font_size)
         self.setFont(f)
         self.font_metrics = fm = QFontMetrics(self.font())
@@ -139,7 +155,6 @@ class TerminalWidget(QWidget):
             return
         r = ev.region()
         p = QPainter(self)
-        p.setRenderHints(p.TextAntialiasing | p.Antialiasing)
 
         try:
             self.paint_cursor(p)
@@ -158,6 +173,12 @@ class TerminalWidget(QWidget):
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
         self.last_drew_cursor_at = x, y
+        line = self.linebuf[x]
+        colors = line.basic_cell_data(y)[2]
+        if colors & HAS_BG_MASK:
+            bg = as_color(colors >> COL_SHIFT, bg_color_table())
+            if bg is not None:
+                painter.fillRect(r, QColor(*bg))
         if self.hasFocus():
             painter.fillRect(r, self.cursor_color)
         else:
@@ -168,23 +189,18 @@ class TerminalWidget(QWidget):
         line = self.linebuf[row]
         ch, attrs, colors = line.basic_cell_data(col)
         x, y = self.cell_positions[col], self.line_positions[row]
-        if colors & HAS_BG_MASK:
+        if colors & HAS_BG_MASK and (col != self.last_drew_cursor_at[0] or row != self.last_drew_cursor_at[1]):
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
             if bg is not None:
                 r = QRect(x, y, self.cell_width, self.cell_height)
-                painter.fillRect(r, bg)
+                painter.fillRect(r, QColor(*bg))
         if ch == 0 or ch == 32:
             # An empty cell
             pass
         else:
             text = chr(ch) + line.combining_chars.get(col, '')
-            fg = as_color(colors & COL_MASK, fg_color_table())
-            if fg is not None:
-                painter.save()
-                painter.setPen(QPen(fg))
-            painter.drawText(x, y + self.baseline_offset, text)
-            if fg is not None:
-                painter.restore()
+            p = pixmap_for_text(text, colors, self.current_fg, self.current_font, self.cell_width * 2, self.cell_height, self.baseline_offset)
+            painter.drawPixmap(x, y, p)
 
     def keyPressEvent(self, ev):
         mods = ev.modifiers()
