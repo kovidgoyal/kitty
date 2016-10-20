@@ -866,7 +866,7 @@ class Screen(QObject):
             elif attr in g.BG_ANSI:
                 c.bg = (attr << 8) | 1
             elif attr in g.DISPLAY:
-                attr, val = g.TEXT[attr]
+                attr, val = g.DISPLAY[attr]
                 setattr(c, attr, val)
             elif not attr:
                 c.reset_display_attrs()

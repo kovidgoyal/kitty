@@ -30,6 +30,7 @@ class Boss(QObject):
         s.write_to_child.connect(self.write_to_child)
         self.term = TerminalWidget(opts, self.tracker, self.screen.linebuf, parent)
         self.term.relayout_lines.connect(self.relayout_lines)
+        self.term.send_data_to_child.connect(self.write_to_child)
         resize_pty(self.screen.columns, self.screen.lines)
 
     def apply_opts(self, opts):
@@ -46,7 +47,7 @@ class Boss(QObject):
 
     def write_ready(self, write_fd):
         while self.write_buf:
-            n = os.write(write_fd, io.DEFAULT_BUFFER_SIZE)
+            n = os.write(write_fd, self.write_buf)
             if not n:
                 return
             self.write_buf = self.write_buf[n:]

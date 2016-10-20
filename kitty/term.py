@@ -13,6 +13,7 @@ from .data_types import Line, Cursor
 from .utils import set_current_font_metrics
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
+from .keys import key_event_to_data
 
 
 def ascii_width(fm: QFontMetrics) -> int:
@@ -25,6 +26,7 @@ def ascii_width(fm: QFontMetrics) -> int:
 class TerminalWidget(QWidget):
 
     relayout_lines = pyqtSignal(object, object, object, object)
+    send_data_to_child = pyqtSignal(object)
     cells_per_line = 80
     lines_per_screen = 24
 
@@ -166,3 +168,13 @@ class TerminalWidget(QWidget):
             painter.fillRect(r, bg)
         if text.rstrip():
             painter.drawText(x, y + self.baseline_offset, text)
+
+    def keyPressEvent(self, ev):
+        mods = ev.modifiers()
+        if mods & Qt.ControlModifier and mods & Qt.ShiftModifier:
+            ev.accept()
+            return  # Terminal shortcuts
+        data = key_event_to_data(ev, mods)
+        if data:
+            self.send_data_to_child.emit(data)
+            ev.accept()
