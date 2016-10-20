@@ -70,7 +70,6 @@ class Cursor:
 
 CHAR_MASK = 0xFFFFFF
 ATTRS_SHIFT = 24
-ATTRS_MASK = 0xFF << ATTRS_SHIFT
 WIDTH_MASK = 0xFF
 DECORATION_SHIFT = 2
 BOLD_SHIFT, ITALIC_SHIFT, REVERSE_SHIFT, STRIKE_SHIFT = range(DECORATION_SHIFT + 2, DECORATION_SHIFT + 6)
@@ -133,18 +132,37 @@ class Line:
         return ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
             ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
 
-    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
+    def apply_cursor_fast(self, ch, col, dfg, at, num):
         for i in range(at, min(len(self), at + num)):
-            self.color[i] = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
-            self.decoration_fg[i] = c.decoration_fg
-            sc = self.char[i]
-            ch = ord(char) if clear_char else sc
-            sattrs = sc >> ATTRS_SHIFT
-            w = 1 if clear_char else sattrs & WIDTH_MASK
-            attrs = w | self.cursor_to_attrs(c)
-            self.char[i] = (ch & CHAR_MASK) | (attrs << ATTRS_SHIFT)
-            if clear_char:
-                self.combining_chars.pop(i, None)
+            self.color[i], self.decoration_fg[i], self.char[i] = col, dfg, ch
+
+    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
+        col = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
+        dfg = c.decoration_fg
+        s, e = at, min(len(self), at + num)
+        chara, color, dfga = self.char, self.color, self.decoration_fg
+        cattrs = self.cursor_to_attrs(c)
+        if clear_char:
+            ch = (ord(char) & CHAR_MASK) | ((cattrs | 1) << ATTRS_SHIFT)
+            for i in range(s, e):
+                chara[i] = ch
+                color[i] = col
+                dfga[i] = dfg
+            if self.combining_chars:
+                if e - s >= len(self):
+                    self.combining_chars.clear()
+                else:
+                    for i in range(s, e):
+                        self.combining_chars.pop(i, None)
+        else:
+            for i in range(s, e):
+                color[i] = col
+                dfga[i] = dfg
+                sc = chara[i]
+                sattrs = sc >> ATTRS_SHIFT
+                w = sattrs & WIDTH_MASK
+                attrs = w | cattrs
+                chara[i] = (sc & CHAR_MASK) | (attrs << ATTRS_SHIFT)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
