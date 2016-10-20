@@ -159,15 +159,13 @@ class TerminalWidget(QWidget):
         try:
             self.paint_cursor(p)
         except Exception:
-            import traceback
-            traceback.print_exc()
+            pass
 
         for lnum, cnum in self.dirty_cells(r):
             try:
                 self.paint_cell(p, cnum, lnum)
             except Exception:
-                import traceback
-                traceback.print_exc()
+                pass
 
     def paint_cursor(self, painter):
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
