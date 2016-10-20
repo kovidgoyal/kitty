@@ -10,7 +10,7 @@ from typing import Sequence
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from pyte import charsets as cs, control as ctrl, graphics as g, modes as mo
+from pyte import charsets as cs, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
@@ -913,13 +913,13 @@ class Screen(QObject):
             # If you implement xterm keycode querying you can change this to
             # mimic xterm instead (>41;327;0c) then vim wont need terminfo to
             # get keycodes (see :help xterm-codes)
-            self.write_process_input(ctrl.CSI + b'>1;4600;0c')
+            self.write_process_input(b'\x1b[>1;4600;0c')
         else:
             # xterm gives: [[?64;1;2;6;9;15;18;21;22c
             # use the simpler vte response, since we dont support
             # windowing/horizontal scrolling etc.
             # [[?64;1;2;6;9;15;18;21;22c
-            self.write_process_input(ctrl.CSI + b"?62c")
+            self.write_process_input(b"\x1b[?62c")
 
     def report_device_status(self, mode):
         """Reports terminal status or cursor position.
@@ -930,7 +930,7 @@ class Screen(QObject):
         .. versionadded:: 0.5.0
         """
         if mode == 5:    # Request for terminal status.
-            self.write_process_input(ctrl.CSI + b"0n")
+            self.write_process_input(b"\x1b[0n")
         elif mode == 6:  # Request for cursor position.
             x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, self.lines, self.columns)
             x, y = x + 1, y + 1
@@ -938,7 +938,7 @@ class Screen(QObject):
             # "Origin mode (DECOM) selects line numbering."
             if mo.DECOM in self.mode:
                 y -= self.margins.top
-            self.write_process_input(ctrl.CSI + "{0};{1}R".format(y, x).encode('ascii'))
+            self.write_process_input("\x1b[{0};{1}R".format(y, x).encode('ascii'))
 
     def numeric_keypad_mode(self):
         pass  # TODO: Implement this

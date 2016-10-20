@@ -216,7 +216,7 @@ class Stream(object):
         debug = listener.debug
 
         ESC, CSI = ctrl.ESC, ctrl.CSI
-        OSC, ST = ctrl.OSC, ctrl.ST
+        OSC, ST, DCS = ctrl.OSC, ctrl.ST, ctrl.DCS
         SP_OR_GT = ctrl.SP + b">"
         NUL_OR_DEL = ctrl.NUL + ctrl.DEL
         CAN_OR_SUB = ctrl.CAN + ctrl.SUB
@@ -256,6 +256,8 @@ class Stream(object):
                     char = CSI  # Go to CSI.
                 elif char == b"]":
                     char = OSC  # Go to OSC.
+                elif char == b'P':
+                    char = DCS  # Go to DCS
                 else:
                     if char == b"#":
                         sharp_dispatch[(yield)]()
@@ -332,6 +334,17 @@ class Stream(object):
                     listener.set_icon_name(param)
                 if code in b"02":
                     listener.set_title(param)
+            elif char == DCS:
+                # See http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
+                code = yield
+                param = bytearray()
+                while True:
+                    char = yield
+                    if char == ST:
+                        break
+                    else:
+                        param.extend(char)
+                # TODO: Implement these
             elif char not in NUL_OR_DEL:
                 draw(char)
 

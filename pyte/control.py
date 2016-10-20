@@ -68,3 +68,6 @@ ST = b"\x9c"
 
 #: *Operating system command*.
 OSC = b"\x9d"
+
+#: Device Control function (DCS)
+DCS = ESC + b"P"
