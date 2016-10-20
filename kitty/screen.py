@@ -379,8 +379,8 @@ class Screen(QObject):
                     self._draw_char(char, char_width)
         finally:
             self._notify_cursor_position = True
-        if orig_x != self.cursor.x or orig_y != self.cursor.y:
-            self.notify_cursor_position()
+            if orig_x != self.cursor.x or orig_y != self.cursor.y:
+                self.notify_cursor_position()
 
     def set_title(self, param):
         """Sets terminal title.
