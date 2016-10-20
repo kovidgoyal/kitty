@@ -11,7 +11,9 @@ import fcntl
 import signal
 import ctypes
 import unicodedata
+from contextlib import contextmanager
 from functools import lru_cache
+from time import monotonic
 
 from PyQt5.QtGui import QFontMetrics
 
@@ -97,3 +99,12 @@ base_size = sys.getsizeof('')
 def is_simple_string(x):
     ' We use the fact that python stores unicode strings with a 1-byte representation when possible '
     return sys.getsizeof(x) == base_size + len(x)
+
+
+@contextmanager
+def timeit(name, do_timing=False):
+    if do_timing:
+        st = monotonic()
+    yield
+    if do_timing:
+        print('Time for {}: {}'.format(name, monotonic() - st))
