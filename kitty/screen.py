@@ -136,7 +136,13 @@ class Screen(QObject):
             self.tophistorybuf.extend(self.linebuf[:extra])
             del self.linebuf[:extra]
         self.margins = Margins(0, self.lines - 1)
-        self.reset_mode(mo.DECOM)
+        self._notify_cursor_position = False
+        try:
+            x, y = self.cursor.x, self.cursor.y
+            self.reset_mode(mo.DECOM)
+            self.cursor.x, self.cursor.y = x, y
+        finally:
+            self._notify_cursor_position = True
         self.ensure_bounds()
 
     def set_margins(self, top=None, bottom=None):
