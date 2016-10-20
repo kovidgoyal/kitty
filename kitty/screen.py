@@ -934,8 +934,17 @@ class Screen(QObject):
                 y -= self.margins.top
             self.write_process_input(ctrl.CSI + "{0};{1}R".format(y, x).encode('ascii'))
 
+    def numeric_keypad_mode(self):
+        pass  # TODO: Implement this
+
+    def application_keypad_mode(self):
+        pass  # TODO: Implement this
+
     def debug(self, *args, **kwargs):
         """Endpoint for unrecognized escape sequences.
 
         By default is a noop.
         """
+        import traceback
+        traceback.print_stack()
+        print('unknown escape code:', args, kwargs)
