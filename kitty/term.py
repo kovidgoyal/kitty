@@ -8,8 +8,8 @@ from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
 from PyQt5.QtWidgets import QWidget
 
-from .config import build_ansi_color_tables, Options
-from .data_types import Line, Cursor
+from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
+from .data_types import Line, Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
 from .utils import set_current_font_metrics
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
@@ -179,15 +179,21 @@ class TerminalWidget(QWidget):
             painter.drawRect(r)
 
     def paint_cell(self, painter: QPainter, line: Line, col: int, y: int) -> None:
-        x, c = self.cell_positions[col], line.cursor_from(col)
-        fg, bg, decoration_fg = c.colors()
-        text = line.text_at(col)
-        if fg is not None:
-            painter.setPen(QPen(fg))
-        if bg is not None:
-            r = QRect(x, y, self.cell_width, self.cell_height)
-            painter.fillRect(r, bg)
-        if text.rstrip():
+        ch, attrs, colors = line.basic_cell_data(col)
+        x = self.cell_positions[col]
+        if colors & HAS_BG_MASK:
+            bg = as_color(colors >> COL_SHIFT, bg_color_table())
+            if bg is not None:
+                r = QRect(x, y, self.cell_width, self.cell_height)
+                painter.fillRect(r, bg)
+        if ch == 0 or ch == 32:
+            # An empty cell
+            pass
+        else:
+            text = chr(ch) + line.combining_chars.get(col, '')
+            fg = as_color(colors & COL_MASK, fg_color_table())
+            if fg is not None:
+                painter.setPen(QPen(fg))
             painter.drawText(x, y + self.baseline_offset, text)
 
     def keyPressEvent(self, ev):

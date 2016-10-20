@@ -81,6 +81,7 @@ REVERSE_MASK = 1 << REVERSE_SHIFT
 STRIKE_MASK = 1 << STRIKE_SHIFT
 COL_MASK = 0xFFFFFFFF
 COL_SHIFT = 32
+HAS_BG_MASK = 0xFF << COL_SHIFT
 
 
 class Line:
@@ -158,6 +159,11 @@ class Line:
         c.reverse = bool((attrs >> REVERSE_SHIFT) & 0b1)
         c.strikethrough = bool((attrs >> STRIKE_SHIFT) & 0b1)
         return c
+
+    def basic_cell_data(self, pos: int):
+        c = self.char[pos]
+        cols = self.color[pos]
+        return c & CHAR_MASK, c >> ATTRS_SHIFT, cols
 
     def set_text(self, text: str, offset_in_text: int, sz: int, cursor: Cursor) -> None:
         ' Set the specified text in this line, with attributes taken from the cursor '
