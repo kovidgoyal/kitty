@@ -80,7 +80,7 @@ def fork_child(cmd, cwd, opts):
 
 def resize_pty(w, h):
     master = create_pty()[0]
-    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack('4H', w, h, 0, 0))
+    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack('4H', h, w, 0, 0))
 
 
 def hangup():
