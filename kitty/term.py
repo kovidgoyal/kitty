@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Tuple, Iterator, Union, Sequence
+from typing import Tuple, Iterator, Sequence
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
 from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen
@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QWidget
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
 from .data_types import Line, Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
-from .utils import set_current_font_metrics
+from .utils import set_current_font_metrics, first_intersecting_bucket, last_intersecting_bucket
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
 from .keys import key_event_to_data
@@ -124,23 +124,15 @@ class TerminalWidget(QWidget):
                 pass
         self.update(reg)
 
-    def dirty_lines(self, region: QRegion) -> Iterator[Tuple[int, QRegion]]:
-        w = self.width() - 2 * self.hmargin
-        for i, y in enumerate(self.line_positions):
-            ir = region.intersected(QRect(self.hmargin, y, w, self.cell_height))
-            if not ir.isEmpty():
-                yield i, ir
-
-    def dirty_cells(self, y: int, line_region: QRegion) -> Iterator[int]:
-        for i, x in enumerate(self.cell_positions):
-            if line_region.intersects(QRect(x, y, self.cell_width, self.cell_height)):
-                yield i
-
-    def line(self, screen_line: int) -> Union[Line, None]:
-        try:
-            return self.linebuf[screen_line]
-        except IndexError:
-            pass
+    def dirty_cells(self, region: QRegion) -> Iterator[Tuple[int]]:
+        for rect in region.rects():
+            left, top, w, h = rect.getRect()
+            right, bottom = left + w, top + h
+            for lnum in range(min(0, first_intersecting_bucket(self.cell_height, top, self.vmargin)),
+                              max(self.lines_per_screen - 1, last_intersecting_bucket(self.cell_height, bottom, self.vmargin))):
+                for cnum in range(min(0, first_intersecting_bucket(self.cell_width, left, self.hmargin)),
+                                  max(self.cells_per_line - 1, last_intersecting_bucket(self.cell_width, right, self.hmargin))):
+                    yield lnum, cnum
 
     def paintEvent(self, ev):
         if self.size() != self.layout_size:
@@ -155,18 +147,12 @@ class TerminalWidget(QWidget):
             import traceback
             traceback.print_exc()
 
-        for lnum, line_region in self.dirty_lines(r):
-            line = self.line(lnum)
-            if line is not None:
-                ypos = self.line_positions[lnum]
-                for cnum in self.dirty_cells(ypos, line_region):
-                    p.save()
-                    try:
-                        self.paint_cell(p, line, cnum, ypos)
-                    except Exception:
-                        import traceback
-                        traceback.print_exc()
-                    p.restore()
+        for lnum, cnum in self.dirty_cells(r):
+            try:
+                self.paint_cell(p, cnum, lnum)
+            except Exception:
+                import traceback
+                traceback.print_exc()
 
     def paint_cursor(self, painter):
         x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
@@ -178,9 +164,10 @@ class TerminalWidget(QWidget):
             painter.setPen(QPen(self.cursor_color))
             painter.drawRect(r)
 
-    def paint_cell(self, painter: QPainter, line: Line, col: int, y: int) -> None:
+    def paint_cell(self, painter: QPainter, col: int, row: int) -> None:
+        line = self.linebuf[row]
         ch, attrs, colors = line.basic_cell_data(col)
-        x = self.cell_positions[col]
+        x, y = self.cell_positions[col], self.line_positions[row]
         if colors & HAS_BG_MASK:
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
             if bg is not None:
@@ -193,8 +180,11 @@ class TerminalWidget(QWidget):
             text = chr(ch) + line.combining_chars.get(col, '')
             fg = as_color(colors & COL_MASK, fg_color_table())
             if fg is not None:
+                painter.save()
                 painter.setPen(QPen(fg))
             painter.drawText(x, y + self.baseline_offset, text)
+            if fg is not None:
+                painter.restore()
 
     def keyPressEvent(self, ev):
         mods = ev.modifiers()

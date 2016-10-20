@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import math
 import sys
 import termios
 import struct
@@ -108,3 +109,13 @@ def timeit(name, do_timing=False):
     yield
     if do_timing:
         print('Time for {}: {}'.format(name, monotonic() - st))
+
+
+def first_intersecting_bucket(sz, boundary, offset=0):
+    ' Solve the eqn: offset + (n + 1) * sz >= boundary '
+    return int(math.ceil((boundary - offset) / sz)) - 1
+
+
+def last_intersecting_bucket(sz, boundary, offset):
+    ' Solve the eqn: offset + n * sz <= boundary '
+    return int(math.floor((boundary - offset) / sz))
