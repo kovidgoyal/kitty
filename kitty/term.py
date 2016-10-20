@@ -61,7 +61,7 @@ class TerminalWidget(QWidget):
         t.timeout.connect(self.do_layout)
         self.debounce_update_timer = t = QTimer(self)
         t.setSingleShot(True)
-        t.setInterval(50)
+        t.setInterval(20)
         t.timeout.connect(self.do_update_screen)
         self.pending_update = QRegion()
 
