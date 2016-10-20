@@ -58,6 +58,11 @@ class TerminalWidget(QWidget):
         t.setSingleShot(True)
         t.setInterval(50)
         t.timeout.connect(self.do_layout)
+        self.debounce_update_timer = t = QTimer(self)
+        t.setSingleShot(True)
+        t.setInterval(50)
+        t.timeout.connect(self.do_update_screen)
+        self.pending_update = QRegion()
 
     def apply_opts(self, opts):
         self.opts = opts
@@ -100,45 +105,50 @@ class TerminalWidget(QWidget):
     def update_screen(self, changes):
         self.cursor = changes['cursor'] or self.cursor
         if changes['screen']:
-            self.update()
-            return
-        cell_positions, line_positions, cell_width, cell_height = self.cell_positions, self.line_positions, self.cell_width, self.cell_height
-        old_x, old_y = self.last_drew_cursor_at
-        rects = []
-        for lnum in changes['lines']:
-            try:
-                rects.append(QRect(cell_positions[0], line_positions[lnum], self.line_width, cell_height))
-            except IndexError:
-                continue
-        old_cursor_added = old_y in changes['lines']
-        cursor_added = self.cursor.y in changes['lines']
-        for lnum, ranges in changes['cells'].items():
-            for start, stop in ranges:
+            self.pending_update += self.rect()
+        else:
+            cell_positions, line_positions, cell_width, cell_height = self.cell_positions, self.line_positions, self.cell_width, self.cell_height
+            old_x, old_y = self.last_drew_cursor_at
+            rects = []
+            for lnum in changes['lines']:
                 try:
-                    rects.append(QRect(cell_positions[start], line_positions[lnum], cell_width * (stop - start + 1), cell_height))
+                    rects.append(QRect(cell_positions[0], line_positions[lnum], self.line_width, cell_height))
                 except IndexError:
                     continue
-                if not old_cursor_added and old_y == lnum and (start <= old_x <= stop):
+            old_cursor_added = old_y in changes['lines']
+            cursor_added = self.cursor.y in changes['lines']
+            for lnum, ranges in changes['cells'].items():
+                for start, stop in ranges:
+                    try:
+                        rects.append(QRect(cell_positions[start], line_positions[lnum], cell_width * (stop - start + 1), cell_height))
+                    except IndexError:
+                        continue
+                    if not old_cursor_added and old_y == lnum and (start <= old_x <= stop):
+                        old_cursor_added = True
+                    if not cursor_added and self.cursor.y == lnum and (start <= self.cursor.x <= stop):
+                        cursor_added = True
+            rects.sort(key=lambda r: (r.y(), r.x()))
+            for r in rects:
+                self.pending_update += r
+            if not cursor_added:
+                try:
+                    self.pending_update += QRect(cell_positions[self.cursor.x], line_positions[self.cursor.y], cell_width, cell_height)
+                except IndexError:
+                    pass
+                if self.cursor.y == old_y and self.cursor.x == old_x:
                     old_cursor_added = True
-                if not cursor_added and self.cursor.y == lnum and (start <= self.cursor.x <= stop):
-                    cursor_added = True
-        rects.sort(key=lambda r: (r.y(), r.x()))
-        reg = QRegion()
-        for r in rects:
-            reg += r
-        if not cursor_added:
-            try:
-                reg += QRect(cell_positions[self.cursor.x], line_positions[self.cursor.y], cell_width, cell_height)
-            except IndexError:
-                pass
-            if self.cursor.y == old_y and self.cursor.x == old_x:
-                old_cursor_added = True
-        if not old_cursor_added:
-            try:
-                reg += QRect(cell_positions[old_x], line_positions[old_y], cell_width, cell_height)
-            except IndexError:
-                pass
-        self.update(reg)
+            if not old_cursor_added:
+                try:
+                    self.pending_update += QRect(cell_positions[old_x], line_positions[old_y], cell_width, cell_height)
+                except IndexError:
+                    pass
+        if not self.debounce_update_timer.isActive():
+            self.debounce_update_timer.start()
+
+    def do_update_screen(self):
+        if not self.pending_update.isEmpty():
+            self.update(self.pending_update)
+            self.pending_update = QRegion()
 
     def dirty_cells(self, region: QRegion) -> Iterator[Tuple[int]]:
         for rect in region.rects():
