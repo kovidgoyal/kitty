@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import lru_cache
+from itertools import product
 from typing import Tuple, Iterator, Sequence
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
@@ -11,7 +12,7 @@ from PyQt5.QtWidgets import QWidget
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
 from .data_types import Line, Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
-from .utils import set_current_font_metrics, first_intersecting_bucket, last_intersecting_bucket
+from .utils import set_current_font_metrics
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
 from .keys import key_event_to_data
@@ -151,14 +152,11 @@ class TerminalWidget(QWidget):
             self.pending_update = QRegion()
 
     def dirty_cells(self, region: QRegion) -> Iterator[Tuple[int]]:
-        for rect in region.rects():
-            left, top, w, h = rect.getRect()
-            right, bottom = left + w, top + h
-            for lnum in range(min(0, first_intersecting_bucket(self.cell_height, top, self.vmargin)),
-                              max(self.lines_per_screen - 1, last_intersecting_bucket(self.cell_height, bottom, self.vmargin))):
-                for cnum in range(min(0, first_intersecting_bucket(self.cell_width, left, self.hmargin)),
-                                  max(self.cells_per_line - 1, last_intersecting_bucket(self.cell_width, right, self.hmargin))):
-                    yield lnum, cnum
+        lines = (l for l in range(self.lines_per_screen) if region.intersects(QRect(
+            self.hmargin, self.line_positions[l], self.cell_width * self.cells_per_line, self.cell_height)))
+        cells = (c for c in range(self.cells_per_line) if region.intersects(QRect(
+            self.cell_positions[c], self.vmargin, self.cell_width, self.cell_height * self.lines_per_screen)))
+        yield from product(lines, cells)
 
     def paintEvent(self, ev):
         if self.size() != self.layout_size:
