@@ -18,6 +18,7 @@ class Boss(QObject):
 
     def __init__(self, opts, parent):
         QObject.__init__(self, parent)
+        self.shutting_down = False
         self.write_buf = memoryview(b'')
         self.read_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Read, self)
         self.read_notifier.activated.connect(self.read_ready)
@@ -38,19 +39,26 @@ class Boss(QObject):
         self.term.apply_opts(opts)
 
     def read_ready(self, read_fd):
-        data = os.read(read_fd, io.DEFAULT_BUFFER_SIZE)
+        if self.shutting_down:
+            return
+        try:
+            data = os.read(read_fd, io.DEFAULT_BUFFER_SIZE)
+        except EnvironmentError:
+            data = b''
         if not data:
             # EOF
+            self.read_notifier.setEnabled(False)
             self.parent().child_process_died()
             return
         self.stream.feed(data)
 
     def write_ready(self, write_fd):
-        while self.write_buf:
-            n = os.write(write_fd, self.write_buf)
-            if not n:
-                return
-            self.write_buf = self.write_buf[n:]
+        if not self.shutting_down:
+            while self.write_buf:
+                n = os.write(write_fd, self.write_buf)
+                if not n:
+                    return
+                self.write_buf = self.write_buf[n:]
         self.write_notifier.setEnabled(False)
 
     def write_to_child(self, data):
@@ -62,6 +70,6 @@ class Boss(QObject):
         resize_pty(cells_per_line, lines_per_screen)
 
     def shutdown(self):
-        del self.master_fd
-        del self.slave_fd
+        self.shutting_down = True
+        self.read_notifier.setEnabled(False)
         hangup()
