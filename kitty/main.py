@@ -10,7 +10,7 @@ import pwd
 import signal
 from gettext import gettext as _
 
-from PyQt5.QtCore import Qt, QSocketNotifier
+from PyQt5.QtCore import Qt, QSocketNotifier, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 
 from .config import load_config, validate_font
@@ -21,10 +21,13 @@ from .utils import fork_child
 
 class MainWindow(QMainWindow):
 
+    report_error = pyqtSignal(object)
+
     def __init__(self, opts):
         QMainWindow.__init__(self)
         self.setWindowTitle(appname)
         sys.excepthook = self.on_unhandled_error
+        self.report_error.connect(self.show_error, type=Qt.QueuedConnection)
         self.handle_unix_signals()
         self.boss = Boss(opts, self)
         self.setCentralWidget(self.boss.term)
@@ -37,6 +40,9 @@ class MainWindow(QMainWindow):
             msg = str(value)
         except Exception:
             msg = repr(value)
+        self.report_error.emit(msg)
+
+    def show_error(self, msg):
         QMessageBox.critical(self, _('Unhandled exception'), msg)
 
     def handle_unix_signals(self):
