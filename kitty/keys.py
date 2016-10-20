@@ -7,18 +7,47 @@ from PyQt5.QtCore import Qt, QObject, QEvent
 
 CTRL_MASK = 0b10011111
 
+key_map = {
+    Qt.Key_Up: '[A',
+    Qt.Key_Down: '[B',
+    Qt.Key_Left: '[D',
+    Qt.Key_Right: '[C',
+    Qt.Key_Home: 'OH',
+    Qt.Key_End: 'OF',
+    Qt.Key_Insert: '[2~',
+    Qt.Key_Delete: '[3~',
+    Qt.Key_PageUp: '[5~',
+    Qt.Key_PageDown: '[6~',
+    Qt.Key_F1: 'OP',
+    Qt.Key_F2: 'OQ',
+    Qt.Key_F3: 'OR',
+    Qt.Key_F4: 'OS',
+    Qt.Key_F5: '[15~',
+    Qt.Key_F6: '[17~',
+    Qt.Key_F7: '[18~',
+    Qt.Key_F8: '[19~',
+    Qt.Key_F9: '[20~',
+    Qt.Key_F10: '[21~',
+    Qt.Key_F11: '[23~',
+    Qt.Key_F12: '[24~',
+}
+
 
 def key_event_to_data(ev, mods):
     data = bytearray()
     if mods & Qt.AltModifier:
         data.append(27)
-    t = ev.text()
-    if t:
-        t = t.encode('utf-8')
-        if mods & Qt.ControlModifier and len(t) == 1 and 0 < t[0] & CTRL_MASK < 33:
-            data.append(t[0] & CTRL_MASK)
-        else:
-            data.extend(t)
+    x = key_map.get(ev.key())
+    if x is not None:
+        data.extend(b'\033' + x.encode('ascii'))
+    else:
+        t = ev.text()
+        if t:
+            t = t.encode('utf-8')
+            if mods & Qt.ControlModifier and len(t) == 1 and 0 < t[0] & CTRL_MASK < 33:
+                data.append(t[0] & CTRL_MASK)
+            else:
+                data.extend(t)
     return bytes(data)
 
 
