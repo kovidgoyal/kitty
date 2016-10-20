@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import sys
 import termios
 import struct
@@ -112,3 +113,7 @@ def timeit(name, do_timing=False):
     yield
     if do_timing:
         print('Time for {}: {}'.format(name, monotonic() - st))
+
+
+def sanitize_title(x):
+    return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))

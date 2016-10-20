@@ -7,7 +7,7 @@ import codecs
 from . import BaseTest
 
 from kitty.data_types import Line, Cursor
-from kitty.utils import is_simple_string, wcwidth
+from kitty.utils import is_simple_string, wcwidth, sanitize_title
 
 
 class TestDataTypes(BaseTest):
@@ -91,3 +91,4 @@ class TestDataTypes(BaseTest):
             self.assertTrue(is_simple_string(s))
             self.assertTrue(is_simple_string(d(s.encode('utf-8'))))
         self.assertFalse(is_simple_string('a1コ'))
+        self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')

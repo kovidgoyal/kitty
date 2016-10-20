@@ -12,7 +12,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 
 from pyte import charsets as cs, control as ctrl, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
-from .utils import wcwidth, is_simple_string
+from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
 
 
@@ -405,14 +405,14 @@ class Screen(QObject):
 
         .. note:: This is an XTerm extension supported by the Linux terminal.
         """
-        self.title_changed.emit(self._decode(param))
+        self.title_changed.emit(sanitize_title(self._decode(param)))
 
     def set_icon_name(self, param):
         """Sets icon name.
 
         .. note:: This is an XTerm extension supported by the Linux terminal.
         """
-        self.icon_changed.emit(self._decode(param))
+        self.icon_changed.emit(sanitize_title(self._decode(param)))
 
     def carriage_return(self):
         """Move the cursor to the beginning of the current line."""
