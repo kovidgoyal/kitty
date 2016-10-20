@@ -83,7 +83,15 @@ def option_parser():
     a('--exec', '-e', dest='child', default=pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh', help=_('Run the specified command instead of the shell'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
+    a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
     return parser
+
+
+def run_app():
+    try:
+        return QApplication.instance().exec_()
+    except KeyboardInterrupt:
+        pass
 
 
 def main():
@@ -105,7 +113,13 @@ def main():
         raise SystemExit(str(err)) from None
     w = MainWindow(opts)
     w.show()
-    try:
-        app.exec_()
-    except KeyboardInterrupt:
-        pass
+    if args.profile:
+        import cProfile
+        pr = cProfile.Profile()
+        pr.enable()
+        ret = run_app()
+        pr.print_stats('cumtime')
+        pr.disable()
+    else:
+        ret = run_app()
+        return ret
