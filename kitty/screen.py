@@ -64,7 +64,7 @@ class Screen(QObject):
         self.tophistorybuf = deque(maxlen=sz)
         self.main_linebuf, self.alt_linebuf = list(Line(self.columns) for i in range(self.lines)), list(Line(self.columns) for i in range(self.lines))
         self.linebuf = self.main_linebuf
-        self.reset()
+        self.reset(notify=False)
 
     def apply_opts(self, opts):
         sz = max(1000, opts.scrollback_lines)
@@ -95,7 +95,7 @@ class Screen(QObject):
         self.restore_cursor()
         self.update_screen()
 
-    def reset(self):
+    def reset(self, notify=True):
         """Resets the terminal to its initial state.
 
         * Scroll margins are reset to screen boundaries.
@@ -133,7 +133,8 @@ class Screen(QObject):
         self.cursor = Cursor(0, 0)
         self.cursor_changed(self.cursor)
         self.cursor_position()
-        self.update_screen()
+        if notify:
+            self.update_screen()
 
     def resize(self, lines: int, columns: int):
         """Resize the screen to the given dimensions.
