@@ -983,10 +983,10 @@ class Screen(QObject):
             pass
 
     def normal_keypad_mode(self):
-        pass  # TODO: Implement this
+        pass  # Useless for us, since Qt takes care of handling the numpad
 
     def alternate_keypad_mode(self):
-        pass  # TODO: Implement this
+        pass  # Useless for us, since Qt takes care of handling the numpad
 
     def debug(self, *args, **kwargs):
         """Endpoint for unrecognized escape sequences.
