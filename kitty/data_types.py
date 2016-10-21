@@ -134,10 +134,10 @@ class Line:
         c.bg = col >> COL_SHIFT
         attrs = self.char[x] >> ATTRS_SHIFT
         c.decoration = (attrs >> DECORATION_SHIFT) & 0b11
-        c.bold = bool((attrs >> BOLD_SHIFT) & 0b1)
-        c.italic = bool((attrs >> ITALIC_SHIFT) & 0b1)
-        c.reverse = bool((attrs >> REVERSE_SHIFT) & 0b1)
-        c.strikethrough = bool((attrs >> STRIKE_SHIFT) & 0b1)
+        c.bold = bool(attrs & BOLD_MASK)
+        c.italic = bool(attrs & ITALIC_MASK)
+        c.reverse = bool(attrs & REVERSE_MASK)
+        c.strikethrough = bool(attrs & STRIKE_MASK)
         return c
 
     def basic_cell_data(self, pos: int):
