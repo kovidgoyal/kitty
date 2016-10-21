@@ -76,15 +76,12 @@ class ChangeTracker(QObject):
 
     def consolidate_changes(self):
         if self.screen_changed:
-            self.changed_cells.clear(), self.changed_lines.clear()
+            self.changed_lines.clear()
+            cc = {}
         else:
-            if self.changed_lines:
-                for y in self.changed_lines:
-                    self.changed_cells.pop(y, None)
-            for y, cell_ranges in self.changed_cells.items():
-                self.changed_cells[y] = tuple(merge_ranges(cell_ranges))
+            cc = {y: tuple(merge_ranges(cell_ranges)) for y, cell_ranges in self.changed_cells.items() if y not in self.changed_lines}
         changes = {'screen': self.screen_changed, 'cursor': self.changed_cursor, 'lines': self.changed_lines,
-                   'cells': self.changed_cells, 'history_line_added_count': self.history_line_added_count}
+                   'cells': cc, 'history_line_added_count': self.history_line_added_count}
         self.reset()
         self.dirtied.emit(changes)
         return changes
