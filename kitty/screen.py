@@ -462,7 +462,10 @@ class Screen(QObject):
                 self.tophistorybuf.append(l)
                 self.line_added_to_history()
             self.linebuf.insert(bottom, Line(self.columns))
-            self.update_screen()
+            if bottom - top >= self.lines - 1:
+                self.update_screen()
+            else:
+                self.update_line_range(top, bottom)
         else:
             self.cursor_down()
 
@@ -475,7 +478,10 @@ class Screen(QObject):
         if self.cursor.y == top:
             self.linebuf.pop(bottom)
             self.linebuf.insert(top, Line(self.columns))
-            self.update_screen()
+            if bottom - top >= self.lines - 1:
+                self.update_screen()
+            else:
+                self.update_line_range(top, bottom)
         else:
             self.cursor_up()
 
