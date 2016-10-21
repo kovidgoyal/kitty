@@ -217,13 +217,18 @@ class Screen(QObject):
             self.update_screen()
             self.select_graphic_rendition(7)  # +reverse.
 
-        # Make the cursor visible.
-        if mo.DECTCEM in modes and self.cursor.hidden:
-            self.cursor.hidden = False
+        # Show/hide the cursor.
+        previous, self.cursor.hidden = self.cursor.hidden, mo.DECTCEM not in self.mode
+        if previous != self.cursor.hidden:
             self.cursor_changed(self.cursor)
 
+    @property
     def in_bracketed_paste_mode(self):
         return mo.BRACKETED_PASTE in self.mode
+
+    @property
+    def enable_focus_tracking(self):
+        return mo.FOCUS_TRACKING in self.mode
 
     def reset_mode(self, *modes, private=False):
         """Resets (disables) a given list of modes.
@@ -255,9 +260,9 @@ class Screen(QObject):
             self.update_screen()
             self.select_graphic_rendition(27)  # -reverse.
 
-        # Hide the cursor.
-        if mo.DECTCEM in modes and not self.cursor.hidden:
-            self.cursor.hidden = True
+        # Show/hide the cursor.
+        previous, self.cursor.hidden = self.cursor.hidden, mo.DECTCEM not in self.mode
+        if previous != self.cursor.hidden:
             self.cursor_changed(self.cursor)
 
     def define_charset(self, code, mode):
@@ -939,6 +944,20 @@ class Screen(QObject):
             if mo.DECOM in self.mode:
                 y -= self.margins.top
             self.write_process_input("\x1b[{0};{1}R".format(y, x).encode('ascii'))
+
+    def set_cursor_shape(self, mode, secondary=None):
+        if secondary == ' ':
+            shape = blink = None
+            if mode > 0:
+                blink = bool(mode % 2)
+                shape = 'block' if mode < 3 else 'underline' if mode < 5 else 'beam' if mode < 7 else None
+            if shape != self.cursor.shape or blink != self.cursor.blink:
+                self.cursor.shape, self.cursor.blink = shape, blink
+                self.cursor_changed(self.cursor)
+        elif secondary == '"':  # DECSCA
+            pass
+        else:  # DECLL
+            pass
 
     def numeric_keypad_mode(self):
         pass  # TODO: Implement this

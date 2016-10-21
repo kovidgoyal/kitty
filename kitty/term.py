@@ -179,47 +179,53 @@ class TerminalWidget(QWidget):
         r = ev.region()
         p = QPainter(self)
 
-        try:
-            self.paint_cursor(p, r)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-
         for lnum, cnum in self.dirty_cells(r):
             try:
                 self.paint_cell(p, cnum, lnum)
             except Exception:
                 pass
+        if not self.cursor.hidden:
+            x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
+            cr = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
+            if r.intersects(cr):
+                self.paint_cell(p, x, y, True)
+        p.end()
 
-    def paint_cursor(self, painter, region):
-        if self.cursor.hidden:
-            return
-        x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, len(self.line_positions), len(self.cell_positions))
+    def paint_cursor(self, painter, x, y):
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
-        if not region.intersects(r):
-            return
         self.last_drew_cursor_at = x, y
-        line = self.screen.line(y)
-        colors = line.basic_cell_data(y)[2]
-        if colors & HAS_BG_MASK:
-            bg = as_color(colors >> COL_SHIFT, bg_color_table())
-            if bg is not None:
-                painter.fillRect(r, QColor(*bg))
+        cc = self.cursor_color
+
+        def width(w=2, vert=True):
+            dpi = self.logicalDpiX() if vert else self.logicalDpiY()
+            return int(w * dpi / 72)
+
         if self.hasFocus():
-            painter.fillRect(r, self.cursor_color)
+            cs = self.cursor.shape or self.opts.cursor_shape
+            if cs == 'block':
+                painter.fillRect(r, cc)
+            elif cs == 'beam':
+                w = width(1.5)
+                painter.fillRect(r.left(), r.top(), w, self.cell_height, cc)
+            elif cs == 'underline':
+                y = r.top() + self.font_metrics.underlinePos() + self.baseline_offset
+                w = width(vert=False)
+                painter.fillRect(r.left(), min(y, r.bottom() - w), self.cell_width, w, cc)
         else:
-            painter.setPen(QPen(self.cursor_color))
+            painter.setPen(QPen(cc))
             painter.drawRect(r)
 
-    def paint_cell(self, painter: QPainter, col: int, row: int) -> None:
+    def paint_cell(self, painter: QPainter, col: int, row: int, draw_cursor: bool=False) -> None:
         line = self.screen.line(row)
         ch, attrs, colors = line.basic_cell_data(col)
         x, y = self.cell_positions[col], self.line_positions[row]
-        if colors & HAS_BG_MASK and (col != self.last_drew_cursor_at[0] or row != self.last_drew_cursor_at[1]):
+        if colors & HAS_BG_MASK:
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
             if bg is not None:
                 r = QRect(x, y, self.cell_width, self.cell_height)
                 painter.fillRect(r, QColor(*bg))
+        if draw_cursor:
+            self.paint_cursor(painter, col, row)
         if ch == 0 or ch == 32:
             # An empty cell
             pass
@@ -247,9 +253,19 @@ class TerminalWidget(QWidget):
                 text = c.text(c.Selection)
                 if text:
                     text = text.encode('utf-8')
-                    if self.screen.in_bracketed_paste_mode():
+                    if self.screen.in_bracketed_paste_mode:
                         text = mo.BRACKETED_PASTE_START + text + mo.BRACKETED_PASTE_END
                     self.send_data_to_child.emit(text)
                 ev.accept()
                 return
         return QWidget.mousePressEvent(self, ev)
+
+    def focusInEvent(self, ev):
+        if self.screen.enable_focus_tracking:
+            self.send_data_to_child.emit(b'\x1b[I')
+        return QWidget.focusInEvent(self, ev)
+
+    def focusOutEvent(self, ev):
+        if self.screen.enable_focus_tracking:
+            self.send_data_to_child.emit(b'\x1b[O')
+        return QWidget.focusOutEvent(self, ev)

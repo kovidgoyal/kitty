@@ -157,3 +157,9 @@ DECSTBM = b"r"
 
 #: *Horizontal position adjust*: Same as :data:`CHA`.
 HPA = b"'"
+
+
+# Misc sequences
+
+#: Change cursor shape/blink
+DECSCUSR = b'q'

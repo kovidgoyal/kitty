@@ -23,10 +23,25 @@ def to_qcolor(x):
 def to_font_size(x):
     return max(6, float(x))
 
+
+def to_cursor_shape(x):
+    shapes = 'block underline beam'
+    x = x.lower()
+    if x not in shapes.split():
+        raise ValueError('Invalid cursor shape: {} allowed values are {}'.format(x, shapes))
+    return x
+
+
+def to_bool(x):
+    return x.lower() in 'y yes true'.split()
+
+
 type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
     'cursor_opacity': float,
+    'cursor_shape': to_cursor_shape,
+    'cursor_blink': to_bool,
 }
 for name in 'foreground foreground_bold background cursor'.split():
     type_map[name] = to_qcolor
@@ -37,7 +52,9 @@ term xterm-kitty
 foreground       #dddddd
 foreground_bold  #ffffff
 cursor           #eeeeee
-cursor_opacity   0.8
+cursor_opacity   1.0
+cursor_shape     block
+cursor_blink     no
 background       #000000
 font_family      monospace
 font_size        10.0
