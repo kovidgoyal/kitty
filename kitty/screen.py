@@ -460,8 +460,8 @@ class Screen(QObject):
             l = self.linebuf.pop(top)
             if self.linebuf is self.main_linebuf:
                 self.tophistorybuf.append(l)
+                self.line_added_to_history()
             self.linebuf.insert(bottom, Line(self.columns))
-            self.line_added_to_history()
             self.update_screen()
         else:
             self.cursor_down()
