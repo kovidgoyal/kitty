@@ -170,7 +170,7 @@ class Renderer(QObject):
         else:
             dirty_cell_ranges = {l: tuple(merge_ranges(r)) for l, r in dirty_cell_ranges.items() if l not in dirty_lines}
 
-        self.paint(dirty_lines, dirty_cell_ranges)
+        self.paint(dirty_lines, dirty_cell_ranges, screen_dirtied)
         self.update_required.emit()
 
     def calculate_dirty_region(self, dirty_lines, dirty_cell_ranges):
@@ -184,7 +184,7 @@ class Renderer(QObject):
                     ans += QRect(self.cell_positions[cnum], y, self.cell_width, self.cell_height)
         return ans
 
-    def paint(self, dirty_lines, dirty_cell_ranges):
+    def paint(self, dirty_lines, dirty_cell_ranges, screen_dirtied):
         self.current_bgcol = self.common_bg_color()
         bg = self.default_bg
         if self.current_bgcol & 0xff:
@@ -195,7 +195,7 @@ class Renderer(QObject):
         self.cursor_painted = False
         self.old_cursorx, self.old_cursory = self.last_painted_cursor_at
         self.cursor_moved = self.old_cursorx != self.cursorx or self.old_cursory != self.cursory
-        region = self.calculate_dirty_region(dirty_lines, dirty_cell_ranges)
+        region = QRegion(self.bufpix.rect()) if screen_dirtied else self.calculate_dirty_region(dirty_lines, dirty_cell_ranges)
         if self.cursor_moved:
             r = QRect(self.cell_positions[self.old_cursorx], self.line_positions[self.old_cursory], self.cell_width, self.cell_height)
             if region.contains(r):
