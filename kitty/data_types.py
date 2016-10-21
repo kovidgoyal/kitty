@@ -102,6 +102,8 @@ class Line:
             self.continued = other.continued
             self.combining_chars = other.combining_chars.copy()
 
+    # Read API {{{
+
     def __eq__(self, other):
         if not isinstance(other, Line):
             return False
@@ -119,50 +121,9 @@ class Line:
     def copy(self):
         return Line(len(self.char), self)
 
-    def copy_char(self, src: int, to, dest: int) -> None:
-        to.char[dest] = self.char[src]
-        to.color[dest] = self.color[src]
-        to.decoration_fg[dest] = self.decoration_fg[src]
-        to.combining_chars.pop(dest, None)
-        cc = self.combining_chars.get(src)
-        if cc is not None:
-            to.combining_chars[dest] = cc
-
     def cursor_to_attrs(self, c: Cursor) -> int:
         return ((c.decoration & 0b11) << DECORATION_SHIFT) | ((c.bold & 0b1) << BOLD_SHIFT) | \
             ((c.italic & 0b1) << ITALIC_SHIFT) | ((c.reverse & 0b1) << REVERSE_SHIFT) | ((c.strikethrough & 0b1) << STRIKE_SHIFT)
-
-    def apply_cursor_fast(self, ch, col, dfg, at, num):
-        for i in range(at, min(len(self), at + num)):
-            self.color[i], self.decoration_fg[i], self.char[i] = col, dfg, ch
-
-    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
-        col = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
-        dfg = c.decoration_fg
-        s, e = at, min(len(self), at + num)
-        chara, color, dfga = self.char, self.color, self.decoration_fg
-        cattrs = self.cursor_to_attrs(c)
-        if clear_char:
-            ch = (ord(char) & CHAR_MASK) | ((cattrs | 1) << ATTRS_SHIFT)
-            for i in range(s, e):
-                chara[i] = ch
-                color[i] = col
-                dfga[i] = dfg
-            if self.combining_chars:
-                if e - s >= len(self):
-                    self.combining_chars.clear()
-                else:
-                    for i in range(s, e):
-                        self.combining_chars.pop(i, None)
-        else:
-            for i in range(s, e):
-                color[i] = col
-                dfga[i] = dfg
-                sc = chara[i]
-                sattrs = sc >> ATTRS_SHIFT
-                w = sattrs & WIDTH_MASK
-                attrs = w | cattrs
-                chara[i] = (sc & CHAR_MASK) | (attrs << ATTRS_SHIFT)
 
     def cursor_from(self, x: int, ypos: int=0) -> Cursor:
         c = Cursor(x, ypos)
@@ -182,6 +143,41 @@ class Line:
         c = self.char[pos]
         cols = self.color[pos]
         return c & CHAR_MASK, c >> ATTRS_SHIFT, cols
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self.text_at(i)
+
+    def __str__(self) -> str:
+        return ''.join(self)
+
+    def __repr__(self) -> str:
+        return repr(str(self))
+
+    def width(self, i):
+        return (self.char[i] >> ATTRS_SHIFT) & 0b11
+
+    def text_at(self, i):
+        ch = self.char[i] & CHAR_MASK
+        if ch:
+            ans = chr(ch)
+            cc = self.combining_chars.get(i)
+            if cc is not None:
+                ans += cc
+            return ans
+        return ''
+    # }}}
+
+    # Write API {{{
+
+    def copy_char(self, src: int, to, dest: int) -> None:
+        to.char[dest] = self.char[src]
+        to.color[dest] = self.color[src]
+        to.decoration_fg[dest] = self.decoration_fg[src]
+        to.combining_chars.pop(dest, None)
+        cc = self.combining_chars.get(src)
+        if cc is not None:
+            to.combining_chars[dest] = cc
 
     def set_text(self, text: str, offset_in_text: int, sz: int, cursor: Cursor) -> None:
         ' Set the specified text in this line, with attributes taken from the cursor '
@@ -235,28 +231,37 @@ class Line:
         if snum:
             self.copy_slice(src_start, dest_start, snum)
 
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self.text_at(i)
+    def apply_cursor_fast(self, ch, col, dfg, at, num):
+        for i in range(at, min(len(self), at + num)):
+            self.color[i], self.decoration_fg[i], self.char[i] = col, dfg, ch
 
-    def __str__(self) -> str:
-        return ''.join(self)
-
-    def __repr__(self) -> str:
-        return repr(str(self))
-
-    def width(self, i):
-        return (self.char[i] >> ATTRS_SHIFT) & 0b11
-
-    def text_at(self, i):
-        ch = self.char[i] & CHAR_MASK
-        if ch:
-            ans = chr(ch)
-            cc = self.combining_chars.get(i)
-            if cc is not None:
-                ans += cc
-            return ans
-        return ''
+    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
+        col = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
+        dfg = c.decoration_fg
+        s, e = at, min(len(self), at + num)
+        chara, color, dfga = self.char, self.color, self.decoration_fg
+        cattrs = self.cursor_to_attrs(c)
+        if clear_char:
+            ch = (ord(char) & CHAR_MASK) | ((cattrs | 1) << ATTRS_SHIFT)
+            for i in range(s, e):
+                chara[i] = ch
+                color[i] = col
+                dfga[i] = dfg
+            if self.combining_chars:
+                if e - s >= len(self):
+                    self.combining_chars.clear()
+                else:
+                    for i in range(s, e):
+                        self.combining_chars.pop(i, None)
+        else:
+            for i in range(s, e):
+                color[i] = col
+                dfga[i] = dfg
+                sc = chara[i]
+                sattrs = sc >> ATTRS_SHIFT
+                w = sattrs & WIDTH_MASK
+                attrs = w | cattrs
+                chara[i] = (sc & CHAR_MASK) | (attrs << ATTRS_SHIFT)
 
     def set_char(self, i: int, ch: str, width: int=1, cursor: Cursor=None) -> None:
         if cursor is None:
@@ -303,6 +308,7 @@ class Line:
         a = c >> ATTRS_SHIFT
         a = (a & ~DECORATION_MASK) | ((val & 0b11) << DECORATION_SHIFT)
         self.char[i] = (a << ATTRS_SHIFT) | (c & CHAR_MASK)
+    # }}}
 
 
 def as_color(entry: int, color_table: Dict[int, Tuple[int]]) -> Union[Tuple[int], None]:
