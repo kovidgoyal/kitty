@@ -134,6 +134,8 @@ class Screen(QObject):
         self.cursor = Cursor(0, 0)
         self.cursor_changed(self.cursor)
         self.cursor_position()
+        self.change_default_color.emit('fg', None)
+        self.change_default_color.emit('bg', None)
         if notify:
             self.update_screen()
 
