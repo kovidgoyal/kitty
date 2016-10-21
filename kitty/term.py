@@ -62,7 +62,7 @@ class TerminalWidget(QWidget):
         self.tracker.dirtied.connect(self.update_screen)
         sclass = DebugStream if dump_commands else Stream
         self.screen = Screen(opts, self.tracker, parent=self)
-        for s in 'write_to_child title_changed icon_changed'.split():
+        for s in 'write_to_child title_changed icon_changed change_default_color'.split():
             getattr(self.screen, s).connect(getattr(self, s))
         self.stream = sclass(self.screen)
         self.feed = self.stream.feed
@@ -87,8 +87,8 @@ class TerminalWidget(QWidget):
         pal.setColor(pal.Window, QColor(opts.background))
         pal.setColor(pal.WindowText, QColor(opts.foreground))
         self.setPalette(pal)
-        self.default_bg = pal.color(pal.Window)
-        self.default_fg = pal.color(pal.WindowText).getRgb()[:3]
+        self.default_bg = self.original_bg = pal.color(pal.Window)
+        self.default_fg = self.original_fg = pal.color(pal.WindowText).getRgb()[:3]
         build_ansi_color_tables(opts)
         self.current_font = f = QFont(opts.font_family)
         f.setPointSizeF(opts.font_size)
@@ -101,6 +101,20 @@ class TerminalWidget(QWidget):
         self.cursor_color = c = QColor(opts.cursor)
         c.setAlphaF(opts.cursor_opacity)
         self.do_layout()
+
+    def change_default_color(self, which, val):
+        if which in ('fg', 'bg'):
+            if not val:
+                setattr(self, 'default_' + which, getattr(self, 'original_' + which))
+                self.update()
+            else:
+                val = QColor(val)
+                if val.isValid():
+                    if which == 'fg':
+                        self.default_fg = val.getRgb()[:3]
+                    else:
+                        self.default_bg = val
+                    self.update()
 
     def do_layout(self):
         previous, self.cells_per_line = self.cells_per_line, self.width() // self.cell_width

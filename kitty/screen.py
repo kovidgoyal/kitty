@@ -49,6 +49,7 @@ class Screen(QObject):
     title_changed = pyqtSignal(object)
     icon_changed = pyqtSignal(object)
     write_to_child = pyqtSignal(object)
+    change_default_color = pyqtSignal(object, object)
     _notify_cursor_position = True
 
     def __init__(self, opts, tracker, columns: int=80, lines: int=24, parent=None):
@@ -983,14 +984,29 @@ class Screen(QObject):
         else:  # DECLL
             pass
 
-    def set_cursor_color(self, color_name):
+    def set_dynamic_color(self, base, color_names=None):
+        # See http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands
         try:
-            color_name = color_name.decode('utf-8') if color_name else None
+            color_names = color_names.decode('utf-8') if color_names else ''
         except Exception:
             return
-        old, self.cursor.color = self.cursor.color, color_name
-        if old != self.cursor.color:
-            self.cursor_changed(self.cursor)
+
+        def handle_val(val, param=None):
+            val %= 100
+            if val == 10:  # foreground
+                self.change_default_color.emit('fg', param)
+            elif val == 11:  # background
+                self.change_default_color.emit('bg', param)
+            elif val == 12:  # cursor color
+                old, self.cursor.color = self.cursor.color, param
+                if old != self.cursor.color:
+                    self.cursor_changed(self.cursor)
+
+        if color_names:
+            for i, cn in enumerate(filter(None, color_names.split(';'))):
+                handle_val(base + i, cn)
+        else:
+            handle_val(base)
 
     def normal_keypad_mode(self):
         pass  # Useless for us, since Qt takes care of handling the numpad
