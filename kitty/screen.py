@@ -56,12 +56,14 @@ class Screen(QObject):
         self.write_process_input = self.write_to_child.emit
         for attr in 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split():
             setattr(self, attr, getattr(tracker, attr))
-        self.savepoints = deque()
+        self.main_savepoints, self.alt_savepoints = deque(), deque()
+        self.savepoints = self.main_savepoints
         self.columns = columns
         self.lines = lines
-        self.linebuf = []
         sz = max(1000, opts.scrollback_lines)
         self.tophistorybuf = deque(maxlen=sz)
+        self.main_linebuf, self.alt_linebuf = list(Line(self.columns) for i in range(self.lines)), list(Line(self.columns) for i in range(self.lines))
+        self.linebuf = self.main_linebuf
         self.reset()
 
     def apply_opts(self, opts):
@@ -127,23 +129,23 @@ class Screen(QObject):
                   mode and screen margins, see ``xterm/screen.c:1761``.
 
         """
+        self.lines, self.columns = lines, columns
         for hb in (self.tophistorybuf, ):
             old = hb.copy()
             hb.clear(), hb.extend(rewrap_lines(old, columns))
-        old_lines = self.linebuf[:]
-        self.linebuf.clear()
-        self.lines, self.columns = lines, columns
-        self.linebuf[:] = rewrap_lines(old_lines, self.columns)
-        if (len(self.linebuf) > self.lines):
-            extra = len(self.linebuf) - self.lines
-            self.tophistorybuf.extend(self.linebuf[:extra])
-            del self.linebuf[:extra]
-        while len(self.linebuf) < self.lines:
-            self.linebuf.append(Line(self.columns))
-        extra = len(self.linebuf) - self.lines
-        if extra > 0:
-            self.tophistorybuf.extend(self.linebuf[:extra])
-            del self.linebuf[:extra]
+        for lb in (self.main_linebuf, self.alt_linebuf):
+            old_lines = lb[:]
+            lb.clear()
+            lb[:] = rewrap_lines(old_lines, self.columns)
+            while len(lb) < self.lines:
+                lb.append(Line(self.columns))
+            if len(lb) > self.lines:
+                extra = len(lb) - self.lines
+                slc = lb[:extra]
+                del lb[:extra]
+                if lb is self.main_linebuf:
+                    self.tophistorybuf.extend(slc)
+
         self.margins = Margins(0, self.lines - 1)
         self._notify_cursor_position = False
         try:
@@ -222,6 +224,12 @@ class Screen(QObject):
         if previous != self.cursor.hidden:
             self.cursor_changed(self.cursor)
 
+        if mo.ALTERNATE_SCREEN in self.mode and self.linebuf is self.main_linebuf:
+            self.save_cursor()
+            self.linebuf, self.savepoints = self.alt_linebuf, self.alt_savepoints
+            self.restore_cursor()
+            self.update_screen()
+
     @property
     def in_bracketed_paste_mode(self):
         return mo.BRACKETED_PASTE in self.mode
@@ -264,6 +272,12 @@ class Screen(QObject):
         previous, self.cursor.hidden = self.cursor.hidden, mo.DECTCEM not in self.mode
         if previous != self.cursor.hidden:
             self.cursor_changed(self.cursor)
+
+        if mo.ALTERNATE_SCREEN not in self.mode and self.linebuf is not self.main_linebuf:
+            self.save_cursor()
+            self.linebuf, self.savepoints = self.main_linebuf, self.main_savepoints
+            self.restore_cursor()
+            self.update_screen()
 
     def define_charset(self, code, mode):
         """Defines ``G0`` or ``G1`` charset.
@@ -432,7 +446,9 @@ class Screen(QObject):
         top, bottom = self.margins
 
         if self.cursor.y == bottom:
-            self.tophistorybuf.append(self.linebuf.pop(top))
+            l = self.linebuf.pop(top)
+            if self.linebuf is self.main_linebuf:
+                self.tophistorybuf.append(l)
             self.linebuf.insert(bottom, Line(self.columns))
             self.line_added_to_history()
             self.update_screen()
