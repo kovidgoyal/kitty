@@ -8,10 +8,10 @@ from PyQt5.QtCore import Qt, QObject, QEvent
 CTRL_MASK = 0b10011111
 
 key_map = {
-    Qt.Key_Up: '[A',
-    Qt.Key_Down: '[B',
-    Qt.Key_Left: '[D',
-    Qt.Key_Right: '[C',
+    Qt.Key_Up: 'OA',
+    Qt.Key_Down: 'OB',
+    Qt.Key_Left: 'OD',
+    Qt.Key_Right: 'OC',
     Qt.Key_Home: 'OH',
     Qt.Key_End: 'OF',
     Qt.Key_Insert: '[2~',
