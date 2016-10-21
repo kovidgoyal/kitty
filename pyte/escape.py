@@ -39,10 +39,10 @@ DECSC = b"7"
 #: selection. If none were saved, move cursor to home position.
 DECRC = b"8"
 
-#: Set numeric keypad mode
+#: Set normal keypad mode
 DECPNM = b'>'
 
-#: Set application keypad mode
+#: Set alternate keypad mode
 DECPAM = b'='
 
 # "Sharp" escape sequences.

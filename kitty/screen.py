@@ -86,6 +86,15 @@ class Screen(QObject):
     def display(self) -> Sequence[str]:
         return tuple(map(str, self.linebuf))
 
+    def toggle_screen_buffer(self):
+        self.save_cursor()
+        if self.linebuf is self.main_linebuf:
+            self.linebuf, self.savepoints = self.alt_linebuf, self.alt_savepoints
+        else:
+            self.linebuf, self.savepoints = self.main_linebuf, self.main_savepoints
+        self.restore_cursor()
+        self.update_screen()
+
     def reset(self):
         """Resets the terminal to its initial state.
 
@@ -102,6 +111,8 @@ class Screen(QObject):
            and tabstops should be reset as well, thanks to
            :manpage:`xterm` -- we now know that.
         """
+        if self.linebuf is self.alt_linebuf:
+            self.toggle_screen_buffer()
         self.linebuf.clear()
         self.linebuf[:] = (Line(self.columns) for i in range(self.lines))
         self.mode = {mo.DECAWM, mo.DECTCEM}
@@ -117,10 +128,12 @@ class Screen(QObject):
         # set every `n` spaces when the terminal is powered up. Since
         # we aim to support VT102 / VT220 and linux -- we use n = 8.
         self.tabstops = set(range(7, self.columns, 8))
+        self.normal_keypad_mode()
 
         self.cursor = Cursor(0, 0)
         self.cursor_changed(self.cursor)
         self.cursor_position()
+        self.update_screen()
 
     def resize(self, lines: int, columns: int):
         """Resize the screen to the given dimensions.
@@ -225,10 +238,7 @@ class Screen(QObject):
             self.cursor_changed(self.cursor)
 
         if mo.ALTERNATE_SCREEN in self.mode and self.linebuf is self.main_linebuf:
-            self.save_cursor()
-            self.linebuf, self.savepoints = self.alt_linebuf, self.alt_savepoints
-            self.restore_cursor()
-            self.update_screen()
+            self.toggle_screen_buffer()
 
     @property
     def in_bracketed_paste_mode(self):
@@ -274,10 +284,7 @@ class Screen(QObject):
             self.cursor_changed(self.cursor)
 
         if mo.ALTERNATE_SCREEN not in self.mode and self.linebuf is not self.main_linebuf:
-            self.save_cursor()
-            self.linebuf, self.savepoints = self.main_linebuf, self.main_savepoints
-            self.restore_cursor()
-            self.update_screen()
+            self.toggle_screen_buffer()
 
     def define_charset(self, code, mode):
         """Defines ``G0`` or ``G1`` charset.
@@ -975,10 +982,10 @@ class Screen(QObject):
         else:  # DECLL
             pass
 
-    def numeric_keypad_mode(self):
+    def normal_keypad_mode(self):
         pass  # TODO: Implement this
 
-    def application_keypad_mode(self):
+    def alternate_keypad_mode(self):
         pass  # TODO: Implement this
 
     def debug(self, *args, **kwargs):
