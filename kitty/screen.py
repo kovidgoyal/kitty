@@ -908,11 +908,11 @@ class Screen(QObject):
         """
         # Use the same responses as libvte v0.46 running in termite
         # Ignore mode since vte seems to ignore it
-        if kwargs.get('secondary') == '>':
+        if False and kwargs.get('secondary') == '>':
             # http://www.vt100.net/docs/vt510-rm/DA2.html
-            # If you implement xterm keycode querying you can change this to
-            # mimic xterm instead (>41;327;0c) then vim wont need terminfo to
-            # get keycodes (see :help xterm-codes)
+            # If you implement xterm keycode querying
+            # http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
+            # you can enable this.
             self.write_process_input(b'\x1b[>1;4600;0c')
         else:
             # xterm gives: [[?64;1;2;6;9;15;18;21;22c
