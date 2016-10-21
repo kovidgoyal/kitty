@@ -129,7 +129,7 @@ def main():
         pr = cProfile.Profile()
         pr.enable()
         ret = run_app()
-        pr.print_stats('cumtime')
+        pr.print_stats('tottime')
         pr.disable()
     else:
         ret = run_app()
