@@ -195,6 +195,11 @@ class TerminalWidget(QWidget):
         r = QRect(self.cell_positions[x], self.line_positions[y], self.cell_width, self.cell_height)
         self.last_drew_cursor_at = x, y
         cc = self.cursor_color
+        if self.cursor.color:
+            q = QColor(self.cursor.color)
+            if q.isValid():
+                cc = q
+                cc.setAlphaF(self.opts.cursor_opacity)
 
         def width(w=2, vert=True):
             dpi = self.logicalDpiX() if vert else self.logicalDpiY()

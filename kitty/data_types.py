@@ -27,7 +27,7 @@ get_zeroes.current_size = None
 
 class Cursor:
 
-    __slots__ = ("x", "y", 'shape', 'blink', "hidden", 'fg', 'bg', 'bold', 'italic', 'reverse', 'strikethrough', 'decoration', 'decoration_fg',)
+    __slots__ = ("x", "y", 'shape', 'blink', "hidden", 'color', 'fg', 'bg', 'bold', 'italic', 'reverse', 'strikethrough', 'decoration', 'decoration_fg',)
 
     def __init__(self, x: int=0, y: int=0):
         self.x = x
@@ -35,6 +35,7 @@ class Cursor:
         self.hidden = False
         self.shape = None
         self.blink = None
+        self.color = None
         self.reset_display_attrs()
 
     def reset_display_attrs(self):

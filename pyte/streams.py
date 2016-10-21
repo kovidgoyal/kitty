@@ -127,7 +127,7 @@ class Stream(object):
     events = frozenset(itertools.chain(
         basic.values(), escape.values(), sharp.values(), csi.values(),
         ["define_charset", "select_other_charset"],
-        ["set_icon", "set_title"],  # OSC.
+        ["set_icon", "set_title", 'set_cursor_color'],  # OSC.
         ["draw", "debug"]))
 
     #: A regular expression pattern matching everything what can be
@@ -321,20 +321,31 @@ class Stream(object):
                                     csi_dispatch[char](*params)
                             break  # CSI is finished.
             elif char == OSC:
-                code = yield
-                param = bytearray()
+                code = bytearray()
                 while True:
                     char = yield
-                    if char == ST or char == ctrl.BEL:
+                    if char == ST or char == ctrl.BEL or char == b';':
                         break
-                    else:
-                        param.extend(char)
+                    code.extend(char)
+                code = bytes(code)
+                param = bytearray()
+                if char == b';':
+                    while True:
+                        char = yield
+                        if char == ST or char == ctrl.BEL:
+                            break
+                        else:
+                            param.extend(char)
 
-                param = bytes(param[1:])  # Drop the ;.
+                param = bytes(param)
                 if code in b"01":
                     listener.set_icon_name(param)
                 if code in b"02":
                     listener.set_title(param)
+                elif code == b"12":
+                    listener.set_cursor_color(param)
+                elif code == b"112":
+                    listener.set_cursor_color(b'')
             elif char == DCS:
                 # See http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
                 code = yield

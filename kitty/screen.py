@@ -982,6 +982,15 @@ class Screen(QObject):
         else:  # DECLL
             pass
 
+    def set_cursor_color(self, color_name):
+        try:
+            color_name = color_name.decode('utf-8') if color_name else None
+        except Exception:
+            return
+        old, self.cursor.color = self.cursor.color, color_name
+        if old != self.cursor.color:
+            self.cursor_changed(self.cursor)
+
     def normal_keypad_mode(self):
         pass  # Useless for us, since Qt takes care of handling the numpad
 
