@@ -30,4 +30,4 @@ class BaseTest(TestCase):
                 if k in expected_changes:
                     self.ae(expected_changes[k], v)
                 else:
-                    self.assertFalse(v)
+                    self.assertFalse(v, 'The property {} was expected to be empty but is: {}'.format(k, v))
