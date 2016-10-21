@@ -888,9 +888,9 @@ class Screen(QObject):
             elif not attr:
                 c.reset_display_attrs()
             elif attr in g.FG_AIXTERM:
-                c.fg = g.FG_AIXTERM[attr]
+                c.fg = (attr << 8) | 1
             elif attr in g.BG_AIXTERM:
-                c.bg = g.BG_AIXTERM[attr]
+                c.bg = (attr << 8) | 1
             elif attr in (g.FG_256, g.BG_256):
                 key = "fg" if attr == g.FG_256 else "bg"
                 n = attrs.pop()
