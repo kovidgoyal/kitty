@@ -10,7 +10,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt, QTimer, QRect
 from PyQt5.QtGui import QPixmap, QRegion, QPainter, QPen, QColor, QFontMetrics, QFont
 
 from .config import build_ansi_color_tables, fg_color_table, bg_color_table
-from .data_types import Cursor, COL_SHIFT, COL_MASK, as_color
+from .data_types import Cursor, COL_SHIFT, COL_MASK, as_color, BOLD_MASK, ITALIC_MASK
 from .screen import wrap_cursor_position
 from .tracker import merge_ranges
 from .utils import set_current_font_metrics
@@ -68,6 +68,12 @@ class Renderer(QObject):
         self.current_font = f = QFont(opts.font_family)
         f.setPointSizeF(opts.font_size)
         self.font_metrics = fm = QFontMetrics(f)
+        self.bold_font = b = QFont(f)
+        b.setBold(True)
+        self.italic_font = i = QFont(f)
+        i.setItalic(True)
+        self.bi_font = bi = QFont(i)
+        bi.setBold(True)
         self.cell_height = fm.lineSpacing()
         self.cell_width = ascii_width(fm)
         set_current_font_metrics(fm, self.cell_width)
@@ -240,8 +246,14 @@ class Renderer(QObject):
             # An empty cell
             pass
         else:
+            font = self.current_font
+            b, i = attrs & BOLD_MASK, attrs & ITALIC_MASK
+            if b:
+                font = self.bi_font() if i else self.bold_font
+            elif i:
+                font = self.italic_font
             text = chr(ch) + line.combining_chars.get(cnum, '')
-            p = pixmap_for_text(text, colors, self.default_fg, self.current_font, self.cell_width * 2, self.cell_height, self.baseline_offset)
+            p = pixmap_for_text(text, colors, self.default_fg, font, self.cell_width * 2, self.cell_height, self.baseline_offset)
             painter.drawPixmap(x, y, p)
 
     def paint_cursor(self, painter, x, y):
