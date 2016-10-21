@@ -145,6 +145,10 @@ class Line:
         cols = self.color[pos]
         return c & CHAR_MASK, c >> ATTRS_SHIFT, cols
 
+    def bgcolor(self, pos: int) -> int:
+        cols = self.color[pos]
+        return cols >> COL_SHIFT
+
     def __iter__(self):
         for i in range(len(self)):
             yield self.text_at(i)

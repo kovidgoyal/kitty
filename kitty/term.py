@@ -4,6 +4,7 @@
 
 from functools import lru_cache
 from itertools import product
+from collections import Counter
 from typing import Tuple, Iterator
 
 from PyQt5.QtCore import pyqtSignal, QTimer, QRect, Qt
@@ -11,7 +12,7 @@ from PyQt5.QtGui import QColor, QPainter, QFont, QFontMetrics, QRegion, QPen, QP
 from PyQt5.QtWidgets import QWidget, QApplication
 
 from .config import build_ansi_color_tables, Options, fg_color_table, bg_color_table
-from .data_types import Cursor, HAS_BG_MASK, COL_SHIFT, COL_MASK, as_color
+from .data_types import Cursor, COL_SHIFT, COL_MASK, as_color
 from .utils import set_current_font_metrics
 from .tracker import ChangeTracker
 from .screen import wrap_cursor_position
@@ -54,6 +55,8 @@ class TerminalWidget(QWidget):
 
     def __init__(self, opts: Options, parent: QWidget=None, dump_commands: bool=False):
         QWidget.__init__(self, parent)
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+        self.setAutoFillBackground(False)
         self.cursor = Cursor()
         self.tracker = ChangeTracker(self)
         self.tracker.dirtied.connect(self.update_screen)
@@ -65,7 +68,6 @@ class TerminalWidget(QWidget):
         self.feed = self.stream.feed
         self.last_drew_cursor_at = (0, 0)
         self.setFocusPolicy(Qt.WheelFocus)
-        self.setAutoFillBackground(True)
         self.apply_opts(opts)
         self.debounce_resize_timer = t = QTimer(self)
         t.setSingleShot(True)
@@ -173,11 +175,29 @@ class TerminalWidget(QWidget):
             self.cell_positions[c], self.vmargin, self.cell_width, self.cell_height * self.lines_per_screen)))
         return product(lines, cells)
 
+    def common_bg_color(self):
+        c = Counter()
+        for rdiv in range(1, 4):
+            lnum = int(self.lines_per_screen * rdiv / 4)
+            for cdiv in range(1, 4):
+                cnum = int(self.cells_per_line * cdiv / 4)
+                bgcol = self.screen.line(lnum).bgcolor(cnum)
+                c[bgcol] += 1
+        return c.most_common(1)[0][0]
+
     def paintEvent(self, ev):
         if self.size() != self.layout_size:
             return
         r = ev.region()
+        self.current_bgcol = self.common_bg_color()
+        bg = self.default_bg
+        if self.current_bgcol & 0xff:
+            cbg = as_color(self.current_bgcol, bg_color_table())
+            if cbg:
+                bg = QColor(*cbg)
+
         p = QPainter(self)
+        p.fillRect(self.rect(), bg)
 
         for lnum, cnum in self.dirty_cells(r):
             try:
@@ -224,7 +244,8 @@ class TerminalWidget(QWidget):
         line = self.screen.line(row)
         ch, attrs, colors = line.basic_cell_data(col)
         x, y = self.cell_positions[col], self.line_positions[row]
-        if colors & HAS_BG_MASK:
+        bgcol = colors >> COL_SHIFT
+        if bgcol != self.current_bgcol:
             bg = as_color(colors >> COL_SHIFT, bg_color_table())
             if bg is not None:
                 r = QRect(x, y, self.cell_width, self.cell_height)
