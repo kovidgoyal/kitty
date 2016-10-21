@@ -85,8 +85,8 @@ class TerminalWidget(QWidget):
         pal.setColor(pal.Window, QColor(opts.background))
         pal.setColor(pal.WindowText, QColor(opts.foreground))
         self.setPalette(pal)
-        self.current_bg = pal.color(pal.Window)
-        self.current_fg = pal.color(pal.WindowText).getRgb()[:3]
+        self.default_bg = pal.color(pal.Window)
+        self.default_fg = pal.color(pal.WindowText).getRgb()[:3]
         build_ansi_color_tables(opts)
         self.current_font = f = QFont(opts.font_family)
         f.setPointSizeF(opts.font_size)
@@ -231,7 +231,7 @@ class TerminalWidget(QWidget):
             pass
         else:
             text = chr(ch) + line.combining_chars.get(col, '')
-            p = pixmap_for_text(text, colors, self.current_fg, self.current_font, self.cell_width * 2, self.cell_height, self.baseline_offset)
+            p = pixmap_for_text(text, colors, self.default_fg, self.current_font, self.cell_width * 2, self.cell_height, self.baseline_offset)
             painter.drawPixmap(x, y, p)
 
     def keyPressEvent(self, ev):
