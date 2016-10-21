@@ -7,7 +7,6 @@ import re
 import sys
 import termios
 import struct
-import shlex
 import fcntl
 import signal
 import ctypes
@@ -59,8 +58,7 @@ def create_pty():
     return create_pty.master, create_pty.slave
 
 
-def fork_child(cmd, cwd, opts):
-    argv = shlex.split(cmd)
+def fork_child(argv, cwd, opts):
     master, slave = create_pty()
     pid = os.fork()
     if pid == 0:

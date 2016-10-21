@@ -84,11 +84,14 @@ def option_parser():
     a('--class', default=appname, dest='cls', help=_('Set the class part of the WM_CLASS property'))
     a('--config', default=os.path.join(config_dir, 'kitty.conf'), help=_('Specify a path to the config file to use'))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
-    a('--exec', '-e', dest='child', default=pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh', help=_('Run the specified command instead of the shell'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
     a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
+    a('args', nargs=argparse.REMAINDER, help=_(
+        'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
+        ' directly to the program being invoked.'
+    ))
     return parser
 
 
@@ -106,7 +109,8 @@ def main():
         return
     # Ensure the child process gets no environment from Qt
     opts = load_config(args.config)
-    fork_child(args.child, args.directory, opts)
+    child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
+    fork_child(child, args.directory, opts)
 
     QApplication.setAttribute(Qt.AA_DisableHighDpiScaling, True)
     app = QApplication([appname])
