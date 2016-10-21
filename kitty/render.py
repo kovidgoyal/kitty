@@ -90,6 +90,14 @@ class Renderer(QObject):
         self.vmargin = (size.height() % self.cell_height) // 2
         self.line_positions = tuple(self.vmargin + i * self.cell_height for i in range(self.lines_per_screen))
         self.cell_positions = tuple(self.hmargin + i * self.cell_width for i in range(self.cells_per_line))
+        self.row_rects = {lnum: QRect(self.hmargin, self.line_positions[lnum], self.cell_width *
+                                      self.cells_per_line, self.cell_height) for lnum in range(self.lines_per_screen)}
+        self.col_rects = {cnum: QRect(self.cell_positions[cnum], self.vmargin, self.cell_width,
+                                      self.cell_height * self.lines_per_screen) for cnum in range(self.cells_per_line)}
+        self.cell_rects = {
+            lnum: {cnum: self.col_rects[cnum].intersected(self.row_rects[lnum]) for cnum in self.col_rects}
+            for lnum in self.row_rects
+        }
         self.line_width = self.cells_per_line * self.cell_width
         if (previous, previousl) != (self.cells_per_line, self.lines_per_screen):
             self.screen.resize(self.lines_per_screen, self.cells_per_line)
@@ -176,12 +184,12 @@ class Renderer(QObject):
     def calculate_dirty_region(self, dirty_lines, dirty_cell_ranges):
         ans = QRegion()
         for lnum in dirty_lines:
-            ans += QRect(self.hmargin, self.line_positions[lnum], self.cell_width * self.cells_per_line, self.cell_height)
+            ans += self.row_rects[lnum]
         for lnum, ranges in dirty_cell_ranges.items():
-            y = self.line_positions[lnum]
+            lrect = self.cell_rects[lnum]
             for start, stop in ranges:
                 for cnum in range(start, stop + 1):
-                    ans += QRect(self.cell_positions[cnum], y, self.cell_width, self.cell_height)
+                    ans += lrect[cnum]
         return ans
 
     def paint(self, dirty_lines, dirty_cell_ranges, screen_dirtied):
