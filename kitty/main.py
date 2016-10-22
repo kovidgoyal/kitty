@@ -126,11 +126,16 @@ def main():
     w.show()
     if args.profile:
         import cProfile
+        import pstats
         pr = cProfile.Profile()
         pr.enable()
         ret = run_app()
-        pr.print_stats('tottime')
         pr.disable()
+        pr.create_stats()
+        s = pstats.Stats(pr)
+        s.strip_dirs()
+        s.sort_stats('time', 'name')
+        s.print_stats(30)
     else:
         ret = run_app()
     app.installEventFilter(None)
