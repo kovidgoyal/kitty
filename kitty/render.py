@@ -24,7 +24,7 @@ def ascii_width(fm: QFontMetrics) -> int:
 
 
 @lru_cache(maxsize=2**11)
-def pixmap_for_text(text, color, default_fg, font, w, h, baseline):
+def pixmap_for_text(ch, cc, color, default_fg, font, w, h, baseline):
     p = QPixmap(w, h)
     p.fill(Qt.transparent)
     fg = as_color(color & COL_MASK, fg_color_table()) or default_fg
@@ -32,7 +32,7 @@ def pixmap_for_text(text, color, default_fg, font, w, h, baseline):
     painter.setFont(font)
     painter.setPen(QPen(QColor(*fg)))
     painter.setRenderHints(QPainter.TextAntialiasing | QPainter.Antialiasing)
-    painter.drawText(0, baseline, text)
+    painter.drawText(0, baseline, chr(ch) + (cc or ''))
     painter.end()
     return p
 
@@ -257,11 +257,11 @@ class Renderer(QObject):
             font = self.current_font
             b, i = attrs & BOLD_MASK, attrs & ITALIC_MASK
             if b:
-                font = self.bi_font() if i else self.bold_font
+                font = self.bi_font if i else self.bold_font
             elif i:
                 font = self.italic_font
-            text = chr(ch) + line.combining_chars.get(cnum, '')
-            p = pixmap_for_text(text, colors, self.default_fg, font, self.cell_width * 2, self.cell_height, self.baseline_offset)
+            p = pixmap_for_text(ch, line.combining_chars.get(cnum), colors & COL_MASK,
+                                self.default_fg, font, self.cell_width * 2, self.cell_height, self.baseline_offset)
             painter.drawPixmap(x, y, p)
 
     def paint_cursor(self, painter, x, y):
