@@ -77,8 +77,8 @@ color3   #cecb00
 color11  #fffd00
 
 # blue
-color4   #001cd1
-color12  #1389f0
+color4  = #0d73cc
+color12 = #1a8fff
 
 # magenta
 color5   #cb1ed1
