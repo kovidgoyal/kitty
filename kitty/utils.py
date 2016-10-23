@@ -15,11 +15,8 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from PyQt5.QtGui import QFontMetrics
-
 from .constants import terminfo_dir
 
-current_font_metrics = cell_width = None
 libc = ctypes.CDLL(None)
 wcwidth_native = libc.wcwidth
 del libc
@@ -31,23 +28,14 @@ wcwidth_native.restype = ctypes.c_int
 def wcwidth(c: str) -> int:
     if unicodedata.combining(c):
         return 0
-    if current_font_metrics is None:
+    if wcwidth.current_font is None:
         return min(2, wcwidth_native(c))
-    try:
-        w = current_font_metrics.widthChar(c)
-    except ValueError:
-        # Happens for non-BMP unicode chars
-        w = current_font_metrics.width(c)
-    cells, extra = divmod(w, cell_width)
-    if extra > 0.1 * cell_width:
-        cells += 1
-    return min(2, cells)
+wcwidth.current_font = wcwidth.cell_width = None
 
 
-def set_current_font_metrics(fm: QFontMetrics, cw: int) -> None:
-    global current_font_metrics, cell_width
-    current_font_metrics, cell_width = fm, cw
+def set_current_font_metrics(current_font, cw: int) -> None:
     wcwidth.cache_clear()
+    wcwidth.current_font, wcwidth.cell_width = current_font, cw
 
 
 def create_pty():

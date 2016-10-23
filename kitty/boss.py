@@ -4,64 +4,113 @@
 
 import os
 import io
+import select
+import signal
+import struct
+from threading import Thread
+from queue import Queue, Empty
 
-from PyQt5.QtCore import QObject, QSocketNotifier
-
-from .term import TerminalWidget
-from .utils import resize_pty, hangup, create_pty
+import glfw
+from .utils import resize_pty, create_pty
 
 
-class Boss(QObject):
+def handle_unix_signals():
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda x, y: None)
+        signal.siginterrupt(sig, False)
+    signal.set_wakeup_fd(write_fd)
+    return read_fd
 
-    def __init__(self, opts, parent, dump_commands):
-        QObject.__init__(self, parent)
-        self.shutting_down = False
+
+class Boss(Thread):
+
+    daemon = True
+    shutting_down = False
+
+    def __init__(self, window, opts, args):
+        Thread.__init__(self, name='ChildMonitor')
+        self.window = window
+        self.write_queue = Queue()
         self.write_buf = memoryview(b'')
-        self.read_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Read, self)
-        self.read_notifier.activated.connect(self.read_ready)
-        self.write_notifier = QSocketNotifier(create_pty()[0], QSocketNotifier.Write, self)
-        self.write_notifier.setEnabled(False)
-        self.write_notifier.activated.connect(self.write_ready)
-        self.term = TerminalWidget(opts, parent, dump_commands)
-        self.term.relayout_lines.connect(self.relayout_lines)
-        self.term.send_data_to_child.connect(self.write_to_child)
-        self.term.write_to_child.connect(self.write_to_child)
+        self.child_fd = create_pty()[0]
+        self.signal_fd = handle_unix_signals()
+        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+        self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
+        self.writers = [self.child_fd]
         resize_pty(80, 24)
 
-    def apply_opts(self, opts):
-        self.term.apply_opts(opts)
+    def on_window_resize(self, window, w, h):
+        pass
 
-    def read_ready(self, read_fd):
+    def render(self):
+        pass
+
+    def wakeup(self):
+        os.write(self.write_wakeup_fd, b'1')
+
+    def on_wakeup(self):
+        try:
+            os.read(self.read_wakeup_fd, 1024)
+        except Exception:
+            pass
+        buf = b''
+        while True:
+            try:
+                buf += self.write_queue.get_nowait()
+            except Empty:
+                break
+        if buf:
+            self.write_buf = memoryview(self.write_buf.tobytes() + buf)
+
+    def run(self):
+        while not self.shutting_down:
+            readers, writers, _ = select.select(self.readers, self.writers if self.write_buf else [], [])
+            for r in readers:
+                if r is self.child_fd:
+                    self.read_ready()
+                elif r is self.read_wakeup_fd:
+                    self.on_wakeup()
+                elif r is self.signal_fd:
+                    self.signal_received()
+            if writers:
+                self.write_ready()
+
+    def signal_received(self):
+        try:
+            data = os.read(self.signal_fd, 1024)
+        except BlockingIOError:
+            return
+        if data:
+            signals = struct.unpack('%uB' % len(data), data)
+            if signal.SIGINT in signals or signal.SIGTERM in signals:
+                self.shutdown()
+
+    def shutdown(self):
+        self.shutting_down = True
+        glfw.glfwSetWindowShouldClose(self.window, True)
+        glfw.glfwPostEmptyEvent()
+
+    def read_ready(self):
         if self.shutting_down:
             return
         try:
-            data = os.read(read_fd, io.DEFAULT_BUFFER_SIZE)
+            data = os.read(self.child_fd, io.DEFAULT_BUFFER_SIZE)
         except EnvironmentError:
             data = b''
         if not data:
             # EOF
-            self.read_notifier.setEnabled(False)
-            self.parent().child_process_died()
+            self.shutdown()
             return
-        self.term.feed(data)
 
-    def write_ready(self, write_fd):
+    def write_ready(self):
         if not self.shutting_down:
             while self.write_buf:
-                n = os.write(write_fd, self.write_buf)
+                n = os.write(self.child_fd, self.write_buf)
                 if not n:
                     return
                 self.write_buf = self.write_buf[n:]
-        self.write_notifier.setEnabled(False)
 
     def write_to_child(self, data):
-        self.write_buf = memoryview(self.write_buf.tobytes() + data)
-        self.write_notifier.setEnabled(True)
-
-    def relayout_lines(self, cells_per_line, lines_per_screen):
-        resize_pty(cells_per_line, lines_per_screen)
-
-    def shutdown(self):
-        self.shutting_down = True
-        self.read_notifier.setEnabled(False)
-        hangup()
+        self.write_queue.put(data)
+        self.wakeup()
