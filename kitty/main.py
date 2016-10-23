@@ -9,7 +9,7 @@ import pwd
 from gettext import gettext as _
 
 
-from .config import load_config, validate_font
+from .config import load_config
 from .constants import appname, str_version, config_dir
 from .boss import Boss
 from .utils import fork_child, hangup
@@ -78,10 +78,6 @@ def main():
         exec(args.cmd)
         return
     opts = load_config(args.config)
-    try:
-        validate_font(opts)
-    except ValueError as err:
-        raise SystemExit(str(err)) from None
     glfw.glfwSetErrorCallback(on_glfw_error)
     if not glfw.glfwInit():
         raise SystemExit('GLFW initialization failed')

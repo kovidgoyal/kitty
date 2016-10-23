@@ -4,6 +4,7 @@
 
 import os
 import re
+import subprocess
 import sys
 import termios
 import struct
@@ -14,6 +15,8 @@ import unicodedata
 from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
+
+import glfw
 
 from .constants import terminfo_dir
 
@@ -103,3 +106,17 @@ def timeit(name, do_timing=False):
 
 def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
+
+
+def get_dpi():
+    if not hasattr(get_dpi, 'ans'):
+        m = glfw.glfwGetPrimaryMonitor()
+        width, height = glfw.glfwGetMonitorPhysicalSize(m)
+        vmode = glfw.glfwGetVideoMode(m)
+        dpix = vmode.width / (width / 25.4)
+        dpiy = vmode.height / (height / 25.4)
+        get_dpi.ans = {'physical': (dpix, dpiy)}
+        raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
+        m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
+        get_dpi.ans['logical'] = (int(m.group(1)), int(m.group(2)))
+    return get_dpi.ans

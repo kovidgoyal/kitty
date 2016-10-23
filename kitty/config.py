@@ -6,6 +6,9 @@ import re
 from collections import namedtuple
 from typing import Tuple
 
+from .fonts import validate_monospace_font
+
+
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 # Color definitions  {{{
 color_pat = re.compile(r'^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$')
@@ -203,7 +206,9 @@ type_map = {
     'cursor_opacity': float,
     'cursor_shape': to_cursor_shape,
     'cursor_blink': to_bool,
+    'font_family': validate_monospace_font,
 }
+
 for name in 'foreground foreground_bold background cursor'.split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
@@ -215,7 +220,6 @@ term xterm-kitty
 foreground       #dddddd
 foreground_bold  #ffffff
 cursor           #eeeeee
-cursor_opacity   1.0
 cursor_shape     block
 cursor_blink     no
 background       #000000
@@ -291,11 +295,6 @@ def load_config(path: str) -> Options:
                         val = tm(val)
                     ans[key] = val
     return Options(**ans)
-
-
-def validate_font(opts: Options):
-    if False:  # TODO: Implement this
-        raise ValueError('The font specified in the configuration "{}" is not a monospace font'.format(opts.font_family))
 
 
 def build_ansi_color_tables(opts: Options) -> Tuple[dict, dict]:

@@ -36,6 +36,7 @@
 
 import os
 import ctypes.util
+from collections import namedtuple
 from ctypes import (Structure, POINTER, CFUNCTYPE, byref, c_char_p, c_int,
                     c_uint, c_double, c_float, c_ushort)
 
@@ -580,15 +581,14 @@ def glfwGetMonitorPhysicalSize(monitor):
     return width.value, height.value
 
 
+VideoMode = namedtuple('VideoMode', 'width height redBits blueBits greenBits refreshRate')
+
+
 def glfwGetVideoMode(monitor):
     _glfw.glfwGetVideoMode.restype = POINTER(GLFWvidmode)
-    c_mode = _glfw.glfwGetVideoMode(monitor)
-    return (c_mode.width,
-            c_mode.height,
-            c_mode.redBits,
-            c_mode.blueBits,
-            c_mode.greenBits,
-            c_mode.refreshRate)
+    c_mode = _glfw.glfwGetVideoMode(monitor).contents
+    return VideoMode(
+        c_mode.width, c_mode.height, c_mode.redBits, c_mode.blueBits, c_mode.greenBits, c_mode.refreshRate)
 
 
 def GetGammaRamp(monitor):

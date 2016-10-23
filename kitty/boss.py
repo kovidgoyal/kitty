@@ -52,7 +52,7 @@ class Boss(Thread):
     def on_wakeup(self):
         try:
             os.read(self.read_wakeup_fd, 1024)
-        except Exception:
+        except (EnvironmentError, BlockingIOError):
             pass
         buf = b''
         while True:
@@ -96,6 +96,8 @@ class Boss(Thread):
             return
         try:
             data = os.read(self.child_fd, io.DEFAULT_BUFFER_SIZE)
+        except BlockingIOError:
+            return
         except EnvironmentError:
             data = b''
         if not data:
