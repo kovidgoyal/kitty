@@ -992,7 +992,7 @@ class Face( object ):
             FT_Done_Face( self._FT_Face )
 
     def __repr__(self):
-        return 'Face({})'.format(self.family_name)
+        return 'Face({}, {})'.format(self.family_name, self.style_name)
 
     def attach_file( self, filename ):
         '''

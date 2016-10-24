@@ -5,7 +5,7 @@
 from threading import Lock
 
 from .config import build_ansi_color_tables, to_color
-from .fonts import load_font_family
+from .fonts import set_font_family
 
 from OpenGL.arrays import ArrayDatatype
 from OpenGL.GL import (
@@ -51,8 +51,7 @@ class CharGrid:
         self.opts = opts
         self.default_bg = self.original_bg = opts.background
         self.default_fg = self.original_fg = opts.foreground
-        self.base_font_family = load_font_family(opts.font_family)
-        self.font_size = int(opts.font_size * 64)
+        self.base_font_family = set_font_family(opts.font_family)
         self.apply_clear_color()
 
     def on_resize(self, window, w, h):

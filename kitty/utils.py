@@ -108,6 +108,14 @@ def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
+def get_logical_dpi():
+    if not hasattr(get_logical_dpi, 'ans'):
+        raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
+        m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
+        get_logical_dpi.ans = int(m.group(1)), int(m.group(2))
+    return get_logical_dpi.ans
+
+
 def get_dpi():
     if not hasattr(get_dpi, 'ans'):
         m = glfw.glfwGetPrimaryMonitor()
@@ -115,8 +123,5 @@ def get_dpi():
         vmode = glfw.glfwGetVideoMode(m)
         dpix = vmode.width / (width / 25.4)
         dpiy = vmode.height / (height / 25.4)
-        get_dpi.ans = {'physical': (dpix, dpiy)}
-        raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
-        m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
-        get_dpi.ans['logical'] = (int(m.group(1)), int(m.group(2)))
+        get_dpi.ans = {'physical': (dpix, dpiy), 'logical': get_logical_dpi()}
     return get_dpi.ans
