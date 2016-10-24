@@ -11,6 +11,11 @@ from threading import Thread
 from queue import Queue, Empty
 
 import glfw
+from pyte.streams import Stream, DebugStream
+
+from .char_grid import CharGrid
+from .screen import Screen
+from .tracker import ChangeTracker
 from .utils import resize_pty, create_pty
 
 
@@ -27,24 +32,36 @@ class Boss(Thread):
 
     daemon = True
     shutting_down = False
+    pending_title_change = pending_icon_change = None
+    pending_color_changes = {}
 
     def __init__(self, window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
-        self.window = window
-        self.write_queue = Queue()
+        self.window, self.opts = window, opts
+        self.action_queue = Queue()
+        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+        self.tracker = ChangeTracker(self.mark_dirtied)
+        self.char_grid = CharGrid(opts)
+        self.screen = Screen(self.opts, self.tracker, self)
+        sclass = DebugStream if args.dump_commands else Stream
+        self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
         self.child_fd = create_pty()[0]
         self.signal_fd = handle_unix_signals()
-        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
         self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
         self.writers = [self.child_fd]
         resize_pty(80, 24)
 
     def on_window_resize(self, window, w, h):
-        pass
+        self.char_grid.on_resize(window, w, h)
 
     def render(self):
-        pass
+        if self.pending_title_change is not None:
+            glfw.glfwSetWindowTitle(self.window, self.pending_title_change)
+            self.pending_title_change = None
+        if self.pending_icon_change is not None:
+            self.pending_icon_change = None  # TODO: Implement this
+        self.char_grid.render()
 
     def wakeup(self):
         os.write(self.write_wakeup_fd, b'1')
@@ -54,14 +71,12 @@ class Boss(Thread):
             os.read(self.read_wakeup_fd, 1024)
         except (EnvironmentError, BlockingIOError):
             pass
-        buf = b''
-        while True:
+        while not self.shutting_down:
             try:
-                buf += self.write_queue.get_nowait()
+                func, args = self.action_queue.get_nowait()
             except Empty:
                 break
-        if buf:
-            self.write_buf = memoryview(self.write_buf.tobytes() + buf)
+            getattr(self, func)(*args)
 
     def run(self):
         while not self.shutting_down:
@@ -100,10 +115,10 @@ class Boss(Thread):
             return
         except EnvironmentError:
             data = b''
-        if not data:
-            # EOF
+        if data:
+            self.stream.feed(data)
+        else:  # EOF
             self.shutdown()
-            return
 
     def write_ready(self):
         if not self.shutting_down:
@@ -114,5 +129,35 @@ class Boss(Thread):
                 self.write_buf = self.write_buf[n:]
 
     def write_to_child(self, data):
-        self.write_queue.put(data)
+        if data:
+            self.action_queue.put(('queue_write', data))
+            self.wakeup()
+
+    def queue_write(self, data):
+        self.write_buf = memoryview(self.write_buf.tobytes() + data)
+
+    def mark_dirtied(self):
+        self.action_queue.put(('update_screen', ()))
         self.wakeup()
+
+    def update_screen(self):
+        changes = self.tracker.consolidate_changes()
+        self.char_grid.update_screen(changes)
+        glfw.glfwPostEmptyEvent()
+
+    def title_changed(self, new_title):
+        self.pending_title_change = new_title
+        glfw.glfwPostEmptyEvent()
+
+    def icon_changed(self, new_icon):
+        self.pending_icon_change = new_icon
+        glfw.glfwPostEmptyEvent()
+
+    def change_default_color(self, which, value):
+        self.pending_color_changes[which] = value
+        self.action_queue.put(('change_colors', ()))
+
+    def change_colors(self):
+        self.char_grid.change_colors(self.pending_color_changes)
+        self.pending_color_changes = {}
+        glfw.glfwPostEmptyEvent()

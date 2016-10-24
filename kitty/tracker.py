@@ -6,8 +6,6 @@ from collections import defaultdict
 from operator import itemgetter
 from typing import Set, Tuple, Iterator
 
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
-
 from .data_types import Cursor
 
 
@@ -27,15 +25,11 @@ def merge_ranges(ranges: Set[Tuple[int]]) -> Iterator[Tuple[int]]:
         yield low, high  # end the final run
 
 
-class ChangeTracker(QObject):
+class ChangeTracker:
 
-    dirtied = pyqtSignal(object)
-    mark_dirtied = pyqtSignal()
-
-    def __init__(self, parent=None):
-        QObject.__init__(self, parent)
+    def __init__(self, mark_dirtied):
         self.reset()
-        self.mark_dirtied.connect(self.consolidate_changes, type=Qt.QueuedConnection)
+        self.mark_dirtied = mark_dirtied
 
     def reset(self):
         self._dirty = False
@@ -48,7 +42,7 @@ class ChangeTracker(QObject):
     def dirty(self):
         if not self._dirty:
             self._dirty = True
-            self.mark_dirtied.emit()
+            self.mark_dirtied()
 
     def cursor_changed(self, cursor: Cursor) -> None:
         self.changed_cursor = cursor
@@ -83,5 +77,4 @@ class ChangeTracker(QObject):
         changes = {'screen': self.screen_changed, 'cursor': self.changed_cursor, 'lines': self.changed_lines,
                    'cells': cc, 'history_line_added_count': self.history_line_added_count}
         self.reset()
-        self.dirtied.emit(changes)
         return changes

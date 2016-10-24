@@ -8,8 +8,6 @@ import unicodedata
 from collections import deque, namedtuple
 from typing import Sequence
 
-from PyQt5.QtCore import QObject, pyqtSignal
-
 from pyte import charsets as cs, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
 from .utils import wcwidth, is_simple_string, sanitize_title
@@ -40,23 +38,21 @@ def wrap_cursor_position(x, y, lines, columns):
     return x, y
 
 
-class Screen(QObject):
+class Screen:
     """
        See standard ECMA-48, Section 6.1.1 http://www.ecma-international.org/publications/standards/Ecma-048.htm
        for a description of the presentational component, implemented by ``Screen``.
     """
 
-    title_changed = pyqtSignal(object)
-    icon_changed = pyqtSignal(object)
-    write_to_child = pyqtSignal(object)
-    change_default_color = pyqtSignal(object, object)
+    tracker_callbacks = 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
+    callbacks = 'title_changed icon_changed write_to_child change_default_color'.split()
     _notify_cursor_position = True
 
-    def __init__(self, opts, tracker, columns: int=80, lines: int=24, parent=None):
-        QObject.__init__(self, parent)
-        self.write_process_input = self.write_to_child.emit
-        for attr in 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split():
+    def __init__(self, opts, tracker, callbacks, columns: int=80, lines: int=24):
+        for attr in self.tracker_callbacks:
             setattr(self, attr, getattr(tracker, attr))
+        for attr in self.callbacks:
+            setattr(self, attr, getattr(callbacks, attr))
         self.main_savepoints, self.alt_savepoints = deque(), deque()
         self.savepoints = self.main_savepoints
         self.columns = columns
@@ -134,8 +130,8 @@ class Screen(QObject):
         self.cursor = Cursor(0, 0)
         self.cursor_changed(self.cursor)
         self.cursor_position()
-        self.change_default_color.emit('fg', None)
-        self.change_default_color.emit('bg', None)
+        self.change_default_color('fg', None)
+        self.change_default_color('bg', None)
         if notify:
             self.update_screen()
 
@@ -435,14 +431,14 @@ class Screen(QObject):
 
         .. note:: This is an XTerm extension supported by the Linux terminal.
         """
-        self.title_changed.emit(sanitize_title(self._decode(param)))
+        self.title_changed(sanitize_title(self._decode(param)))
 
     def set_icon_name(self, param):
         """Sets icon name.
 
         .. note:: This is an XTerm extension supported by the Linux terminal.
         """
-        self.icon_changed.emit(sanitize_title(self._decode(param)))
+        self.icon_changed(sanitize_title(self._decode(param)))
 
     def carriage_return(self):
         """Move the cursor to the beginning of the current line."""
@@ -951,13 +947,13 @@ class Screen(QObject):
             # If you implement xterm keycode querying
             # http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
             # you can enable this.
-            self.write_process_input(b'\x1b[>1;4600;0c')
+            self.write_to_child(b'\x1b[>1;4600;0c')
         else:
             # xterm gives: [[?64;1;2;6;9;15;18;21;22c
             # use the simpler vte response, since we dont support
             # windowing/horizontal scrolling etc.
             # [[?64;1;2;6;9;15;18;21;22c
-            self.write_process_input(b"\x1b[?62c")
+            self.write_to_child(b"\x1b[?62c")
 
     def report_device_status(self, mode):
         """Reports terminal status or cursor position.
@@ -968,7 +964,7 @@ class Screen(QObject):
         .. versionadded:: 0.5.0
         """
         if mode == 5:    # Request for terminal status.
-            self.write_process_input(b"\x1b[0n")
+            self.write_to_child(b"\x1b[0n")
         elif mode == 6:  # Request for cursor position.
             x, y = wrap_cursor_position(self.cursor.x, self.cursor.y, self.lines, self.columns)
             x, y = x + 1, y + 1
@@ -976,7 +972,7 @@ class Screen(QObject):
             # "Origin mode (DECOM) selects line numbering."
             if mo.DECOM in self.mode:
                 y -= self.margins.top
-            self.write_process_input("\x1b[{0};{1}R".format(y, x).encode('ascii'))
+            self.write_to_child("\x1b[{0};{1}R".format(y, x).encode('ascii'))
 
     def set_cursor_shape(self, mode, secondary=None):
         if secondary == ' ':
@@ -1002,9 +998,9 @@ class Screen(QObject):
         def handle_val(val, param=None):
             val %= 100
             if val == 10:  # foreground
-                self.change_default_color.emit('fg', param)
+                self.change_default_color('fg', param)
             elif val == 11:  # background
-                self.change_default_color.emit('bg', param)
+                self.change_default_color('bg', param)
             elif val == 12:  # cursor color
                 old, self.cursor.color = self.cursor.color, param
                 if old != self.cursor.color:
