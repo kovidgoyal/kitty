@@ -42,7 +42,7 @@ class _FT_Library_Wrapper(FT_Library):
         # This does not work properly (seg fault on sime system (OSX))
         # self._ft_done_freetype(self)
         pass
-    
+
 
 def _init_freetype():
     global _handle
@@ -991,6 +991,8 @@ class Face( object ):
         if self._FT_Face is not None:
             FT_Done_Face( self._FT_Face )
 
+    def __repr__(self):
+        return 'Face({})'.format(self.family_name)
 
     def attach_file( self, filename ):
         '''

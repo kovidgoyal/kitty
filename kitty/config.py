@@ -6,8 +6,6 @@ import re
 from collections import namedtuple
 from typing import Tuple
 
-from .fonts import validate_monospace_font
-
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 # Color definitions  {{{
@@ -206,7 +204,6 @@ type_map = {
     'cursor_opacity': float,
     'cursor_shape': to_cursor_shape,
     'cursor_blink': to_bool,
-    'font_family': validate_monospace_font,
 }
 
 for name in 'foreground foreground_bold background cursor'.split():

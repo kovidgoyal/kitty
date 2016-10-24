@@ -4,6 +4,8 @@
 
 import subprocess
 import re
+from collections import namedtuple
+from functools import lru_cache
 
 from freetype import Face
 
@@ -11,43 +13,41 @@ from freetype import Face
 def escape_family_name(name):
     return re.sub(r'([-:,\\])', lambda m: '\\' + m.group(1), name)
 
+Font = namedtuple('Font', 'face hinting hintstyle bold italic')
 
-def fc_match(q, bold=False, italic=False):
+
+@lru_cache()
+def get_font_information(q, bold=False, italic=False):
     q = escape_family_name(q)
     if bold:
         q += ':bold=200'
     if italic:
         q += ':slant=100'
-    return subprocess.check_output(['fc-match', q, '-f', '%{file}']).decode('utf-8')
-
-
-def validate_monospace_font(raw_name):
-    raw = fc_match(raw_name)
-    if not raw:
-        raise ValueError('Failed to find a font matching the name: {}'.format(raw_name))
-    f = Face(raw)
-    if not f.is_fixed_width:
-        raise ValueError('The font {} is not a monospace font'.format(raw_name))
-    return f, raw_name
+    raw = subprocess.check_output(['fc-match', q, '-f', '%{file}\x31%{hinting}\x31%{hintstyle}']).decode('utf-8')
+    parts = raw.split('\x31')
+    hintstyle, hinting = 1, 'True'
+    if len(parts) == 3:
+        path, hinting, hintstyle = parts
+    else:
+        path = parts[0]
+    hinting = hinting.lower() == 'true'
+    hintstyle = int(hintstyle)
+    return Font(path, hinting, hintstyle, bold, italic)
 
 
 def get_font_files(family):
     ans = {}
+    n = get_font_information(family)
+    ans['regular'] = Font(Face(n.face), n.hinting, n.hintstyle, n.bold, n.italic)
 
-    b = fc_match(family, bold=True)
-    if b:
-        ans['bold'] = Face(b)
-    i = fc_match(family, italic=True)
-    if i:
-        ans['italic'] = Face(i)
-    bi = fc_match(family, True, True)
-    if bi:
-        ans['bi'] = Face(bi)
+    def do(key):
+        b = get_font_information(family, bold=key in ('bold', 'bi'), italic=key in ('italic', 'bi'))
+        if b.face != n.face:
+            ans[key] = Font(Face(b.face), b.hinting, b.hintstyle, b.bold, b.italic)
+    do('bold'), do('italic'), do('bi')
     return ans
 
 
+@lru_cache()
 def load_font_family(r):
-    face, raw_name = r
-    ans = get_font_files(raw_name)
-    ans['regular'] = face
-    return ans
+    return get_font_files(r)
