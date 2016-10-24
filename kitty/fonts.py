@@ -5,6 +5,7 @@
 import subprocess
 import unicodedata
 import re
+import ctypes
 from collections import namedtuple
 from functools import lru_cache
 
@@ -54,22 +55,37 @@ def get_font_files(family):
     return ans
 
 
-current_font_family = current_font_family_name = None
+current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
+CharTexture = underline_position = underline_thickness = None
 
 
-def set_font_family(family):
-    global current_font_family, current_font_family_name
-    if current_font_family_name != family:
+def set_font_family(family, size_in_pts):
+    global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline, underline_position, underline_thickness
+    if current_font_family_name != family or cff_size != size_in_pts:
         current_font_family = get_font_files(family)
         current_font_family_name = family
-    return current_font_family['regular'].face
+        cff_size = size_in_pts
+        dpi = get_logical_dpi()
+        face = current_font_family['regular'].face
+        cell_width = font_units_to_pixels(face.max_advance_width, face.units_per_EM, size_in_pts, dpi[0])
+        cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
+        baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
+        underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
+        underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
+        CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
+    return cell_width, cell_height
 
-CharData = namedtuple('CharData', 'left width ascender descender')
+CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
 
 
-def render_char(text, size_in_pts, bold=False, italic=False):
+def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
+    return int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
+
+
+def render_char(text, bold=False, italic=False, size_in_pts=None):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
+    size_in_pts = size_in_pts or cff_size
     text = unicodedata.normalize('NFC', text)[0]
     key = 'regular'
     if bold:
@@ -92,20 +108,75 @@ def render_char(text, size_in_pts, bold=False, italic=False):
     face.load_char(text, flags)
     bitmap = face.glyph.bitmap
     if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
-        raise ValueError('FreeType rendered the glyph with an unsupported pixel mode: {}'.format(bitmap.pixel_mode))
-    width = bitmap.width
-    ascender = face.glyph.bitmap_top
-    descender = bitmap.rows - ascender
-    left = face.glyph.bitmap_left
-
-    return bitmap.buffer, CharData(left, width, ascender, descender)
+        raise ValueError(
+            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
+    m = face.glyph.metrics
+    return CharBitmap(bitmap.buffer, min(int(abs(m.horiBearingX) / 64), bitmap.width),
+                      min(int(abs(m.horiBearingY) / 64), bitmap.rows), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
 
 
-def test_rendering(text='M', sz=144, family='monospace'):
-    set_font_family(family)
-    buf, char_data = render_char(text, sz)
-    print(char_data)
+def is_wide_char(bitmap_char):
+    return bitmap_char.advance > 1.1 * cell_width
+
+
+def render_cell(text, bold=False, italic=False, size_in_pts=None):
+    bitmap_char = render_char(text, bold, italic, size_in_pts)
+    if is_wide_char(bitmap_char):
+        raise NotImplementedError('TODO: Implement this')
+
+    # We want the glyph to be positioned inside the cell based on the bearingX
+    # and bearingY values, making sure that it does not overflow the cell.
+
+    # Calculate column bounds
+    if bitmap_char.columns > cell_width:
+        src_start_column, dest_start_column = cell_width - bitmap_char.columns, 0
+    else:
+        src_start_column, dest_start_column = 0, bitmap_char.bearingX
+        extra = dest_start_column + bitmap_char.columns - cell_width
+        if extra > 0:
+            dest_start_column -= extra
+    column_count = min(bitmap_char.columns - src_start_column, cell_width - dest_start_column)
+
+    # Calculate row bounds, making sure the baseline is aligned with the cell
+    # baseline
+    if bitmap_char.bearingY > baseline:
+        src_start_row, dest_start_row = bitmap_char.bearingY - baseline, 0
+    else:
+        src_start_row, dest_start_row = 0, baseline - bitmap_char.bearingY
+    row_count = min(bitmap_char.rows - src_start_row, cell_height - dest_start_row)
+    return create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count,
+                              src_start_column, dest_start_column, column_count)
+
+
+def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, src_start_column, dest_start_column, column_count):
+    src = bitmap_char.data
+    src_stride = bitmap_char.columns
+    dest = CharTexture()
+    for r in range(row_count):
+        sr, dr = (src_start_row + r) * src_stride, (dest_start_row + r) * cell_width
+        for c in range(column_count):
+            dest[dr + dest_start_column + c] = src[sr + src_start_column + c]
+    return dest
+
+
+def join_cells(*cells):
+    dstride = len(cells) * cell_width
+    ans = (ctypes.c_ubyte * (cell_height * dstride))()
+    for r in range(cell_height):
+        soff = r * cell_width
+        doff = r * dstride
+        for cnum, cell in enumerate(cells):
+            doff2 = doff + (cnum * cell_width)
+            for c in range(cell_width):
+                ans[doff2 + c] = cell[soff + c]
+    return ans
+
+
+def test_rendering(text='Testing', sz=144, family='monospace'):
+    set_font_family(family, sz)
+    cells = tuple(map(render_cell, text))
+    char_data = join_cells(*cells)
     from PIL import Image
-    img = Image.new('L', (char_data.width, char_data.ascender + char_data.descender))
-    img.putdata(buf)
+    img = Image.new('L', (cell_width * len(cells), cell_height))
+    img.putdata(char_data)
     img.show()

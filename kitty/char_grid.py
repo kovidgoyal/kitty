@@ -51,7 +51,7 @@ class CharGrid:
         self.opts = opts
         self.default_bg = self.original_bg = opts.background
         self.default_fg = self.original_fg = opts.foreground
-        self.base_font_family = set_font_family(opts.font_family)
+        self.cell_width, self.cell_height = set_font_family(opts.font_family, opts.font_size)
         self.apply_clear_color()
 
     def on_resize(self, window, w, h):
