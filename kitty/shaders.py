@@ -41,16 +41,16 @@ class ShaderProgram:
         glDeleteShader(vs_id)
         glDeleteShader(frag_id)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.program_id
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return isinstance(other, ShaderProgram) and other.program_id == self.program_id
 
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
-    def add_shader(self, source: str, shader_type: int):
+    def add_shader(self, source: str, shader_type: int) -> int:
         ' Compile a shader and return its id, or raise an exception if compilation fails '
         shader_id = glCreateShader(shader_type)
         try:
@@ -65,11 +65,11 @@ class ShaderProgram:
             raise
 
     @lru_cache(maxlen=None)
-    def uniform_location(self, name: str):
+    def uniform_location(self, name: str) -> int:
         ' Return the id for the uniform variable `name` or -1 if not found. '
         return glGetUniformLocation(self.program_id, name)
 
     @lru_cache(maxlen=None)
-    def attribute_location(self, name: str):
+    def attribute_location(self, name: str) -> int:
         ' Return the id for the attribute variable `name` or -1 if not found. '
         return glGetAttribLocation(self.program_id, name)
