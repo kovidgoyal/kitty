@@ -169,27 +169,6 @@ def texture_data():
     return img_data, img.size[0], img.size[1]
 
 
-def triangle_texture(window):
-    program = ShaderProgram(*textured_shaders)
-    img_data, w, h = texture_data()
-    with program:
-        program.set_2d_texture('tex', img_data, w, h)
-        program.set_attribute_data('vertex', triangle_vertices())
-        program.set_attribute_data('texture_position', array(
-            0.5, 1.0,
-            0.0, 0.0,
-            1.0, 0.0
-        ))
-
-    while not glfw.glfwWindowShouldClose(window):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program:
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
-
-        glfw.glfwSwapBuffers(window)
-        glfw.glfwWaitEvents()
-
-
 def rectangle_texture(window):
     program = ShaderProgram(*textured_shaders)
     img_data, w, h = texture_data()
