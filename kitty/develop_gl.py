@@ -5,10 +5,9 @@
 import glfw
 import OpenGL.GL as gl
 import sys
-from PIL import Image
-import numpy
 
 from kitty.shaders import ShaderProgram, array
+from kitty.fonts import set_font_family, render_cell, cell_size
 
 vertex_shader = """
 # version 410
@@ -143,30 +142,34 @@ textured_shaders = (
 #version 410
 in vec2 vertex;
 in vec2 texture_position;
-out vec2 texture_position_out;
+out vec2 texture_position_for_fs;
 
 void main() {
     gl_Position = vec4(vertex, 0, 1);
-    texture_position_out = texture_position;
+    texture_position_for_fs = texture_position;
 }
-        ''',
+''',
 
     '''
 #version 410
 uniform sampler2D tex;
-in vec2 texture_position_out;
+in vec2 texture_position_for_fs;
 out vec4 final_color;
+const vec3 background = vec3(0, 1, 0);
+const vec3 foreground = vec3(0, 0, 1);
 
 void main() {
-    final_color = texture(tex, texture_position_out);
+    float alpha = texture(tex, texture_position_for_fs).r;
+    vec3 color = background * (1 - alpha) + foreground * alpha;
+    final_color = vec4(color, 1);
 }
-        ''')
+''')
 
 
 def texture_data():
-    img = Image.open('/home/kovid/work/calibre/resources/images/library.png')
-    img_data = numpy.array(list(img.getdata()), numpy.int8)
-    return img_data, img.size[0], img.size[1]
+    cell = render_cell('K')[0]
+    w, h = cell_size()
+    return cell, w, h
 
 
 def rectangle_texture(window):
@@ -197,9 +200,10 @@ def on_error(code, msg):
 
 
 def main():
+    glfw.glfwSetErrorCallback(on_error)
     if not glfw.glfwInit():
         raise SystemExit('GLFW initialization failed')
-    glfw.glfwSetErrorCallback(on_error)
+    set_font_family('monospace', 144)
     try:
         _main()
     finally:

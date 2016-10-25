@@ -87,7 +87,7 @@ class ShaderProgram:
         gl.glUseProgram(0)
         self.is_active = False
 
-    def set_2d_texture(self, var_name, data, width, height, data_type='rgba',
+    def set_2d_texture(self, var_name, data, width, height, data_type='red',
                        min_filter=gl.GL_LINEAR, mag_filter=gl.GL_LINEAR,
                        swrap=gl.GL_CLAMP_TO_EDGE, twrap=gl.GL_CLAMP_TO_EDGE):
         texture_id = self.texture_id = gl.glGenTextures(1)
@@ -101,7 +101,7 @@ class ShaderProgram:
         internal_format, external_format = {
             'rgba': (gl.GL_RGBA8, gl.GL_RGBA),
             'rgb': (gl.GL_RGB8, gl.GL_RGB),
-            'red': (gl.GL_RED, gl.GL_RED),
+            'red': (gl.GL_R8, gl.GL_RED),
         }[data_type]
         gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, internal_format, width, height,
                         0, external_format, gl.GL_UNSIGNED_BYTE, data)
