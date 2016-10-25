@@ -23,14 +23,8 @@ def escape_family_name(name):
 Font = namedtuple('Font', 'face hinting hintstyle bold italic')
 
 
-@lru_cache()
-def get_font_information(q, bold=False, italic=False):
-    q = escape_family_name(q)
-    if bold:
-        q += ':bold=200'
-    if italic:
-        q += ':slant=100'
-    raw = subprocess.check_output(['fc-match', q, '-f', '%{file}\x1e%{hinting}\x1e%{hintstyle}']).decode('utf-8')
+def get_font(query, bold, italic):
+    raw = subprocess.check_output(['fc-match', query, '-f', '%{file}\x1e%{hinting}\x1e%{hintstyle}']).decode('utf-8')
     parts = raw.split('\x1e')
     hintstyle, hinting = 1, 'True'
     if len(parts) == 3:
@@ -40,6 +34,26 @@ def get_font_information(q, bold=False, italic=False):
     hinting = hinting.lower() == 'true'
     hintstyle = int(hintstyle)
     return Font(path, hinting, hintstyle, bold, italic)
+
+
+@lru_cache(maxsize=4096)
+def find_font_for_character(family, char, bold=False, italic=False):
+    q = escape_family_name(family) + ':charset={}'.format(hex(ord(char[0]))[2:])
+    if bold:
+        q += ':bold=200'
+    if italic:
+        q += ':slant=100'
+    return get_font(q, bold, italic)
+
+
+@lru_cache(maxsize=64)
+def get_font_information(q, bold=False, italic=False):
+    q = escape_family_name(q)
+    if bold:
+        q += ':bold=200'
+    if italic:
+        q += ':slant=100'
+    return get_font(q, bold, italic)
 
 
 def get_font_files(family):
@@ -56,12 +70,16 @@ def get_font_files(family):
 
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
-CharTexture = underline_position = underline_thickness = None
+CharTexture = underline_position = underline_thickness = glyph_cache = None
+fallback_font_face_cache = {}
 
 
 def set_font_family(family, size_in_pts):
-    global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline, underline_position, underline_thickness
+    global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
+    global underline_position, underline_thickness, glyph_cache
     if current_font_family_name != family or cff_size != size_in_pts:
+        find_font_for_character.cache_clear()
+        fallback_font_face_cache.clear()
         current_font_family = get_font_files(family)
         current_font_family_name = family
         cff_size = size_in_pts
@@ -73,9 +91,18 @@ def set_font_family(family, size_in_pts):
         underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
+        glyph_cache = GlyphCache()
     return cell_width, cell_height
 
 CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
+
+
+def face_for_char(char, bold=False, italic=False):
+    ans = find_font_for_character(current_font_family_name, char, bold, italic)
+    face = fallback_font_face_cache.get(ans.face)
+    if face is None:
+        face = fallback_font_face_cache[ans.face] = Face(ans.face)
+    return face
 
 
 def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
@@ -87,15 +114,17 @@ def render_char(text, bold=False, italic=False, size_in_pts=None):
     # harfbuzz for that
     size_in_pts = size_in_pts or cff_size
     text = unicodedata.normalize('NFC', text)[0]
+    dpi = get_logical_dpi()
+    sz = int(64 * size_in_pts)
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
     elif italic:
         key = 'italic'
     font = current_font_family.get(key) or current_font_family['regular']
-    dpi = get_logical_dpi()
-    sz = int(64 * size_in_pts)
     face = font.face
+    if not face.get_char_index(ord(text[0])):
+        face = face_for_char(text[0], bold, italic)
     face.set_char_size(width=sz, height=sz, hres=dpi[0], vres=dpi[1])
     flags = FT_LOAD_RENDER
     if font.hinting:
@@ -116,20 +145,16 @@ def render_char(text, bold=False, italic=False, size_in_pts=None):
 
 
 def is_wide_char(bitmap_char):
-    return bitmap_char.advance > 1.1 * cell_width
+    return min(bitmap_char.advance, bitmap_char.columns) > cell_width * 1.1
 
 
-def render_cell(text, bold=False, italic=False, size_in_pts=None):
-    bitmap_char = render_char(text, bold, italic, size_in_pts)
-    if is_wide_char(bitmap_char):
-        raise NotImplementedError('TODO: Implement this')
-
+def place_char_in_cell(bitmap_char):
     # We want the glyph to be positioned inside the cell based on the bearingX
     # and bearingY values, making sure that it does not overflow the cell.
 
     # Calculate column bounds
     if bitmap_char.columns > cell_width:
-        src_start_column, dest_start_column = cell_width - bitmap_char.columns, 0
+        src_start_column, dest_start_column = 0, 0
     else:
         src_start_column, dest_start_column = 0, bitmap_char.bearingX
         extra = dest_start_column + bitmap_char.columns - cell_width
@@ -148,15 +173,73 @@ def render_cell(text, bold=False, italic=False, size_in_pts=None):
                               src_start_column, dest_start_column, column_count)
 
 
+def split_char_bitmap(bitmap_char):
+    stride = bitmap_char.columns
+    extra = stride - cell_width
+    rows = bitmap_char.rows
+    first_buf = (ctypes.c_ubyte * (cell_width * rows))()
+    second_buf = (ctypes.c_ubyte * (extra * rows))()
+    src = bitmap_char.data
+    for r in range(rows):
+        soff, off = r * stride, r * cell_width
+        first_buf[off:off + cell_width] = src[soff:soff + cell_width]
+        off = r * extra
+        soff += cell_width
+        second_buf[off:off + extra] = src[soff:soff + extra]
+    first = bitmap_char._replace(data=first_buf, columns=cell_width)
+    second = bitmap_char._replace(data=second_buf, bearingX=0, columns=extra)
+    return first, second
+
+
+def render_cell(text, bold=False, italic=False, size_in_pts=None):
+    bitmap_char = render_char(text, bold, italic, size_in_pts)
+    second = None
+    if is_wide_char(bitmap_char):
+        bitmap_char, second = split_char_bitmap(bitmap_char)
+        second = place_char_in_cell(second)
+
+    return place_char_in_cell(bitmap_char), second
+
+
 def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, src_start_column, dest_start_column, column_count):
     src = bitmap_char.data
     src_stride = bitmap_char.columns
     dest = CharTexture()
     for r in range(row_count):
-        sr, dr = (src_start_row + r) * src_stride, (dest_start_row + r) * cell_width
-        for c in range(column_count):
-            dest[dr + dest_start_column + c] = src[sr + src_start_column + c]
+        sr, dr = src_start_column + (src_start_row + r) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
+        dest[dr:dr + column_count] = src[sr:sr + column_count]
     return dest
+
+
+class GlyphCache:
+
+    def __init__(self):
+        self.char_map = {}
+        self.second_char_map = {}
+        self.data = ()
+        self.width_map = {}
+
+    def render(self, text, bold=False, italic=False):
+        first, second = render_cell(text, bold, italic)
+        self.width_map[text] = 1 if second is None else 2
+        self.char_map[text] = self.add_cell(first)
+        if second is not None:
+            self.second_char_map[text] = self.add_cell(second)
+
+    def add_cell(self, data):
+        i = len(self.data)
+        ndata = ctypes.c_ubyte * (i + len(data))
+        if self.data:
+            ndata[:i] = self.data
+        ndata[i:] = data
+        return i
+
+    def width(self, text):
+        try:
+            return self.width_map[text]
+        except KeyError:
+            self.render(text)
+        return self.width_map[text]
 
 
 def join_cells(*cells):
@@ -167,16 +250,24 @@ def join_cells(*cells):
         doff = r * dstride
         for cnum, cell in enumerate(cells):
             doff2 = doff + (cnum * cell_width)
-            for c in range(cell_width):
-                ans[doff2 + c] = cell[soff + c]
+            ans[doff2:doff2 + cell_width] = cell[soff:soff + cell_width]
     return ans
 
 
-def test_rendering(text='Testing', sz=144, family='monospace'):
-    set_font_family(family, sz)
-    cells = tuple(map(render_cell, text))
-    char_data = join_cells(*cells)
+def display_bitmap(data, w, h):
     from PIL import Image
-    img = Image.new('L', (cell_width * len(cells), cell_height))
-    img.putdata(char_data)
+    img = Image.new('L', (w, h))
+    img.putdata(data)
     img.show()
+
+
+def test_rendering(text='Ping👁a', sz=144, family='monospace'):
+    set_font_family(family, sz)
+    cells = []
+    for c in text:
+        f, s = render_cell(c)
+        cells.append(f)
+        if s is not None:
+            cells.append(s)
+    char_data = join_cells(*cells)
+    display_bitmap(char_data, cell_width * len(cells), cell_height)
