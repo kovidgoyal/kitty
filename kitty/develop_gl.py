@@ -7,9 +7,8 @@ import OpenGL.GL as gl
 import sys
 from PIL import Image
 import numpy
-import ctypes
 
-from kitty.shaders import ShaderProgram, VertexArrayObject
+from kitty.shaders import ShaderProgram, array
 
 vertex_shader = """
 # version 410
@@ -78,62 +77,69 @@ def _main():
 
     try:
         gl.glClearColor(0.5, 0.5, 0.5, 0)
-        triangle_texture(window)
+        rectangle_texture(window)
     finally:
         glfw.glfwDestroyWindow(window)
 
 
+def triangle_vertices(width=0.8, height=0.8):
+    return array(
+        0.0, height,
+        -width, -height,
+        width, -height,
+    )
+
+
+def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
+    vertex_data = array(
+        right, top,
+        right, bottom,
+        left, bottom,
+        right, top,
+        left, bottom,
+        left, top
+    )
+
+    texture_coords = array(
+        1, 0,  # right top
+        1, 1,  # right bottom
+        0, 1,  # left bottom
+        1, 0,  # right top
+        0, 1,  # left bottom
+        0, 0)  # left top
+    return vertex_data, texture_coords
+
+
 def rectangle(window):
     program = ShaderProgram(vertex_shader, fragment)
-    vao = VertexArrayObject()
 
-    with program, vao:
-        vao.make_rectangle()
-        vertex = program.attribute_location('vertex')
-        gl.glEnableVertexAttribArray(vertex)
-        gl.glVertexAttribPointer(
-            vertex, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
+    with program:
+        program.set_attribute_data('vertex', rectangle_vertices()[0])
 
     while not glfw.glfwWindowShouldClose(window):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program, vao:
-            # Activate the texture
-            # glActiveTexture(GL_TEXTURE0)
-            # glBindTexture(GL_TEXTURE_2D, texture_id)
-            # sampler_loc = program.attribute_location('texture_sampler')
-            # glUniform1i(sampler_loc, 0)
+        with program:
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
-            # Modern GL makes the draw call really simple
-            # All the complexity has been pushed elsewhere
-            gl.glDrawElements(gl.GL_TRIANGLE_STRIP, 4, gl.GL_UNSIGNED_BYTE, None)
-
-        # Now lets show our master piece on the screen
         glfw.glfwSwapBuffers(window)
         glfw.glfwWaitEvents()
 
 
 def triangle(window):
     program = ShaderProgram(vertex_shader, fragment)
-    vao = VertexArrayObject()
-    with program, vao:
-        vao.make_triangle()
-        vertex = program.attribute_location('vertex')
-        gl.glEnableVertexAttribArray(vertex)
-        gl.glVertexAttribPointer(
-            vertex, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
+    with program:
+        program.set_attribute_data('vertex', triangle_vertices())
 
     while not glfw.glfwWindowShouldClose(window):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program, vao:
+        with program:
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
 
         glfw.glfwSwapBuffers(window)
         glfw.glfwWaitEvents()
 
-
-def triangle_texture(window):
-    program = ShaderProgram(
-        '''
+textured_shaders = (
+    '''
 #version 410
 in vec2 vertex;
 in vec2 texture_position;
@@ -145,7 +151,7 @@ void main() {
 }
         ''',
 
-        '''
+    '''
 #version 410
 uniform sampler2D tex;
 in vec2 texture_position_out;
@@ -153,29 +159,50 @@ out vec4 final_color;
 
 void main() {
     final_color = texture(tex, texture_position_out);
-    // final_color = vec4(texture_position_out, 0, 1.0);
 }
         ''')
 
-    vao = VertexArrayObject()
+
+def texture_data():
     img = Image.open('/home/kovid/work/calibre/resources/images/library.png')
     img_data = numpy.array(list(img.getdata()), numpy.int8)
-    with program, vao:
-        program.set_2d_texture('tex', img_data, img.size[0], img.size[1])
-        vao.make_triangle(add_texture=True)
-        vertex = program.attribute_location('vertex')
-        gl.glEnableVertexAttribArray(vertex)
-        gl.glVertexAttribPointer(
-            vertex, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
-        texture_position = program.attribute_location('texture_position')
-        gl.glEnableVertexAttribArray(texture_position)
-        gl.glVertexAttribPointer(
-            texture_position, 2, gl.GL_FLOAT, gl.GL_TRUE, 0, ctypes.c_void_p(6 * gl.sizeof(gl.GLfloat)))
+    return img_data, img.size[0], img.size[1]
+
+
+def triangle_texture(window):
+    program = ShaderProgram(*textured_shaders)
+    img_data, w, h = texture_data()
+    with program:
+        program.set_2d_texture('tex', img_data, w, h)
+        program.set_attribute_data('vertex', triangle_vertices())
+        program.set_attribute_data('texture_position', array(
+            0.5, 1.0,
+            0.0, 0.0,
+            1.0, 0.0
+        ))
 
     while not glfw.glfwWindowShouldClose(window):
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program, vao:
+        with program:
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
+
+        glfw.glfwSwapBuffers(window)
+        glfw.glfwWaitEvents()
+
+
+def rectangle_texture(window):
+    program = ShaderProgram(*textured_shaders)
+    img_data, w, h = texture_data()
+    with program:
+        program.set_2d_texture('tex', img_data, w, h)
+        rv, texc = rectangle_vertices()
+        program.set_attribute_data('vertex', rv)
+        program.set_attribute_data('texture_position', texc)
+
+    while not glfw.glfwWindowShouldClose(window):
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        with program:
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
         glfw.glfwSwapBuffers(window)
         glfw.glfwWaitEvents()
