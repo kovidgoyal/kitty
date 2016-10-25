@@ -14,7 +14,7 @@ from freetype import (
     FT_LOAD_NO_HINTING, FT_PIXEL_MODE_GRAY
 )
 
-from .utils import get_logical_dpi
+from .utils import get_logical_dpi, set_current_font_metrics
 
 
 def escape_family_name(name):
@@ -92,6 +92,7 @@ def set_font_family(family, size_in_pts):
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
         glyph_cache = GlyphCache()
+        set_current_font_metrics(glyph_cache.width)
     return cell_width, cell_height
 
 CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')

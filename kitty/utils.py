@@ -33,12 +33,13 @@ def wcwidth(c: str) -> int:
         return 0
     if wcwidth.current_font is None:
         return min(2, wcwidth_native(c))
-wcwidth.current_font = wcwidth.cell_width = None
+    return wcwidth.current_font(c)
+wcwidth.current_font = None
 
 
-def set_current_font_metrics(current_font, cw: int) -> None:
+def set_current_font_metrics(current_font) -> None:
     wcwidth.cache_clear()
-    wcwidth.current_font, wcwidth.cell_width = current_font, cw
+    wcwidth.current_font = current_font
 
 
 def create_pty():
