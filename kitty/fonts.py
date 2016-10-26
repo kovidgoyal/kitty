@@ -8,6 +8,7 @@ import re
 import ctypes
 from collections import namedtuple
 from functools import lru_cache
+from threading import Lock
 
 from freetype import (
     Face, FT_LOAD_RENDER, FT_LOAD_TARGET_NORMAL, FT_LOAD_TARGET_LIGHT,
@@ -216,10 +217,9 @@ def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, sr
 class GlyphCache:
 
     def __init__(self):
-        self.char_map = {}
-        self.second_char_map = {}
-        self.data = ()
-        self.width_map = {}
+        self.lock = Lock()
+        self.clear()
+        self.prepopulate()
 
     def render(self, text, bold=False, italic=False):
         first, second = render_cell(text, bold, italic)
@@ -229,19 +229,38 @@ class GlyphCache:
             self.second_char_map[text] = self.add_cell(second)
 
     def add_cell(self, data):
-        i = len(self.data)
-        ndata = ctypes.c_ubyte * (i + len(data))
-        if self.data:
-            ndata[:i] = self.data
-        ndata[i:] = data
-        return i
+        with self.lock:
+            i = len(self.texture_array)
+            self.texture_array.append(data)
+            self.to_sync.append(i)
+            return i
+
+    def clear(self):
+        with self.lock:
+            self.char_map = {}
+            self.second_char_map = {}
+            self.texture_array = []
+            self.to_sync = []
+            self.width_map = {}
 
     def width(self, text):
         try:
             return self.width_map[text]
         except KeyError:
-            self.render(text)
+            pass
+        self.render(text)
         return self.width_map[text]
+
+    def prepopulate(self):
+        # Pre-render the basic ASCII chars in the current font
+        for i in range(32, 128):
+            self.render(chr(i))
+
+    def __iter__(self):
+        with self.lock:
+            for f in self.to_sync:
+                yield f, self.texture_array[f]
+            self.to_sync = []
 
 
 def join_cells(*cells):
