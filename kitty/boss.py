@@ -35,14 +35,14 @@ class Boss(Thread):
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
 
-    def __init__(self, window, opts, args):
+    def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
         self.window, self.opts = window, opts
         self.action_queue = Queue()
         self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
         self.tracker = ChangeTracker(self.mark_dirtied)
-        self.char_grid = CharGrid(opts)
         self.screen = Screen(self.opts, self.tracker, self)
+        self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
@@ -53,7 +53,23 @@ class Boss(Thread):
         resize_pty(80, 24)
 
     def on_window_resize(self, window, w, h):
-        self.char_grid.on_resize(window, w, h)
+        self.queue_action(self.resize_screen, w, h)
+
+    def resize_screen(self, w, h):
+        self.char_grid.resize_screen(w, h)
+
+    def apply_opts(self, opts):
+        self.opts = opts
+        self.queue_action(self.apply_opts_to_screen)
+
+    def apply_opts_to_screen(self):
+        self.screen.apply_opts(self.opts)
+        self.char_grid.apply_opts(self.opts)
+        self.char_grid.dirty_everything()
+
+    def queue_action(self, func, *args):
+        self.action_queue.put((func, args))
+        self.wakeup()
 
     def render(self):
         if self.pending_title_change is not None:
@@ -76,7 +92,7 @@ class Boss(Thread):
                 func, args = self.action_queue.get_nowait()
             except Empty:
                 break
-            getattr(self, func)(*args)
+            func(*args)
 
     def run(self):
         while not self.shutting_down:
@@ -130,15 +146,13 @@ class Boss(Thread):
 
     def write_to_child(self, data):
         if data:
-            self.action_queue.put(('queue_write', data))
-            self.wakeup()
+            self.queue_action(self.queue_write, data)
 
     def queue_write(self, data):
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
 
     def mark_dirtied(self):
-        self.action_queue.put(('update_screen', ()))
-        self.wakeup()
+        self.queue_action(self.update_screen)
 
     def update_screen(self):
         changes = self.tracker.consolidate_changes()
@@ -155,7 +169,7 @@ class Boss(Thread):
 
     def change_default_color(self, which, value):
         self.pending_color_changes[which] = value
-        self.action_queue.put(('change_colors', ()))
+        self.queue_action(self.change_colors)
 
     def change_colors(self):
         self.char_grid.change_colors(self.pending_color_changes)

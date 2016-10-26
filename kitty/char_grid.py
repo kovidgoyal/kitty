@@ -7,66 +7,62 @@ from threading import Lock
 from .config import build_ansi_color_tables, to_color
 from .fonts import set_font_family
 
-from OpenGL.arrays import ArrayDatatype
-from OpenGL.GL import (
-    GL_ARRAY_BUFFER,
-    GL_COLOR_BUFFER_BIT, GL_COMPILE_STATUS,
-    GL_FALSE, GL_FLOAT, GL_FRAGMENT_SHADER,
-    GL_LINK_STATUS, GL_RENDERER,
-    GL_SHADING_LANGUAGE_VERSION,
-    GL_STATIC_DRAW, GL_TEXTURE_2D, GL_TRIANGLES,
-    GL_TRUE, GL_UNPACK_ALIGNMENT, GL_VENDOR, GL_VERSION,
-    GL_VERTEX_SHADER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T,
-    GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER,
-    GL_LINEAR, GL_RGB, GL_RGBA, GL_UNSIGNED_BYTE, GL_TEXTURE0,
-    GL_REPEAT,
-    glActiveTexture, glAttachShader,
-    glBindBuffer, glBindTexture, glBindVertexArray,
-    glBufferData, glClear, glClearColor,
-    glCompileShader, glCreateProgram,
-    glCreateShader, glDeleteProgram,
-    glDeleteShader, glDrawArrays,
-    glEnableVertexAttribArray, glGenBuffers, glGenTextures,
-    glGenVertexArrays, glGetAttribLocation,
-    glGetProgramInfoLog, glGetProgramiv,
-    glGetShaderInfoLog, glGetShaderiv, glGetString,
-    glGetUniformLocation, glLinkProgram, glPixelStorei,
-    glShaderSource, glTexImage2D, glTexParameteri, glUniform1i, glUseProgram,
-    glVertexAttribPointer, glViewport)
+import OpenGL.GL as gl
 
 
 class CharGrid:
 
-    def __init__(self, opts):
+    def __init__(self, screen, opts, window_width, window_height):
+        self.width, self.height = window_width, window_height
+        self.screen = screen
         self.apply_opts(opts)
-        self.lock = Lock()
+        self.dirty_everything()
+        self.default_bg, self.default_fg = self.original_bg, self.original_fg
+        self.resize_lock = Lock()
+        self.apply_resize_to_screen(self.width, self.height)
 
-    def apply_clear_color(self):
-        bg = self.default_bg
-        glClearColor(bg[0]/255, bg[1]/255, bg[2]/255, 1)
+    def dirty_everything(self):
+        self.cell_resize_pending = True
+        self.clear_color_changed = True
+        self.resize_pending = self.width, self.height
 
     def apply_opts(self, opts):
         self.opts = opts
         build_ansi_color_tables(opts)
         self.opts = opts
-        self.default_bg = self.original_bg = opts.background
-        self.default_fg = self.original_fg = opts.foreground
+        self.original_bg = opts.background
+        self.original_fg = opts.foreground
         self.cell_width, self.cell_height = set_font_family(opts.font_family, opts.font_size)
-        self.apply_clear_color()
 
-    def on_resize(self, window, w, h):
-        glViewport(0, 0, w, h)
-        self.do_layout(w, h)
+    def apply_resize_to_screen(self, w, h):
+        cells_per_line = w // self.cell_width
+        lines_per_screen = h // self.cell_height
+        self.screen.resize(lines_per_screen, cells_per_line)
+
+    def resize_screen(self, w, h):
+        ' Screen was resized by the user (called in non-UI thread) '
+        with self.resize_lock:
+            self.apply_resize_to_screen(w, h)
+            self.resize_pending = w, h
 
     def do_layout(self, w, h):
-        pass
-
-    def redraw(self):
-        pass
+        self.width, self.height = w, h
+        self.cells_per_line = w // self.cell_width
+        self.lines_per_screen = h // self.cell_height
+        if self.cell_resize_pending:
+            self.cell_resize_pending = False
 
     def render(self):
-        with self.lock:
-            glClear(GL_COLOR_BUFFER_BIT)
+        with self.resize_lock:
+            if self.resize_pending:
+                self.do_layout(*self.resize_pending)
+                gl.glViewport(0, 0, self.width, self.height)
+                self.resize_pending = None
+        if self.clear_color_changed:
+            bg = self.default_bg
+            self.clear_color_changed = False
+            gl.glClearColor(bg[0]/255, bg[1]/255, bg[2]/255, 1)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
     def change_colors(self, changes):
         dirtied = False
@@ -81,8 +77,9 @@ class CharGrid:
                         setattr(self, 'default_' + which, val)
                         dirtied = True
         if dirtied:
-            self.apply_clear_color()
-            self.redraw()
+            self.clear_color_changed = True
+            self.update_screen()
 
-    def update_screen(self, changes):
-        self.redraw()
+    def update_screen(self, changes=None):
+        if changes is None:
+            changes = {'screen': True}

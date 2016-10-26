@@ -43,15 +43,16 @@ def setup_opengl():
 
 def run_app(opts, args):
     setup_opengl()
+    window_width = window_height = 1024
     window = glfw.glfwCreateWindow(
-        1024, 1024, args.cls.encode('utf-8'), None, None)
+        window_width, window_height, args.cls.encode('utf-8'), None, None)
     if not window:
         raise SystemExit("glfwCreateWindow failed")
     glfw.glfwSetWindowTitle(window, appname.encode('utf-8'))
     try:
         glfw.glfwMakeContextCurrent(window)
         glfw.glfwSwapInterval(1)
-        boss = Boss(window, opts, args)
+        boss = Boss(window, window_width, window_height, opts, args)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
         boss.start()
 
