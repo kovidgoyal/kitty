@@ -8,7 +8,6 @@ import re
 import ctypes
 from collections import namedtuple
 from functools import lru_cache
-from threading import Lock
 
 from freetype import (
     Face, FT_LOAD_RENDER, FT_LOAD_TARGET_NORMAL, FT_LOAD_TARGET_LIGHT,
@@ -93,7 +92,7 @@ def set_font_family(family, size_in_pts):
         underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-        glyph_cache = GlyphCache()
+        glyph_cache = GlyphWidthCache()
         set_current_font_metrics(glyph_cache.width)
     return cell_width, cell_height
 
@@ -214,34 +213,17 @@ def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, sr
     return dest
 
 
-class GlyphCache:
+class GlyphWidthCache:
 
     def __init__(self):
-        self.lock = Lock()
         self.clear()
-        self.prepopulate()
 
     def render(self, text, bold=False, italic=False):
         first, second = render_cell(text, bold, italic)
         self.width_map[text] = 1 if second is None else 2
-        self.char_map[text] = self.add_cell(first)
-        if second is not None:
-            self.second_char_map[text] = self.add_cell(second)
-
-    def add_cell(self, data):
-        with self.lock:
-            i = len(self.texture_array)
-            self.texture_array.append(data)
-            self.to_sync.append(i)
-            return i
 
     def clear(self):
-        with self.lock:
-            self.char_map = {}
-            self.second_char_map = {}
-            self.texture_array = []
-            self.to_sync = []
-            self.width_map = {}
+        self.width_map = {}
 
     def width(self, text):
         try:
@@ -250,17 +232,6 @@ class GlyphCache:
             pass
         self.render(text)
         return self.width_map[text]
-
-    def prepopulate(self):
-        # Pre-render the basic ASCII chars in the current font
-        for i in range(32, 128):
-            self.render(chr(i))
-
-    def __iter__(self):
-        with self.lock:
-            for f in self.to_sync:
-                yield f, self.texture_array[f]
-            self.to_sync = []
 
 
 def join_cells(*cells):

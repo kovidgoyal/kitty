@@ -34,6 +34,8 @@ class Renderer:
         print(gl.glGetIntegerv(gl.GL_MAX_VERTEX_UNIFORM_COMPONENTS))
         print(gl.glGetIntegerv(gl.GL_MAX_UNIFORM_BLOCK_SIZE))
         print(gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS))
+        print(gl.glGetIntegerv(gl.GL_MAX_TEXTURE_IMAGE_UNITS))
+        print(gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE))
 
     def on_resize(self, window, w, h):
         gl.glViewport(0, 0, w, h)
