@@ -24,6 +24,7 @@ Font = namedtuple('Font', 'face hinting hintstyle bold italic')
 
 
 def get_font(query, bold, italic):
+    query += ':scalable=true:outline=true'
     raw = subprocess.check_output(['fc-match', query, '-f', '%{file}\x1e%{hinting}\x1e%{hintstyle}']).decode('utf-8')
     parts = raw.split('\x1e')
     hintstyle, hinting = 1, 'True'
@@ -266,7 +267,7 @@ def cell_size():
     return cell_width, cell_height
 
 
-def test_rendering(text='Ping👁a', sz=144, family='monospace'):
+def test_rendering(text='Ping👁a⧽', sz=144, family='monospace'):
     set_font_family(family, sz)
     cells = []
     for c in text:
