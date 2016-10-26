@@ -7,28 +7,28 @@ from functools import lru_cache
 from OpenGL.arrays import ArrayDatatype
 import OpenGL.GL as gl
 
+GL_VERSION = (4, 1)
+VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
+
 
 class ShaderProgram:
     """ Helper class for using GLSL shader programs """
 
-    def __init__(self, vertex: str, fragment: str):
+    def __init__(self, vertex, fragment):
         """
         Create a shader program.
-
-        :param vertex: The vertex shader
-        :param fragment: The fragment shader
 
         """
         self.program_id = gl.glCreateProgram()
         self.texture_id = None
         self.is_active = False
         vs_id = self.add_shader(vertex, gl.GL_VERTEX_SHADER)
-        frag_id = self.add_shader(fragment, gl.GL_FRAGMENT_SHADER)
-
         gl.glAttachShader(self.program_id, vs_id)
-        gl.glAttachShader(self.program_id, frag_id)
-        gl.glLinkProgram(self.program_id)
 
+        frag_id = self.add_shader(fragment, gl.GL_FRAGMENT_SHADER)
+        gl.glAttachShader(self.program_id, frag_id)
+
+        gl.glLinkProgram(self.program_id)
         if gl.glGetProgramiv(self.program_id, gl.GL_LINK_STATUS) != gl.GL_TRUE:
             info = gl.glGetProgramInfoLog(self.program_id)
             gl.glDeleteProgram(self.program_id)
@@ -52,6 +52,7 @@ class ShaderProgram:
     def add_shader(self, source: str, shader_type: int) -> int:
         ' Compile a shader and return its id, or raise an exception if compilation fails '
         shader_id = gl.glCreateShader(shader_type)
+        source = '#version {}\n{}'.format(VERSION, source)
         try:
             gl.glShaderSource(shader_id, source)
             gl.glCompileShader(shader_id)
@@ -90,6 +91,10 @@ class ShaderProgram:
     def set_2d_texture(self, var_name, data, width, height, data_type='red',
                        min_filter=gl.GL_LINEAR, mag_filter=gl.GL_LINEAR,
                        swrap=gl.GL_CLAMP_TO_EDGE, twrap=gl.GL_CLAMP_TO_EDGE):
+        if not self.is_active:
+            raise RuntimeError('The program must be active before you can add buffers')
+        if self.texture_id is not None:
+            gl.glDeleteTextures([self.texture_id])
         texture_id = self.texture_id = gl.glGenTextures(1)
         self.texture_var = self.uniform_location(var_name)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1 if data_type == 'red' else 4)
@@ -107,14 +112,16 @@ class ShaderProgram:
                         0, external_format, gl.GL_UNSIGNED_BYTE, data)
         return texture_id
 
-    def set_attribute_data(self, attribute_name, data, items_per_attribute_value=2, volatile=False, normalize=False):
+    def set_attribute_data(self, attribute_name, data, items_per_attribute_value=2, normalize=False):
         if not self.is_active:
             raise RuntimeError('The program must be active before you can add buffers')
         if len(data) % items_per_attribute_value != 0:
             raise ValueError('The length of the data buffer is not a multiple of the items_per_attribute_value')
-        buf_id = self.attribute_buffers[attribute_name] = gl.glGenBuffers(1)
+        buf_id = self.attribute_buffers.get(attribute_name)  # glBufferData auto-deletes previous data
+        if buf_id is None:
+            buf_id = self.attribute_buffers[attribute_name] = gl.glGenBuffers(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, buf_id)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(data), data, gl.GL_STREAM_DRAW if volatile else gl.GL_STATIC_DRAW)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(data), data, gl.GL_STATIC_DRAW)
         loc = self.attribute_location(attribute_name)
         gl.glEnableVertexAttribArray(loc)
         typ = {

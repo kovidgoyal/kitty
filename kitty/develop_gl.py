@@ -6,28 +6,8 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, array
+from kitty.shaders import ShaderProgram, array, GL_VERSION
 from kitty.fonts import set_font_family, render_cell, cell_size
-
-vertex_shader = """
-# version 410
-in vec2 vertex;
-
-void main() {
-    gl_Position = vec4(vertex, 0, 1);
-}
-"""
-
-
-fragment = """
-# version 410
-out vec4 final_color;
-
-void main(void)
-{
-    final_color = vec4(1.0);
-}
-"""
 
 
 def key_callback(key, action):
@@ -45,16 +25,37 @@ def gl_get_unicode(k):
     return ans
 
 
-def on_resize(window, w, h):
-    gl.glViewport(0, 0, w, h)
+class Renderer:
+
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+        self.do_layout()
+        self.program = rectangle_texture()
+        print(gl.glGetIntegerv(gl.GL_MAX_VERTEX_UNIFORM_COMPONENTS))
+        print(gl.glGetIntegerv(gl.GL_MAX_UNIFORM_BLOCK_SIZE))
+        print(gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS))
+
+    def on_resize(self, window, w, h):
+        gl.glViewport(0, 0, w, h)
+        self.w, self.h = w, h
+        self.do_layout()
+
+    def do_layout(self):
+        # Divide into cells
+        cell_width, cell_height = cell_size()
+        self.cells_per_line = self.w // cell_width
+        self.lines_per_screen = self.h // cell_height
+
+    def render(self):
+        rectangle_texture(self.program)
 
 
 def _main():
     # These Window hints are used to specify
     # which opengl version to use and other details
     # for the opengl context that will be created
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MAJOR, 4)
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, 1)
+    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
     glfw.glfwWindowHint(glfw.GLFW_OPENGL_PROFILE,
                         glfw.GLFW_OPENGL_CORE_PROFILE)
     glfw.glfwWindowHint(glfw.GLFW_OPENGL_FORWARD_COMPAT, True)
@@ -65,7 +66,6 @@ def _main():
         raise SystemExit("glfwCreateWindow failed")
     glfw.glfwMakeContextCurrent(window)
     glfw.glfwSwapInterval(1)
-    glfw.glfwSetFramebufferSizeCallback(window, on_resize)
 
     # If everything went well the following calls
     # will display the version of opengl being used
@@ -74,19 +74,17 @@ def _main():
     print('GLSL Version: %s' % (gl_get_unicode(gl.GL_SHADING_LANGUAGE_VERSION)))
     print('Renderer: %s' % (gl_get_unicode(gl.GL_RENDERER)))
 
+    r = Renderer(1024, 1024)
+    glfw.glfwSetFramebufferSizeCallback(window, r.on_resize)
     try:
         gl.glClearColor(0.5, 0.5, 0.5, 0)
-        rectangle_texture(window)
+        while not glfw.glfwWindowShouldClose(window):
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            r.render()
+            glfw.glfwSwapBuffers(window)
+            glfw.glfwWaitEvents()
     finally:
         glfw.glfwDestroyWindow(window)
-
-
-def triangle_vertices(width=0.8, height=0.8):
-    return array(
-        0.0, height,
-        -width, -height,
-        width, -height,
-    )
 
 
 def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
@@ -109,37 +107,8 @@ def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
     return vertex_data, texture_coords
 
 
-def rectangle(window):
-    program = ShaderProgram(vertex_shader, fragment)
-
-    with program:
-        program.set_attribute_data('vertex', rectangle_vertices()[0])
-
-    while not glfw.glfwWindowShouldClose(window):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program:
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-
-        glfw.glfwSwapBuffers(window)
-        glfw.glfwWaitEvents()
-
-
-def triangle(window):
-    program = ShaderProgram(vertex_shader, fragment)
-    with program:
-        program.set_attribute_data('vertex', triangle_vertices())
-
-    while not glfw.glfwWindowShouldClose(window):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        with program:
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 3)
-
-        glfw.glfwSwapBuffers(window)
-        glfw.glfwWaitEvents()
-
 textured_shaders = (
-    '''
-#version 410
+    '''\
 in vec2 vertex;
 in vec2 texture_position;
 out vec2 texture_position_for_fs;
@@ -150,8 +119,7 @@ void main() {
 }
 ''',
 
-    '''
-#version 410
+    '''\
 uniform sampler2D tex;
 in vec2 texture_position_for_fs;
 out vec4 final_color;
@@ -172,22 +140,19 @@ def texture_data():
     return cell, w, h
 
 
-def rectangle_texture(window):
-    program = ShaderProgram(*textured_shaders)
-    img_data, w, h = texture_data()
-    with program:
-        program.set_2d_texture('tex', img_data, w, h)
-        rv, texc = rectangle_vertices()
-        program.set_attribute_data('vertex', rv)
-        program.set_attribute_data('texture_position', texc)
-
-    while not glfw.glfwWindowShouldClose(window):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+def rectangle_texture(program=None):
+    if program is None:
+        program = ShaderProgram(*textured_shaders)
+        img_data, w, h = texture_data()
+        with program:
+            program.set_2d_texture('tex', img_data, w, h)
+            rv, texc = rectangle_vertices()
+            program.set_attribute_data('vertex', rv)
+            program.set_attribute_data('texture_position', texc)
+        return program
+    else:
         with program:
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
-
-        glfw.glfwSwapBuffers(window)
-        glfw.glfwWaitEvents()
 
 
 def on_error(code, msg):
