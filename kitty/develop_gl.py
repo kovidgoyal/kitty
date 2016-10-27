@@ -6,7 +6,7 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, GL_VERSION
+from kitty.shaders import ShaderProgram, GL_VERSION, Sprites
 from kitty.fonts import set_font_family, cell_size
 
 textured_shaders = (
@@ -52,13 +52,34 @@ def gl_get_unicode(k):
     return ans
 
 
+def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
+    xnum = screen_width // cell_width
+    ynum = screen_height // cell_height
+    vertices = (gl.GLfloat * (xnum * ynum * 12))()
+    dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
+    xmargin = (screen_width - (xnum * cell_width)) / screen_width
+    ymargin = (screen_height - (ynum * cell_height)) / screen_height
+    xstart = -1 + xmargin
+    ystart = 1 - ymargin
+    vmap = {}
+    for r in range(ynum):
+        aoff = r * xnum * 12
+        top = ystart - r * dy
+        for c in range(xnum):
+            left = xstart + c * dx
+            off = aoff + c * 12
+            vertices[off:off + 12] = vmap[(r, c)] = rectangle_vertices(left=left, top=top, right=left + dx, bottom=top - dy)
+    return vertices, xnum, ynum, vmap
+
+
 class Renderer:
 
     def __init__(self, w, h):
         self.w, self.h = w, h
         self.program = ShaderProgram(*textured_shaders)
+        self.sprites = Sprites()
         chars = '0123456789'
-        sprite_vecs = (s[0] for s in self.program.sprites.positions_for(((x, False, False) for x in chars)))
+        sprite_vecs = (s[0] for s in self.sprites.positions_for(((x, False, False) for x in chars)))
         self.sprite_map = {i: v for i, v in enumerate(sprite_vecs)}
         self.do_layout()
 
@@ -70,24 +91,12 @@ class Renderer:
     def do_layout(self):
         # Divide into cells
         cell_width, cell_height = cell_size()
-        xnum = self.w // cell_width
-        ynum = self.h // cell_height
-        vertices = (gl.GLfloat * (xnum * ynum * 12))()
+        vertices, xnum, ynum = calculate_vertices(cell_width, cell_height, self.w, self.h)[:3]
         uv = (gl.GLfloat * (xnum * ynum * 18))()
         num = 0
-        dx, dy = 2 * cell_width / self.w, 2 * cell_height / self.h
-        xmargin = (self.w - (xnum * cell_width)) / self.w
-        ymargin = (self.h - (ynum * cell_height)) / self.h
-        xstart = -1 + xmargin
-        ystart = 1 - ymargin
         for r in range(ynum):
-            aoff = r * xnum * 12
             uoff = r * xnum * 18
-            top = ystart - r * dy
             for c in range(xnum):
-                left = xstart + c * dx
-                off = aoff + c * 12
-                vertices[off:off + 12] = rectangle_vertices(left=left, top=top, right=left + dx, bottom=top - dy)
                 sprite_pos = self.sprite_map[num % 10]
                 off = uoff + c * 18
                 uv[off:off + 18] = rectangle_uv(*sprite_pos)
@@ -98,7 +107,9 @@ class Renderer:
         self.num_vertices = len(vertices) // 2
 
     def render(self):
-        with self.program:
+        with self.program, self.sprites:
+            gl.glUniform1i(self.program.uniform_location('sprites'), self.sprites.sampler_num)
+            gl.glUniform3f(self.program.uniform_location('sprite_scale'), self.sprites.xnum, self.sprites.ynum, 1)
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.num_vertices)
 
 

@@ -140,7 +140,6 @@ class ShaderProgram:
         gl.glDeleteShader(frag_id)
         self.vao_id = gl.glGenVertexArrays(1)
         self.attribute_buffers = {}
-        self.sprites = Sprites()
 
     def __hash__(self) -> int:
         return self.program_id
@@ -179,15 +178,11 @@ class ShaderProgram:
     def __enter__(self):
         gl.glUseProgram(self.program_id)
         gl.glBindVertexArray(self.vao_id)
-        gl.glUniform1i(self.uniform_location('sprites'), self.sprites.sampler_num)
-        gl.glUniform3f(self.uniform_location('sprite_scale'), self.sprites.xnum, self.sprites.ynum, 1)
-        self.sprites.__enter__()
         self.is_active = True
 
     def __exit__(self, *args):
         gl.glBindVertexArray(0)
         gl.glUseProgram(0)
-        self.sprites.__exit__(*args)
         self.is_active = False
 
     def set_attribute_data(self, attribute_name, data, items_per_attribute_value=2, divisor=None, normalize=False):
