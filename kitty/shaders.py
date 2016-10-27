@@ -10,67 +10,12 @@ from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in openg
 
 from .fonts import render_cell, cell_size
 
-GL_VERSION = (4, 1)
+GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 
 
 def array(*args, dtype=gl.GLfloat):
     return (dtype * len(args))(*args)
-
-
-def translation_matrix(x, y):
-    return array(
-        1, 0, x,
-        0, 1, y,
-        0, 0, 1
-    )
-
-
-def scaling_matrix(x, y):
-    return array(
-        x, 0, 0,
-        0, y, 0,
-        0, 0, 1
-    )
-
-
-def multiply(a, b):
-    # 0 1 2
-    # 3 4 5
-    # 6 7 8
-    return array(
-        # Row 1
-        a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
-        a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
-        a[0] * b[2] + a[1] * b[5] + a[2] * b[8],
-        # Row 2
-        a[3] * b[0] + a[4] * b[3] + a[5] * b[6],
-        a[3] * b[1] + a[4] * b[4] + a[5] * b[7],
-        a[3] * b[2] + a[4] * b[5] + a[5] * b[8],
-        # Row 3
-        a[6] * b[0] + a[7] * b[3] + a[8] * b[6],
-        a[6] * b[1] + a[7] * b[4] + a[8] * b[7],
-        a[6] * b[2] + a[7] * b[5] + a[8] * b[8]
-    )
-
-
-def ortho_matrix(left=0, right=1, bottom=1, top=0, near=0, far=1):
-    # See https://www.opengl.org/sdk/docs/man2/xhtml/glOrtho.xml
-    def t(a, b):
-        return (a + b) / (a - b)
-    return array(
-        2 / (right - left), 0, 0, -t(right, left),
-        0, 2 / (bottom - top), 0, -t(bottom, top),
-        0, 0, -2 / (far - near), -t(far, near),
-        0, 0, 0, 1
-    )
-
-
-def map_pos(matrix, x, y):
-    return (
-        x * matrix[0] + y * matrix[1] + matrix[3],
-        x * matrix[4] + y * matrix[5] + matrix[7]
-    )
 
 
 class Sprites:

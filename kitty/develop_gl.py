@@ -6,7 +6,7 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, GL_VERSION, ortho_matrix
+from kitty.shaders import ShaderProgram, GL_VERSION
 from kitty.fonts import set_font_family, cell_size
 
 textured_shaders = (
@@ -14,10 +14,9 @@ textured_shaders = (
 in vec2 vertex;
 in vec3 texture_position;
 out vec3 texture_position_for_fs;
-uniform mat4 transform;
 
 void main() {
-    gl_Position = transform * vec4(vertex, 0, 1);
+    gl_Position = vec4(vertex, 0, 1);
     texture_position_for_fs = texture_position;
 }
 ''',
@@ -27,8 +26,8 @@ uniform sampler2DArray sprites;
 uniform vec3 sprite_scale;
 in vec3 texture_position_for_fs;
 out vec4 final_color;
-const vec3 background = vec3(0, 1, 0);
-const vec3 foreground = vec3(0, 0, 1);
+const vec3 background = vec3(0, 0, 1);
+const vec3 foreground = vec3(0, 1, 0);
 
 void main() {
     float alpha = texture(sprites, texture_position_for_fs / sprite_scale).r;
@@ -76,17 +75,23 @@ class Renderer:
         vertices = (gl.GLfloat * (xnum * ynum * 12))()
         uv = (gl.GLfloat * (xnum * ynum * 18))()
         num = 0
+        dx, dy = 2 * cell_width / self.w, 2 * cell_height / self.h
+        xmargin = (self.w - (xnum * cell_width)) / self.w
+        ymargin = (self.h - (ynum * cell_height)) / self.h
+        xstart = -1 + xmargin
+        ystart = 1 - ymargin
         for r in range(ynum):
             aoff = r * xnum * 12
             uoff = r * xnum * 18
+            top = ystart - r * dy
             for c in range(xnum):
+                left = xstart + c * dx
                 off = aoff + c * 12
-                vertices[off:off + 12] = rectangle_vertices(left=c, top=r, right=c + 1, bottom=r + 1)
+                vertices[off:off + 12] = rectangle_vertices(left=left, top=top, right=left + dx, bottom=top - dy)
                 sprite_pos = self.sprite_map[num % 10]
                 off = uoff + c * 18
                 uv[off:off + 18] = rectangle_uv(*sprite_pos)
                 num += 1
-        self.transform = ortho_matrix(right=xnum, bottom=ynum)
         with self.program:
             self.program.set_attribute_data('vertex', vertices)
             self.program.set_attribute_data('texture_position', uv, items_per_attribute_value=3)
@@ -94,7 +99,6 @@ class Renderer:
 
     def render(self):
         with self.program:
-            gl.glUniformMatrix4fv(self.program.uniform_location('transform'), 1, gl.GL_TRUE, self.transform)
             gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.num_vertices)
 
 
