@@ -7,7 +7,7 @@ from functools import lru_cache
 from OpenGL.arrays import ArrayDatatype
 import OpenGL.GL as gl
 
-from .fonts import render_cell, cell_size, display_bitmap
+from .fonts import render_cell, cell_size
 
 GL_VERSION = (4, 1)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
@@ -22,33 +22,54 @@ class Sprites:
     array with each texture being a sprite sheet. '''
 
     def __init__(self, texture_unit=0):
-        self.texture_unit = getattr(gl, 'GL_TEXTURE%d' % texture_unit)
         self.sampler_num = texture_unit
         self.first_cell_cache = {}
         self.second_cell_cache = {}
+        self.x = self.y = self.z = 0
+        self.texture_id = None
+        self.last_num_of_layers = 1
+
+    def do_layout(self):
+        self.texture_unit = getattr(gl, 'GL_TEXTURE%d' % self.sampler_num)
         self.max_array_len = gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS)
         self.max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
         self.cell_width, self.cell_height = cell_size()
         self.xnum = self.max_texture_size // self.cell_width
-        self.ynum = self.max_texture_size // self.cell_height
-        # self.xnum = self.ynum = 2
-        self.width = self.xnum * self.cell_width
-        self.height = self.ynum * self.cell_height
-        self.previous_layers = []
-        self.current_layer_dirty = False
-        self.current_layer_buffer = (gl.GLubyte * (self.width * self.height))()
-        self.x = self.y = 0
-        self.dx, self.dy = self.cell_width / self.width, self.cell_height / self.height
-        self.texture_id = gl.glGenTextures(1)
-        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-        self.commit_all_layers()
+        self.max_y = self.max_texture_size // self.cell_height
+        # self.xnum, self.max_y = 2, 2
+        self.ynum = 1
+
+    def realloc_texture(self):
+        if self.texture_id is None:
+            self.do_layout()
+        tgt = gl.GL_TEXTURE_2D_ARRAY
+        tex = gl.glGenTextures(1)
+        gl.glBindTexture(tgt, tex)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_BASE_LEVEL, 0)
+        gl.glTexParameteri(tgt, gl.GL_TEXTURE_MAX_LEVEL, 0)
+        znum = self.z + 1
+        width, height = self.xnum * self.cell_width, self.ynum * self.cell_height
+        gl.glTexImage3D(tgt, 0, gl.GL_R8,
+                        width, height, znum,
+                        0, gl.GL_RED, gl.GL_UNSIGNED_BYTE, None)
+        if self.texture_id is not None:
+            ynum = self.ynum
+            if self.z == 0:
+                ynum -= 1  # Only copy the previous rows
+            gl.glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
+                                  width, ynum * self.cell_height, self.last_num_of_layers)
+            gl.glDeleteTextures([self.texture_id])
+        self.last_num_of_layers = znum
+        self.texture_id = tex
+        gl.glBindTexture(tgt, 0)
 
     def positions_for(self, items):
-        ''' Yield 5-tuples (left, top, right, bottom, z) pointing to the desired sprite '''
+        ''' Yield 2, 5-tuples (left, top, right, bottom, z) pointing to the
+        desired sprite and its second sprite if it is a wide character. '''
         for key in items:
             first = self.first_cell_cache.get(key)
             if first is None:
@@ -57,58 +78,30 @@ class Sprites:
                 if second is not None:
                     self.second_cell_cache[key] = self.add_sprite(second)
             yield first, self.second_cell_cache.get(key)
-        if self.current_layer_dirty:
-            self.commit_layer()
-
-    def commit_all_layers(self):
-        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_BASE_LEVEL, 0)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MAX_LEVEL, 0)
-        gl.glTexImage3D(gl.GL_TEXTURE_2D_ARRAY, 0, gl.GL_R8, self.width, self.height, len(self.previous_layers) + 1, 0, gl.GL_RED, gl.GL_UNSIGNED_BYTE, None)
-        for i, buf in enumerate(self.previous_layers):
-            self.commit_layer(i, buf, bind=False)
-        self.commit_layer(bind=False)
-        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
-
-    def commit_layer(self, num=None, buf=None, bind=True):
-        if bind:
-            gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
-        if num is None:
-            num, buf = len(self.previous_layers), self.current_layer_buffer
-            self.current_layer_dirty = False
-        gl.glTexSubImage3D(gl.GL_TEXTURE_2D_ARRAY, 0, 0, 0, num, self.width, self.height, 1,
-                           gl.GL_RED, gl.GL_UNSIGNED_BYTE, buf)
-        if bind:
-            gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
 
     def add_sprite(self, buf):
-        self.current_layer_dirty = True
-        pixels_per_line = self.cell_width * self.xnum
-        pixels_per_row = pixels_per_line * self.cell_height
-        offset_to_start_of_row = self.y * pixels_per_row
-
-        for y in range(self.cell_height):
-            doff = offset_to_start_of_row + self.x * self.cell_width
-            soff = y * self.cell_width
-            for x in range(self.cell_width):
-                self.current_layer_buffer[doff + x] = buf[soff + x]
-            offset_to_start_of_row += pixels_per_line
+        if self.texture_id is None:
+            self.realloc_texture()
+        tgt = gl.GL_TEXTURE_2D_ARRAY
+        gl.glBindTexture(tgt, self.texture_id)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+        x, y = self.x * self.cell_width, self.y * self.cell_height
+        gl.glTexSubImage3D(tgt, 0, x, y, self.z, self.cell_width, self.cell_height, 1, gl.GL_RED, gl.GL_UNSIGNED_BYTE, buf)
+        gl.glBindTexture(tgt, 0)
 
         # UV space co-ordinates
-        left, top, z = self.x, self.y, len(self.previous_layers)
+        left, top, z = self.x, self.y, self.z
 
         # Now increment the current cell position
         self.x += 1
         if self.x >= self.xnum:
             self.x = 0
             self.y += 1
-            if self.y >= self.ynum:
+            self.ynum = min(max(self.ynum, self.y + 1), self.max_y)
+            if self.y >= self.max_y:
                 self.y = 0
-                self.previous_layers.append(self.current_layer_buffer)
-                gl.glDeleteTextures([self.texture_id])
-                self.texture_id = gl.glGenTextures(1)
-                self.current_layer_buffer = (gl.GLubyte * (self.width * self.height))()
-                self.commit_all_layers()
+                self.z += 1
+            self.realloc_texture()  # we allocate a row at a time
         return left, top, left + 1, top + 1, z
 
     def __enter__(self):
@@ -117,13 +110,6 @@ class Sprites:
 
     def __exit__(self, *a):
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
-
-    def display_layer(self, num=None):
-        if num is None:
-            buf = self.current_layer_buffer
-        else:
-            buf = self.previous_layers[num]
-        display_bitmap(buf, self.width, self.height)
 
 
 class ShaderProgram:
