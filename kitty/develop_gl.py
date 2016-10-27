@@ -23,13 +23,14 @@ void main() {
 
     '''\
 uniform sampler2DArray sprites;
+uniform vec3 sprite_scale;
 in vec3 texture_position_for_fs;
 out vec4 final_color;
 const vec3 background = vec3(0, 1, 0);
 const vec3 foreground = vec3(0, 0, 1);
 
 void main() {
-    float alpha = texture(sprites, texture_position_for_fs).r;
+    float alpha = texture(sprites, texture_position_for_fs / sprite_scale).r;
     vec3 color = background * (1 - alpha) + foreground * alpha;
     final_color = vec4(color, 1);
 }

@@ -95,7 +95,7 @@ class Sprites:
             offset_to_start_of_row += pixels_per_line
 
         # UV space co-ordinates
-        left, top, z = self.x / self.xnum, self.y / self.ynum, len(self.previous_layers)
+        left, top, z = self.x, self.y, len(self.previous_layers)
 
         # Now increment the current cell position
         self.x += 1
@@ -109,7 +109,7 @@ class Sprites:
                 self.texture_id = gl.glGenTextures(1)
                 self.current_layer_buffer = (gl.GLubyte * (self.width * self.height))()
                 self.commit_all_layers()
-        return left, top, left + self.dx, top + self.dy, z
+        return left, top, left + 1, top + 1, z
 
     def __enter__(self):
         gl.glActiveTexture(self.texture_unit)
@@ -193,6 +193,7 @@ class ShaderProgram:
         gl.glUseProgram(self.program_id)
         gl.glBindVertexArray(self.vao_id)
         gl.glUniform1i(self.uniform_location('sprites'), self.sprites.sampler_num)
+        gl.glUniform3f(self.uniform_location('sprite_scale'), self.sprites.xnum, self.sprites.ynum, 1)
         self.sprites.__enter__()
         self.is_active = True
 
