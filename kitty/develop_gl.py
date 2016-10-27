@@ -9,6 +9,32 @@ import sys
 from kitty.shaders import ShaderProgram, array, GL_VERSION
 from kitty.fonts import set_font_family, render_cell, cell_size
 
+textured_shaders = (
+    '''\
+in vec2 vertex;
+in vec3 texture_position;
+out vec3 texture_position_for_fs;
+
+void main() {
+    gl_Position = vec4(vertex, 0, 1);
+    texture_position_for_fs = texture_position;
+}
+''',
+
+    '''\
+uniform sampler2DArray sprites;
+in vec3 texture_position_for_fs;
+out vec4 final_color;
+const vec3 background = vec3(0, 1, 0);
+const vec3 foreground = vec3(0, 0, 1);
+
+void main() {
+    float alpha = texture(sprites, texture_position_for_fs).r;
+    vec3 color = background * (1 - alpha) + foreground * alpha;
+    final_color = vec4(color, 1);
+}
+''')
+
 
 def key_callback(key, action):
     """ Sample keyboard callback function """
@@ -30,12 +56,18 @@ class Renderer:
     def __init__(self, w, h):
         self.w, self.h = w, h
         self.do_layout()
-        self.program = rectangle_texture()
-        print(gl.glGetIntegerv(gl.GL_MAX_VERTEX_UNIFORM_COMPONENTS))
-        print(gl.glGetIntegerv(gl.GL_MAX_UNIFORM_BLOCK_SIZE))
-        print(gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS))
-        print(gl.glGetIntegerv(gl.GL_MAX_TEXTURE_IMAGE_UNITS))
-        print(gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE))
+        self.program = ShaderProgram(*textured_shaders)
+        chars = '0123456789'
+        sprite_vecs = list(s[0] for s in self.program.sprites.positions_for(((x, False, False) for x in chars)))
+        rv = rectangle_vertices()
+        # import pprint
+        # pprint.pprint(sprite_vecs)
+        # self.program.sprites.display_layer(0)
+        # raise SystemExit(0)
+        texc = rectangle_uv(*(sprite_vecs[4]))
+        with self.program:
+            self.program.set_attribute_data('vertex', rv)
+            self.program.set_attribute_data('texture_position', texc, items_per_attribute_value=3)
 
     def on_resize(self, window, w, h):
         gl.glViewport(0, 0, w, h)
@@ -49,7 +81,8 @@ class Renderer:
         self.lines_per_screen = self.h // cell_height
 
     def render(self):
-        rectangle_texture(self.program)
+        with self.program:
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
 
 def _main():
@@ -90,7 +123,7 @@ def _main():
 
 
 def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
-    vertex_data = array(
+    return array(
         right, top,
         right, bottom,
         left, bottom,
@@ -99,41 +132,16 @@ def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
         left, top
     )
 
-    texture_coords = array(
-        1, 0,  # right top
-        1, 1,  # right bottom
-        0, 1,  # left bottom
-        1, 0,  # right top
-        0, 1,  # left bottom
-        0, 0)  # left top
-    return vertex_data, texture_coords
 
-
-textured_shaders = (
-    '''\
-in vec2 vertex;
-in vec2 texture_position;
-out vec2 texture_position_for_fs;
-
-void main() {
-    gl_Position = vec4(vertex, 0, 1);
-    texture_position_for_fs = texture_position;
-}
-''',
-
-    '''\
-uniform sampler2D tex;
-in vec2 texture_position_for_fs;
-out vec4 final_color;
-const vec3 background = vec3(0, 1, 0);
-const vec3 foreground = vec3(0, 0, 1);
-
-void main() {
-    float alpha = texture(tex, texture_position_for_fs).r;
-    vec3 color = background * (1 - alpha) + foreground * alpha;
-    final_color = vec4(color, 1);
-}
-''')
+def rectangle_uv(left=0., top=1., right=1., bottom=0., z=0.):
+    return array(
+        right, top, z,
+        right, bottom, z,
+        left, bottom, z,
+        right, top, z,
+        left, bottom, z,
+        left, top, z
+    )
 
 
 def texture_data():

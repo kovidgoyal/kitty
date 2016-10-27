@@ -7,89 +7,121 @@ from functools import lru_cache
 from OpenGL.arrays import ArrayDatatype
 import OpenGL.GL as gl
 
-from .fonts import render_cell, cell_size
+from .fonts import render_cell, cell_size, display_bitmap
 
 GL_VERSION = (4, 1)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 
 
-class TextureManager:
+def array(*args, dtype=gl.GLfloat):
+    return (dtype * len(args))(*args)
 
-    def __init__(self):
-        self.textures = []
-        self.current_texture_array = None
-        self.current_array_dirty = False
-        self.current_array_data = None
-        self.arraylengths = {}
+
+class Sprites:
+    ''' Maintain sprite sheets of all rendered characters on the GPU as a texture
+    array with each texture being a sprite sheet. '''
+
+    def __init__(self, texture_unit=0):
+        self.texture_unit = getattr(gl, 'GL_TEXTURE%d' % texture_unit)
+        self.sampler_num = texture_unit
         self.first_cell_cache = {}
         self.second_cell_cache = {}
         self.max_array_len = gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS)
-        self.max_active_textures = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_IMAGE_UNITS)
-
-    def ensure_texture_array(self, amt=2):
-        if self.current_texture_array is None or self.arraylengths[self.current_texture_array] > self.max_array_len - amt:
-            if self.current_texture_array is not None and len(self.textures) >= self.max_active_textures:
-                raise RuntimeError('No space left to allocate character textures')
-            if self.current_array_dirty:
-                self.commit_current_array()
-            self.current_texture_array = gl.glGenTextures(1)
-            self.current_array_data = None
-            self.current_array_dirty = False
-            self.textures.append(self.current_texture_array)
-            self.arraylengths[self.current_texture_array] = 0
-
-    def texture_ids_for(self, items):
-        for key in items:
-            first = self.first_cell_cache.get(key)
-            if first is None:
-                self.ensure_texture_array()
-                first, second = render_cell(*key)
-                items = (first, second) if second is not None else (first,)
-                texture_unit = len(self.textures) - 1
-                layerf = len(self.arraylengths[self.current_texture_array])
-                self.append_to_current_array(items)
-                self.first_cell_cache[key] = first = texture_unit, layerf
-                if second is not None:
-                    self.second_cell_cache[key] = texture_unit, layerf + 1
-            yield first, self.second_cell_cache.get(key)
-        if self.current_array_dirty:
-            self.commit_current_array()
-
-    def commit_current_array(self):
-        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.current_texture_array)
-        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+        self.max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
+        self.cell_width, self.cell_height = cell_size()
+        self.xnum = self.max_texture_size // self.cell_width
+        self.ynum = self.max_texture_size // self.cell_height
+        # self.xnum = self.ynum = 2
+        self.width = self.xnum * self.cell_width
+        self.height = self.ynum * self.cell_height
+        self.previous_layers = []
+        self.current_layer_dirty = False
+        self.current_layer_buffer = (gl.GLubyte * (self.width * self.height))()
+        self.x = self.y = 0
+        self.dx, self.dy = self.cell_width / self.width, self.cell_height / self.height
+        self.texture_id = gl.glGenTextures(1)
+        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-        width, height = cell_size()
-        gl.glTexStorage3D(gl.GL_TEXTURE_2D_ARRAY, 0, gl.GL_R8, width, height, self.arraylengths[self.current_texture_array])
-        gl.glTexSubImage3D(gl.GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, self.arraylengths[
-                           self.current_texture_array], gl.GL_RED, gl.GL_UNSIGNED_BYTE, self.current_array_data)
-        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
-        self.current_array_dirty = False
+        self.commit_all_layers()
 
-    def append_to_current_array(self, items):
-        current_len = len(self.current_array_data or '')
-        self.arraylengths[self.current_texture_array] += len(items)
-        new_data = (gl.GLubyte * (current_len + sum(map(len, items))))()
-        if current_len:
-            new_data[:current_len] = self.current_array_data
-            gl.glDeleteTextures([self.current_texture_array])
-        pos = current_len
-        for i in items:
-            new_data[pos:pos + len(i)] = i
-            pos += len(i)
-        self.current_array_data = new_data
-        self.current_array_dirty = True
+    def positions_for(self, items):
+        ''' Yield 5-tuples (left, top, right, bottom, z) pointing to the desired sprite '''
+        for key in items:
+            first = self.first_cell_cache.get(key)
+            if first is None:
+                first, second = render_cell(*key)
+                self.first_cell_cache[key] = first = self.add_sprite(first)
+                if second is not None:
+                    self.second_cell_cache[key] = self.add_sprite(second)
+            yield first, self.second_cell_cache.get(key)
+        if self.current_layer_dirty:
+            self.commit_layer()
+
+    def commit_all_layers(self):
+        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
+        gl.glTexStorage3D(gl.GL_TEXTURE_2D_ARRAY, 1, gl.GL_R8, self.width, self.height, len(self.previous_layers) + 1)
+        for i, buf in enumerate(self.previous_layers):
+            self.commit_layer(i, buf, bind=False)
+        self.commit_layer(bind=False)
+        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
+
+    def commit_layer(self, num=None, buf=None, bind=True):
+        if bind:
+            gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
+        if num is None:
+            num, buf = len(self.previous_layers), self.current_layer_buffer
+            self.current_layer_dirty = False
+        gl.glTexSubImage3D(gl.GL_TEXTURE_2D_ARRAY, 0, 0, 0, num, self.width, self.height, 1,
+                           gl.GL_RED, gl.GL_UNSIGNED_BYTE, buf)
+        if bind:
+            gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
+
+    def add_sprite(self, buf):
+        self.current_layer_dirty = True
+        pixels_per_line = self.cell_width * self.xnum
+        pixels_per_row = pixels_per_line * self.cell_height
+        offset_to_start_of_row = self.y * pixels_per_row
+
+        for y in range(self.cell_height):
+            doff = offset_to_start_of_row + self.x * self.cell_width
+            soff = y * self.cell_width
+            for x in range(self.cell_width):
+                self.current_layer_buffer[doff + x] = buf[soff + x]
+            offset_to_start_of_row += pixels_per_line
+
+        # UV space co-ordinates
+        left, top, z = self.x / self.xnum, self.y / self.ynum, len(self.previous_layers)
+
+        # Now increment the current cell position
+        self.x += 1
+        if self.x >= self.xnum:
+            self.x = 0
+            self.y += 1
+            if self.y >= self.ynum:
+                self.y = 0
+                self.previous_layers.append(self.current_layer_buffer)
+                gl.glDeleteTextures([self.texture_id])
+                self.texture_id = gl.glGenTextures(1)
+                self.current_layer_buffer = (gl.GLubyte * (self.width * self.height))()
+                self.commit_all_layers()
+        return left, top, left + self.dx, top + self.dy, z
 
     def __enter__(self):
-        for i, texture_id in enumerate(self.textures):
-            gl.glActiveTexture(getattr(gl, 'GL_TEXTURE{}'.format(i)))
-            gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, texture_id)
+        gl.glActiveTexture(self.texture_unit)
+        gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
 
     def __exit__(self, *a):
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
+
+    def display_layer(self, num=None):
+        if num is None:
+            buf = self.current_layer_buffer
+        else:
+            buf = self.previous_layers[num]
+        display_bitmap(buf, self.width, self.height)
 
 
 class ShaderProgram:
@@ -101,7 +133,6 @@ class ShaderProgram:
 
         """
         self.program_id = gl.glCreateProgram()
-        self.texture_id = None
         self.is_active = False
         vs_id = self.add_shader(vertex, gl.GL_VERTEX_SHADER)
         gl.glAttachShader(self.program_id, vs_id)
@@ -120,6 +151,7 @@ class ShaderProgram:
         gl.glDeleteShader(frag_id)
         self.vao_id = gl.glGenVertexArrays(1)
         self.attribute_buffers = {}
+        self.sprites = Sprites()
 
     def __hash__(self) -> int:
         return self.program_id
@@ -158,42 +190,15 @@ class ShaderProgram:
     def __enter__(self):
         gl.glUseProgram(self.program_id)
         gl.glBindVertexArray(self.vao_id)
+        gl.glUniform1i(self.uniform_location('sprites'), self.sprites.sampler_num)
+        self.sprites.__enter__()
         self.is_active = True
-        if self.texture_id is not None:
-            gl.glBindTexture(gl.GL_TEXTURE_2D, self.texture_id)
-            gl.glActiveTexture(gl.GL_TEXTURE0)
-            gl.glUniform1i(self.texture_var, 0)  # 0 because using GL_TEXTURE0
 
     def __exit__(self, *args):
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
         gl.glBindVertexArray(0)
         gl.glUseProgram(0)
+        self.sprites.__exit__(*args)
         self.is_active = False
-
-    def set_2d_texture(self, var_name, data, width, height, data_type='red',
-                       min_filter=gl.GL_LINEAR, mag_filter=gl.GL_LINEAR,
-                       swrap=gl.GL_CLAMP_TO_EDGE, twrap=gl.GL_CLAMP_TO_EDGE):
-        if not self.is_active:
-            raise RuntimeError('The program must be active before you can add buffers')
-        if self.texture_id is not None:
-            gl.glDeleteTextures([self.texture_id])
-        texture_id = self.texture_id = gl.glGenTextures(1)
-        self.texture_var = self.uniform_location(var_name)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, texture_id)
-        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1 if data_type == 'red' else 4)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, min_filter)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, mag_filter)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, swrap)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, twrap)
-        internal_format, external_format = {
-            'rgba': (gl.GL_RGBA8, gl.GL_RGBA),
-            'rgb': (gl.GL_RGB8, gl.GL_RGB),
-            'red': (gl.GL_R8, gl.GL_RED),
-        }[data_type]
-        gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, internal_format, width, height,
-                        0, external_format, gl.GL_UNSIGNED_BYTE, data)
-        gl.glBindTexture(gl.GL_TEXTURE_2D, 0)
-        return texture_id
 
     def set_attribute_data(self, attribute_name, data, items_per_attribute_value=2, divisor=None, normalize=False):
         if not self.is_active:
@@ -217,7 +222,3 @@ class ShaderProgram:
         )
         if divisor is not None:
             gl.glVertexBindingDivisor(loc, divisor)
-
-
-def array(*args, dtype=gl.GLfloat):
-    return (dtype * len(args))(*args)
