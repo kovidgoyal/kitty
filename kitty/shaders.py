@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from OpenGL.arrays import ArrayDatatype
 import OpenGL.GL as gl
+from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in opengl core >= 4.3
 
 from .fonts import render_cell, cell_size
 
@@ -60,8 +61,8 @@ class Sprites:
             ynum = self.ynum
             if self.z == 0:
                 ynum -= 1  # Only copy the previous rows
-            gl.glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
-                                  width, ynum * self.cell_height, self.last_num_of_layers)
+            glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
+                               width, ynum * self.cell_height, self.last_num_of_layers)
             gl.glDeleteTextures([self.texture_id])
         self.last_num_of_layers = znum
         self.texture_id = tex
