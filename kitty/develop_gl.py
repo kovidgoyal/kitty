@@ -6,17 +6,18 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, array, GL_VERSION
-from kitty.fonts import set_font_family, render_cell, cell_size
+from kitty.shaders import ShaderProgram, GL_VERSION, ortho_matrix
+from kitty.fonts import set_font_family, cell_size
 
 textured_shaders = (
     '''\
 in vec2 vertex;
 in vec3 texture_position;
 out vec3 texture_position_for_fs;
+uniform mat4 transform;
 
 void main() {
-    gl_Position = vec4(vertex, 0, 1);
+    gl_Position = transform * vec4(vertex, 0, 1);
     texture_position_for_fs = texture_position;
 }
 ''',
@@ -56,19 +57,11 @@ class Renderer:
 
     def __init__(self, w, h):
         self.w, self.h = w, h
-        self.do_layout()
         self.program = ShaderProgram(*textured_shaders)
         chars = '0123456789'
-        sprite_vecs = list(s[0] for s in self.program.sprites.positions_for(((x, False, False) for x in chars)))
-        rv = rectangle_vertices()
-        # import pprint
-        # pprint.pprint(sprite_vecs)
-        # self.program.sprites.display_layer(0)
-        # raise SystemExit(0)
-        texc = rectangle_uv(*(sprite_vecs[4]))
-        with self.program:
-            self.program.set_attribute_data('vertex', rv)
-            self.program.set_attribute_data('texture_position', texc, items_per_attribute_value=3)
+        sprite_vecs = (s[0] for s in self.program.sprites.positions_for(((x, False, False) for x in chars)))
+        self.sprite_map = {i: v for i, v in enumerate(sprite_vecs)}
+        self.do_layout()
 
     def on_resize(self, window, w, h):
         gl.glViewport(0, 0, w, h)
@@ -78,12 +71,31 @@ class Renderer:
     def do_layout(self):
         # Divide into cells
         cell_width, cell_height = cell_size()
-        self.cells_per_line = self.w // cell_width
-        self.lines_per_screen = self.h // cell_height
+        xnum = self.w // cell_width
+        ynum = self.h // cell_height
+        vertices = (gl.GLfloat * (xnum * ynum * 12))()
+        uv = (gl.GLfloat * (xnum * ynum * 18))()
+        num = 0
+        for r in range(ynum):
+            aoff = r * xnum * 12
+            uoff = r * xnum * 18
+            for c in range(xnum):
+                off = aoff + c * 12
+                vertices[off:off + 12] = rectangle_vertices(left=c, top=r, right=c + 1, bottom=r + 1)
+                sprite_pos = self.sprite_map[num % 10]
+                off = uoff + c * 18
+                uv[off:off + 18] = rectangle_uv(*sprite_pos)
+                num += 1
+        self.transform = ortho_matrix(right=xnum, bottom=ynum)
+        with self.program:
+            self.program.set_attribute_data('vertex', vertices)
+            self.program.set_attribute_data('texture_position', uv, items_per_attribute_value=3)
+        self.num_vertices = len(vertices) // 2
 
     def render(self):
         with self.program:
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
+            gl.glUniformMatrix4fv(self.program.uniform_location('transform'), 1, gl.GL_TRUE, self.transform)
+            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.num_vertices)
 
 
 def _main():
@@ -123,8 +135,8 @@ def _main():
         glfw.glfwDestroyWindow(window)
 
 
-def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
-    return array(
+def rectangle_vertices(left=0, top=0, right=1, bottom=1):
+    return (
         right, top,
         right, bottom,
         left, bottom,
@@ -135,7 +147,7 @@ def rectangle_vertices(left=-0.8, top=0.8, right=0.8, bottom=-0.8):
 
 
 def rectangle_uv(left=0., top=1., right=1., bottom=0., z=0.):
-    return array(
+    return (
         right, top, z,
         right, bottom, z,
         left, bottom, z,
@@ -143,27 +155,6 @@ def rectangle_uv(left=0., top=1., right=1., bottom=0., z=0.):
         left, bottom, z,
         left, top, z
     )
-
-
-def texture_data():
-    cell = render_cell('K')[0]
-    w, h = cell_size()
-    return cell, w, h
-
-
-def rectangle_texture(program=None):
-    if program is None:
-        program = ShaderProgram(*textured_shaders)
-        img_data, w, h = texture_data()
-        with program:
-            program.set_2d_texture('tex', img_data, w, h)
-            rv, texc = rectangle_vertices()
-            program.set_attribute_data('vertex', rv)
-            program.set_attribute_data('texture_position', texc)
-        return program
-    else:
-        with program:
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, 6)
 
 
 def on_error(code, msg):

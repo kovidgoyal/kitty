@@ -54,6 +54,25 @@ def multiply(a, b):
     )
 
 
+def ortho_matrix(left=0, right=1, bottom=1, top=0, near=0, far=1):
+    # See https://www.opengl.org/sdk/docs/man2/xhtml/glOrtho.xml
+    def t(a, b):
+        return (a + b) / (a - b)
+    return array(
+        2 / (right - left), 0, 0, -t(right, left),
+        0, 2 / (bottom - top), 0, -t(bottom, top),
+        0, 0, -2 / (far - near), -t(far, near),
+        0, 0, 0, 1
+    )
+
+
+def map_pos(matrix, x, y):
+    return (
+        x * matrix[0] + y * matrix[1] + matrix[3],
+        x * matrix[4] + y * matrix[5] + matrix[7]
+    )
+
+
 class Sprites:
     ''' Maintain sprite sheets of all rendered characters on the GPU as a texture
     array with each texture being a sprite sheet. '''
