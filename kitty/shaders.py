@@ -41,10 +41,10 @@ class Sprites:
         self.dx, self.dy = self.cell_width / self.width, self.cell_height / self.height
         self.texture_id = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-        gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
         self.commit_all_layers()
 
     def positions_for(self, items):
@@ -62,7 +62,9 @@ class Sprites:
 
     def commit_all_layers(self):
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
-        gl.glTexStorage3D(gl.GL_TEXTURE_2D_ARRAY, 1, gl.GL_R8, self.width, self.height, len(self.previous_layers) + 1)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_BASE_LEVEL, 0)
+        gl.glTexParameteri(gl.GL_TEXTURE_2D_ARRAY, gl.GL_TEXTURE_MAX_LEVEL, 0)
+        gl.glTexImage3D(gl.GL_TEXTURE_2D_ARRAY, 0, gl.GL_R8, self.width, self.height, len(self.previous_layers) + 1, 0, gl.GL_RED, gl.GL_UNSIGNED_BYTE, None)
         for i, buf in enumerate(self.previous_layers):
             self.commit_layer(i, buf, bind=False)
         self.commit_layer(bind=False)
