@@ -6,7 +6,7 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, GL_VERSION, Sprites
+from kitty.shaders import ShaderProgram, GL_VERSION, Sprites, check_for_required_extensions
 from kitty.fonts import set_font_family, cell_size
 
 textured_shaders = (
@@ -148,6 +148,7 @@ def _main():
         raise SystemExit("glfwCreateWindow failed")
     glfw.glfwMakeContextCurrent(window)
     glfw.glfwSwapInterval(1)
+    check_for_required_extensions()
 
     # If everything went well the following calls
     # will display the version of opengl being used
