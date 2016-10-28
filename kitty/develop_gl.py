@@ -17,12 +17,10 @@ uniform vec2 sprite_layout;  // dx, dy
 uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
 out vec3 sprite_pos;
 
-const uvec2 pos_map[] = uvec2[6](
+const uvec2 pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
     uvec2(1, 1),  // right, bottom
     uvec2(0, 1),  // left, bottom
-    uvec2(1, 0),  // right, top,
-    uvec2(0, 1),  // left, bottom,
     uvec2(0, 0)   // left, top
 );
 
@@ -114,7 +112,7 @@ class Renderer:
             gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
             gl.glUniform2f(ul('sprite_layout'), *self.sprites.layout)
             with self.sprites:
-                gl.glDrawArraysInstanced(gl.GL_TRIANGLES, 0, 6, self.xnum * self.ynum)
+                gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, self.xnum * self.ynum)
 
 # window setup {{{
 
