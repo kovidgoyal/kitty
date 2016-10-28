@@ -7,6 +7,7 @@ from functools import lru_cache
 from OpenGL.arrays import ArrayDatatype
 import OpenGL.GL as gl
 from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in opengl core >= 4.3
+from OpenGL.GL.ARB.texture_storage import glTexStorage3D  # only present in opengl core >= 4.2
 
 from .fonts import render_cell, cell_size
 
@@ -50,13 +51,9 @@ class Sprites:
         gl.glTexParameteri(tgt, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
         gl.glTexParameteri(tgt, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
         gl.glTexParameteri(tgt, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-        gl.glTexParameteri(tgt, gl.GL_TEXTURE_BASE_LEVEL, 0)
-        gl.glTexParameteri(tgt, gl.GL_TEXTURE_MAX_LEVEL, 0)
         znum = self.z + 1
         width, height = self.xnum * self.cell_width, self.ynum * self.cell_height
-        gl.glTexImage3D(tgt, 0, gl.GL_R8,
-                        width, height, znum,
-                        0, gl.GL_RED, gl.GL_UNSIGNED_BYTE, None)
+        glTexStorage3D(tgt, 1, gl.GL_R8, width, height, znum)
         if self.texture_id is not None:
             ynum = self.ynum
             if self.z == 0:
