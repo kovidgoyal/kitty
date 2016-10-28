@@ -11,30 +11,96 @@ from kitty.fonts import set_font_family, cell_size
 
 textured_shaders = (
     '''\
-in vec2 vertex;
-in vec3 texture_position;
-out vec3 texture_position_for_fs;
+uniform uvec2 dimensions;  // xnum, ynum
+uniform vec4 steps;  // xstart, ystart, dx, dy
+out vec4 color;
+
+const uvec2 pos_map[] = uvec2[6](
+    uvec2(1, 0),  // right, top
+    uvec2(1, 1),  // right, bottom
+    uvec2(0, 1),  // left, bottom
+    uvec2(1, 0),  // right, top,
+    uvec2(0, 1),  // left, bottom,
+    uvec2(0, 0)   // left, top
+);
 
 void main() {
-    gl_Position = vec4(vertex, 0, 1);
-    texture_position_for_fs = texture_position;
+    uint r = uint(gl_InstanceID) / dimensions[0];
+    uint c = uint(gl_InstanceID) - r * dimensions[0];
+    float left = steps[0] + c * steps[2];
+    float top = steps[1] - r * steps[3];
+    vec2 xpos = vec2(left, left + steps[2]);
+    vec2 ypos = vec2(top, top - steps[3]);
+    uvec2 pos = pos_map[gl_VertexID];
+    gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
+    color = vec4(mod(gl_InstanceID, 2), 1, 1, 1);
 }
 ''',
 
     '''\
 uniform sampler2DArray sprites;
 uniform vec3 sprite_scale;
-in vec3 texture_position_for_fs;
+in vec4 color;
 out vec4 final_color;
 const vec3 background = vec3(0, 0, 1);
 const vec3 foreground = vec3(0, 1, 0);
 
 void main() {
-    float alpha = texture(sprites, texture_position_for_fs / sprite_scale).r;
-    vec3 color = background * (1 - alpha) + foreground * alpha;
-    final_color = vec4(color, 1);
+    // float alpha = texture(sprites, texture_position_for_fs / sprite_scale).r;
+    // vec3 color = background * (1 - alpha) + foreground * alpha;
+    // final_color = vec4(color, 1);
+    final_color = color;
 }
 ''')
+
+
+def rectangle_uv(left=0, top=0, right=1, bottom=1):
+    return (
+        right, top,
+        right, bottom,
+        left, bottom,
+        right, top,
+        left, bottom,
+        left, top,
+    )
+
+
+def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
+    xnum = screen_width // cell_width
+    ynum = screen_height // cell_height
+    dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
+    xmargin = (screen_width - (xnum * cell_width)) / screen_width
+    ymargin = (screen_height - (ynum * cell_height)) / screen_height
+    xstart = -1 + xmargin
+    ystart = 1 - ymargin
+    return xnum, ynum, xstart, ystart, dx, dy
+
+
+class Renderer:
+
+    def __init__(self, w, h):
+        self.w, self.h = w, h
+        self.program = ShaderProgram(*textured_shaders)
+        self.sprites = Sprites()
+        self.do_layout()
+
+    def on_resize(self, window, w, h):
+        gl.glViewport(0, 0, w, h)
+        self.w, self.h = w, h
+        self.do_layout()
+
+    def do_layout(self):
+        # Divide into cells
+        cell_width, cell_height = cell_size()
+        self.xnum, self.ynum, self.xstart, self.ystart, self.dx, self.dy = calculate_vertices(cell_width, cell_height, self.w, self.h)
+
+    def render(self):
+        with self.program:
+            gl.glUniform2ui(self.program.uniform_location('dimensions'), self.xnum, self.ynum)
+            gl.glUniform4f(self.program.uniform_location('steps'), self.xstart, self.ystart, self.dx, self.dy)
+            gl.glDrawArraysInstanced(gl.GL_TRIANGLES, 0, 6, self.xnum * self.ynum)
+
+# window setup {{{
 
 
 def key_callback(key, action):
@@ -50,67 +116,6 @@ def gl_get_unicode(k):
         except Exception:
             ans = repr(ans)
     return ans
-
-
-def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
-    xnum = screen_width // cell_width
-    ynum = screen_height // cell_height
-    vertices = (gl.GLfloat * (xnum * ynum * 12))()
-    dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
-    xmargin = (screen_width - (xnum * cell_width)) / screen_width
-    ymargin = (screen_height - (ynum * cell_height)) / screen_height
-    xstart = -1 + xmargin
-    ystart = 1 - ymargin
-    vmap = {}
-    for r in range(ynum):
-        aoff = r * xnum * 12
-        top = ystart - r * dy
-        for c in range(xnum):
-            left = xstart + c * dx
-            off = aoff + c * 12
-            vertices[off:off + 12] = vmap[(r, c)] = rectangle_vertices(left=left, top=top, right=left + dx, bottom=top - dy)
-    return vertices, xnum, ynum, vmap
-
-
-class Renderer:
-
-    def __init__(self, w, h):
-        self.w, self.h = w, h
-        self.program = ShaderProgram(*textured_shaders)
-        self.sprites = Sprites()
-        chars = '0123456789'
-        sprite_vecs = (s[0] for s in self.sprites.positions_for(((x, False, False) for x in chars)))
-        self.sprite_map = {i: v for i, v in enumerate(sprite_vecs)}
-        self.do_layout()
-
-    def on_resize(self, window, w, h):
-        gl.glViewport(0, 0, w, h)
-        self.w, self.h = w, h
-        self.do_layout()
-
-    def do_layout(self):
-        # Divide into cells
-        cell_width, cell_height = cell_size()
-        vertices, xnum, ynum = calculate_vertices(cell_width, cell_height, self.w, self.h)[:3]
-        uv = (gl.GLfloat * (xnum * ynum * 18))()
-        num = 0
-        for r in range(ynum):
-            uoff = r * xnum * 18
-            for c in range(xnum):
-                sprite_pos = self.sprite_map[num % 10]
-                off = uoff + c * 18
-                uv[off:off + 18] = rectangle_uv(*sprite_pos)
-                num += 1
-        with self.program:
-            self.program.set_attribute_data('vertex', vertices)
-            self.program.set_attribute_data('texture_position', uv, items_per_attribute_value=3)
-        self.num_vertices = len(vertices) // 2
-
-    def render(self):
-        with self.program, self.sprites:
-            gl.glUniform1i(self.program.uniform_location('sprites'), self.sprites.sampler_num)
-            gl.glUniform3f(self.program.uniform_location('sprite_scale'), self.sprites.xnum, self.sprites.ynum, 1)
-            gl.glDrawArrays(gl.GL_TRIANGLES, 0, self.num_vertices)
 
 
 def _main():
@@ -150,28 +155,6 @@ def _main():
         glfw.glfwDestroyWindow(window)
 
 
-def rectangle_vertices(left=0, top=0, right=1, bottom=1):
-    return (
-        right, top,
-        right, bottom,
-        left, bottom,
-        right, top,
-        left, bottom,
-        left, top
-    )
-
-
-def rectangle_uv(left=0., top=1., right=1., bottom=0., z=0.):
-    return (
-        right, top, z,
-        right, bottom, z,
-        left, bottom, z,
-        right, top, z,
-        left, bottom, z,
-        left, top, z
-    )
-
-
 def on_error(code, msg):
     if isinstance(msg, bytes):
         try:
@@ -190,3 +173,4 @@ def main():
         _main()
     finally:
         glfw.glfwTerminate()
+# }}}
