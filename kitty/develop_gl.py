@@ -13,7 +13,9 @@ textured_shaders = (
     '''\
 uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
-out vec4 color;
+uniform vec2 sprite_layout;  // dx, dy
+uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
+out vec3 sprite_pos;
 
 const uvec2 pos_map[] = uvec2[6](
     uvec2(1, 0),  // right, top
@@ -25,31 +27,35 @@ const uvec2 pos_map[] = uvec2[6](
 );
 
 void main() {
-    uint r = uint(gl_InstanceID) / dimensions[0];
-    uint c = uint(gl_InstanceID) - r * dimensions[0];
+    uint instance_id = uint(gl_InstanceID);
+    uint r = instance_id / dimensions[0];
+    uint c = instance_id - r * dimensions[0];
     float left = steps[0] + c * steps[2];
     float top = steps[1] - r * steps[3];
     vec2 xpos = vec2(left, left + steps[2]);
     vec2 ypos = vec2(top, top - steps[3]);
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
-    color = vec4(mod(gl_InstanceID, 2), 1, 1, 1);
+
+    uvec4 spos = texelFetch(sprite_map, int(instance_id));
+    vec2 s_xpos = vec2(spos[0], spos[0] + 1.0) * sprite_layout[0];
+    vec2 s_ypos = vec2(spos[1], spos[1] + 1.0) * sprite_layout[1];
+    sprite_pos = vec3(s_xpos[pos[0]], s_ypos[pos[1]], spos[2]);
 }
 ''',
 
     '''\
 uniform sampler2DArray sprites;
-uniform vec3 sprite_scale;
-in vec4 color;
+in vec3 sprite_pos;
 out vec4 final_color;
+
 const vec3 background = vec3(0, 0, 1);
 const vec3 foreground = vec3(0, 1, 0);
 
 void main() {
-    // float alpha = texture(sprites, texture_position_for_fs / sprite_scale).r;
-    // vec3 color = background * (1 - alpha) + foreground * alpha;
-    // final_color = vec4(color, 1);
-    final_color = color;
+    float alpha = texture(sprites, sprite_pos).r;
+    vec3 color = background * (1 - alpha) + foreground * alpha;
+    final_color = vec4(color, 1);
 }
 ''')
 
@@ -93,12 +99,22 @@ class Renderer:
         # Divide into cells
         cell_width, cell_height = cell_size()
         self.xnum, self.ynum, self.xstart, self.ystart, self.dx, self.dy = calculate_vertices(cell_width, cell_height, self.w, self.h)
+        data = (gl.GLuint * (self.xnum * self.ynum * 3))()
+        for i in range(0, self.xnum * self.ynum * 3, 3):
+            c = '%d' % ((i // 3) % 10)
+            data[i:i+3] = self.sprites.primary_sprite_position(c)
+        self.sprites.set_sprite_map(data)
 
     def render(self):
         with self.program:
-            gl.glUniform2ui(self.program.uniform_location('dimensions'), self.xnum, self.ynum)
-            gl.glUniform4f(self.program.uniform_location('steps'), self.xstart, self.ystart, self.dx, self.dy)
-            gl.glDrawArraysInstanced(gl.GL_TRIANGLES, 0, 6, self.xnum * self.ynum)
+            ul = self.program.uniform_location
+            gl.glUniform2ui(ul('dimensions'), self.xnum, self.ynum)
+            gl.glUniform4f(ul('steps'), self.xstart, self.ystart, self.dx, self.dy)
+            gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
+            gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
+            gl.glUniform2f(ul('sprite_layout'), *self.sprites.layout)
+            with self.sprites:
+                gl.glDrawArraysInstanced(gl.GL_TRIANGLES, 0, 6, self.xnum * self.ynum)
 
 # window setup {{{
 

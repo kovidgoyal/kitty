@@ -23,12 +23,16 @@ class Sprites:
     ''' Maintain sprite sheets of all rendered characters on the GPU as a texture
     array with each texture being a sprite sheet. '''
 
+    # TODO: Rewrite this class using the ARB_shader_image_load_store and ARB_shader_storage_buffer_object
+    # extensions one they become available.
+
     def __init__(self, texture_unit=0):
         self.sampler_num = texture_unit
+        self.buffer_sampler_num = texture_unit + 1
         self.first_cell_cache = {}
         self.second_cell_cache = {}
         self.x = self.y = self.z = 0
-        self.texture_id = None
+        self.texture_id = self.buffer_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
 
     def do_layout(self):
@@ -38,8 +42,11 @@ class Sprites:
         self.cell_width, self.cell_height = cell_size()
         self.xnum = self.max_texture_size // self.cell_width
         self.max_y = self.max_texture_size // self.cell_height
-        # self.xnum, self.max_y = 2, 2
         self.ynum = 1
+
+    @property
+    def layout(self):
+        return 1 / self.xnum, 1 / self.ynum
 
     def realloc_texture(self):
         if self.texture_id is None:
@@ -65,21 +72,13 @@ class Sprites:
         self.texture_id = tex
         gl.glBindTexture(tgt, 0)
 
-    def positions_for(self, items):
-        ''' Yield 2, 5-tuples (left, top, right, bottom, z) pointing to the
-        desired sprite and its second sprite if it is a wide character. '''
-        for key in items:
-            first = self.first_cell_cache.get(key)
-            if first is None:
-                first, second = render_cell(*key)
-                self.first_cell_cache[key] = first = self.add_sprite(first)
-                if second is not None:
-                    self.second_cell_cache[key] = self.add_sprite(second)
-            yield first, self.second_cell_cache.get(key)
-
     def add_sprite(self, buf):
         if self.texture_id is None:
             self.realloc_texture()
+        if self.buffer_id is None:
+            self.buffer_id = gl.glGenBuffers(1)
+            self.buffer_texture_id = gl.glGenTextures(1)
+            self.buffer_texture_unit = getattr(gl, 'GL_TEXTURE%d' % self.buffer_sampler_num)
         tgt = gl.GL_TEXTURE_2D_ARRAY
         gl.glBindTexture(tgt, self.texture_id)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
@@ -87,8 +86,8 @@ class Sprites:
         gl.glTexSubImage3D(tgt, 0, x, y, self.z, self.cell_width, self.cell_height, 1, gl.GL_RED, gl.GL_UNSIGNED_BYTE, buf)
         gl.glBindTexture(tgt, 0)
 
-        # UV space co-ordinates
-        left, top, z = self.x, self.y, self.z
+        # co-ordinates for this sprite in the sprite sheet
+        x, y, z = self.x, self.y, self.z
 
         # Now increment the current cell position
         self.x += 1
@@ -100,14 +99,46 @@ class Sprites:
                 self.y = 0
                 self.z += 1
             self.realloc_texture()  # we allocate a row at a time
-        return left, top, left + 1, top + 1, z
+        return x, y, z
+
+    def set_sprite_map(self, data):
+        tgt = gl.GL_TEXTURE_BUFFER
+        gl.glBindBuffer(tgt, self.buffer_id)
+        gl.glBufferData(tgt, ArrayDatatype.arrayByteCount(data), data, gl.GL_STATIC_DRAW)
+        gl.glBindBuffer(tgt, 0)
+
+    def primary_sprite_position(self, text, bold=False, italic=False):
+        ' Return a 3-tuple (x, y, z) giving the position of this sprite on the sprite sheet '
+        key = text, bold, italic
+        first = self.first_cell_cache.get(key)
+        if first is None:
+            first, second = render_cell(text, bold, italic)
+            self.first_cell_cache[key] = first = self.add_sprite(first)
+            if second is not None:
+                self.second_cell_cache[key] = self.add_sprite(second)
+        return first
+
+    def secondary_sprite_position(self, text, bold=False, italic=False):
+        key = text, bold, italic
+        ans = self.second_cell_cache.get(key)
+        if ans is None:
+            self.primary_sprite_position(text, bold, italic)
+            ans = self.second_cell_cache.get(key)
+            if ans is None:
+                return 0, 0, 0
+        return ans
 
     def __enter__(self):
         gl.glActiveTexture(self.texture_unit)
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
 
+        gl.glActiveTexture(self.buffer_texture_unit)
+        gl.glBindTexture(gl.GL_TEXTURE_BUFFER, self.buffer_texture_id)
+        gl.glTexBuffer(gl.GL_TEXTURE_BUFFER, gl.GL_RGB32UI, self.buffer_id)
+
     def __exit__(self, *a):
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, 0)
+        gl.glBindTexture(gl.GL_TEXTURE_BUFFER, 0)
 
 
 class ShaderProgram:
@@ -132,11 +163,10 @@ class ShaderProgram:
             gl.glDeleteProgram(self.program_id)
             gl.glDeleteShader(vs_id)
             gl.glDeleteShader(frag_id)
-            raise ValueError('Error linking shader program: %s' % info)
+            raise ValueError('Error linking shader program: \n%s' % info.decode('utf-8'))
         gl.glDeleteShader(vs_id)
         gl.glDeleteShader(frag_id)
         self.vao_id = gl.glGenVertexArrays(1)
-        self.attribute_buffers = {}
 
     def __hash__(self) -> int:
         return self.program_id
@@ -156,7 +186,7 @@ class ShaderProgram:
             gl.glCompileShader(shader_id)
             if gl.glGetShaderiv(shader_id, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
                 info = gl.glGetShaderInfoLog(shader_id)
-                raise ValueError('GLSL Shader compilation failed: %s' % info)
+                raise ValueError('GLSL Shader compilation failed: \n%s' % info.decode('utf-8'))
             return shader_id
         except Exception:
             gl.glDeleteShader(shader_id)
@@ -178,29 +208,6 @@ class ShaderProgram:
         self.is_active = True
 
     def __exit__(self, *args):
-        gl.glBindVertexArray(0)
         gl.glUseProgram(0)
+        gl.glBindVertexArray(0)
         self.is_active = False
-
-    def set_attribute_data(self, attribute_name, data, items_per_attribute_value=2, divisor=None, normalize=False):
-        if not self.is_active:
-            raise RuntimeError('The program must be active before you can add buffers')
-        if len(data) % items_per_attribute_value != 0:
-            raise ValueError('The length of the data buffer is not a multiple of the items_per_attribute_value')
-        buf_id = self.attribute_buffers.get(attribute_name)  # glBufferData auto-deletes previous data
-        if buf_id is None:
-            buf_id = self.attribute_buffers[attribute_name] = gl.glGenBuffers(1)
-        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, buf_id)
-        gl.glBufferData(gl.GL_ARRAY_BUFFER, ArrayDatatype.arrayByteCount(data), data, gl.GL_STATIC_DRAW)
-        loc = self.attribute_location(attribute_name)
-        gl.glEnableVertexAttribArray(loc)
-        typ = {
-            gl.GLfloat: gl.GL_FLOAT,
-            gl.GLubyte: gl.GL_UNSIGNED_BYTE,
-            gl.GLuint: gl.GL_UNSIGNED_INT,
-        }[data._type_]
-        gl.glVertexAttribPointer(
-            loc, items_per_attribute_value, typ, gl.GL_TRUE if normalize else gl.GL_FALSE, 0, None
-        )
-        if divisor is not None:
-            gl.glVertexBindingDivisor(loc, divisor)
