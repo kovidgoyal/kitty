@@ -8,6 +8,7 @@ import re
 import ctypes
 from collections import namedtuple
 from functools import lru_cache
+from threading import Lock
 
 from freetype import (
     Face, FT_LOAD_RENDER, FT_LOAD_TARGET_NORMAL, FT_LOAD_TARGET_LIGHT,
@@ -111,6 +112,9 @@ def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
     return int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
 
 
+freetype_lock = Lock()
+
+
 def render_char(text, bold=False, italic=False, size_in_pts=None):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
@@ -123,27 +127,28 @@ def render_char(text, bold=False, italic=False, size_in_pts=None):
         key = 'bi' if italic else 'bold'
     elif italic:
         key = 'italic'
-    font = current_font_family.get(key) or current_font_family['regular']
-    face = font.face
-    if not face.get_char_index(ord(text[0])):
-        face = face_for_char(text[0], bold, italic)
-    face.set_char_size(width=sz, height=sz, hres=dpi[0], vres=dpi[1])
-    flags = FT_LOAD_RENDER
-    if font.hinting:
-        if font.hintstyle >= 3:
-            flags |= FT_LOAD_TARGET_NORMAL
-        elif 0 < font.hintstyle < 3:
-            flags |= FT_LOAD_TARGET_LIGHT
-    else:
-        flags |= FT_LOAD_NO_HINTING
-    face.load_char(text, flags)
-    bitmap = face.glyph.bitmap
-    if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
-        raise ValueError(
-            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
-    m = face.glyph.metrics
-    return CharBitmap(bitmap.buffer, min(int(abs(m.horiBearingX) / 64), bitmap.width),
-                      min(int(abs(m.horiBearingY) / 64), bitmap.rows), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
+    with freetype_lock:
+        font = current_font_family.get(key) or current_font_family['regular']
+        face = font.face
+        if not face.get_char_index(ord(text[0])):
+            face = face_for_char(text[0], bold, italic)
+        face.set_char_size(width=sz, height=sz, hres=dpi[0], vres=dpi[1])
+        flags = FT_LOAD_RENDER
+        if font.hinting:
+            if font.hintstyle >= 3:
+                flags |= FT_LOAD_TARGET_NORMAL
+            elif 0 < font.hintstyle < 3:
+                flags |= FT_LOAD_TARGET_LIGHT
+        else:
+            flags |= FT_LOAD_NO_HINTING
+        face.load_char(text, flags)
+        bitmap = face.glyph.bitmap
+        if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
+            raise ValueError(
+                'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
+        m = face.glyph.metrics
+        return CharBitmap(bitmap.buffer, min(int(abs(m.horiBearingX) / 64), bitmap.width),
+                          min(int(abs(m.horiBearingY) / 64), bitmap.rows), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
 
 
 def is_wide_char(bitmap_char):
