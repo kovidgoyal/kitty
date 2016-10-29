@@ -16,6 +16,8 @@ uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
 out vec3 sprite_pos;
+out vec4 foreground;
+out vec4 background;
 
 const uvec2 pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
@@ -35,25 +37,26 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
 
-    uvec4 spos = texelFetch(sprite_map, int(instance_id));
+    int sprite_id = int(instance_id) * 3;
+    uvec4 spos = texelFetch(sprite_map, sprite_id);
     vec2 s_xpos = vec2(spos[0], spos[0] + 1.0) * sprite_layout[0];
     vec2 s_ypos = vec2(spos[1], spos[1] + 1.0) * sprite_layout[1];
     sprite_pos = vec3(s_xpos[pos[0]], s_ypos[pos[1]], spos[2]);
+    foreground = texelFetch(sprite_map, sprite_id + 1) / 255.0;
+    background = texelFetch(sprite_map, sprite_id + 2) / 255.0;
 }
 ''',
 
     '''\
 uniform sampler2DArray sprites;
 in vec3 sprite_pos;
+in vec4 foreground;
+in vec4 background;
 out vec4 final_color;
-
-const vec3 background = vec3(0, 0, 1);
-const vec3 foreground = vec3(0, 1, 0);
 
 void main() {
     float alpha = texture(sprites, sprite_pos).r;
-    vec3 color = background * (1 - alpha) + foreground * alpha;
-    final_color = vec4(color, 1);
+    final_color = background * (1 - alpha) + foreground * alpha;
 }
 ''')
 
@@ -84,6 +87,11 @@ class Renderer:
 
     def __init__(self, w, h):
         self.w, self.h = w, h
+        self.color_pairs = [
+            ((255, 255, 255), (0, 0, 0)),
+            ((0, 0, 0), (255, 255, 255)),
+            ((255, 255, 0), (0, 0, 255)),
+        ]
         self.program = ShaderProgram(*textured_shaders)
         self.sprites = Sprites()
         self.do_layout()
@@ -97,10 +105,13 @@ class Renderer:
         # Divide into cells
         cell_width, cell_height = cell_size()
         self.xnum, self.ynum, self.xstart, self.ystart, self.dx, self.dy = calculate_vertices(cell_width, cell_height, self.w, self.h)
-        data = (gl.GLuint * (self.xnum * self.ynum * 3))()
-        for i in range(0, self.xnum * self.ynum * 3, 3):
-            c = '%d' % ((i // 3) % 10)
+        data = (gl.GLuint * (self.xnum * self.ynum * 9))()
+        for i in range(0, len(data), 9):
+            idx = i // 9
+            c = '%d' % (idx % 10)
             data[i:i+3] = self.sprites.primary_sprite_position(c)
+            fg, bg = self.color_pairs[idx % 3]
+            data[i+3:i+9] = fg + bg
         self.sprites.set_sprite_map(data)
 
     def render(self):
