@@ -4,11 +4,9 @@
 
 import os
 import io
-import select
 import signal
-import struct
-from threading import Thread
-from queue import Queue, Empty
+import asyncio
+from threading import Thread, current_thread
 
 import glfw
 from pyte.streams import Stream, DebugStream
@@ -17,15 +15,6 @@ from .char_grid import CharGrid
 from .screen import Screen
 from .tracker import ChangeTracker
 from .utils import resize_pty, create_pty
-
-
-def handle_unix_signals():
-    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, lambda x, y: None)
-        signal.siginterrupt(sig, False)
-    signal.set_wakeup_fd(write_fd)
-    return read_fd
 
 
 class Boss(Thread):
@@ -37,19 +26,19 @@ class Boss(Thread):
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.child_fd = create_pty()[0]
+        self.loop = asyncio.get_event_loop()
+        self.loop.add_signal_handler(signal.SIGINT, lambda: self.loop.call_soon_threadsafe(self.shutdown))
+        self.loop.add_signal_handler(signal.SIGTERM, lambda: self.loop.call_soon_threadsafe(self.shutdown))
+        self.loop.add_reader(self.child_fd, self.read_ready)
+        self.queue_action = self.loop.call_soon_threadsafe
         self.window, self.opts = window, opts
-        self.action_queue = Queue()
-        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
         self.tracker = ChangeTracker(self.mark_dirtied)
         self.screen = Screen(self.opts, self.tracker, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
-        self.child_fd = create_pty()[0]
-        self.signal_fd = handle_unix_signals()
-        self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
-        self.writers = [self.child_fd]
         resize_pty(80, 24)
 
     def on_window_resize(self, window, w, h):
@@ -67,10 +56,6 @@ class Boss(Thread):
         self.char_grid.apply_opts(self.opts)
         self.char_grid.dirty_everything()
 
-    def queue_action(self, func, *args):
-        self.action_queue.put((func, args))
-        self.wakeup()
-
     def render(self):
         if self.pending_title_change is not None:
             glfw.glfwSetWindowTitle(self.window, self.pending_title_change)
@@ -79,46 +64,15 @@ class Boss(Thread):
             self.pending_icon_change = None  # TODO: Implement this
         self.char_grid.render()
 
-    def wakeup(self):
-        os.write(self.write_wakeup_fd, b'1')
-
-    def on_wakeup(self):
-        try:
-            os.read(self.read_wakeup_fd, 1024)
-        except (EnvironmentError, BlockingIOError):
-            pass
-        while not self.shutting_down:
-            try:
-                func, args = self.action_queue.get_nowait()
-            except Empty:
-                break
-            func(*args)
-
     def run(self):
-        while not self.shutting_down:
-            readers, writers, _ = select.select(self.readers, self.writers if self.write_buf else [], [])
-            for r in readers:
-                if r is self.child_fd:
-                    self.read_ready()
-                elif r is self.read_wakeup_fd:
-                    self.on_wakeup()
-                elif r is self.signal_fd:
-                    self.signal_received()
-            if writers:
-                self.write_ready()
-
-    def signal_received(self):
         try:
-            data = os.read(self.signal_fd, 1024)
-        except BlockingIOError:
-            return
-        if data:
-            signals = struct.unpack('%uB' % len(data), data)
-            if signal.SIGINT in signals or signal.SIGTERM in signals:
-                self.shutdown()
+            self.loop.run_forever()
+        finally:
+            self.loop.close()
 
     def shutdown(self):
         self.shutting_down = True
+        self.loop.stop()
         glfw.glfwSetWindowShouldClose(self.window, True)
         glfw.glfwPostEmptyEvent()
 
@@ -143,13 +97,18 @@ class Boss(Thread):
                 if not n:
                     return
                 self.write_buf = self.write_buf[n:]
+            self.loop.remove_writer(self.child_fd)
 
     def write_to_child(self, data):
         if data:
-            self.queue_action(self.queue_write, data)
+            if current_thread() is self:
+                self.queue_write(data)
+            else:
+                self.queue_action(self.queue_write, data)
 
     def queue_write(self, data):
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
+        self.loop.add_writer(self.child_fd, self.write_ready)
 
     def mark_dirtied(self):
         self.queue_action(self.update_screen)
