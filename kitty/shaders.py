@@ -199,7 +199,7 @@ class ShaderProgram:
             gl.glCompileShader(shader_id)
             if gl.glGetShaderiv(shader_id, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
                 info = gl.glGetShaderInfoLog(shader_id)
-                raise ValueError('GLSL Shader compilation failed: \n%s' % info.decode('utf-8'))
+                raise ValueError('GLSL {} compilation failed: \n{}'.format(shader_type, info.decode('utf-8')))
             return shader_id
         except Exception:
             gl.glDeleteShader(shader_id)
