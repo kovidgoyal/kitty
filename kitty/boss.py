@@ -93,7 +93,10 @@ class Boss(Thread):
     def write_ready(self):
         if not self.shutting_down:
             while self.write_buf:
-                n = os.write(self.child_fd, self.write_buf)
+                try:
+                    n = os.write(self.child_fd, self.write_buf)
+                except BlockingIOError:
+                    n = 0
                 if not n:
                     return
                 self.write_buf = self.write_buf[n:]
