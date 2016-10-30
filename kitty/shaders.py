@@ -9,7 +9,7 @@ import OpenGL.GL as gl
 from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in opengl core >= 4.3
 from OpenGL.GL.ARB.texture_storage import glTexStorage3D  # only present in opengl core >= 4.2
 
-from .fonts import render_cell, cell_size
+from .fonts import render_cell
 from .data_types import ITALIC_MASK, BOLD_MASK
 
 GL_VERSION = (3, 3)
@@ -50,14 +50,22 @@ class Sprites:
         self.texture_id = self.buffer_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
 
-    def do_layout(self):
+    def initialize(self):
         self.texture_unit = getattr(gl, 'GL_TEXTURE%d' % self.sampler_num)
         self.max_array_len = gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS)
         self.max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
-        self.cell_width, self.cell_height = cell_size()
+        self.do_layout(getattr(self, 'cell_width', 1), getattr(self, 'cell_height', 1))
+
+    def do_layout(self, cell_width=1, cell_height=1):
+        self.cell_width, self.cell_height = cell_width or 1, cell_height or 1
+        self.first_cell_cache = {}
+        self.second_cell_cache = {}
         self.xnum = max(1, self.max_texture_size // self.cell_width)
         self.max_y = max(1, self.max_texture_size // self.cell_height)
         self.ynum = 1
+        if self.texture_id is not None:
+            gl.glDeleteTextures([self.texture_id])
+            self.texture_id = None
 
     @property
     def layout(self):
@@ -65,7 +73,7 @@ class Sprites:
 
     def realloc_texture(self):
         if self.texture_id is None:
-            self.do_layout()
+            self.initialize()
         tgt = gl.GL_TEXTURE_2D_ARRAY
         tex = gl.glGenTextures(1)
         gl.glBindTexture(tgt, tex)
@@ -87,13 +95,14 @@ class Sprites:
         self.texture_id = tex
         gl.glBindTexture(tgt, 0)
 
-    def add_sprite(self, buf):
+    def ensure_state(self):
         if self.texture_id is None:
             self.realloc_texture()
-        if self.buffer_id is None:
             self.buffer_id = gl.glGenBuffers(1)
             self.buffer_texture_id = gl.glGenTextures(1)
             self.buffer_texture_unit = getattr(gl, 'GL_TEXTURE%d' % self.buffer_sampler_num)
+
+    def add_sprite(self, buf):
         tgt = gl.GL_TEXTURE_2D_ARRAY
         gl.glBindTexture(tgt, self.texture_id)
         gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
@@ -146,6 +155,7 @@ class Sprites:
         return ans
 
     def __enter__(self):
+        self.ensure_state()
         gl.glActiveTexture(self.texture_unit)
         gl.glBindTexture(gl.GL_TEXTURE_2D_ARRAY, self.texture_id)
 

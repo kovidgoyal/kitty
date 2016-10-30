@@ -167,6 +167,7 @@ class CharGrid:
         self.original_bg = opts.background
         self.original_fg = opts.foreground
         self.cell_width, self.cell_height = set_font_family(opts.font_family, opts.font_size)
+        self.sprites.do_layout(self.cell_width, self.cell_height)
         self.do_layout(self.width, self.height)
 
     def resize_screen(self, w, h):
@@ -264,16 +265,17 @@ class CharGrid:
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
-        cell_data_changed = self.get_all_render_changes()
-        if cell_data_changed:
-            self.update_sprite_map()
-        data = self.last_render_data
-
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        if data.screen_geometry is None:
-            return
-        sg = data.screen_geometry
-        self.render_cells(sg, data.sprite_layout)
+        cell_data_changed = self.get_all_render_changes()
+        with self.sprites:
+            if cell_data_changed:
+                self.update_sprite_map()
+            data = self.last_render_data
+
+            if data.screen_geometry is None:
+                return
+            sg = data.screen_geometry
+            self.render_cells(sg, data.sprite_layout)
         if not data.cursor.hidden:
             self.render_cursor(sg, data.cursor)
 
@@ -311,8 +313,7 @@ class CharGrid:
             gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
             gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
             gl.glUniform2f(ul('sprite_layout'), *sprite_layout)
-            with self.sprites:
-                gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+            gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
     def render_cursor(self, sg, cursor):
 
