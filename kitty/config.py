@@ -198,12 +198,15 @@ def to_bool(x):
     return x.lower() in 'y yes true'.split()
 
 
+def to_opacity(x):
+    return max(0.3, min(float(x), 1))
+
 type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
-    'cursor_opacity': float,
     'cursor_shape': to_cursor_shape,
     'cursor_blink': to_bool,
+    'cursor_opacity': to_opacity,
 }
 
 for name in 'foreground foreground_bold background cursor'.split():
@@ -216,7 +219,8 @@ for line in '''
 term xterm-kitty
 foreground       #dddddd
 foreground_bold  #ffffff
-cursor           #eeeeee
+cursor           #ffffff
+cursor_opacity   0.7
 cursor_shape     block
 cursor_blink     no
 background       #000000

@@ -15,6 +15,7 @@ from .shaders import Sprites, ShaderProgram
 import OpenGL.GL as gl
 
 Size = namedtuple('Size', 'width height')
+Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
 
 # cell shader {{{
@@ -71,6 +72,36 @@ void main() {
 ''')
 # }}}
 
+# cursor shader {{{
+
+cursor_shader = (
+    '''\
+uniform vec2 xpos;
+uniform vec2 ypos;
+
+const uvec2 pos_map[] = uvec2[4](
+    uvec2(1, 0),  // right, top
+    uvec2(1, 1),  // right, bottom
+    uvec2(0, 1),  // left, bottom
+    uvec2(0, 0)   // left, top
+);
+
+void main() {
+    uvec2 pos = pos_map[gl_VertexID];
+    gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
+}
+''',
+
+    '''\
+uniform vec4 color;
+out vec4 final_color;
+
+void main() {
+    final_color = color;
+}
+''')
+# }}}
+
 
 def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
     xnum = screen_width // cell_width
@@ -85,12 +116,13 @@ def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
 
 class RenderData:
 
-    __slots__ = 'viewport clear_color cell_data screen_geometry sprite_layout'.split()
+    __slots__ = 'viewport clear_color cell_data screen_geometry sprite_layout cursor'.split()
 
-    def __init__(self, viewport=None, clear_color=None, cell_data=None, screen_geometry=None, sprite_layout=None):
+    def __init__(self, viewport=None, clear_color=None, cell_data=None, screen_geometry=None, sprite_layout=None, cursor=None):
         self.viewport, self.clear_color, self.cell_data = viewport, clear_color, cell_data
         self.screen_geometry = screen_geometry
         self.sprite_layout = sprite_layout
+        self.cursor = cursor
 
     def update(self, other):
         for k in self.__slots__:
@@ -111,9 +143,14 @@ class CharGrid:
         self.original_fg = opts.foreground
         self.render_queue = Queue()
         self.program = ShaderProgram(*cell_shader)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         self.sprites = Sprites()
+        self.cursor_program = ShaderProgram(*cursor_shader)
         self.last_render_data = RenderData()
-        self.render_queue.put(RenderData(viewport=Size(self.width, self.height), clear_color=self.original_bg))
+        self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
+        self.render_queue.put(RenderData(
+            viewport=Size(self.width, self.height), clear_color=self.original_bg,
+            cursor=self.default_cursor))
 
     def initialize(self):
         self.apply_opts(self.opts)
@@ -122,6 +159,7 @@ class CharGrid:
     def apply_opts(self, opts):
         self.opts = opts
         build_ansi_color_tables(opts)
+        self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
@@ -186,6 +224,9 @@ class CharGrid:
 
             rd.cell_data = copy(self.sprite_map), self.sprite_text[:]
             rd.sprite_layout = self.sprites.layout
+        c = changes.get('cursor')
+        if c is not None:
+            rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
 
     def update_line(self, y, cell_range, fgct, bgct, dffg, dfbg):
@@ -221,6 +262,7 @@ class CharGrid:
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
         cell_data_changed = False
+        data = self.last_render_data
         while True:
             try:
                 rd = self.render_queue.get_nowait()
@@ -232,7 +274,7 @@ class CharGrid:
                 gl.glClearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1)
             if rd.viewport is not None:
                 gl.glViewport(0, 0, self.width, self.height)
-            self.last_render_data.update(rd)
+            data.update(rd)
         if cell_data_changed:
             spmap, sptext = rd.cell_data
             for i, (text, attrs) in enumerate(sptext):
@@ -241,15 +283,31 @@ class CharGrid:
             self.sprites.set_sprite_map(spmap)
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        if self.last_render_data.screen_geometry is None:
+        if data.screen_geometry is None:
             return
+        sg = data.screen_geometry
         with self.program:
             ul = self.program.uniform_location
-            sg = self.last_render_data.screen_geometry
             gl.glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
             gl.glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
             gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
             gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
-            gl.glUniform2f(ul('sprite_layout'), *self.last_render_data.sprite_layout)
+            gl.glUniform2f(ul('sprite_layout'), *data.sprite_layout)
             with self.sprites:
                 gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+
+        if not data.cursor.hidden:
+            self.render_cursor(sg, data.cursor)
+
+    def render_cursor(self, sg, cursor):
+        with self.cursor_program:
+            ul = self.cursor_program.uniform_location
+            left = sg.xstart + cursor.x * sg.dx
+            top = sg.ystart - cursor.y * sg.dy
+            col = cursor.color or self.default_cursor.color
+            gl.glEnable(gl.GL_BLEND)
+            gl.glUniform4f(ul('color'), col[0], col[1], col[2], self.opts.cursor_opacity)
+            gl.glUniform2f(ul('xpos'), left, left + sg.dx)
+            gl.glUniform2f(ul('ypos'), top, top - sg.dy)
+            gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
+            gl.glDisable(gl.GL_BLEND)
