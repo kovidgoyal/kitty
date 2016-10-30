@@ -238,9 +238,9 @@ class CharGrid:
             self.update_cell(line, x, y, fgct, bgct, dffg, dfbg)
 
     def update_cell(self, line, x, y, fgct, bgct, dffg, dfbg):
+        ch, attrs, colors = line.basic_cell_data(x)
         idx = x + y * self.screen_geometry.xnum
         offset = idx * 9
-        ch, attrs, colors = line.basic_cell_data(x)
         bgcol = colors >> COL_SHIFT
         if bgcol:
             bgcol = as_color(bgcol, bgct) or dfbg
