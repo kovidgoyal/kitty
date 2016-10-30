@@ -28,6 +28,7 @@ class Boss(Thread):
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.profile = args.profile
         self.child_fd = create_pty()[0]
         self.loop = asyncio.get_event_loop()
         self.loop.add_signal_handler(signal.SIGINT, lambda: self.loop.call_soon_threadsafe(self.shutdown))
@@ -88,7 +89,17 @@ class Boss(Thread):
         self.char_grid.render()
 
     def run(self):
+        if self.profile:
+            import cProfile
+            import pstats
+            pr = cProfile.Profile()
+            pr.enable()
         self.loop.run_forever()
+        if self.profile:
+            pr.disable()
+            pr.create_stats()
+            s = pstats.Stats(pr)
+            s.dump_stats(self.profile)
 
     def close(self):
         if not self.shutting_down:

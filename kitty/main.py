@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import tempfile
 import os
 import sys
 import pwd
@@ -93,6 +94,8 @@ def main():
         child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
         fork_child(child, args.directory, opts)
         if args.profile:
+            tf = tempfile.NamedTemporaryFile(prefix='kitty-profiling-stats-')
+            args.profile = tf.name
             import cProfile
             import pstats
             pr = cProfile.Profile()
@@ -101,6 +104,8 @@ def main():
             pr.disable()
             pr.create_stats()
             s = pstats.Stats(pr)
+            s.add(args.profile)
+            tf.close()
             s.strip_dirs()
             s.sort_stats('time', 'name')
             s.print_stats(30)
