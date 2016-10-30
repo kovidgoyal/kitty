@@ -23,6 +23,7 @@ class Boss(Thread):
     shutting_down = False
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
+    pending_update_screen = None
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
@@ -36,16 +37,22 @@ class Boss(Thread):
         self.tracker = ChangeTracker(self.mark_dirtied)
         self.screen = Screen(self.opts, self.tracker, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
+        self.queue_action(self.initialize)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
         resize_pty(80, 24)
 
-    def on_window_resize(self, window, w, h):
-        self.queue_action(self.resize_screen, w, h)
+    def initialize(self):
+        self.char_grid.initialize()
+        glfw.glfwPostEmptyEvent()
 
-    def resize_screen(self, w, h):
+    def on_window_resize(self, window, w, h):
+        self.queue_action(self.apply_resize_screen, w, h)
+
+    def apply_resize_screen(self, w, h):
         self.char_grid.resize_screen(w, h)
+        glfw.glfwPostEmptyEvent()
 
     def apply_opts(self, opts):
         self.opts = opts
@@ -65,10 +72,16 @@ class Boss(Thread):
         self.char_grid.render()
 
     def run(self):
-        try:
-            self.loop.run_forever()
-        finally:
-            self.loop.close()
+        self.loop.run_forever()
+
+    def close(self):
+        if not self.shutting_down:
+            self.queue_action(self.shutdown)
+
+    def destroy(self):
+        # Must be called in the main thread
+        self.loop.close()
+        del self.loop
 
     def shutdown(self):
         self.shutting_down = True
@@ -114,11 +127,14 @@ class Boss(Thread):
         self.loop.add_writer(self.child_fd, self.write_ready)
 
     def mark_dirtied(self):
-        self.queue_action(self.update_screen)
+        # Batch screen updates
+        if self.pending_update_screen is None:
+            self.pending_update_screen = self.loop.call_later(0.02, self.apply_update_screen)
 
-    def update_screen(self):
+    def apply_update_screen(self):
+        self.pending_update_screen = None
         changes = self.tracker.consolidate_changes()
-        self.char_grid.update_screen(changes)
+        self.char_grid.update_cell_data(changes)
         glfw.glfwPostEmptyEvent()
 
     def title_changed(self, new_title):
@@ -131,9 +147,9 @@ class Boss(Thread):
 
     def change_default_color(self, which, value):
         self.pending_color_changes[which] = value
-        self.queue_action(self.change_colors)
+        self.queue_action(self.apply_change_colors)
 
-    def change_colors(self):
+    def apply_change_colors(self):
         self.char_grid.change_colors(self.pending_color_changes)
         self.pending_color_changes = {}
         glfw.glfwPostEmptyEvent()

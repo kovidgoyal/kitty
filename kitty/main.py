@@ -57,11 +57,16 @@ def run_app(opts, args):
         boss = Boss(window, window_width, window_height, opts, args)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
         boss.start()
-
-        while not glfw.glfwWindowShouldClose(window):
-            boss.render()
-            glfw.glfwSwapBuffers(window)
-            glfw.glfwWaitEvents()
+        try:
+            while not glfw.glfwWindowShouldClose(window):
+                boss.render()
+                glfw.glfwSwapBuffers(window)
+                glfw.glfwWaitEvents()
+        finally:
+            if boss.is_alive():
+                boss.close()
+                boss.join()
+            boss.destroy()
     finally:
         glfw.glfwDestroyWindow(window)
 

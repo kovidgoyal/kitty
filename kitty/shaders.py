@@ -40,6 +40,7 @@ class Sprites:
     # extensions one they become available.
 
     def __init__(self, texture_unit=0):
+        self.xnum = self.ynum = 1
         self.sampler_num = texture_unit
         self.buffer_sampler_num = texture_unit + 1
         self.first_cell_cache = {}
@@ -53,8 +54,8 @@ class Sprites:
         self.max_array_len = gl.glGetIntegerv(gl.GL_MAX_ARRAY_TEXTURE_LAYERS)
         self.max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
         self.cell_width, self.cell_height = cell_size()
-        self.xnum = self.max_texture_size // self.cell_width
-        self.max_y = self.max_texture_size // self.cell_height
+        self.xnum = max(1, self.max_texture_size // self.cell_width)
+        self.max_y = max(1, self.max_texture_size // self.cell_height)
         self.ynum = 1
 
     @property

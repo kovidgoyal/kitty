@@ -8,57 +8,7 @@ import sys
 
 from kitty.shaders import ShaderProgram, GL_VERSION, Sprites, check_for_required_extensions
 from kitty.fonts import set_font_family, cell_size
-
-textured_shaders = (
-    '''\
-uniform uvec2 dimensions;  // xnum, ynum
-uniform vec4 steps;  // xstart, ystart, dx, dy
-uniform vec2 sprite_layout;  // dx, dy
-uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
-out vec3 sprite_pos;
-out vec4 foreground;
-out vec4 background;
-
-const uvec2 pos_map[] = uvec2[4](
-    uvec2(1, 0),  // right, top
-    uvec2(1, 1),  // right, bottom
-    uvec2(0, 1),  // left, bottom
-    uvec2(0, 0)   // left, top
-);
-
-void main() {
-    uint instance_id = uint(gl_InstanceID);
-    uint r = instance_id / dimensions[0];
-    uint c = instance_id - r * dimensions[0];
-    float left = steps[0] + c * steps[2];
-    float top = steps[1] - r * steps[3];
-    vec2 xpos = vec2(left, left + steps[2]);
-    vec2 ypos = vec2(top, top - steps[3]);
-    uvec2 pos = pos_map[gl_VertexID];
-    gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
-
-    int sprite_id = int(instance_id) * 3;
-    uvec4 spos = texelFetch(sprite_map, sprite_id);
-    vec2 s_xpos = vec2(spos[0], spos[0] + 1.0) * sprite_layout[0];
-    vec2 s_ypos = vec2(spos[1], spos[1] + 1.0) * sprite_layout[1];
-    sprite_pos = vec3(s_xpos[pos[0]], s_ypos[pos[1]], spos[2]);
-    foreground = texelFetch(sprite_map, sprite_id + 1) / 255.0;
-    background = texelFetch(sprite_map, sprite_id + 2) / 255.0;
-}
-''',
-
-    '''\
-uniform sampler2DArray sprites;
-in vec3 sprite_pos;
-in vec4 foreground;
-in vec4 background;
-out vec4 final_color;
-
-void main() {
-    float alpha = texture(sprites, sprite_pos).r;
-    final_color = background * (1 - alpha) + foreground * alpha;
-}
-''')
+from kitty.char_grid import calculate_vertices, cell_shader
 
 
 def rectangle_uv(left=0, top=0, right=1, bottom=1):
@@ -72,17 +22,6 @@ def rectangle_uv(left=0, top=0, right=1, bottom=1):
     )
 
 
-def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
-    xnum = screen_width // cell_width
-    ynum = screen_height // cell_height
-    dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
-    xmargin = (screen_width - (xnum * cell_width)) / screen_width
-    ymargin = (screen_height - (ynum * cell_height)) / screen_height
-    xstart = -1 + xmargin
-    ystart = 1 - ymargin
-    return xnum, ynum, xstart, ystart, dx, dy
-
-
 class Renderer:
 
     def __init__(self, w, h):
@@ -92,7 +31,7 @@ class Renderer:
             ((0, 0, 0), (255, 255, 255)),
             ((255, 255, 0), (0, 0, 255)),
         ]
-        self.program = ShaderProgram(*textured_shaders)
+        self.program = ShaderProgram(*cell_shader)
         self.sprites = Sprites()
         self.do_layout()
 
@@ -104,8 +43,8 @@ class Renderer:
     def do_layout(self):
         # Divide into cells
         cell_width, cell_height = cell_size()
-        self.xnum, self.ynum, self.xstart, self.ystart, self.dx, self.dy = calculate_vertices(cell_width, cell_height, self.w, self.h)
-        data = (gl.GLuint * (self.xnum * self.ynum * 9))()
+        self.screen_geometry = sg = calculate_vertices(cell_width, cell_height, self.w, self.h)
+        data = (gl.GLuint * (sg.xnum * sg.ynum * 9))()
         for i in range(0, len(data), 9):
             idx = i // 9
             c = '%d' % (idx % 10)
@@ -117,13 +56,14 @@ class Renderer:
     def render(self):
         with self.program:
             ul = self.program.uniform_location
-            gl.glUniform2ui(ul('dimensions'), self.xnum, self.ynum)
-            gl.glUniform4f(ul('steps'), self.xstart, self.ystart, self.dx, self.dy)
+            sg = self.screen_geometry
+            gl.glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+            gl.glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
             gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
             gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
             gl.glUniform2f(ul('sprite_layout'), *self.sprites.layout)
             with self.sprites:
-                gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, self.xnum * self.ynum)
+                gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 # window setup {{{
 
