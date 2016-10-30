@@ -6,10 +6,12 @@ import os
 import io
 import signal
 import asyncio
+import subprocess
 from threading import Thread, current_thread
 
 import glfw
 from pyte.streams import Stream, DebugStream
+from pyte import modes as mo
 
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
@@ -46,10 +48,22 @@ class Boss(Thread):
         resize_pty(80, 24)
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
+        glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
 
     def initialize(self):
         self.char_grid.initialize()
         glfw.glfwPostEmptyEvent()
+
+    def on_mouse_button(self, window, button, action, mods):
+        if action == glfw.GLFW_RELEASE:
+            if button == glfw.GLFW_MOUSE_BUTTON_MIDDLE:
+                # glfw has no way to get the primary selection
+                # text = glfw.glfwGetClipboardString(window)
+                text = subprocess.check_output(['xsel'])
+                if text:
+                    if self.screen.in_bracketed_paste_mode:
+                        text = mo.BRACKETED_PASTE_START + text + mo.BRACKETED_PASTE_END
+                    self.write_to_child(text)
 
     def on_key(self, window, key, scancode, action, mods):
         if action == glfw.GLFW_PRESS or action == glfw.GLFW_REPEAT:
