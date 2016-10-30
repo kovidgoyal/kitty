@@ -12,6 +12,7 @@ import glfw
 from pyte.streams import Stream, DebugStream
 
 from .char_grid import CharGrid
+from .keys import interpret_text_event, interpret_key_event
 from .screen import Screen
 from .tracker import ChangeTracker
 from .utils import resize_pty, create_pty
@@ -42,10 +43,23 @@ class Boss(Thread):
         self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
         resize_pty(80, 24)
+        glfw.glfwSetCharModsCallback(window, self.on_text_input)
+        glfw.glfwSetKeyCallback(window, self.on_key)
 
     def initialize(self):
         self.char_grid.initialize()
         glfw.glfwPostEmptyEvent()
+
+    def on_key(self, window, key, scancode, action, mods):
+        if action == glfw.GLFW_PRESS or action == glfw.GLFW_REPEAT:
+            data = interpret_key_event(key, scancode, mods)
+            if data:
+                self.write_to_child(data)
+
+    def on_text_input(self, window, codepoint, mods):
+        data = interpret_text_event(codepoint, mods)
+        if data:
+            self.write_to_child(data)
 
     def on_window_resize(self, window, w, h):
         self.queue_action(self.apply_resize_screen, w, h)

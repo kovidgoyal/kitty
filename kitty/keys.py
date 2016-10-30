@@ -2,82 +2,58 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-
-from PyQt5.QtCore import Qt, QObject, QEvent
-
-CTRL_MASK = 0b10011111
+import glfw
 
 key_map = {
-    Qt.Key_Up: 'OA',
-    Qt.Key_Down: 'OB',
-    Qt.Key_Left: 'OD',
-    Qt.Key_Right: 'OC',
-    Qt.Key_Home: 'OH',
-    Qt.Key_End: 'OF',
-    Qt.Key_Insert: '[2~',
-    Qt.Key_Delete: '[3~',
-    Qt.Key_PageUp: '[5~',
-    Qt.Key_PageDown: '[6~',
-    Qt.Key_F1: 'OP',
-    Qt.Key_F2: 'OQ',
-    Qt.Key_F3: 'OR',
-    Qt.Key_F4: 'OS',
-    Qt.Key_F5: '[15~',
-    Qt.Key_F6: '[17~',
-    Qt.Key_F7: '[18~',
-    Qt.Key_F8: '[19~',
-    Qt.Key_F9: '[20~',
-    Qt.Key_F10: '[21~',
-    Qt.Key_F11: '[23~',
-    Qt.Key_F12: '[24~',
+    glfw.GLFW_KEY_UP: b'OA',
+    glfw.GLFW_KEY_DOWN: b'OB',
+    glfw.GLFW_KEY_LEFT: b'OD',
+    glfw.GLFW_KEY_RIGHT: b'OC',
+    glfw.GLFW_KEY_HOME: b'OH',
+    glfw.GLFW_KEY_END: b'OF',
+    glfw.GLFW_KEY_ESCAPE: b'',
+    glfw.GLFW_KEY_INSERT: b'[2~',
+    glfw.GLFW_KEY_DELETE: b'[3~',
+    glfw.GLFW_KEY_PAGE_UP: b'[5~',
+    glfw.GLFW_KEY_PAGE_DOWN: b'[6~',
+    glfw.GLFW_KEY_F1: b'OP',
+    glfw.GLFW_KEY_F2: b'OQ',
+    glfw.GLFW_KEY_F3: b'OR',
+    glfw.GLFW_KEY_F4: b'OS',
+    glfw.GLFW_KEY_F5: b'[15~',
+    glfw.GLFW_KEY_F6: b'[17~',
+    glfw.GLFW_KEY_F7: b'[18~',
+    glfw.GLFW_KEY_F8: b'[19~',
+    glfw.GLFW_KEY_F9: b'[20~',
+    glfw.GLFW_KEY_F10: b'[21~',
+    glfw.GLFW_KEY_F11: b'[23~',
+    glfw.GLFW_KEY_F12: b'[24~',
 }
+key_map = {k: b'\x1b' + v for k, v in key_map.items()}
+key_map[glfw.GLFW_KEY_ENTER] = b'\n\r'
+key_map[glfw.GLFW_KEY_BACKSPACE] = b'\x08'
+
+control_codes = {k: 1 + i for i, k in enumerate(range(glfw.GLFW_KEY_A, glfw.GLFW_KEY_RIGHT_BRACKET))}
+alt_codes = {k: (0x1b, k) for i, k in enumerate(range(glfw.GLFW_KEY_A, glfw.GLFW_KEY_RIGHT_BRACKET))}
 
 
-def key_event_to_data(ev, mods):
+def interpret_key_event(key, scancode, mods):
     data = bytearray()
-    if mods & Qt.AltModifier:
-        data.append(27)
-    x = key_map.get(ev.key())
-    if x is not None:
-        data.extend(b'\033' + x.encode('ascii'))
+    if mods == glfw.GLFW_MOD_CONTROL and key in control_codes:
+        # Map Ctrl-key to ascii control code
+        data.append(control_codes[key])
+    elif mods == glfw.GLFW_MOD_ALT and key in alt_codes:
+        # Map Alt+key to Esc-key
+        data.extend(alt_codes[key])
     else:
-        t = ev.text()
-        if t:
-            t = t.encode('utf-8')
-            if mods & Qt.ControlModifier and len(t) == 1 and 0 < t[0] & CTRL_MASK < 33:
-                data.append(t[0] & CTRL_MASK)
-            else:
-                data.extend(t)
+        x = key_map.get(key)
+        if x is not None:
+            data.extend(x)
     return bytes(data)
 
 
-class KeyFilter(QObject):
-
-    def __init__(self, parent=None):
-        QObject.__init__(self, parent)
-        self.disabled = False
-
-    @property
-    def disable_filtering(self):
-        return self
-
-    def __enter__(self):
-        self.disabled = True
-
-    def __exit__(self, *args):
-        self.disabled = False
-
-    def eventFilter(self, watched, event):
-        if self.disabled:
-            return False
-        etype = event.type()
-        if etype == QEvent.KeyPress:
-            # We use a global event filter to prevent Qt from re-painting the
-            # entire terminal widget on a Tab key press
-            app = self.parent()
-            window, fw = app.activeWindow(), app.focusWidget()
-            if hasattr(window, 'boss') and fw is window.boss.term:
-                window.boss.term.keyPressEvent(event)
-                if event.isAccepted():
-                    return True
-        return False
+def interpret_text_event(codepoint, mods):
+    if mods > glfw.GLFW_MOD_SHIFT:
+        return b''  # Handled by interpret_key_event above
+    data = chr(codepoint).encode('utf-8')
+    return data

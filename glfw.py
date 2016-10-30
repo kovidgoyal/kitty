@@ -376,6 +376,7 @@ cursorenterfun = CFUNCTYPE(None, POINTER(GLFWwindow), c_int)
 scrollfun = CFUNCTYPE(None, POINTER(GLFWwindow), c_double, c_double)
 keyfun = CFUNCTYPE(None, POINTER(GLFWwindow), c_int, c_int, c_int, c_int)
 charfun = CFUNCTYPE(None, POINTER(GLFWwindow), c_uint)
+charmodsfun = CFUNCTYPE(None, POINTER(GLFWwindow), c_uint, c_int)
 monitorfun = CFUNCTYPE(None, POINTER(GLFWmonitor), c_int)
 
 # --- Init --------------------------------------------------------------------
@@ -505,6 +506,7 @@ def glfwCreateWindow(width=640, height=480, title="GLFW Window",
                                'framebuffersizefun': None,
                                'keyfun': None,
                                'charfun': None,
+                               'charmodsfun': None,
                                'mousebuttonfun': None,
                                'cursorposfun': None,
                                'cursorenterfun': None,
@@ -645,6 +647,7 @@ exec(__callback__('WindowIconify'))
 exec(__callback__('FramebufferSize'))
 exec(__callback__('Key'))
 exec(__callback__('Char'))
+exec(__callback__('CharMods'))
 exec(__callback__('MouseButton'))
 exec(__callback__('CursorPos'))
 exec(__callback__('Scroll'))
