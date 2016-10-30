@@ -11,6 +11,7 @@ from .config import build_ansi_color_tables, to_color, fg_color_table, bg_color_
 from .data_types import COL_MASK, COL_SHIFT, ITALIC_MASK, BOLD_MASK, REVERSE_MASK, as_color
 from .fonts import set_font_family
 from .shaders import Sprites, ShaderProgram
+from .utils import get_logical_dpi
 
 import OpenGL.GL as gl
 
@@ -136,6 +137,7 @@ empty_cell = (' ', 0)
 class CharGrid:
 
     def __init__(self, screen, opts, window_width, window_height):
+        self.dpix, self.dpiy = get_logical_dpi()
         self.width, self.height = window_width, window_height
         self.screen = screen
         self.opts = opts
@@ -157,6 +159,7 @@ class CharGrid:
         self.default_bg, self.default_fg = self.original_bg, self.original_fg
 
     def apply_opts(self, opts):
+        self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
         build_ansi_color_tables(opts)
         self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
@@ -276,7 +279,7 @@ class CharGrid:
                 gl.glViewport(0, 0, self.width, self.height)
             data.update(rd)
         if cell_data_changed:
-            spmap, sptext = rd.cell_data
+            spmap, sptext = data.cell_data
             for i, (text, attrs) in enumerate(sptext):
                 f = i * 9
                 spmap[f:f + 3] = self.sprites.primary_sprite_position(text, attrs & BOLD_MASK, attrs & ITALIC_MASK)
@@ -300,14 +303,28 @@ class CharGrid:
             self.render_cursor(sg, data.cursor)
 
     def render_cursor(self, sg, cursor):
+
+        def width(w=2, vert=True):
+            dpi = self.dpix if vert else self.dpiy
+            w *= dpi / 72.0  # as pixels
+            factor = 2 / (self.width if vert else self.height)
+            return w * factor
+
         with self.cursor_program:
             ul = self.cursor_program.uniform_location
             left = sg.xstart + cursor.x * sg.dx
             top = sg.ystart - cursor.y * sg.dy
             col = cursor.color or self.default_cursor.color
-            gl.glEnable(gl.GL_BLEND)
-            gl.glUniform4f(ul('color'), col[0], col[1], col[2], self.opts.cursor_opacity)
-            gl.glUniform2f(ul('xpos'), left, left + sg.dx)
-            gl.glUniform2f(ul('ypos'), top, top - sg.dy)
+            shape = cursor.shape or self.default_cursor.shape
+            alpha = self.opts.cursor_opacity
+            if alpha < 1.0 and shape == 'block':
+                gl.glEnable(gl.GL_BLEND)
+            right = left + (width(1.5) if shape == 'beam' else sg.dx)
+            bottom = top - sg.dy
+            if shape == 'underline':
+                top = bottom + width(vert=False)
+            gl.glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
+            gl.glUniform2f(ul('xpos'), left, right)
+            gl.glUniform2f(ul('ypos'), top, bottom)
             gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
             gl.glDisable(gl.GL_BLEND)
