@@ -156,7 +156,7 @@ class Boss(Thread):
     def mark_dirtied(self):
         # Batch screen updates
         if self.pending_update_screen is None:
-            self.pending_update_screen = self.loop.call_later(0.02, self.apply_update_screen)
+            self.pending_update_screen = self.loop.call_later(0.01, self.apply_update_screen)
 
     def apply_update_screen(self):
         self.pending_update_screen = None
