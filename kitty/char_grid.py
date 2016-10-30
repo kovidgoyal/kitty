@@ -8,7 +8,7 @@ from itertools import chain, repeat
 from queue import Queue, Empty
 
 from .config import build_ansi_color_tables, to_color, fg_color_table, bg_color_table
-from .data_types import COL_MASK, COL_SHIFT, ITALIC_MASK, BOLD_MASK, REVERSE_MASK, as_color
+from .data_types import COL_MASK, COL_SHIFT, REVERSE_MASK, as_color
 from .fonts import set_font_family
 from .shaders import Sprites, ShaderProgram
 from .utils import get_logical_dpi
@@ -264,6 +264,20 @@ class CharGrid:
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
+        cell_data_changed = self.get_all_render_changes()
+        if cell_data_changed:
+            self.update_sprite_map()
+        data = self.last_render_data
+
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        if data.screen_geometry is None:
+            return
+        sg = data.screen_geometry
+        self.render_cells(sg, data.sprite_layout)
+        if not data.cursor.hidden:
+            self.render_cursor(sg, data.cursor)
+
+    def get_all_render_changes(self):
         cell_data_changed = False
         data = self.last_render_data
         while True:
@@ -278,29 +292,26 @@ class CharGrid:
             if rd.viewport is not None:
                 gl.glViewport(0, 0, self.width, self.height)
             data.update(rd)
-        if cell_data_changed:
-            spmap, sptext = data.cell_data
-            for i, (text, attrs) in enumerate(sptext):
-                f = i * 9
-                spmap[f:f + 3] = self.sprites.primary_sprite_position(text, attrs & BOLD_MASK, attrs & ITALIC_MASK)
-            self.sprites.set_sprite_map(spmap)
+        return cell_data_changed
 
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        if data.screen_geometry is None:
-            return
-        sg = data.screen_geometry
+    def update_sprite_map(self):
+        spmap, sptext = self.last_render_data.cell_data
+        psp = self.sprites.primary_sprite_position
+        for i, key in enumerate(sptext):
+            f = i * 9
+            spmap[f:f + 3] = psp(key)
+        self.sprites.set_sprite_map(spmap)
+
+    def render_cells(self, sg, sprite_layout):
         with self.program:
             ul = self.program.uniform_location
             gl.glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
             gl.glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
             gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
             gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
-            gl.glUniform2f(ul('sprite_layout'), *data.sprite_layout)
+            gl.glUniform2f(ul('sprite_layout'), *sprite_layout)
             with self.sprites:
                 gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
-
-        if not data.cursor.hidden:
-            self.render_cursor(sg, data.cursor)
 
     def render_cursor(self, sg, cursor):
 

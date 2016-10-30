@@ -10,6 +10,7 @@ from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in openg
 from OpenGL.GL.ARB.texture_storage import glTexStorage3D  # only present in opengl core >= 4.2
 
 from .fonts import render_cell, cell_size
+from .data_types import ITALIC_MASK, BOLD_MASK
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
@@ -121,22 +122,24 @@ class Sprites:
         gl.glBufferData(tgt, ArrayDatatype.arrayByteCount(data), data, gl.GL_STATIC_DRAW)
         gl.glBindBuffer(tgt, 0)
 
-    def primary_sprite_position(self, text, bold=False, italic=False):
+    def primary_sprite_position(self, key):
         ' Return a 3-tuple (x, y, z) giving the position of this sprite on the sprite sheet '
-        key = text, bold, italic
-        first = self.first_cell_cache.get(key)
-        if first is None:
-            first, second = render_cell(text, bold, italic)
-            self.first_cell_cache[key] = first = self.add_sprite(first)
-            if second is not None:
-                self.second_cell_cache[key] = self.add_sprite(second)
+        try:
+            return self.first_cell_cache[key]
+        except KeyError:
+            pass
+        text, attrs = key
+        bold, italic = attrs & BOLD_MASK, attrs & ITALIC_MASK
+        first, second = render_cell(text, bold, italic)
+        self.first_cell_cache[key] = first = self.add_sprite(first)
+        if second is not None:
+            self.second_cell_cache[key] = self.add_sprite(second)
         return first
 
-    def secondary_sprite_position(self, text, bold=False, italic=False):
-        key = text, bold, italic
+    def secondary_sprite_position(self, key):
         ans = self.second_cell_cache.get(key)
         if ans is None:
-            self.primary_sprite_position(text, bold, italic)
+            self.primary_sprite_position(key)
             ans = self.second_cell_cache.get(key)
             if ans is None:
                 return 0, 0, 0
