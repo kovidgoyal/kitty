@@ -32,7 +32,7 @@ class Boss(Thread):
         Thread.__init__(self, name='ChildMonitor')
         self.profile = args.profile
         self.child_fd = create_pty()[0]
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
         self.loop.add_signal_handler(signal.SIGINT, lambda: self.loop.call_soon_threadsafe(self.shutdown))
         self.loop.add_signal_handler(signal.SIGTERM, lambda: self.loop.call_soon_threadsafe(self.shutdown))
         self.loop.add_reader(self.child_fd, self.read_ready)
@@ -117,6 +117,7 @@ class Boss(Thread):
             import pstats
             pr = cProfile.Profile()
             pr.enable()
+        asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
         if self.profile:
             pr.disable()
@@ -129,7 +130,7 @@ class Boss(Thread):
             self.queue_action(self.shutdown)
 
     def destroy(self):
-        # Must be called in the main thread
+        # Must be called in the main thread as it has signal handlers
         self.loop.close()
         del self.loop
 
