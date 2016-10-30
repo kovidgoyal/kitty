@@ -52,6 +52,8 @@ class Boss(Thread):
 
     def apply_resize_screen(self, w, h):
         self.char_grid.resize_screen(w, h)
+        sg = self.char_grid.screen_geometry
+        resize_pty(sg.xnum, sg.ynum)
         glfw.glfwPostEmptyEvent()
 
     def apply_opts(self, opts):
