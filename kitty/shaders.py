@@ -138,7 +138,7 @@ class Sprites:
         except KeyError:
             pass
         text, attrs = key
-        bold, italic = attrs & BOLD_MASK, attrs & ITALIC_MASK
+        bold, italic = bool(attrs & BOLD_MASK), bool(attrs & ITALIC_MASK)
         first, second = render_cell(text, bold, italic)
         self.first_cell_cache[key] = first = self.add_sprite(first)
         if second is not None:

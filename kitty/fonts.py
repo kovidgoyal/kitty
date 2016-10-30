@@ -42,7 +42,7 @@ def get_font(query, bold, italic):
 def find_font_for_character(family, char, bold=False, italic=False):
     q = escape_family_name(family) + ':charset={}'.format(hex(ord(char[0]))[2:])
     if bold:
-        q += ':bold=200'
+        q += ':weight=200'
     if italic:
         q += ':slant=100'
     return get_font(q, bold, italic)
@@ -52,7 +52,7 @@ def find_font_for_character(family, char, bold=False, italic=False):
 def get_font_information(q, bold=False, italic=False):
     q = escape_family_name(q)
     if bold:
-        q += ':bold=200'
+        q += ':weight=200'
     if italic:
         q += ':slant=100'
     return get_font(q, bold, italic)
