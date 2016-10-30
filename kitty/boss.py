@@ -49,10 +49,19 @@ class Boss(Thread):
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
         glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
+        glfw.glfwSetWindowFocusCallback(window, self.on_focus)
 
     def initialize(self):
         self.char_grid.initialize()
         glfw.glfwPostEmptyEvent()
+
+    def on_focus(self, window, focused):
+        if focused:
+            if self.screen.enable_focus_tracking:
+                self.write_to_child(b'\x1b[I')
+        else:
+            if self.screen.enable_focus_tracking:
+                self.write_to_child(b'\x1b[O')
 
     def on_mouse_button(self, window, button, action, mods):
         if action == glfw.GLFW_RELEASE:
