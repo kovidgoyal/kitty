@@ -297,9 +297,10 @@ class CharGrid:
     def update_sprite_map(self):
         spmap, sptext = self.last_render_data.cell_data
         psp = self.sprites.primary_sprite_position
+        empty_val = psp(empty_cell)
         for i, key in enumerate(sptext):
             f = i * 9
-            spmap[f:f + 3] = psp(key)
+            spmap[f:f + 3] = empty_val if key is empty_cell else psp(key)
         self.sprites.set_sprite_map(spmap)
 
     def render_cells(self, sg, sprite_layout):
