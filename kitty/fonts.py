@@ -147,8 +147,8 @@ def render_char(text, bold=False, italic=False, size_in_pts=None):
             raise ValueError(
                 'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
         m = face.glyph.metrics
-        return CharBitmap(bitmap.buffer, min(int(abs(m.horiBearingX) / 64), bitmap.width),
-                          min(int(abs(m.horiBearingY) / 64), bitmap.rows), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
+        return CharBitmap(bitmap.buffer, int(abs(m.horiBearingX) / 64),
+                          int(abs(m.horiBearingY) / 64), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
 
 
 def is_wide_char(bitmap_char):
@@ -262,7 +262,7 @@ def cell_size():
     return cell_width, cell_height
 
 
-def test_rendering(text='Ping👁a⧽', sz=144, family='monospace'):
+def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
     set_font_family(family, sz)
     cells = []
     for c in text:
