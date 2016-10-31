@@ -30,7 +30,7 @@ key_map = {
     glfw.GLFW_KEY_F12: b'[24~',
 }
 key_map = {k: b'\x1b' + v for k, v in key_map.items()}
-key_map[glfw.GLFW_KEY_ENTER] = b'\n\r'
+key_map[glfw.GLFW_KEY_ENTER] = b'\r'
 key_map[glfw.GLFW_KEY_BACKSPACE] = b'\x08'
 key_map[glfw.GLFW_KEY_TAB] = b'\t'
 
