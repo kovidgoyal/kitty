@@ -25,7 +25,8 @@ def init_env():
     global cflags, ldflags, cc, ldpaths
     cc = os.environ.get('CC', 'gcc')
     cflags = os.environ.get('OVERRIDE_CFLAGS',
-                            '-Wall -Werror -O3 -DNDEBUG -fwrapv -fstack-protector-strong -pipe')
+                            '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
+                            ' -pedantic-errors -Werror -O3 -DNDEBUG -fwrapv -fstack-protector-strong -pipe')
     cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall -O3')
     ldflags = shlex.split(ldflags)
@@ -67,4 +68,4 @@ if __name__ == '__main__':
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     init_env()
-    compile_c_extension('kitty/fast_data_types', 'kitty/data-types.c')
+    compile_c_extension('kitty/fast_data_types', 'kitty/data-types.c', 'kitty/line-buf.c')

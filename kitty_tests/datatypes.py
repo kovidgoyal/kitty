@@ -8,9 +8,16 @@ from . import BaseTest
 
 from kitty.data_types import Line, Cursor
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
+from kitty.fast_data_types import LineBuf
 
 
 class TestDataTypes(BaseTest):
+
+    def text_line_buf(self):
+        lb = LineBuf(2, 3)
+        for y in range(2):
+            for x in range(3):
+                self.ae(lb.text_at(y, x), ' ')
 
     def test_line_ops(self):
         t = 'Testing with simple text'

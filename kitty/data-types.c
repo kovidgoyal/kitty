@@ -5,7 +5,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include <Python.h>
+#include "data-types.h"
+
+extern PyTypeObject LineBuf_Type;
 
 static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -14,9 +16,8 @@ static PyMethodDef module_methods[] = {
 static struct PyModuleDef module = {
    PyModuleDef_HEAD_INIT,
    "fast_data_types",   /* name of module */
-   NULL, /* module documentation, may be NULL */
-   -1,       /* size of per-interpreter state of the module,
-                or -1 if the module keeps state in global variables. */
+   NULL, 
+   -1,       
    module_methods
 };
 
@@ -24,9 +25,15 @@ PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
 
+
+    if (PyType_Ready(&LineBuf_Type) < 0) return NULL;
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
 
+    if (m != NULL) {
+        Py_INCREF(&LineBuf_Type);
+        PyModule_AddObject(m, "LineBuf", (PyObject *)&LineBuf_Type);
+    }
+
     return m;
 }
-
