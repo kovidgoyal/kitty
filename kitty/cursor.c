@@ -46,6 +46,15 @@ int is_eq(Cursor *a, Cursor *b) {
     return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && PEQ(x) && PEQ(y) && PEQ(shape) && PEQ(blink) && PEQ(color) && PEQ(hidden);
 }
 
+#define BOOL(x) ((x) ? Py_True : Py_False)
+static PyObject *
+repr(Cursor *self) {
+    return PyUnicode_FromFormat(
+        "Cursor(x=%R, y=%R, shape=%R, blink=%R, hidden=%R, color=%R, fg=#%x, bg=#%x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%x)",
+        self->x, self->y, self->shape, self->blink, self->hidden, self->color, self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
+    );
+}
+
 // Boilerplate {{{
 
 static PyMemberDef Cursor_members[] = {
@@ -85,7 +94,7 @@ PyTypeObject Cursor_Type = {
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
     0,                         /* tp_reserved */
-    0,                         /* tp_repr */
+    (reprfunc)repr,            /* tp_repr */
     0,                         /* tp_as_number */
     0,                         /* tp_as_sequence */
     0,                         /* tp_as_mapping */
