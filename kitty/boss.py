@@ -8,6 +8,7 @@ import signal
 import select
 import subprocess
 import struct
+from itertools import repeat
 from time import monotonic
 from threading import Thread, current_thread
 from queue import Queue, Empty
@@ -38,10 +39,11 @@ class Boss(Thread):
     shutting_down = False
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
-    pending_update_screen = None
+    SCREEN_UPDATE_DELAY = 1 / 100  # seconds
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.pending_update_screen = None
         self.action_queue = Queue()
         self.child_fd = create_pty()[0]
         self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
@@ -166,15 +168,16 @@ class Boss(Thread):
             s.dump_stats(self.profile)
 
     def loop(self):
+        all_readers, all_writers = self.readers, self.writers
+        dispatch = list(repeat(None, max(all_readers) + 1))
+        dispatch[self.child_fd] = self.read_ready
+        dispatch[self.read_wakeup_fd] = self.on_wakeup
+        dispatch[self.signal_fd] = self.signal_received
         while not self.shutting_down:
-            readers, writers, _ = select.select(self.readers, self.writers if self.write_buf else [], [], self.pending_update_screen)
+            timeout = None if self.pending_update_screen is None else max(0, self.pending_update_screen - monotonic())
+            readers, writers, _ = select.select(all_readers, all_writers if self.write_buf else [], [], timeout)
             for r in readers:
-                if r is self.child_fd:
-                    self.read_ready()
-                elif r is self.read_wakeup_fd:
-                    self.on_wakeup()
-                elif r is self.signal_fd:
-                    self.signal_received()
+                dispatch[r]()
             if writers:
                 self.write_ready()
             if self.pending_update_screen is not None and monotonic() > self.pending_update_screen:
@@ -232,7 +235,7 @@ class Boss(Thread):
     def mark_dirtied(self):
         # Batch screen updates
         if self.pending_update_screen is None:
-            self.pending_update_screen = monotonic() + 0.01
+            self.pending_update_screen = monotonic() + self.SCREEN_UPDATE_DELAY
 
     def apply_update_screen(self):
         self.pending_update_screen = None
