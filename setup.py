@@ -68,4 +68,4 @@ if __name__ == '__main__':
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     init_env()
-    compile_c_extension('kitty/fast_data_types', 'kitty/data-types.c', 'kitty/line-buf.c')
+    compile_c_extension('kitty/fast_data_types', 'kitty/data-types.c', 'kitty/line-buf.c', 'kitty/cursor.c')
