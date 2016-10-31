@@ -33,6 +33,7 @@ class Renderer:
         ]
         self.program = ShaderProgram(*cell_shader)
         self.sprites = Sprites()
+        self.sprites.initialize()
         self.do_layout()
 
     def on_resize(self, window, w, h):
@@ -43,12 +44,14 @@ class Renderer:
     def do_layout(self):
         # Divide into cells
         cell_width, cell_height = cell_size()
+        self.sprites.do_layout(cell_width, cell_height)
+        self.sprites.ensure_state()
         self.screen_geometry = sg = calculate_vertices(cell_width, cell_height, self.w, self.h)
         data = (gl.GLuint * (sg.xnum * sg.ynum * 9))()
         for i in range(0, len(data), 9):
             idx = i // 9
             c = '%d' % (idx % 10)
-            data[i:i+3] = self.sprites.primary_sprite_position(c)
+            data[i:i+3] = self.sprites.primary_sprite_position((c, 0))
             fg, bg = self.color_pairs[idx % 3]
             data[i+3:i+9] = fg + bg
         self.sprites.set_sprite_map(data)
