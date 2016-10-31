@@ -155,8 +155,8 @@ class CharGrid:
             cursor=self.default_cursor))
 
     def initialize(self):
-        self.apply_opts(self.opts)
         self.default_bg, self.default_fg = self.original_bg, self.original_fg
+        self.apply_opts(self.opts)
 
     def apply_opts(self, opts):
         self.dpix, self.dpiy = get_logical_dpi()

@@ -114,3 +114,4 @@ def main():
     finally:
         glfw.glfwTerminate()
         hangup()
+        os.closerange(3, 100)

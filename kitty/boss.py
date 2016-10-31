@@ -5,9 +5,12 @@
 import os
 import io
 import signal
-import asyncio
+import select
 import subprocess
+import struct
+from time import monotonic
 from threading import Thread, current_thread
+from queue import Queue, Empty
 
 import glfw
 from pyte.streams import Stream, DebugStream
@@ -20,6 +23,15 @@ from .tracker import ChangeTracker
 from .utils import resize_pty, create_pty
 
 
+def handle_unix_signals():
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda x, y: None)
+        signal.siginterrupt(sig, False)
+    signal.set_wakeup_fd(write_fd)
+    return read_fd
+
+
 class Boss(Thread):
 
     daemon = True
@@ -30,26 +42,55 @@ class Boss(Thread):
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
-        self.profile = args.profile
+        self.action_queue = Queue()
         self.child_fd = create_pty()[0]
-        self.loop = asyncio.new_event_loop()
-        self.loop.add_signal_handler(signal.SIGINT, lambda: self.loop.call_soon_threadsafe(self.shutdown))
-        self.loop.add_signal_handler(signal.SIGTERM, lambda: self.loop.call_soon_threadsafe(self.shutdown))
-        self.loop.add_reader(self.child_fd, self.read_ready)
-        self.queue_action = self.loop.call_soon_threadsafe
+        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+        self.signal_fd = handle_unix_signals()
+        self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
+        self.writers = [self.child_fd]
+        self.queue_action(self.initialize)
+        self.profile = args.profile
         self.window, self.opts = window, opts
         self.tracker = ChangeTracker(self.mark_dirtied)
         self.screen = Screen(self.opts, self.tracker, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
-        self.queue_action(self.initialize)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
         self.write_buf = memoryview(b'')
-        resize_pty(80, 24)
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
         glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
         glfw.glfwSetWindowFocusCallback(window, self.on_focus)
+        resize_pty(80, 24)
+
+    def queue_action(self, func, *args):
+        self.action_queue.put((func, args))
+        self.wakeup()
+
+    def wakeup(self):
+        os.write(self.write_wakeup_fd, b'1')
+
+    def on_wakeup(self):
+        try:
+            os.read(self.read_wakeup_fd, io.DEFAULT_BUFFER_SIZE)
+        except (EnvironmentError, BlockingIOError):
+            pass
+        while not self.shutting_down:
+            try:
+                func, args = self.action_queue.get_nowait()
+            except Empty:
+                break
+            func(*args)
+
+    def signal_received(self):
+        try:
+            data = os.read(self.signal_fd, io.DEFAULT_BUFFER_SIZE)
+        except BlockingIOError:
+            return
+        if data:
+            signals = struct.unpack('%uB' % len(data), data)
+            if signal.SIGINT in signals or signal.SIGTERM in signals:
+                self.shutdown()
 
     def initialize(self):
         self.char_grid.initialize()
@@ -117,26 +158,39 @@ class Boss(Thread):
             import pstats
             pr = cProfile.Profile()
             pr.enable()
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_forever()
+        self.loop()
         if self.profile:
             pr.disable()
             pr.create_stats()
             s = pstats.Stats(pr)
             s.dump_stats(self.profile)
 
+    def loop(self):
+        while not self.shutting_down:
+            readers, writers, _ = select.select(self.readers, self.writers if self.write_buf else [], [], self.pending_update_screen)
+            for r in readers:
+                if r is self.child_fd:
+                    self.read_ready()
+                elif r is self.read_wakeup_fd:
+                    self.on_wakeup()
+                elif r is self.signal_fd:
+                    self.signal_received()
+            if writers:
+                self.write_ready()
+            if self.pending_update_screen is not None and monotonic() > self.pending_update_screen:
+                self.apply_update_screen()
+
     def close(self):
         if not self.shutting_down:
             self.queue_action(self.shutdown)
 
     def destroy(self):
-        # Must be called in the main thread as it has signal handlers
-        self.loop.close()
-        del self.loop
+        # Must be called in the main thread as it manipulates signal handlers
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
     def shutdown(self):
         self.shutting_down = True
-        self.loop.stop()
         glfw.glfwSetWindowShouldClose(self.window, True)
         glfw.glfwPostEmptyEvent()
 
@@ -164,7 +218,6 @@ class Boss(Thread):
                 if not n:
                     return
                 self.write_buf = self.write_buf[n:]
-            self.loop.remove_writer(self.child_fd)
 
     def write_to_child(self, data):
         if data:
@@ -175,12 +228,11 @@ class Boss(Thread):
 
     def queue_write(self, data):
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
-        self.loop.add_writer(self.child_fd, self.write_ready)
 
     def mark_dirtied(self):
         # Batch screen updates
         if self.pending_update_screen is None:
-            self.pending_update_screen = self.loop.call_later(0.01, self.apply_update_screen)
+            self.pending_update_screen = monotonic() + 0.01
 
     def apply_update_screen(self):
         self.pending_update_screen = None
