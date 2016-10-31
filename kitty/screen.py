@@ -228,7 +228,7 @@ class Screen:
         if mo.DECSCNM in modes:
             for line in self.linebuf:
                 for i in range(len(line)):
-                    line.reverse[i] = True
+                    line.set_reverse(i, True)
             self.update_screen()
             self.select_graphic_rendition(7)  # +reverse.
 
@@ -274,7 +274,7 @@ class Screen:
         if mo.DECSCNM in modes:
             for line in self.linebuf:
                 for i in range(len(line)):
-                    line.reverse[i] = False
+                    line.set_reverse(i, False)
             self.update_screen()
             self.select_graphic_rendition(27)  # -reverse.
 
