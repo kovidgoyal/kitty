@@ -32,6 +32,7 @@ key_map = {
 key_map = {k: b'\x1b' + v for k, v in key_map.items()}
 key_map[glfw.GLFW_KEY_ENTER] = b'\n\r'
 key_map[glfw.GLFW_KEY_BACKSPACE] = b'\x08'
+key_map[glfw.GLFW_KEY_TAB] = b'\t'
 
 control_codes = {k: 1 + i for i, k in enumerate(range(glfw.GLFW_KEY_A, glfw.GLFW_KEY_RIGHT_BRACKET))}
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(glfw.GLFW_KEY_A, glfw.GLFW_KEY_RIGHT_BRACKET))}
@@ -48,6 +49,9 @@ def interpret_key_event(key, scancode, mods):
     else:
         x = key_map.get(key)
         if x is not None:
+            if mods == glfw.GLFW_MOD_SHIFT:
+                if key == glfw.GLFW_KEY_TAB:
+                    x = b'\x1b[Z'
             data.extend(x)
     return bytes(data)
 
