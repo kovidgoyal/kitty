@@ -1,4 +1,6 @@
 *.js
 *.pyj-cached
+*.so
 .build-cache
 tags
+build
