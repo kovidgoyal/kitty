@@ -50,7 +50,7 @@ int is_eq(Cursor *a, Cursor *b) {
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%R, y=%R, shape=%R, blink=%R, hidden=%R, color=%R, fg=#%x, bg=#%x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%x)",
+        "Cursor(x=%R, y=%R, shape=%R, blink=%R, hidden=%R, color=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
         self->x, self->y, self->shape, self->blink, self->hidden, self->color, self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
     );
 }
