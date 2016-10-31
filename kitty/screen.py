@@ -38,6 +38,14 @@ def wrap_cursor_position(x, y, lines, columns):
     return x, y
 
 
+default_callbacks = {
+    'title_changed': lambda t: None,
+    'icon_changed': lambda i: None,
+    'write_to_child': lambda data: None,
+    'change_default_color': lambda which, val: None
+}
+
+
 class Screen:
     """
        See standard ECMA-48, Section 6.1.1 http://www.ecma-international.org/publications/standards/Ecma-048.htm
@@ -45,14 +53,13 @@ class Screen:
     """
 
     tracker_callbacks = 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
-    callbacks = 'title_changed icon_changed write_to_child change_default_color'.split()
     _notify_cursor_position = True
 
-    def __init__(self, opts, tracker, callbacks, columns: int=80, lines: int=24):
+    def __init__(self, opts, tracker, callbacks=None, columns: int=80, lines: int=24):
         for attr in self.tracker_callbacks:
             setattr(self, attr, getattr(tracker, attr))
-        for attr in self.callbacks:
-            setattr(self, attr, getattr(callbacks, attr))
+        for attr in default_callbacks:
+            setattr(self, attr, getattr(callbacks, attr, default_callbacks[attr]))
         self.main_savepoints, self.alt_savepoints = deque(), deque()
         self.savepoints = self.main_savepoints
         self.columns = columns

@@ -27,7 +27,7 @@ def merge_ranges(ranges: Set[Tuple[int]]) -> Iterator[Tuple[int]]:
 
 class ChangeTracker:
 
-    def __init__(self, mark_dirtied):
+    def __init__(self, mark_dirtied=lambda: None):
         self.reset()
         self.mark_dirtied = mark_dirtied
 
