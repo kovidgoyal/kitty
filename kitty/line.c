@@ -47,6 +47,29 @@ text_at(Line* self, PyObject *x) {
     return ans;
 }
 
+static PyObject *
+as_unicode(Line* self) {
+    Py_ssize_t n = 0;
+    Py_UCS4 *buf = PyMem_Malloc(3 * self->xnum * sizeof(Py_UCS4));
+    if (buf == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    for(index_type i = 0; i < self->xnum; i++) {
+        char_type ch = self->chars[i] & CHAR_MASK;
+        char_type cc = self->combining_chars[i];
+        buf[n++] = ch & CHAR_MASK;
+        Py_UCS4 cc1 = cc & 0xFFFF, cc2;
+        if (cc1) {
+            buf[n++] = cc1;
+            cc2 = cc >> 16;
+            if (cc2) buf[n++] = cc2;
+        }
+    }
+    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
+    PyMem_Free(buf);
+    return ans;
+}
 
 // Boilerplate {{{
 static PyMethodDef methods[] = {
@@ -66,7 +89,7 @@ PyTypeObject Line_Type = {
     0,                         /* tp_getattr */
     0,                         /* tp_setattr */
     0,                         /* tp_reserved */
-    0,                         /* tp_repr */
+    (reprfunc)as_unicode,      /* tp_repr */
     0,                         /* tp_as_number */
     0,                         /* tp_as_sequence */
     0,                         /* tp_as_mapping */
