@@ -13,7 +13,7 @@ from kitty.fast_data_types import LineBuf
 
 class TestDataTypes(BaseTest):
 
-    def test_line_buf(self):
+    def test_line(self):
         lb = LineBuf(2, 3)
         for y in range(2):
             line = lb.line(y)
@@ -24,6 +24,15 @@ class TestDataTypes(BaseTest):
             lb.line(5)
         with self.assertRaises(ValueError):
             lb.line(0).text_at(5)
+        l = lb.line(0)
+        l.add_combining_char(0, '1')
+        self.ae(l.text_at(0), ' 1')
+        l.add_combining_char(0, '2')
+        self.ae(l.text_at(0), ' 12')
+        l.add_combining_char(0, '3')
+        self.ae(l.text_at(0), ' 13')
+        self.ae(l.text_at(1), ' ')
+        self.ae(str(l), ' 13  ')
 
     def test_line_ops(self):
         t = 'Testing with simple text'

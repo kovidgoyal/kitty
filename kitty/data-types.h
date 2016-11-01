@@ -36,6 +36,8 @@ typedef unsigned int index_type;
 #define COL_MASK 0xFFFFFFFF
 #define COL_SHIFT  32
 #define HAS_BG_MASK (0xFF << COL_SHIFT)
+#define CC_MASK 0xFFFF
+#define CC_SHIFT 16
 
 typedef struct {
     PyObject_HEAD

@@ -35,7 +35,7 @@ text_at(Line* self, PyObject *x) {
         if (ans == NULL) return PyErr_NoMemory();
         PyUnicode_WriteChar(ans, 0, ch);
     } else {
-        Py_UCS4 cc1 = cc & 0xFFFF, cc2 = cc >> 16;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2 = cc >> 16;
         Py_UCS4 maxc = (ch > cc1) ? MAX(ch, cc2) : MAX(cc1, cc2);
         ans = PyUnicode_New(cc2 ? 3 : 2, maxc);
         if (ans == NULL) return PyErr_NoMemory();
@@ -59,7 +59,7 @@ as_unicode(Line* self) {
         char_type ch = self->chars[i] & CHAR_MASK;
         char_type cc = self->combining_chars[i];
         buf[n++] = ch & CHAR_MASK;
-        Py_UCS4 cc1 = cc & 0xFFFF, cc2;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2;
         if (cc1) {
             buf[n++] = cc1;
             cc2 = cc >> 16;
@@ -71,10 +71,28 @@ as_unicode(Line* self) {
     return ans;
 }
 
+static PyObject*
+add_combining_char(Line* self, PyObject *args) {
+    int new_char;
+    unsigned int x;
+    if (!PyArg_ParseTuple(args, "IC", &x, &new_char)) return NULL;
+    if (x >= self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Column index out of bounds");
+        return NULL;
+    }
+    combining_type c = self->combining_chars[x];
+    if (c & CC_MASK) self->combining_chars[x] = (c & CC_MASK) | ( (new_char & CC_MASK) << CC_SHIFT );
+    else self->combining_chars[x] = new_char & CC_MASK;
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     {"text_at", (PyCFunction)text_at, METH_O,
-     "Return the text in the specified cell"
+     "text_at(x) -> Return the text in the specified cell"
+    },
+    {"add_combining_char", (PyCFunction)add_combining_char, METH_VARARGS,
+     "add_combining_char(x, ch) -> Add the specified character as a combining char to the specified cell."
     },
     {NULL}  /* Sentinel */
 };
