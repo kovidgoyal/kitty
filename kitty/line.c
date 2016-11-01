@@ -113,7 +113,7 @@ set_text(Line* self, PyObject *args) {
         return NULL;
     }
     x = PyLong_AsUnsignedLong(cursor->x);
-    attrs = CURSOR_TO_ATTRS(cursor, 1)
+    attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
     decoration_type dfg = cursor->decoration_fg & COL_MASK;
 
@@ -127,11 +127,40 @@ set_text(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+cursor_from(Line* self, PyObject *args) {
+#define cursor_from_doc "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as specified."
+    unsigned long x, y = 0;
+    PyObject *xo, *yo;
+    Cursor* ans;
+    if (!PyArg_ParseTuple(args, "k|k", &x, &y)) return NULL;
+    if (x >= self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds x");
+        return NULL;
+    }
+    ans = PyObject_New(Cursor, &Cursor_Type);
+    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    xo = PyLong_FromUnsignedLong(x); yo = PyLong_FromUnsignedLong(y);
+    if (xo == NULL || yo == NULL) {
+        Py_DECREF(ans); Py_XDECREF(xo); Py_XDECREF(yo);
+        PyErr_NoMemory(); return NULL;
+    }
+    Py_XDECREF(ans->x); Py_XDECREF(ans->y);
+    ans->x = xo; ans->y = yo;
+    char_type attrs = self->chars[x] >> ATTRS_SHIFT;
+    ATTRS_TO_CURSOR(attrs, ans);
+    COLORS_TO_CURSOR(self->colors[x], ans);
+    ans->decoration_fg = self->decoration_fg[x] & COL_MASK;
+
+    return (PyObject*)ans;
+}
+
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(text_at, METH_O)
     METHOD(add_combining_char, METH_VARARGS)
     METHOD(set_text, METH_VARARGS)
+    METHOD(cursor_from, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };

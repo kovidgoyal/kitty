@@ -43,6 +43,13 @@ typedef unsigned int index_type;
     (w | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
             ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) << ATTRS_SHIFT
 
+#define ATTRS_TO_CURSOR(a, c) \
+    c->decoration = a & DECORATION_MASK; c->bold = a & BOLD_MASK; c->italic = a & ITALIC_MASK; \
+    c->reverse = a & REVERSE_MASK; c->strikethrough = a & STRIKE_MASK;
+
+#define COLORS_TO_CURSOR(col, c) \
+    c->fg = col & COL_MASK; c->bg = (col >> COL_SHIFT)
+
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 
 typedef struct {
