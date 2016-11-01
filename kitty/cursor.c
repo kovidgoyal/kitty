@@ -55,6 +55,10 @@ repr(Cursor *self) {
     );
 }
 
+static PyObject*
+copy(Cursor *self, PyObject *args);
+#define copy_doc "Create a clone of this cursor"
+
 // Boilerplate {{{
 
 static PyMemberDef Cursor_members[] = {
@@ -77,6 +81,7 @@ static PyMemberDef Cursor_members[] = {
 };
 
 static PyMethodDef Cursor_methods[] = {
+    METHOD(copy, METH_NOARGS)
     {NULL}  /* Sentinel */
 };
 
@@ -143,3 +148,16 @@ richcmp(PyObject *obj1, PyObject *obj2, int op)
     Py_INCREF(result);
     return result;
 }
+
+static PyObject*
+copy(Cursor *self, PyObject UNUSED *args) {
+#define CPY(x) ans->x = self->x; Py_XINCREF(self->x);
+#define CCY(x) ans->x = self->x;
+    Cursor* ans;
+    ans = PyObject_New(Cursor, &Cursor_Type);
+    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    CPY(x); CPY(y); CPY(shape); CPY(blink); CPY(color); CPY(hidden);
+    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
+    return (PyObject*)ans;
+}
+
