@@ -6,7 +6,7 @@
  */
 
 #include "data-types.h"
-
+extern PyTypeObject Cursor_Type;
 
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
@@ -21,6 +21,7 @@ dealloc(LineBuf* self) {
 
 static PyObject *
 text_at(Line* self, PyObject *x) {
+#define text_at_doc "text_at(x) -> Return the text in the specified cell"
     unsigned long xval = PyLong_AsUnsignedLong(x);
     char_type ch;
     combining_type cc;
@@ -73,6 +74,7 @@ as_unicode(Line* self) {
 
 static PyObject*
 add_combining_char(Line* self, PyObject *args) {
+#define add_combining_char_doc "add_combining_char(x, ch) -> Add the specified character as a combining char to the specified cell."
     int new_char;
     unsigned int x;
     if (!PyArg_ParseTuple(args, "IC", &x, &new_char)) return NULL;
@@ -86,14 +88,51 @@ add_combining_char(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+
+static PyObject*
+set_text(Line* self, PyObject *args) {
+#define set_text_doc "set_text(src, offset, sz, cursor) -> Set the characters and attributes from the specified text and cursor"
+    PyObject *src;
+    Py_ssize_t offset, sz, limit;
+    char_type attrs;
+    Cursor *cursor;
+    int kind;
+    void *buf;
+    unsigned long x;
+
+    if (!PyArg_ParseTuple(args, "UnnO!", &src, &offset, &sz, &Cursor_Type, &cursor)) return NULL;
+    if (PyUnicode_READY(src) != 0) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    kind = PyUnicode_KIND(src);
+    buf = PyUnicode_DATA(src);
+    limit = offset + sz;
+    if (PyUnicode_GET_LENGTH(src) < limit) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds offset/sz");
+        return NULL;
+    }
+    x = PyLong_AsUnsignedLong(cursor->x);
+    attrs = CURSOR_TO_ATTRS(cursor, 1)
+    color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
+    decoration_type dfg = cursor->decoration_fg & COL_MASK;
+
+    for (index_type i = x; offset < limit && i < self->xnum; i++, offset++) {
+        self->chars[i] = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
+        self->colors[i] = col;
+        self->decoration_fg[i] = dfg;
+        self->combining_chars[i] = 0;
+    }
+
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 static PyMethodDef methods[] = {
-    {"text_at", (PyCFunction)text_at, METH_O,
-     "text_at(x) -> Return the text in the specified cell"
-    },
-    {"add_combining_char", (PyCFunction)add_combining_char, METH_VARARGS,
-     "add_combining_char(x, ch) -> Add the specified character as a combining char to the specified cell."
-    },
+    METHOD(text_at, METH_O)
+    METHOD(add_combining_char, METH_VARARGS)
+    METHOD(set_text, METH_VARARGS)
+        
     {NULL}  /* Sentinel */
 };
 
