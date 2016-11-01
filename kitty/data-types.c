@@ -9,6 +9,7 @@
 
 extern PyTypeObject LineBuf_Type;
 extern PyTypeObject Cursor_Type;
+extern PyTypeObject Line_Type;
 
 static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -29,6 +30,7 @@ PyInit_fast_data_types(void) {
 
     if (PyType_Ready(&LineBuf_Type) < 0) return NULL;
     if (PyType_Ready(&Cursor_Type) < 0) return NULL;
+    if (PyType_Ready(&Line_Type) < 0) return NULL;
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
 
@@ -37,6 +39,8 @@ PyInit_fast_data_types(void) {
         PyModule_AddObject(m, "LineBuf", (PyObject *)&LineBuf_Type);
         Py_INCREF(&Cursor_Type);
         PyModule_AddObject(m, "Cursor", (PyObject *)&Cursor_Type);
+        Py_INCREF(&Line_Type);
+        PyModule_AddObject(m, "Line", (PyObject *)&Line_Type);
     }
 
     return m;

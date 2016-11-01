@@ -16,12 +16,13 @@ class TestDataTypes(BaseTest):
     def test_line_buf(self):
         lb = LineBuf(2, 3)
         for y in range(2):
+            line = lb.line(y)
             for x in range(3):
-                self.ae(lb.text_at(y, x), ' ')
+                self.ae(line.text_at(x), ' ')
         with self.assertRaises(ValueError):
-            lb.text_at(1, 5)
+            lb.line(5)
         with self.assertRaises(ValueError):
-            lb.text_at(5, 1)
+            lb.line(0).text_at(5)
 
     def test_line_ops(self):
         t = 'Testing with simple text'

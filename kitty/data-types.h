@@ -37,6 +37,16 @@ typedef unsigned int index_type;
 #define COL_SHIFT  32
 #define HAS_BG_MASK (0xFF << COL_SHIFT)
 
+typedef struct {
+    PyObject_HEAD
+
+    char_type *chars;
+    color_type *colors;
+    decoration_type *decoration_fg;
+    combining_type *combining_chars;
+    index_type xnum, ynum;
+} Line;
+
 
 typedef struct {
     PyObject_HEAD
@@ -45,6 +55,7 @@ typedef struct {
     index_type xnum, ynum, *line_map;
     index_type block_size;
     uint8_t *continued_map;
+    Line *line;
 
     // Pointers into buf
     char_type *chars;
