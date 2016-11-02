@@ -155,12 +155,37 @@ cursor_from(Line* self, PyObject *args) {
     return (PyObject*)ans;
 }
 
+static PyObject*
+apply_cursor(Line* self, PyObject *args) {
+#define apply_cursor_doc "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
+    Cursor* cursor;
+    unsigned int at=0, num=1;
+    int clear_char = 0;
+    if (!PyArg_ParseTuple(args, "O!|IIp", &Cursor_Type, &cursor, &at, &num, &clear_char)) return NULL;
+    char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
+    color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
+    decoration_type dfg = cursor->decoration_fg & COL_MASK;
+    
+    for (index_type i = at; i < self->xnum && i < at + num; i++) {
+        if (clear_char) {
+            self->chars[i] = 32 | attrs;
+            self->combining_chars[i] = 0;
+        } else self->chars[i] = (self->chars[i] & CHAR_MASK) | attrs;
+        self->colors[i] = col;
+        self->decoration_fg[i] = dfg;
+    }
+
+    Py_RETURN_NONE;
+}
+
+
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(text_at, METH_O)
     METHOD(add_combining_char, METH_VARARGS)
     METHOD(set_text, METH_VARARGS)
     METHOD(cursor_from, METH_VARARGS)
+    METHOD(apply_cursor, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };
