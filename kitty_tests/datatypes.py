@@ -6,7 +6,6 @@ import codecs
 
 from . import BaseTest
 
-from kitty.data_types import Line, Cursor
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
 from kitty.fast_data_types import LineBuf, Cursor as C
 
@@ -61,77 +60,35 @@ class TestDataTypes(BaseTest):
         l.copy_char(0, l, 1)
         self.assertEqualAttributes(c3, l.cursor_from(1))
 
-    def test_line_ops(self):
-        t = 'Testing with simple text'
-        l = Line(len(t))
-        l.set_text(t, 0, len(t), Cursor())
-        self.ae(l, l)
-        self.ae(str(l), t)
-        self.ae(str(l.copy()), t)
-        l.continued = False
-        l2 = l.copy()
-        self.assertFalse(l2.continued)
-        self.ae(l, l2)
-        l2.char[1] = 23
-        self.assertNotEqual(l, l2)
-
-        c = Cursor(3, 5)
-        c.hidden = True
-        c.bold = c.italic = c.reverse = c.strikethrough = True
-        c.fg = c.bg = c.decoration_fg = 0x0101
-        self.ae(c, c)
-        c2, c3 = c.copy(), c.copy()
-        self.ae(c, c.copy())
-        c2.bold = c2.hidden = False
-        self.assertNotEqual(c, c2)
-        l.apply_cursor(c2, 3)
-        self.ae(c2, l.cursor_from(3, ypos=c2.y))
-        l.apply_cursor(c2, 0, len(l))
-        for i in range(len(l)):
-            c2.x = i
-            self.ae(c2, l.cursor_from(i, ypos=c2.y))
-        l = Line(5)
-        l.apply_cursor(c3, 0)
-        l.copy_char(0, l, 1)
-        c3.x, c3.hidden = 1, False
-        self.ae(l.cursor_from(1, ypos=c3.y), c3)
-
         t = '0123456789'
-        lo = Line(len(t))
-        lo.set_text(t, 0, len(t), Cursor())
-        l = lo.copy()
+        lb = LineBuf(1, len(t))
+        l = lb.line(0)
+        l.set_text(t, 0, len(t), C())
+        self.ae(t, str(l))
         l.right_shift(4, 2)
-        self.ae(str(l), '0123454567')
-        l = lo.copy()
+        self.ae('0123454567', str(l))
+        l.set_text(t, 0, len(t), C())
         l.right_shift(0, 0)
-        self.ae(l, lo)
+        self.ae(t, str(l))
         l.right_shift(0, 1)
         self.ae(str(l), '0' + t[:-1])
-        l = lo.copy()
+        l.set_text(t, 0, len(t), C())
         l.left_shift(0, 2)
         self.ae(str(l), t[2:] + '89')
-        l = lo.copy()
+        l.set_text(t, 0, len(t), C())
         l.left_shift(7, 3)
         self.ae(str(l), t)
 
-        l = Line(1)
-        l.set_decoration(0, 2)
-        q = Cursor()
-        for x in 'bold italic reverse strikethrough'.split():
-            getattr(l, 'set_' + x)(0, True)
-            setattr(q, x, True)
+        l.set_text(t, 0, len(t), C())
+        q = C()
+        q.bold = q.italic = q.reverse = q.strikethrough = True
         q.decoration = 2
-        l.set_decoration(0, q.decoration)
-        c = l.cursor_from(0)
-        self.ae(c, q)
-        l = Line(len(t))
-        l.set_text(t, 0, len(t), q)
-        self.ae(l.cursor_from(0), q)
-        l.set_text('axyb', 1, 2, Cursor(3))
+        c = C()
+        c.x = 3
+        l.set_text('axyb', 1, 2, c)
         self.ae(str(l), '012xy56789')
-        l = Line(1)
-        l.set_char(0, 'x', cursor=q)
-        self.ae(l.cursor_from(0), q)
+        l.set_char(0, 'x', 1, q)
+        self.assertEqualAttributes(l.cursor_from(0), q)
 
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode
