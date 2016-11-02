@@ -223,6 +223,32 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
+static PyObject*
+set_char(Line *self, PyObject *args) {
+#define set_char_doc "set_char(at, ch, width=1, cursor=None) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
+    unsigned int at, width=1;
+    int ch;
+    Cursor *cursor = NULL;
+    char_type attrs;
+
+    if (!PyArg_ParseTuple(args, "IC|IO!", &at, &ch, &width, &Cursor_Type, &cursor)) return NULL;
+    if (at >= self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
+
+    if (cursor == NULL) {
+        attrs = (((self->chars[at] >> ATTRS_SHIFT) & ~3) | (width & 3)) << ATTRS_SHIFT;
+    } else {
+        attrs = CURSOR_TO_ATTRS(cursor, width & 3);
+        self->colors[at] = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
+        self->decoration_fg[at] = cursor->decoration_fg & COL_MASK;
+    }
+    self->chars[at] = (ch & CHAR_MASK) | attrs;
+    self->combining_chars[at] = 0;
+    Py_RETURN_NONE;
+}
+
 static Py_ssize_t
 __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->ynum);
@@ -247,6 +273,7 @@ static PyMethodDef methods[] = {
     METHOD(copy_char, METH_VARARGS)
     METHOD(right_shift, METH_VARARGS)
     METHOD(left_shift, METH_VARARGS)
+    METHOD(set_char, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };
@@ -271,7 +298,6 @@ Line *alloc_line() {
  
 static PyObject*
 copy_char(Line* self, PyObject *args) {
-#define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
     unsigned int src, dest;
     Line *to;
     if (!PyArg_ParseTuple(args, "IO!I", &src, &Line_Type, &to, &dest)) return NULL;

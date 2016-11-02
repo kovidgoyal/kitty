@@ -36,7 +36,7 @@ typedef unsigned int index_type;
 #define CC_SHIFT 16
 
 #define CURSOR_TO_ATTRS(c, w) \
-    (w | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
+    ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
             ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) << ATTRS_SHIFT
 
 #define ATTRS_TO_CURSOR(a, c) \
