@@ -20,6 +20,14 @@ class BaseTest(TestCase):
         s = Screen(opts, t, columns=cols, lines=lines)
         return s, t
 
+    def assertEqualAttributes(self, c1, c2):
+        x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0
+        x2, y2, c2.x, c2.y = c2.x, c2.y, 0, 0
+        try:
+            self.assertEqual(c1, c2)
+        finally:
+            c1.x, c1.y, c2.x, c2.y = x1, y1, x2, y2
+
     def assertChanges(self, t, ignore='', **expected_changes):
         actual_changes = t.consolidate_changes()
         ignore = frozenset(ignore.split())

@@ -8,7 +8,7 @@ from . import BaseTest
 
 from kitty.data_types import Line, Cursor
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf
+from kitty.fast_data_types import LineBuf, Cursor as C
 
 
 class TestDataTypes(BaseTest):
@@ -19,20 +19,47 @@ class TestDataTypes(BaseTest):
             line = lb.line(y)
             self.ae(str(line), ' '*3)
             for x in range(3):
-                self.ae(line.text_at(x), ' ')
+                self.ae(line[x], ' ')
         with self.assertRaises(ValueError):
             lb.line(5)
         with self.assertRaises(ValueError):
-            lb.line(0).text_at(5)
+            lb.line(0)[5]
         l = lb.line(0)
         l.add_combining_char(0, '1')
-        self.ae(l.text_at(0), ' 1')
+        self.ae(l[0], ' 1')
         l.add_combining_char(0, '2')
-        self.ae(l.text_at(0), ' 12')
+        self.ae(l[0], ' 12')
         l.add_combining_char(0, '3')
-        self.ae(l.text_at(0), ' 13')
-        self.ae(l.text_at(1), ' ')
+        self.ae(l[0], ' 13')
+        self.ae(l[1], ' ')
         self.ae(str(l), ' 13  ')
+        t = 'Testing with simple text'
+        lb = LineBuf(2, len(t))
+        l = lb.line(0)
+        l.set_text(t, 0, len(t), C())
+        self.ae(str(l), t)
+        l.set_text('a', 0, 1, C())
+        self.assertEqual(str(l), 'a' + t[1:])
+
+        c = C(3, 5)
+        c.bold = c.italic = c.reverse = c.strikethrough = True
+        c.fg = c.bg = c.decoration_fg = 0x0101
+        self.ae(c, c)
+        c2, c3 = c.copy(), c.copy()
+        self.ae(repr(c), repr(c2))
+        self.ae(c, c2)
+        c2.bold = c2.hidden = False
+        self.assertNotEqual(c, c2)
+        l.set_text(t, 0, len(t), C())
+        l.apply_cursor(c2, 3)
+        self.assertEqualAttributes(c2, l.cursor_from(3))
+        l.apply_cursor(c2, 0, len(l))
+        for i in range(len(l)):
+            self.assertEqualAttributes(c2, l.cursor_from(i))
+        l.apply_cursor(c3, 0)
+        self.assertEqualAttributes(c3, l.cursor_from(0))
+        l.copy_char(0, l, 1)
+        self.assertEqualAttributes(c3, l.cursor_from(1))
 
     def test_line_ops(self):
         t = 'Testing with simple text'
