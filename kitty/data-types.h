@@ -12,6 +12,7 @@
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) > (y)) ? (y) : (x))
 
 typedef Py_UCS4 char_type;
 typedef uint64_t color_type;

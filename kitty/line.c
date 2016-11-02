@@ -177,6 +177,52 @@ apply_cursor(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#define COPY_SELF_CELL(s, d) \
+        self->chars[d] = self->chars[s]; \
+        self->colors[d] = self->colors[s]; \
+        self->decoration_fg[d] = self->decoration_fg[s]; \
+        self->combining_chars[d] = self->combining_chars[s];
+
+static PyObject*
+right_shift(Line *self, PyObject *args) {
+#define right_shift_doc "right_shift(at, num) -> ..."
+    unsigned int at, num;
+    if (!PyArg_ParseTuple(args, "II", &at, &num)) return NULL;
+    if (at >= self->xnum || at + num > self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
+    if (num > 0) {
+        for(index_type i = self->xnum - 1; i >= at + num; i--) {
+            COPY_SELF_CELL(i - num, i)
+        }
+        // Check if a wide character was split at the right edge
+        char_type w = (self->chars[self->xnum - 1] >> ATTRS_SHIFT) & 3;
+        if (w != 1) self->chars[self->xnum - 1] = (1 << ATTRS_SHIFT) | 32;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+left_shift(Line *self, PyObject *args) {
+#define left_shift_doc "left_shift(at, num) -> ..."
+    unsigned int at, num;
+    if (!PyArg_ParseTuple(args, "II", &at, &num)) return NULL;
+    if (at >= self->xnum || at + num > self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
+    if (num > 0) {
+        for(index_type i = at; i < self->xnum - num; i++) {
+            COPY_SELF_CELL(i + num, i)
+        }
+        // Check if a wide character was split at the left edge
+        char_type w = (self->chars[at] >> ATTRS_SHIFT) & 3;
+        if (w != 1) self->chars[at] = (1 << ATTRS_SHIFT) | 32;
+    }
+    Py_RETURN_NONE;
+}
+ 
 static Py_ssize_t
 __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->ynum);
@@ -199,6 +245,8 @@ static PyMethodDef methods[] = {
     METHOD(cursor_from, METH_VARARGS)
     METHOD(apply_cursor, METH_VARARGS)
     METHOD(copy_char, METH_VARARGS)
+    METHOD(right_shift, METH_VARARGS)
+    METHOD(left_shift, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };
