@@ -10,7 +10,7 @@
 static inline void
 clear_chars_to_space(LineBuf* linebuf, index_type y) {
     char_type *chars = linebuf->chars + linebuf->xnum * y;
-    for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = 32;
+    for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | 32;
 }
 
 static PyObject *
