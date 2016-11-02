@@ -28,11 +28,6 @@ typedef unsigned int index_type;
 #define ITALIC_SHIFT 5
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
-#define DECORATION_MASK  (1 << DECORATION_SHIFT)
-#define BOLD_MASK  (1 << BOLD_SHIFT)
-#define ITALIC_MASK  (1 << ITALIC_SHIFT)
-#define REVERSE_MASK (1 << REVERSE_SHIFT)
-#define STRIKE_MASK  (1 << STRIKE_SHIFT)
 #define COL_MASK 0xFFFFFFFF
 #define COL_SHIFT  32
 #define HAS_BG_MASK (0xFF << COL_SHIFT)
@@ -44,8 +39,8 @@ typedef unsigned int index_type;
             ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) << ATTRS_SHIFT
 
 #define ATTRS_TO_CURSOR(a, c) \
-    c->decoration = a & DECORATION_MASK; c->bold = a & BOLD_MASK; c->italic = a & ITALIC_MASK; \
-    c->reverse = a & REVERSE_MASK; c->strikethrough = a & STRIKE_MASK;
+    c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
+    c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
 #define COLORS_TO_CURSOR(col, c) \
     c->fg = col & COL_MASK; c->bg = (col >> COL_SHIFT)
