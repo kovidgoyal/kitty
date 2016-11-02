@@ -19,10 +19,9 @@ dealloc(LineBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static PyObject *
-text_at(Line* self, PyObject *x) {
-#define text_at_doc "text_at(x) -> Return the text in the specified cell"
-    unsigned long xval = PyLong_AsUnsignedLong(x);
+static PyObject*
+text_at(Line* self, Py_ssize_t xval) {
+#define text_at_doc "[x] -> Return the text in the specified cell"
     char_type ch;
     combining_type cc;
     PyObject *ans;
@@ -178,10 +177,18 @@ apply_cursor(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static Py_ssize_t
+__len__(PyObject *self) {
+    return (Py_ssize_t)(((Line*)self)->ynum);
+}
+
+static PySequenceMethods sequence_methods = {
+    .sq_length = __len__,                  
+    .sq_item = (ssizeargfunc)text_at
+};
 
 // Boilerplate {{{
 static PyMethodDef methods[] = {
-    METHOD(text_at, METH_O)
     METHOD(add_combining_char, METH_VARARGS)
     METHOD(set_text, METH_VARARGS)
     METHOD(cursor_from, METH_VARARGS)
@@ -202,7 +209,7 @@ PyTypeObject Line_Type = {
     0,                         /* tp_reserved */
     (reprfunc)as_unicode,      /* tp_repr */
     0,                         /* tp_as_number */
-    0,                         /* tp_as_sequence */
+    &sequence_methods,         /* tp_as_sequence */
     0,                         /* tp_as_mapping */
     0,                         /* tp_hash  */
     0,                         /* tp_call */
