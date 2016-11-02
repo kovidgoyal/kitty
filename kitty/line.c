@@ -182,17 +182,23 @@ __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->ynum);
 }
 
+// Boilerplate {{{
+static PyObject*
+copy_char(Line* self, PyObject *args);
+#define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
+
+
 static PySequenceMethods sequence_methods = {
     .sq_length = __len__,                  
     .sq_item = (ssizeargfunc)text_at
 };
 
-// Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_combining_char, METH_VARARGS)
     METHOD(set_text, METH_VARARGS)
     METHOD(cursor_from, METH_VARARGS)
     METHOD(apply_cursor, METH_VARARGS)
+    METHOD(copy_char, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };
@@ -238,4 +244,22 @@ PyTypeObject Line_Type = {
     new,                       /* tp_new */
 };
 // }}
+ 
+static PyObject*
+copy_char(Line* self, PyObject *args) {
+#define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
+    unsigned int src, dest;
+    Line *to;
+    if (!PyArg_ParseTuple(args, "IO!I", &src, &Line_Type, &to, &dest)) return NULL;
+    if (src >= self->xnum || dest >= to->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
+    to->chars[dest] = self->chars[src];
+    to->colors[dest] = self->colors[src];
+    to->decoration_fg[dest] = self->decoration_fg[src];
+    to->combining_chars[dest] = self->combining_chars[src];
+    Py_RETURN_NONE;
+}
+
 
