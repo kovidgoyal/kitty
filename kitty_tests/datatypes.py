@@ -16,7 +16,7 @@ class TestDataTypes(BaseTest):
         lb = LineBuf(2, 3)
         for y in range(2):
             line = lb.line(y)
-            self.ae(str(line), ' '*3)
+            self.ae(str(line), ' ' * 3)
             for x in range(3):
                 self.ae(line[x], ' ')
         with self.assertRaises(ValueError):
