@@ -21,6 +21,10 @@ version = tuple(map(int, re.search(r"^version = \((\d+), (\d+), (\d+)\)", consta
 cflags = ldflags = cc = ldpaths = None
 
 
+def pkg_config(pkg, *args):
+    return shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))
+
+
 def init_env():
     global cflags, ldflags, cc, ldpaths
     cc = os.environ.get('CC', 'gcc')
@@ -34,11 +38,12 @@ def init_env():
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
+    cflags.extend(pkg_config('glew', '--cflags-only-I'))
     ldflags.append('-pthread')
     ldflags.append('-shared')
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
     lib = sysconfig.get_config_var('LDLIBRARY')[3:-3]
-    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib]
+    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + pkg_config('glew', '--libs')
 
     try:
         os.mkdir(build_dir)

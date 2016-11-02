@@ -9,23 +9,25 @@
 extern int init_LineBuf(PyObject *);
 extern int init_Cursor(PyObject *);
 extern int init_Line(PyObject *);
+#include "gl.h"
 
 static PyMethodDef module_methods[] = {
+    GL_METHODS
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+
 static struct PyModuleDef module = {
-   PyModuleDef_HEAD_INIT,
-   "fast_data_types",   /* name of module */
-   NULL, 
-   -1,       
-   module_methods
+   .m_base = PyModuleDef_HEAD_INIT,
+   .m_name = "fast_data_types",   /* name of module */
+   .m_doc = NULL, 
+   .m_size = -1,       
+   .m_methods = module_methods
 };
 
 PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
-
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;

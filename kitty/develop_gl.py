@@ -9,6 +9,7 @@ import sys
 from kitty.shaders import ShaderProgram, GL_VERSION, Sprites, check_for_required_extensions
 from kitty.fonts import set_font_family, cell_size
 from kitty.char_grid import calculate_vertices, cell_shader
+from kitty.fast_data_types import glViewport, enable_automatic_opengl_error_checking
 
 
 def rectangle_uv(left=0, top=0, right=1, bottom=1):
@@ -37,7 +38,7 @@ class Renderer:
         self.do_layout()
 
     def on_resize(self, window, w, h):
-        gl.glViewport(0, 0, w, h)
+        glViewport(0, 0, w, h)
         self.w, self.h = w, h
         self.do_layout()
 
@@ -137,6 +138,7 @@ def main():
     glfw.glfwSetErrorCallback(on_error)
     if not glfw.glfwInit():
         raise SystemExit('GLFW initialization failed')
+    enable_automatic_opengl_error_checking(True)
     set_font_family('monospace', 144)
     try:
         _main()
