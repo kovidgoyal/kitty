@@ -15,7 +15,7 @@ clear_chars_to_space(LineBuf* linebuf, index_type y) {
 }
 
 static PyObject *
-LineBuf_new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     LineBuf *self;
     index_type xnum, ynum;
 
@@ -62,7 +62,7 @@ LineBuf_new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 }
 
 static void
-LineBuf_dealloc(LineBuf* self) {
+dealloc(LineBuf* self) {
     PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map);
     Py_XDECREF(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -86,7 +86,7 @@ line(LineBuf *self, PyObject *y) {
 }
 
 // Boilerplate {{{
-static PyMethodDef LineBuf_methods[] = {
+static PyMethodDef methods[] = {
     {"line", (PyCFunction)line, METH_O,
      "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."
     },
@@ -95,43 +95,13 @@ static PyMethodDef LineBuf_methods[] = {
 
 PyTypeObject LineBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "fast_data_types.LineBuf",
-    sizeof(LineBuf),
-    0,                         /* tp_itemsize */
-    (destructor)LineBuf_dealloc, /* tp_dealloc */
-    0,                         /* tp_print */
-    0,                         /* tp_getattr */
-    0,                         /* tp_setattr */
-    0,                         /* tp_reserved */
-    0,                         /* tp_repr */
-    0,                         /* tp_as_number */
-    0,                         /* tp_as_sequence */
-    0,                         /* tp_as_mapping */
-    0,                         /* tp_hash  */
-    0,                         /* tp_call */
-    0,                         /* tp_str */
-    0,                         /* tp_getattro */
-    0,                         /* tp_setattro */
-    0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,        /* tp_flags */
-    "Line buffers",            /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    LineBuf_methods,           /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    0,                         /* tp_init */
-    0,                         /* tp_alloc */
-    LineBuf_new,               /* tp_new */
+    .tp_name = "fast_data_types.LineBuf",
+    .tp_basicsize = sizeof(LineBuf),
+    .tp_dealloc = (destructor)dealloc, 
+    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_doc = "Line buffers",
+    .tp_methods = methods,
+    .tp_new = new
 };
 // }}
 

@@ -12,7 +12,7 @@
 #define INIT_NONE(x) Py_INCREF(Py_None); x = Py_None;
 
 static PyObject *
-Cursor_new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     Cursor *self;
 
     self = (Cursor *)type->tp_alloc(type, 0);
@@ -30,7 +30,7 @@ Cursor_new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 }
 
 static void
-Cursor_dealloc(Cursor* self) {
+dealloc(Cursor* self) {
     Py_XDECREF(self->shape);
     Py_XDECREF(self->blink);
     Py_XDECREF(self->color);
@@ -61,7 +61,7 @@ copy(Cursor *self, PyObject *args);
 
 // Boilerplate {{{
 
-static PyMemberDef Cursor_members[] = {
+static PyMemberDef members[] = {
     {"x", T_OBJECT_EX, offsetof(Cursor, x), 0, "x"},
     {"y", T_OBJECT_EX, offsetof(Cursor, y), 0, "y"},
     {"shape", T_OBJECT_EX, offsetof(Cursor, shape), 0, "shape"},
@@ -80,7 +80,7 @@ static PyMemberDef Cursor_members[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyMethodDef Cursor_methods[] = {
+static PyMethodDef methods[] = {
     METHOD(copy, METH_NOARGS)
     {NULL}  /* Sentinel */
 };
@@ -91,43 +91,16 @@ richcmp(PyObject *obj1, PyObject *obj2, int op);
 
 PyTypeObject Cursor_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "fast_data_types.Cursor",
-    sizeof(Cursor),
-    0,                         /* tp_itemsize */
-    (destructor)Cursor_dealloc, /* tp_dealloc */
-    0,                         /* tp_print */
-    0,                         /* tp_getattr */
-    0,                         /* tp_setattr */
-    0,                         /* tp_reserved */
-    (reprfunc)repr,            /* tp_repr */
-    0,                         /* tp_as_number */
-    0,                         /* tp_as_sequence */
-    0,                         /* tp_as_mapping */
-    0,                         /* tp_hash  */
-    0,                         /* tp_call */
-    0,                         /* tp_str */
-    0,                         /* tp_getattro */
-    0,                         /* tp_setattro */
-    0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,        /* tp_flags */
-    "Cursors",                 /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    richcmp,                   /* tp_richcompare */
-    0,                         /* tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    Cursor_methods,            /* tp_methods */
-    Cursor_members,            /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    0,                         /* tp_init */
-    0,                         /* tp_alloc */
-    Cursor_new,                /* tp_new */
+    .tp_name = "fast_data_types.Cursor",
+    .tp_basicsize = sizeof(Cursor),
+    .tp_dealloc = (destructor)dealloc, 
+    .tp_repr = (reprfunc)repr,
+    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_doc = "Cursors",
+    .tp_richcompare = richcmp,                   
+    .tp_methods = methods,
+    .tp_members = members,            
+    .tp_new = new,                
 };
 
 
