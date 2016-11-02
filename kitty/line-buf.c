@@ -6,7 +6,6 @@
  */
 
 #include "data-types.h"
-extern PyTypeObject Line_Type;
 
 static inline void
 clear_chars_to_space(LineBuf* linebuf, index_type y) {
@@ -39,7 +38,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->buf = PyMem_Calloc(xnum * ynum, CELL_SIZE);
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->continued_map = PyMem_Calloc(ynum, sizeof(uint8_t));
-        self->line = (Line*)PyType_GenericAlloc(&Line_Type, 0);
+        self->line = alloc_line();
         if (self->buf == NULL || self->line_map == NULL || self->continued_map == NULL || self->line == NULL) {
             PyErr_NoMemory();
             PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_XDECREF(self->line);
@@ -93,7 +92,7 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
-PyTypeObject LineBuf_Type = {
+static PyTypeObject LineBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.LineBuf",
     .tp_basicsize = sizeof(LineBuf),
@@ -103,5 +102,7 @@ PyTypeObject LineBuf_Type = {
     .tp_methods = methods,
     .tp_new = new
 };
+
+INIT_TYPE(LineBuf)
 // }}
 

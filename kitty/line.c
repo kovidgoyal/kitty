@@ -203,7 +203,7 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
-PyTypeObject Line_Type = {
+static PyTypeObject Line_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Line",
     .tp_basicsize = sizeof(Line),
@@ -215,6 +215,10 @@ PyTypeObject Line_Type = {
     .tp_methods = methods,
     .tp_new = new
 };
+
+Line *alloc_line() {
+    return (Line*)PyType_GenericAlloc(&Line_Type, 0);
+}
 // }}
  
 static PyObject*
@@ -234,4 +238,4 @@ copy_char(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-
+INIT_TYPE(Line)

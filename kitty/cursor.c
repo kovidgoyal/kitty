@@ -134,3 +134,4 @@ copy(Cursor *self, PyObject UNUSED *args) {
     return (PyObject*)ans;
 }
 
+INIT_TYPE(Cursor)

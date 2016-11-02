@@ -47,6 +47,14 @@ typedef unsigned int index_type;
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 
+#define INIT_TYPE(type) \
+    int init_##type(PyObject *module) {\
+        if (PyType_Ready(&type##_Type) < 0) return 0; \
+        if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0; \
+        Py_INCREF(&type##_Type); \
+        return 1; \
+    }
+
 typedef struct {
     PyObject_HEAD
 
@@ -83,3 +91,5 @@ typedef struct {
     uint32_t fg, bg, decoration_fg;
 
 } Cursor;
+
+Line *alloc_line();
