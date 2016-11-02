@@ -139,7 +139,7 @@ richcmp(PyObject *obj1, PyObject *obj2, int op)
     PyObject *result = NULL;
     int eq;
 
-    if (op != Py_EQ || op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }
+    if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }
     if (!PyObject_TypeCheck(obj1, &Cursor_Type)) { Py_RETURN_FALSE; }
     if (!PyObject_TypeCheck(obj2, &Cursor_Type)) { Py_RETURN_FALSE; }
     eq = is_eq((Cursor*)obj1, (Cursor*)obj2);
