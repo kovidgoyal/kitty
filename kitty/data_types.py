@@ -236,18 +236,14 @@ class Line:
         if snum:
             self.copy_slice(src_start, dest_start, snum)
 
-    def apply_cursor_fast(self, ch, col, dfg, at, num):
-        for i in range(at, min(len(self), at + num)):
-            self.color[i], self.decoration_fg[i], self.char[i] = col, dfg, ch
-
-    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False, char=' ') -> None:
+    def apply_cursor(self, c: Cursor, at: int=0, num: int=1, clear_char=False) -> None:
         col = ((c.bg & COL_MASK) << COL_SHIFT) | (c.fg & COL_MASK)
         dfg = c.decoration_fg
         s, e = at, min(len(self), at + num)
         chara, color, dfga = self.char, self.color, self.decoration_fg
         cattrs = self.cursor_to_attrs(c)
         if clear_char:
-            ch = (ord(char) & CHAR_MASK) | ((cattrs | 1) << ATTRS_SHIFT)
+            ch = (32 & CHAR_MASK) | ((cattrs | 1) << ATTRS_SHIFT)
             for i in range(s, e):
                 chara[i] = ch
                 color[i] = col
