@@ -29,7 +29,7 @@ static int _enable_error_checking = 1;
         case GL_STACK_UNDERFLOW: \
             PyErr_SetString(PyExc_OverflowError, "An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"); break; \
         case GL_STACK_OVERFLOW: \
-            PyErr_SetString(PyExc_OverflowError, "An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"); break; \
+            PyErr_SetString(PyExc_OverflowError, "An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"); break; \
         default: \
             PyErr_SetString(PyExc_RuntimeError, "An unknown OpenGL error occurred."); break; \
     }
