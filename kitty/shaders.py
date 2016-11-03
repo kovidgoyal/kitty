@@ -72,6 +72,8 @@ class Sprites:
         tgt = GL_TEXTURE_2D_ARRAY
         tex = glGenTextures(1)
         glBindTexture(tgt, tex)
+        # We use GL_NEAREST otherwise glyphs that touch the edge of the cell
+        # often show a border between cells
         glTexParameteri(tgt, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
