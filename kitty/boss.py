@@ -63,7 +63,6 @@ class Boss(Thread):
         glfw.glfwSetKeyCallback(window, self.on_key)
         glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
         glfw.glfwSetWindowFocusCallback(window, self.on_focus)
-        resize_pty(80, 24)
 
     def queue_action(self, func, *args):
         self.action_queue.put((func, args))
