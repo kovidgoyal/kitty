@@ -16,11 +16,12 @@ from .fast_data_types import (
     glGetAttribLocation, glUseProgram, glBindVertexArray, GL_TEXTURE0,
     GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glBufferData,
     GL_MAX_TEXTURE_SIZE, glDeleteTexture, GL_TEXTURE_2D_ARRAY, glGenTextures,
-    glBindTexture, glTexParameteri, GL_LINEAR, GL_CLAMP_TO_EDGE, glDeleteBuffer,
+    glBindTexture, glTexParameteri, GL_CLAMP_TO_EDGE, glDeleteBuffer,
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
-    GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
-    GL_STATIC_DRAW, GL_TEXTURE_BUFFER, GL_RGB32UI, glBindBuffer, glPixelStorei,
-    glTexBuffer, glActiveTexture, glTexStorage3D, glCopyImageSubData, glTexSubImage3D
+    GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
+    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_TEXTURE_BUFFER,
+    GL_RGB32UI, glBindBuffer, glPixelStorei, glTexBuffer, glActiveTexture,
+    glTexStorage3D, glCopyImageSubData, glTexSubImage3D
 )
 
 GL_VERSION = (3, 3)
@@ -71,8 +72,8 @@ class Sprites:
         tgt = GL_TEXTURE_2D_ARRAY
         tex = glGenTextures(1)
         glBindTexture(tgt, tex)
-        glTexParameteri(tgt, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameteri(tgt, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
         znum = self.z + 1
