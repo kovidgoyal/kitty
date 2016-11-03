@@ -95,7 +95,7 @@ def calc_cell_width(font, face):
         ch = chr(i)
         load_char(font, face, ch)
         m = face.glyph.metrics
-        ans = max(ans, int(math.ceil(m.horiAdvance / 64)))
+        ans = max(ans, max(int(math.ceil(m.horiAdvance / 64)), face.glyph.bitmap.width))
     return ans
 
 
