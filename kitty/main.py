@@ -56,9 +56,7 @@ def run_app(opts, args):
         glfw.glfwMakeContextCurrent(window)
         glewInit()
         glfw.glfwSwapInterval(1)
-        child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
         boss = Boss(window, window_width, window_height, opts, args)
-        fork_child(child, args.directory, opts)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
         boss.start()
         try:
@@ -91,6 +89,8 @@ def main():
         exec(args.cmd)
         return
     opts = load_config(args.config)
+    child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
+    fork_child(child, args.directory, opts)
     glfw.glfwSetErrorCallback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
     if not glfw.glfwInit():
