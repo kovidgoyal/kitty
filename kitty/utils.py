@@ -68,7 +68,12 @@ def fork_child(argv, cwd, opts):
         os.environ['COLORTERM'] = 'truecolor'
         if os.path.isdir(terminfo_dir):
             os.environ['TERMINFO'] = terminfo_dir
-        os.execvp(argv[0], argv)
+        try:
+            os.execvp(argv[0], argv)
+        except Exception as err:
+            print('Could not launch:', argv[0])
+            print('\t', err)
+            input('\nPress Enter to exit:')
     else:
         os.close(slave)
         fork_child.pid = pid
