@@ -62,6 +62,7 @@ def fork_child(argv, cwd, opts):
         for i in range(3):
             os.dup2(slave, i)
         os.close(slave), os.close(master)
+        os.closerange(3, 200)
         # Establish the controlling terminal (see man 7 credentials)
         os.close(os.open(os.ttyname(1), os.O_RDWR))
         os.environ['TERM'] = opts.term
