@@ -15,7 +15,7 @@ from .constants import appname, str_version, config_dir
 from .boss import Boss
 from .utils import fork_child, hangup
 from .shaders import GL_VERSION
-from .fast_data_types import glewInit
+from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
 import glfw
 
 
@@ -89,6 +89,7 @@ def main():
         return
     opts = load_config(args.config)
     glfw.glfwSetErrorCallback(on_glfw_error)
+    enable_automatic_opengl_error_checking(False)
     if not glfw.glfwInit():
         raise SystemExit('GLFW initialization failed')
     try:
