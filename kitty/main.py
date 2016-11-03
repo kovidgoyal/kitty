@@ -13,7 +13,7 @@ from gettext import gettext as _
 from .config import load_config
 from .constants import appname, str_version, config_dir
 from .boss import Boss
-from .utils import fork_child, hangup
+from .utils import fork_child, hangup, get_child_status
 from .shaders import GL_VERSION
 from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
 import glfw
@@ -56,7 +56,9 @@ def run_app(opts, args):
         glfw.glfwMakeContextCurrent(window)
         glewInit()
         glfw.glfwSwapInterval(1)
+        child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
         boss = Boss(window, window_width, window_height, opts, args)
+        fork_child(child, args.directory, opts)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
         boss.start()
         try:
@@ -69,6 +71,7 @@ def run_app(opts, args):
                 boss.close()
                 boss.join()
             boss.destroy()
+            get_child_status()  # Ensure child does not become zombie
     finally:
         glfw.glfwDestroyWindow(window)
 
@@ -93,8 +96,6 @@ def main():
     if not glfw.glfwInit():
         raise SystemExit('GLFW initialization failed')
     try:
-        child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
-        fork_child(child, args.directory, opts)
         if args.profile:
             tf = tempfile.NamedTemporaryFile(prefix='kitty-profiling-stats-')
             args.profile = tf.name

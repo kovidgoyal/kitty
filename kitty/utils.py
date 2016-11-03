@@ -84,9 +84,20 @@ def hangup():
     if hasattr(fork_child, 'pid'):
         pid = fork_child.pid
         del fork_child.pid
-        pgrp = os.getpgid(pid)
+        try:
+            pgrp = os.getpgid(pid)
+        except ProcessLookupError:
+            return
         os.killpg(pgrp, signal.SIGHUP)
         os.close(create_pty()[0])
+
+
+def get_child_status():
+    if hasattr(fork_child, 'pid'):
+        try:
+            return os.waitid(os.P_PID, fork_child.pid, os.WEXITED | os.WNOHANG)
+        except ChildProcessError:
+            del fork_child.pid
 
 base_size = sys.getsizeof('')
 
