@@ -9,6 +9,7 @@
 
 
 #include <stdint.h>
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))

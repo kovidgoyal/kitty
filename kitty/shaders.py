@@ -2,12 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from ctypes import addressof, sizeof
 from functools import lru_cache
-
-import OpenGL.GL as gl
-from OpenGL.arrays import ArrayDatatype
-from OpenGL.GL.ARB.copy_image import glCopyImageSubData  # only present in opengl core >= 4.3
-from OpenGL.GL.ARB.texture_storage import glTexStorage3D  # only present in opengl core >= 4.2
 
 from .fonts import render_cell
 from .data_types import ITALIC_MASK, BOLD_MASK
@@ -18,13 +14,13 @@ from .fast_data_types import (
     glCreateShader, glShaderSource, glCompileShader, glGetShaderiv,
     GL_COMPILE_STATUS, glGetShaderInfoLog, glGetUniformLocation,
     glGetAttribLocation, glUseProgram, glBindVertexArray, GL_TEXTURE0,
-    GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS,
+    GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glBufferData,
     GL_MAX_TEXTURE_SIZE, glDeleteTexture, GL_TEXTURE_2D_ARRAY, glGenTextures,
     glBindTexture, glTexParameteri, GL_LINEAR, GL_CLAMP_TO_EDGE,
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
     GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
     GL_STATIC_DRAW, GL_TEXTURE_BUFFER, GL_RGB32UI, glBindBuffer, glPixelStorei,
-    glTexBuffer, glActiveTexture
+    glTexBuffer, glActiveTexture, glTexStorage3D, glCopyImageSubData, glTexSubImage3D
 )
 
 GL_VERSION = (3, 3)
@@ -105,7 +101,7 @@ class Sprites:
         glBindTexture(tgt, self.texture_id)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         x, y = self.x * self.cell_width, self.y * self.cell_height
-        gl.glTexSubImage3D(tgt, 0, x, y, self.z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, buf)
+        glTexSubImage3D(tgt, 0, x, y, self.z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
         glBindTexture(tgt, 0)
 
         # co-ordinates for this sprite in the sprite sheet
@@ -126,7 +122,7 @@ class Sprites:
     def set_sprite_map(self, data):
         tgt = GL_TEXTURE_BUFFER
         glBindBuffer(tgt, self.buffer_id)
-        gl.glBufferData(tgt, ArrayDatatype.arrayByteCount(data), data, GL_STATIC_DRAW)
+        glBufferData(tgt, sizeof(data), addressof(data), GL_STATIC_DRAW)
         glBindBuffer(tgt, 0)
 
     def primary_sprite_position(self, key):

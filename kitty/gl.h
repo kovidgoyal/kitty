@@ -384,6 +384,56 @@ BindTexture(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+TexStorage3D(PyObject UNUSED *self, PyObject *args) {
+    int target, fmt;
+    unsigned int levels, width, height, depth;
+    if (!PyArg_ParseTuple(args, "iIiIII", &target, &levels, &fmt, &width, &height, &depth)) return NULL;
+    glTexStorage3D(target, levels, fmt, width, height, depth);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
+    int src_target, src_level, srcX, srcY, srcZ, dest_target, dest_level, destX, destY, destZ;
+    unsigned int src, dest, width, height, depth;
+    if (!PyArg_ParseTuple(args, "IiiiiiIiiiiiIII",
+        &src, &src_target, &src_level, &srcX, &srcY, &srcZ,
+        &dest, &dest_target, &dest_level, &destX, &destY, &destZ,
+        &width, &height, &depth
+    )) return NULL;
+    glCopyImageSubData(src, src_target, src_level, srcX, srcY, srcZ, dest, dest_target, dest_level, destX, destY, destZ, width, height, depth);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+TexSubImage3D(PyObject UNUSED *self, PyObject *args) {
+    int target, level, x, y, z, fmt, type;
+    unsigned int width, height, depth;
+    PyObject *pixels;
+    if (!PyArg_ParseTuple(args, "iiiiiIIIiiO!", &target, &level, &x, &y, &z, &width, &height, &depth, &fmt, &type, &PyLong_Type, &pixels)) return NULL;
+    void *data = PyLong_AsVoidPtr(pixels);
+    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    glTexSubImage3D(target, level, x, y, z, width, height, depth, fmt, type, data);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+BufferData(PyObject UNUSED *self, PyObject *args) {
+    int target, usage;
+    unsigned long size;
+    PyObject *address;
+    if (!PyArg_ParseTuple(args, "ikO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
+    void *data = PyLong_AsVoidPtr(address);
+    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    glBufferData(target, size, data, usage);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 TexParameteri(PyObject UNUSED *self, PyObject *args) {
     int target, name, param;
     if (!PyArg_ParseTuple(args, "iii", &target, &name, &param)) return NULL;
@@ -495,4 +545,8 @@ int add_module_gl_constants(PyObject *module) {
     METH(PixelStorei, METH_VARARGS) \
     METH(BindBuffer, METH_VARARGS) \
     METH(TexBuffer, METH_VARARGS) \
+    METH(TexStorage3D, METH_VARARGS) \
+    METH(CopyImageSubData, METH_VARARGS) \
+    METH(TexSubImage3D, METH_VARARGS) \
+    METH(BufferData, METH_VARARGS) \
 
