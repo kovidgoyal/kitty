@@ -14,7 +14,8 @@ from .config import load_config
 from .constants import appname, str_version, config_dir
 from .boss import Boss
 from .utils import fork_child, hangup
-from .shaders import GL_VERSION, check_for_required_extensions
+from .shaders import GL_VERSION
+from .fast_data_types import glewInit
 import glfw
 
 
@@ -53,7 +54,7 @@ def run_app(opts, args):
     glfw.glfwSetWindowTitle(window, appname.encode('utf-8'))
     try:
         glfw.glfwMakeContextCurrent(window)
-        check_for_required_extensions()
+        glewInit()
         glfw.glfwSwapInterval(1)
         boss = Boss(window, window_width, window_height, opts, args)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)

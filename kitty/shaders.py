@@ -14,23 +14,10 @@ from .data_types import ITALIC_MASK, BOLD_MASK
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
-REQUIRED_EXTENSIONS = frozenset('GL_ARB_copy_image GL_ARB_texture_storage'.split())
 
 
 def array(*args, dtype=gl.GLfloat):
     return (dtype * len(args))(*args)
-
-
-def check_for_required_extensions():
-    num = gl.glGetIntegerv(gl.GL_NUM_EXTENSIONS)
-    required = set(REQUIRED_EXTENSIONS)
-    for i in range(num):
-        ext = gl.glGetStringi(gl.GL_EXTENSIONS, i).decode('utf-8')
-        required.discard(ext)
-        if not required:
-            break
-    if required:
-        raise RuntimeError('Your OpenGL implementation is missing the following required extensions: %s' % ','.join(required))
 
 
 class Sprites:

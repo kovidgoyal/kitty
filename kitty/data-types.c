@@ -36,6 +36,7 @@ PyInit_fast_data_types(void) {
         if (!init_LineBuf(m)) return NULL;
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
+        if (!add_module_gl_constants(m)) return NULL;
     }
 
     return m;

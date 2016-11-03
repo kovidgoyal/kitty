@@ -6,10 +6,15 @@ import glfw
 import OpenGL.GL as gl
 import sys
 
-from kitty.shaders import ShaderProgram, GL_VERSION, Sprites, check_for_required_extensions
+from kitty.shaders import ShaderProgram, GL_VERSION, Sprites
 from kitty.fonts import set_font_family, cell_size
 from kitty.char_grid import calculate_vertices, cell_shader
-from kitty.fast_data_types import glViewport, enable_automatic_opengl_error_checking
+from kitty.fast_data_types import (
+    glViewport, enable_automatic_opengl_error_checking, glClearColor,
+    glUniform2f, glUniform4f, glUniform2ui, glUniform1i, glewInit, glGetString,
+    GL_VERSION as GL_VERSION_C, GL_VENDOR, GL_SHADING_LANGUAGE_VERSION, GL_RENDERER,
+    glClear, GL_COLOR_BUFFER_BIT, GL_TRIANGLE_FAN, glDrawArraysInstanced
+)
 
 
 def rectangle_uv(left=0, top=0, right=1, bottom=1):
@@ -61,13 +66,13 @@ class Renderer:
         with self.program:
             ul = self.program.uniform_location
             sg = self.screen_geometry
-            gl.glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-            gl.glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-            gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
-            gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
-            gl.glUniform2f(ul('sprite_layout'), *self.sprites.layout)
+            glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+            glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
+            glUniform1i(ul('sprites'), self.sprites.sampler_num)
+            glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
+            glUniform2f(ul('sprite_layout'), *self.sprites.layout)
             with self.sprites:
-                gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+                glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 # window setup {{{
 
@@ -78,7 +83,7 @@ def key_callback(key, action):
 
 
 def gl_get_unicode(k):
-    ans = gl.glGetString(k)
+    ans = glGetString(k)
     if isinstance(ans, bytes):
         try:
             ans = ans.decode('utf-8')
@@ -102,22 +107,22 @@ def _main():
     if not window:
         raise SystemExit("glfwCreateWindow failed")
     glfw.glfwMakeContextCurrent(window)
+    glewInit()
     glfw.glfwSwapInterval(1)
-    check_for_required_extensions()
 
     # If everything went well the following calls
     # will display the version of opengl being used
-    print('Vendor: %s' % (gl_get_unicode(gl.GL_VENDOR)))
-    print('Opengl version: %s' % (gl_get_unicode(gl.GL_VERSION)))
-    print('GLSL Version: %s' % (gl_get_unicode(gl.GL_SHADING_LANGUAGE_VERSION)))
-    print('Renderer: %s' % (gl_get_unicode(gl.GL_RENDERER)))
+    print('Vendor: %s' % (gl_get_unicode(GL_VENDOR)))
+    print('Opengl version: %s' % (gl_get_unicode(GL_VERSION_C)))
+    print('GLSL Version: %s' % (gl_get_unicode(GL_SHADING_LANGUAGE_VERSION)))
+    print('Renderer: %s' % (gl_get_unicode(GL_RENDERER)))
 
     r = Renderer(1024, 1024)
     glfw.glfwSetFramebufferSizeCallback(window, r.on_resize)
     try:
-        gl.glClearColor(0.5, 0.5, 0.5, 0)
+        glClearColor(0.5, 0.5, 0.5, 0)
         while not glfw.glfwWindowShouldClose(window):
-            gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+            glClear(GL_COLOR_BUFFER_BIT)
             r.render()
             glfw.glfwSwapBuffers(window)
             glfw.glfwWaitEvents()
