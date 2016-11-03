@@ -87,8 +87,11 @@ def set_font_family(family, size_in_pts):
         cff_size = size_in_pts
         dpi = get_logical_dpi()
         face = current_font_family['regular'].face
-        cell_width = font_units_to_pixels(face.max_advance_width, face.units_per_EM, size_in_pts, dpi[0])
+        cell_width = font_units_to_pixels(face.max_advance_width, face.units_per_EM, size_in_pts, dpi[0]) + 2
         cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
+        # Ensure dimensions are even
+        cell_width += cell_width % 2
+        cell_height += cell_height % 2
         baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
         underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
