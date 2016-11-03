@@ -4,6 +4,7 @@
 
 from collections import namedtuple
 from copy import copy
+from ctypes import c_uint
 from itertools import chain, repeat
 from queue import Queue, Empty
 
@@ -12,8 +13,12 @@ from .data_types import COL_MASK, COL_SHIFT, REVERSE_MASK, as_color
 from .fonts import set_font_family
 from .shaders import Sprites, ShaderProgram
 from .utils import get_logical_dpi
-
-import OpenGL.GL as gl
+from .fast_data_types import (
+    glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
+    GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
+    glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
+    glEnable, glDisable, GL_BLEND, glDrawArrays
+)
 
 Size = namedtuple('Size', 'width height')
 Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
@@ -145,7 +150,7 @@ class CharGrid:
         self.original_fg = opts.foreground
         self.render_queue = Queue()
         self.program = ShaderProgram(*cell_shader)
-        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites = Sprites()
         self.cursor_program = ShaderProgram(*cursor_shader)
         self.last_render_data = RenderData()
@@ -178,7 +183,7 @@ class CharGrid:
         self.width, self.height = w, h
         self.screen_geometry = sg = calculate_vertices(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
-        self.sprite_map = (gl.GLuint * (sg.ynum * sg.xnum * 9))()
+        self.sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
         self.sprite_text = list(repeat(empty_cell, sg.xnum * sg.ynum))
         self.update_cell_data(add_viewport_data=True)
 
@@ -265,7 +270,7 @@ class CharGrid:
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT)
         cell_data_changed = self.get_all_render_changes()
         with self.sprites:
             if cell_data_changed:
@@ -290,9 +295,9 @@ class CharGrid:
             cell_data_changed |= rd.cell_data is not None
             if rd.clear_color is not None:
                 bg = rd.clear_color
-                gl.glClearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1)
+                glClearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1)
             if rd.viewport is not None:
-                gl.glViewport(0, 0, self.width, self.height)
+                glViewport(0, 0, self.width, self.height)
             data.update(rd)
         return cell_data_changed
 
@@ -308,12 +313,12 @@ class CharGrid:
     def render_cells(self, sg, sprite_layout):
         with self.program:
             ul = self.program.uniform_location
-            gl.glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-            gl.glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-            gl.glUniform1i(ul('sprites'), self.sprites.sampler_num)
-            gl.glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
-            gl.glUniform2f(ul('sprite_layout'), *sprite_layout)
-            gl.glDrawArraysInstanced(gl.GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+            glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+            glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
+            glUniform1i(ul('sprites'), self.sprites.sampler_num)
+            glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
+            glUniform2f(ul('sprite_layout'), *sprite_layout)
+            glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
     def render_cursor(self, sg, cursor):
 
@@ -331,13 +336,13 @@ class CharGrid:
             shape = cursor.shape or self.default_cursor.shape
             alpha = self.opts.cursor_opacity
             if alpha < 1.0 and shape == 'block':
-                gl.glEnable(gl.GL_BLEND)
+                glEnable(GL_BLEND)
             right = left + (width(1.5) if shape == 'beam' else sg.dx)
             bottom = top - sg.dy
             if shape == 'underline':
                 top = bottom + width(vert=False)
-            gl.glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
-            gl.glUniform2f(ul('xpos'), left, right)
-            gl.glUniform2f(ul('ypos'), top, bottom)
-            gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, 4)
-            gl.glDisable(gl.GL_BLEND)
+            glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
+            glUniform2f(ul('xpos'), left, right)
+            glUniform2f(ul('ypos'), top, bottom)
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+            glDisable(GL_BLEND)

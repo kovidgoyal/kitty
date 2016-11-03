@@ -155,11 +155,14 @@ class Sprites:
 
         glActiveTexture(self.buffer_texture_unit)
         glBindTexture(GL_TEXTURE_BUFFER, self.buffer_texture_id)
+        glBindBuffer(GL_TEXTURE_BUFFER, self.buffer_id)
         glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, self.buffer_id)
 
     def __exit__(self, *a):
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
         glBindTexture(GL_TEXTURE_BUFFER, 0)
+        glBindBuffer(GL_TEXTURE_BUFFER, 0)
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, 0)
 
 
 class ShaderProgram:
