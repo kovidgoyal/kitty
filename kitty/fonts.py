@@ -6,6 +6,7 @@ import subprocess
 import unicodedata
 import re
 import ctypes
+import math
 from collections import namedtuple
 from functools import lru_cache
 from threading import Lock
@@ -73,7 +74,34 @@ def get_font_files(family):
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
 CharTexture = underline_position = underline_thickness = glyph_cache = None
-fallback_font_face_cache = {}
+alt_face_cache = {}
+
+
+def load_char(font, face, text):
+    flags = FT_LOAD_RENDER
+    if font.hinting:
+        if font.hintstyle >= 3:
+            flags |= FT_LOAD_TARGET_NORMAL
+        elif 0 < font.hintstyle < 3:
+            flags |= FT_LOAD_TARGET_LIGHT
+    else:
+        flags |= FT_LOAD_NO_HINTING
+    face.load_char(text, flags)
+
+
+def calc_cell_width(font, face):
+    ans = 0
+    for i in range(32, 128):
+        ch = chr(i)
+        load_char(font, face, ch)
+        m = face.glyph.metrics
+        ans = max(ans, int(math.ceil(m.horiAdvance / 64)))
+    return ans
+
+
+@lru_cache(maxsize=2**10)
+def font_for_char(char, bold=False, italic=False):
+    return find_font_for_character(current_font_family_name, char, bold, italic)
 
 
 def set_font_family(family, size_in_pts):
@@ -81,34 +109,27 @@ def set_font_family(family, size_in_pts):
     global underline_position, underline_thickness, glyph_cache
     if current_font_family_name != family or cff_size != size_in_pts:
         find_font_for_character.cache_clear()
-        fallback_font_face_cache.clear()
         current_font_family = get_font_files(family)
         current_font_family_name = family
-        cff_size = size_in_pts
         dpi = get_logical_dpi()
+        glyph_cache = GlyphWidthCache()
+        cff_size = int(64 * size_in_pts)
+        cff_size = {'width': cff_size, 'height': cff_size, 'hres': dpi[0], 'vres': dpi[1]}
+        for fobj in current_font_family.values():
+            fobj.face.set_char_size(**cff_size)
         face = current_font_family['regular'].face
-        cell_width = font_units_to_pixels(face.max_advance_width, face.units_per_EM, size_in_pts, dpi[0]) + 2
+        cell_width = calc_cell_width(current_font_family['regular'], face)
         cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
-        # Ensure dimensions are even
-        cell_width += cell_width % 2
-        cell_height += cell_height % 2
         baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
         underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-        glyph_cache = GlyphWidthCache()
         set_current_font_metrics(glyph_cache.width)
+        font_for_char.cache_clear()
+        alt_face_cache.clear()
     return cell_width, cell_height
 
 CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
-
-
-def face_for_char(char, bold=False, italic=False):
-    ans = find_font_for_character(current_font_family_name, char, bold, italic)
-    face = fallback_font_face_cache.get(ans.face)
-    if face is None:
-        face = fallback_font_face_cache[ans.face] = Face(ans.face)
-    return face
 
 
 def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
@@ -118,13 +139,10 @@ def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
 freetype_lock = Lock()
 
 
-def render_char(text, bold=False, italic=False, size_in_pts=None):
+def render_char(text, bold=False, italic=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
-    size_in_pts = size_in_pts or cff_size
     text = unicodedata.normalize('NFC', text)[0]
-    dpi = get_logical_dpi()
-    sz = int(64 * size_in_pts)
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
@@ -134,17 +152,12 @@ def render_char(text, bold=False, italic=False, size_in_pts=None):
         font = current_font_family.get(key) or current_font_family['regular']
         face = font.face
         if not face.get_char_index(ord(text[0])):
-            face = face_for_char(text[0], bold, italic)
-        face.set_char_size(width=sz, height=sz, hres=dpi[0], vres=dpi[1])
-        flags = FT_LOAD_RENDER
-        if font.hinting:
-            if font.hintstyle >= 3:
-                flags |= FT_LOAD_TARGET_NORMAL
-            elif 0 < font.hintstyle < 3:
-                flags |= FT_LOAD_TARGET_LIGHT
-        else:
-            flags |= FT_LOAD_NO_HINTING
-        face.load_char(text, flags)
+            font = font_for_char(text[0], bold, italic)
+            face = alt_face_cache.get(font)
+            if face is None:
+                face = alt_face_cache[font] = Face(font.face)
+                face.set_char_size(**cff_size)
+        load_char(font, face, text)
         bitmap = face.glyph.bitmap
         if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
             raise ValueError(
@@ -201,8 +214,8 @@ def split_char_bitmap(bitmap_char):
     return first, second
 
 
-def render_cell(text, bold=False, italic=False, size_in_pts=None):
-    bitmap_char = render_char(text, bold, italic, size_in_pts)
+def render_cell(text, bold=False, italic=False):
+    bitmap_char = render_char(text, bold, italic)
     second = None
     if is_wide_char(bitmap_char):
         bitmap_char, second = split_char_bitmap(bitmap_char)
