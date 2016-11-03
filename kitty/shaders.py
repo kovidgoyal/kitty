@@ -11,13 +11,15 @@ from OpenGL.GL.ARB.texture_storage import glTexStorage3D  # only present in open
 
 from .fonts import render_cell
 from .data_types import ITALIC_MASK, BOLD_MASK
+from .fast_data_types import (
+    glCreateProgram, glAttachShader, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER, glLinkProgram,
+    GL_TRUE, GL_LINK_STATUS, glGetProgramiv, glGetProgramInfoLog, glDeleteShader, glDeleteProgram,
+    glGenVertexArrays, glCreateShader, glShaderSource, glCompileShader, glGetShaderiv, GL_COMPILE_STATUS,
+    glGetShaderInfoLog, glGetUniformLocation, glGetAttribLocation, glUseProgram, glBindVertexArray,
+)
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
-
-
-def array(*args, dtype=gl.GLfloat):
-    return (dtype * len(args))(*args)
 
 
 class Sprites:
@@ -163,24 +165,24 @@ class ShaderProgram:
         Create a shader program.
 
         """
-        self.program_id = gl.glCreateProgram()
+        self.program_id = glCreateProgram()
         self.is_active = False
-        vs_id = self.add_shader(vertex, gl.GL_VERTEX_SHADER)
-        gl.glAttachShader(self.program_id, vs_id)
+        vs_id = self.add_shader(vertex, GL_VERTEX_SHADER)
+        glAttachShader(self.program_id, vs_id)
 
-        frag_id = self.add_shader(fragment, gl.GL_FRAGMENT_SHADER)
-        gl.glAttachShader(self.program_id, frag_id)
+        frag_id = self.add_shader(fragment, GL_FRAGMENT_SHADER)
+        glAttachShader(self.program_id, frag_id)
 
-        gl.glLinkProgram(self.program_id)
-        if gl.glGetProgramiv(self.program_id, gl.GL_LINK_STATUS) != gl.GL_TRUE:
-            info = gl.glGetProgramInfoLog(self.program_id)
-            gl.glDeleteProgram(self.program_id)
-            gl.glDeleteShader(vs_id)
-            gl.glDeleteShader(frag_id)
+        glLinkProgram(self.program_id)
+        if glGetProgramiv(self.program_id, GL_LINK_STATUS) != GL_TRUE:
+            info = glGetProgramInfoLog(self.program_id)
+            glDeleteProgram(self.program_id)
+            glDeleteShader(vs_id)
+            glDeleteShader(frag_id)
             raise ValueError('Error linking shader program: \n%s' % info.decode('utf-8'))
-        gl.glDeleteShader(vs_id)
-        gl.glDeleteShader(frag_id)
-        self.vao_id = gl.glGenVertexArrays(1)
+        glDeleteShader(vs_id)
+        glDeleteShader(frag_id)
+        self.vao_id = glGenVertexArrays(1)
 
     def __hash__(self) -> int:
         return self.program_id
@@ -193,35 +195,35 @@ class ShaderProgram:
 
     def add_shader(self, source: str, shader_type: int) -> int:
         ' Compile a shader and return its id, or raise an exception if compilation fails '
-        shader_id = gl.glCreateShader(shader_type)
+        shader_id = glCreateShader(shader_type)
         source = '#version {}\n{}'.format(VERSION, source)
         try:
-            gl.glShaderSource(shader_id, source)
-            gl.glCompileShader(shader_id)
-            if gl.glGetShaderiv(shader_id, gl.GL_COMPILE_STATUS) != gl.GL_TRUE:
-                info = gl.glGetShaderInfoLog(shader_id)
+            glShaderSource(shader_id, source)
+            glCompileShader(shader_id)
+            if glGetShaderiv(shader_id, GL_COMPILE_STATUS) != GL_TRUE:
+                info = glGetShaderInfoLog(shader_id)
                 raise ValueError('GLSL {} compilation failed: \n{}'.format(shader_type, info.decode('utf-8')))
             return shader_id
         except Exception:
-            gl.glDeleteShader(shader_id)
+            glDeleteShader(shader_id)
             raise
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=2**6)
     def uniform_location(self, name: str) -> int:
         ' Return the id for the uniform variable `name` or -1 if not found. '
-        return gl.glGetUniformLocation(self.program_id, name)
+        return glGetUniformLocation(self.program_id, name)
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=2**6)
     def attribute_location(self, name: str) -> int:
         ' Return the id for the attribute variable `name` or -1 if not found. '
-        return gl.glGetAttribLocation(self.program_id, name)
+        return glGetAttribLocation(self.program_id, name)
 
     def __enter__(self):
-        gl.glUseProgram(self.program_id)
-        gl.glBindVertexArray(self.vao_id)
+        glUseProgram(self.program_id)
+        glBindVertexArray(self.vao_id)
         self.is_active = True
 
     def __exit__(self, *args):
-        gl.glUseProgram(0)
-        gl.glBindVertexArray(0)
+        glUseProgram(0)
+        glBindVertexArray(0)
         self.is_active = False

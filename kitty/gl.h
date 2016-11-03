@@ -152,6 +152,175 @@ DrawArraysInstanced(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
+static PyObject* 
+CreateProgram(PyObject UNUSED *self) {
+    GLuint ans = glCreateProgram();
+    if (!ans) { SET_GL_ERR; return NULL; }
+    return PyLong_FromUnsignedLong(ans);
+}
+
+static PyObject* 
+AttachShader(PyObject UNUSED *self, PyObject *args) {
+    unsigned int program_id, shader_id;
+    if (!PyArg_ParseTuple(args, "II", &program_id, &shader_id)) return NULL;
+    glAttachShader(program_id, shader_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+LinkProgram(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    glLinkProgram(program_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+GetProgramiv(PyObject UNUSED *self, PyObject *args) {
+    unsigned int program_id;
+    int pname, ans = 0;
+    if (!PyArg_ParseTuple(args, "Ii", &program_id, &pname)) return NULL;
+    glGetProgramiv(program_id, pname, &ans);
+    CHECK_ERROR;
+    return PyLong_FromLong((long)ans);
+}
+
+static PyObject* 
+GetProgramInfoLog(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    int log_len = 0;
+    GLchar *buf = NULL;
+    glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &log_len);
+    buf = PyMem_Calloc(log_len + 10, sizeof(GLchar));
+    if (buf == NULL) return PyErr_NoMemory();
+    glGetProgramInfoLog(program_id, log_len, &log_len, buf);
+    PyObject *ans = PyBytes_FromStringAndSize(buf, log_len);
+    PyMem_Free(buf);
+    return ans;
+}
+
+static PyObject* 
+GetShaderInfoLog(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    int log_len = 0;
+    GLchar *buf = NULL;
+    glGetShaderiv(program_id, GL_INFO_LOG_LENGTH, &log_len);
+    buf = PyMem_Calloc(log_len + 10, sizeof(GLchar));
+    if (buf == NULL) return PyErr_NoMemory();
+    glGetShaderInfoLog(program_id, log_len, &log_len, buf);
+    PyObject *ans = PyBytes_FromStringAndSize(buf, log_len);
+    PyMem_Free(buf);
+    return ans;
+}
+
+
+static PyObject* 
+DeleteProgram(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    glDeleteProgram(program_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+ 
+static PyObject* 
+DeleteShader(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    glDeleteShader(program_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+GenVertexArrays(PyObject UNUSED *self, PyObject *val) {
+    GLuint arrays[256] = {0};
+    unsigned long n = PyLong_AsUnsignedLong(val);
+    if (n > 256) { PyErr_SetString(PyExc_ValueError, "Generating more than 256 arrays in a single call is not supported"); return NULL; }
+    glGenVertexArrays(n, arrays);
+    CHECK_ERROR;
+    if (n == 1) return PyLong_FromUnsignedLong((unsigned long)arrays[0]);
+    PyObject *ans = PyTuple_New(n);
+    if (ans == NULL) return PyErr_NoMemory();
+    for (size_t i = 0; i < n; i++) {
+        PyObject *t = PyLong_FromUnsignedLong((unsigned long)arrays[i]);
+        if (t == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+        PyTuple_SET_ITEM(ans, i, t);
+    }
+    return ans;
+}
+
+static PyObject* 
+CreateShader(PyObject UNUSED *self, PyObject *val) {
+    long shader_type = PyLong_AsLong(val);
+    GLuint ans = glCreateShader(shader_type);
+    CHECK_ERROR;
+    return PyLong_FromUnsignedLong(ans);
+}
+
+static PyObject* 
+ShaderSource(PyObject UNUSED *self, PyObject *args) {
+    char *src; Py_ssize_t src_len = 0;
+    unsigned int shader_id;
+    if(!PyArg_ParseTuple(args, "Is#", &shader_id, &src, &src_len)) return NULL;
+    glShaderSource(shader_id, 1, (const GLchar * const*)&src, NULL);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+CompileShader(PyObject UNUSED *self, PyObject *val) {
+    unsigned long shader_id = PyLong_AsUnsignedLong(val);
+    glCompileShader((GLuint)shader_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+GetShaderiv(PyObject UNUSED *self, PyObject *args) {
+    unsigned int program_id;
+    int pname, ans = 0;
+    if (!PyArg_ParseTuple(args, "Ii", &program_id, &pname)) return NULL;
+    glGetShaderiv(program_id, pname, &ans);
+    CHECK_ERROR;
+    return PyLong_FromLong((long)ans);
+}
+
+static PyObject* 
+GetUniformLocation(PyObject UNUSED *self, PyObject *args) {
+    char *name;
+    unsigned int program_id;
+    if(!PyArg_ParseTuple(args, "Is", &program_id, &name)) return NULL;
+    GLint ans = glGetUniformLocation(program_id, name);
+    CHECK_ERROR;
+    return PyLong_FromLong((long) ans);
+}
+
+static PyObject* 
+GetAttribLocation(PyObject UNUSED *self, PyObject *args) {
+    char *name;
+    unsigned int program_id;
+    if(!PyArg_ParseTuple(args, "Is", &program_id, &name)) return NULL;
+    GLint ans = glGetAttribLocation(program_id, name);
+    CHECK_ERROR;
+    return PyLong_FromLong((long) ans);
+}
+
+static PyObject* 
+UseProgram(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    glUseProgram(program_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+BindVertexArray(PyObject UNUSED *self, PyObject *val) {
+    unsigned long program_id = PyLong_AsUnsignedLong(val);
+    glBindVertexArray(program_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+ 
 int add_module_gl_constants(PyObject *module) {
 #define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return 0; }
     GLC(GL_VERSION);
@@ -160,8 +329,15 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_RENDERER);
     GLC(GL_TRIANGLE_FAN);
     GLC(GL_COLOR_BUFFER_BIT);
+    GLC(GL_VERTEX_SHADER);
+    GLC(GL_FRAGMENT_SHADER);
+    GLC(GL_TRUE);
+    GLC(GL_FALSE);
+    GLC(GL_COMPILE_STATUS);
+    GLC(GL_LINK_STATUS);
     return 1;
 }
+
 
 #define GL_METHODS \
     {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, \
@@ -169,12 +345,28 @@ int add_module_gl_constants(PyObject *module) {
     METH(Viewport, METH_VARARGS) \
     METH(CheckError, METH_NOARGS) \
     METH(ClearColor, METH_VARARGS) \
+    METH(GetProgramiv, METH_VARARGS) \
+    METH(GetShaderiv, METH_VARARGS) \
     METH(Uniform2ui, METH_VARARGS) \
     METH(Uniform1i, METH_VARARGS) \
     METH(Uniform2f, METH_VARARGS) \
     METH(Uniform4f, METH_VARARGS) \
+    METH(GetUniformLocation, METH_VARARGS) \
+    METH(GetAttribLocation, METH_VARARGS) \
+    METH(ShaderSource, METH_VARARGS) \
+    METH(CompileShader, METH_O) \
     METH(GetString, METH_O) \
     METH(Clear, METH_O) \
+    METH(CreateShader, METH_O) \
+    METH(GenVertexArrays, METH_O) \
+    METH(LinkProgram, METH_O) \
+    METH(UseProgram, METH_O) \
+    METH(BindVertexArray, METH_O) \
+    METH(DeleteProgram, METH_O) \
+    METH(DeleteShader, METH_O) \
+    METH(GetProgramInfoLog, METH_O) \
+    METH(GetShaderInfoLog, METH_O) \
     METH(DrawArraysInstanced, METH_VARARGS) \
-
+    METH(CreateProgram, METH_NOARGS) \
+    METH(AttachShader, METH_VARARGS) \
 
