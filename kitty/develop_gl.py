@@ -3,8 +3,8 @@
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import glfw
-import OpenGL.GL as gl
 import sys
+import ctypes
 
 from kitty.shaders import ShaderProgram, GL_VERSION, Sprites
 from kitty.fonts import set_font_family, cell_size
@@ -53,7 +53,7 @@ class Renderer:
         self.sprites.do_layout(cell_width, cell_height)
         self.sprites.ensure_state()
         self.screen_geometry = sg = calculate_vertices(cell_width, cell_height, self.w, self.h)
-        data = (gl.GLuint * (sg.xnum * sg.ynum * 9))()
+        data = (ctypes.c_uint * (sg.xnum * sg.ynum * 9))()
         for i in range(0, len(data), 9):
             idx = i // 9
             c = '%d' % (idx % 10)

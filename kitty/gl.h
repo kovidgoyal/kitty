@@ -143,6 +143,16 @@ Clear(PyObject UNUSED *self, PyObject *val) {
 }
 
 static PyObject* 
+DrawArrays(PyObject UNUSED *self, PyObject *args) {
+    int mode, first;
+    unsigned int count;
+    if (!PyArg_ParseTuple(args, "iiI", &mode, &first, &count)) return NULL;
+    glDrawArrays(mode, first, count);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+ 
+static PyObject* 
 DrawArraysInstanced(PyObject UNUSED *self, PyObject *args) {
     int mode, first;
     unsigned int count, primcount;
@@ -477,6 +487,31 @@ DeleteTexture(PyObject UNUSED *self, PyObject *val) {
     Py_RETURN_NONE;
 }
  
+static PyObject* 
+BlendFunc(PyObject UNUSED *self, PyObject *args) {
+    int s, d;
+    if (!PyArg_ParseTuple(args, "ii", &s, &d)) return NULL;
+    glBlendFunc(s, d);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+Enable(PyObject UNUSED *self, PyObject *val) {
+    long x = PyLong_AsLong(val);
+    glEnable(x);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+Disable(PyObject UNUSED *self, PyObject *val) {
+    long x = PyLong_AsLong(val);
+    glDisable(x);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
 int add_module_gl_constants(PyObject *module) {
 #define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return 0; }
     GLC(GL_VERSION);
@@ -501,6 +536,8 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_UNPACK_ALIGNMENT);
     GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_RGB32UI);
     GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW);
+    GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
+    GLC(GL_BLEND);
     return 1;
 }
 
@@ -534,10 +571,13 @@ int add_module_gl_constants(PyObject *module) {
     METH(BindVertexArray, METH_O) \
     METH(DeleteProgram, METH_O) \
     METH(DeleteShader, METH_O) \
+    METH(Enable, METH_O) \
+    METH(Disable, METH_O) \
     METH(GetProgramInfoLog, METH_O) \
     METH(GetShaderInfoLog, METH_O) \
     METH(ActiveTexture, METH_O) \
     METH(DrawArraysInstanced, METH_VARARGS) \
+    METH(DrawArrays, METH_VARARGS) \
     METH(CreateProgram, METH_NOARGS) \
     METH(AttachShader, METH_VARARGS) \
     METH(BindTexture, METH_VARARGS) \
@@ -549,4 +589,5 @@ int add_module_gl_constants(PyObject *module) {
     METH(CopyImageSubData, METH_VARARGS) \
     METH(TexSubImage3D, METH_VARARGS) \
     METH(BufferData, METH_VARARGS) \
+    METH(BlendFunc, METH_VARARGS) \
 
