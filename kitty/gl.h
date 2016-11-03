@@ -488,6 +488,14 @@ DeleteTexture(PyObject UNUSED *self, PyObject *val) {
 }
  
 static PyObject* 
+DeleteBuffer(PyObject UNUSED *self, PyObject *val) {
+    GLuint tex_id = (GLuint)PyLong_AsUnsignedLong(val);
+    glDeleteBuffers(1, &tex_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+ 
+static PyObject* 
 BlendFunc(PyObject UNUSED *self, PyObject *args) {
     int s, d;
     if (!PyArg_ParseTuple(args, "ii", &s, &d)) return NULL;
@@ -559,6 +567,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(ShaderSource, METH_VARARGS) \
     METH(CompileShader, METH_O) \
     METH(DeleteTexture, METH_O) \
+    METH(DeleteBuffer, METH_O) \
     METH(GetString, METH_O) \
     METH(GetIntegerv, METH_O) \
     METH(Clear, METH_O) \

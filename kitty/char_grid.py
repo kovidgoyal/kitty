@@ -159,6 +159,9 @@ class CharGrid:
             viewport=Size(self.width, self.height), clear_color=self.original_bg,
             cursor=self.default_cursor))
 
+    def destroy(self):
+        self.sprites.destroy()
+
     def initialize(self):
         self.default_bg, self.default_fg = self.original_bg, self.original_fg
         self.apply_opts(self.opts)

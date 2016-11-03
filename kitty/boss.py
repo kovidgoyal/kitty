@@ -191,6 +191,7 @@ class Boss(Thread):
         # Must be called in the main thread as it manipulates signal handlers
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        self.char_grid.destroy()
 
     def shutdown(self):
         self.shutting_down = True

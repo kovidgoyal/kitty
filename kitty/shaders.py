@@ -16,7 +16,7 @@ from .fast_data_types import (
     glGetAttribLocation, glUseProgram, glBindVertexArray, GL_TEXTURE0,
     GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glBufferData,
     GL_MAX_TEXTURE_SIZE, glDeleteTexture, GL_TEXTURE_2D_ARRAY, glGenTextures,
-    glBindTexture, glTexParameteri, GL_LINEAR, GL_CLAMP_TO_EDGE,
+    glBindTexture, glTexParameteri, GL_LINEAR, GL_CLAMP_TO_EDGE, glDeleteBuffer,
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
     GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
     GL_STATIC_DRAW, GL_TEXTURE_BUFFER, GL_RGB32UI, glBindBuffer, glPixelStorei,
@@ -88,6 +88,15 @@ class Sprites:
         self.last_num_of_layers = znum
         self.texture_id = tex
         glBindTexture(tgt, 0)
+
+    def destroy(self):
+        if self.texture_id is not None:
+            glDeleteTexture(self.texture_id)
+            self.texture_id = None
+        if self.buffer_texture_id is not None:
+            glDeleteTexture(self.buffer_texture_id)
+        if self.buffer_id is not None:
+            glDeleteBuffer(self.buffer_id)
 
     def ensure_state(self):
         if self.texture_id is None:
