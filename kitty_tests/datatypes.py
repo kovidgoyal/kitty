@@ -17,6 +17,8 @@ class TestDataTypes(BaseTest):
         new = LineBuf(1, 3)
         new.copy_old(old)
         self.ae(new.line(0), old.line(1))
+        new.clear()
+        self.ae(str(new.line(0)), ' ' * new.xnum)
 
     def test_line(self):
         lb = LineBuf(2, 3)

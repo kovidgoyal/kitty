@@ -14,6 +14,18 @@ clear_chars_to_space(LineBuf* linebuf, index_type y) {
     for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | 32;
 }
 
+static PyObject*
+clear(LineBuf *self) {
+#define clear_doc "Clear all lines in this LineBuf"
+    memset(self->buf, 0, self->block_size * CELL_SIZE);
+    memset(self->continued_map, 0, self->ynum * sizeof(index_type));
+    for (index_type i = 0; i < self->ynum; i++) {
+        clear_chars_to_space(self, i);
+        self->line_map[i] = i;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     LineBuf *self;
@@ -98,6 +110,7 @@ copy_old(LineBuf *self, PyObject *y);
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(copy_old, METH_O)
+    METHOD(clear, METH_NOARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
