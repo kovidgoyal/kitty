@@ -114,6 +114,26 @@ set_attribute(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_continued(LineBuf *self, PyObject *args) {
+#define set_continued_doc "set_continued(y, val) -> Set the continued values for the specified line."
+    unsigned int y;
+    int val;
+    if (!PyArg_ParseTuple(args, "Ip", &y, &val)) return NULL;
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
+    self->continued_map[y] = val & 1;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+is_continued(LineBuf *self, PyObject *val) {
+#define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
+    unsigned long y = PyLong_AsUnsignedLong(val);
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
+    if (self->continued_map[y]) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
 
 // Boilerplate {{{
 static PyObject*
@@ -125,6 +145,8 @@ static PyMethodDef methods[] = {
     METHOD(copy_old, METH_O)
     METHOD(clear, METH_NOARGS)
     METHOD(set_attribute, METH_VARARGS)
+    METHOD(set_continued, METH_VARARGS)
+    METHOD(is_continued, METH_O)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 

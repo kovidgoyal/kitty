@@ -357,7 +357,7 @@ class Screen:
                 if mo.DECAWM in self.mode:
                     self.carriage_return()
                     self.linefeed()
-                    self.linebuf[self.cursor.y].continued = True
+                    self.linebuf.set_continued(self.cursor.y, True)
                     space_left_in_line = self.columns
                 else:
                     space_left_in_line = 1
@@ -365,7 +365,7 @@ class Screen:
                     pos = len(data) - 1
                     self.cursor.x = self.columns - 1
             write_sz = min(len_left, space_left_in_line)
-            line = self.linebuf[self.cursor.y]
+            line = self.linebuf.line(self.cursor.y)
             if do_insert:
                 line.right_shift(self.cursor.x, write_sz)
             line.set_text(data, pos, write_sz, self.cursor)

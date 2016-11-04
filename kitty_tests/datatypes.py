@@ -25,6 +25,10 @@ class TestDataTypes(BaseTest):
                 c = old.line(y).cursor_from(x)
                 self.assertFalse(c.reverse)
                 self.assertTrue(c.bold)
+        self.assertFalse(old.is_continued(0))
+        old.set_continued(0, True)
+        self.assertTrue(old.is_continued(0))
+        self.assertFalse(old.is_continued(1))
 
     def test_line(self):
         lb = LineBuf(2, 3)
