@@ -250,10 +250,21 @@ __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->ynum);
 }
 
+static int __eq__(Line *a, Line *b) {
+    return a->xnum == b->xnum && \
+                    memcmp(a->chars, b->chars, sizeof(char_type) * a->xnum) == 0 && \
+                    memcmp(a->colors, b->colors, sizeof(color_type) * a->xnum) == 0 && \
+                    memcmp(a->decoration_fg, b->decoration_fg, sizeof(decoration_type) * a->xnum) == 0 && \
+                    memcmp(a->combining_chars, b->combining_chars, sizeof(combining_type) * a->xnum) == 0;
+}
+
 // Boilerplate {{{
 static PyObject*
 copy_char(Line* self, PyObject *args);
 #define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
+
+static PyObject *
+richcmp(PyObject *obj1, PyObject *obj2, int op);
 
 
 static PySequenceMethods sequence_methods = {
@@ -282,6 +293,7 @@ static PyTypeObject Line_Type = {
     .tp_repr = (reprfunc)as_unicode,
     .tp_as_sequence = &sequence_methods,
     .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_richcompare = richcmp,                   
     .tp_doc = "Lines",
     .tp_methods = methods,
     .tp_new = new
@@ -290,6 +302,8 @@ static PyTypeObject Line_Type = {
 Line *alloc_line() {
     return (Line*)PyType_GenericAlloc(&Line_Type, 0);
 }
+
+RICHCMP(Line)
 // }}
  
 static PyObject*

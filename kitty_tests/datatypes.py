@@ -4,7 +4,7 @@
 
 import codecs
 
-from . import BaseTest, filled_line_buf
+from . import BaseTest, filled_line_buf, filled_cursor
 
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
 from kitty.fast_data_types import LineBuf, Cursor as C
@@ -13,10 +13,10 @@ from kitty.fast_data_types import LineBuf, Cursor as C
 class TestDataTypes(BaseTest):
 
     def test_linebuf(self):
-        old = filled_line_buf(2, 3)
+        old = filled_line_buf(2, 3, filled_cursor())
         new = LineBuf(1, 3)
         new.copy_old(old)
-        self.ae(str(new.line(0)), str(old.line(1)))
+        self.ae(new.line(0), old.line(1))
 
     def test_line(self):
         lb = LineBuf(2, 3)

@@ -42,7 +42,7 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 #define PEQ(x) (PyObject_RichCompareBool(a->x, b->x, Py_EQ) == 1)
-int is_eq(Cursor *a, Cursor *b) {
+static int __eq__(Cursor *a, Cursor *b) {
     return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && PEQ(x) && PEQ(y) && PEQ(shape) && PEQ(blink) && PEQ(color) && PEQ(hidden);
 }
 
@@ -103,25 +103,10 @@ PyTypeObject Cursor_Type = {
     .tp_new = new,                
 };
 
+RICHCMP(Cursor)
 
 // }}}
  
-static PyObject *
-richcmp(PyObject *obj1, PyObject *obj2, int op)
-{
-    PyObject *result = NULL;
-    int eq;
-
-    if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }
-    if (!PyObject_TypeCheck(obj1, &Cursor_Type)) { Py_RETURN_FALSE; }
-    if (!PyObject_TypeCheck(obj2, &Cursor_Type)) { Py_RETURN_FALSE; }
-    eq = is_eq((Cursor*)obj1, (Cursor*)obj2);
-    if (op == Py_NE) result = eq ? Py_False : Py_True;
-    else result = eq ? Py_True : Py_False;
-    Py_INCREF(result);
-    return result;
-}
-
 static PyObject*
 copy(Cursor *self, PyObject UNUSED *args) {
 #define CPY(x) ans->x = self->x; Py_XINCREF(self->x);

@@ -20,6 +20,15 @@ def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     return ans
 
 
+def filled_cursor():
+    ans = Cursor()
+    ans.bold = ans.italic = ans.reverse = ans.strikethrough = True
+    ans.fg = 0x101
+    ans.bg = 0x201
+    ans.decoration_fg = 0x301
+    return ans
+
+
 class BaseTest(TestCase):
 
     ae = TestCase.assertEqual

@@ -69,6 +69,22 @@ typedef unsigned int index_type;
         return 1; \
     }
 
+#define RICHCMP(type) \
+    static PyObject * richcmp(PyObject *obj1, PyObject *obj2, int op) { \
+        PyObject *result = NULL; \
+        int eq; \
+        if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; } \
+        if (!PyObject_TypeCheck(obj1, &type##_Type)) { Py_RETURN_FALSE; } \
+        if (!PyObject_TypeCheck(obj2, &type##_Type)) { Py_RETURN_FALSE; } \
+        eq = __eq__((type*)obj1, (type*)obj2); \
+        if (op == Py_NE) result = eq ? Py_False : Py_True; \
+        else result = eq ? Py_True : Py_False; \
+        Py_INCREF(result); \
+        return result; \
+    }
+
+
+
 typedef struct {
     PyObject_HEAD
 
