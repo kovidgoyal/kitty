@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include <structmember.h>
 
 static inline void
 clear_chars_to_space(LineBuf* linebuf, index_type y) {
@@ -67,28 +68,42 @@ dealloc(LineBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+#define INIT_LINE(lb, l, ynum) \
+    (l)->chars           = (lb)->chars + (ynum) * (lb)->xnum; \
+    (l)->colors          = (lb)->colors + (ynum) * (lb)->xnum; \
+    (l)->decoration_fg   = (lb)->decoration_fg + (ynum) * (lb)->xnum; \
+    (l)->combining_chars = (lb)->combining_chars + (ynum) * (lb)->xnum;
+
 static PyObject*
 line(LineBuf *self, PyObject *y) {
+#define line_doc      "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."
     unsigned long idx = PyLong_AsUnsignedLong(y);
     if (idx >= self->ynum) {
         PyErr_SetString(PyExc_ValueError, "Line number too large");
         return NULL;
     }
     self->line->ynum = self->line_map[idx];
-    size_t off = self->line->ynum * self->xnum;
-    self->line->chars = self->chars + off;
-    self->line->colors = self->colors + off;
-    self->line->decoration_fg = self->decoration_fg + off;
-    self->line->combining_chars = self->combining_chars + off;
+    self->line->xnum = self->xnum;
+    INIT_LINE(self, self->line, self->line->ynum);
     Py_INCREF(self->line);
     return (PyObject*)self->line;
 }
 
+
 // Boilerplate {{{
+static PyObject*
+copy_old(LineBuf *self, PyObject *y);
+#define copy_old_doc "Copy the contents of the specified LineBuf to this LineBuf. Both must have the same number of columns, but the number of lines can be different, in which case the bottom lines are copied."
+
 static PyMethodDef methods[] = {
-    {"line", (PyCFunction)line, METH_O,
-     "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."
-    },
+    METHOD(line, METH_O)
+    METHOD(copy_old, METH_O)
+    {NULL, NULL, 0, NULL}  /* Sentinel */
+};
+
+static PyMemberDef members[] = {
+    {"xnum", T_UINT, offsetof(LineBuf, xnum), 0, "xnum"},
+    {"ynum", T_UINT, offsetof(LineBuf, ynum), 0, "ynum"},
     {NULL}  /* Sentinel */
 };
 
@@ -100,9 +115,28 @@ static PyTypeObject LineBuf_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,        
     .tp_doc = "Line buffers",
     .tp_methods = methods,
+    .tp_members = members,            
     .tp_new = new
 };
 
 INIT_TYPE(LineBuf)
-// }}
+// }}}
+
+static PyObject*
+copy_old(LineBuf *self, PyObject *y) {
+    if (!PyObject_TypeCheck(y, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
+    LineBuf *other = (LineBuf*)y;
+    if (other->xnum != self->xnum) { PyErr_SetString(PyExc_ValueError, "LineBuf has a different number of columns"); return NULL; }
+    Line sl = {0}, ol = {0};
+    sl.xnum = self->xnum; ol.xnum = other->xnum;
+
+    for (index_type i = 0; i < MIN(self->ynum, other->ynum); i++) {
+        index_type s = self->ynum - 1 - i, o = other->ynum - 1 - i;
+        self->continued_map[s] = other->continued_map[o];
+        s = self->line_map[s]; o = other->line_map[o];
+        INIT_LINE(self, &sl, s); INIT_LINE(other, &ol, o);
+        COPY_LINE(&ol, &sl);
+    }
+    Py_RETURN_NONE;
+}
 

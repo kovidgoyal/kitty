@@ -12,6 +12,7 @@ from pyte import charsets as cs, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
+from .fast_data_types import LineBuf
 
 
 #: A container for screen's scroll margins.
@@ -65,15 +66,17 @@ class Screen:
         self.columns = columns
         self.lines = lines
         sz = max(1000, opts.scrollback_lines)
-        self.tophistorybuf = deque(maxlen=sz)
-        self.main_linebuf, self.alt_linebuf = list(Line(self.columns) for i in range(self.lines)), list(Line(self.columns) for i in range(self.lines))
+        self.tophistorybuf = LineBuf(sz, self.columns)
+        self.main_linebuf, self.alt_linebuf = LineBuf(self.lines, self.columns), LineBuf(self.lines, self.columns)
         self.linebuf = self.main_linebuf
         self.reset(notify=False)
 
     def apply_opts(self, opts):
         sz = max(1000, opts.scrollback_lines)
         if sz != self.tophistorybuf.maxlen:
-            self.tophistorybuf = deque(self.tophistorybuf, maxlen=sz)
+            previous = self.tophistorybuf
+            self.tophistorybuf = LineBuf(opts.scrollback_lines, self.columns)
+            self.tophistorybuf.copy_old(previous)
 
     def line(self, i):
         return self.linebuf[i]

@@ -44,6 +44,18 @@ typedef unsigned int index_type;
     c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
     c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
+#define COPY_CELL(src, s, dest, d) \
+        (dest)->chars[d] = (self)->chars[s]; \
+        (dest)->colors[d] = (self)->colors[s]; \
+        (dest)->decoration_fg[d] = (self)->decoration_fg[s]; \
+        (dest)->combining_chars[d] = (self)->combining_chars[s];
+
+#define COPY_LINE(src, dest) \
+    memcpy((dest)->chars, (src)->chars, sizeof(char_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->colors, (src)->colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->decoration_fg, (src)->decoration_fg, sizeof(decoration_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->combining_chars, (src)->combining_chars, sizeof(combining_type) * MIN((src)->xnum, (dest)->xnum)); 
+
 #define COLORS_TO_CURSOR(col, c) \
     c->fg = col & COL_MASK; c->bg = (col >> COL_SHIFT)
 

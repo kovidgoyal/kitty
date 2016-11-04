@@ -177,11 +177,7 @@ apply_cursor(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-#define COPY_SELF_CELL(s, d) \
-        self->chars[d] = self->chars[s]; \
-        self->colors[d] = self->colors[s]; \
-        self->decoration_fg[d] = self->decoration_fg[s]; \
-        self->combining_chars[d] = self->combining_chars[s];
+#define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
 static PyObject*
 right_shift(Line *self, PyObject *args) {

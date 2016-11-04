@@ -8,6 +8,16 @@ from unittest import TestCase
 from kitty.screen import Screen
 from kitty.tracker import ChangeTracker
 from kitty.config import defaults
+from kitty.fast_data_types import LineBuf, Cursor
+
+
+def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
+    ans = LineBuf(ynum, xnum)
+    cursor.x = 0
+    for i in range(ynum):
+        t = ('{}'.format(i)) * xnum
+        ans.line(i).set_text(t, 0, xnum, cursor)
+    return ans
 
 
 class BaseTest(TestCase):
