@@ -12,7 +12,7 @@ from pyte import charsets as cs, graphics as g, modes as mo
 from .data_types import Line, Cursor, rewrap_lines
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
-from .fast_data_types import LineBuf
+from .fast_data_types import LineBuf, REVERSE
 
 
 #: A container for screen's scroll margins.
@@ -79,7 +79,7 @@ class Screen:
             self.tophistorybuf.copy_old(previous)
 
     def line(self, i):
-        return self.linebuf[i]
+        return self.linebuf.line(i)
 
     def __repr__(self):
         return ("{0}({1}, {2})".format(self.__class__.__name__,
@@ -121,7 +121,6 @@ class Screen:
         if self.linebuf is self.alt_linebuf:
             self.toggle_screen_buffer()
         self.linebuf.clear()
-        self.linebuf[:] = (Line(self.columns) for i in range(self.lines))
         self.mode = {mo.DECAWM, mo.DECTCEM}
         self.margins = Margins(0, self.lines - 1)
 
@@ -236,9 +235,7 @@ class Screen:
 
         # Mark all displayed characters as reverse.
         if mo.DECSCNM in modes:
-            for line in self.linebuf:
-                for i in range(len(line)):
-                    line.set_reverse(i, True)
+            self.linebuf.set_attribute(REVERSE, True)
             self.update_screen()
             self.select_graphic_rendition(7)  # +reverse.
 
@@ -282,9 +279,7 @@ class Screen:
             self.cursor_position()
 
         if mo.DECSCNM in modes:
-            for line in self.linebuf:
-                for i in range(len(line)):
-                    line.set_reverse(i, False)
+            self.linebuf.set_attribute(REVERSE, False)
             self.update_screen()
             self.select_graphic_rendition(27)  # -reverse.
 

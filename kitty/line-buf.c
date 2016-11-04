@@ -101,6 +101,19 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
+static PyObject*
+set_attribute(LineBuf *self, PyObject *args) {
+#define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
+    unsigned int shift, val;
+    char_type mask;
+    if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
+    if (shift < DECORATION_SHIFT || shift > STRIKE_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
+    for (index_type y = 0; y < self->ynum; y++) {
+        SET_ATTRIBUTE(self->chars + y * self->xnum, shift, val);
+    }
+    Py_RETURN_NONE;
+}
+
 
 // Boilerplate {{{
 static PyObject*
@@ -111,6 +124,7 @@ static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(copy_old, METH_O)
     METHOD(clear, METH_NOARGS)
+    METHOD(set_attribute, METH_VARARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 

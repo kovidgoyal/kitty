@@ -44,6 +44,12 @@ typedef unsigned int index_type;
     c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
     c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
+#define SET_ATTRIBUTE(chars, shift, val) \
+    mask = shift == DECORATION_SHIFT ? 3 : 1; \
+    val = (val & mask) << (ATTRS_SHIFT + shift); \
+    mask = ~(mask << (ATTRS_SHIFT + shift)); \
+    for (index_type i = 0; i < self->xnum; i++)  (chars)[i] = ((chars)[i] & mask) | val;
+
 #define COPY_CELL(src, s, dest, d) \
         (dest)->chars[d] = (self)->chars[s]; \
         (dest)->colors[d] = (self)->colors[s]; \

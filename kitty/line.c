@@ -245,6 +245,17 @@ set_char(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_attribute(Line *self, PyObject *args) {
+#define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
+    unsigned int shift, val;
+    char_type mask;
+    if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
+    if (shift < DECORATION_SHIFT || shift > STRIKE_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
+    SET_ATTRIBUTE(self->chars, shift, val);
+    Py_RETURN_NONE;
+}
+
 static Py_ssize_t
 __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->ynum);
@@ -281,6 +292,7 @@ static PyMethodDef methods[] = {
     METHOD(right_shift, METH_VARARGS)
     METHOD(left_shift, METH_VARARGS)
     METHOD(set_char, METH_VARARGS)
+    METHOD(set_attribute, METH_VARARGS)
         
     {NULL}  /* Sentinel */
 };

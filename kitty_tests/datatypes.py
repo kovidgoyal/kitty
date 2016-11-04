@@ -7,7 +7,7 @@ import codecs
 from . import BaseTest, filled_line_buf, filled_cursor
 
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C
+from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE
 
 
 class TestDataTypes(BaseTest):
@@ -19,6 +19,12 @@ class TestDataTypes(BaseTest):
         self.ae(new.line(0), old.line(1))
         new.clear()
         self.ae(str(new.line(0)), ' ' * new.xnum)
+        old.set_attribute(REVERSE, False)
+        for y in range(old.ynum):
+            for x in range(old.xnum):
+                c = old.line(y).cursor_from(x)
+                self.assertFalse(c.reverse)
+                self.assertTrue(c.bold)
 
     def test_line(self):
         lb = LineBuf(2, 3)
