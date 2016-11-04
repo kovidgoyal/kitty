@@ -226,7 +226,7 @@ cursor_blink     no
 background       #000000
 font_family      monospace
 font_size        11.0
-scrollback_lines 10000
+scrollback_lines 2000
 
 # black
 color0   #000000
