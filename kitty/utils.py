@@ -11,7 +11,6 @@ import struct
 import fcntl
 import signal
 import ctypes
-import unicodedata
 from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
@@ -29,17 +28,10 @@ wcwidth_native.restype = ctypes.c_int
 
 @lru_cache(maxsize=2**13)
 def wcwidth(c: str) -> int:
-    if unicodedata.combining(c):
-        return 0
-    if wcwidth.current_font is None:
-        return min(2, wcwidth_native(c))
-    return wcwidth.current_font(c)
-wcwidth.current_font = None
-
-
-def set_current_font_metrics(current_font) -> None:
-    wcwidth.cache_clear()
-    wcwidth.current_font = current_font
+    ans = min(2, wcwidth_native(c))
+    if ans == -1:
+        ans = 1
+    return ans
 
 
 def create_pty():

@@ -16,7 +16,7 @@ from freetype import (
     FT_LOAD_NO_HINTING, FT_PIXEL_MODE_GRAY
 )
 
-from .utils import get_logical_dpi, set_current_font_metrics
+from .utils import get_logical_dpi, wcwidth
 
 
 def escape_family_name(name):
@@ -73,7 +73,7 @@ def get_font_files(family):
 
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
-CharTexture = underline_position = underline_thickness = glyph_cache = None
+CharTexture = underline_position = underline_thickness = None
 alt_face_cache = {}
 
 
@@ -106,13 +106,12 @@ def font_for_char(char, bold=False, italic=False):
 
 def set_font_family(family, size_in_pts):
     global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
-    global underline_position, underline_thickness, glyph_cache
+    global underline_position, underline_thickness
     if current_font_family_name != family or cff_size != size_in_pts:
         find_font_for_character.cache_clear()
         current_font_family = get_font_files(family)
         current_font_family_name = family
         dpi = get_logical_dpi()
-        glyph_cache = GlyphWidthCache()
         cff_size = int(64 * size_in_pts)
         cff_size = {'width': cff_size, 'height': cff_size, 'hres': dpi[0], 'vres': dpi[1]}
         for fobj in current_font_family.values():
@@ -124,7 +123,6 @@ def set_font_family(family, size_in_pts):
         underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-        set_current_font_metrics(glyph_cache.width)
         font_for_char.cache_clear()
         alt_face_cache.clear()
     return cell_width, cell_height
@@ -139,10 +137,16 @@ def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
 freetype_lock = Lock()
 
 
-def render_char(text, bold=False, italic=False):
-    # TODO: Handle non-normalizable combining chars. Probably need to use
-    # harfbuzz for that
-    text = unicodedata.normalize('NFC', text)[0]
+def render_to_bitmap(font, face, text):
+    load_char(font, face, text)
+    bitmap = face.glyph.bitmap
+    if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
+        raise ValueError(
+            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
+    return bitmap
+
+
+def render_char(text, bold=False, italic=False, width=1):
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
@@ -157,11 +161,19 @@ def render_char(text, bold=False, italic=False):
             if face is None:
                 face = alt_face_cache[font] = Face(font.face)
                 face.set_char_size(**cff_size)
-        load_char(font, face, text)
-        bitmap = face.glyph.bitmap
-        if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
-            raise ValueError(
-                'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
+        bitmap = render_to_bitmap(font, face, text)
+        if width == 1 and bitmap.width > cell_width * 1.1:
+            # rescale the font size so that the glyph is visible in a single
+            # cell and hope somebody updates libc's wcwidth
+            sz = cff_size.copy()
+            sz['width'] = int(sz['width'] * cell_width / bitmap.width)
+            # Preserve aspect ratio
+            sz['height'] = int(sz['height'] * cell_width / bitmap.width)
+            try:
+                face.set_char_size(**sz)
+                bitmap = render_to_bitmap(font, face, text)
+            finally:
+                face.set_char_size(**cff_size)
         m = face.glyph.metrics
         return CharBitmap(bitmap.buffer, int(abs(m.horiBearingX) / 64),
                           int(abs(m.horiBearingY) / 64), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
@@ -215,9 +227,13 @@ def split_char_bitmap(bitmap_char):
 
 
 def render_cell(text, bold=False, italic=False):
-    bitmap_char = render_char(text, bold, italic)
+    # TODO: Handle non-normalizable combining chars. Probably need to use
+    # harfbuzz for that
+    text = unicodedata.normalize('NFC', text)[0]
+    width = wcwidth(text)
+    bitmap_char = render_char(text, bold, italic, width)
     second = None
-    if is_wide_char(bitmap_char):
+    if width == 2:
         bitmap_char, second = split_char_bitmap(bitmap_char)
         second = place_char_in_cell(second)
 
@@ -232,27 +248,6 @@ def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, sr
         sr, dr = src_start_column + (src_start_row + r) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
         dest[dr:dr + column_count] = src[sr:sr + column_count]
     return dest
-
-
-class GlyphWidthCache:
-
-    def __init__(self):
-        self.clear()
-
-    def render(self, text, bold=False, italic=False):
-        first, second = render_cell(text, bold, italic)
-        self.width_map[text] = 1 if second is None else 2
-
-    def clear(self):
-        self.width_map = {}
-
-    def width(self, text):
-        try:
-            return self.width_map[text]
-        except KeyError:
-            pass
-        self.render(text)
-        return self.width_map[text]
 
 
 def join_cells(*cells):
@@ -278,7 +273,7 @@ def cell_size():
     return cell_width, cell_height
 
 
-def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
+def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kovid'):
     set_font_family(family, sz)
     cells = []
     for c in text:
