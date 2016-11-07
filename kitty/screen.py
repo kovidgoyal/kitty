@@ -570,13 +570,8 @@ class Screen:
 
         # If cursor is outside scrolling margins -- do nothin'.
         if top <= self.cursor.y <= bottom:
-            #                           v +1, because range() is exclusive.
-            for line in range(self.cursor.y,
-                              min(bottom + 1, self.cursor.y + count)):
-                self.linebuf.pop(bottom)
-                self.linebuf.insert(line, Line(self.columns))
+            self.linebuf.insert_lines(count, self.cursor.y, bottom)
             self.update_line_range(self.cursor.y, bottom)
-
             self.carriage_return()
 
     def delete_lines(self, count=1):

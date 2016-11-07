@@ -51,9 +51,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->block_size = xnum * ynum;
         self->buf = PyMem_Calloc(xnum * ynum, CELL_SIZE);
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
+        self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
         self->continued_map = PyMem_Calloc(ynum, sizeof(uint8_t));
         self->line = alloc_line();
-        if (self->buf == NULL || self->line_map == NULL || self->continued_map == NULL || self->line == NULL) {
+        if (self->buf == NULL || self->line_map == NULL || self->scratch == NULL || self->continued_map == NULL || self->line == NULL) {
             PyErr_NoMemory();
             PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_CLEAR(self->line);
             Py_CLEAR(self);
@@ -75,7 +76,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(LineBuf* self) {
-    PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map);
+    PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); PyMem_Free(self->scratch);
     Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -182,6 +183,12 @@ copy_line_to(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#define CLEAR_LINE(l) \
+    for (index_type i = 0; i < self->xnum; i++) l.chars[i] = (1 << ATTRS_SHIFT) | 32; \
+    memset(l.colors, 0, self->xnum * sizeof(color_type)); \
+    memset(l.decoration_fg, 0, self->xnum * sizeof(decoration_type)); \
+    memset(l.combining_chars, 0, self->xnum * sizeof(combining_type));
+
 static PyObject*
 clear_line(LineBuf *self, PyObject *val) {
 #define clear_line_doc "clear_line(y) -> Clear the specified line"
@@ -189,10 +196,7 @@ clear_line(LineBuf *self, PyObject *val) {
     Line l;
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     INIT_LINE(self, &l, self->line_map[y]);
-    for (index_type i = 0; i < self->xnum; i++) l.chars[i] = (1 << ATTRS_SHIFT) | 32;
-    memset(l.colors, 0, self->xnum * sizeof(color_type));
-    memset(l.decoration_fg, 0, self->xnum * sizeof(decoration_type));
-    memset(l.combining_chars, 0, self->xnum * sizeof(combining_type));
+    CLEAR_LINE(l);
     self->continued_map[y] = 0;
     Py_RETURN_NONE;
 }
@@ -241,6 +245,36 @@ is_continued(LineBuf *self, PyObject *val) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+insert_lines(LineBuf *self, PyObject *args) {
+#define insert_lines_doc "insert_lines(num, y, bottom) -> Insert num blank lines at y, only changing lines in the range [y, bottom]."
+    unsigned int y, num, bottom;
+    if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
+    if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    index_type ylimit = bottom + 1;
+    num = MIN(ylimit - y, num);
+    if (num > 0) {
+        for (index_type i = ylimit - num; i < ylimit; i++) {
+            self->scratch[i] = self->line_map[i];
+        }
+        for (index_type i = ylimit - 1; i >= y + num; i--) {
+            self->line_map[i] = self->line_map[i - num];
+            self->continued_map[i] = self->continued_map[i - num];
+        }
+        if (y + num < self->ynum) self->continued_map[y + num] = 0;
+        for (index_type i = 0; i < num; i++) {
+            self->line_map[y + i] = self->scratch[ylimit - num + i];
+        }
+        Line l;
+        for (index_type i = y; i < y + num; i++) {
+            INIT_LINE(self, &l, self->line_map[i]);
+            CLEAR_LINE(l);
+            self->continued_map[i] = 0;
+        }
+    }
+    Py_RETURN_NONE;
+}
+ 
 
 // Boilerplate {{{
 static PyObject*
@@ -258,6 +292,7 @@ static PyMethodDef methods[] = {
     METHOD(set_continued, METH_VARARGS)
     METHOD(index, METH_VARARGS)
     METHOD(reverse_index, METH_VARARGS)
+    METHOD(insert_lines, METH_VARARGS)
     METHOD(is_continued, METH_O)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };

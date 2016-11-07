@@ -57,6 +57,32 @@ class TestDataTypes(BaseTest):
         for i in range(1, 5):
             self.ae(lb.line(i), lb2.line(i-1))
 
+        lb = filled_line_buf(5, 5, filled_cursor())
+        clb = filled_line_buf(5, 5, filled_cursor())
+        lb2 = LineBuf(1, 5)
+        lb.insert_lines(2, 1, lb.ynum - 1)
+        self.ae(lb.line(0), clb.line(0))
+        self.ae(lb.line(3), clb.line(1))
+        self.ae(lb.line(4), clb.line(2))
+        self.ae(lb.line(1), lb2.line(0))
+        self.ae(lb.line(2), lb2.line(0))
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb.insert_lines(10, 0, lb.ynum - 1)
+        for i in range(lb.ynum):
+            self.ae(lb.line(i), lb2.line(0))
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb.insert_lines(10, 1, lb.ynum - 1)
+        self.ae(lb.line(0), clb.line(0))
+        for i in range(1, lb.ynum):
+            self.ae(lb.line(i), lb2.line(0))
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb.insert_lines(1, 1, 3)
+        self.ae(lb.line(0), clb.line(0))
+        self.ae(lb.line(1), lb2.line(0))
+        self.ae(lb.line(2), clb.line(1))
+        self.ae(lb.line(3), clb.line(2))
+        self.ae(lb.line(4), clb.line(4))
+
     def test_line(self):
         lb = LineBuf(2, 3)
         for y in range(lb.ynum):

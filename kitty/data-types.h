@@ -108,7 +108,7 @@ typedef struct {
     PyObject_HEAD
 
     uint8_t *buf;
-    index_type xnum, ynum, *line_map;
+    index_type xnum, ynum, *line_map, *scratch;
     index_type block_size;
     uint8_t *continued_map;
     Line *line;
