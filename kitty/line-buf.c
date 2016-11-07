@@ -249,24 +249,25 @@ static PyObject*
 insert_lines(LineBuf *self, PyObject *args) {
 #define insert_lines_doc "insert_lines(num, y, bottom) -> Insert num blank lines at y, only changing lines in the range [y, bottom]."
     unsigned int y, num, bottom;
+    index_type i;
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
     if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     index_type ylimit = bottom + 1;
     num = MIN(ylimit - y, num);
     if (num > 0) {
-        for (index_type i = ylimit - num; i < ylimit; i++) {
+        for (i = ylimit - num; i < ylimit; i++) {
             self->scratch[i] = self->line_map[i];
         }
-        for (index_type i = ylimit - 1; i >= y + num; i--) {
+        for (i = ylimit - 1; i >= y + num; i--) {
             self->line_map[i] = self->line_map[i - num];
             self->continued_map[i] = self->continued_map[i - num];
         }
         if (y + num < self->ynum) self->continued_map[y + num] = 0;
-        for (index_type i = 0; i < num; i++) {
+        for (i = 0; i < num; i++) {
             self->line_map[y + i] = self->scratch[ylimit - num + i];
         }
         Line l;
-        for (index_type i = y; i < y + num; i++) {
+        for (i = y; i < y + num; i++) {
             INIT_LINE(self, &l, self->line_map[i]);
             CLEAR_LINE(l);
             self->continued_map[i] = 0;
@@ -275,7 +276,37 @@ insert_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
-
+static PyObject*
+delete_lines(LineBuf *self, PyObject *args) {
+#define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num blank lines at y, only changing lines in the range [y, bottom]."
+    unsigned int y, num, bottom;
+    index_type i;
+    if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
+    if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    index_type ylimit = bottom + 1;
+    num = MIN(ylimit - y, num);
+    if (num > 0) {
+        for (i = y; i < y + num; i++) {
+            self->scratch[i] = self->line_map[i];
+        }
+        for (i = y; i < ylimit; i++) {
+            self->line_map[i] = self->line_map[i + num];
+            self->continued_map[i] = self->continued_map[i + num];
+        }
+        self->continued_map[y] = 0;
+        for (i = 0; i < num; i++) {
+            self->line_map[ylimit - num + i] = self->scratch[y + i];
+        }
+        Line l;
+        for (i = ylimit - num; i < ylimit; i++) {
+            INIT_LINE(self, &l, self->line_map[i]);
+            CLEAR_LINE(l);
+            self->continued_map[i] = 0;
+        }
+    }
+    Py_RETURN_NONE;
+}
+ 
 // Boilerplate {{{
 static PyObject*
 copy_old(LineBuf *self, PyObject *y);
@@ -293,6 +324,7 @@ static PyMethodDef methods[] = {
     METHOD(index, METH_VARARGS)
     METHOD(reverse_index, METH_VARARGS)
     METHOD(insert_lines, METH_VARARGS)
+    METHOD(delete_lines, METH_VARARGS)
     METHOD(is_continued, METH_O)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
