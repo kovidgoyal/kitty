@@ -128,4 +128,5 @@ typedef struct {
 
 } Cursor;
 
-Line *alloc_line();
+Line* alloc_line();
+Cursor* alloc_cursor();

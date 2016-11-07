@@ -17,26 +17,27 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 
     self = (Cursor *)type->tp_alloc(type, 0);
     if (self != NULL) {
+        self->x = PyLong_FromLong(0);
+        if (self->x == NULL) { Py_CLEAR(self); return NULL; }
+        self->y = self->x; Py_INCREF(self->y);
         INIT_NONE(self->shape);
         INIT_NONE(self->blink);
         INIT_NONE(self->color);
         self->hidden = Py_False; Py_INCREF(Py_False);
         self->bold = 0; self->italic = 0; self->reverse = 0; self->strikethrough = 0; self->decoration = 0;
         self->fg = 0; self->bg = 0; self->decoration_fg = 0;
-        self->x = PyLong_FromLong(0); self->y = PyLong_FromLong(0);
-        if (self->x == NULL || self->y == NULL) { Py_DECREF(self); self = NULL; }
     }
     return (PyObject*) self;
 }
 
 static void
 dealloc(Cursor* self) {
-    Py_XDECREF(self->shape);
-    Py_XDECREF(self->blink);
-    Py_XDECREF(self->color);
-    Py_XDECREF(self->hidden);
-    Py_XDECREF(self->x);
-    Py_XDECREF(self->y);
+    Py_CLEAR(self->shape);
+    Py_CLEAR(self->blink);
+    Py_CLEAR(self->color);
+    Py_CLEAR(self->hidden);
+    Py_CLEAR(self->x);
+    Py_CLEAR(self->y);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -112,11 +113,15 @@ copy(Cursor *self, PyObject UNUSED *args) {
 #define CPY(x) ans->x = self->x; Py_XINCREF(self->x);
 #define CCY(x) ans->x = self->x;
     Cursor* ans;
-    ans = PyObject_New(Cursor, &Cursor_Type);
+    ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     CPY(x); CPY(y); CPY(shape); CPY(blink); CPY(color); CPY(hidden);
     CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
     return (PyObject*)ans;
+}
+
+Cursor *alloc_cursor() {
+    return (Cursor*)new(&Cursor_Type, NULL, NULL);
 }
 
 INIT_TYPE(Cursor)
