@@ -15,7 +15,13 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 }
 
 static void
-dealloc(LineBuf* self) {
+dealloc(Line* self) {
+    if (self->needs_free) {
+        PyMem_Free(self->chars);
+        PyMem_Free(self->colors);
+        PyMem_Free(self->decoration_fg);
+        PyMem_Free(self->combining_chars);
+    }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -56,9 +62,8 @@ as_unicode(Line* self) {
         return NULL;
     }
     for(index_type i = 0; i < self->xnum; i++) {
-        char_type ch = self->chars[i] & CHAR_MASK;
+        buf[n++] = self->chars[i] & CHAR_MASK;
         char_type cc = self->combining_chars[i];
-        buf[n++] = ch & CHAR_MASK;
         Py_UCS4 cc1 = cc & CC_MASK, cc2;
         if (cc1) {
             buf[n++] = cc1;
@@ -137,14 +142,14 @@ cursor_from(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds x");
         return NULL;
     }
-    ans = PyObject_New(Cursor, &Cursor_Type);
+    ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     xo = PyLong_FromUnsignedLong(x); yo = PyLong_FromUnsignedLong(y);
     if (xo == NULL || yo == NULL) {
-        Py_DECREF(ans); Py_XDECREF(xo); Py_XDECREF(yo);
+        Py_CLEAR(ans); Py_CLEAR(xo); Py_CLEAR(yo);
         PyErr_NoMemory(); return NULL;
     }
-    Py_XDECREF(ans->x); Py_XDECREF(ans->y);
+    Py_CLEAR(ans->x); Py_CLEAR(ans->y);
     ans->x = xo; ans->y = yo;
     char_type attrs = self->chars[x] >> ATTRS_SHIFT;
     ATTRS_TO_CURSOR(attrs, ans);
@@ -297,7 +302,7 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject Line_Type = {
+PyTypeObject Line_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Line",
     .tp_basicsize = sizeof(Line),
@@ -312,7 +317,9 @@ static PyTypeObject Line_Type = {
 };
 
 Line *alloc_line() {
-    return (Line*)PyType_GenericAlloc(&Line_Type, 0);
+    Line *ans = (Line*)PyType_GenericAlloc(&Line_Type, 0);
+    ans->needs_free = 0;
+    return ans;
 }
 
 RICHCMP(Line)

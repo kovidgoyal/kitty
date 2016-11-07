@@ -66,7 +66,7 @@ class Screen:
         self.columns = columns
         self.lines = lines
         sz = max(1000, opts.scrollback_lines)
-        self.tophistorybuf = LineBuf(sz, self.columns)
+        self.tophistorybuf = deque(maxlen=sz)
         self.main_linebuf, self.alt_linebuf = LineBuf(self.lines, self.columns), LineBuf(self.lines, self.columns)
         self.linebuf = self.main_linebuf
         self.reset(notify=False)
@@ -75,8 +75,8 @@ class Screen:
         sz = max(1000, opts.scrollback_lines)
         if sz != self.tophistorybuf.maxlen:
             previous = self.tophistorybuf
-            self.tophistorybuf = LineBuf(opts.scrollback_lines, self.columns)
-            self.tophistorybuf.copy_old(previous)
+            self.tophistorybuf = deque(maxlen=sz)
+            self.tophistorybuf.extend(previous)
 
     def line(self, i):
         return self.linebuf.line(i)
@@ -381,14 +381,14 @@ class Screen:
             if mo.DECAWM in self.mode:
                 self.carriage_return()
                 self.linefeed()
-                self.linebuf[self.cursor.y].continued = True
+                self.linebuf.set_continued(self.cursor.y, True)
             else:
                 self.cursor.x = self.columns - char_width
 
         do_insert = mo.IRM in self.mode
 
         cx = self.cursor.x
-        line = self.linebuf[self.cursor.y]
+        line = self.linebuf.line(self.cursor.y)
         if char_width > 0:
             if do_insert:
                 line.right_shift(self.cursor.x, char_width)
@@ -406,7 +406,7 @@ class Screen:
                 line.add_combining_char(cx - 1, char)
                 self.update_cell_range(self.cursor.y, cx - 1, cx - 1)
             elif self.cursor.y > 0:
-                lline = self.linebuf[self.cursor.y - 1]
+                lline = self.linebuf.line(self.cursor.y - 1)
                 lline.add_combining_char(self.columns - 1, char)
                 self.update_cell_range(self.cursor.y - 1, self.columns - 1, self.columns - 1)
 
@@ -458,11 +458,15 @@ class Screen:
         top, bottom = self.margins
 
         if self.cursor.y == bottom:
-            l = self.linebuf.pop(top)
+            self.linebuf.index(top, bottom)
             if self.linebuf is self.main_linebuf:
-                self.tophistorybuf.append(l)
+                if len(self.tophistorybuf) >= self.tophistorybuf.maxlen:
+                    l = self.tophistorybuf.popleft()
+                    self.linebuf.copy_line_to(bottom, l)
+                else:
+                    self.tophistorybuf.append(self.linebuf.create_line_copy(bottom))
+                self.linebuf.clear_line(bottom)
                 self.line_added_to_history()
-            self.linebuf.insert(bottom, Line(self.columns))
             if bottom - top >= self.lines - 1:
                 self.update_screen()
             else:
@@ -477,12 +481,12 @@ class Screen:
         top, bottom = self.margins
 
         if self.cursor.y == top:
-            self.linebuf.pop(bottom)
-            self.linebuf.insert(top, Line(self.columns))
+            self.linebuf.reverse_index(top, bottom)
             if bottom - top >= self.lines - 1:
                 self.update_screen()
             else:
                 self.update_line_range(top, bottom)
+            self.linebuf.clear_line(top)
         else:
             self.cursor_up()
 

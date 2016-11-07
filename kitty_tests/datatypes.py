@@ -22,7 +22,8 @@ class TestDataTypes(BaseTest):
         old.set_attribute(REVERSE, False)
         for y in range(old.ynum):
             for x in range(old.xnum):
-                c = old.line(y).cursor_from(x)
+                l = old.line(y)
+                c = l.cursor_from(x)
                 self.assertFalse(c.reverse)
                 self.assertTrue(c.bold)
         self.assertFalse(old.is_continued(0))
@@ -30,17 +31,43 @@ class TestDataTypes(BaseTest):
         self.assertTrue(old.is_continued(0))
         self.assertFalse(old.is_continued(1))
 
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb2 = LineBuf(5, 5)
+        lb2.copy_old(lb)
+        lb.index(0, 4)
+        for i in range(0, 4):
+            self.ae(lb.line(i), lb2.line(i+1))
+        self.ae(lb.line(4), lb2.line(0))
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb.index(1, 3)
+        self.ae(lb.line(0), lb2.line(0))
+        self.ae(lb.line(1), lb2.line(2))
+        self.ae(lb.line(2), lb2.line(3))
+        self.ae(lb.line(3), lb2.line(1))
+        self.ae(lb.line(4), lb2.line(4))
+        self.ae(lb.create_line_copy(1), lb2.line(2))
+        l = lb.create_line_copy(2)
+        lb.copy_line_to(1, l)
+        self.ae(l, lb2.line(2))
+        lb.clear_line(0)
+        self.ae(lb.line(0), LineBuf(1, lb.xnum).create_line_copy(0))
+        lb = filled_line_buf(5, 5, filled_cursor())
+        lb.reverse_index(0, 4)
+        self.ae(lb.line(0), lb2.line(4))
+        for i in range(1, 5):
+            self.ae(lb.line(i), lb2.line(i-1))
+
     def test_line(self):
         lb = LineBuf(2, 3)
-        for y in range(2):
+        for y in range(lb.ynum):
             line = lb.line(y)
-            self.ae(str(line), ' ' * 3)
-            for x in range(3):
+            self.ae(str(line), ' ' * lb.xnum)
+            for x in range(lb.xnum):
                 self.ae(line[x], ' ')
         with self.assertRaises(ValueError):
-            lb.line(5)
+            lb.line(lb.ynum)
         with self.assertRaises(ValueError):
-            lb.line(0)[5]
+            lb.line(0)[lb.xnum]
         l = lb.line(0)
         l.add_combining_char(0, '1')
         self.ae(l[0], ' 1')

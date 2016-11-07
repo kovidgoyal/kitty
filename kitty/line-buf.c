@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include <structmember.h>
+extern PyTypeObject Line_Type;
 
 static inline void
 clear_chars_to_space(LineBuf* linebuf, index_type y) {
@@ -54,9 +55,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->line = alloc_line();
         if (self->buf == NULL || self->line_map == NULL || self->continued_map == NULL || self->line == NULL) {
             PyErr_NoMemory();
-            PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_XDECREF(self->line);
-            Py_DECREF(self);
-            self = NULL;
+            PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_CLEAR(self->line);
+            Py_CLEAR(self);
         } else {
             self->chars = (char_type*)self->buf;
             self->colors = (color_type*)(self->chars + self->block_size);
@@ -76,7 +76,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(LineBuf* self) {
     PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map);
-    Py_XDECREF(self->line);
+    Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -94,9 +94,9 @@ line(LineBuf *self, PyObject *y) {
         PyErr_SetString(PyExc_ValueError, "Line number too large");
         return NULL;
     }
-    self->line->ynum = self->line_map[idx];
+    self->line->ynum = idx;
     self->line->xnum = self->xnum;
-    INIT_LINE(self, self->line, self->line->ynum);
+    INIT_LINE(self, self->line, self->line_map[idx]);
     Py_INCREF(self->line);
     return (PyObject*)self->line;
 }
@@ -125,6 +125,113 @@ set_continued(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static inline int
+allocate_line_storage(Line *line, uint8_t initialize) {
+    if (initialize) {
+        line->chars = PyMem_Calloc(line->xnum, sizeof(char_type));
+        line->colors = PyMem_Calloc(line->xnum, sizeof(color_type));
+        line->decoration_fg = PyMem_Calloc(line->xnum, sizeof(decoration_type));
+        line->combining_chars = PyMem_Calloc(line->xnum, sizeof(combining_type));
+        for (index_type i = 0; i < line->xnum; i++) line->chars[i] = (1 << ATTRS_SHIFT) | 32;
+    } else {
+        line->chars = PyMem_Malloc(line->xnum * sizeof(char_type));
+        line->colors = PyMem_Malloc(line->xnum * sizeof(color_type));
+        line->decoration_fg = PyMem_Malloc(line->xnum * sizeof(decoration_type));
+        line->combining_chars = PyMem_Malloc(line->xnum * sizeof(combining_type));
+    }
+    if (line->chars == NULL || line->colors == NULL || line->decoration_fg == NULL || line->combining_chars == NULL) {
+        PyMem_Free(line->chars); line->chars = NULL;
+        PyMem_Free(line->colors); line->colors = NULL;
+        PyMem_Free(line->decoration_fg); line->decoration_fg = NULL;
+        PyMem_Free(line->combining_chars); line->combining_chars = NULL;
+        PyErr_NoMemory();
+        return 0;
+    }
+    line->needs_free = 1;
+    return 1;
+}
+
+static PyObject*
+create_line_copy(LineBuf *self, PyObject *ynum) {
+#define create_line_copy_doc "Create a new Line object that is a copy of the line at ynum. Note that this line has its own copy of the data and does not refer to the data in the LineBuf."
+    Line src, *line;
+    index_type y = (index_type)PyLong_AsUnsignedLong(ynum);
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    line = alloc_line();
+    if (line == NULL) return PyErr_NoMemory();
+    src.xnum = self->xnum; line->xnum = self->xnum;
+    if (!allocate_line_storage(line, 0)) { Py_DECREF(line); return NULL; }
+    line->ynum = y;
+    line->continued = self->continued_map[y];
+    INIT_LINE(self, &src, self->line_map[y]);
+    COPY_LINE(&src, line);
+    return (PyObject*)line;
+}
+
+static PyObject*
+copy_line_to(LineBuf *self, PyObject *args) {
+#define copy_line_to_doc "Copy the line at ynum to the provided line object."
+    unsigned int y;
+    Line src, *dest;
+    if (!PyArg_ParseTuple(args, "IO!", &y, &Line_Type, &dest)) return NULL;
+    src.xnum = self->xnum; dest->xnum = self->xnum;
+    dest->ynum = y;
+    dest->continued = self->continued_map[y];
+    INIT_LINE(self, &src, self->line_map[y]);
+    COPY_LINE(&src, dest);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+clear_line(LineBuf *self, PyObject *val) {
+#define clear_line_doc "clear_line(y) -> Clear the specified line"
+    index_type y = (index_type)PyLong_AsUnsignedLong(val);
+    Line l;
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    INIT_LINE(self, &l, self->line_map[y]);
+    for (index_type i = 0; i < self->xnum; i++) l.chars[i] = (1 << ATTRS_SHIFT) | 32;
+    memset(l.colors, 0, self->xnum * sizeof(color_type));
+    memset(l.decoration_fg, 0, self->xnum * sizeof(decoration_type));
+    memset(l.combining_chars, 0, self->xnum * sizeof(combining_type));
+    self->continued_map[y] = 0;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+index(LineBuf *self, PyObject *args) {
+#define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
+    unsigned int top, bottom;
+    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
+    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    index_type old_top = self->line_map[top];
+    uint8_t old_cont = self->continued_map[top];
+    for (index_type i = top; i < bottom; i++) {
+        self->line_map[i] = self->line_map[i + 1];
+        self->continued_map[i] = self->continued_map[i + 1];
+    }
+    self->line_map[bottom] = old_top;
+    self->continued_map[bottom] = old_cont;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reverse_index(LineBuf *self, PyObject *args) {
+#define reverse_index_doc "reverse_index(top, bottom) -> Scroll all lines in the range [top, bottom] by one down. After scrolling, top will be bottom."
+    unsigned int top, bottom;
+    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
+    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    index_type old_bottom = self->line_map[bottom];
+    uint8_t old_cont = self->continued_map[bottom];
+    for (index_type i = bottom; i > top; i--) {
+        self->line_map[i] = self->line_map[i - 1];
+        self->continued_map[i] = self->continued_map[i - 1];
+    }
+    self->line_map[top] = old_bottom;
+    self->continued_map[top] = old_cont;
+    Py_RETURN_NONE;
+}
+
+
 static PyObject*
 is_continued(LineBuf *self, PyObject *val) {
 #define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
@@ -142,10 +249,15 @@ copy_old(LineBuf *self, PyObject *y);
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
+    METHOD(clear_line, METH_O)
     METHOD(copy_old, METH_O)
+    METHOD(copy_line_to, METH_VARARGS)
+    METHOD(create_line_copy, METH_O)
     METHOD(clear, METH_NOARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
+    METHOD(index, METH_VARARGS)
+    METHOD(reverse_index, METH_VARARGS)
     METHOD(is_continued, METH_O)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };

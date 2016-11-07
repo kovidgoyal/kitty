@@ -99,6 +99,8 @@ typedef struct {
     decoration_type *decoration_fg;
     combining_type *combining_chars;
     index_type xnum, ynum;
+    uint8_t continued;
+    uint8_t needs_free;
 } Line;
 
 
