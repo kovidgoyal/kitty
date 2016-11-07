@@ -65,21 +65,20 @@ def filter_tests_by_module(suite, *names):
     return filter_tests(suite, q)
 
 
-def run_tests(find_tests, verbosity=4):
+def run_tests():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('name', nargs='?', default=None,
-                        help='The name of the test to run, for e.g. writing.WritingTest.many_many_basic or .many_many_basic for a shortcut')
+    parser.add_argument(
+        'name', nargs='*', default=[],
+        help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times')
+    parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
     args = parser.parse_args()
-    tests = find_tests()
+    tests = find_tests_in_dir(os.path.join(base, 'kitty_tests'))
     if args.name:
-        if args.name.startswith('.'):
-            tests = filter_tests_by_name(tests, args.name[1:])
-        else:
-            tests = filter_tests_by_module(tests, args.name)
+        tests = filter_tests_by_name(tests, *args.name)
         if not tests._tests:
             raise SystemExit('No test named %s found' % args.name)
-    run_cli(tests, verbosity)
+    run_cli(tests, args.verbosity)
 
 
 def run_cli(suite, verbosity=4):
@@ -92,5 +91,8 @@ def run_cli(suite, verbosity=4):
     if not result.wasSuccessful():
         raise SystemExit(1)
 
+def main():
+    run_tests()
+
 if __name__ == '__main__':
-    run_cli(find_tests_in_dir(os.path.join(base, 'kitty_tests')))
+    main()

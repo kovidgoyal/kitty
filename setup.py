@@ -8,6 +8,7 @@ import sys
 import sysconfig
 import shlex
 import subprocess
+import argparse
 
 base = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(base, 'build')
@@ -25,12 +26,12 @@ def pkg_config(pkg, *args):
     return shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))
 
 
-def init_env():
+def init_env(debug=False):
     global cflags, ldflags, cc, ldpaths
     cc = os.environ.get('CC', 'gcc')
-    cflags = os.environ.get('OVERRIDE_CFLAGS',
-                            '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-                            ' -pedantic-errors -Werror -O3 -DNDEBUG -fwrapv -fstack-protector-strong -pipe')
+    cflags = os.environ.get('OVERRIDE_CFLAGS', (
+        '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
+        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv -fstack-protector-strong -pipe').format('-ggdb' if debug else '-O3'))
     cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall -O3')
     ldflags = shlex.split(ldflags)
@@ -69,8 +70,23 @@ def compile_c_extension(module, *sources):
         run_tool([cc] + cflags + ['-c', src] + ['-o', dest])
     run_tool([cc] + ldflags + objects + ldpaths + ['-o', os.path.join(base, module + '.so')])
 
-if __name__ == '__main__':
+
+def option_parser():
+    p = argparse.ArgumentParser()
+    p.add_argument('action', nargs='?', default='build', choices='build test'.split(), help='Action to perform (default is build)')
+    p.add_argument('--debug', default=False, action='store_true',
+                   help='Build extension modules with debugging symbols')
+    return p
+
+def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
-    init_env()
-    compile_c_extension('kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c', 'kitty/line-buf.c', 'kitty/cursor.c')
+    args = option_parser().parse_args()
+    init_env(args.debug)
+    if args.action == 'build':
+        compile_c_extension('kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c', 'kitty/line-buf.c', 'kitty/cursor.c')
+    elif args.action == 'test':
+        os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
+
+if __name__ == '__main__':
+    main()
