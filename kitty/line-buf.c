@@ -52,7 +52,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->buf = PyMem_Calloc(xnum * ynum, CELL_SIZE);
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
-        self->continued_map = PyMem_Calloc(ynum, sizeof(uint8_t));
+        self->continued_map = PyMem_Calloc(ynum, sizeof(bool));
         self->line = alloc_line();
         if (self->buf == NULL || self->line_map == NULL || self->scratch == NULL || self->continued_map == NULL || self->line == NULL) {
             PyErr_NoMemory();
@@ -128,7 +128,7 @@ set_continued(LineBuf *self, PyObject *args) {
 }
 
 static inline int
-allocate_line_storage(Line *line, uint8_t initialize) {
+allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->chars = PyMem_Calloc(line->xnum, sizeof(char_type));
         line->colors = PyMem_Calloc(line->xnum, sizeof(color_type));
@@ -209,7 +209,7 @@ index(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     index_type old_top = self->line_map[top];
-    uint8_t old_cont = self->continued_map[top];
+    bool old_cont = self->continued_map[top];
     for (index_type i = top; i < bottom; i++) {
         self->line_map[i] = self->line_map[i + 1];
         self->continued_map[i] = self->continued_map[i + 1];
@@ -226,7 +226,7 @@ reverse_index(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     index_type old_bottom = self->line_map[bottom];
-    uint8_t old_cont = self->continued_map[bottom];
+    bool old_cont = self->continued_map[bottom];
     for (index_type i = bottom; i > top; i--) {
         self->line_map[i] = self->line_map[i - 1];
         self->continued_map[i] = self->continued_map[i - 1];
@@ -308,10 +308,15 @@ delete_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
+
 // Boilerplate {{{
 static PyObject*
 copy_old(LineBuf *self, PyObject *y);
 #define copy_old_doc "Copy the contents of the specified LineBuf to this LineBuf. Both must have the same number of columns, but the number of lines can be different, in which case the bottom lines are copied."
+
+static PyObject*
+rewrap(LineBuf *self, PyObject *val);
+#define rewrap_doc "rewrap(new_screen) -> Fill up new screen (which can have different size to this screen) with as much of the contents of this screen as will fit. Return lines that overflow."
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
@@ -319,6 +324,7 @@ static PyMethodDef methods[] = {
     METHOD(copy_old, METH_O)
     METHOD(copy_line_to, METH_VARARGS)
     METHOD(create_line_copy, METH_O)
+    METHOD(rewrap, METH_O)
     METHOD(clear, METH_NOARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
@@ -367,5 +373,24 @@ copy_old(LineBuf *self, PyObject *y) {
         COPY_LINE(&ol, &sl);
     }
     Py_RETURN_NONE;
+}
+
+static PyObject*
+rewrap(LineBuf *self, PyObject *val) {
+    LineBuf* other;
+    if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
+    other = (LineBuf*) val;
+    PyObject *ret = PyList_New(0);
+    if (ret == NULL) return PyErr_NoMemory();
+
+    // Fast path
+    if (other->xnum == self->xnum && other->ynum == self->ynum) {
+        memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
+        memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
+        memcpy(other->buf, self->buf, self->xnum * self->ynum * CELL_SIZE);
+        return ret;
+    }
+
+    return ret;
 }
 

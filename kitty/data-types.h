@@ -9,6 +9,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
@@ -68,6 +69,13 @@ typedef unsigned int index_type;
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 
+#define BOOL_GETSET(type, x) \
+    static PyObject* x##_get(type *self, void UNUSED *closure) { PyObject *ans = self->x ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
+    static int x##_set(type *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->x = PyObject_IsTrue(value) ? true : false; return 0; }
+
+#define GETSET(x) \
+    {#x, (getter) x##_get, (setter) x##_set, #x, NULL},
+
 #define INIT_TYPE(type) \
     int init_##type(PyObject *module) {\
         if (PyType_Ready(&type##_Type) < 0) return 0; \
@@ -100,18 +108,18 @@ typedef struct {
     decoration_type *decoration_fg;
     combining_type *combining_chars;
     index_type xnum, ynum;
-    uint8_t continued;
-    uint8_t needs_free;
+    bool continued;
+    bool needs_free;
 } Line;
 
 
 typedef struct {
     PyObject_HEAD
 
-    uint8_t *buf;
+    bool *buf;
     index_type xnum, ynum, *line_map, *scratch;
     index_type block_size;
-    uint8_t *continued_map;
+    bool *continued_map;
     Line *line;
 
     // Pointers into buf
@@ -126,7 +134,8 @@ typedef struct {
     PyObject_HEAD
 
     PyObject *x, *y, *shape, *blink, *hidden, *color;
-    uint8_t bold, italic, reverse, strikethrough, decoration;
+    bool bold, italic, reverse, strikethrough;
+    uint8_t decoration;
     uint32_t fg, bg, decoration_fg;
 
 } Cursor;

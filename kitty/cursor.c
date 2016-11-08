@@ -62,6 +62,11 @@ copy(Cursor *self, PyObject *args);
 
 // Boilerplate {{{
 
+BOOL_GETSET(Cursor, bold)
+BOOL_GETSET(Cursor, italic)
+BOOL_GETSET(Cursor, reverse)
+BOOL_GETSET(Cursor, strikethrough)
+
 static PyMemberDef members[] = {
     {"x", T_OBJECT_EX, offsetof(Cursor, x), 0, "x"},
     {"y", T_OBJECT_EX, offsetof(Cursor, y), 0, "y"},
@@ -70,14 +75,18 @@ static PyMemberDef members[] = {
     {"color", T_OBJECT_EX, offsetof(Cursor, color), 0, "color"},
     {"hidden", T_OBJECT_EX, offsetof(Cursor, hidden), 0, "hidden"},
 
-    {"bold", T_UBYTE, offsetof(Cursor, bold), 0, "bold"},
-    {"italic", T_UBYTE, offsetof(Cursor, italic), 0, "italic"},
-    {"strikethrough", T_UBYTE, offsetof(Cursor, strikethrough), 0, "strikethrough"},
-    {"reverse", T_UBYTE, offsetof(Cursor, reverse), 0, "reverse"},
     {"decoration", T_UBYTE, offsetof(Cursor, decoration), 0, "decoration"},
     {"fg", T_UINT, offsetof(Cursor, fg), 0, "fg"},
     {"bg", T_UINT, offsetof(Cursor, bg), 0, "bg"},
     {"decoration_fg", T_UINT, offsetof(Cursor, decoration_fg), 0, "decoration_fg"},
+    {NULL}  /* Sentinel */
+};
+
+static PyGetSetDef getseters[] = {
+    GETSET(bold)
+    GETSET(italic)
+    GETSET(reverse)
+    GETSET(strikethrough)
     {NULL}  /* Sentinel */
 };
 
@@ -101,6 +110,7 @@ PyTypeObject Cursor_Type = {
     .tp_richcompare = richcmp,                   
     .tp_methods = methods,
     .tp_members = members,            
+    .tp_getset = getseters,
     .tp_new = new,                
 };
 
