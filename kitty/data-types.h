@@ -53,16 +53,24 @@ typedef unsigned int index_type;
     for (index_type i = 0; i < self->xnum; i++)  (chars)[i] = ((chars)[i] & mask) | val;
 
 #define COPY_CELL(src, s, dest, d) \
-        (dest)->chars[d] = (self)->chars[s]; \
-        (dest)->colors[d] = (self)->colors[s]; \
-        (dest)->decoration_fg[d] = (self)->decoration_fg[s]; \
-        (dest)->combining_chars[d] = (self)->combining_chars[s];
+        (dest)->chars[d] = (src)->chars[s]; \
+        (dest)->colors[d] = (src)->colors[s]; \
+        (dest)->decoration_fg[d] = (src)->decoration_fg[s]; \
+        (dest)->combining_chars[d] = (src)->combining_chars[s];
+
+#define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
 #define COPY_LINE(src, dest) \
     memcpy((dest)->chars, (src)->chars, sizeof(char_type) * MIN((src)->xnum, (dest)->xnum)); \
     memcpy((dest)->colors, (src)->colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
     memcpy((dest)->decoration_fg, (src)->decoration_fg, sizeof(decoration_type) * MIN((src)->xnum, (dest)->xnum)); \
     memcpy((dest)->combining_chars, (src)->combining_chars, sizeof(combining_type) * MIN((src)->xnum, (dest)->xnum)); 
+
+#define CLEAR_LINE(l, at, num) \
+    for (index_type i = (at); i < (num); i++) (l)->chars[i] = (1 << ATTRS_SHIFT) | 32; \
+    memset((l)->colors, (at), (num) * sizeof(color_type)); \
+    memset((l)->decoration_fg, (at), (num) * sizeof(decoration_type)); \
+    memset((l)->combining_chars, (at), (num) * sizeof(combining_type));
 
 #define COLORS_TO_CURSOR(col, c) \
     c->fg = col & COL_MASK; c->bg = (col >> COL_SHIFT)
@@ -142,3 +150,9 @@ typedef struct {
 
 Line* alloc_line();
 Cursor* alloc_cursor();
+
+#define left_shift_line(line, at, num) \
+    for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
+        COPY_CELL(line, __i__ + (num), line, __i__) \
+    } \
+    if ((((line)->chars[(at)] >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->chars[(at)] = (1 << ATTRS_SHIFT) | 32;

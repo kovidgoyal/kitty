@@ -184,12 +184,6 @@ copy_line_to(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-#define CLEAR_LINE(l) \
-    for (index_type i = 0; i < self->xnum; i++) l.chars[i] = (1 << ATTRS_SHIFT) | 32; \
-    memset(l.colors, 0, self->xnum * sizeof(color_type)); \
-    memset(l.decoration_fg, 0, self->xnum * sizeof(decoration_type)); \
-    memset(l.combining_chars, 0, self->xnum * sizeof(combining_type));
-
 static PyObject*
 clear_line(LineBuf *self, PyObject *val) {
 #define clear_line_doc "clear_line(y) -> Clear the specified line"
@@ -197,7 +191,7 @@ clear_line(LineBuf *self, PyObject *val) {
     Line l;
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     INIT_LINE(self, &l, self->line_map[y]);
-    CLEAR_LINE(l);
+    CLEAR_LINE(&l, 0, self->xnum);
     self->continued_map[y] = 0;
     Py_RETURN_NONE;
 }
@@ -270,40 +264,44 @@ insert_lines(LineBuf *self, PyObject *args) {
         Line l;
         for (i = y; i < y + num; i++) {
             INIT_LINE(self, &l, self->line_map[i]);
-            CLEAR_LINE(l);
+            CLEAR_LINE(&l, 0, self->xnum);
             self->continued_map[i] = 0;
         }
     }
     Py_RETURN_NONE;
+}
+
+static inline void do_delete(LineBuf *self, index_type num, index_type y, index_type bottom) {
+    index_type i;
+    index_type ylimit = bottom + 1;
+    for (i = y; i < y + num; i++) {
+        self->scratch[i] = self->line_map[i];
+    }
+    for (i = y; i < ylimit; i++) {
+        self->line_map[i] = self->line_map[i + num];
+        self->continued_map[i] = self->continued_map[i + num];
+    }
+    self->continued_map[y] = 0;
+    for (i = 0; i < num; i++) {
+        self->line_map[ylimit - num + i] = self->scratch[y + i];
+    }
+    Line l;
+    for (i = ylimit - num; i < ylimit; i++) {
+        INIT_LINE(self, &l, self->line_map[i]);
+        CLEAR_LINE(&l, 0, self->xnum);
+        self->continued_map[i] = 0;
+    }
 }
  
 static PyObject*
 delete_lines(LineBuf *self, PyObject *args) {
 #define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num blank lines at y, only changing lines in the range [y, bottom]."
     unsigned int y, num, bottom;
-    index_type i;
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
     if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    index_type ylimit = bottom + 1;
-    num = MIN(ylimit - y, num);
+    num = MIN(bottom + 1 - y, num);
     if (num > 0) {
-        for (i = y; i < y + num; i++) {
-            self->scratch[i] = self->line_map[i];
-        }
-        for (i = y; i < ylimit; i++) {
-            self->line_map[i] = self->line_map[i + num];
-            self->continued_map[i] = self->continued_map[i + num];
-        }
-        self->continued_map[y] = 0;
-        for (i = 0; i < num; i++) {
-            self->line_map[ylimit - num + i] = self->scratch[y + i];
-        }
-        Line l;
-        for (i = ylimit - num; i < ylimit; i++) {
-            INIT_LINE(self, &l, self->line_map[i]);
-            CLEAR_LINE(l);
-            self->continued_map[i] = 0;
-        }
+        do_delete(self, num, y, bottom);
     }
     Py_RETURN_NONE;
 }
@@ -375,9 +373,76 @@ copy_old(LineBuf *self, PyObject *y) {
     Py_RETURN_NONE;
 }
 
+static inline void copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
+    memcpy(dest->chars + dest_at, src->chars + src_at, num * sizeof(char_type));
+    memcpy(dest->colors + dest_at, src->colors + src_at, num * sizeof(color_type));
+    memcpy(dest->decoration_fg + dest_at, src->decoration_fg + src_at, num * sizeof(decoration_type));
+    memcpy(dest->combining_chars + dest_at, src->combining_chars + src_at, num * sizeof(combining_type));
+}
+
+typedef Line* (*nextlinefunc)(void *, bool *);
+typedef void (*setcontfunc)(void *, bool val);
+
+static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefunc dest_next, void *dest_data, index_type src_col, index_type dest_xnum, setcontfunc set_continued, bool *oom) {
+    Line *src, *dest;
+    Py_ssize_t src_x = src_col, dest_x = dest_xnum, num;
+    src = src_next(src_data, oom); dest = dest_next(dest_data, oom);
+    while (src && dest) {
+        if (src_x == src->xnum) {
+            // Trim trailing whitespace
+            while(src_x && (src->chars[src_x - 1] & CHAR_MASK) != 32) src_x--;
+        }
+        num = MIN(dest_x, src_x);
+        if (num > 0) {
+            dest_x -= num; src_x -= num;
+            copy_range(src, src_x, dest, dest_x, num);
+        }
+        if (src_x <= 0) {
+            if (!src->continued) {
+                // Hard break, start new line on dest
+                if (set_continued != NULL) set_continued(dest_data, false);
+                else dest->continued = false;
+                if (dest_x > 0) {
+                    left_shift_line(src, 0, dest_x);
+                    CLEAR_LINE(src, dest_xnum - dest_x, dest_x);
+                }
+                dest = dest_next(dest_data, oom);
+                dest_x = dest_xnum;
+            }
+            src = src_next(src_data, oom);
+            src_x = src->xnum;
+        }
+        if (dest_x <= 0) {
+            if (set_continued != NULL) set_continued(dest_data, true);
+            else dest->continued = true;
+            dest = dest_next(dest_data, oom);
+            dest_x = dest_xnum;
+        }
+
+    }
+    return src_x;
+}
+
+static Line* reverse_line_iter(LineBuf *lb, bool UNUSED *oom) {
+    if (lb->line->ynum <= 0) return NULL;
+    lb->line->ynum--;
+    INIT_LINE(lb, lb->line, lb->line->ynum);
+    lb->line->continued = lb->continued_map[lb->line->ynum];
+    return lb->line;
+}
+
+static void rewrap_set_continued(LineBuf *lb, bool val) {
+    lb->continued_map[lb->line->ynum] = val;
+}
+
 static PyObject*
 rewrap(LineBuf *self, PyObject *val) {
     LineBuf* other;
+    index_type first, i;
+    int cursor_y = -1;
+    Py_ssize_t src_x, src_y, dest_y;
+    bool oom = false;
+
     if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
     other = (LineBuf*) val;
     PyObject *ret = PyList_New(0);
@@ -385,12 +450,47 @@ rewrap(LineBuf *self, PyObject *val) {
 
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
+        Py_BEGIN_ALLOW_THREADS;
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * CELL_SIZE);
-        return ret;
+        Py_END_ALLOW_THREADS;
+        goto end;
     }
 
-    return ret;
-}
+    // Find the first line that contains some content
+    Py_BEGIN_ALLOW_THREADS;
+    for (first = self->ynum - 1; true; first--) {
+        bool is_empty = true;
+        char_type *chars = self->chars + self->xnum * first;
+        for(i = 0; i < self->xnum; i++) {
+            if ((chars[i] & CHAR_MASK) != 32) { is_empty = false; break; }
+        }
+        if (!is_empty || !first) break;
+    }
+    Py_END_ALLOW_THREADS;
 
+    if (first == 0) { cursor_y = 0; goto end; }  // All lines are empty
+
+    // Initialize iterators
+    self->line->ynum = first + 1; self->line->xnum = self->xnum;
+    other->line->ynum = other->ynum; other->line->xnum = other->xnum;
+    Py_BEGIN_ALLOW_THREADS;
+    src_x = rewrap_inner((nextlinefunc)reverse_line_iter, self, (nextlinefunc)reverse_line_iter, other, self->xnum, other->xnum, (setcontfunc)rewrap_set_continued, &oom);
+    Py_END_ALLOW_THREADS;
+    if (oom) { Py_CLEAR(ret); return PyErr_NoMemory(); }
+    src_y = self->line->ynum; dest_y = other->line->ynum;
+
+    if (dest_y > 0) {
+        // Shift lines up so that untouched lines are at the bottom
+        do_delete(other, dest_y, 0, other->ynum);
+        cursor_y = MAX(0, other->ynum - dest_y - 1);
+    } else cursor_y = other->ynum - 1;
+
+    if (src_y > 0 || (src_y == 0 && src_x > 0)) {
+        // TODO: return extra lines
+    }
+
+end:
+    return Py_BuildValue("Ni", ret, cursor_y);
+}

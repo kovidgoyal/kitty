@@ -207,8 +207,6 @@ apply_cursor(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-#define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
-
 static PyObject*
 right_shift(Line *self, PyObject *args) {
 #define right_shift_doc "right_shift(at, num) -> ..."
@@ -238,14 +236,7 @@ left_shift(Line *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
     }
-    if (num > 0) {
-        for(index_type i = at; i < self->xnum - num; i++) {
-            COPY_SELF_CELL(i + num, i)
-        }
-        // Check if a wide character was split at the left edge
-        char_type w = (self->chars[at] >> ATTRS_SHIFT) & 3;
-        if (w != 1) self->chars[at] = (1 << ATTRS_SHIFT) | 32;
-    }
+    if (num > 0) left_shift_line(self, at, num);
     Py_RETURN_NONE;
 }
  
