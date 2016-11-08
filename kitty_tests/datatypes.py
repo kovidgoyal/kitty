@@ -192,6 +192,25 @@ class TestDataTypes(BaseTest):
         l.set_char(0, 'x', 1, q)
         self.assertEqualAttributes(l.cursor_from(0), q)
 
+    def test_rewrap(self):
+        # Simple tests when xnum is unchanged
+        lb = filled_line_buf(5, 5)
+        lb2 = LineBuf(lb.ynum, lb.xnum)
+        lb.rewrap(lb2)
+        for i in range(lb.ynum):
+            self.ae(lb2.line(i), lb.line(i))
+        lb2 = LineBuf(3, 5)
+        lb.rewrap(lb2)
+        for i in range(lb2.ynum):
+            self.ae(lb2.line(i), lb.line(i + 2))
+        lb2 = LineBuf(8, 5)
+        lb.rewrap(lb2)
+        for i in range(lb.ynum):
+            self.ae(lb2.line(i), lb.line(i))
+        empty = LineBuf(1, lb2.xnum)
+        for i in range(lb.ynum, lb2.ynum):
+            self.ae(str(lb2.line(i)), str(empty.line(0)))
+
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode
         self.ae(tuple(map(wcwidth, 'a1\0コ')), (1, 1, 0, 2))

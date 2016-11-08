@@ -383,7 +383,7 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
 typedef Line* (*nextlinefunc)(void *, bool *);
 typedef void (*setcontfunc)(void *, bool val);
 
-static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefunc dest_next, void *dest_data, index_type src_col, index_type dest_xnum, setcontfunc set_continued, bool *oom) {
+static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefunc dest_next, void *dest_data, index_type src_col, index_type src_xnum, index_type dest_xnum, setcontfunc set_continued, bool *oom) {
     Line *src, *dest;
     Py_ssize_t src_x = src_col, dest_x = dest_xnum, num;
     src = src_next(src_data, oom); dest = dest_next(dest_data, oom);
@@ -410,7 +410,7 @@ static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefu
                 dest_x = dest_xnum;
             }
             src = src_next(src_data, oom);
-            src_x = src->xnum;
+            src_x = src_xnum;
         }
         if (dest_x <= 0) {
             if (set_continued != NULL) set_continued(dest_data, true);
@@ -476,7 +476,7 @@ rewrap(LineBuf *self, PyObject *val) {
     self->line->ynum = first + 1; self->line->xnum = self->xnum;
     other->line->ynum = other->ynum; other->line->xnum = other->xnum;
     Py_BEGIN_ALLOW_THREADS;
-    src_x = rewrap_inner((nextlinefunc)reverse_line_iter, self, (nextlinefunc)reverse_line_iter, other, self->xnum, other->xnum, (setcontfunc)rewrap_set_continued, &oom);
+    src_x = rewrap_inner((nextlinefunc)reverse_line_iter, self, (nextlinefunc)reverse_line_iter, other, self->xnum, self->xnum, other->xnum, (setcontfunc)rewrap_set_continued, &oom);
     Py_END_ALLOW_THREADS;
     if (oom) { Py_CLEAR(ret); return PyErr_NoMemory(); }
     src_y = self->line->ynum; dest_y = other->line->ynum;
