@@ -24,6 +24,7 @@ typedef unsigned int index_type;
 
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24
+#define ATTRS_MASK_WITHOUT_WIDTH 0xFC000000
 #define WIDTH_MASK  0xFF
 #define DECORATION_SHIFT  2
 #define BOLD_SHIFT 4

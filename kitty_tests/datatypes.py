@@ -107,6 +107,13 @@ class TestDataTypes(BaseTest):
         self.ae(lb.line(3), lb2.line(0))
         self.ae(lb.line(4), clb.line(4))
 
+        lb = filled_line_buf(5, 5, filled_cursor())
+        l = lb.line(0)
+        l.add_combining_char(1, 'a')
+        l.clear_text(1, 2)
+        self.ae(str(l), '0  00')
+        self.assertEqualAttributes(l.cursor_from(1), l.cursor_from(0))
+
     def test_line(self):
         lb = LineBuf(2, 3)
         for y in range(lb.ynum):

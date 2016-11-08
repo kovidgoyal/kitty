@@ -607,7 +607,7 @@ class Screen:
             # TODO: Check what to do if x is on the second char of a wide char
             # pair.
             num = min(self.columns - x, count)
-            line = self.linebuf[y]
+            line = self.linebuf.line(y)
             line.right_shift(x, num)
             line.apply_cursor(self.cursor, x, num, clear_char=True)
             self.update_cell_range(y, x, self.columns - 1)
@@ -631,7 +631,7 @@ class Screen:
             # for this control code. Also, what happens if we start deleting
             # at the second cell of a wide character, or delete only the first
             # cell of a wide character?
-            line = self.linebuf[y]
+            line = self.linebuf.line(y)
             line.left_shift(x, num)
             line.apply_cursor(self.cursor, self.columns - num, num, clear_char=True)
             self.update_cell_range(y, x, self.columns - 1)
@@ -654,7 +654,8 @@ class Screen:
         x, y = self.cursor.x, self.cursor.y
         # TODO: Same set of wide character questions as for delete_characters()
         num = min(self.columns - x, count)
-        self.linebuf[y].apply_cursor(self.cursor, x, num, clear_char=True)
+        l = self.linebuf.line(y)
+        l.apply_cursor(self.cursor, x, num, clear_char=True)
         self.update_cell_range(y, x, min(x + num, self.columns) - 1)
 
     def erase_in_line(self, how=0, private=False):
@@ -685,7 +686,7 @@ class Screen:
         if n - s:
             # TODO: Same set of questions as for delete_characters()
             y = self.cursor.y
-            line = self.linebuf[y]
+            line = self.linebuf.line(y)
             c = None if private else self.cursor
             if private:
                 line.clear_text(s, n)
@@ -723,9 +724,9 @@ class Screen:
         if interval[1] > interval[0]:
             for line in range(*interval):
                 if private:
-                    self.linebuf[line].clear_text(0, self.columns)
+                    self.linebuf.line(line).clear_text(0, self.columns)
                 else:
-                    self.linebuf[line].apply_cursor(self.cursor, 0, self.columns, clear_char=True)
+                    self.linebuf.line(line).apply_cursor(self.cursor, 0, self.columns, clear_char=True)
             self.update_line_range(interval[0], interval[1] - 1)
 
         # In case of 0 or 1 we have to erase the line with the cursor also
@@ -894,7 +895,7 @@ class Screen:
     def alignment_display(self):
         """Fills screen with uppercase E's for screen focus and alignment."""
         for i in range(self.lines):
-            self.linebuf[i].clear_text(0, self.columns, 'E')
+            self.linebuf.line(i).clear_text(0, self.columns, 'E')
 
     def select_graphic_rendition(self, *attrs):
         """Set display attributes.

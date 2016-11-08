@@ -160,6 +160,20 @@ cursor_from(Line* self, PyObject *args) {
 }
 
 static PyObject*
+clear_text(Line* self, PyObject *args) {
+#define clear_text_doc "clear_text(at, num, ch=' ') -> Clear characters in the specified range, preserving formatting."
+    unsigned int at, num;
+    int ch = 32;
+    if (!PyArg_ParseTuple(args, "II|C", &at, &num, &ch)) return NULL;
+    const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
+    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
+        self->chars[i] = (self->chars[i] & ATTRS_MASK_WITHOUT_WIDTH) | repl;
+    }
+    memset(self->combining_chars + at, 0, MIN(num, self->xnum - at) * sizeof(combining_type));
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 apply_cursor(Line* self, PyObject *args) {
 #define apply_cursor_doc "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
     Cursor* cursor;
@@ -293,6 +307,7 @@ static PyMethodDef methods[] = {
     METHOD(set_text, METH_VARARGS)
     METHOD(cursor_from, METH_VARARGS)
     METHOD(apply_cursor, METH_VARARGS)
+    METHOD(clear_text, METH_VARARGS)
     METHOD(copy_char, METH_VARARGS)
     METHOD(right_shift, METH_VARARGS)
     METHOD(left_shift, METH_VARARGS)
