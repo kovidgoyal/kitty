@@ -9,10 +9,9 @@ from collections import deque, namedtuple
 from typing import Sequence
 
 from pyte import charsets as cs, graphics as g, modes as mo
-from .data_types import Line, Cursor, rewrap_lines
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
-from .fast_data_types import LineBuf, REVERSE
+from .fast_data_types import LineBuf, REVERSE, Cursor
 
 
 #: A container for screen's scroll margins.
@@ -91,7 +90,7 @@ class Screen:
 
     @property
     def display(self) -> Sequence[str]:
-        return tuple(map(str, self.linebuf))
+        return tuple(map(lambda l: str(self.linebuf.line(l)), range(self.linebuf.ynum)))
 
     def toggle_screen_buffer(self):
         self.save_cursor()
@@ -609,7 +608,7 @@ class Screen:
             num = min(self.columns - x, count)
             line = self.linebuf.line(y)
             line.right_shift(x, num)
-            line.apply_cursor(self.cursor, x, num, clear_char=True)
+            line.apply_cursor(self.cursor, x, num, True)
             self.update_cell_range(y, x, self.columns - 1)
 
     def delete_characters(self, count=1):
@@ -633,7 +632,7 @@ class Screen:
             # cell of a wide character?
             line = self.linebuf.line(y)
             line.left_shift(x, num)
-            line.apply_cursor(self.cursor, self.columns - num, num, clear_char=True)
+            line.apply_cursor(self.cursor, self.columns - num, num, True)
             self.update_cell_range(y, x, self.columns - 1)
 
     def erase_characters(self, count=1):
@@ -655,7 +654,7 @@ class Screen:
         # TODO: Same set of wide character questions as for delete_characters()
         num = min(self.columns - x, count)
         l = self.linebuf.line(y)
-        l.apply_cursor(self.cursor, x, num, clear_char=True)
+        l.apply_cursor(self.cursor, x, num, True)
         self.update_cell_range(y, x, min(x + num, self.columns) - 1)
 
     def erase_in_line(self, how=0, private=False):
@@ -691,7 +690,7 @@ class Screen:
             if private:
                 line.clear_text(s, n)
             else:
-                line.apply_cursor(c, s, n, clear_char=True)
+                line.apply_cursor(c, s, n, True)
             self.update_cell_range(y, s, min(s + n, self.columns) - 1)
 
     def erase_in_display(self, how=0, private=False):
@@ -726,7 +725,7 @@ class Screen:
                 if private:
                     self.linebuf.line(line).clear_text(0, self.columns)
                 else:
-                    self.linebuf.line(line).apply_cursor(self.cursor, 0, self.columns, clear_char=True)
+                    self.linebuf.line(line).apply_cursor(self.cursor, 0, self.columns, True)
             self.update_line_range(interval[0], interval[1] - 1)
 
         # In case of 0 or 1 we have to erase the line with the cursor also

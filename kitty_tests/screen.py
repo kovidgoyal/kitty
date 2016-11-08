@@ -9,7 +9,7 @@ from kitty.screen import mo
 
 class TestScreen(BaseTest):
 
-    def xtest_draw_fast(self):
+    def test_draw_fast(self):
         # Test in line-wrap, non-insert mode
         s, t = self.create_screen()
         s.draw(b'a' * 5)
@@ -17,8 +17,8 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.x, 5), self.ae(s.cursor.y, 0)
         self.assertChanges(t, ignore='cursor', cells={0: ((0, 4),)})
         s.draw(b'b' * 7)
-        self.assertTrue(s.line(1).continued)
-        self.assertTrue(s.line(2).continued)
+        self.assertTrue(s.linebuf.is_continued(1))
+        self.assertTrue(s.linebuf.is_continued(2))
         self.ae(str(s.line(0)), 'a' * 5)
         self.ae(str(s.line(1)), 'b' * 5)
         self.ae(str(s.line(2)), 'b' * 2 + ' ' * 3)
@@ -52,7 +52,7 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
         self.assertChanges(t, ignore='cursor', cells={4: ((0, 4),)})
 
-    def xtest_draw_char(self):
+    def test_draw_char(self):
         # Test in line-wrap, non-insert mode
         s, t = self.create_screen()
         s.draw('ココx'.encode('utf-8'))
@@ -101,7 +101,7 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
         self.assertChanges(t, ignore='cursor', cells={4: ((0, 4),)})
 
-    def xtest_char_manipulation(self):
+    def test_char_manipulation(self):
         s, t = self.create_screen()
 
         def init():
@@ -162,7 +162,7 @@ class TestScreen(BaseTest):
         s.erase_in_line(2, private=True)
         self.ae((False, False, False, False, False), tuple(map(lambda i: s.line(0).cursor_from(i).bold, range(5))))
 
-    def xtest_erase_in_screen(self):
+    def test_erase_in_screen(self):
         s, t = self.create_screen()
 
         def init():
@@ -193,7 +193,7 @@ class TestScreen(BaseTest):
         self.assertChanges(t, lines=set(range(5)))
         self.assertFalse(s.line(0).cursor_from(1).bold)
 
-    def xtest_cursor_movement(self):
+    def test_cursor_movement(self):
         s, t = self.create_screen()
         s.draw(b'12345' * 5)
         t.reset()

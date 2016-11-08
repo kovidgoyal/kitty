@@ -97,6 +97,7 @@ line(LineBuf *self, PyObject *y) {
     }
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
+    self->line->continued = self->continued_map[idx];
     INIT_LINE(self, self->line, self->line_map[idx]);
     Py_INCREF(self->line);
     return (PyObject*)self->line;

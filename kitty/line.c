@@ -62,6 +62,8 @@ as_unicode(Line* self) {
         return NULL;
     }
     for(index_type i = 0; i < self->xnum; i++) {
+        char_type attrs = self->chars[i] >> ATTRS_SHIFT;
+        if ((attrs & WIDTH_MASK) < 1) continue;
         buf[n++] = self->chars[i] & CHAR_MASK;
         char_type cc = self->combining_chars[i];
         Py_UCS4 cc1 = cc & CC_MASK, cc2;
@@ -74,6 +76,15 @@ as_unicode(Line* self) {
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
     PyMem_Free(buf);
     return ans;
+}
+
+static PyObject*
+width(Line *self, PyObject *val) {
+#define width_doc "width_doc(x) -> the width of the character at x"
+    unsigned long x = PyLong_AsUnsignedLong(val);
+    if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    char_type attrs = self->chars[x] >> ATTRS_SHIFT;
+    return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
 static PyObject*
@@ -313,6 +324,7 @@ static PyMethodDef methods[] = {
     METHOD(left_shift, METH_VARARGS)
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
+    METHOD(width, METH_O)
         
     {NULL}  /* Sentinel */
 };
