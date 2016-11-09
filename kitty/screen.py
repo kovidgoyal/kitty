@@ -151,21 +151,15 @@ class Screen:
 
         """
         self.lines, self.columns = lines, columns
-        for hb in (self.tophistorybuf, ):
-            old = hb.copy()
-            hb.clear(), hb.extend(rewrap_lines(old, columns))
-        for lb in (self.main_linebuf, self.alt_linebuf):
-            old_lines = lb[:]
-            lb.clear()
-            lb[:] = rewrap_lines(old_lines, self.columns)
-            while len(lb) < self.lines:
-                lb.append(Line(self.columns))
-            if len(lb) > self.lines:
-                extra = len(lb) - self.lines
-                slc = lb[:extra]
-                del lb[:extra]
-                if lb is self.main_linebuf:
-                    self.tophistorybuf.extend(slc)
+        # TODO: Implement rewrap for history buf
+        self.tophistorybuf.clear()
+        is_main = self.linebuf is self.main_linebuf
+        for x in 'main_linebuf alt_linebuf'.split():
+            lb2 = LineBuf(self.lines, self.columns)
+            lb = getattr(self, x)
+            lb.rewrap(lb2)
+            setattr(self, x, lb2)
+        self.linebuf = self.main_linebuf if is_main else self.alt_linebuf
 
         self.margins = Margins(0, self.lines - 1)
         self._notify_cursor_position = False

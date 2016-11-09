@@ -10,6 +10,17 @@ from kitty.utils import is_simple_string, wcwidth, sanitize_title
 from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE
 
 
+def create_lbuf(*lines):
+    maxw = max(map(len, lines))
+    ans = LineBuf(len(lines), maxw)
+    prev_full_length = False
+    for i, l in enumerate(lines):
+        ans.line(i).set_text(l, 0, len(l), C())
+        ans.set_continued(i, prev_full_length)
+        prev_full_length = len(l) == maxw
+    return ans
+
+
 class TestDataTypes(BaseTest):
 
     def test_linebuf(self):
@@ -213,16 +224,32 @@ class TestDataTypes(BaseTest):
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
 
+    def line_comparison(self, lb, *lines):
+        lb2 = LineBuf(len(lines), max(map(len, lines)))
+        lb.rewrap(lb2)
+        for i, l in enumerate(lines):
+            l2 = lb2.line(i)
+            self.ae(l, str(l2))
+        return lb2
+
+    def assertContinued(self, lb, *vals):
+        self.ae(list(vals), [lb.is_continued(i) for i in range(len(vals))])
+
     def test_rewrap_wider(self):
         ' New buffer wider '
-        lb = LineBuf(5, 5)
-        lb.line(0).set_text('01234', 0, 5, C())
-        lb.line(1).set_text('56789', 0, 5, C())
-        lb.set_continued(1, True)
-        lb2 = LineBuf(2, 6)
-        lb.rewrap(lb2)
-        self.ae(str(lb2.line(0)), '012345')
-        self.ae(str(lb2.line(1)), '6789  ')
+        lb = create_lbuf('0123 ', '56789')
+        lb2 = self.line_comparison(lb, '0123 5', '6789  ', ' ' * 6)
+        self.assertContinued(lb2, False, True)
+
+        lb = create_lbuf('12', 'abc')
+        lb2 = self.line_comparison(lb, '12  ', 'abc ')
+        self.assertContinued(lb2, False, False)
+
+    def test_rewrap_narrower(self):
+        ' New buffer narrower '
+        lb = create_lbuf('123 ', 'abcde')
+        lb2 = self.line_comparison(lb, '123', 'abc', 'de ')
+        self.assertContinued(lb2, False, False, True)
 
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode
