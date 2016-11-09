@@ -199,10 +199,6 @@ class TestDataTypes(BaseTest):
         lb.rewrap(lb2)
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
-        lb2 = LineBuf(3, 5)
-        lb.rewrap(lb2)
-        for i in range(lb2.ynum):
-            self.ae(lb2.line(i), lb.line(i + 2))
         lb2 = LineBuf(8, 5)
         cy = lb.rewrap(lb2)[1]
         self.ae(cy, 4)
@@ -211,6 +207,11 @@ class TestDataTypes(BaseTest):
         empty = LineBuf(1, lb2.xnum)
         for i in range(lb.ynum, lb2.ynum):
             self.ae(str(lb2.line(i)), str(empty.line(0)))
+        lb2 = LineBuf(3, 5)
+        extra, cy = lb.rewrap(lb2)
+        self.ae(cy, 2)
+        for i in range(lb2.ynum):
+            self.ae(lb2.line(i), lb.line(i + 2))
 
     def test_rewrap_wider(self):
         ' New buffer wider '
@@ -220,7 +221,8 @@ class TestDataTypes(BaseTest):
         lb.set_continued(1, True)
         lb2 = LineBuf(2, 6)
         lb.rewrap(lb2)
-        self.ae(str(lb2.line(1)), '456789')
+        self.ae(str(lb2.line(0)), '012345')
+        self.ae(str(lb2.line(1)), '6789  ')
 
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode

@@ -156,21 +156,25 @@ allocate_line_storage(Line *line, bool initialize) {
     return 1;
 }
 
-static PyObject*
-create_line_copy(LineBuf *self, PyObject *ynum) {
-#define create_line_copy_doc "Create a new Line object that is a copy of the line at ynum. Note that this line has its own copy of the data and does not refer to the data in the LineBuf."
+static inline PyObject* create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
-    index_type y = (index_type)PyLong_AsUnsignedLong(ynum);
-    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     line = alloc_line();
     if (line == NULL) return PyErr_NoMemory();
     src.xnum = self->xnum; line->xnum = self->xnum;
-    if (!allocate_line_storage(line, 0)) { Py_DECREF(line); return NULL; }
+    if (!allocate_line_storage(line, 0)) { Py_CLEAR(line); return PyErr_NoMemory(); }
     line->ynum = y;
     line->continued = self->continued_map[y];
     INIT_LINE(self, &src, self->line_map[y]);
     COPY_LINE(&src, line);
     return (PyObject*)line;
+}
+
+static PyObject*
+create_line_copy(LineBuf *self, PyObject *ynum) {
+#define create_line_copy_doc "Create a new Line object that is a copy of the line at ynum. Note that this line has its own copy of the data and does not refer to the data in the LineBuf."
+    index_type y = (index_type)PyLong_AsUnsignedLong(ynum);
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    return create_line_copy_inner(self, y);
 }
 
 static PyObject*
@@ -199,12 +203,7 @@ clear_line(LineBuf *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-index(LineBuf *self, PyObject *args) {
-#define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
-    unsigned int top, bottom;
-    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
-    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+static inline void index_inner(LineBuf* self, index_type top, index_type bottom) {
     index_type old_top = self->line_map[top];
     bool old_cont = self->continued_map[top];
     for (index_type i = top; i < bottom; i++) {
@@ -213,6 +212,15 @@ index(LineBuf *self, PyObject *args) {
     }
     self->line_map[bottom] = old_top;
     self->continued_map[bottom] = old_cont;
+}
+
+static PyObject*
+index(LineBuf *self, PyObject *args) {
+#define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
+    unsigned int top, bottom;
+    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
+    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    index_inner(self, top, bottom);
     Py_RETURN_NONE;
 }
 
@@ -383,63 +391,43 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
     memcpy(dest->combining_chars + dest_at, src->combining_chars + src_at, num * sizeof(combining_type));
 }
 
-typedef Line* (*nextlinefunc)(void *, bool *);
-typedef void (*setcontfunc)(void *, bool val);
-
-static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefunc dest_next, void *dest_data, index_type src_col, index_type src_xnum, index_type dest_xnum, setcontfunc set_continued, bool *oom) {
-    Line *src, *dest;
-    Py_ssize_t src_x = src_col, dest_x = dest_xnum, num;
-    src = src_next(src_data, oom); dest = dest_next(dest_data, oom);
-    bool prev_line_was_continued = false;
-    while (src && dest) {
-        if (!prev_line_was_continued && src_x == src->xnum) {
-            // Trim trailing whitespace
-            while(src_x && (src->chars[src_x - 1] & CHAR_MASK) == 32) src_x--;
-        }
-        num = MIN(dest_x, src_x);
-        if (num > 0) {
-            dest_x -= num; src_x -= num;
-            copy_range(src, src_x, dest, dest_x, num);
-        }
-        if (src_x <= 0) {
-            prev_line_was_continued = src->continued;
-            src = src_next(src_data, oom);
-            src_x = src_xnum;
-            if (!prev_line_was_continued) {
-                // Hard break, finalize this line
-                if (dest_x > 0) {  // Left align dest line
-                    left_shift_line(dest, 0, dest_x);
-                    CLEAR_LINE(dest, dest_xnum - dest_x, dest_x);
-                }
-                if (src) { // Only start a new line if there is more in src
-                    if (set_continued != NULL) set_continued(dest_data, false);
-                    else dest->continued = false;
-                    dest = dest_next(dest_data, oom);
-                }
-                dest_x = dest_xnum;
-            }
-        }
-        if (dest_x <= 0) {
-            if (set_continued != NULL) set_continued(dest_data, true);
-            else dest->continued = true;
-            dest = dest_next(dest_data, oom);
-            dest_x = dest_xnum;
-        }
-
-    }
-    return src_x;
+#define next_dest_line(continued) {\
+    if (dest_y >= dest->ynum - 1) { \
+        index_inner(dest, 0, dest->ynum - 1); \
+        PyObject *l = create_line_copy_inner(dest, dest_y); \
+        if (l == NULL) return false; \
+        if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
+    } else dest_y++; \
+    INIT_LINE(dest, dest->line, dest->line_map[dest_y]); \
+    dest->continued_map[dest_y] = continued; \
+    dest_x = 0; \
 }
 
-static Line* reverse_line_iter(LineBuf *lb, bool UNUSED *oom) {
-    if (lb->line->ynum <= 0) return NULL;
-    lb->line->ynum--;
-    INIT_LINE(lb, lb->line, lb->line->ynum);
-    lb->line->continued = lb->continued_map[lb->line->ynum];
-    return lb->line;
-}
+static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, PyObject *extra_lines) {
+    bool src_line_is_continued = false;
+    index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
+    INIT_LINE(dest, dest->line, dest->line_map[dest_y]);
 
-static void rewrap_set_continued(LineBuf *lb, bool val) {
-    lb->continued_map[lb->line->ynum] = val;
+    do {
+        INIT_LINE(src, src->line, src->line_map[src_y]);
+        src_line_is_continued = src_y < src->ynum - 1 ? src->continued_map[src_y + 1] : false;
+        src_x_limit = src->xnum;
+        if (!src_line_is_continued) {
+            // Trim trailing white-space since there is a hard line break at the end of this line
+            while(src_x_limit && (src->line->chars[src->line->xnum - 1] & CHAR_MASK) == 32) src_x_limit--;
+            
+        }
+        while (src_x < src_x_limit) {
+            if (dest_x >= dest->xnum) next_dest_line(true);
+            num = MIN(src->line->xnum - src_x, dest->xnum - dest_x);
+            copy_range(src->line, src_x, dest->line, dest_x, num);
+            src_x += num; dest_x += num;
+        }
+        src_y++; src_x = 0;
+        if (!src_line_is_continued && src_y < src_limit) next_dest_line(false);
+    } while (src_y < src_limit);
+    dest->line->ynum = dest_y;
+    return true;
 }
 
 static PyObject*
@@ -447,8 +435,7 @@ rewrap(LineBuf *self, PyObject *val) {
     LineBuf* other;
     index_type first, i;
     int cursor_y = -1;
-    Py_ssize_t src_x, src_y, dest_y;
-    bool oom = false;
+    bool is_empty = true;
 
     if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
     other = (LineBuf*) val;
@@ -468,7 +455,6 @@ rewrap(LineBuf *self, PyObject *val) {
     // Find the first line that contains some content
     Py_BEGIN_ALLOW_THREADS;
     for (first = self->ynum - 1; true; first--) {
-        bool is_empty = true;
         char_type *chars = self->chars + self->xnum * first;
         for(i = 0; i < self->xnum; i++) {
             if ((chars[i] & CHAR_MASK) != 32) { is_empty = false; break; }
@@ -479,24 +465,12 @@ rewrap(LineBuf *self, PyObject *val) {
 
     if (first == 0) { cursor_y = 0; goto end; }  // All lines are empty
 
-    // Initialize iterators
-    self->line->ynum = first + 1; self->line->xnum = self->xnum;
-    other->line->ynum = other->ynum; other->line->xnum = other->xnum;
-    Py_BEGIN_ALLOW_THREADS;
-    src_x = rewrap_inner((nextlinefunc)reverse_line_iter, self, (nextlinefunc)reverse_line_iter, other, self->xnum, self->xnum, other->xnum, (setcontfunc)rewrap_set_continued, &oom);
-    Py_END_ALLOW_THREADS;
-    if (oom) { Py_CLEAR(ret); return PyErr_NoMemory(); }
-    src_y = self->line->ynum; dest_y = other->line->ynum;
-
-    if (dest_y > 0) {
-        // Shift lines up so that untouched lines are at the bottom
-        do_delete(other, dest_y, 0, other->ynum - 1);
-        cursor_y = MAX(0, other->ynum - (dest_y + 1));
-    } else cursor_y = other->ynum - 1;
-
-    if (src_y > 0 || (src_y == 0 && src_x > 0)) {
-        // TODO: return extra lines
+    if (!rewrap_inner(self, other, first + 1, ret)) {
+        Py_CLEAR(ret);
+        return PyErr_NoMemory();
     }
+
+    cursor_y = other->line->ynum;
 
 end:
     return Py_BuildValue("Ni", ret, cursor_y);
