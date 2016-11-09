@@ -414,7 +414,7 @@ static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
             // Trim trailing white-space since there is a hard line break at the end of this line
-            while(src_x_limit && (src->line->chars[src->line->xnum - 1] & CHAR_MASK) == 32) src_x_limit--;
+            while(src_x_limit && (src->line->chars[src_x_limit - 1] & CHAR_MASK) == 32) src_x_limit--;
             
         }
         while (src_x < src_x_limit) {
