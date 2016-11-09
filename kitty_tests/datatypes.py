@@ -192,8 +192,8 @@ class TestDataTypes(BaseTest):
         l.set_char(0, 'x', 1, q)
         self.assertEqualAttributes(l.cursor_from(0), q)
 
-    def test_rewrap(self):
-        # Simple tests when xnum is unchanged
+    def test_rewrap_simple(self):
+        ' Same width buffers '
         lb = filled_line_buf(5, 5)
         lb2 = LineBuf(lb.ynum, lb.xnum)
         lb.rewrap(lb2)
@@ -204,12 +204,23 @@ class TestDataTypes(BaseTest):
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
         lb2 = LineBuf(8, 5)
-        lb.rewrap(lb2)
+        cy = lb.rewrap(lb2)[1]
+        self.ae(cy, 4)
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
         empty = LineBuf(1, lb2.xnum)
         for i in range(lb.ynum, lb2.ynum):
             self.ae(str(lb2.line(i)), str(empty.line(0)))
+
+    def test_rewrap_wider(self):
+        ' New buffer wider '
+        lb = LineBuf(5, 5)
+        lb.line(0).set_text('01234', 0, 5, C())
+        lb.line(1).set_text('56789', 0, 5, C())
+        lb.set_continued(1, True)
+        lb2 = LineBuf(2, 6)
+        lb.rewrap(lb2)
+        self.ae(str(lb2.line(1)), '456789')
 
     def test_utils(self):
         d = codecs.getincrementaldecoder('utf-8')('strict').decode

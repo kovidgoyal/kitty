@@ -76,7 +76,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(LineBuf* self) {
-    PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); PyMem_Free(self->scratch);
+    PyMem_Free(self->buf);
+    PyMem_Free(self->line_map); 
+    PyMem_Free(self->continued_map); 
+    PyMem_Free(self->scratch);
     Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -387,10 +390,11 @@ static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefu
     Line *src, *dest;
     Py_ssize_t src_x = src_col, dest_x = dest_xnum, num;
     src = src_next(src_data, oom); dest = dest_next(dest_data, oom);
+    bool prev_line_was_continued = false;
     while (src && dest) {
-        if (src_x == src->xnum) {
+        if (!prev_line_was_continued && src_x == src->xnum) {
             // Trim trailing whitespace
-            while(src_x && (src->chars[src_x - 1] & CHAR_MASK) != 32) src_x--;
+            while(src_x && (src->chars[src_x - 1] & CHAR_MASK) == 32) src_x--;
         }
         num = MIN(dest_x, src_x);
         if (num > 0) {
@@ -398,19 +402,22 @@ static Py_ssize_t rewrap_inner(nextlinefunc src_next, void *src_data, nextlinefu
             copy_range(src, src_x, dest, dest_x, num);
         }
         if (src_x <= 0) {
-            if (!src->continued) {
-                // Hard break, start new line on dest
-                if (set_continued != NULL) set_continued(dest_data, false);
-                else dest->continued = false;
-                if (dest_x > 0) {
-                    left_shift_line(src, 0, dest_x);
-                    CLEAR_LINE(src, dest_xnum - dest_x, dest_x);
-                }
-                dest = dest_next(dest_data, oom);
-                dest_x = dest_xnum;
-            }
+            prev_line_was_continued = src->continued;
             src = src_next(src_data, oom);
             src_x = src_xnum;
+            if (!prev_line_was_continued) {
+                // Hard break, finalize this line
+                if (dest_x > 0) {  // Left align dest line
+                    left_shift_line(dest, 0, dest_x);
+                    CLEAR_LINE(dest, dest_xnum - dest_x, dest_x);
+                }
+                if (src) { // Only start a new line if there is more in src
+                    if (set_continued != NULL) set_continued(dest_data, false);
+                    else dest->continued = false;
+                    dest = dest_next(dest_data, oom);
+                }
+                dest_x = dest_xnum;
+            }
         }
         if (dest_x <= 0) {
             if (set_continued != NULL) set_continued(dest_data, true);
@@ -483,8 +490,8 @@ rewrap(LineBuf *self, PyObject *val) {
 
     if (dest_y > 0) {
         // Shift lines up so that untouched lines are at the bottom
-        do_delete(other, dest_y, 0, other->ynum);
-        cursor_y = MAX(0, other->ynum - dest_y - 1);
+        do_delete(other, dest_y, 0, other->ynum - 1);
+        cursor_y = MAX(0, other->ynum - (dest_y + 1));
     } else cursor_y = other->ynum - 1;
 
     if (src_y > 0 || (src_y == 0 && src_x > 0)) {
