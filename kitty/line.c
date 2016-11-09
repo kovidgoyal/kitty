@@ -79,6 +79,15 @@ as_unicode(Line* self) {
 }
 
 static PyObject*
+__repr__(Line* self) {
+    PyObject *s = as_unicode(self);
+    if (s == NULL) return NULL;
+    PyObject *ans = PyObject_Repr(s);
+    Py_CLEAR(s);
+    return ans;
+}
+
+static PyObject*
 width(Line *self, PyObject *val) {
 #define width_doc "width_doc(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
@@ -325,7 +334,8 @@ PyTypeObject Line_Type = {
     .tp_name = "fast_data_types.Line",
     .tp_basicsize = sizeof(Line),
     .tp_dealloc = (destructor)dealloc,
-    .tp_repr = (reprfunc)as_unicode,
+    .tp_repr = (reprfunc)__repr__,
+    .tp_str = (reprfunc)as_unicode,
     .tp_as_sequence = &sequence_methods,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_richcompare = richcmp,                   
