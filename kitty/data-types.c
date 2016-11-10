@@ -9,6 +9,7 @@
 extern int init_LineBuf(PyObject *);
 extern int init_Cursor(PyObject *);
 extern int init_Line(PyObject *);
+extern PyObject* create_256_color_table();
 #include "gl.h"
 
 static PyMethodDef module_methods[] = {
@@ -37,6 +38,7 @@ PyInit_fast_data_types(void) {
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
+        if (PyModule_AddObject(m, "FG_BG_256", create_256_color_table()) != 0) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
