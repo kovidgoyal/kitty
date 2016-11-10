@@ -458,8 +458,8 @@ class Screen:
                     self.linebuf.copy_line_to(bottom, l)
                 else:
                     self.tophistorybuf.append(self.linebuf.create_line_copy(bottom))
-                self.linebuf.clear_line(bottom)
                 self.line_added_to_history()
+            self.linebuf.clear_line(bottom)
             if bottom - top >= self.lines - 1:
                 self.update_screen()
             else:
