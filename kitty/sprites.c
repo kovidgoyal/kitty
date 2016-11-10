@@ -194,7 +194,7 @@ render_dirty_cells(SpriteMap *self, PyObject *args) {
                 PyObject *rcell = PyObject_CallFunctionObjArgs(render_cell, text, bold ? Py_True : Py_False, italic ? Py_True : Py_False, sp->is_second ? Py_True : Py_False, NULL);
                 Py_CLEAR(text);
                 if (rcell == NULL) return NULL;
-                PyObject *ret = PyObject_CallFunction(send_to_gpu, "IIIN", sp->x, sp->y, sp->z, rcell);
+                PyObject *ret = PyObject_CallFunction(send_to_gpu, "IIIO", sp->x, sp->y, sp->z, rcell);
                 Py_CLEAR(rcell);
                 if (ret == NULL) return NULL;
                 Py_CLEAR(ret); 
