@@ -13,7 +13,8 @@ from kitty.fast_data_types import (
     glViewport, enable_automatic_opengl_error_checking, glClearColor,
     glUniform2f, glUniform4f, glUniform2ui, glUniform1i, glewInit, glGetString,
     GL_VERSION as GL_VERSION_C, GL_VENDOR, GL_SHADING_LANGUAGE_VERSION, GL_RENDERER,
-    glClear, GL_COLOR_BUFFER_BIT, GL_TRIANGLE_FAN, glDrawArraysInstanced
+    glClear, GL_COLOR_BUFFER_BIT, GL_TRIANGLE_FAN, glDrawArraysInstanced,
+    Cursor, LineBuf, ColorProfile
 )
 
 
@@ -32,11 +33,12 @@ class Renderer:
 
     def __init__(self, w, h):
         self.w, self.h = w, h
-        self.color_pairs = [
-            ((255, 255, 255), (0, 0, 0)),
-            ((0, 0, 0), (255, 255, 255)),
-            ((255, 255, 0), (0, 0, 255)),
-        ]
+        self.color_pairs = (
+            (0xffffff, 0),
+            (0, 0xffffff),
+            (0xffff00, 0x0000ff)
+        )
+        self.color_profile = ColorProfile()
         self.program = ShaderProgram(*cell_shader)
         self.sprites = Sprites()
         self.sprites.initialize()
@@ -54,15 +56,23 @@ class Renderer:
         self.sprites.ensure_state()
         self.screen_geometry = sg = calculate_vertices(cell_width, cell_height, self.w, self.h)
         data = (ctypes.c_uint * (sg.xnum * sg.ynum * 9))()
-        for i in range(0, len(data), 9):
-            idx = i // 9
-            c = '%d' % (idx % 10)
-            data[i:i+3] = self.sprites.primary_sprite_position((c, 0))
-            fg, bg = self.color_pairs[idx % 3]
-            data[i+3:i+9] = fg + bg
+        lb = LineBuf(sg.ynum, sg.xnum)
+        i = -1
+        for y in range(sg.ynum):
+            line = lb.line(y)
+            for x in range(sg.xnum):
+                i += 1
+                c = Cursor()
+                fg, bg = self.color_pairs[i % 3]
+                c.fg = (fg << 8) | 3
+                c.bg = (bg << 8) | 3
+                c.x = x
+                line.set_text('%d' % (i % 10), 0, 1, c)
+            self.sprites.update_cell_data(line, 0, sg.xnum - 1, self.color_profile, 0xffffff, 0, ctypes.addressof(data))
         self.sprites.set_sprite_map(data)
 
     def render(self):
+        self.sprites.render_dirty_cells()
         with self.program:
             ul = self.program.uniform_location
             sg = self.screen_geometry

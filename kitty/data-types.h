@@ -171,9 +171,10 @@ struct SpritePosition {
 typedef struct {
     PyObject_HEAD
 
-    size_t max_array_len, max_texture_size, xnum, ynum, max_y;
-    unsigned int x, y, z;
+    size_t max_array_len, max_texture_size, max_y;
+    unsigned int x, y, z, xnum, ynum;
     SpritePosition cache[1024];
+    bool dirty;
 
 } SpriteMap;
 

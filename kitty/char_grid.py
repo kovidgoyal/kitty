@@ -4,9 +4,9 @@
 
 from collections import namedtuple
 from copy import copy
-from ctypes import c_uint
-from itertools import chain, repeat
+from ctypes import c_uint, addressof
 from queue import Queue, Empty
+from threading import Lock
 
 from .config import build_ansi_color_table, to_color
 from .fonts import set_font_family
@@ -144,6 +144,7 @@ empty_cell = (' ', 0)
 class CharGrid:
 
     def __init__(self, screen, opts, window_width, window_height):
+        self.lock = Lock()
         self.dpix, self.dpiy = get_logical_dpi()
         self.width, self.height = window_width, window_height
         self.color_profile = ColorProfile()
@@ -162,6 +163,7 @@ class CharGrid:
         self.render_queue.put(RenderData(
             viewport=Size(self.width, self.height), clear_color=self.original_bg,
             cursor=self.default_cursor))
+        self.sprites.ensure_state()
 
     def destroy(self):
         self.sprites.destroy()
@@ -191,7 +193,6 @@ class CharGrid:
         self.screen_geometry = sg = calculate_vertices(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
         self.sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
-        self.sprite_text = list(repeat(empty_cell, sg.xnum * sg.ynum))
         self.update_cell_data(add_viewport_data=True)
 
     def change_colors(self, changes):
@@ -228,58 +229,38 @@ class CharGrid:
 
             dfbg = self.default_bg
             dffg = self.default_fg
+            dfbg = dfbg[0] << 16 | dfbg[1] << 8 | dfbg[2]
+            dffg = dffg[0] << 16 | dffg[1] << 8 | dffg[2]
+            ptr = addressof(self.sprite_map)
 
-            for y in lines:
-                self.update_line(y, range(sg.xnum), dffg, dfbg)
+            with self.lock:
+                for y in lines:
+                    self.update_line(y, [(0, sg.xnum - 1)], dffg, dfbg, ptr)
 
-            for y, ranges in cell_ranges.items():
-                self.update_line(y, chain.from_iterable(range(start, stop + 1) for start, stop in ranges),
-                                 dffg, dfbg)
+                for y, ranges in cell_ranges.items():
+                    self.update_line(y, ranges, dffg, dfbg, ptr)
 
-            rd.cell_data = copy(self.sprite_map), self.sprite_text[:]
+            rd.cell_data = copy(self.sprite_map)
             rd.sprite_layout = self.sprites.layout
         c = changes.get('cursor')
         if c is not None:
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
 
-    def update_line(self, y, cell_range, dffg, dfbg):
+    def update_line(self, y, cell_ranges, dffg, dfbg, ptr):
         line = self.screen.line(y)
-        for x in cell_range:
-            self.update_cell(line, x, y, dffg, dfbg)
-
-    def update_cell(self, line, x, y, dffg, dfbg):
-        ch, attrs, colors = line.basic_cell_data(x)
-        idx = x + y * self.screen_geometry.xnum
-        offset = idx * 9
-        bgcol = colors >> COL_SHIFT
-        if bgcol:
-            bgcol = self.as_color(bgcol) or dfbg
-        else:
-            bgcol = dfbg
-        fgcol = colors & COL_MASK
-        if fgcol:
-            fgcol = self.as_color(fgcol) or dffg
-        else:
-            fgcol = dffg
-        if attrs & REVERSE_MASK:
-            self.sprite_map[offset + 3:offset + 6] = bgcol
-            self.sprite_map[offset + 6:offset + 9] = fgcol
-        else:
-            self.sprite_map[offset + 3:offset + 6] = fgcol
-            self.sprite_map[offset + 6:offset + 9] = bgcol
-        if ch == 0 or ch == 32:
-            self.sprite_text[idx] = empty_cell
-        else:
-            self.sprite_text[idx] = line[x], attrs
+        for x, xmax in cell_ranges:
+            self.sprites.update_cell_data(line, x, xmax, self.color_profile, dfbg, dffg, ptr)
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
         glClear(GL_COLOR_BUFFER_BIT)
         cell_data_changed = self.get_all_render_changes()
         with self.sprites:
+            with self.lock:
+                self.sprites.render_dirty_cells()
             if cell_data_changed:
-                self.update_sprite_map()
+                self.sprites.set_sprite_map(self.last_render_data.cell_data)
             data = self.last_render_data
 
             if data.screen_geometry is None:
@@ -305,15 +286,6 @@ class CharGrid:
                 glViewport(0, 0, self.width, self.height)
             data.update(rd)
         return cell_data_changed
-
-    def update_sprite_map(self):
-        spmap, sptext = self.last_render_data.cell_data
-        psp = self.sprites.primary_sprite_position
-        empty_val = psp(empty_cell)  # Ensure the empty cell is 0, 0, 0
-        for i, key in enumerate(sptext):
-            f = i * 9
-            spmap[f:f + 3] = empty_val if key is empty_cell else psp(key)
-        self.sprites.set_sprite_map(spmap)
 
     def render_cells(self, sg, sprite_layout):
         with self.program:

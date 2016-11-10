@@ -924,7 +924,7 @@ class Screen:
                         # This is somewhat non-standard but is nonetheless
                         # supported in quite a few terminals. See discussion
                         # here https://gist.github.com/XVilka/8346728.
-                        r, gr, b = attrs.pop() << 8, attrs.pop() << 16, attrs.pop() << 24
+                        r, gr, b = attrs.pop() << 24, attrs.pop() << 16, attrs.pop() << 8
                         setattr(c, key, r | gr | b | 3)
                 except IndexError:
                     pass

@@ -76,24 +76,24 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
 
     if (!PyList_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a list"); return NULL; }
 
-#define to_color \
+#define TO_COLOR \
     t = PyList_GET_ITEM(val, i); \
     self->ansi_color_table[i] = PyLong_AsUnsignedLong(t);
 
     for(i = 30; i < 38; i++) {
-        to_color;
+        TO_COLOR;
     }
-    i = 39; to_color;
+    i = 39; TO_COLOR;
     for(i = 90; i < 98; i++) {
-        to_color;
+        TO_COLOR;
     }
-    i = 99; to_color;
+    i = 99; TO_COLOR;
     for(i = 40; i < 48; i++) {
-        to_color;
+        TO_COLOR;
     }
-    i = 49; to_color;
+    i = 49; TO_COLOR;
     for(i = 100; i < 108; i++) {
-        to_color;
+        TO_COLOR;
     }
     Py_RETURN_NONE;
 }
@@ -151,6 +151,22 @@ as_color(ColorProfile *self, PyObject *val) {
     return ans;
 }
 
+uint32_t to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
+    unsigned int t = entry & 0xFF, r;
+    switch(t) {
+        case 1:
+            r = (entry >> 8) & 0xff;
+            return self->ansi_color_table[r];
+        case 2:
+            r = (entry >> 8) & 0xff;
+            return self->color_table_256[r];
+        case 3:
+            return entry >> 8;
+        default:
+            return defval;
+    }
+}
+
 // Boilerplate {{{
 
 
@@ -163,7 +179,7 @@ static PyMethodDef methods[] = {
 };
 
 
-static PyTypeObject ColorProfile_Type = {
+PyTypeObject ColorProfile_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.ColorProfile",
     .tp_basicsize = sizeof(ColorProfile),

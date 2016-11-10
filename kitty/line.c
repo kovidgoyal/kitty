@@ -25,17 +25,8 @@ dealloc(Line* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static PyObject*
-text_at(Line* self, Py_ssize_t xval) {
-#define text_at_doc "[x] -> Return the text in the specified cell"
-    char_type ch;
-    combining_type cc;
+PyObject* line_text_at(char_type ch, combining_type cc) {
     PyObject *ans;
-
-    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-
-    ch = self->chars[xval] & CHAR_MASK;
-    cc = self->combining_chars[xval];
     if (cc == 0) {
         ans = PyUnicode_New(1, ch);
         if (ans == NULL) return PyErr_NoMemory();
@@ -51,6 +42,18 @@ text_at(Line* self, Py_ssize_t xval) {
     }
 
     return ans;
+}
+
+static PyObject*
+text_at(Line* self, Py_ssize_t xval) {
+#define text_at_doc "[x] -> Return the text in the specified cell"
+    char_type ch;
+    combining_type cc;
+
+    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    ch = self->chars[xval] & CHAR_MASK;
+    cc = self->combining_chars[xval];
+    return line_text_at(ch, cc);
 }
 
 static PyObject *

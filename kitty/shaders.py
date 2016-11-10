@@ -20,7 +20,7 @@ from .fast_data_types import (
     GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
     GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_TEXTURE_BUFFER,
     GL_RGB32UI, glBindBuffer, glPixelStorei, glTexBuffer, glActiveTexture,
-    glTexStorage3D, glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD
+    glTexStorage3D, glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap
 )
 
 GL_VERSION = (3, 3)
@@ -45,27 +45,47 @@ class Sprites:
         self.x = self.y = self.z = 0
         self.texture_id = self.buffer_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
+        self.last_ynum = -1
+        self.update_cell_data = lambda *a: None
 
     def initialize(self):
         self.texture_unit = GL_TEXTURE0
-        self.max_array_len = glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS)
-        self.max_texture_size = glGetIntegerv(GL_MAX_TEXTURE_SIZE)
+        self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
+        self.update_cell_data = self.backend.update_cell_data
         self.do_layout(getattr(self, 'cell_width', 1), getattr(self, 'cell_height', 1))
 
     def do_layout(self, cell_width=1, cell_height=1):
-        self.cell_width, self.cell_height = cell_width or 1, cell_height or 1
-        self.first_cell_cache = {}
-        self.second_cell_cache = {}
-        self.xnum = max(1, self.max_texture_size // self.cell_width)
-        self.max_y = max(1, self.max_texture_size // self.cell_height)
-        self.ynum = 1
+        self.cell_width, self.cell_height = cell_width, cell_height
+        self.backend.layout(cell_width or 1, cell_height or 1)
         if self.texture_id is not None:
             glDeleteTexture(self.texture_id)
             self.texture_id = None
 
     @property
     def layout(self):
-        return 1 / self.xnum, 1 / self.ynum
+        return 1 / self.backend.xnum, 1 / self.backend.ynum
+
+    def render_cell(self, text, bold, italic, is_second):
+        first, second = render_cell(text, bold, italic)
+        if is_second:
+            return second or first
+        return first
+
+    def render_dirty_cells(self):
+        self.backend.render_dirty_cells(self.render_cell, self.send_to_gpu)
+
+    def send_to_gpu(self, x, y, z, buf):
+        if self.backend.z >= self.last_num_of_layers:
+            self.realloc_texture()
+        else:
+            if self.backend.z == 0 and self.backend.ynum > self.last_ynum:
+                self.realloc_texture()
+        tgt = GL_TEXTURE_2D_ARRAY
+        glBindTexture(tgt, self.texture_id)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+        x, y = x * self.cell_width, y * self.cell_height
+        glTexSubImage3D(tgt, 0, x, y, self.backend.z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
+        glBindTexture(tgt, 0)
 
     def realloc_texture(self):
         if self.texture_id is None:
@@ -79,17 +99,18 @@ class Sprites:
         glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        znum = self.z + 1
-        width, height = self.xnum * self.cell_width, self.ynum * self.cell_height
+        znum = self.backend.z + 1
+        width, height = self.backend.xnum * self.cell_width, self.backend.ynum * self.cell_height
         glTexStorage3D(tgt, 1, GL_R8, width, height, znum)
         if self.texture_id is not None:
-            ynum = self.ynum
-            if self.z == 0:
+            ynum = self.backend.ynum
+            if self.backend.z == 0:
                 ynum -= 1  # Only copy the previous rows
             glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
                                width, ynum * self.cell_height, self.last_num_of_layers)
             glDeleteTexture(self.texture_id)
         self.last_num_of_layers = znum
+        self.last_ynum = self.backend.ynum
         self.texture_id = tex
         glBindTexture(tgt, 0)
 
@@ -109,57 +130,11 @@ class Sprites:
             self.buffer_texture_id = glGenTextures(1)
             self.buffer_texture_unit = GL_TEXTURE1
 
-    def add_sprite(self, buf):
-        tgt = GL_TEXTURE_2D_ARRAY
-        glBindTexture(tgt, self.texture_id)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        x, y = self.x * self.cell_width, self.y * self.cell_height
-        glTexSubImage3D(tgt, 0, x, y, self.z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
-        glBindTexture(tgt, 0)
-
-        # co-ordinates for this sprite in the sprite sheet
-        x, y, z = self.x, self.y, self.z
-
-        # Now increment the current cell position
-        self.x += 1
-        if self.x >= self.xnum:
-            self.x = 0
-            self.y += 1
-            self.ynum = min(max(self.ynum, self.y + 1), self.max_y)
-            if self.y >= self.max_y:
-                self.y = 0
-                self.z += 1
-            self.realloc_texture()  # we allocate a row at a time
-        return x, y, z
-
     def set_sprite_map(self, data):
         tgt = GL_TEXTURE_BUFFER
         glBindBuffer(tgt, self.buffer_id)
         glBufferData(tgt, sizeof(data), addressof(data), GL_STATIC_DRAW)
         glBindBuffer(tgt, 0)
-
-    def primary_sprite_position(self, key):
-        ' Return a 3-tuple (x, y, z) giving the position of this sprite on the sprite sheet '
-        try:
-            return self.first_cell_cache[key]
-        except KeyError:
-            pass
-        text, attrs = key
-        bold, italic = bool(attrs & BOLD_MASK), bool(attrs & ITALIC_MASK)
-        first, second = render_cell(text, bold, italic)
-        self.first_cell_cache[key] = first = self.add_sprite(first)
-        if second is not None:
-            self.second_cell_cache[key] = self.add_sprite(second)
-        return first
-
-    def secondary_sprite_position(self, key):
-        ans = self.second_cell_cache.get(key)
-        if ans is None:
-            self.primary_sprite_position(key)
-            ans = self.second_cell_cache.get(key)
-            if ans is None:
-                return 0, 0, 0
-        return ans
 
     def __enter__(self):
         self.ensure_state()
