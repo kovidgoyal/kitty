@@ -4,7 +4,7 @@
 
 import re
 from collections import namedtuple
-from typing import Tuple
+from itertools import repeat
 
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
@@ -298,23 +298,22 @@ def load_config(path: str) -> Options:
     return Options(**ans)
 
 
-def build_ansi_color_tables(opts: Options) -> Tuple[dict, dict]:
+def build_ansi_color_table(opts: Options=defaults):
+    def as_int(x):
+        return (x[0] << 16) | (x[1] << 8) | x[2]
+
     def col(i):
-        return getattr(opts, 'color{}'.format(i))
+        return as_int(getattr(opts, 'color{}'.format(i)))
+    ans = list(repeat(0, 120))
     fg = {30 + i: col(i) for i in range(8)}
-    fg[39] = opts.foreground
+    fg[39] = as_int(opts.foreground)
     fg.update({90 + i: col(i + 8) for i in range(8)})
-    fg[99] = opts.foreground_bold
+    fg[99] = as_int(opts.foreground_bold)
     bg = {40 + i: col(i) for i in range(8)}
-    bg[49] = opts.background
+    bg[49] = as_int(opts.background)
     bg.update({100 + i: col(i + 8) for i in range(8)})
-    build_ansi_color_tables.fg, build_ansi_color_tables.bg = fg, bg
-build_ansi_color_tables(defaults)
-
-
-def fg_color_table():
-    return build_ansi_color_tables.fg
-
-
-def bg_color_table():
-    return build_ansi_color_tables.bg
+    for k, val in fg.items():
+        ans[k] = val
+    for k, val in bg.items():
+        ans[k] = val
+    return ans

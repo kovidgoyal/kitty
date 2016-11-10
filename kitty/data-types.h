@@ -148,6 +148,16 @@ typedef struct {
 
 } Cursor;
 
+
+typedef struct {
+    PyObject_HEAD
+
+    uint32_t color_table_256[256];
+    uint32_t ansi_color_table[120];
+
+} ColorProfile;
+
+
 Line* alloc_line();
 Cursor* alloc_cursor();
 

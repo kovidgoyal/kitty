@@ -6,8 +6,9 @@ import codecs
 
 from . import BaseTest, filled_line_buf, filled_cursor
 
+from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE
+from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile
 
 
 def create_lbuf(*lines):
@@ -259,3 +260,11 @@ class TestDataTypes(BaseTest):
             self.assertTrue(is_simple_string(d(s.encode('utf-8'))))
         self.assertFalse(is_simple_string('a1コ'))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
+
+    def test_color_profile(self):
+        c = ColorProfile()
+        c.update_ansi_color_table(build_ansi_color_table())
+        for i in range(8):
+            col = getattr(defaults, 'color{}'.format(i))
+            self.assertEqual(c.ansi_color(30 + i), col[0] << 16 | col[1] << 8 | col[2])
+        self.ae(c.color_256(255), 0xeeeeee)

@@ -7,7 +7,7 @@
 
 #include "data-types.h"
 
-static uint32_t FG_BG_256[255] = {
+static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
     0xcd0000,  // 1
     0x00cd00,  // 2
@@ -34,8 +34,8 @@ PyObject* create_256_color_table() {
         uint8_t r = valuerange[(i / 36) % 6], g = valuerange[(i / 6) % 6], b = valuerange[i % 6];
         FG_BG_256[j] = (r << 16) | (g << 8) | b;
     }
-    // colors 233..253: grayscale
-    for(i = 1; i < 22; i++, j++) {
+    // colors 233..255: grayscale
+    for(i = 1; i < 24; i++, j++) {
         uint8_t v = 8 + i * 10;
         FG_BG_256[j] = (v << 16) | (v << 8) | v;
     }
@@ -49,3 +49,97 @@ PyObject* create_256_color_table() {
     }
     return ans;
 }
+
+static PyObject *
+new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+    ColorProfile *self;
+
+    self = (ColorProfile *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        if (FG_BG_256[255] == 0) create_256_color_table();
+        memcpy(self->color_table_256, FG_BG_256, sizeof(FG_BG_256));
+    }
+    return (PyObject*) self;
+}
+
+static void
+dealloc(Cursor* self) {
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+
+static PyObject*
+update_ansi_color_table(ColorProfile *self, PyObject *val) {
+#define update_ansi_color_table_doc "Update the 16 basic colors"
+    index_type i;
+    PyObject *t;
+
+    if (!PyList_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a list"); return NULL; }
+
+#define to_color \
+    t = PyList_GET_ITEM(val, i); \
+    self->ansi_color_table[i] = PyLong_AsUnsignedLong(t);
+
+    for(i = 30; i < 38; i++) {
+        to_color;
+    }
+    i = 39; to_color;
+    for(i = 90; i < 98; i++) {
+        to_color;
+    }
+    i = 99; to_color;
+    for(i = 40; i < 48; i++) {
+        to_color;
+    }
+    i = 49; to_color;
+    for(i = 100; i < 108; i++) {
+        to_color;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+ansi_color(ColorProfile *self, PyObject *val) {
+#define ansi_color_doc "Return the color at the specified index"
+    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
+    unsigned long idx = PyLong_AsUnsignedLong(val);
+    if (idx >= sizeof(self->ansi_color_table) / sizeof(self->ansi_color_table[0])) {
+        PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL;
+    }
+    return PyLong_FromUnsignedLong(self->ansi_color_table[idx]);
+}
+
+static PyObject*
+color_256(ColorProfile *self, PyObject *val) {
+#define color_256_doc "Return the color at the specified 256-color index"
+    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
+    unsigned long idx = PyLong_AsUnsignedLong(val);
+    if (idx >= 256) {
+        PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL;
+    }
+    return PyLong_FromUnsignedLong(self->color_table_256[idx]);
+}
+// Boilerplate {{{
+
+
+static PyMethodDef methods[] = {
+    METHOD(update_ansi_color_table, METH_O)
+    METHOD(ansi_color, METH_O)
+    METHOD(color_256, METH_O)
+    {NULL}  /* Sentinel */
+};
+
+
+static PyTypeObject ColorProfile_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.ColorProfile",
+    .tp_basicsize = sizeof(ColorProfile),
+    .tp_dealloc = (destructor)dealloc, 
+    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_doc = "ColorProfile",
+    .tp_methods = methods,
+    .tp_new = new,                
+};
+
+INIT_TYPE(ColorProfile)
+// }}}

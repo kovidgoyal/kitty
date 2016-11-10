@@ -6,8 +6,6 @@ from collections import defaultdict
 from operator import itemgetter
 from typing import Set, Tuple, Iterator
 
-from .data_types import Cursor
-
 
 def merge_ranges(ranges: Set[Tuple[int]]) -> Iterator[Tuple[int]]:
     if ranges:
@@ -44,11 +42,11 @@ class ChangeTracker:
             self._dirty = True
             self.mark_dirtied()
 
-    def cursor_changed(self, cursor: Cursor) -> None:
+    def cursor_changed(self, cursor) -> None:
         self.changed_cursor = cursor
         self.dirty()
 
-    def cursor_position_changed(self, cursor: Cursor) -> None:
+    def cursor_position_changed(self, cursor) -> None:
         self.changed_cursor = cursor
         self.dirty()
 
