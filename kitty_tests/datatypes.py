@@ -8,7 +8,7 @@ from . import BaseTest, filled_line_buf, filled_cursor
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile
+from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap
 
 
 def create_lbuf(*lines):
@@ -274,3 +274,16 @@ class TestDataTypes(BaseTest):
             col = getattr(defaults, 'color{}'.format(i))
             self.assertEqual(c.ansi_color(30 + i), col[0] << 16 | col[1] << 8 | col[2])
         self.ae(c.color_256(255), 0xeeeeee)
+
+    def test_sprite_map(self):
+        s = SpriteMap(10, 2)
+        s.layout(5, 5)
+        self.ae(s.position_for(0), (0, 0, 0))
+        self.ae(s.position_for(1), (1, 0, 0))
+        self.ae(s.position_for(2), (0, 1, 0))
+        self.ae(s.position_for(3), (1, 1, 0))
+        self.ae(s.position_for(4), (0, 0, 1))
+        self.ae(s.position_for(5), (1, 0, 1))
+        self.ae(s.position_for(0, 1), (0, 1, 1))
+        self.ae(s.position_for(0, 2), (1, 1, 1))
+        self.ae(s.position_for(0, 2), (1, 1, 1))

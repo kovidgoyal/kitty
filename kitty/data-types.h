@@ -157,6 +157,26 @@ typedef struct {
 
 } ColorProfile;
 
+typedef struct SpritePosition SpritePosition;
+struct SpritePosition {
+    SpritePosition *next;
+    unsigned int x, y, z;
+    char_type ch;
+    combining_type cc;
+    bool is_second;
+    bool filled;
+    bool rendered;
+};
+
+typedef struct {
+    PyObject_HEAD
+
+    size_t max_array_len, max_texture_size, xnum, ynum, max_y;
+    unsigned int x, y, z;
+    SpritePosition cache[1024];
+
+} SpriteMap;
+
 
 Line* alloc_line();
 Cursor* alloc_cursor();

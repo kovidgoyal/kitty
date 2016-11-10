@@ -85,7 +85,10 @@ def main():
     args = option_parser().parse_args()
     init_env(args.debug)
     if args.action == 'build':
-        compile_c_extension('kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c', 'kitty/line-buf.c', 'kitty/cursor.c', 'kitty/colors.c')
+        compile_c_extension(
+            'kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c',
+            'kitty/line-buf.c', 'kitty/cursor.c', 'kitty/colors.c',
+            'kitty/sprites.c')
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
 
