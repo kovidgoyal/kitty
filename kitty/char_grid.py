@@ -164,6 +164,7 @@ class CharGrid:
             viewport=Size(self.width, self.height), clear_color=self.original_bg,
             cursor=self.default_cursor))
         self.sprites.ensure_state()
+        self.clear_count = 4
 
     def destroy(self):
         self.sprites.destroy()
@@ -194,6 +195,7 @@ class CharGrid:
         self.screen.resize(sg.ynum, sg.xnum)
         self.sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
         self.update_cell_data(add_viewport_data=True)
+        self.clear_count = 4
 
     def change_colors(self, changes):
         dirtied = False
@@ -209,6 +211,7 @@ class CharGrid:
                         dirtied = True
         if dirtied:
             self.render_queue.put(RenderData(clear_color=self.default_bg))
+            self.clear_count = 4
 
     def update_cell_data(self, changes=None, add_viewport_data=False):
         rd = RenderData(sprite_layout=self.sprites.layout)
@@ -254,7 +257,9 @@ class CharGrid:
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
-        glClear(GL_COLOR_BUFFER_BIT)
+        if self.clear_count > 0:
+            glClear(GL_COLOR_BUFFER_BIT)
+            self.clear_count -= 1
         cell_data_changed = self.get_all_render_changes()
         with self.sprites:
             with self.lock:
