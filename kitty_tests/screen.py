@@ -214,7 +214,11 @@ class TestScreen(BaseTest):
         s.draw(b'12345' * 5)
         s.index()
         self.ae(str(s.line(4)), ' ' * 5)
+        for i in range(4):
+            self.ae(str(s.line(i)), '12345')
         s.draw(b'12345' * 5)
         s.cursor_up(5)
         s.reverse_index()
         self.ae(str(s.line(0)), ' ' * 5)
+        for i in range(1, 5):
+            self.ae(str(s.line(i)), '12345')
