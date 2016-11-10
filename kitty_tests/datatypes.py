@@ -126,6 +126,12 @@ class TestDataTypes(BaseTest):
         self.ae(str(l), '0  00')
         self.assertEqualAttributes(l.cursor_from(1), l.cursor_from(0))
 
+        lb = filled_line_buf(10, 10, filled_cursor())
+        lb.clear()
+        lb2 = LineBuf(lb.ynum, lb.ynum)
+        for i in range(lb.ynum):
+            self.ae(lb.line(i), lb2.line(i))
+
     def test_line(self):
         lb = LineBuf(2, 3)
         for y in range(lb.ynum):
@@ -133,9 +139,9 @@ class TestDataTypes(BaseTest):
             self.ae(str(line), ' ' * lb.xnum)
             for x in range(lb.xnum):
                 self.ae(line[x], ' ')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             lb.line(lb.ynum)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             lb.line(0)[lb.xnum]
         l = lb.line(0)
         l.add_combining_char(0, '1')

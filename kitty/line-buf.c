@@ -95,7 +95,7 @@ line(LineBuf *self, PyObject *y) {
 #define line_doc      "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."
     unsigned long idx = PyLong_AsUnsignedLong(y);
     if (idx >= self->ynum) {
-        PyErr_SetString(PyExc_ValueError, "Line number too large");
+        PyErr_SetString(PyExc_IndexError, "Line number too large");
         return NULL;
     }
     self->line->ynum = idx;
