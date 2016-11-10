@@ -6,7 +6,6 @@ from ctypes import addressof, sizeof
 from functools import lru_cache
 
 from .fonts import render_cell
-from .data_types import ITALIC_MASK, BOLD_MASK
 from .fast_data_types import (
     glCreateProgram, glAttachShader, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER,
     glLinkProgram, GL_TRUE, GL_LINK_STATUS, glGetProgramiv,
@@ -21,11 +20,13 @@ from .fast_data_types import (
     GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
     GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_TEXTURE_BUFFER,
     GL_RGB32UI, glBindBuffer, glPixelStorei, glTexBuffer, glActiveTexture,
-    glTexStorage3D, glCopyImageSubData, glTexSubImage3D
+    glTexStorage3D, glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD
 )
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
+ITALIC_MASK = 1 << ITALIC
+BOLD_MASK = 1 << BOLD
 
 
 class Sprites:

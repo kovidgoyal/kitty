@@ -119,6 +119,38 @@ color_256(ColorProfile *self, PyObject *val) {
     }
     return PyLong_FromUnsignedLong(self->color_table_256[idx]);
 }
+
+static PyObject*
+as_color(ColorProfile *self, PyObject *val) {
+#define as_color_doc "Convert the specified terminal color into an (r, g, b) tuple based on the current profile values"
+    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "val must be an int"); return NULL; }
+    unsigned long entry = PyLong_AsUnsignedLong(val);
+    unsigned int t = entry & 0xFF;
+    uint8_t r, g, b;
+    uint32_t col = 0;
+    PyObject *ans = NULL;
+    switch(t) {
+        case 1:
+            r = (entry >> 8) & 0xff;
+            col = self->ansi_color_table[r];
+            break;
+        case 2:
+            r = (entry >> 8) & 0xff;
+            col = self->color_table_256[r];
+            break;
+        case 3:
+            r = (entry >> 8) & 0xff;
+            g = (entry >> 16) & 0xff;
+            b = (entry >> 24) & 0xff;
+            ans = Py_BuildValue("BBB", r, g, b);
+            break;
+        default:
+            ans = Py_None; Py_INCREF(Py_None);
+    }
+    if (ans == NULL) ans = Py_BuildValue("BBB", (unsigned char)(col >> 16), (unsigned char)((col >> 8) & 0xFF), (unsigned char)(col & 0xFF)); 
+    return ans;
+}
+
 // Boilerplate {{{
 
 
@@ -126,6 +158,7 @@ static PyMethodDef methods[] = {
     METHOD(update_ansi_color_table, METH_O)
     METHOD(ansi_color, METH_O)
     METHOD(color_256, METH_O)
+    METHOD(as_color, METH_O)
     {NULL}  /* Sentinel */
 };
 

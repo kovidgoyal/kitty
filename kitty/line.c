@@ -32,7 +32,7 @@ text_at(Line* self, Py_ssize_t xval) {
     combining_type cc;
     PyObject *ans;
 
-    if (xval >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Column number out of bounds"); return NULL; }
+    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
 
     ch = self->chars[xval] & CHAR_MASK;
     cc = self->combining_chars[xval];
@@ -89,11 +89,20 @@ __repr__(Line* self) {
 
 static PyObject*
 width(Line *self, PyObject *val) {
-#define width_doc "width_doc(x) -> the width of the character at x"
+#define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
     if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     char_type attrs = self->chars[x] >> ATTRS_SHIFT;
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
+}
+
+static PyObject*
+basic_cell_data(Line *self, PyObject *val) {
+#define basic_cell_data_doc "basic_cell_data(x) -> ch, attrs, colors"
+    unsigned long x = PyLong_AsUnsignedLong(val);
+    if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    char_type ch = self->chars[x];
+    return Py_BuildValue("IBK", (unsigned int)(ch & CHAR_MASK), (unsigned char)(ch >> ATTRS_SHIFT), (unsigned long long)self->colors[x]);
 }
 
 static PyObject*
@@ -325,6 +334,7 @@ static PyMethodDef methods[] = {
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(width, METH_O)
+    METHOD(basic_cell_data, METH_O)
         
     {NULL}  /* Sentinel */
 };

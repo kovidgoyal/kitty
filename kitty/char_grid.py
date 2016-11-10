@@ -8,8 +8,7 @@ from ctypes import c_uint
 from itertools import chain, repeat
 from queue import Queue, Empty
 
-from .config import build_ansi_color_tables, to_color, fg_color_table, bg_color_table
-from .data_types import COL_MASK, COL_SHIFT, REVERSE_MASK, as_color
+from .config import build_ansi_color_table, to_color
 from .fonts import set_font_family
 from .shaders import Sprites, ShaderProgram
 from .utils import get_logical_dpi
@@ -17,12 +16,15 @@ from .fast_data_types import (
     glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
     GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
     glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
-    glEnable, glDisable, GL_BLEND, glDrawArrays
+    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile, REVERSE
 )
 
 Size = namedtuple('Size', 'width height')
 Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
+COL_MASK = 0xFFFFFFFF
+COL_SHIFT = 32
+REVERSE_MASK = 1 << REVERSE
 
 # cell shader {{{
 
@@ -144,6 +146,8 @@ class CharGrid:
     def __init__(self, screen, opts, window_width, window_height):
         self.dpix, self.dpiy = get_logical_dpi()
         self.width, self.height = window_width, window_height
+        self.color_profile = ColorProfile()
+        self.as_color = self.color_profile.as_color
         self.screen = screen
         self.opts = opts
         self.original_bg = opts.background
@@ -169,7 +173,7 @@ class CharGrid:
     def apply_opts(self, opts):
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        build_ansi_color_tables(opts)
+        self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.opts = opts
         self.original_bg = opts.background
@@ -222,17 +226,15 @@ class CharGrid:
                 lines = changes['lines']
                 cell_ranges = changes['cells']
 
-            fgct = fg_color_table()
-            bgct = bg_color_table()
             dfbg = self.default_bg
             dffg = self.default_fg
 
             for y in lines:
-                self.update_line(y, range(sg.xnum), fgct, bgct, dffg, dfbg)
+                self.update_line(y, range(sg.xnum), dffg, dfbg)
 
             for y, ranges in cell_ranges.items():
                 self.update_line(y, chain.from_iterable(range(start, stop + 1) for start, stop in ranges),
-                                 fgct, bgct, dffg, dfbg)
+                                 dffg, dfbg)
 
             rd.cell_data = copy(self.sprite_map), self.sprite_text[:]
             rd.sprite_layout = self.sprites.layout
@@ -241,23 +243,23 @@ class CharGrid:
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
 
-    def update_line(self, y, cell_range, fgct, bgct, dffg, dfbg):
+    def update_line(self, y, cell_range, dffg, dfbg):
         line = self.screen.line(y)
         for x in cell_range:
-            self.update_cell(line, x, y, fgct, bgct, dffg, dfbg)
+            self.update_cell(line, x, y, dffg, dfbg)
 
-    def update_cell(self, line, x, y, fgct, bgct, dffg, dfbg):
+    def update_cell(self, line, x, y, dffg, dfbg):
         ch, attrs, colors = line.basic_cell_data(x)
         idx = x + y * self.screen_geometry.xnum
         offset = idx * 9
         bgcol = colors >> COL_SHIFT
         if bgcol:
-            bgcol = as_color(bgcol, bgct) or dfbg
+            bgcol = self.as_color(bgcol) or dfbg
         else:
             bgcol = dfbg
         fgcol = colors & COL_MASK
         if fgcol:
-            fgcol = as_color(fgcol, fgct) or dffg
+            fgcol = self.as_color(fgcol) or dffg
         else:
             fgcol = dffg
         if attrs & REVERSE_MASK:
@@ -269,7 +271,7 @@ class CharGrid:
         if ch == 0 or ch == 32:
             self.sprite_text[idx] = empty_cell
         else:
-            self.sprite_text[idx] = line.text_at(x), attrs
+            self.sprite_text[idx] = line[x], attrs
 
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
