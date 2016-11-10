@@ -209,3 +209,12 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (2, 2))
         s.cursor_down1(5)
         self.ae((s.cursor.x, s.cursor.y), (0, 4))
+
+        s, t = self.create_screen()
+        s.draw(b'12345' * 5)
+        s.index()
+        self.ae(str(s.line(4)), ' ' * 5)
+        s.draw(b'12345' * 5)
+        s.cursor_up(5)
+        s.reverse_index()
+        self.ae(str(s.line(0)), ' ' * 5)
