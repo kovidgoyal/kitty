@@ -56,6 +56,14 @@ repr(Cursor *self) {
     );
 }
 
+static PyObject *
+reset_display_attrs(Cursor *self) {
+#define reset_display_attrs_doc "Reset all display attributes to unset"
+    self->bg = 0; self->fg = 0; self->decoration_fg = 0;
+    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 copy(Cursor *self, PyObject *args);
 #define copy_doc "Create a clone of this cursor"
@@ -92,6 +100,7 @@ static PyGetSetDef getseters[] = {
 
 static PyMethodDef methods[] = {
     METHOD(copy, METH_NOARGS)
+    METHOD(reset_display_attrs, METH_NOARGS)
     {NULL}  /* Sentinel */
 };
 
