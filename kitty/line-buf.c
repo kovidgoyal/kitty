@@ -19,7 +19,7 @@ static PyObject*
 clear(LineBuf *self) {
 #define clear_doc "Clear all lines in this LineBuf"
     memset(self->buf, 0, self->block_size * CELL_SIZE);
-    memset(self->continued_map, 0, self->ynum * sizeof(index_type));
+    memset(self->continued_map, 0, self->ynum * sizeof(bool));
     for (index_type i = 0; i < self->ynum; i++) {
         clear_chars_to_space(self, i);
         self->line_map[i] = i;
