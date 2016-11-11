@@ -25,46 +25,36 @@ def merge_ranges(ranges: Set[Tuple[int]]) -> Iterator[Tuple[int]]:
 
 class ChangeTracker:
 
-    def __init__(self, mark_dirtied=lambda: None):
+    def __init__(self):
         self.reset()
-        self.mark_dirtied = mark_dirtied
 
     def reset(self):
-        self._dirty = False
-        self.changed_cursor = None
+        self.dirty = False
+        self.changed_cursor = False
         self.changed_cells = defaultdict(set)
         self.changed_lines = set()
         self.screen_changed = False
         self.history_line_added_count = 0
 
-    def dirty(self):
-        if not self._dirty:
-            self._dirty = True
-            self.mark_dirtied()
-
-    def cursor_changed(self, cursor) -> None:
-        self.changed_cursor = cursor
-        self.dirty()
-
-    def cursor_position_changed(self, cursor) -> None:
-        self.changed_cursor = cursor
-        self.dirty()
+    def cursor_changed(self) -> None:
+        self.changed_cursor = True
+        self.dirty = True
 
     def update_screen(self):
         self.screen_changed = True
-        self.dirty()
+        self.dirty = True
 
     def update_line_range(self, first_line, last_line):
         self.changed_lines |= set(range(first_line, last_line + 1))
-        self.dirty()
+        self.dirty = True
 
     def update_cell_range(self, y, first_cell, last_cell):
         self.changed_cells[y].add((first_cell, last_cell))
-        self.dirty()
+        self.dirty = True
 
     def line_added_to_history(self):
         self.history_line_added_count += 1
-        self.dirty()
+        self.dirty = True
 
     def consolidate_changes(self):
         if self.screen_changed:

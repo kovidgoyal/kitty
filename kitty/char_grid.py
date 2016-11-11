@@ -246,7 +246,8 @@ class CharGrid:
             rd.cell_data = copy(self.sprite_map)
             rd.sprite_layout = self.sprites.layout
         c = changes.get('cursor')
-        if c is not None:
+        if c:
+            c = self.screen.cursor
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
 

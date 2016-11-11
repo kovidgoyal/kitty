@@ -52,7 +52,7 @@ class Screen:
        for a description of the presentational component, implemented by ``Screen``.
     """
 
-    tracker_callbacks = 'cursor_changed cursor_position_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
+    tracker_callbacks = 'cursor_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
     _notify_cursor_position = True
 
     def __init__(self, opts, tracker, callbacks=None, columns: int=80, lines: int=24):
@@ -86,7 +86,7 @@ class Screen:
 
     def notify_cursor_position(self):
         if self._notify_cursor_position:
-            self.cursor_position_changed(self.cursor)
+            self.cursor_changed()
 
     @property
     def display(self) -> Sequence[str]:
@@ -136,7 +136,7 @@ class Screen:
         self.normal_keypad_mode()
 
         self.cursor = Cursor(0, 0)
-        self.cursor_changed(self.cursor)
+        self.cursor_changed()
         self.cursor_position()
         self.change_default_color('fg', None)
         self.change_default_color('bg', None)
@@ -235,7 +235,7 @@ class Screen:
         # Show/hide the cursor.
         previous, self.cursor.hidden = self.cursor.hidden, mo.DECTCEM not in self.mode
         if previous != self.cursor.hidden:
-            self.cursor_changed(self.cursor)
+            self.cursor_changed()
 
         if mo.ALTERNATE_SCREEN in self.mode and self.linebuf is self.main_linebuf:
             self.toggle_screen_buffer()
@@ -279,7 +279,7 @@ class Screen:
         # Show/hide the cursor.
         previous, self.cursor.hidden = self.cursor.hidden, mo.DECTCEM not in self.mode
         if previous != self.cursor.hidden:
-            self.cursor_changed(self.cursor)
+            self.cursor_changed()
 
         if mo.ALTERNATE_SCREEN not in self.mode and self.linebuf is not self.main_linebuf:
             self.toggle_screen_buffer()
@@ -543,7 +543,7 @@ class Screen:
                 self.set_mode(mo.DECAWM)
 
             self.cursor = savepoint.cursor
-            self.cursor_changed(self.cursor)
+            self.cursor_changed()
             self.ensure_bounds(use_margins=True)
         else:
             # If nothing was saved, the cursor moves to home position;
@@ -976,7 +976,7 @@ class Screen:
                 shape = 'block' if mode < 3 else 'underline' if mode < 5 else 'beam' if mode < 7 else None
             if shape != self.cursor.shape or blink != self.cursor.blink:
                 self.cursor.shape, self.cursor.blink = shape, blink
-                self.cursor_changed(self.cursor)
+                self.cursor_changed()
         elif secondary == '"':  # DECSCA
             pass
         else:  # DECLL
@@ -998,7 +998,7 @@ class Screen:
             elif val == 12:  # cursor color
                 old, self.cursor.color = self.cursor.color, param
                 if old != self.cursor.color:
-                    self.cursor_changed(self.cursor)
+                    self.cursor_changed()
 
         if color_names:
             for i, cn in enumerate(filter(None, color_names.split(';'))):

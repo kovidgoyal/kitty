@@ -53,7 +53,7 @@ class Boss(Thread):
         self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
-        self.tracker = ChangeTracker(self.mark_dirtied)
+        self.tracker = ChangeTracker()
         self.screen = Screen(self.opts, self.tracker, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         sclass = DebugStream if args.dump_commands else Stream
@@ -179,6 +179,8 @@ class Boss(Thread):
                 dispatch[r]()
             if writers:
                 self.write_ready()
+            if self.tracker.dirty:
+                self.mark_dirtied()
             if self.pending_update_screen is not None and monotonic() > self.pending_update_screen:
                 self.apply_update_screen()
 
