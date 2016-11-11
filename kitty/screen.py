@@ -11,6 +11,7 @@ from typing import Sequence
 from pyte import charsets as cs, graphics as g, modes as mo
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
+from .tracker import ChangeTracker
 from .fast_data_types import LineBuf, REVERSE, Cursor
 
 
@@ -55,20 +56,27 @@ class Screen:
     tracker_callbacks = 'cursor_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
     _notify_cursor_position = True
 
-    def __init__(self, opts, tracker, callbacks=None, columns: int=80, lines: int=24):
-        for attr in self.tracker_callbacks:
-            setattr(self, attr, getattr(tracker, attr))
+    def __init__(self, opts, callbacks=None, columns: int=80, lines: int=24):
         for attr in default_callbacks:
             setattr(self, attr, getattr(callbacks, attr, default_callbacks[attr]))
         self.main_savepoints, self.alt_savepoints = deque(), deque()
         self.savepoints = self.main_savepoints
         self.columns = columns
         self.lines = lines
+        self.tracker = ChangeTracker()
+        for attr in self.tracker_callbacks:
+            setattr(self, attr, getattr(self.tracker, attr))
+        self.consolidate_changes = self.tracker.consolidate_changes
+        self.reset_dirty = self.tracker.reset
         sz = max(1000, opts.scrollback_lines)
         self.tophistorybuf = deque(maxlen=sz)
         self.main_linebuf, self.alt_linebuf = LineBuf(self.lines, self.columns), LineBuf(self.lines, self.columns)
         self.linebuf = self.main_linebuf
         self.reset(notify=False)
+
+    @property
+    def is_dirty(self):
+        return self.tracker.dirty
 
     def apply_opts(self, opts):
         sz = max(1000, opts.scrollback_lines)

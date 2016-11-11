@@ -20,7 +20,6 @@ from pyte import modes as mo
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
 from .screen import Screen
-from .tracker import ChangeTracker
 from .utils import resize_pty, create_pty
 
 
@@ -53,8 +52,7 @@ class Boss(Thread):
         self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
-        self.tracker = ChangeTracker()
-        self.screen = Screen(self.opts, self.tracker, self)
+        self.screen = Screen(self.opts, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
@@ -179,10 +177,11 @@ class Boss(Thread):
                 dispatch[r]()
             if writers:
                 self.write_ready()
-            if self.tracker.dirty:
-                self.mark_dirtied()
-            if self.pending_update_screen is not None and monotonic() > self.pending_update_screen:
-                self.apply_update_screen()
+            if self.pending_update_screen is not None:
+                if monotonic() > self.pending_update_screen:
+                    self.apply_update_screen()
+            elif self.screen.is_dirty:
+                self.pending_update_screen = monotonic() + self.SCREEN_UPDATE_DELAY
 
     def close(self):
         if not self.shutting_down:
@@ -234,14 +233,9 @@ class Boss(Thread):
     def queue_write(self, data):
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
 
-    def mark_dirtied(self):
-        # Batch screen updates
-        if self.pending_update_screen is None:
-            self.pending_update_screen = monotonic() + self.SCREEN_UPDATE_DELAY
-
     def apply_update_screen(self):
         self.pending_update_screen = None
-        changes = self.tracker.consolidate_changes()
+        changes = self.screen.consolidate_changes()
         self.char_grid.update_cell_data(changes)
         glfw.glfwPostEmptyEvent()
 

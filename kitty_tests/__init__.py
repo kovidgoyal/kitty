@@ -6,7 +6,6 @@ from collections import defaultdict
 from unittest import TestCase
 
 from kitty.screen import Screen
-from kitty.tracker import ChangeTracker
 from kitty.config import defaults
 from kitty.fast_data_types import LineBuf, Cursor
 
@@ -34,10 +33,9 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
 
     def create_screen(self, cols=5, lines=5, history_size=5):
-        t = ChangeTracker()
         opts = defaults._replace(scrollback_lines=history_size)
-        s = Screen(opts, t, columns=cols, lines=lines)
-        return s, t
+        s = Screen(opts, columns=cols, lines=lines)
+        return s
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0
@@ -47,8 +45,8 @@ class BaseTest(TestCase):
         finally:
             c1.x, c1.y, c2.x, c2.y = x1, y1, x2, y2
 
-    def assertChanges(self, t, ignore='', **expected_changes):
-        actual_changes = t.consolidate_changes()
+    def assertChanges(self, s, ignore='', **expected_changes):
+        actual_changes = s.consolidate_changes()
         ignore = frozenset(ignore.split())
         for k, v in actual_changes.items():
             if isinstance(v, defaultdict):
