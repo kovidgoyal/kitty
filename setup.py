@@ -79,16 +79,20 @@ def option_parser():
     return p
 
 
+def find_c_files():
+    d = os.path.join(base, 'kitty')
+    for x in os.listdir(d):
+        if x.endswith('.c'):
+            yield os.path.join(d, x)
+
+
 def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args()
     init_env(args.debug)
     if args.action == 'build':
-        compile_c_extension(
-            'kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c',
-            'kitty/line-buf.c', 'kitty/cursor.c', 'kitty/colors.c',
-            'kitty/sprites.c', 'kitty/tracker.c')
+        compile_c_extension(*find_c_files())
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
 
