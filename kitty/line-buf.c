@@ -397,6 +397,7 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
         PyObject *l = create_line_copy_inner(dest, dest_y); \
         if (l == NULL) return false; \
         if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
+        Py_CLEAR(l); \
     } else dest_y++; \
     INIT_LINE(dest, dest->line, dest->line_map[dest_y]); \
     dest->continued_map[dest_y] = continued; \
