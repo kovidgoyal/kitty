@@ -178,6 +178,18 @@ typedef struct {
 
 } SpriteMap;
 
+typedef struct {
+    PyObject_HEAD
+
+    index_type xnum, ynum;
+    bool screen_changed;
+    bool cursor_changed;
+    bool dirty;
+    bool *changed_lines;
+    bool *lines_with_changed_cells;
+    bool *changed_cells;
+    unsigned int history_line_added_count;
+} ChangeTracker;
 
 Line* alloc_line();
 Cursor* alloc_cursor();

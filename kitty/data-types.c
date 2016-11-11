@@ -11,6 +11,7 @@ extern int init_Cursor(PyObject *);
 extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_SpriteMap(PyObject *);
+extern int init_ChangeTracker(PyObject *);
 extern PyObject* create_256_color_table();
 #include "gl.h"
 
@@ -41,6 +42,7 @@ PyInit_fast_data_types(void) {
         if (!init_Cursor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
         if (!init_SpriteMap(m)) return NULL;
+        if (!init_ChangeTracker(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);

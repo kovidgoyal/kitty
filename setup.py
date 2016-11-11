@@ -88,7 +88,7 @@ def main():
         compile_c_extension(
             'kitty/fast_data_types', 'kitty/line.c', 'kitty/data-types.c',
             'kitty/line-buf.c', 'kitty/cursor.c', 'kitty/colors.c',
-            'kitty/sprites.c')
+            'kitty/sprites.c', 'kitty/tracker.c')
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
 
