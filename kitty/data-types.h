@@ -209,6 +209,11 @@ typedef struct {
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     ChangeTracker *change_tracker;
     ScreenModes modes;
+
+    uint8_t parser_buf[8192];
+    unsigned int parser_state, parser_text_start;
+    bool parser_has_pending_text;
+
 } Screen;
 
 Line* alloc_line();
