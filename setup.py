@@ -27,12 +27,27 @@ def pkg_config(pkg, *args):
     return shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))
 
 
+def cc_version():
+    cc = os.environ.get('CC', 'gcc')
+    raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
+    ver = raw.split('.')[:2]
+    try:
+        ver = tuple(map(int, ver))
+    except Exception:
+        ver = (0, 0)
+    return ver
+
+
 def init_env(debug=False):
     global cflags, ldflags, cc, ldpaths
+    ccver = cc_version()
+    stack_protector = '-fstack-protector'
+    if ccver >= (4, 9):
+        stack_protector += '-strong'
     cc = os.environ.get('CC', 'gcc')
     cflags = os.environ.get('OVERRIDE_CFLAGS', (
         '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv -fstack-protector-strong -pipe').format('-ggdb' if debug else '-O3'))
+        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} -pipe').format('-ggdb' if debug else '-O3', stack_protector))
     cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall -O3')
     ldflags = shlex.split(ldflags)
