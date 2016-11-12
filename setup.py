@@ -17,6 +17,7 @@ with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
 version = tuple(map(int, re.search(r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE).group(1, 2, 3)))
+is_travis = os.environ.get('TRAVIS') == 'true'
 
 
 cflags = ldflags = cc = ldpaths = None
