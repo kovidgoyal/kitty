@@ -11,8 +11,7 @@ from typing import Sequence
 from pyte import charsets as cs, graphics as g, modes as mo
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
-from .tracker import ChangeTracker
-from .fast_data_types import LineBuf, REVERSE, Cursor
+from .fast_data_types import LineBuf, REVERSE, Cursor, ChangeTracker
 
 
 #: A container for screen's scroll margins.
@@ -63,7 +62,7 @@ class Screen:
         self.savepoints = self.main_savepoints
         self.columns = columns
         self.lines = lines
-        self.tracker = ChangeTracker()
+        self.tracker = ChangeTracker(self.lines, self.columns)
         for attr in self.tracker_callbacks:
             setattr(self, attr, getattr(self.tracker, attr))
         self.consolidate_changes = self.tracker.consolidate_changes
@@ -159,6 +158,7 @@ class Screen:
 
         """
         self.lines, self.columns = lines, columns
+        self.tracker.resize(self.lines, self.columns)
         # TODO: Implement rewrap for history buf
         self.tophistorybuf.clear()
         is_main = self.linebuf is self.main_linebuf

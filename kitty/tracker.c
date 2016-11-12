@@ -48,15 +48,19 @@ dealloc(ChangeTracker* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static PyObject*
-reset(ChangeTracker *self) {
-#define reset_doc "Reset all changes"
+static inline void reset_inner(ChangeTracker *self) {
     self->screen_changed = false; self->cursor_changed = false; self->dirty = false;
     self->history_line_added_count = 0;
     memset(self->changed_lines, 0, self->ynum * sizeof(bool));
     memset(self->changed_cells, 0, self->ynum * self->xnum * sizeof(bool));
     memset(self->lines_with_changed_cells, 0, self->ynum * sizeof(bool));
     RESET_STATE_VARS(self);
+}
+
+static PyObject*
+reset(ChangeTracker *self) {
+#define reset_doc "Reset all changes"
+    reset_inner(self);
 
     Py_RETURN_NONE;
 }
@@ -146,16 +150,16 @@ consolidate_changes(ChangeTracker *self) {
     // Changed lines
     Py_ssize_t num = 0;
     if (!self->screen_changed) {
-        for (unsigned int i = 0; i < self->ynum; i++) { if (self->changed_lines[i]) num++; }
+        for (unsigned int i = 0; i < self->ynum; i++) { num += self->changed_lines[i]; }
     }
     t = PyTuple_New(num);
     if (t == NULL) { Py_CLEAR(ans); return NULL; }
-    if (!self->screen_changed) {
-        for (unsigned int i = 0, j=0; i < self->ynum; i++, j++) { 
+    if (num > 0) {
+        for (unsigned int i = 0, j=0; i < self->ynum; i++) { 
             if (self->changed_lines[i]) {
                 PyObject *n = PyLong_FromUnsignedLong(i);
                 if (n == NULL) { Py_CLEAR(t); Py_CLEAR(ans); return NULL; }
-                PyTuple_SET_ITEM(t, j, n);
+                PyTuple_SET_ITEM(t, j++, n);
             }
         }
     }
@@ -181,7 +185,7 @@ consolidate_changes(ChangeTracker *self) {
     if (PyDict_SetItemString(ans, "cells", t) != 0) { Py_CLEAR(t); Py_CLEAR(ans); return NULL; }
     Py_CLEAR(t);
 
-
+    reset_inner(self);
     return ans;
 }
 

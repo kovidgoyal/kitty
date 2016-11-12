@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections import defaultdict
 from unittest import TestCase
 
 from kitty.screen import Screen
@@ -49,9 +48,11 @@ class BaseTest(TestCase):
         actual_changes = s.consolidate_changes()
         ignore = frozenset(ignore.split())
         for k, v in actual_changes.items():
-            if isinstance(v, defaultdict):
-                v = dict(v)
             if k not in ignore:
+                if isinstance(v, dict):
+                    v = {ky: tuple(vy) for ky, vy in v.items()}
+                if k == 'lines':
+                    v = set(v)
                 if k in expected_changes:
                     self.ae(expected_changes[k], v)
                 else:
