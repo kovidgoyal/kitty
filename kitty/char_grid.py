@@ -141,6 +141,10 @@ class RenderData:
 empty_cell = (' ', 0)
 
 
+def color_as_int(val):
+    return val[0] << 16 | val[1] << 8 | val[2]
+
+
 class CharGrid:
 
     def __init__(self, screen, opts, window_width, window_height):
@@ -161,7 +165,7 @@ class CharGrid:
         self.last_render_data = RenderData()
         self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.render_queue.put(RenderData(
-            viewport=Size(self.width, self.height), clear_color=self.original_bg,
+            viewport=Size(self.width, self.height), clear_color=color_as_int(self.original_bg),
             cursor=self.default_cursor))
         self.sprites.ensure_state()
         self.clear_count = 4
@@ -170,7 +174,8 @@ class CharGrid:
         self.sprites.destroy()
 
     def initialize(self):
-        self.default_bg, self.default_fg = self.original_bg, self.original_fg
+        self.default_bg = color_as_int(self.original_bg)
+        self.default_fg = color_as_int(self.original_fg)
         self.apply_opts(self.opts)
 
     def apply_opts(self, opts):
@@ -202,51 +207,30 @@ class CharGrid:
         for which, val in changes.items():
             if which in ('fg', 'bg'):
                 if not val:
-                    setattr(self, 'default_' + which, getattr(self, 'original_' + which))
+                    setattr(self, 'default_' + which, color_as_int(getattr(self, 'original_' + which)))
                     dirtied = True
                 else:
                     val = to_color(val)
                     if val is not None:
-                        setattr(self, 'default_' + which, val)
+                        setattr(self, 'default_' + which, color_as_int(val))
                         dirtied = True
         if dirtied:
             self.render_queue.put(RenderData(clear_color=self.default_bg))
             self.clear_count = 4
 
-    def update_cell_data(self, changes=None, add_viewport_data=False):
+    def update_cell_data(self, add_viewport_data=False):
         rd = RenderData(sprite_layout=self.sprites.layout)
         if add_viewport_data:
             rd.viewport = Size(self.width, self.height)
             rd.screen_geometry = self.screen_geometry
-        if changes is None:
-            changes = {'screen': True}
-        sg = self.screen_geometry
-        cell_data_changed = changes['screen'] or changes['cells'] or changes['lines']
-        if cell_data_changed:
-            if changes['screen']:
-                lines = range(sg.ynum)
-                cell_ranges = {}
-            else:
-                lines = changes['lines']
-                cell_ranges = changes['cells']
+        ptr = addressof(self.sprite_map)
+        with self.lock:
+            cursor_changed = self.screen.update_cell_data(
+                self.sprites.backend, self.color_profile, ptr, self.default_fg, self.default_bg, add_viewport_data)
 
-            dfbg = self.default_bg
-            dffg = self.default_fg
-            dfbg = dfbg[0] << 16 | dfbg[1] << 8 | dfbg[2]
-            dffg = dffg[0] << 16 | dffg[1] << 8 | dffg[2]
-            ptr = addressof(self.sprite_map)
-
-            with self.lock:
-                for y in lines:
-                    self.update_line(y, [(0, sg.xnum - 1)], dffg, dfbg, ptr)
-
-                for y, ranges in cell_ranges.items():
-                    self.update_line(y, ranges, dffg, dfbg, ptr)
-
-            rd.cell_data = copy(self.sprite_map)
-            rd.sprite_layout = self.sprites.layout
-        c = changes.get('cursor')
-        if c:
+        rd.cell_data = copy(self.sprite_map)
+        rd.sprite_layout = self.sprites.layout
+        if cursor_changed:
             c = self.screen.cursor
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
@@ -287,7 +271,7 @@ class CharGrid:
             cell_data_changed |= rd.cell_data is not None
             if rd.clear_color is not None:
                 bg = rd.clear_color
-                glClearColor(bg[0] / 255, bg[1] / 255, bg[2] / 255, 1)
+                glClearColor((bg >> 16) / 255, ((bg >> 8) & 0xff) / 255, (bg & 0xff) / 255, 1)
             if rd.viewport is not None:
                 glViewport(0, 0, self.width, self.height)
             data.update(rd)

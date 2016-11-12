@@ -7,7 +7,11 @@
 
 #include "data-types.h"
 #include "tracker.h"
-#include <structmember.h>
+extern PyTypeObject SpriteMap_Type;
+extern PyTypeObject ColorProfile_Type;
+extern PyTypeObject LineBuf_Type;
+extern bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
+extern void linebuf_init_line(LineBuf *, index_type);
 
 #define RESET_STATE_VARS(self) \
     self->screen_changed = false; self->cursor_changed = false; self->dirty = false; self->history_line_added_count = 0; 
@@ -102,6 +106,62 @@ update_cell_range(ChangeTracker *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "III", &line, &f, &l)) return NULL;
     tracker_update_cell_range(self, line, f, l);
     Py_RETURN_NONE;
+}
+
+static PyObject*
+update_cell_data(ChangeTracker *self, PyObject *args) {
+#define update_cell_data_doc "update_cell_data(line_buf, sprite_map, color_profile, data_ptr, default_fg, default_bg, force_screen_refresh)"
+    SpriteMap *spm;
+    LineBuf *lb;
+    ColorProfile *color_profile;
+    PyObject *dp;
+    unsigned int *data, y;
+    unsigned long default_bg, default_fg;
+    Py_ssize_t start;
+    int force_screen_refresh;
+    if (!PyArg_ParseTuple(args, "O!O!O!O!kkp", &LineBuf_Type, &lb, &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
+    data = PyLong_AsVoidPtr(dp);
+    default_fg &= COL_MASK;
+    default_bg &= COL_MASK;
+
+#define UPDATE_RANGE(xstart, xmax) \
+    linebuf_init_line(lb, y); \
+    if (!update_cell_range_data(spm, lb->line, (xstart), (xmax), color_profile, default_bg, default_fg, data)) return NULL;
+
+    if (self->screen_changed || force_screen_refresh) {
+        for (y = 0; y < self->ynum; y++) {
+            UPDATE_RANGE(0, self->xnum - 1);
+        }
+    } else {
+        for (y = 0; y < self->ynum; y++) {
+            if (self->changed_lines[y]) {
+                UPDATE_RANGE(0, self->xnum - 1);
+            } else if (self->lines_with_changed_cells[y]) {
+                start = -1;
+                bool *line = self->changed_cells + y * self->xnum;
+                for (unsigned int i = 0; i < self->xnum; i++) {
+                    if (line[i]) {
+                        if (start == -1) {
+                            start = i;
+                        }
+                    } else {
+                        if (start != -1) {
+                            UPDATE_RANGE(start, i - 1);
+                            start = -1;
+                        }
+                    }
+                }
+                if (start != -1) {
+                    UPDATE_RANGE(start, self->xnum - 1);
+                }
+            }
+        }
+    }
+
+    PyObject *cursor_changed = self->cursor_changed ? Py_True : Py_False;
+    reset_inner(self);
+    Py_INCREF(cursor_changed);
+    return cursor_changed;
 }
 
 static inline PyObject*
@@ -199,6 +259,7 @@ static PyGetSetDef getseters[] = {
 
 static PyMethodDef methods[] = {
     METHOD(resize, METH_VARARGS)
+    METHOD(update_cell_data, METH_VARARGS)
     METHOD(reset, METH_NOARGS)
     METHOD(cursor_changed, METH_NOARGS)
     METHOD(consolidate_changes, METH_NOARGS)

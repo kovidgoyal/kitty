@@ -235,8 +235,7 @@ class Boss(Thread):
 
     def apply_update_screen(self):
         self.pending_update_screen = None
-        changes = self.screen.consolidate_changes()
-        self.char_grid.update_cell_data(changes)
+        self.char_grid.update_cell_data()
         glfw.glfwPostEmptyEvent()
 
     def title_changed(self, new_title):

@@ -46,12 +46,10 @@ class Sprites:
         self.texture_id = self.buffer_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
-        self.update_cell_data = lambda *a: None
 
     def initialize(self):
         self.texture_unit = GL_TEXTURE0
         self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
-        self.update_cell_data = self.backend.update_cell_data
         self.do_layout(getattr(self, 'cell_width', 1), getattr(self, 'cell_height', 1))
 
     def do_layout(self, cell_width=1, cell_height=1):

@@ -133,32 +133,22 @@ position_for(SpriteMap *self, PyObject *args) {
 }
 
 
-static PyObject*
-update_cell_data(SpriteMap *self, PyObject *args) {
+bool
+update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
 #define update_cell_data_doc "update_cell_data(line, xstart, xmax, color_profile, default_bg, default_fg, data_pointer) -> Update the range [xstart, xmax] in data_pointer with the data from line"
-    Line *line;
-    unsigned int xstart, xlimit;
     SpritePosition *sp;
-    PyObject *dp;
     char_type previous_ch=0, ch;
     color_type color;
     uint32_t bg, fg;
     uint8_t previous_width = 0;
-    ColorProfile *color_profile;
-    unsigned long default_bg, default_fg;
     int err = 0;
 
-    if (!PyArg_ParseTuple(args, "O!IIO!kkO!", &Line_Type, &line, &xstart, &xlimit, &ColorProfile_Type, &color_profile, &default_bg, &default_fg, &PyLong_Type, &dp)) return NULL;
-
-    unsigned int *data = PyLong_AsVoidPtr(dp);
     size_t base = line->ynum * line->xnum * 9;
-    default_fg &= COL_MASK;
-    default_bg &= COL_MASK;
-    for (size_t i = xstart, offset = base + xstart * 9; i <= xlimit; i++, offset += 9) {
+    for (size_t i = xstart, offset = base + xstart * 9; i <= xmax; i++, offset += 9) {
         ch = line->chars[i];
         if (previous_width == 2) sp = sprite_position_for(self, previous_ch, 0, true, &err);
         else sp = sprite_position_for(self, ch, line->combining_chars[i], false, &err);
-        if (sp == NULL) { set_sprite_error(err); return NULL; }
+        if (sp == NULL) { set_sprite_error(err); return false; }
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
@@ -170,8 +160,7 @@ update_cell_data(SpriteMap *self, PyObject *args) {
         PACK_COL(offset + 3, fg);
         PACK_COL(offset + 6, bg);
     }
-
-    Py_RETURN_NONE;
+    return true;
 }
 
 static PyObject*
@@ -222,13 +211,12 @@ static PyMemberDef members[] = {
 static PyMethodDef methods[] = {
     METHOD(layout, METH_VARARGS)
     METHOD(position_for, METH_VARARGS)
-    METHOD(update_cell_data, METH_VARARGS)
     METHOD(render_dirty_cells, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 
 
-static PyTypeObject SpriteMap_Type = {
+PyTypeObject SpriteMap_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.SpriteMap",
     .tp_basicsize = sizeof(SpriteMap),

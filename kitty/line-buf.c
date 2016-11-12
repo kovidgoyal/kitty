@@ -90,6 +90,13 @@ dealloc(LineBuf* self) {
     (l)->decoration_fg   = (lb)->decoration_fg + (ynum) * (lb)->xnum; \
     (l)->combining_chars = (lb)->combining_chars + (ynum) * (lb)->xnum;
 
+void linebuf_init_line(LineBuf *self, index_type idx) {
+    self->line->ynum = idx;
+    self->line->xnum = self->xnum;
+    self->line->continued = self->continued_map[idx];
+    INIT_LINE(self, self->line, self->line_map[idx]);
+}
+
 static PyObject*
 line(LineBuf *self, PyObject *y) {
 #define line_doc      "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used at a time."
@@ -98,10 +105,7 @@ line(LineBuf *self, PyObject *y) {
         PyErr_SetString(PyExc_IndexError, "Line number too large");
         return NULL;
     }
-    self->line->ynum = idx;
-    self->line->xnum = self->xnum;
-    self->line->continued = self->continued_map[idx];
-    INIT_LINE(self, self->line, self->line_map[idx]);
+    linebuf_init_line(self, idx);
     Py_INCREF(self->line);
     return (PyObject*)self->line;
 }
@@ -351,7 +355,7 @@ static PyMemberDef members[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyTypeObject LineBuf_Type = {
+PyTypeObject LineBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.LineBuf",
     .tp_basicsize = sizeof(LineBuf),

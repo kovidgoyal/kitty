@@ -87,6 +87,9 @@ class Screen:
     def line(self, i):
         return self.linebuf.line(i)
 
+    def update_cell_data(self, *a):
+        return self.tracker.update_cell_data(self.linebuf, *a)
+
     def __repr__(self):
         return ("{0}({1}, {2})".format(self.__class__.__name__,
                                        self.columns, self.lines))
