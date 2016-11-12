@@ -15,8 +15,6 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-import glfw
-
 from .constants import terminfo_dir
 
 libc = ctypes.CDLL(None)
@@ -127,6 +125,7 @@ def get_logical_dpi():
 
 
 def get_dpi():
+    import glfw
     if not hasattr(get_dpi, 'ans'):
         m = glfw.glfwGetPrimaryMonitor()
         width, height = glfw.glfwGetMonitorPhysicalSize(m)
