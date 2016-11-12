@@ -30,7 +30,6 @@ __all__ = ("Screen", "DiffScreen", "HistoryScreen",
 
 import io
 
-from .screens import Screen, DiffScreen, HistoryScreen
 from .streams import Stream, DebugStream
 
 
