@@ -1,3 +1,7 @@
+addons:
+  apt:
+    packages:
+        - libglew-dev
 language: python
 python:
   - "3.5"
