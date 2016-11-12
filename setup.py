@@ -71,6 +71,10 @@ def init_env(debug=False):
         pass
 
 
+def define(x):
+    return '-D' + x
+
+
 def run_tool(cmd):
     if isinstance(cmd, str):
         cmd = shlex.split(cmd[0])
@@ -80,13 +84,22 @@ def run_tool(cmd):
     if ret != 0:
         raise SystemExit(ret)
 
+SPECIAL_SOURCES = {
+    'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
+}
+
 
 def compile_c_extension(module, *sources):
     prefix = os.path.basename(module)
     objects = [os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o') for src in sources]
     for src, dest in zip(sources, objects):
+        cflgs = cflags[:]
+        if src in SPECIAL_SOURCES:
+            src, defines = SPECIAL_SOURCES[src]
+            cflgs.extend(map(define, defines))
+
         src = os.path.join(base, src)
-        run_tool([cc] + cflags + ['-c', src] + ['-o', dest])
+        run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
     run_tool([cc] + ldflags + objects + ldpaths + ['-o', os.path.join(base, module + '.so')])
 
 
@@ -103,6 +116,7 @@ def find_c_files():
     for x in os.listdir(d):
         if x.endswith('.c'):
             yield os.path.join('kitty', x)
+    yield 'kitty/parser_dump.c'
 
 
 def main():

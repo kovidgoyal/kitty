@@ -13,10 +13,14 @@ extern int init_ColorProfile(PyObject *);
 extern int init_SpriteMap(PyObject *);
 extern int init_ChangeTracker(PyObject *);
 extern PyObject* create_256_color_table();
+extern PyObject* parse_bytes_dump(PyObject UNUSED *self, PyObject *val);
+extern PyObject* parse_bytes(PyObject UNUSED *self, PyObject *val);
 #include "gl.h"
 
 static PyMethodDef module_methods[] = {
     GL_METHODS
+    {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
+    {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
