@@ -83,7 +83,7 @@ def find_c_files():
     d = os.path.join(base, 'kitty')
     for x in os.listdir(d):
         if x.endswith('.c'):
-            yield os.path.join(d, x)
+            yield os.path.join('kitty', x)
 
 
 def main():
@@ -92,7 +92,7 @@ def main():
     args = option_parser().parse_args()
     init_env(args.debug)
     if args.action == 'build':
-        compile_c_extension(*find_c_files())
+        compile_c_extension('kitty/fast_data_types', *find_c_files())
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
 
