@@ -2,6 +2,8 @@ addons:
   apt:
     packages:
         - libglew-dev
+dist: trusty
+group: beta
 language: python
 python:
   - "3.5"
