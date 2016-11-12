@@ -5,7 +5,6 @@
 from unittest import TestCase
 
 from kitty.screen import Screen
-from kitty.config import defaults
 from kitty.fast_data_types import LineBuf, Cursor
 
 
@@ -32,8 +31,7 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
 
     def create_screen(self, cols=5, lines=5, history_size=5):
-        opts = defaults._replace(scrollback_lines=history_size)
-        s = Screen(opts, columns=cols, lines=lines)
+        s = Screen(history_size, columns=cols, lines=lines)
         return s
 
     def assertEqualAttributes(self, c1, c2):

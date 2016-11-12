@@ -15,12 +15,12 @@ from queue import Queue, Empty
 
 import glfw
 from pyte.streams import Stream, DebugStream
-from pyte import modes as mo
 
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
 from .screen import Screen
 from .utils import resize_pty, create_pty
+from .fast_data_types import BRACKETED_PASTE_START, BRACKETED_PASTE_END
 
 
 def handle_unix_signals():
@@ -52,7 +52,7 @@ class Boss(Thread):
         self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
-        self.screen = Screen(self.opts, self)
+        self.screen = Screen(self.opts.scrollback_lines, self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         sclass = DebugStream if args.dump_commands else Stream
         self.stream = sclass(self.screen)
@@ -111,7 +111,7 @@ class Boss(Thread):
                 text = subprocess.check_output(['xsel'])
                 if text:
                     if self.screen.in_bracketed_paste_mode:
-                        text = mo.BRACKETED_PASTE_START + text + mo.BRACKETED_PASTE_END
+                        text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
                     self.write_to_child(text)
 
     def on_key(self, window, key, scancode, action, mods):
@@ -139,7 +139,6 @@ class Boss(Thread):
         self.queue_action(self.apply_opts_to_screen)
 
     def apply_opts_to_screen(self):
-        self.screen.apply_opts(self.opts)
         self.char_grid.apply_opts(self.opts)
         self.char_grid.dirty_everything()
 

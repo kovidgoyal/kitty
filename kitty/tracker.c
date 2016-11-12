@@ -19,8 +19,10 @@ extern void linebuf_init_line(LineBuf *, index_type);
 static PyObject*
 resize(ChangeTracker *self, PyObject *args) {
 #define resize_doc "Resize theis change tracker must be called when the screen it is tracking for is resized"
-    unsigned long ynum, xnum;
-    if (!PyArg_ParseTuple(args, "kk", &ynum, &xnum)) return NULL;
+    unsigned long ynum=1, xnum=1;
+    if (args) {
+        if (!PyArg_ParseTuple(args, "kk", &ynum, &xnum)) return NULL;
+    }
     self->ynum = ynum; self->xnum = xnum;
 #define ALLOC_VAR(name, sz) \
     bool *name = PyMem_Calloc(sz, sizeof(bool)); \
@@ -285,3 +287,7 @@ static PyTypeObject ChangeTracker_Type = {
 
 INIT_TYPE(ChangeTracker)
 // }}}
+
+ChangeTracker* alloc_change_tracker() {
+    return (ChangeTracker*)new(&ChangeTracker_Type, NULL, NULL);
+}

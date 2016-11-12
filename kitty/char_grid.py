@@ -181,6 +181,7 @@ class CharGrid:
     def apply_opts(self, opts):
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
+        self.screen.change_scrollback_size(opts.scrollback_lines)
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.opts = opts

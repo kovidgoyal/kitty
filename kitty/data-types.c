@@ -12,10 +12,12 @@ extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_SpriteMap(PyObject *);
 extern int init_ChangeTracker(PyObject *);
+extern int init_Screen(PyObject *);
 extern PyObject* create_256_color_table();
 extern PyObject* parse_bytes_dump(PyObject UNUSED *self, PyObject *val);
 extern PyObject* parse_bytes(PyObject UNUSED *self, PyObject *val);
 #include "gl.h"
+#include "modes.h"
 
 static PyMethodDef module_methods[] = {
     GL_METHODS
@@ -47,12 +49,15 @@ PyInit_fast_data_types(void) {
         if (!init_ColorProfile(m)) return NULL;
         if (!init_SpriteMap(m)) return NULL;
         if (!init_ChangeTracker(m)) return NULL;
+        if (!init_Screen(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
         PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
+        PyModule_AddStringMacro(m, BRACKETED_PASTE_START);
+        PyModule_AddStringMacro(m, BRACKETED_PASTE_END);
     }
 
     return m;

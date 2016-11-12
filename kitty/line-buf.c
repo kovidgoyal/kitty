@@ -480,3 +480,7 @@ rewrap(LineBuf *self, PyObject *val) {
 end:
     return Py_BuildValue("Ni", ret, cursor_y);
 }
+
+LineBuf *alloc_linebuf() {
+    return (LineBuf*)new(&LineBuf_Type, NULL, NULL);
+}

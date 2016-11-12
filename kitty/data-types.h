@@ -191,8 +191,30 @@ typedef struct {
     unsigned int history_line_added_count;
 } ChangeTracker;
 
+
+typedef struct {
+    bool LNM, IRM, DECTEM, DECSCNM, DECOM, DECAWM, DECCOLM;
+} ScreenModes;
+
+
+typedef struct {
+    PyObject_HEAD
+
+    unsigned int columns, lines, margin_top, margin_bottom;
+    unsigned int current_charset;
+    uint32_t utf8_state;
+    uint16_t *g0_charset, *g1_charset;
+    Cursor *cursor;
+    PyObject *savepoints, *main_savepoints, *alt_savepoints, *callbacks;
+    LineBuf *linebuf, *main_linebuf, *alt_linebuf;
+    ChangeTracker *change_tracker;
+    ScreenModes modes;
+} Screen;
+
 Line* alloc_line();
 Cursor* alloc_cursor();
+LineBuf* alloc_linebuf();
+ChangeTracker* alloc_change_tracker();
 
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \

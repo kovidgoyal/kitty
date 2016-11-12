@@ -55,7 +55,7 @@ class Screen:
     tracker_callbacks = 'cursor_changed update_screen update_line_range update_cell_range line_added_to_history'.split()
     _notify_cursor_position = True
 
-    def __init__(self, opts, callbacks=None, columns: int=80, lines: int=24):
+    def __init__(self, scrollback_sz, callbacks=None, columns: int=80, lines: int=24):
         for attr in default_callbacks:
             setattr(self, attr, getattr(callbacks, attr, default_callbacks[attr]))
         self.main_savepoints, self.alt_savepoints = deque(), deque()
@@ -67,7 +67,7 @@ class Screen:
             setattr(self, attr, getattr(self.tracker, attr))
         self.consolidate_changes = self.tracker.consolidate_changes
         self.reset_dirty = self.tracker.reset
-        sz = max(1000, opts.scrollback_lines)
+        sz = max(1000, scrollback_sz)
         self.tophistorybuf = deque(maxlen=sz)
         self.main_linebuf, self.alt_linebuf = LineBuf(self.lines, self.columns), LineBuf(self.lines, self.columns)
         self.linebuf = self.main_linebuf
@@ -77,8 +77,8 @@ class Screen:
     def is_dirty(self):
         return self.tracker.dirty
 
-    def apply_opts(self, opts):
-        sz = max(1000, opts.scrollback_lines)
+    def change_scrollback_size(self, sz):
+        sz = max(1000, sz)
         if sz != self.tophistorybuf.maxlen:
             previous = self.tophistorybuf
             self.tophistorybuf = deque(maxlen=sz)
