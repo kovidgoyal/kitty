@@ -44,6 +44,50 @@ dealloc(Screen* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+bool screen_bell(Screen UNUSED *scr, uint8_t ch) {
+    FILE *f = fopen("/dev/tty", "w");
+    if (f != NULL) {
+        fwrite(&ch, 1, 1, f);
+        fclose(f);
+    }
+    return true;
+}
+
+bool screen_draw(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+bool screen_backspace(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+bool screen_tab(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+
+bool screen_linefeed(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+bool screen_carriage_return(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+bool screen_shift_out(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
+
+bool screen_shift_in(Screen UNUSED *scr, uint8_t UNUSED ch) {
+    // TODO: Implement this
+    return true;
+}
 
 // Boilerplate {{{
 

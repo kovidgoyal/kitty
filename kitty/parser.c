@@ -26,6 +26,7 @@ DECLARE_CH_SCREEN_HANDLER(shift_out)
 DECLARE_CH_SCREEN_HANDLER(shift_in)
 extern bool screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
 
+// Parse text {{{
 static inline bool
 read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
     bool ret;
@@ -82,30 +83,39 @@ read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) 
     DRAW_TEXT;
     return true;
 }
+// }}}
 
+// Parse ESC {{{
 static inline bool
-read_esc(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
+read_esc(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
     screen->parser_state = NORMAL_STATE;
     return true;
 }
+// }}}
 
+// Parse CSI {{{
 static inline bool
-read_csi(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
+read_csi(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
     screen->parser_state = NORMAL_STATE;
     return true;
 }
+// }}}
 
+// Parse OSC {{{
 static inline bool
-read_osc(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
+read_osc(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
     screen->parser_state = NORMAL_STATE;
     return true;
 }
+// }}}
 
+// Parse DCS {{{
 static inline bool
-read_dcs(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
+read_dcs(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
     screen->parser_state = NORMAL_STATE;
     return true;
 }
+// }}}
 
 PyObject*
 #ifdef DUMP_COMMANDS
