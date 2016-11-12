@@ -44,10 +44,13 @@ def init_env(debug=False):
     stack_protector = '-fstack-protector'
     if ccver >= (4, 9):
         stack_protector += '-strong'
+    missing_braces = ''
+    if ccver < (5, 2):
+        missing_braces = '-Wno-missing-braces'
     cc = os.environ.get('CC', 'gcc')
     cflags = os.environ.get('OVERRIDE_CFLAGS', (
         '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} -pipe').format('-ggdb' if debug else '-O3', stack_protector))
+        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe').format('-ggdb' if debug else '-O3', stack_protector, missing_braces))
     cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall -O3')
     ldflags = shlex.split(ldflags)
