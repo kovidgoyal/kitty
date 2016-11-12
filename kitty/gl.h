@@ -316,7 +316,7 @@ ShaderSource(PyObject UNUSED *self, PyObject *args) {
     char *src; Py_ssize_t src_len = 0;
     unsigned int shader_id;
     if(!PyArg_ParseTuple(args, "Is#", &shader_id, &src, &src_len)) return NULL;
-    glShaderSource(shader_id, 1, (const GLchar * const*)&src, NULL);
+    glShaderSource(shader_id, 1, (const GLchar **)&src, NULL);
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
