@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
@@ -26,14 +26,14 @@ def generate_data(chars):
 
 
 def generate_predicate(name, chars):
-    points, ranges = generate_data(chars)
-    ranges = ['(0x%s %s ch && ch <= 0x%s)' % (l, '<' if l == 0 else '<=', r) for l, r in ranges]
+    points, cranges = generate_data(chars)
+    cranges = ['(0x%x %s ch && ch <= 0x%x)' % (l, '<' if l == 0 else '<=', r) for l, r in cranges]
     points = ['(ch == 0x%x)' % p for p in points]
     return '''
 static inline bool %s(uint32_t ch) {
     return %s || %s;
 }
-    ''' % (name, '||'.join(ranges), '||'.join(points))
+    ''' % (name, '||'.join(cranges), '||'.join(points))
 
 
 def main():
