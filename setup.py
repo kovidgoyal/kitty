@@ -112,11 +112,14 @@ def option_parser():
 
 
 def find_c_files():
+    ans = []
     d = os.path.join(base, 'kitty')
     for x in os.listdir(d):
         if x.endswith('.c'):
-            yield os.path.join('kitty', x)
-    yield 'kitty/parser_dump.c'
+            ans.append(os.path.join('kitty', x))
+    ans.sort(key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True)
+    ans.append('kitty/parser_dump.c')
+    return tuple(ans)
 
 
 def main():
