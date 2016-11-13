@@ -45,8 +45,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     return (PyObject*) self;
 }
 
-bool screen_reset(Screen *self) {
-    if (self->linebuf == self->alt_linebuf) {if (!screen_toggle_screen_buffer(self)) return false; }
+void screen_reset(Screen *self) {
+    if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf);
     self->current_charset = 2;
     self->g0_charset = translation_table('B');
@@ -63,7 +63,6 @@ bool screen_reset(Screen *self) {
     screen_change_default_color(self, FG, 0);
     screen_change_default_color(self, BG, 0);
     tracker_update_screen(self->change_tracker);
-    return true;
 }
 
 
@@ -185,8 +184,8 @@ void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
 }
 
-bool screen_toggle_screen_buffer(Screen *self) {
-    if (!screen_save_cursor(self)) return false;
+void screen_toggle_screen_buffer(Screen *self) {
+    screen_save_cursor(self);
     if (self->linebuf == self->main_linebuf) {
         self->linebuf = self->alt_linebuf;
         self->savepoints = self->alt_savepoints;
@@ -196,7 +195,6 @@ bool screen_toggle_screen_buffer(Screen *self) {
     }
     screen_restore_cursor(self);
     tracker_update_screen(self->change_tracker);
-    return true;
 }
 
 // Graphics {{{
@@ -238,7 +236,7 @@ static inline void set_mode_from_const(Screen *self, int mode, bool val) {
     }
 }
 
-bool screen_set_mode(Screen *self, int mode) {
+void screen_set_mode(Screen *self, int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
@@ -263,10 +261,9 @@ bool screen_set_mode(Screen *self, int mode) {
     }
 
     if (mode == ALTERNATE_SCREEN && self->linebuf == self->main_linebuf) { 
-        if (!screen_toggle_screen_buffer(self)) return false;
+        screen_toggle_screen_buffer(self);
     }
     set_mode_from_const(self, mode, true);
-    return true;
 }
 
 static PyObject*
@@ -285,7 +282,7 @@ enable_focus_tracking(Screen *self) {
     return ans;
 }
 
-bool screen_reset_mode(Screen *self, int mode) {
+void screen_reset_mode(Screen *self, int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
@@ -310,11 +307,10 @@ bool screen_reset_mode(Screen *self, int mode) {
     }
 
     if (mode == ALTERNATE_SCREEN && self->linebuf != self->main_linebuf) { 
-        if (!screen_toggle_screen_buffer(self)) return false;
+        screen_toggle_screen_buffer(self);
     }
  
     set_mode_from_const(self, mode, false);
-    return true;
 }
 // }}}
 
@@ -381,23 +377,23 @@ void screen_linefeed(Screen *self, uint8_t UNUSED ch) {
     screen_ensure_bounds(self, false);
 }
 
-bool screen_save_cursor(Screen *self) {
+void screen_save_cursor(Screen *self) {
+    // We fail silently on out of memory errors
     Savepoint *sp = alloc_savepoint();
-    if (sp == NULL) return false;
+    if (sp == NULL) { PyErr_Clear(); return; } 
     sp->cursor = cursor_copy(self->cursor);
-    if (sp->cursor == NULL) { Py_CLEAR(sp); return NULL; }
+    if (sp->cursor == NULL) { Py_CLEAR(sp); PyErr_Clear(); return; }
     sp->g0_charset = self->g0_charset;
     sp->g1_charset = self->g1_charset;
     sp->current_charset = self->current_charset;
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->utf8_state = self->utf8_state;
-    bool ret = PyList_Append(self->savepoints, (PyObject*)sp) == 0;
+    PyList_Append(self->savepoints, (PyObject*)sp); // We ignore failures
     Py_CLEAR(sp);
-    return ret;
 }
 
-bool screen_restore_cursor(Screen *self) {
+void screen_restore_cursor(Screen *self) {
     Py_ssize_t sz = PyList_GET_SIZE(self->savepoints);
     if (sz > 0) {
         Savepoint *sp = (Savepoint*)PyList_GET_ITEM(self->savepoints, sz - 1);
@@ -411,9 +407,8 @@ bool screen_restore_cursor(Screen *self) {
     } else {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
-        if (!screen_reset_mode(self, DECOM)) return false;
+        screen_reset_mode(self, DECOM);
     }
-    return true;
 }
 
 void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
@@ -547,7 +542,7 @@ draw(Screen *self, PyObject *args) {
 static PyObject*
 reset(Screen *self) {
 #define reset_doc ""
-    if(!screen_reset(self)) return NULL;
+    screen_reset(self);
     Py_RETURN_NONE;
 }
 
@@ -558,7 +553,7 @@ reset_mode(Screen *self, PyObject *args) {
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
     if (private) mode <<= 5;
-    if (!screen_reset_mode(self, mode)) return NULL;
+    screen_reset_mode(self, mode);
     Py_RETURN_NONE;
 }
  
@@ -569,7 +564,7 @@ set_mode(Screen *self, PyObject *args) {
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
     if (private) mode <<= 5;
-    if (!screen_set_mode(self, mode)) return NULL;
+    screen_set_mode(self, mode);
     Py_RETURN_NONE;
 }
 
