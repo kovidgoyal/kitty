@@ -266,13 +266,9 @@ is_continued(LineBuf *self, PyObject *val) {
     Py_RETURN_FALSE;
 }
 
-static PyObject*
-insert_lines(LineBuf *self, PyObject *args) {
-#define insert_lines_doc "insert_lines(num, y, bottom) -> Insert num blank lines at y, only changing lines in the range [y, bottom]."
-    unsigned int y, num, bottom;
+void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
     index_type i;
-    if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
-    if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    if (y >= self->ynum || y > bottom || bottom >= self->ynum) return;
     index_type ylimit = bottom + 1;
     num = MIN(ylimit - y, num);
     if (num > 0) {
@@ -294,12 +290,22 @@ insert_lines(LineBuf *self, PyObject *args) {
             self->continued_map[i] = 0;
         }
     }
+}
+
+static PyObject*
+insert_lines(LineBuf *self, PyObject *args) {
+#define insert_lines_doc "insert_lines(num, y, bottom) -> Insert num blank lines at y, only changing lines in the range [y, bottom]."
+    unsigned int y, num, bottom;
+    if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
+    linebuf_insert_lines(self, num, y, bottom);
     Py_RETURN_NONE;
 }
 
-static inline void do_delete(LineBuf *self, index_type num, index_type y, index_type bottom) {
+void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom) {
     index_type i;
     index_type ylimit = bottom + 1;
+    num = MIN(bottom + 1 - y, num);
+    if (y >= self->ynum || y > bottom || bottom >= self->ynum || num < 1) return;
     for (i = y; i < y + num; i++) {
         self->scratch[i] = self->line_map[i];
     }
@@ -324,11 +330,7 @@ delete_lines(LineBuf *self, PyObject *args) {
 #define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num blank lines at y, only changing lines in the range [y, bottom]."
     unsigned int y, num, bottom;
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
-    if (y >= self->ynum || y > bottom || bottom >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    num = MIN(bottom + 1 - y, num);
-    if (num > 0) {
-        do_delete(self, num, y, bottom);
-    }
+    linebuf_delete_lines(self, num, y, bottom);
     Py_RETURN_NONE;
 }
  

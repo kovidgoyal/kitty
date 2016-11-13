@@ -207,12 +207,16 @@ void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
     decoration_type dfg = cursor->decoration_fg & COL_MASK;
+    if (!clear_char) attrs = ((attrs >> ATTRS_SHIFT) & ~WIDTH_MASK) << ATTRS_SHIFT;
     
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
             self->chars[i] = 32 | attrs;
             self->combining_chars[i] = 0;
-        } else self->chars[i] = (self->chars[i] & CHAR_MASK) | attrs;
+        } else {
+            char_type w = ((self->chars[i] >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
+            self->chars[i] = (self->chars[i] & CHAR_MASK) | attrs | w;
+        }
         self->colors[i] = col;
         self->decoration_fg[i] = dfg;
     }

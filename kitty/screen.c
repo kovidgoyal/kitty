@@ -34,6 +34,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->cursor = alloc_cursor();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
+        // TODO: Change the savepoints objects to use a circular buffer, so there are no mallocs during normal operation
         self->main_savepoints = PyList_New(0); self->alt_savepoints = PyList_New(0);
         self->savepoints = self->main_savepoints;
         self->change_tracker = alloc_change_tracker(lines, columns);
@@ -184,19 +185,6 @@ void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
 }
 
-void screen_toggle_screen_buffer(Screen *self) {
-    screen_save_cursor(self);
-    if (self->linebuf == self->main_linebuf) {
-        self->linebuf = self->alt_linebuf;
-        self->savepoints = self->alt_savepoints;
-    } else {
-        self->linebuf = self->main_linebuf;
-        self->savepoints = self->main_savepoints;
-    }
-    screen_restore_cursor(self);
-    tracker_update_screen(self->change_tracker);
-}
-
 // Graphics {{{
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col) {
     if (self->callbacks == Py_None) return;
@@ -209,6 +197,19 @@ void screen_change_default_color(Screen *self, unsigned int which, uint32_t col)
 // }}}
 
 // Modes {{{
+
+void screen_toggle_screen_buffer(Screen *self) {
+    screen_save_cursor(self);
+    if (self->linebuf == self->main_linebuf) {
+        self->linebuf = self->alt_linebuf;
+        self->savepoints = self->alt_savepoints;
+    } else {
+        self->linebuf = self->main_linebuf;
+        self->savepoints = self->main_savepoints;
+    }
+    screen_restore_cursor(self);
+    tracker_update_screen(self->change_tracker);
+}
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
 void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
@@ -517,6 +518,61 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         screen_erase_in_line(self, how, private);
     }
 }
+
+void screen_insert_lines(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if (count == 0) count = 1;
+    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+        linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
+        tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
+        screen_carriage_return(self, 13);
+    }
+}
+
+void screen_delete_lines(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if (count == 0) count = 1;
+    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+        linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
+        tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
+        screen_carriage_return(self, 13);
+    }
+}
+
+void screen_insert_characters(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if (count == 0) count = 1;
+    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+        unsigned int x = self->cursor->x;
+        unsigned int num = MIN(self->columns - x, count);
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        line_right_shift(self->linebuf->line, x, num);
+        line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
+        tracker_update_cell_range(self->change_tracker, self->cursor->y, x, self->columns - 1);
+    }
+}
+
+void screen_delete_characters(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if (count == 0) count = 1;
+    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+        unsigned int x = self->cursor->x;
+        unsigned int num = MIN(self->columns - x, count);
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        left_shift_line(self->linebuf->line, x, num);
+        line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
+        tracker_update_cell_range(self->change_tracker, self->cursor->y, x, self->columns - 1);
+    }
+}
+
+void screen_erase_characters(Screen *self, unsigned int count) {
+    if (count == 0) count = 1;
+    unsigned int x = self->cursor->x;
+    unsigned int num = MIN(self->columns - x, count);
+    linebuf_init_line(self->linebuf, self->cursor->y);
+    line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
+    tracker_update_cell_range(self->change_tracker, self->cursor->y, x, MIN(x + num, self->columns) - 1);
+}
 // }}}
 
 // Python interface {{{
@@ -590,6 +646,40 @@ cursor_back(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+erase_in_line(Screen *self, PyObject *args) {
+#define erase_in_line_doc ""
+    bool private = false;
+    unsigned int how = 0;
+    if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
+    screen_erase_in_line(self, how, private);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+erase_in_display(Screen *self, PyObject *args) {
+#define erase_in_display_doc ""
+    bool private = false;
+    unsigned int how = 0;
+    if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
+    screen_erase_in_display(self, how, private);
+    Py_RETURN_NONE;
+}
+
+#define COUNT_WRAP(name) \
+    static PyObject* name(Screen *self, PyObject *args) { \
+    unsigned int count = 1; \
+    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; \
+    screen_##name(self, count); \
+    Py_RETURN_NONE; }
+COUNT_WRAP(insert_lines)
+COUNT_WRAP(delete_lines)
+COUNT_WRAP(insert_characters)
+COUNT_WRAP(delete_characters)
+COUNT_WRAP(erase_characters)
+
+#define MND(name, args) {#name, (PyCFunction)name, args, ""},
+
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(draw, METH_VARARGS)
@@ -601,6 +691,13 @@ static PyMethodDef methods[] = {
     METHOD(reset_dirty, METH_NOARGS)
     METHOD(consolidate_changes, METH_NOARGS)
     METHOD(cursor_back, METH_VARARGS)
+    METHOD(erase_in_line, METH_VARARGS)
+    METHOD(erase_in_display, METH_VARARGS)
+    MND(insert_lines, METH_VARARGS)
+    MND(delete_lines, METH_VARARGS)
+    MND(insert_characters, METH_VARARGS)
+    MND(delete_characters, METH_VARARGS)
+    MND(erase_characters, METH_VARARGS)
 
     {NULL}  /* Sentinel */
 };

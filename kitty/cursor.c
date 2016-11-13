@@ -36,15 +36,20 @@ repr(Cursor *self) {
     );
 }
 
+static inline void cursor_reset_display_attrs(Cursor *self) {
+    self->bg = 0; self->fg = 0; self->decoration_fg = 0;
+    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
+}
+
 static PyObject *
 reset_display_attrs(Cursor *self) {
 #define reset_display_attrs_doc "Reset all display attributes to unset"
-    self->bg = 0; self->fg = 0; self->decoration_fg = 0;
-    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
+    cursor_reset_display_attrs(self);
     Py_RETURN_NONE;
 }
 
 void cursor_reset(Cursor *self) {
+    cursor_reset_display_attrs(self);
     self->x = 0; self->y = 0;
     self->shape = 0; self->blink = false;
     self->color = 0; self->hidden = false;

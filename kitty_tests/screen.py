@@ -4,7 +4,7 @@
 
 from . import BaseTest
 
-from kitty.fast_data_types import DECAWM, IRM
+from kitty.fast_data_types import DECAWM, IRM, Cursor
 
 
 class TestScreen(BaseTest):
@@ -55,7 +55,7 @@ class TestScreen(BaseTest):
 
     def test_draw_char(self):
         # Test in line-wrap, non-insert mode
-        s = self.create_screen()
+        s = self.create_screen2()
         s.draw('ココx'.encode('utf-8'))
         self.ae(str(s.line(0)), 'ココx')
         self.ae(tuple(map(s.line(0).width, range(5))), (2, 0, 2, 0, 1))
@@ -103,7 +103,7 @@ class TestScreen(BaseTest):
         self.assertChanges(s, ignore='cursor', cells={4: ((0, 4),)})
 
     def test_char_manipulation(self):
-        s = self.create_screen()
+        s = self.create_screen2()
 
         def init():
             s.reset(), s.reset_dirty()
@@ -128,6 +128,10 @@ class TestScreen(BaseTest):
         s.insert_characters(1)
         self.ae(str(s.line(0)), ' xコ ')
         self.assertChanges(s, ignore='cursor', cells={0: ((0, 4),)})
+        c = Cursor()
+        c.bold = True
+        s.line(0).apply_cursor(c, 0, 5)
+        self.ae(s.line(0).width(2), 2)
 
         init()
         s.delete_characters(2)
@@ -160,7 +164,7 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), '     ')
         self.assertChanges(s, cells={0: ((0, 4),)})
         init()
-        s.erase_in_line(2, private=True)
+        s.erase_in_line(2, True)
         self.ae((False, False, False, False, False), tuple(map(lambda i: s.line(0).cursor_from(i).bold, range(5))))
 
     def test_erase_in_screen(self):
