@@ -4,8 +4,8 @@
 
 from unittest import TestCase
 
-from kitty.screen import Screen
-from kitty.fast_data_types import LineBuf, Cursor
+from kitty.screen import Screen as S
+from kitty.fast_data_types import LineBuf, Cursor, Screen
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
@@ -31,8 +31,10 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
 
     def create_screen(self, cols=5, lines=5, history_size=5):
-        s = Screen(history_size, columns=cols, lines=lines)
-        return s
+        return S(history_size, columns=cols, lines=lines)
+
+    def create_screen2(self, cols=5, lines=5, history_size=5):
+        return Screen(history_size, None, lines, cols)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

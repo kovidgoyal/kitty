@@ -7,11 +7,6 @@
 
 #include "data-types.h"
 #include "tracker.h"
-extern PyTypeObject SpriteMap_Type;
-extern PyTypeObject ColorProfile_Type;
-extern PyTypeObject LineBuf_Type;
-extern bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
-extern void linebuf_init_line(LineBuf *, index_type);
 
 #define RESET_STATE_VARS(self) \
     self->screen_changed = false; self->cursor_changed = false; self->dirty = false; self->history_line_added_count = 0; 
@@ -273,7 +268,7 @@ static PyMethodDef methods[] = {
 };
 
 
-static PyTypeObject ChangeTracker_Type = {
+PyTypeObject ChangeTracker_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.ChangeTracker",
     .tp_basicsize = sizeof(ChangeTracker),

@@ -6,6 +6,7 @@ import re
 from collections import namedtuple
 from itertools import repeat
 
+from .fast_data_types import CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 # Color definitions  {{{
@@ -186,12 +187,14 @@ def to_font_size(x):
     return max(6, float(x))
 
 
+cshapes = {'block': CURSOR_BLOCK, 'beam': CURSOR_BEAM, 'underline': CURSOR_UNDERLINE}
+
+
 def to_cursor_shape(x):
-    shapes = 'block underline beam'
-    x = x.lower()
-    if x not in shapes.split():
-        raise ValueError('Invalid cursor shape: {} allowed values are {}'.format(x, shapes))
-    return x
+    try:
+        return cshapes[x.lower()]
+    except KeyError:
+        raise ValueError('Invalid cursor shape: {} allowed values are {}'.format(x, ', '.join(cshapes)))
 
 
 def to_bool(x):

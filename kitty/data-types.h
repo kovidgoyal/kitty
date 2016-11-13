@@ -37,6 +37,12 @@ typedef unsigned int index_type;
 #define HAS_BG_MASK (0xFF << COL_SHIFT)
 #define CC_MASK 0xFFFF
 #define CC_SHIFT 16
+#define UTF8_ACCEPT 0
+#define UTF8_REJECT 1
+
+#define CURSOR_BLOCK 1
+#define CURSOR_BEAM 2
+#define CURSOR_UNDERLINE 3
 
 #define CURSOR_TO_ATTRS(c, w) \
     ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
@@ -119,6 +125,7 @@ typedef struct {
     bool continued;
     bool needs_free;
 } Line;
+PyTypeObject Line_Type;
 
 
 typedef struct {
@@ -136,17 +143,19 @@ typedef struct {
     decoration_type *decoration_fg;
     combining_type *combining_chars;
 } LineBuf;
+PyTypeObject LineBuf_Type;
 
 
 typedef struct {
     PyObject_HEAD
 
-    PyObject *x, *y, *shape, *blink, *hidden, *color;
-    bool bold, italic, reverse, strikethrough;
-    uint8_t decoration;
-    uint32_t fg, bg, decoration_fg;
+    bool bold, italic, reverse, strikethrough, blink, hidden;
+    int x, y;
+    uint8_t decoration, shape;
+    unsigned long fg, bg, decoration_fg, color;
 
 } Cursor;
+PyTypeObject Cursor_Type;
 
 
 typedef struct {
@@ -156,6 +165,7 @@ typedef struct {
     uint32_t ansi_color_table[120];
 
 } ColorProfile;
+PyTypeObject ColorProfile_Type;
 
 typedef struct SpritePosition SpritePosition;
 struct SpritePosition {
@@ -167,6 +177,7 @@ struct SpritePosition {
     bool filled;
     bool rendered;
 };
+PyTypeObject SpritePosition_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -177,6 +188,7 @@ typedef struct {
     bool dirty;
 
 } SpriteMap;
+PyTypeObject SpriteMap_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -190,12 +202,26 @@ typedef struct {
     bool *changed_cells;
     unsigned int history_line_added_count;
 } ChangeTracker;
+PyTypeObject ChangeTracker_Type;
 
 
 typedef struct {
-    bool LNM, IRM, DECTEM, DECSCNM, DECOM, DECAWM, DECCOLM;
+    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mBRACKETED_PASTE, mFOCUS_TRACKING;
 } ScreenModes;
+PyTypeObject ScreenModes_Type;
 
+typedef struct {
+    PyObject_HEAD
+
+    unsigned int current_charset;
+    uint16_t *g0_charset, *g1_charset;
+    uint32_t utf8_state;
+    Cursor *cursor;
+    bool mDECOM;
+    bool mDECAWM;
+
+} Savepoint;
+PyTypeObject Savepoint_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -215,14 +241,56 @@ typedef struct {
     bool parser_has_pending_text;
 
 } Screen;
+PyTypeObject Screen_Type;
 
 Line* alloc_line();
 Cursor* alloc_cursor();
 LineBuf* alloc_linebuf();
 ChangeTracker* alloc_change_tracker();
+Savepoint* alloc_savepoint();
 
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
     if ((((line)->chars[(at)] >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->chars[(at)] = (1 << ATTRS_SHIFT) | 32;
+
+
+// Global functions 
+int init_LineBuf(PyObject *);
+int init_Cursor(PyObject *);
+int init_Line(PyObject *);
+int init_ColorProfile(PyObject *);
+int init_SpriteMap(PyObject *);
+int init_ChangeTracker(PyObject *);
+int init_Screen(PyObject *);
+PyObject* create_256_color_table();
+PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
+PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
+uint16_t* translation_table(char);
+uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
+void linebuf_init_line(LineBuf *, index_type);
+void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *);
+void line_right_shift(Line *, unsigned int , unsigned int );
+void line_add_combining_char(Line *, uint32_t , unsigned int );
+void cursor_reset(Cursor*);
+void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
+Cursor* cursor_copy(Cursor*);
+void linebuf_clear(LineBuf *);
+bool screen_restore_cursor(Screen *);
+bool screen_save_cursor(Screen *);
+bool screen_cursor_position(Screen*, unsigned int, unsigned int);
+bool screen_erase_in_display(Screen *, unsigned int, bool);
+bool screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
+bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
+uint32_t to_color(ColorProfile *, uint32_t, uint32_t);
+PyObject* line_text_at(char_type, combining_type);
+void linebuf_init_line(LineBuf *, index_type);
+#define DECLARE_CH_SCREEN_HANDLER(name) bool screen_##name(Screen *screen, uint8_t ch);
+DECLARE_CH_SCREEN_HANDLER(bell)
+DECLARE_CH_SCREEN_HANDLER(backspace)
+DECLARE_CH_SCREEN_HANDLER(tab)
+DECLARE_CH_SCREEN_HANDLER(linefeed)
+DECLARE_CH_SCREEN_HANDLER(carriage_return)
+DECLARE_CH_SCREEN_HANDLER(shift_out)
+DECLARE_CH_SCREEN_HANDLER(shift_in)

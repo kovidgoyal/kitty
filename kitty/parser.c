@@ -8,23 +8,11 @@
 #include "data-types.h"
 #include "control-codes.h"
 
-extern PyTypeObject Screen_Type;
-
 #define NORMAL_STATE 0
 #define ESC_STATE 1
 #define CSI_STATE 2
 #define OSC_STATE 3
 #define DCS_STATE 4
-
-#define DECLARE_CH_SCREEN_HANDLER(name) extern bool screen_##name(Screen *screen, uint8_t ch);
-DECLARE_CH_SCREEN_HANDLER(bell)
-DECLARE_CH_SCREEN_HANDLER(backspace)
-DECLARE_CH_SCREEN_HANDLER(tab)
-DECLARE_CH_SCREEN_HANDLER(linefeed)
-DECLARE_CH_SCREEN_HANDLER(carriage_return)
-DECLARE_CH_SCREEN_HANDLER(shift_out)
-DECLARE_CH_SCREEN_HANDLER(shift_in)
-extern bool screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
 
 // Parse text {{{
 static inline bool

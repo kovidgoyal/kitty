@@ -11,7 +11,7 @@ from typing import Sequence
 from pyte import charsets as cs, graphics as g, modes as mo
 from .utils import wcwidth, is_simple_string, sanitize_title
 from .unicode import ignore_pat
-from .fast_data_types import LineBuf, REVERSE, Cursor, ChangeTracker
+from .fast_data_types import LineBuf, REVERSE, Cursor, ChangeTracker, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 
 
 #: A container for screen's scroll margins.
@@ -251,11 +251,9 @@ class Screen:
         if mo.ALTERNATE_SCREEN in self.mode and self.linebuf is self.main_linebuf:
             self.toggle_screen_buffer()
 
-    @property
     def in_bracketed_paste_mode(self):
         return mo.BRACKETED_PASTE in self.mode
 
-    @property
     def enable_focus_tracking(self):
         return mo.FOCUS_TRACKING in self.mode
 
@@ -302,7 +300,6 @@ class Screen:
                          from ``b"B0UK"``, otherwise ignored.
         :param str mode: if ``"("`` ``G0`` charset is defined, if
                          ``")"`` -- we operate on ``G1``.
-
         .. warning:: User-defined charsets are currently not supported.
         """
         if code in cs.MAPS:
@@ -984,7 +981,7 @@ class Screen:
             shape = blink = None
             if mode > 0:
                 blink = bool(mode % 2)
-                shape = 'block' if mode < 3 else 'underline' if mode < 5 else 'beam' if mode < 7 else None
+                shape = CURSOR_BLOCK if mode < 3 else CURSOR_UNDERLINE if mode < 5 else CURSOR_BEAM if mode < 7 else None
             if shape != self.cursor.shape or blink != self.cursor.blink:
                 self.cursor.shape, self.cursor.blink = shape, blink
                 self.cursor_changed()

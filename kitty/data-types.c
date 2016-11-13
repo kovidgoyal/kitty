@@ -6,16 +6,6 @@
  */
 
 #include "data-types.h"
-extern int init_LineBuf(PyObject *);
-extern int init_Cursor(PyObject *);
-extern int init_Line(PyObject *);
-extern int init_ColorProfile(PyObject *);
-extern int init_SpriteMap(PyObject *);
-extern int init_ChangeTracker(PyObject *);
-extern int init_Screen(PyObject *);
-extern PyObject* create_256_color_table();
-extern PyObject* parse_bytes_dump(PyObject UNUSED *self, PyObject *val);
-extern PyObject* parse_bytes(PyObject UNUSED *self, PyObject *val);
 #include "gl.h"
 #include "modes.h"
 
@@ -58,6 +48,9 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
         PyModule_AddStringMacro(m, BRACKETED_PASTE_START);
         PyModule_AddStringMacro(m, BRACKETED_PASTE_END);
+        PyModule_AddIntMacro(m, CURSOR_BLOCK);
+        PyModule_AddIntMacro(m, CURSOR_BEAM);
+        PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
     }
 
     return m;

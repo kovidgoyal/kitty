@@ -7,10 +7,6 @@
 
 #include "data-types.h"
 #include <structmember.h>
-extern PyTypeObject Line_Type;
-extern PyTypeObject ColorProfile_Type;
-extern uint32_t to_color(ColorProfile *, uint32_t, uint32_t);
-extern PyObject* line_text_at(char_type, combining_type);
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {

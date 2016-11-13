@@ -6,7 +6,6 @@
  */
 
 #include "data-types.h"
-extern PyTypeObject Cursor_Type;
 
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
@@ -108,6 +107,12 @@ basic_cell_data(Line *self, PyObject *val) {
     return Py_BuildValue("IBK", (unsigned int)(ch & CHAR_MASK), (unsigned char)(ch >> ATTRS_SHIFT), (unsigned long long)self->colors[x]);
 }
 
+void line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
+    combining_type c = self->combining_chars[x];
+    if (c & CC_MASK) self->combining_chars[x] = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
+    else self->combining_chars[x] = ch & CC_MASK;
+}
+
 static PyObject*
 add_combining_char(Line* self, PyObject *args) {
 #define add_combining_char_doc "add_combining_char(x, ch) -> Add the specified character as a combining char to the specified cell."
@@ -118,9 +123,7 @@ add_combining_char(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Column index out of bounds");
         return NULL;
     }
-    combining_type c = self->combining_chars[x];
-    if (c & CC_MASK) self->combining_chars[x] = (c & CC_MASK) | ( (new_char & CC_MASK) << CC_SHIFT );
-    else self->combining_chars[x] = new_char & CC_MASK;
+    line_add_combining_char(self, new_char, x);
     Py_RETURN_NONE;
 }
 
@@ -134,7 +137,6 @@ set_text(Line* self, PyObject *args) {
     Cursor *cursor;
     int kind;
     void *buf;
-    unsigned long x;
 
     if (!PyArg_ParseTuple(args, "UnnO!", &src, &offset, &sz, &Cursor_Type, &cursor)) return NULL;
     if (PyUnicode_READY(src) != 0) {
@@ -148,12 +150,11 @@ set_text(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds offset/sz");
         return NULL;
     }
-    x = PyLong_AsUnsignedLong(cursor->x);
     attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
     decoration_type dfg = cursor->decoration_fg & COL_MASK;
 
-    for (index_type i = x; offset < limit && i < self->xnum; i++, offset++) {
+    for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
         self->chars[i] = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
         self->colors[i] = col;
         self->decoration_fg[i] = dfg;
@@ -166,23 +167,16 @@ set_text(Line* self, PyObject *args) {
 static PyObject*
 cursor_from(Line* self, PyObject *args) {
 #define cursor_from_doc "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as specified."
-    unsigned long x, y = 0;
-    PyObject *xo, *yo;
+    unsigned int x, y = 0;
     Cursor* ans;
-    if (!PyArg_ParseTuple(args, "k|k", &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "I|I", &x, &y)) return NULL;
     if (x >= self->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds x");
         return NULL;
     }
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    xo = PyLong_FromUnsignedLong(x); yo = PyLong_FromUnsignedLong(y);
-    if (xo == NULL || yo == NULL) {
-        Py_CLEAR(ans); Py_CLEAR(xo); Py_CLEAR(yo);
-        PyErr_NoMemory(); return NULL;
-    }
-    Py_CLEAR(ans->x); Py_CLEAR(ans->y);
-    ans->x = xo; ans->y = yo;
+    ans->x = x; ans->y = y;
     char_type attrs = self->chars[x] >> ATTRS_SHIFT;
     ATTRS_TO_CURSOR(attrs, ans);
     COLORS_TO_CURSOR(self->colors[x], ans);
@@ -228,6 +222,15 @@ apply_cursor(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+void line_right_shift(Line *self, unsigned int at, unsigned int num) {
+    for(index_type i = self->xnum - 1; i >= at + num; i--) {
+        COPY_SELF_CELL(i - num, i)
+    }
+    // Check if a wide character was split at the right edge
+    char_type w = (self->chars[self->xnum - 1] >> ATTRS_SHIFT) & 3;
+    if (w != 1) self->chars[self->xnum - 1] = (1 << ATTRS_SHIFT) | 32;
+}
+
 static PyObject*
 right_shift(Line *self, PyObject *args) {
 #define right_shift_doc "right_shift(at, num) -> ..."
@@ -238,12 +241,7 @@ right_shift(Line *self, PyObject *args) {
         return NULL;
     }
     if (num > 0) {
-        for(index_type i = self->xnum - 1; i >= at + num; i--) {
-            COPY_SELF_CELL(i - num, i)
-        }
-        // Check if a wide character was split at the right edge
-        char_type w = (self->chars[self->xnum - 1] >> ATTRS_SHIFT) & 3;
-        if (w != 1) self->chars[self->xnum - 1] = (1 << ATTRS_SHIFT) | 32;
+        line_right_shift(self, at, num);
     }
     Py_RETURN_NONE;
 }
@@ -261,20 +259,8 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
-static PyObject*
-set_char(Line *self, PyObject *args) {
-#define set_char_doc "set_char(at, ch, width=1, cursor=None) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
-    unsigned int at, width=1;
-    int ch;
-    Cursor *cursor = NULL;
+void line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor) {
     char_type attrs;
-
-    if (!PyArg_ParseTuple(args, "IC|IO!", &at, &ch, &width, &Cursor_Type, &cursor)) return NULL;
-    if (at >= self->xnum) {
-        PyErr_SetString(PyExc_ValueError, "Out of bounds");
-        return NULL;
-    }
-
     if (cursor == NULL) {
         attrs = (((self->chars[at] >> ATTRS_SHIFT) & ~3) | (width & 3)) << ATTRS_SHIFT;
     } else {
@@ -284,6 +270,21 @@ set_char(Line *self, PyObject *args) {
     }
     self->chars[at] = (ch & CHAR_MASK) | attrs;
     self->combining_chars[at] = 0;
+}
+
+static PyObject*
+set_char(Line *self, PyObject *args) {
+#define set_char_doc "set_char(at, ch, width=1, cursor=None) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
+    unsigned int at, width=1;
+    int ch;
+    Cursor *cursor = NULL;
+
+    if (!PyArg_ParseTuple(args, "IC|IO!", &at, &ch, &width, &Cursor_Type, &cursor)) return NULL;
+    if (at >= self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
+    line_set_char(self, at, ch, width, cursor);
     Py_RETURN_NONE;
 }
 

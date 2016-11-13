@@ -63,7 +63,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 }
 
 static void
-dealloc(Cursor* self) {
+dealloc(ColorProfile* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 

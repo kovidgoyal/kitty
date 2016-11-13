@@ -18,7 +18,7 @@
    right margin are lost. Otherwise, new display characters replace
    old display characters at the cursor position. 
 */
-#define IRM
+#define IRM 4
 
 
 // Private modes.

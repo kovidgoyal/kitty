@@ -97,10 +97,10 @@ class Boss(Thread):
 
     def on_focus(self, window, focused):
         if focused:
-            if self.screen.enable_focus_tracking:
+            if self.screen.enable_focus_tracking():
                 self.write_to_child(b'\x1b[I')
         else:
-            if self.screen.enable_focus_tracking:
+            if self.screen.enable_focus_tracking():
                 self.write_to_child(b'\x1b[O')
 
     def on_mouse_button(self, window, button, action, mods):
@@ -110,7 +110,7 @@ class Boss(Thread):
                 # text = glfw.glfwGetClipboardString(window)
                 text = subprocess.check_output(['xsel'])
                 if text:
-                    if self.screen.in_bracketed_paste_mode:
+                    if self.screen.in_bracketed_paste_mode():
                         text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
                     self.write_to_child(text)
 

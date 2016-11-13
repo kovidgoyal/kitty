@@ -16,7 +16,8 @@ from .fast_data_types import (
     glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
     GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
     glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
-    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile, REVERSE
+    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile, REVERSE,
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 )
 
 Size = namedtuple('Size', 'width height')
@@ -303,11 +304,11 @@ class CharGrid:
             col = cursor.color or self.default_cursor.color
             shape = cursor.shape or self.default_cursor.shape
             alpha = self.opts.cursor_opacity
-            if alpha < 1.0 and shape == 'block':
+            if alpha < 1.0 and shape == CURSOR_BLOCK:
                 glEnable(GL_BLEND)
-            right = left + (width(1.5) if shape == 'beam' else sg.dx)
+            right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx)
             bottom = top - sg.dy
-            if shape == 'underline':
+            if shape == CURSOR_UNDERLINE:
                 top = bottom + width(vert=False)
             glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
             glUniform2f(ul('xpos'), left, right)

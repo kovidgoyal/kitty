@@ -7,7 +7,6 @@
 
 #include "data-types.h"
 #include <structmember.h>
-extern PyTypeObject Line_Type;
 
 static inline void
 clear_chars_to_space(LineBuf* linebuf, index_type y) {
@@ -15,15 +14,19 @@ clear_chars_to_space(LineBuf* linebuf, index_type y) {
     for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | 32;
 }
 
-static PyObject*
-clear(LineBuf *self) {
-#define clear_doc "Clear all lines in this LineBuf"
+void linebuf_clear(LineBuf *self) {
     memset(self->buf, 0, self->block_size * CELL_SIZE);
     memset(self->continued_map, 0, self->ynum * sizeof(bool));
     for (index_type i = 0; i < self->ynum; i++) {
         clear_chars_to_space(self, i);
         self->line_map[i] = i;
     }
+}
+
+static PyObject*
+clear(LineBuf *self) {
+#define clear_doc "Clear all lines in this LineBuf"
+    linebuf_clear(self);
     Py_RETURN_NONE;
 }
 
@@ -110,16 +113,20 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
+void linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
+    char_type mask;
+    for (index_type y = 0; y < self->ynum; y++) {
+        SET_ATTRIBUTE(self->chars + y * self->xnum, shift, val);
+    }
+}
+
 static PyObject*
 set_attribute(LineBuf *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
     unsigned int shift, val;
-    char_type mask;
     if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
     if (shift < DECORATION_SHIFT || shift > STRIKE_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
-    for (index_type y = 0; y < self->ynum; y++) {
-        SET_ATTRIBUTE(self->chars + y * self->xnum, shift, val);
-    }
+    linebuf_set_attribute(self, shift, val);
     Py_RETURN_NONE;
 }
 
