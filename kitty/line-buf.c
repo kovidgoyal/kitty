@@ -219,6 +219,7 @@ clear_line(LineBuf *self, PyObject *val) {
 }
 
 void linebuf_index(LineBuf* self, index_type top, index_type bottom) {
+    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
     bool old_cont = self->continued_map[top];
     for (index_type i = top; i < bottom; i++) {
@@ -234,17 +235,12 @@ index(LineBuf *self, PyObject *args) {
 #define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
     unsigned int top, bottom;
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
-    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     linebuf_index(self, top, bottom);
     Py_RETURN_NONE;
 }
 
-static PyObject*
-reverse_index(LineBuf *self, PyObject *args) {
-#define reverse_index_doc "reverse_index(top, bottom) -> Scroll all lines in the range [top, bottom] by one down. After scrolling, top will be bottom."
-    unsigned int top, bottom;
-    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
-    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
+    if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_bottom = self->line_map[bottom];
     bool old_cont = self->continued_map[bottom];
     for (index_type i = bottom; i > top; i--) {
@@ -253,6 +249,14 @@ reverse_index(LineBuf *self, PyObject *args) {
     }
     self->line_map[top] = old_bottom;
     self->continued_map[top] = old_cont;
+}
+
+static PyObject*
+reverse_index(LineBuf *self, PyObject *args) {
+#define reverse_index_doc "reverse_index(top, bottom) -> Scroll all lines in the range [top, bottom] by one down. After scrolling, top will be bottom."
+    unsigned int top, bottom;
+    if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
+    linebuf_reverse_index(self, top, bottom);
     Py_RETURN_NONE;
 }
 

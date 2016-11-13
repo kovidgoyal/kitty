@@ -10,7 +10,7 @@ from kitty.fast_data_types import DECAWM, IRM, Cursor
 class TestScreen(BaseTest):
 
     def test_draw_fast(self):
-        s = self.create_screen2()
+        s = self.create_screen()
 
         # Test in line-wrap, non-insert mode
         s.draw(b'a' * 5)
@@ -55,7 +55,7 @@ class TestScreen(BaseTest):
 
     def test_draw_char(self):
         # Test in line-wrap, non-insert mode
-        s = self.create_screen2()
+        s = self.create_screen()
         s.draw('ココx'.encode('utf-8'))
         self.ae(str(s.line(0)), 'ココx')
         self.ae(tuple(map(s.line(0).width, range(5))), (2, 0, 2, 0, 1))
@@ -103,7 +103,7 @@ class TestScreen(BaseTest):
         self.assertChanges(s, ignore='cursor', cells={4: ((0, 4),)})
 
     def test_char_manipulation(self):
-        s = self.create_screen2()
+        s = self.create_screen()
 
         def init():
             s.reset(), s.reset_dirty()
@@ -170,7 +170,7 @@ class TestScreen(BaseTest):
         self.ae((False, False, False, False, False), tuple(map(lambda i: s.line(0).cursor_from(i).bold, range(5))))
 
     def test_erase_in_screen(self):
-        s = self.create_screen2()
+        s = self.create_screen()
 
         def init():
             s.reset()

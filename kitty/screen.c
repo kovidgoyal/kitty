@@ -365,6 +365,18 @@ void screen_index(Screen *self) {
     } else screen_cursor_down(self, 1);
 }
 
+void screen_reverse_index(Screen *self) {
+    // Move cursor up one line, scrolling screen if needed
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if ((unsigned int)self->cursor->y == top) {
+        linebuf_reverse_index(self->linebuf, top, bottom);
+        linebuf_clear_line(self->linebuf, top);
+        if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker);
+        else tracker_update_line_range(self->change_tracker, top, bottom);
+    } else screen_cursor_up(self, 1, false, -1);
+}
+
+
 void screen_carriage_return(Screen *self, uint8_t UNUSED ch) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
@@ -666,6 +678,27 @@ erase_in_display(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+cursor_up(Screen *self, PyObject *args) {
+    unsigned int count = 1;
+    int do_carriage_return = false, move_direction = -1;
+    if (!PyArg_ParseTuple(args, "|Ipi", &count, &do_carriage_return, &move_direction)) return NULL;
+    screen_cursor_up(self, count, do_carriage_return, move_direction);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+index(Screen *self) {
+    screen_index(self);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reverse_index(Screen *self) {
+    screen_reverse_index(self);
+    Py_RETURN_NONE;
+}
+
 #define COUNT_WRAP(name) \
     static PyObject* name(Screen *self, PyObject *args) { \
     unsigned int count = 1; \
@@ -677,6 +710,10 @@ COUNT_WRAP(delete_lines)
 COUNT_WRAP(insert_characters)
 COUNT_WRAP(delete_characters)
 COUNT_WRAP(erase_characters)
+COUNT_WRAP(cursor_up1)
+COUNT_WRAP(cursor_down)
+COUNT_WRAP(cursor_down1)
+COUNT_WRAP(cursor_forward)
 
 #define MND(name, args) {#name, (PyCFunction)name, args, ""},
 
@@ -698,6 +735,13 @@ static PyMethodDef methods[] = {
     MND(insert_characters, METH_VARARGS)
     MND(delete_characters, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
+    MND(cursor_up, METH_VARARGS)
+    MND(cursor_up1, METH_VARARGS)
+    MND(cursor_down, METH_VARARGS)
+    MND(cursor_down1, METH_VARARGS)
+    MND(cursor_forward, METH_VARARGS)
+    MND(index, METH_NOARGS)
+    MND(reverse_index, METH_NOARGS)
 
     {NULL}  /* Sentinel */
 };
