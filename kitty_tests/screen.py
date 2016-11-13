@@ -129,9 +129,11 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), ' xコ ')
         self.assertChanges(s, ignore='cursor', cells={0: ((0, 4),)})
         c = Cursor()
-        c.bold = True
+        c.italic = True
         s.line(0).apply_cursor(c, 0, 5)
         self.ae(s.line(0).width(2), 2)
+        self.assertTrue(s.line(0).cursor_from(2).italic)
+        self.assertFalse(s.line(0).cursor_from(2).bold)
 
         init()
         s.delete_characters(2)
