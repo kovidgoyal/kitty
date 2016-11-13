@@ -605,7 +605,7 @@ reset(Screen *self) {
 static PyObject*
 reset_mode(Screen *self, PyObject *args) {
 #define reset_mode_doc ""
-    bool private = false;
+    int private = false;
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
     if (private) mode <<= 5;
@@ -616,7 +616,7 @@ reset_mode(Screen *self, PyObject *args) {
 static PyObject*
 set_mode(Screen *self, PyObject *args) {
 #define set_mode_doc ""
-    bool private = false;
+    int private = false;
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
     if (private) mode <<= 5;
@@ -649,7 +649,7 @@ cursor_back(Screen *self, PyObject *args) {
 static PyObject*
 erase_in_line(Screen *self, PyObject *args) {
 #define erase_in_line_doc ""
-    bool private = false;
+    int private = false;
     unsigned int how = 0;
     if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
     screen_erase_in_line(self, how, private);
@@ -659,7 +659,7 @@ erase_in_line(Screen *self, PyObject *args) {
 static PyObject*
 erase_in_display(Screen *self, PyObject *args) {
 #define erase_in_display_doc ""
-    bool private = false;
+    int private = false;
     unsigned int how = 0;
     if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
     screen_erase_in_display(self, how, private);
@@ -705,6 +705,8 @@ static PyMethodDef methods[] = {
 static PyMemberDef members[] = {
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), 0, "cursor"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), 0, "linebuf"},
+    {"lines", T_UINT, offsetof(Screen, lines), 0, "lines"},
+    {"columns", T_UINT, offsetof(Screen, columns), 0, "columns"},
     {NULL}
 };
  

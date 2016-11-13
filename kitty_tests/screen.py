@@ -170,7 +170,7 @@ class TestScreen(BaseTest):
         self.ae((False, False, False, False, False), tuple(map(lambda i: s.line(0).cursor_from(i).bold, range(5))))
 
     def test_erase_in_screen(self):
-        s = self.create_screen()
+        s = self.create_screen2()
 
         def init():
             s.reset()
@@ -179,24 +179,27 @@ class TestScreen(BaseTest):
             s.cursor.x, s.cursor.y = 2, 1
             s.cursor.bold = True
 
+        def all_lines(s):
+            return tuple(str(s.line(i)) for i in range(s.lines))
+
         init()
         s.erase_in_display()
-        self.ae(s.display, ('12345', '12   ', '     ', '     ', '     '))
+        self.ae(all_lines(s), ('12345', '12   ', '     ', '     ', '     '))
         self.assertChanges(s, lines={2, 3, 4}, cells={1: ((2, 4),)})
 
         init()
         s.erase_in_display(1)
-        self.ae(s.display, ('     ', '   45', '12345', '12345', '12345'))
+        self.ae(all_lines(s), ('     ', '   45', '12345', '12345', '12345'))
         self.assertChanges(s, lines={0}, cells={1: ((0, 2),)})
 
         init()
         s.erase_in_display(2)
-        self.ae(s.display, ('     ', '     ', '     ', '     ', '     '))
+        self.ae(all_lines(s), ('     ', '     ', '     ', '     ', '     '))
         self.assertChanges(s, lines=set(range(5)))
         self.assertTrue(s.line(0).cursor_from(1).bold)
         init()
-        s.erase_in_display(2, private=True)
-        self.ae(s.display, ('     ', '     ', '     ', '     ', '     '))
+        s.erase_in_display(2, True)
+        self.ae(all_lines(s), ('     ', '     ', '     ', '     ', '     '))
         self.assertChanges(s, lines=set(range(5)))
         self.assertFalse(s.line(0).cursor_from(1).bold)
 
