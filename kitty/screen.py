@@ -162,6 +162,7 @@ class Screen:
         """
         self.lines, self.columns = lines, columns
         self.tracker.resize(self.lines, self.columns)
+        self.tabstops = {x for x in self.tabstops if x < self.columns}
         # TODO: Implement rewrap for history buf
         self.tophistorybuf.clear()
         is_main = self.linebuf is self.main_linebuf

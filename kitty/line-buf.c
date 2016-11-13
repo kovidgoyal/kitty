@@ -33,7 +33,7 @@ clear(LineBuf *self) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     LineBuf *self;
-    index_type xnum, ynum;
+    unsigned int xnum = 1, ynum = 1;
 
     if (!PyArg_ParseTuple(args, "II", &ynum, &xnum)) return NULL;
 
@@ -202,19 +202,23 @@ copy_line_to(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+void linebuf_clear_line(LineBuf *self, index_type y) {
+    Line l;
+    INIT_LINE(self, &l, self->line_map[y]);
+    CLEAR_LINE(&l, 0, self->xnum);
+    self->continued_map[y] = 0;
+}
+
 static PyObject*
 clear_line(LineBuf *self, PyObject *val) {
 #define clear_line_doc "clear_line(y) -> Clear the specified line"
     index_type y = (index_type)PyLong_AsUnsignedLong(val);
-    Line l;
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    INIT_LINE(self, &l, self->line_map[y]);
-    CLEAR_LINE(&l, 0, self->xnum);
-    self->continued_map[y] = 0;
+    linebuf_clear_line(self, y);
     Py_RETURN_NONE;
 }
 
-static inline void index_inner(LineBuf* self, index_type top, index_type bottom) {
+void linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     index_type old_top = self->line_map[top];
     bool old_cont = self->continued_map[top];
     for (index_type i = top; i < bottom; i++) {
@@ -231,7 +235,7 @@ index(LineBuf *self, PyObject *args) {
     unsigned int top, bottom;
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    index_inner(self, top, bottom);
+    linebuf_index(self, top, bottom);
     Py_RETURN_NONE;
 }
 
@@ -404,7 +408,7 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
 
 #define next_dest_line(continued) {\
     if (dest_y >= dest->ynum - 1) { \
-        index_inner(dest, 0, dest->ynum - 1); \
+        linebuf_index(dest, 0, dest->ynum - 1); \
         PyObject *l = create_line_copy_inner(dest, dest_y); \
         if (l == NULL) return false; \
         if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
@@ -488,6 +492,6 @@ end:
     return Py_BuildValue("Ni", ret, cursor_y);
 }
 
-LineBuf *alloc_linebuf() {
-    return (LineBuf*)new(&LineBuf_Type, NULL, NULL);
+LineBuf *alloc_linebuf(unsigned int lines, unsigned int columns) {
+    return (LineBuf*)new(&LineBuf_Type, Py_BuildValue("II", lines, columns), NULL);
 }

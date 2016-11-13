@@ -185,27 +185,25 @@ cursor_from(Line* self, PyObject *args) {
     return (PyObject*)ans;
 }
 
+void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
+    const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
+    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
+        self->chars[i] = (self->chars[i] & ATTRS_MASK_WITHOUT_WIDTH) | repl;
+    }
+    memset(self->combining_chars + at, 0, MIN(num, self->xnum - at) * sizeof(combining_type));
+}
+
 static PyObject*
 clear_text(Line* self, PyObject *args) {
 #define clear_text_doc "clear_text(at, num, ch=' ') -> Clear characters in the specified range, preserving formatting."
     unsigned int at, num;
     int ch = 32;
     if (!PyArg_ParseTuple(args, "II|C", &at, &num, &ch)) return NULL;
-    const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
-    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
-        self->chars[i] = (self->chars[i] & ATTRS_MASK_WITHOUT_WIDTH) | repl;
-    }
-    memset(self->combining_chars + at, 0, MIN(num, self->xnum - at) * sizeof(combining_type));
+    line_clear_text(self, at, num, ch);
     Py_RETURN_NONE;
 }
 
-static PyObject*
-apply_cursor(Line* self, PyObject *args) {
-#define apply_cursor_doc "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
-    Cursor* cursor;
-    unsigned int at=0, num=1;
-    int clear_char = 0;
-    if (!PyArg_ParseTuple(args, "O!|IIp", &Cursor_Type, &cursor, &at, &num, &clear_char)) return NULL;
+void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
     decoration_type dfg = cursor->decoration_fg & COL_MASK;
@@ -218,7 +216,16 @@ apply_cursor(Line* self, PyObject *args) {
         self->colors[i] = col;
         self->decoration_fg[i] = dfg;
     }
+}
 
+static PyObject*
+apply_cursor(Line* self, PyObject *args) {
+#define apply_cursor_doc "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
+    Cursor* cursor;
+    unsigned int at=0, num=1;
+    int clear_char = 0;
+    if (!PyArg_ParseTuple(args, "O!|IIp", &Cursor_Type, &cursor, &at, &num, &clear_char)) return NULL;
+    line_apply_cursor(self, cursor, at, num, clear_char & 1);
     Py_RETURN_NONE;
 }
 

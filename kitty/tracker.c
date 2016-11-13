@@ -8,26 +8,27 @@
 #include "data-types.h"
 #include "tracker.h"
 
-#define RESET_STATE_VARS(self) \
-    self->screen_changed = false; self->cursor_changed = false; self->dirty = false; self->history_line_added_count = 0; 
 
-static PyObject*
-resize(ChangeTracker *self, PyObject *args) {
-#define resize_doc "Resize theis change tracker must be called when the screen it is tracking for is resized"
-    unsigned long ynum=1, xnum=1;
-    if (args) {
-        if (!PyArg_ParseTuple(args, "kk", &ynum, &xnum)) return NULL;
-    }
-    self->ynum = ynum; self->xnum = xnum;
+bool tracker_resize(ChangeTracker *self, unsigned int ynum, unsigned int xnum) {
 #define ALLOC_VAR(name, sz) \
     bool *name = PyMem_Calloc(sz, sizeof(bool)); \
-    if (name == NULL) return PyErr_NoMemory(); \
+    if (name == NULL) { PyErr_NoMemory(); return false; } \
     PyMem_Free(self->name); self->name = name;
 
+    self->ynum = ynum; self->xnum = xnum;
     ALLOC_VAR(changed_lines, self->ynum);
     ALLOC_VAR(changed_cells, self->xnum * self->ynum);
     ALLOC_VAR(lines_with_changed_cells, self->ynum);
     RESET_STATE_VARS(self);
+    return true;
+}
+
+static PyObject*
+resize(ChangeTracker *self, PyObject *args) {
+#define resize_doc "Resize this change tracker must be called when the screen it is tracking for is resized"
+    unsigned int ynum=1, xnum=1;
+    if (!PyArg_ParseTuple(args, "|II", &ynum, &xnum)) return NULL;
+    if (!tracker_resize(self, ynum, xnum)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -49,19 +50,10 @@ dealloc(ChangeTracker* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline void reset_inner(ChangeTracker *self) {
-    self->screen_changed = false; self->cursor_changed = false; self->dirty = false;
-    self->history_line_added_count = 0;
-    memset(self->changed_lines, 0, self->ynum * sizeof(bool));
-    memset(self->changed_cells, 0, self->ynum * self->xnum * sizeof(bool));
-    memset(self->lines_with_changed_cells, 0, self->ynum * sizeof(bool));
-    RESET_STATE_VARS(self);
-}
-
 static PyObject*
 reset(ChangeTracker *self) {
 #define reset_doc "Reset all changes"
-    reset_inner(self);
+    tracker_reset(self);
 
     Py_RETURN_NONE;
 }
@@ -156,7 +148,7 @@ update_cell_data(ChangeTracker *self, PyObject *args) {
     }
 
     PyObject *cursor_changed = self->cursor_changed ? Py_True : Py_False;
-    reset_inner(self);
+    tracker_reset(self);
     Py_INCREF(cursor_changed);
     return cursor_changed;
 }
@@ -192,9 +184,8 @@ get_ranges(bool *line, unsigned int xnum) {
     return ans;
 }
 
-static PyObject*
-consolidate_changes(ChangeTracker *self) {
-#define consolidate_changes_doc ""
+PyObject*
+tracker_consolidate_changes(ChangeTracker *self) {
     PyObject *ans = PyDict_New();
     if (ans == NULL) return PyErr_NoMemory();
     if (PyDict_SetItemString(ans, "screen", self->screen_changed ? Py_True : Py_False) != 0) { Py_CLEAR(ans); return NULL; }
@@ -242,7 +233,7 @@ consolidate_changes(ChangeTracker *self) {
     if (PyDict_SetItemString(ans, "cells", t) != 0) { Py_CLEAR(t); Py_CLEAR(ans); return NULL; }
     Py_CLEAR(t);
 
-    reset_inner(self);
+    tracker_reset(self);
     return ans;
 }
 
@@ -259,7 +250,7 @@ static PyMethodDef methods[] = {
     METHOD(update_cell_data, METH_VARARGS)
     METHOD(reset, METH_NOARGS)
     METHOD(cursor_changed, METH_NOARGS)
-    METHOD(consolidate_changes, METH_NOARGS)
+    {"consolidate_changes", (PyCFunction)tracker_consolidate_changes, METH_NOARGS, ""},
     METHOD(line_added_to_history, METH_NOARGS)
     METHOD(update_screen, METH_NOARGS)
     METHOD(update_line_range, METH_VARARGS)
@@ -283,6 +274,8 @@ PyTypeObject ChangeTracker_Type = {
 INIT_TYPE(ChangeTracker)
 // }}}
 
-ChangeTracker* alloc_change_tracker() {
-    return (ChangeTracker*)new(&ChangeTracker_Type, NULL, NULL);
+ChangeTracker* alloc_change_tracker(unsigned int ynum, unsigned int xnum) {
+    ChangeTracker *self = (ChangeTracker *)(&ChangeTracker_Type)->tp_alloc((&ChangeTracker_Type), 0);
+    if (!tracker_resize(self, ynum, xnum)) { Py_CLEAR(self); return NULL; }
+    return self;
 }

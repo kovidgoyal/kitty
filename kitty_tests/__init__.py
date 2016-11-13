@@ -33,8 +33,8 @@ class BaseTest(TestCase):
     def create_screen(self, cols=5, lines=5, history_size=5):
         return S(history_size, columns=cols, lines=lines)
 
-    def create_screen2(self, cols=5, lines=5, history_size=5):
-        return Screen(history_size, None, lines, cols)
+    def create_screen2(self, cols=5, lines=5):
+        return Screen(None, lines, cols)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

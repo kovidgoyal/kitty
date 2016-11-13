@@ -37,3 +37,17 @@ static inline void tracker_update_cell_range(ChangeTracker *self, unsigned int l
         self->dirty = true;
     }
 }
+
+#define RESET_STATE_VARS(self) \
+    self->screen_changed = false; self->cursor_changed = false; self->dirty = false; self->history_line_added_count = 0; 
+
+static inline void tracker_reset(ChangeTracker *self) {
+    self->screen_changed = false; self->cursor_changed = false; self->dirty = false;
+    self->history_line_added_count = 0;
+    memset(self->changed_lines, 0, self->ynum * sizeof(bool));
+    memset(self->changed_cells, 0, self->ynum * self->xnum * sizeof(bool));
+    memset(self->lines_with_changed_cells, 0, self->ynum * sizeof(bool));
+    RESET_STATE_VARS(self);
+}
+
+PyObject* tracker_consolidate_changes(ChangeTracker *self);

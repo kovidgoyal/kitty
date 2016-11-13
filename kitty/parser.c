@@ -17,7 +17,6 @@
 // Parse text {{{
 static inline bool
 read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
-    bool ret;
     uint8_t ch;
 
     while(*pos < buflen) {
@@ -25,14 +24,13 @@ read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) 
 #define DRAW_TEXT \
         if (screen->parser_has_pending_text) { \
             screen->parser_has_pending_text = false; \
-            ret = screen_draw(screen, buf + screen->parser_text_start, (*pos) - screen->parser_text_start); \
+            screen_draw(screen, buf + screen->parser_text_start, (*pos) - screen->parser_text_start); \
             screen->parser_text_start = 0; \
-            if (!ret) return false; \
         } 
 
 #define CALL_SCREEN_HANDLER(name) \
         DRAW_TEXT; \
-        if (!screen_##name(screen, ch)) return false;
+        screen_##name(screen, ch);
         
 #define CHANGE_PARSER_STATE(state) screen->parser_state = state; return true;
         switch(ch) {

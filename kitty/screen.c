@@ -32,64 +32,76 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
-        self->main_linebuf = alloc_linebuf(); self->alt_linebuf = alloc_linebuf();
+        self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->main_savepoints = PyList_New(0); self->alt_savepoints = PyList_New(0);
         self->savepoints = self->main_savepoints;
-        self->change_tracker = alloc_change_tracker();
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_savepoints == NULL || self->alt_savepoints == NULL || self->change_tracker == NULL) {
+        self->change_tracker = alloc_change_tracker(lines, columns);
+        self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_savepoints == NULL || self->alt_savepoints == NULL || self->change_tracker == NULL || self->tabstops == NULL) {
             Py_CLEAR(self); return NULL;
         }
     }
     return (PyObject*) self;
 }
 
+bool screen_reset(Screen *self) {
+    if (self->linebuf == self->alt_linebuf) {if (!screen_toggle_screen_buffer(self)) return false; }
+    linebuf_clear(self->linebuf);
+    self->current_charset = 2;
+    self->g0_charset = translation_table('B');
+    self->g1_charset = translation_table('0');
+    self->modes = empty_modes;
+    self->utf8_state = 0;
+    self->margin_top = 0; self->margin_bottom = self->lines - 1;
+    // In terminfo we specify the number of initial tabstops (it) as 8
+    for (unsigned int t=0; t < self->columns; t++) self->tabstops[t] = t > 0 && (t+1) % 8 == 0;
+    screen_normal_keypad_mode(self);
+    cursor_reset(self->cursor);
+    tracker_cursor_changed(self->change_tracker);
+    screen_cursor_position(self, 1, 1);
+    screen_change_default_color(self, FG, 0);
+    screen_change_default_color(self, BG, 0);
+    tracker_update_screen(self->change_tracker);
+    return true;
+}
+
+
 static void
 dealloc(Screen* self) {
     Py_CLEAR(self->callbacks);
-    Py_CLEAR(self->cursor); Py_CLEAR(self->main_linebuf); Py_CLEAR(self->alt_linebuf);
+    Py_CLEAR(self->cursor); 
+    Py_CLEAR(self->main_linebuf); 
+    Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->main_savepoints); Py_CLEAR(self->alt_savepoints); Py_CLEAR(self->change_tracker);
+    PyMem_Free(self->tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
-bool screen_bell(Screen UNUSED *self, uint8_t ch) {  // {{{
+void screen_bell(Screen UNUSED *self, uint8_t ch) {  // {{{
     FILE *f = fopen("/dev/tty", "w");
     if (f != NULL) {
         fwrite(&ch, 1, 1, f);
         fclose(f);
     }
-    return true;
 } // }}}
-
-
-bool screen_linefeed(Screen UNUSED *self, uint8_t UNUSED ch) {
-    // TODO: Implement this
-    return true;
-}
-
-bool screen_carriage_return(Screen UNUSED *self, uint8_t UNUSED ch) {
-    // TODO: Implement this
-    return true;
-}
-
 
 // Draw text {{{
 
-static inline int safe_wcwidth(uint32_t ch) {
+static inline unsigned int safe_wcwidth(uint32_t ch) {
     int ans = wcwidth(ch);
     if (ans < 0) ans = 1;
     return MIN(2, ans);
 }
 
-static inline bool
+static inline void
 draw_codepoint(Screen UNUSED *self, uint32_t ch) {
-    if (is_ignored_char(ch)) return true;
-    int char_width = safe_wcwidth(ch);
-    int space_left_in_line = self->columns - self->cursor->x;
-    if (space_left_in_line < char_width) {
+    if (is_ignored_char(ch)) return;
+    unsigned int char_width = safe_wcwidth(ch);
+    if (self->columns - (unsigned int)self->cursor->x < char_width) {
         if (self->modes.mDECAWM) {
-            if (!screen_carriage_return(self, 13)) return false;
-            if (!screen_linefeed(self, 10)) return false;
+            screen_carriage_return(self, 13);
+            screen_linefeed(self, 10);
             self->linebuf->continued_map[self->cursor->y] = true;
         } else {
             self->cursor->x = self->columns - char_width;
@@ -120,16 +132,15 @@ draw_codepoint(Screen UNUSED *self, uint32_t ch) {
             tracker_update_cell_range(self->change_tracker, self->cursor->y - 1, self->columns - 1, self->columns - 1);
         }
     }
-    return true;
 }
 
-static inline bool 
+static inline void 
 screen_draw_utf8(Screen *self, uint8_t *buf, unsigned int buflen) {
     uint32_t prev = UTF8_ACCEPT, codepoint = 0;
     for (unsigned int i = 0; i < buflen; i++, prev = self->utf8_state) {
         switch (decode_utf8(&self->utf8_state, &codepoint, buf[i])) {
             case UTF8_ACCEPT:
-                if (!draw_codepoint(self, codepoint)) return false;
+                draw_codepoint(self, codepoint);
                 break;
             case UTF8_REJECT:
                 self->utf8_state = UTF8_ACCEPT;
@@ -137,49 +148,41 @@ screen_draw_utf8(Screen *self, uint8_t *buf, unsigned int buflen) {
                 break;
         }
     }
-    return true;
 }
 
-static inline bool 
+static inline void 
 screen_draw_charset(Screen *self, unsigned short *table, uint8_t *buf, unsigned int buflen) {
     for (unsigned int i = 0; i < buflen; i++) {
-        if (!draw_codepoint(self, table[buf[i]])) return false;
+        draw_codepoint(self, table[buf[i]]);
     }
-    return true;
 }
 
-bool screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
+void screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
     switch(self->current_charset) {
         case 0:
-            return screen_draw_charset(self, self->g0_charset, buf, buflen);
-            break;
+            screen_draw_charset(self, self->g0_charset, buf, buflen); break;
         case 1:
-            return screen_draw_charset(self, self->g1_charset, buf, buflen);
-            break;
+            screen_draw_charset(self, self->g1_charset, buf, buflen); break;
         default:
-            return screen_draw_utf8(self, buf, buflen); break;
+            screen_draw_utf8(self, buf, buflen); break;
     }
 }
 // }}}
 
-bool screen_backspace(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_backspace(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
-    return true;
 }
 
-bool screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
-    return true;
 }
 
-bool screen_shift_out(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_shift_out(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
-    return true;
 }
 
-bool screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
     // TODO: Implement this
-    return true;
 }
 
 bool screen_toggle_screen_buffer(Screen *self) {
@@ -196,8 +199,21 @@ bool screen_toggle_screen_buffer(Screen *self) {
     return true;
 }
 
+// Graphics {{{
+void screen_change_default_color(Screen *self, unsigned int which, uint32_t col) {
+    if (self->callbacks == Py_None) return;
+    if (col & 0xFF) PyObject_CallMethod(self->callbacks, "change_default_color", "s(III)", which == FG ? "fg" : "bg", 
+            (col >> 24) & 0xFF, (col >> 16) & 0xFF, (col >> 8) & 0xFF);
+    else PyObject_CallMethod(self->callbacks, "change_default_color", "sO", which == FG ? "fg" : "bg", Py_None);
+    if (PyErr_Occurred()) PyErr_Print();
+    PyErr_Clear(); 
+}
+// }}}
 
 // Modes {{{
+
+void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
+void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
 
 static inline void set_mode_from_const(Screen *self, int mode, bool val) {
     switch(mode) {
@@ -226,12 +242,12 @@ bool screen_set_mode(Screen *self, int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
-        if (!screen_erase_in_display(self, 2, false)) return false;
-        if (!screen_cursor_position(self, 1, 1)) return false;
+        screen_erase_in_display(self, 2, false);
+        screen_cursor_position(self, 1, 1);
     }
     // According to `vttest`, DECOM should also home the cursor, see
     // vttest/main.c:303.
-    if (mode == DECOM) { if (!screen_cursor_position(self, 1, 1)) return false; }
+    if (mode == DECOM) screen_cursor_position(self, 1, 1);
 
     if (mode == DECSCNM) {
         // Mark all displayed characters as reverse.
@@ -273,12 +289,12 @@ bool screen_reset_mode(Screen *self, int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
-        if (!screen_erase_in_display(self, 2, false)) return false;
-        if (!screen_cursor_position(self, 1, 1)) return false;
+        screen_erase_in_display(self, 2, false);
+        screen_cursor_position(self, 1, 1);
     }
     // According to `vttest`, DECOM should also home the cursor, see
     // vttest/main.c:303.
-    if (mode == DECOM) { if (!screen_cursor_position(self, 1, 1)) return false; }
+    if (mode == DECOM) screen_cursor_position(self, 1, 1);
 
     if (mode == DECSCNM) {
         // Mark all displayed characters as reverse.
@@ -303,6 +319,68 @@ bool screen_reset_mode(Screen *self, int mode) {
 // }}}
 
 // Cursor {{{
+
+void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
+    int x = self->cursor->x;
+    if (count == 0) count = 1;
+    self->cursor->x += move_direction * count;
+    screen_ensure_bounds(self, false);
+    if (x != self->cursor->x) tracker_cursor_changed(self->change_tracker);
+}
+
+void screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
+    screen_cursor_back(self, count, 1);
+}
+
+void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
+    int x = self->cursor->x, y = self->cursor->y;
+    if (count == 0) count = 1;
+    self->cursor->y += move_direction * count;
+    screen_ensure_bounds(self, true);
+    if (do_carriage_return) self->cursor->x = 0;
+    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
+}
+
+void screen_cursor_up1(Screen *self, unsigned int count/*=1*/) {
+    screen_cursor_up(self, count, true, -1);
+}
+
+void screen_cursor_down(Screen *self, unsigned int count/*=1*/) {
+    screen_cursor_up(self, count, false, 1);
+}
+
+void screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
+    screen_cursor_up(self, count, true, 1);
+}
+
+void screen_index(Screen *self) {
+    // Move cursor down one line, scrolling screen if needed
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    if ((unsigned int)self->cursor->y == self->margin_bottom) {
+        linebuf_index(self->linebuf, top, bottom);
+        if (self->linebuf == self->main_linebuf) {
+            // TODO: Add line to tophistorybuf
+            tracker_line_added_to_history(self->change_tracker);
+        }
+        linebuf_clear_line(self->linebuf, bottom);
+        if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker);
+        else tracker_update_line_range(self->change_tracker, top, bottom);
+    } else screen_cursor_down(self, 1);
+}
+
+void screen_carriage_return(Screen *self, uint8_t UNUSED ch) {
+    if (self->cursor->x != 0) {
+        self->cursor->x = 0;
+        tracker_cursor_changed(self->change_tracker);
+    }
+}
+
+void screen_linefeed(Screen *self, uint8_t UNUSED ch) {
+    screen_index(self);
+    if (self->modes.mLNM) screen_carriage_return(self, 13);
+    screen_ensure_bounds(self, false);
+}
+
 bool screen_save_cursor(Screen *self) {
     Savepoint *sp = alloc_savepoint();
     if (sp == NULL) return false;
@@ -333,30 +411,120 @@ bool screen_restore_cursor(Screen *self) {
     } else {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
-        screen_reset_mode(self, DECOM);
+        if (!screen_reset_mode(self, DECOM)) return false;
     }
     return true;
 }
 
-bool screen_cursor_position(Screen UNUSED *self, unsigned int UNUSED line, unsigned int UNUSED column) {
-    return true; // TODO: Implement this
+void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
+    unsigned int top, bottom;
+    if (use_margins || self->modes.mDECOM) {
+        top = self->margin_top; bottom = self->margin_bottom;
+    } else {
+        top = 0; bottom = self->lines - 1;
+    }
+    self->cursor->x = MIN((unsigned int)MAX(0, self->cursor->x), self->columns - 1);
+    self->cursor->y = MAX(top, MIN((unsigned int)MAX(0, self->cursor->y), bottom));
+}
+
+void screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
+    line = (line || 1) - 1;
+    column = (column || 1) - 1;
+    if (self->modes.mDECOM) {
+        line += self->margin_top;
+        if (line < self->margin_bottom || line > self->margin_top) return;
+    }
+    int x = self->cursor->x, y = self->cursor->y;
+    self->cursor->x = column; self->cursor->y = line;
+    screen_ensure_bounds(self, false);
+    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
 
 // }}}
 
 // Editing {{{
-bool screen_erase_in_display(Screen UNUSED *self, unsigned int UNUSED how, bool UNUSED private) {
-    return true; // TODO: Implement this
+
+void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
+    /*Erases a line in a specific way.
+
+        :param int how: defines the way the line should be erased in:
+
+            * ``0`` -- Erases from cursor to end of line, including cursor
+              position.
+            * ``1`` -- Erases from beginning of line to cursor,
+              including cursor position.
+            * ``2`` -- Erases complete line.
+        :param bool private: when ``True`` character attributes are left
+                             unchanged.
+        */
+    unsigned int s, n;
+    switch(how) {
+        case 0:
+            s = self->cursor->x;
+            n = self->columns - self->cursor->x;
+            break;
+        case 1:
+            s = 0; n = self->cursor->x + 1;
+            break;
+        case 2:
+            s = 0; n = self->columns;
+            break;
+        default:
+            return;
+    }
+    if (n > s) {
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        if (private) {
+            line_clear_text(self->linebuf->line, s, n, ' ');
+        } else {
+            line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
+        }
+        tracker_update_cell_range(self->change_tracker, self->cursor->y, s, MIN(s+n, self->columns) - 1);
+    }
+}
+
+void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
+    /* Erases display in a specific way.
+
+        :param int how: defines the way the line should be erased in:
+
+            * ``0`` -- Erases from cursor to end of screen, including
+              cursor position.
+            * ``1`` -- Erases from beginning of screen to cursor,
+              including cursor position.
+            * ``2`` -- Erases complete display. All lines are erased
+              and changed to single-width. Cursor does not move.
+        :param bool private: when ``True`` character attributes are left unchanged
+    */
+    unsigned int a, b;
+    switch(how) {
+        case 0:
+            a = self->cursor->y + 1; b = self->lines; break;
+        case 1:
+            a = 0; b = self->cursor->y; break;
+        case 2:
+            a = 0; b = self->lines; break;
+        default:
+            return;
+    }
+    if (b > a) {
+        for (unsigned int i=a; i < b; i++) {
+            linebuf_init_line(self->linebuf, i);
+            if (private) {
+                line_clear_text(self->linebuf->line, 0, self->columns, ' ');
+            } else {
+                line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
+            }
+        }
+        tracker_update_line_range(self->change_tracker, a, b-1);
+    }
+    if (how != 2) {
+        screen_erase_in_line(self, how, private);
+    }
 }
 // }}}
 
-bool screen_reset(Screen *self) {
-    if (self->linebuf == self->alt_linebuf) {if (!screen_toggle_screen_buffer(self)) return false; }
-    linebuf_clear(self->linebuf);
-    // TODO: Implement this
-    return true;
-}
-
+// Python interface {{{
 static PyObject*
 line(Screen *self, PyObject *val) {
 #define line_doc ""
@@ -372,17 +540,72 @@ draw(Screen *self, PyObject *args) {
 #define draw_doc ""
     Py_buffer pybuf;
     if(!PyArg_ParseTuple(args, "y*", &pybuf)) return NULL;
-    if (!screen_draw(self, pybuf.buf, pybuf.len)) return NULL;
+    screen_draw(self, pybuf.buf, pybuf.len);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reset(Screen *self) {
+#define reset_doc ""
+    if(!screen_reset(self)) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reset_mode(Screen *self, PyObject *args) {
+#define reset_mode_doc ""
+    bool private = false;
+    unsigned int mode;
+    if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
+    if (private) mode <<= 5;
+    if (!screen_reset_mode(self, mode)) return NULL;
     Py_RETURN_NONE;
 }
  
-// Boilerplate {{{
+static PyObject*
+set_mode(Screen *self, PyObject *args) {
+#define set_mode_doc ""
+    bool private = false;
+    unsigned int mode;
+    if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
+    if (private) mode <<= 5;
+    if (!screen_set_mode(self, mode)) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reset_dirty(Screen *self) {
+#define reset_dirty_doc ""
+    tracker_reset(self->change_tracker);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+consolidate_changes(Screen *self) {
+#define consolidate_changes_doc ""
+    return tracker_consolidate_changes(self->change_tracker);
+}
+
+static PyObject*
+cursor_back(Screen *self, PyObject *args) {
+#define cursor_back_doc ""
+    unsigned int count = 1;
+    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL;
+    screen_cursor_back(self, count, -1);
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(draw, METH_VARARGS)
+    METHOD(set_mode, METH_VARARGS)
+    METHOD(reset_mode, METH_VARARGS)
     METHOD(enable_focus_tracking, METH_NOARGS)
     METHOD(in_bracketed_paste_mode, METH_NOARGS)
+    METHOD(reset, METH_NOARGS)
+    METHOD(reset_dirty, METH_NOARGS)
+    METHOD(consolidate_changes, METH_NOARGS)
+    METHOD(cursor_back, METH_VARARGS)
 
     {NULL}  /* Sentinel */
 };
@@ -407,5 +630,4 @@ PyTypeObject Screen_Type = {
 
 INIT_TYPE(Screen)
 // }}}
-
 

@@ -43,6 +43,8 @@ typedef unsigned int index_type;
 #define CURSOR_BLOCK 1
 #define CURSOR_BEAM 2
 #define CURSOR_UNDERLINE 3
+#define FG 1
+#define BG 2
 
 #define CURSOR_TO_ATTRS(c, w) \
     ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
@@ -233,6 +235,7 @@ typedef struct {
     Cursor *cursor;
     PyObject *savepoints, *main_savepoints, *alt_savepoints, *callbacks;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
+    bool *tabstops;
     ChangeTracker *change_tracker;
     ScreenModes modes;
 
@@ -243,12 +246,6 @@ typedef struct {
 } Screen;
 PyTypeObject Screen_Type;
 
-Line* alloc_line();
-Cursor* alloc_cursor();
-LineBuf* alloc_linebuf();
-ChangeTracker* alloc_change_tracker();
-Savepoint* alloc_savepoint();
-
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
@@ -257,6 +254,11 @@ Savepoint* alloc_savepoint();
 
 
 // Global functions 
+Line* alloc_line();
+Cursor* alloc_cursor();
+LineBuf* alloc_linebuf(unsigned int, unsigned int);
+ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
+Savepoint* alloc_savepoint();
 int init_LineBuf(PyObject *);
 int init_Cursor(PyObject *);
 int init_Line(PyObject *);
@@ -279,14 +281,23 @@ Cursor* cursor_copy(Cursor*);
 void linebuf_clear(LineBuf *);
 bool screen_restore_cursor(Screen *);
 bool screen_save_cursor(Screen *);
-bool screen_cursor_position(Screen*, unsigned int, unsigned int);
-bool screen_erase_in_display(Screen *, unsigned int, bool);
-bool screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
+void screen_cursor_position(Screen*, unsigned int, unsigned int);
+void screen_erase_in_display(Screen *, unsigned int, bool);
+void screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
 bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
 uint32_t to_color(ColorProfile *, uint32_t, uint32_t);
 PyObject* line_text_at(char_type, combining_type);
 void linebuf_init_line(LineBuf *, index_type);
-#define DECLARE_CH_SCREEN_HANDLER(name) bool screen_##name(Screen *screen, uint8_t ch);
+void linebuf_index(LineBuf* self, index_type top, index_type bottom);
+void linebuf_clear_line(LineBuf *self, index_type y);
+void screen_ensure_bounds(Screen *self, bool use_margins);
+void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
+void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
+bool screen_toggle_screen_buffer(Screen *self);
+void screen_normal_keypad_mode(Screen *self); 
+void screen_alternate_keypad_mode(Screen *self);  
+void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
+#define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)

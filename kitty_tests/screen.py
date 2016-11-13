@@ -4,14 +4,15 @@
 
 from . import BaseTest
 
-from kitty.screen import mo
+from kitty.fast_data_types import DECAWM, IRM
 
 
 class TestScreen(BaseTest):
 
     def test_draw_fast(self):
+        s = self.create_screen2()
+
         # Test in line-wrap, non-insert mode
-        s = self.create_screen()
         s.draw(b'a' * 5)
         self.ae(str(s.line(0)), 'a' * 5)
         self.ae(s.cursor.x, 5), self.ae(s.cursor.y, 0)
@@ -30,7 +31,7 @@ class TestScreen(BaseTest):
 
         # Now test without line-wrap
         s.reset(), s.reset_dirty()
-        s.reset_mode(mo.DECAWM)
+        s.reset_mode(DECAWM)
         s.draw(b'0123456789')
         self.ae(str(s.line(0)), '01239')
         self.ae(s.cursor.x, 5), self.ae(s.cursor.y, 0)
@@ -42,7 +43,7 @@ class TestScreen(BaseTest):
 
         # Now test in insert mode
         s.reset(), s.reset_dirty()
-        s.set_mode(mo.IRM)
+        s.set_mode(IRM)
         s.draw(b'12345' * 5)
         s.cursor_back(5)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 4)
@@ -79,7 +80,7 @@ class TestScreen(BaseTest):
 
         # Now test without line-wrap
         s.reset(), s.reset_dirty()
-        s.reset_mode(mo.DECAWM)
+        s.reset_mode(DECAWM)
         s.draw('0\u030612345\u03066789\u0306'.encode('utf-8'))
         self.ae(str(s.line(0)), '0\u03061239\u0306')
         self.ae(s.cursor.x, 5), self.ae(s.cursor.y, 0)
@@ -91,7 +92,7 @@ class TestScreen(BaseTest):
 
         # Now test in insert mode
         s.reset(), s.reset_dirty()
-        s.set_mode(mo.IRM)
+        s.set_mode(IRM)
         s.draw('1\u03062345'.encode('utf-8') * 5)
         s.cursor_back(5)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 4)
