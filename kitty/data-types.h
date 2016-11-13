@@ -296,6 +296,7 @@ void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
+void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
 void screen_ensure_bounds(Screen *self, bool use_margins);
