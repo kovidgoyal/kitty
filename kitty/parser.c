@@ -14,9 +14,16 @@
 #define OSC_STATE 3
 #define DCS_STATE 4
 
+#ifdef DUMP_COMMANDS
+#define HANDLER(name) \
+    static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos, PyObject UNUSED *dump_callback)
+#else
+#define HANDLER(name) \
+    static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos)
+#endif
+
 // Parse text {{{
-static inline bool
-read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) {
+HANDLER(text) {
     uint8_t ch;
 
     while(*pos < buflen) {
@@ -28,11 +35,18 @@ read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) 
             screen->parser_text_start = 0; \
         } 
 
+#ifdef DUMP_COMMANDS
+#define CALL_SCREEN_HANDLER(name) \
+        DRAW_TEXT; \
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "sc", #name, ch)); PyErr_Clear(); \
+        screen_##name(screen, ch);
+#else
 #define CALL_SCREEN_HANDLER(name) \
         DRAW_TEXT; \
         screen_##name(screen, ch);
+#endif
         
-#define CHANGE_PARSER_STATE(state) screen->parser_state = state; return true;
+#define CHANGE_PARSER_STATE(state) screen->parser_state = state; return;
         switch(ch) {
             case BEL:
                 CALL_SCREEN_HANDLER(bell);
@@ -67,39 +81,30 @@ read_text(Screen *screen, uint8_t *buf, unsigned int buflen, unsigned int *pos) 
         }
     }
     DRAW_TEXT;
-    return true;
 }
 // }}}
 
 // Parse ESC {{{
-static inline bool
-read_esc(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
+HANDLER(esc) {
     screen->parser_state = NORMAL_STATE;
-    return true;
 }
 // }}}
 
 // Parse CSI {{{
-static inline bool
-read_csi(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
+HANDLER(csi) {
     screen->parser_state = NORMAL_STATE;
-    return true;
 }
 // }}}
 
 // Parse OSC {{{
-static inline bool
-read_osc(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
+HANDLER(osc) {
     screen->parser_state = NORMAL_STATE;
-    return true;
 }
 // }}}
 
 // Parse DCS {{{
-static inline bool
-read_dcs(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos) {
+HANDLER(dcs) {
     screen->parser_state = NORMAL_STATE;
-    return true;
 }
 // }}}
 
@@ -119,21 +124,24 @@ parse_bytes(PyObject UNUSED *self, PyObject *args) {
 #endif
     uint8_t *buf = pybuf.buf;
     unsigned int i = 0;
-#define CALL_HANDLER(name) \
-    if (!name(screen, buf, pybuf.len, &i)) return NULL; break; \
+#ifdef DUMP_COMMANDS
+#define CALL_HANDLER(name) read_##name(screen, buf, pybuf.len, &i, dump_callback); break;
+#else
+#define CALL_HANDLER(name) read_##name(screen, buf, pybuf.len, &i); break;
+#endif
         
     while (i < pybuf.len) {
         switch(screen->parser_state) {
             case ESC_STATE:
-                CALL_HANDLER(read_esc);
+                CALL_HANDLER(esc);
             case CSI_STATE:
-                CALL_HANDLER(read_csi);
+                CALL_HANDLER(csi);
             case OSC_STATE:
-                CALL_HANDLER(read_osc);
+                CALL_HANDLER(osc);
             case DCS_STATE:
-                CALL_HANDLER(read_dcs);
+                CALL_HANDLER(dcs);
             default:
-                CALL_HANDLER(read_text);
+                CALL_HANDLER(text);
         }
     }
     Py_RETURN_NONE;
