@@ -38,7 +38,7 @@ HANDLER(text) {
 #ifdef DUMP_COMMANDS
 #define CALL_SCREEN_HANDLER(name) \
         DRAW_TEXT; \
-        Py_XDECREF(PyObject_CallFunction(dump_callback, "sc", #name, ch)); PyErr_Clear(); \
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", #name, (int)ch)); PyErr_Clear(); \
         screen_##name(screen, ch);
 #else
 #define CALL_SCREEN_HANDLER(name) \
