@@ -39,11 +39,11 @@ HANDLER(text) {
 #define CALL_SCREEN_HANDLER(name) \
         DRAW_TEXT; \
         Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", #name, (int)ch)); PyErr_Clear(); \
-        screen_##name(screen, ch);
+        screen_##name(screen, ch); break;
 #else
 #define CALL_SCREEN_HANDLER(name) \
         DRAW_TEXT; \
-        screen_##name(screen, ch);
+        screen_##name(screen, ch); break;
 #endif
         
 #define CHANGE_PARSER_STATE(state) screen->parser_state = state; return;

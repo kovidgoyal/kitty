@@ -87,6 +87,16 @@ void screen_bell(Screen UNUSED *self, uint8_t ch) {  // {{{
 } // }}}
 
 // Draw text {{{
+ 
+void screen_shift_out(Screen UNUSED *self, uint8_t UNUSED ch) {
+    self->current_charset = 1;
+    self->utf8_state = 0;
+}
+
+void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
+    self->current_charset = 0;
+    self->utf8_state = 0;
+}
 
 static inline unsigned int safe_wcwidth(uint32_t ch) {
     int ans = wcwidth(ch);
@@ -169,34 +179,8 @@ void screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
 }
 // }}}
 
-void screen_backspace(Screen UNUSED *self, uint8_t UNUSED ch) {
-    screen_cursor_back(self, 1, -1);
-}
-
-void screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
-    // Move to the next tab space, or the end of the screen if there aren't anymore left.
-    unsigned int found = 0;
-    for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
-        if (self->tabstops[i]) { found = i; break; }
-    }
-    if (!found) found = self->columns - 1;
-    if (found != (unsigned int)self->cursor->x) {
-        self->cursor->x = found;
-        tracker_cursor_changed(self->change_tracker);
-    }
-}
-
-void screen_shift_out(Screen UNUSED *self, uint8_t UNUSED ch) {
-    self->current_charset = 1;
-    self->utf8_state = 0;
-}
-
-void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
-    self->current_charset = 0;
-    self->utf8_state = 0;
-}
-
 // Graphics {{{
+
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col) {
     if (self->callbacks == Py_None) return;
     if (col & 0xFF) PyObject_CallMethod(self->callbacks, "change_default_color", "s(III)", which == FG ? "fg" : "bg", 
@@ -208,6 +192,7 @@ void screen_change_default_color(Screen *self, unsigned int which, uint32_t col)
 // }}}
 
 // Modes {{{
+
 
 void screen_toggle_screen_buffer(Screen *self) {
     screen_save_cursor(self);
@@ -327,6 +312,22 @@ void screen_reset_mode(Screen *self, int mode) {
 // }}}
 
 // Cursor {{{
+
+void screen_backspace(Screen UNUSED *self, uint8_t UNUSED ch) {
+    screen_cursor_back(self, 1, -1);
+}
+void screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
+    // Move to the next tab space, or the end of the screen if there aren't anymore left.
+    unsigned int found = 0;
+    for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
+        if (self->tabstops[i]) { found = i; break; }
+    }
+    if (!found) found = self->columns - 1;
+    if (found != (unsigned int)self->cursor->x) {
+        self->cursor->x = found;
+        tracker_cursor_changed(self->change_tracker);
+    }
+}
 
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
     int x = self->cursor->x;
@@ -762,6 +763,7 @@ static PyMemberDef members[] = {
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), 0, "linebuf"},
     {"lines", T_UINT, offsetof(Screen, lines), 0, "lines"},
     {"columns", T_UINT, offsetof(Screen, columns), 0, "columns"},
+    {"current_charset", T_UINT, offsetof(Screen, current_charset), 0, "current_charset"},
     {NULL}
 };
  
