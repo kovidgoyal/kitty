@@ -220,10 +220,10 @@ HANDLER(esc) {
 
 static inline unsigned int fill_params(Screen *screen, unsigned int *params, unsigned int expect) {
     unsigned int start_pos = 1, i = 1, pi = 0;
-    uint8_t ch;
-    screen->parser_buf[screen->parser_buf_pos++] = ';';
+    uint8_t ch = 1;
+    screen->parser_buf[screen->parser_buf_pos] = 0;
 
-    while (pi < MIN(MAX_PARAMS, expect) && i < PARSER_BUF_SZ - 1) {
+    while (pi < MIN(MAX_PARAMS, expect) && i < PARSER_BUF_SZ - 1 && ch != 0) {
         ch = screen->parser_buf[i++];
         if (ch == 0 || ch == ';') {
             if (start_pos < i - 1) {
@@ -234,6 +234,9 @@ static inline unsigned int fill_params(Screen *screen, unsigned int *params, uns
     }
     return pi;
 }
+
+static inline void screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
+static inline void screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
 
 HANDLER(csi) {
 #define CALL_BASIC_HANDLER(name) REPORT_COMMAND(screen, ch); name(screen, ch); break;
@@ -253,17 +256,44 @@ HANDLER(csi) {
     case NUL: \
     case DEL: \
         break;  // no-op
-#define CALL_CSI_HANDLER1(name) \
-    if (fill_params(screen, params, 1) != 1) { REPORT_ERROR("Expected parameter for CSI escape sequence: %s missing", #name); } \
-    else { \
-        REPORT_COMMAND(name, params[0]); \
-        screen_insert_characters(screen, params[0]); \
-    } \
+#define CALL_CSI_HANDLER1(name, defval) \
+    p1 = fill_params(screen, params, 1) > 0 ? params[0] : defval; \
+    REPORT_COMMAND(name, p1); \
+    name(screen, p1); \
     SET_STATE(NORMAL_STATE); \
     break; 
 
+#define CALL_CSI_HANDLER2(name, defval1, defval2) \
+    count = fill_params(screen, params, 2); \
+    p1 = count > 0 ? params[0] : defval1; \
+    p2 = count > 1 ? params[1] : defval2; \
+    REPORT_COMMAND(name, p1, p2); \
+    name(screen, p1, p2); \
+    SET_STATE(NORMAL_STATE); \
+    break; 
+
+#define DISPATCH_CSI \
+    case ICH: \
+        CALL_CSI_HANDLER1(screen_insert_characters, 1); \
+    case CUU: \
+        CALL_CSI_HANDLER1(screen_cursor_up2, 1); \
+    case CUD: \
+        CALL_CSI_HANDLER1(screen_cursor_down, 1); \
+    case CUF: \
+        CALL_CSI_HANDLER1(screen_cursor_forward, 1); \
+    case CUB: \
+        CALL_CSI_HANDLER1(screen_cursor_back1, 1); \
+    case CNL:  \
+        CALL_CSI_HANDLER1(screen_cursor_down1, 1); \
+    case CPL:  \
+        CALL_CSI_HANDLER1(screen_cursor_up1, 1); \
+    case CHA: \
+        CALL_CSI_HANDLER1(screen_cursor_to_column, 1); \
+    case CUP:  \
+        CALL_CSI_HANDLER2(screen_cursor_position, 1, 1);
+
     uint8_t ch = buf[(*pos)++];
-    unsigned int params[MAX_PARAMS];
+    unsigned int params[MAX_PARAMS], p1, p2, count;
     switch(screen->parser_buf_pos) {
         case 0:  // CSI starting
             screen->parser_buf[0] = 0;
@@ -279,6 +309,7 @@ HANDLER(csi) {
                     screen->parser_buf[0] = ch; screen->parser_buf_pos = 1;
                     break;
                 HANDLE_BASIC_CH
+                DISPATCH_CSI
                 default:
                     REPORT_ERROR("Invalid first character for CSI: 0x%x", ch);
                     SET_STATE(NORMAL_STATE); 
@@ -295,12 +326,11 @@ HANDLER(csi) {
                     } else screen->parser_buf[screen->parser_buf_pos++] = ch;
                     break;
                 HANDLE_BASIC_CH
+                DISPATCH_CSI
                 default:
                     REPORT_ERROR("Invalid character for CSI: 0x%x", ch);
                     SET_STATE(NORMAL_STATE); 
                     break;
-                case ICH:
-                    CALL_CSI_HANDLER1(screen_insert_characters);
             }
             break;
     }

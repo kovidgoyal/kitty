@@ -399,6 +399,15 @@ void screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, true, 1);
 }
 
+void screen_cursor_to_column(Screen *self, unsigned int column) {
+    unsigned int x = MAX(column, 1) - 1;
+    if (x != (unsigned int)self->cursor->x) {
+        self->cursor->x = x;
+        screen_ensure_bounds(self, false);
+        tracker_cursor_changed(self->change_tracker);
+    }
+}
+
 void screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
@@ -485,8 +494,8 @@ void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
 }
 
 void screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
-    line = (line || 1) - 1;
-    column = (column || 1) - 1;
+    line = (line == 0 ? 1 : line) - 1;
+    column = (column == 0 ? 1: column) - 1;
     if (self->modes.mDECOM) {
         line += self->margin_top;
         if (line < self->margin_bottom || line > self->margin_top) return;
