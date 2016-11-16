@@ -41,14 +41,17 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_ERROR(...) _report_error(dump_callback, __VA_ARGS__);
 
-#define REPORT_COMMAND0(name) \
+#define REPORT_COMMAND1(name) \
         Py_XDECREF(PyObject_CallFunction(dump_callback, "s", #name)); PyErr_Clear();
 
-#define REPORT_COMMAND1(name, x) \
+#define REPORT_COMMAND2(name, x) \
         Py_XDECREF(PyObject_CallFunction(dump_callback, "si", #name, (int)x)); PyErr_Clear();
 
-#define REPORT_COMMAND2(name, x, y) \
+#define REPORT_COMMAND3(name, x, y) \
         Py_XDECREF(PyObject_CallFunction(dump_callback, "sii", #name, (int)x, (int)y)); PyErr_Clear();
+
+#define GET_MACRO(_1,_2,_3,NAME,...) NAME
+#define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos, PyObject UNUSED *dump_callback)
@@ -57,9 +60,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_ERROR(...) fprintf(stderr, "[PARSE ERROR] "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
 
-#define REPORT_COMMAND0(name)
-#define REPORT_COMMAND1(name, x)
-#define REPORT_COMMAND2(name, x, y)
+#define REPORT_COMMAND(...)
 
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos)
@@ -85,7 +86,7 @@ HANDLER(text) {
         } 
 
 #define CALL_SCREEN_HANDLER(name) \
-        DRAW_TEXT; REPORT_COMMAND1(name, ch); \
+        DRAW_TEXT; REPORT_COMMAND(name, ch); \
         name(screen, ch); break;
         
         switch(ch) {
@@ -131,7 +132,7 @@ HANDLER(text) {
 static inline void screen_linefeed2(Screen *screen) { screen_linefeed(screen, '\n'); }
 
 static inline void escape_dispatch(Screen *screen, uint8_t ch, PyObject UNUSED *dump_callback) {
-#define CALL_ED(name) REPORT_COMMAND0(name); name(screen); break;
+#define CALL_ED(name) REPORT_COMMAND(name); name(screen); break;
     switch (ch) {
         case RIS:
             CALL_ED(screen_reset);
@@ -154,12 +155,13 @@ static inline void escape_dispatch(Screen *screen, uint8_t ch, PyObject UNUSED *
         default:
             REPORT_ERROR("%s%d", "Unknown char in escape_dispatch: ", ch); 
     }
+#undef CALL_ED
 }
 
 static inline void sharp_dispatch(Screen *screen, uint8_t ch, PyObject UNUSED *dump_callback) {
     switch(ch) {
         case DECALN:
-            REPORT_COMMAND0(screen_alignment_display);
+            REPORT_COMMAND(screen_alignment_display);
             screen_alignment_display(screen); 
             break;
         default:
@@ -168,7 +170,7 @@ static inline void sharp_dispatch(Screen *screen, uint8_t ch, PyObject UNUSED *d
 }
 
 HANDLER(esc) {
-#define ESC_DISPATCH(which, extra) REPORT_COMMAND2(which, ch, extra); which(screen, ch, extra); SET_STATE(NORMAL_STATE); return;
+#define ESC_DISPATCH(which, extra) REPORT_COMMAND(which, ch, extra); which(screen, ch, extra); SET_STATE(NORMAL_STATE); return;
 #ifdef DUMP_COMMANDS
 #define ESC_DELEGATE(which) which(screen, ch, dump_callback); SET_STATE(NORMAL_STATE); return;
 #else
@@ -205,13 +207,15 @@ HANDLER(esc) {
             }
             break;
     }
+#undef ESC_DISPATCH
+#undef ESC_DELEGATE
 }
 
 // }}}
 
 // Parse CSI {{{
 HANDLER(csi) {
-#define CALL_BASIC_HANDLER(name) REPORT_COMMAND1(screen, ch); name(screen, ch); break;
+#define CALL_BASIC_HANDLER(name) REPORT_COMMAND(screen, ch); name(screen, ch); break;
 #define HANDLE_BASIC_CH \
     case BEL: \
         CALL_BASIC_HANDLER(screen_bell); \
@@ -263,6 +267,8 @@ HANDLER(csi) {
             }
             break;
     }
+#undef CALL_BASIC_HANDLER
+#undef HANDLE_BASIC_CH
 }
 // }}}
 
