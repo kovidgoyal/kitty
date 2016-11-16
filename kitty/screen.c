@@ -623,6 +623,7 @@ void screen_insert_characters(Screen *self, unsigned int count) {
 }
 
 void screen_delete_characters(Screen *self, unsigned int count) {
+    // Delete characters, later characters are moved left
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
@@ -636,6 +637,7 @@ void screen_delete_characters(Screen *self, unsigned int count) {
 }
 
 void screen_erase_characters(Screen *self, unsigned int count) {
+    // Delete characters replacing them by spaces
     if (count == 0) count = 1;
     unsigned int x = self->cursor->x;
     unsigned int num = MIN(self->columns - x, count);

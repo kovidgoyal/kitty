@@ -299,6 +299,7 @@ void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
+void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
 void screen_ensure_bounds(Screen *self, bool use_margins);
@@ -320,6 +321,10 @@ void screen_cursor_down(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_forward(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_down1(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
+void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
+void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
+void screen_delete_characters(Screen *self, unsigned int count);
+void screen_erase_characters(Screen *self, unsigned int count);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
