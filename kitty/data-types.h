@@ -313,6 +313,7 @@ void screen_reverse_index(Screen *self);
 void screen_index(Screen *self);
 void screen_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
+void screen_insert_characters(Screen *self, unsigned int count);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

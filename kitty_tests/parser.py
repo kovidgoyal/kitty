@@ -55,3 +55,14 @@ class TestScreen(BaseTest):
         pb('\033x', 'Unknown char in escape_dispatch: %d' % ord('x'))
         pb('\033c123', 'screen_reset')
         self.ae(str(s.line(0)), '123  ')
+
+    def test_csi_codes(self):
+        s = self.create_screen()
+        pb = partial(self.parse_buytes_dump, s)
+        pb('abcde')
+        s.cursor_back(5)
+        pb('x\033[2@y', ('screen_insert_characters', 2))
+        self.ae(str(s.line(0)), 'xy bc')
+        pb('x\033[2;3@y', ('screen_insert_characters', 2))
+        pb('x\033[@y', 'Invalid first character for CSI: 0x%x' % ord('@'))
+        s.reset()

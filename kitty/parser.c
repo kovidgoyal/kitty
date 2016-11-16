@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "data-types.h"
 #include "control-codes.h"
 
@@ -214,6 +215,26 @@ HANDLER(esc) {
 // }}}
 
 // Parse CSI {{{
+
+#define MAX_PARAMS 8
+
+static inline unsigned int fill_params(Screen *screen, unsigned int *params, unsigned int expect) {
+    unsigned int start_pos = 1, i = 1, pi = 0;
+    uint8_t ch;
+    screen->parser_buf[screen->parser_buf_pos++] = ';';
+
+    while (pi < MIN(MAX_PARAMS, expect) && i < PARSER_BUF_SZ - 1) {
+        ch = screen->parser_buf[i++];
+        if (ch == 0 || ch == ';') {
+            if (start_pos < i - 1) {
+                params[pi++] = atoi((const char *)screen->parser_buf + start_pos);
+            }
+            start_pos = i;
+        }
+    }
+    return pi;
+}
+
 HANDLER(csi) {
 #define CALL_BASIC_HANDLER(name) REPORT_COMMAND(screen, ch); name(screen, ch); break;
 #define HANDLE_BASIC_CH \
@@ -232,8 +253,17 @@ HANDLER(csi) {
     case NUL: \
     case DEL: \
         break;  // no-op
+#define CALL_CSI_HANDLER1(name) \
+    if (fill_params(screen, params, 1) != 1) { REPORT_ERROR("Expected parameter for CSI escape sequence: %s missing", #name); } \
+    else { \
+        REPORT_COMMAND(name, params[0]); \
+        screen_insert_characters(screen, params[0]); \
+    } \
+    SET_STATE(NORMAL_STATE); \
+    break; 
 
     uint8_t ch = buf[(*pos)++];
+    unsigned int params[MAX_PARAMS];
     switch(screen->parser_buf_pos) {
         case 0:  // CSI starting
             screen->parser_buf[0] = 0;
@@ -250,9 +280,9 @@ HANDLER(csi) {
                     break;
                 HANDLE_BASIC_CH
                 default:
-                    REPORT_ERROR("%s%d", "Invalid first character for CSI: ", (int)ch);
+                    REPORT_ERROR("Invalid first character for CSI: 0x%x", ch);
                     SET_STATE(NORMAL_STATE); 
-                    return;
+                    break;
             }
             break;
         default: // CSI started
@@ -264,12 +294,21 @@ HANDLER(csi) {
                         SET_STATE(NORMAL_STATE); 
                     } else screen->parser_buf[screen->parser_buf_pos++] = ch;
                     break;
+                HANDLE_BASIC_CH
+                default:
+                    REPORT_ERROR("Invalid character for CSI: 0x%x", ch);
+                    SET_STATE(NORMAL_STATE); 
+                    break;
+                case ICH:
+                    CALL_CSI_HANDLER1(screen_insert_characters);
             }
             break;
     }
 #undef CALL_BASIC_HANDLER
 #undef HANDLE_BASIC_CH
+#undef CALL_CSI_HANDLER1
 }
+#undef MAX_PARAMS
 // }}}
 
 // Parse OSC {{{
