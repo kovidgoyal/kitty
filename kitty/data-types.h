@@ -225,6 +225,8 @@ typedef struct {
 } Savepoint;
 PyTypeObject Savepoint_Type;
 
+#define PARSER_BUF_SZ 8192
+
 typedef struct {
     PyObject_HEAD
 
@@ -239,8 +241,8 @@ typedef struct {
     ChangeTracker *change_tracker;
     ScreenModes modes;
 
-    uint8_t parser_buf[8192];
-    unsigned int parser_state, parser_text_start;
+    uint8_t parser_buf[PARSER_BUF_SZ];
+    unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
 
 } Screen;
@@ -304,6 +306,13 @@ void screen_toggle_screen_buffer(Screen *self);
 void screen_normal_keypad_mode(Screen *self); 
 void screen_alternate_keypad_mode(Screen *self);  
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
+void screen_define_charset(Screen *self, uint8_t code, uint8_t mode);
+void screen_select_other_charset(Screen *self, uint8_t code, uint8_t mode);
+void screen_alignment_display(Screen *self);
+void screen_reverse_index(Screen *self);
+void screen_index(Screen *self);
+void screen_reset(Screen *self);
+void screen_set_tab_stop(Screen *self);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

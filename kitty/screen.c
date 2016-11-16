@@ -88,14 +88,36 @@ void screen_bell(Screen UNUSED *self, uint8_t ch) {  // {{{
 
 // Draw text {{{
  
-void screen_shift_out(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_shift_out(Screen *self, uint8_t UNUSED ch) {
     self->current_charset = 1;
     self->utf8_state = 0;
 }
 
-void screen_shift_in(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_shift_in(Screen *self, uint8_t UNUSED ch) {
     self->current_charset = 0;
     self->utf8_state = 0;
+}
+
+void screen_define_charset(Screen *self, uint8_t code, uint8_t mode) {
+    switch(mode) {
+        case '(':
+            self->g0_charset = translation_table(code);
+            break;
+        default:
+            self->g1_charset = translation_table(code);
+            break;
+    }
+}
+
+void screen_select_other_charset(Screen *self, uint8_t code, uint8_t UNUSED unused) {
+    switch(code) {
+        case '@':
+            self->current_charset = 0;
+            break;
+        default:
+            self->current_charset = 2;
+            self->utf8_state = 0;
+    }
 }
 
 static inline unsigned int safe_wcwidth(uint32_t ch) {
@@ -188,6 +210,16 @@ void screen_change_default_color(Screen *self, unsigned int which, uint32_t col)
     else PyObject_CallMethod(self->callbacks, "change_default_color", "sO", which == FG ? "fg" : "bg", Py_None);
     if (PyErr_Occurred()) PyErr_Print();
     PyErr_Clear(); 
+}
+
+void screen_alignment_display(Screen *self) {
+    // http://www.vt100.net/docs/vt510-rm/DECALN.html 
+    screen_cursor_position(self, 1, 1);
+    self->margin_top = 0; self->margin_bottom = self->columns - 1;
+    for (unsigned int y = 0; y < self->linebuf->ynum; y++) {
+        linebuf_init_line(self->linebuf, y);
+        line_clear_text(self->linebuf->line, 0, self->linebuf->xnum, 'E');
+    }
 }
 // }}}
 
@@ -313,10 +345,10 @@ void screen_reset_mode(Screen *self, int mode) {
 
 // Cursor {{{
 
-void screen_backspace(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_backspace(Screen *self, uint8_t UNUSED ch) {
     screen_cursor_back(self, 1, -1);
 }
-void screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
+void screen_tab(Screen *self, uint8_t UNUSED ch) {
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
     unsigned int found = 0;
     for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
@@ -327,6 +359,11 @@ void screen_tab(Screen UNUSED *self, uint8_t UNUSED ch) {
         self->cursor->x = found;
         tracker_cursor_changed(self->change_tracker);
     }
+}
+
+void screen_set_tab_stop(Screen *self) {
+    if ((unsigned int)self->cursor->x < self->columns && self->cursor->x >= 0)
+        self->tabstops[self->cursor->x] = true;
 }
 
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {

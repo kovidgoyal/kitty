@@ -63,3 +63,45 @@
 
 // *Operating system command*.
 #define OSC 0x9d
+
+// Sharp control codes
+
+// Align display 
+#define DECALN '8'
+
+// Esc control codes
+
+// *Reset*.
+#define RIS 'c'
+
+// *Index*: Move cursor down one line in same column. If the cursor is
+// at the bottom margin, the screen performs a scroll-up.
+#define IND 'D'
+
+// *Next line*: Same as :data:`pyte.control.LF`.
+#define NEL 'E'
+
+// Tabulation set: Set a horizontal tab stop at cursor position.
+#define HTS 'H'
+
+// *Reverse index*: Move cursor up one line in same column. If the
+// cursor is at the top margin, the screen performs a scroll-down.
+#define RI 'M'
+
+// Save cursor: Save cursor position, character attribute (graphic
+// rendition), character set, and origin mode selection (see
+// :data:`DECRC`).
+#define DECSC '7'
+
+// *Restore cursor*: Restore previously saved cursor position, character
+// attribute (graphic rendition), character set, and origin mode
+// selection. If none were saved, move cursor to home position.
+#define DECRC '8'
+
+// Set normal keypad mode
+#define DECPNM '>'
+
+// Set alternate keypad mode
+#define DECPAM  '='
+
+
