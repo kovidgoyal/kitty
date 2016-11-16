@@ -65,11 +65,13 @@
 #define OSC 0x9d
 
 // Sharp control codes
+// -------------------
 
 // Align display 
 #define DECALN '8'
 
 // Esc control codes
+// ------------------
 
 // *Reset*.
 #define RIS 'c'
@@ -104,4 +106,117 @@
 // Set alternate keypad mode
 #define DECPAM  '='
 
+// ECMA-48 CSI sequences.
+// ---------------------
 
+// *Insert character*: Insert the indicated # of blank characters.
+#define ICH '@'
+
+// *Cursor up*: Move cursor up the indicated # of lines in same column.
+// Cursor stops at top margin.
+#define CUU 'A'
+
+// *Cursor down*: Move cursor down the indicated # of lines in same
+// column. Cursor stops at bottom margin.
+#define CUD 'B'
+
+// *Cursor forward*: Move cursor right the indicated # of columns.
+// Cursor stops at right margin.
+#define CUF 'C'
+
+// *Cursor back*: Move cursor left the indicated # of columns. Cursor
+// stops at left margin.
+#define CUB 'D'
+
+// *Cursor next line*: Move cursor down the indicated # of lines to
+// column 1.
+#define CNL 'E'
+
+// *Cursor previous line*: Move cursor up the indicated # of lines to
+// column 1.
+#define CPL 'F'
+
+// *Cursor horizontal align*: Move cursor to the indicated column in
+// current line.
+#define CHA 'G'
+
+// *Cursor position*: Move cursor to the indicated line, column (origin
+// at ``1, 1``).
+#define CUP 'H'
+
+// *Erase data* (default: from cursor to end of line).
+#define ED 'J'
+
+// *Erase in line* (default: from cursor to end of line).
+#define EL 'K'
+
+// *Insert line*: Insert the indicated # of blank lines, starting from
+// the current line. Lines displayed below cursor move down. Lines moved
+// past the bottom margin are lost.
+#define IL 'L'
+
+// *Delete line*: Delete the indicated # of lines, starting from the
+// current line. As lines are deleted, lines displayed below cursor
+// move up. Lines added to bottom of screen have spaces with same
+// character attributes as last line move up.
+#define DL 'M'
+
+// *Delete character*: Delete the indicated # of characters on the
+// current line. When character is deleted, all characters to the right
+// of cursor move left.
+#define DCH 'P'
+
+// *Erase character*: Erase the indicated # of characters on the
+// current line.
+#define ECH 'X'
+
+// *Horizontal position relative*: Same as :data:`CUF`.
+#define HPR 'a'
+
+// *Device Attributes*.
+#define DA 'c'
+
+// *Vertical position adjust*: Move cursor to the indicated line,
+// current column.
+#define VPA 'd'
+
+// *Vertical position relative*: Same as :data:`CUD`.
+#define VPR 'e'
+
+// *Horizontal / Vertical position*: Same as :data:`CUP`.
+#define HVP 'f'
+
+// *Tabulation clear*: Clears a horizontal tab stop at cursor position.
+#define TBC 'g'
+
+// *Set mode*.
+#define SM 'h'
+
+// *Reset mode*.
+#define RM 'l'
+
+// *Select graphics rendition*: The terminal can display the following
+// character attributes that change the character display without
+// changing the character (see :mod:`pyte.graphics`).
+#define SGR 'm'
+
+// *Device status report*.
+#define DSR 'n'
+
+// Soft reset
+#define DECSTR 'p'
+
+// *Select top and bottom margins*: Selects margins, defining the
+// scrolling region; parameters are top and bottom line. If called
+// without any arguments, whole screen is used.
+#define DECSTBM 'r'
+
+// *Horizontal position adjust*: Same as :data:`CHA`.
+#define HPA '\''
+
+
+// Misc sequences
+// ----------------
+
+// Change cursor shape/blink
+#define DECSCUSR 'q'

@@ -12,6 +12,8 @@ from kitty.fast_data_types import parse_bytes, parse_bytes_dump
 class CmdDump(list):
 
     def __call__(self, *a):
+        if len(a) == 1:
+            a = a[0]
         self.append(a)
 
 
@@ -33,7 +35,7 @@ class TestScreen(BaseTest):
         pb('3456')
         self.ae(str(s.line(0)), '12345')
         self.ae(str(s.line(1)), '6    ')
-        pb(b'\n123\n\r45', ('screen_linefeed', '\n'), ('screen_linefeed', '\n'), ('screen_carriage_return', '\r'))
+        pb(b'\n123\n\r45', ('screen_linefeed', ord('\n')), ('screen_linefeed', ord('\n')), ('screen_carriage_return', ord('\r')))
         self.ae(str(s.line(1)), '6    ')
         self.ae(str(s.line(2)), ' 123 ')
         self.ae(str(s.line(3)), '45   ')
@@ -47,9 +49,9 @@ class TestScreen(BaseTest):
     def test_esc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_buytes_dump, s)
-        pb('12\033Da', ('screen_index',))
+        pb('12\033Da', 'screen_index')
         self.ae(str(s.line(0)), '12   ')
         self.ae(str(s.line(1)), '  a  ')
-        pb('\033x', ('Unknown char in escape_dispatch: ', ord('x')))
-        pb('\033c123', ('screen_reset',))
+        pb('\033x', 'Unknown char in escape_dispatch: %d' % ord('x'))
+        pb('\033c123', 'screen_reset')
         self.ae(str(s.line(0)), '123  ')
