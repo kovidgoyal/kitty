@@ -775,6 +775,23 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED private)
     }
 }
 
+void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
+    if (!top) top = 1;
+    if (!bottom) bottom = self->lines;
+    top = MIN(self->lines, top);
+    bottom = MIN(self->lines, bottom);
+    top--; bottom--;  // 1 based indexing
+    if (bottom > top) {
+        // Even though VT102 and VT220 require DECSTBM to ignore regions
+        // of width less than 2, some programs (like aptitude for example)
+        // rely on it. Practicality beats purity.
+        self->margin_top = top; self->margin_bottom = bottom;
+        // The cursor moves to the home position when the top and
+        // bottom margins of the scrolling region (DECSTBM) changes.
+        screen_cursor_position(self, 1, 1);
+    }
+}
+
 // }}}
 
 // Python interface {{{
@@ -942,6 +959,8 @@ static PyMemberDef members[] = {
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), 0, "linebuf"},
     {"lines", T_UINT, offsetof(Screen, lines), 0, "lines"},
     {"columns", T_UINT, offsetof(Screen, columns), 0, "columns"},
+    {"margin_top", T_UINT, offsetof(Screen, margin_top), 0, "margin_top"},
+    {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), 0, "margin_bottom"},
     {"current_charset", T_UINT, offsetof(Screen, current_charset), 0, "current_charset"},
     {NULL}
 };

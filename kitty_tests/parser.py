@@ -116,3 +116,7 @@ class TestScreen(BaseTest):
         c.clear()
         pb('\033[6n', ('report_device_status', 6, 0))
         self.ae(c.wtcbuf, b'\033[2;1R')
+        pb('\033[2;4r', ('screen_set_margins', 2, 4))
+        self.ae(s.margin_top, 1), self.ae(s.margin_bottom, 3)
+        pb('\033[r', ('screen_set_margins', 0, 0))
+        self.ae(s.margin_top, 0), self.ae(s.margin_bottom, 4)

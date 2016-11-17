@@ -344,6 +344,8 @@ HANDLER(csi) {
         CSI_HANDLER_MULTIPLE(select_graphic_rendition); \
     case DSR: \
         CALL_CSI_HANDLER1P(report_device_status, 0, '?'); \
+    case DECSTBM: \
+        CALL_CSI_HANDLER2(screen_set_margins, 0, 0); \
 
     uint8_t ch = buf[(*pos)++];
     unsigned int params[MAX_PARAMS], p1, p2, count, i;
