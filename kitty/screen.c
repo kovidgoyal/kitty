@@ -130,7 +130,7 @@ static inline void
 draw_codepoint(Screen UNUSED *self, uint32_t ch) {
     if (is_ignored_char(ch)) return;
     unsigned int char_width = safe_wcwidth(ch);
-    if (self->columns - (unsigned int)self->cursor->x < char_width) {
+    if (self->columns - self->cursor->x < char_width) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self, 13);
             screen_linefeed(self, 10);
@@ -151,7 +151,7 @@ draw_codepoint(Screen UNUSED *self, uint32_t ch) {
             line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor);
             self->cursor->x++;
         }
-        unsigned int right = self->modes.mIRM ? self->columns - 1 : MIN((unsigned int)(MAX(self->cursor->x, 1) - 1), self->columns - 1);
+        unsigned int right = self->modes.mIRM ? self->columns - 1 : MIN((MAX(self->cursor->x, 1) - 1), self->columns - 1);
         tracker_update_cell_range(self->change_tracker, self->cursor->y, cx, right);
     } else if (is_combining_char(ch)) {
         if (self->cursor->x > 0) {
@@ -423,7 +423,7 @@ void screen_tab(Screen *self, uint8_t UNUSED ch) {
         if (self->tabstops[i]) { found = i; break; }
     }
     if (!found) found = self->columns - 1;
-    if (found != (unsigned int)self->cursor->x) {
+    if (found != self->cursor->x) {
         self->cursor->x = found;
         tracker_cursor_changed(self->change_tracker);
     }
@@ -432,7 +432,7 @@ void screen_tab(Screen *self, uint8_t UNUSED ch) {
 void screen_clear_tab_stop(Screen *self, unsigned int how) {
     switch(how) {
         case 0:
-            if ((unsigned int)self->cursor->x < self->columns) self->tabstops[self->cursor->x] = false;
+            if (self->cursor->x < self->columns) self->tabstops[self->cursor->x] = false;
             break;
         case 3:
             break;
@@ -441,14 +441,15 @@ void screen_clear_tab_stop(Screen *self, unsigned int how) {
 }
 
 void screen_set_tab_stop(Screen *self) {
-    if ((unsigned int)self->cursor->x < self->columns && self->cursor->x >= 0)
+    if (self->cursor->x < self->columns)
         self->tabstops[self->cursor->x] = true;
 }
 
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    int x = self->cursor->x;
+    unsigned int x = self->cursor->x;
     if (count == 0) count = 1;
-    self->cursor->x += move_direction * count;
+    if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
+    else self->cursor->x += move_direction * count;
     screen_ensure_bounds(self, false);
     if (x != self->cursor->x) tracker_cursor_changed(self->change_tracker);
 }
@@ -458,9 +459,10 @@ void screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
 }
 
 void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
-    int x = self->cursor->x, y = self->cursor->y;
+    unsigned int x = self->cursor->x, y = self->cursor->y;
     if (count == 0) count = 1;
-    self->cursor->y += move_direction * count;
+    if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
+    else self->cursor->y += move_direction * count;
     screen_ensure_bounds(self, true);
     if (do_carriage_return) self->cursor->x = 0;
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
@@ -480,7 +482,7 @@ void screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
 
 void screen_cursor_to_column(Screen *self, unsigned int column) {
     unsigned int x = MAX(column, 1) - 1;
-    if (x != (unsigned int)self->cursor->x) {
+    if (x != self->cursor->x) {
         self->cursor->x = x;
         screen_ensure_bounds(self, false);
         tracker_cursor_changed(self->change_tracker);
@@ -490,7 +492,7 @@ void screen_cursor_to_column(Screen *self, unsigned int column) {
 void screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
-    if ((unsigned int)self->cursor->y == self->margin_bottom) {
+    if (self->cursor->y == self->margin_bottom) {
         linebuf_index(self->linebuf, top, bottom);
         if (self->linebuf == self->main_linebuf) {
             // TODO: Add line to tophistorybuf
@@ -505,7 +507,7 @@ void screen_index(Screen *self) {
 void screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
-    if ((unsigned int)self->cursor->y == top) {
+    if (self->cursor->y == top) {
         linebuf_reverse_index(self->linebuf, top, bottom);
         linebuf_clear_line(self->linebuf, top);
         if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker);
@@ -568,8 +570,8 @@ void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
     } else {
         top = 0; bottom = self->lines - 1;
     }
-    self->cursor->x = MIN((unsigned int)MAX(0, self->cursor->x), self->columns - 1);
-    self->cursor->y = MAX(top, MIN((unsigned int)MAX(0, self->cursor->y), bottom));
+    self->cursor->x = MIN(self->cursor->x, self->columns - 1);
+    self->cursor->y = MAX(top, MIN(self->cursor->y, bottom));
 }
 
 void screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
@@ -579,7 +581,7 @@ void screen_cursor_position(Screen *self, unsigned int line, unsigned int column
         line += self->margin_top;
         if (line < self->margin_bottom || line > self->margin_top) return;
     }
-    int x = self->cursor->x, y = self->cursor->y;
+    unsigned int x = self->cursor->x, y = self->cursor->y;
     self->cursor->x = column; self->cursor->y = line;
     screen_ensure_bounds(self, false);
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
@@ -588,7 +590,7 @@ void screen_cursor_position(Screen *self, unsigned int line, unsigned int column
 void screen_cursor_to_line(Screen *self, unsigned int line) {
     unsigned int y = MAX(line, 1) - 1;
     y += self->margin_top; 
-    if (y != (unsigned int)self->cursor->y) {
+    if (y != self->cursor->y) {
         self->cursor->y = y;
         screen_ensure_bounds(self, false); // TODO: should we also restrict the cursor to the scrolling region?
         tracker_cursor_changed(self->change_tracker);
@@ -681,7 +683,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
 void screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
-    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+    if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
         screen_carriage_return(self, 13);
@@ -691,7 +693,7 @@ void screen_insert_lines(Screen *self, unsigned int count) {
 void screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
-    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+    if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
         screen_carriage_return(self, 13);
@@ -701,7 +703,7 @@ void screen_delete_lines(Screen *self, unsigned int count) {
 void screen_insert_characters(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
-    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+    if (top <= self->cursor->y && self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
         linebuf_init_line(self->linebuf, self->cursor->y);
@@ -715,7 +717,7 @@ void screen_delete_characters(Screen *self, unsigned int count) {
     // Delete characters, later characters are moved left
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
-    if (top <= (unsigned int)self->cursor->y && (unsigned int)self->cursor->y <= bottom) {
+    if (top <= self->cursor->y && self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
         unsigned int num = MIN(self->columns - x, count);
         linebuf_init_line(self->linebuf, self->cursor->y);

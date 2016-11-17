@@ -152,7 +152,7 @@ typedef struct {
     PyObject_HEAD
 
     bool bold, italic, reverse, strikethrough, blink, hidden;
-    int x, y;
+    unsigned int x, y;
     uint8_t decoration, shape;
     unsigned long fg, bg, decoration_fg, color;
 

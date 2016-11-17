@@ -74,8 +74,8 @@ BOOL_GETSET(Cursor, hidden)
 BOOL_GETSET(Cursor, blink)
 
 static PyMemberDef members[] = {
-    {"x", T_INT, offsetof(Cursor, x), 0, "x"},
-    {"y", T_INT, offsetof(Cursor, y), 0, "y"},
+    {"x", T_UINT, offsetof(Cursor, x), 0, "x"},
+    {"y", T_UINT, offsetof(Cursor, y), 0, "y"},
     {"shape", T_UBYTE, offsetof(Cursor, shape), 0, "shape"},
     {"color", T_ULONG, offsetof(Cursor, color), 0, "color"},
     {"decoration", T_UBYTE, offsetof(Cursor, decoration), 0, "decoration"},
