@@ -17,6 +17,18 @@ class CmdDump(list):
         self.append(a)
 
 
+class Callbacks:
+
+    def __init__(self):
+        self.clear()
+
+    def write_to_child(self, data):
+        self.wtcbuf += data
+
+    def clear(self):
+        self.wtcbuf = b''
+
+
 class TestScreen(BaseTest):
 
     def parse_buytes_dump(self, s, x, *cmds):
@@ -93,3 +105,14 @@ class TestScreen(BaseTest):
         pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', 10))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 3)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 3)
+        c = Callbacks()
+        s.callbacks = c
+        pb('\033[5n', ('report_device_status', 5, 0))
+        self.ae(c.wtcbuf, b'\033[0n')
+        c.clear()
+        pb('\033[6n', ('report_device_status', 6, 0))
+        self.ae(c.wtcbuf, b'\033[1;1R')
+        pb('12345')
+        c.clear()
+        pb('\033[6n', ('report_device_status', 6, 0))
+        self.ae(c.wtcbuf, b'\033[2;1R')

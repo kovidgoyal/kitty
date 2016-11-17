@@ -753,6 +753,28 @@ void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSE
     write_to_child(self, "\x1b[?62c", 0);  // Corresponds to VT-220
 }
 
+void report_device_status(Screen *self, unsigned int which, bool UNUSED private) {
+    // We dont implement the private device status codes, since I haven;t come
+    // across any programs that use them
+    unsigned int x, y;
+    char buf[50] = {0};
+    switch(which) {
+        case 5:  // device status
+            write_to_child(self, "\x1b[0n", 0); 
+            break;
+        case 6:  // cursor position
+            x = self->cursor->x; y = self->cursor->y;
+            if (x >= self->columns) {
+                if (y < self->lines - 1) { x = 0; y++; }
+                else x--;
+            }
+            if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
+            x++; y++;  // 1-based indexing
+            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%u;%uR", y, x) > 0) write_to_child(self, buf, 0);
+            break;
+    }
+}
+
 // }}}
 
 // Python interface {{{
@@ -915,6 +937,7 @@ static PyMethodDef methods[] = {
 };
 
 static PyMemberDef members[] = {
+    {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), 0, "cursor"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), 0, "linebuf"},
     {"lines", T_UINT, offsetof(Screen, lines), 0, "lines"},
