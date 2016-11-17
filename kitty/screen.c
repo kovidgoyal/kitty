@@ -221,6 +221,74 @@ void screen_alignment_display(Screen *self) {
         line_clear_text(self->linebuf->line, 0, self->linebuf->xnum, 'E');
     }
 }
+
+void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count) {
+#define SET_COLOR(which) \
+    if (i < count) { \
+        attr = params[i++];\
+        switch(attr) { \
+            case 5: \
+                if (i < count) \
+                    self->cursor->which = (params[i++] & 0xFF) << 8 | 2; \
+                break; \
+            case 2: \
+                if (i < count - 2) { \
+                    r = params[i++] & 0xFF; \
+                    g = params[i++] & 0xFF; \
+                    b = params[i++] & 0xFF; \
+                    self->cursor->which = r << 24 | g << 16 | b << 8 | 3; \
+                }\
+                break; \
+        } \
+    } \
+    break;
+
+    unsigned int i = 0, attr;
+    uint8_t r, g, b;
+    if (!count) { params[0] = 0; count = 1; }
+    while (i < count) {
+        attr = params[i++];
+        switch(attr) {
+            case 0:
+                cursor_reset_display_attrs(self->cursor);  break;
+            case 1:
+                self->cursor->bold = true;  break;
+            case 3:
+                self->cursor->italic = true;  break;
+            case 4:
+                self->cursor->decoration = 1;  break;
+            case 7:
+                self->cursor->reverse = true;  break;
+            case 9:
+                self->cursor->strikethrough = true;  break;
+            case 22:
+                self->cursor->bold = false;  break;
+            case 23:
+                self->cursor->italic = false;  break;
+            case 24:
+                self->cursor->decoration = 0;  break;
+            case 27:
+                self->cursor->reverse = false;  break;
+            case 29:
+                self->cursor->strikethrough = false;  break;
+#pragma GCC diagnostic ignored "-Wpedantic"
+            case 30 ... 37:
+            case 39:
+            case 90 ... 97:
+                self->cursor->fg = (attr << 8) | 1;  break;
+            case 40 ... 47:
+            case 49:
+            case 100 ... 107:
+#pragma GCC diagnostic pop
+                self->cursor->bg = (attr << 8) | 1;  break;
+            case 38: 
+                SET_COLOR(fg);
+            case 48: 
+                SET_COLOR(bg);
+        }
+    }
+}
+
 // }}}
 
 // Modes {{{
@@ -242,7 +310,7 @@ void screen_toggle_screen_buffer(Screen *self) {
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
 void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
 
-static inline void set_mode_from_const(Screen *self, int mode, bool val) {
+static inline void set_mode_from_const(Screen *self, unsigned int mode, bool val) {
     switch(mode) {
         case LNM: 
             self->modes.mLNM = val; break;
@@ -265,7 +333,7 @@ static inline void set_mode_from_const(Screen *self, int mode, bool val) {
     }
 }
 
-void screen_set_mode(Screen *self, int mode) {
+void screen_set_mode(Screen *self, unsigned int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
@@ -311,7 +379,7 @@ enable_focus_tracking(Screen *self) {
     return ans;
 }
 
-void screen_reset_mode(Screen *self, int mode) {
+void screen_reset_mode(Screen *self, unsigned int mode) {
     if (mode == DECCOLM) {
         // When DECCOLM mode is set, the screen is erased and the cursor
         // moves to the home position.
@@ -358,6 +426,17 @@ void screen_tab(Screen *self, uint8_t UNUSED ch) {
     if (found != (unsigned int)self->cursor->x) {
         self->cursor->x = found;
         tracker_cursor_changed(self->change_tracker);
+    }
+}
+
+void screen_clear_tab_stop(Screen *self, unsigned int how) {
+    switch(how) {
+        case 0:
+            if ((unsigned int)self->cursor->x < self->columns) self->tabstops[self->cursor->x] = false;
+            break;
+        case 3:
+            break;
+            for (unsigned int i = 0; i < self->columns; i++) self->tabstops[i] = false;
     }
 }
 
@@ -506,6 +585,16 @@ void screen_cursor_position(Screen *self, unsigned int line, unsigned int column
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
 
+void screen_cursor_to_line(Screen *self, unsigned int line) {
+    unsigned int y = MAX(line, 1) - 1;
+    y += self->margin_top; 
+    if (y != (unsigned int)self->cursor->y) {
+        self->cursor->y = y;
+        screen_ensure_bounds(self, false); // TODO: should we also restrict the cursor to the scrolling region?
+        tracker_cursor_changed(self->change_tracker);
+    }
+}
+
 // }}}
 
 // Editing {{{
@@ -645,6 +734,23 @@ void screen_erase_characters(Screen *self, unsigned int count) {
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
     tracker_update_cell_range(self->change_tracker, self->cursor->y, x, MIN(x + num, self->columns) - 1);
 }
+
+// }}}
+
+// Device control {{{
+
+static inline void write_to_child(Screen *self, const char *data, unsigned int sz) {
+    if (sz) PyObject_CallMethod(self->callbacks, "write_to_child", "y#", data, sz);
+    else PyObject_CallMethod(self->callbacks, "write_to_child", "y", data);
+    if (PyErr_Occurred()) PyErr_Print();
+    PyErr_Clear(); 
+}
+
+void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
+    // Do the same as libvte, which gives the below response regardless of mode and secondary
+    write_to_child(self, "\x1b[?62c", 0);  // Corresponds to VT-220
+}
+
 // }}}
 
 // Python interface {{{
@@ -829,4 +935,3 @@ PyTypeObject Screen_Type = {
 
 INIT_TYPE(Screen)
 // }}}
-

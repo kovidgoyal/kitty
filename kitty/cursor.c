@@ -36,7 +36,7 @@ repr(Cursor *self) {
     );
 }
 
-static inline void cursor_reset_display_attrs(Cursor *self) {
+void cursor_reset_display_attrs(Cursor *self) {
     self->bg = 0; self->fg = 0; self->decoration_fg = 0;
     self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
 }

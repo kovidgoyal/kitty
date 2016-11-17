@@ -216,7 +216,7 @@ HANDLER(esc) {
 
 // Parse CSI {{{
 
-#define MAX_PARAMS 8
+#define MAX_PARAMS 100
 
 static inline unsigned int fill_params(Screen *screen, unsigned int *params, unsigned int expect) {
     unsigned int start_pos = 1, i = 1, pi = 0;
@@ -256,20 +256,21 @@ HANDLER(csi) {
     case NUL: \
     case DEL: \
         break;  // no-op
+
+#define END_DISPATCH SET_STATE(NORMAL_STATE); break;
+
 #define CALL_CSI_HANDLER1(name, defval) \
     p1 = fill_params(screen, params, 1) > 0 ? params[0] : defval; \
     REPORT_COMMAND(name, p1); \
     name(screen, p1); \
-    SET_STATE(NORMAL_STATE); \
-    break; 
+    END_DISPATCH;
 
-#define CALL_CSI_HANDLER1P(name, defval) \
+#define CALL_CSI_HANDLER1P(name, defval, qch) \
     p1 = fill_params(screen, params, 1) > 0 ? params[0] : defval; \
-    private = screen->parser_buf[0] == '?'; \
+    private = screen->parser_buf[0] == qch; \
     REPORT_COMMAND(name, p1, private); \
     name(screen, p1, private); \
-    SET_STATE(NORMAL_STATE); \
-    break; 
+    END_DISPATCH;
 
 #define CALL_CSI_HANDLER2(name, defval1, defval2) \
     count = fill_params(screen, params, 2); \
@@ -277,8 +278,23 @@ HANDLER(csi) {
     p2 = count > 1 ? params[1] : defval2; \
     REPORT_COMMAND(name, p1, p2); \
     name(screen, p1, p2); \
-    SET_STATE(NORMAL_STATE); \
-    break; 
+    END_DISPATCH;
+
+#define SET_MODE(func) \
+    count = fill_params(screen, params, MAX_PARAMS); \
+    p1 = screen->parser_buf[0] == '?' ? 5 : 0; \
+    for (i = 0; i < count; i++) { \
+        REPORT_COMMAND(func, params[i] << p1); \
+        func(screen, params[i] << p1); \
+    } \
+    END_DISPATCH;
+
+#define CSI_HANDLER_MULTIPLE(name) \
+    count = fill_params(screen, params, MAX_PARAMS); \
+    REPORT_COMMAND(name, count); \
+    name(screen, params, count); \
+    END_DISPATCH;
+
 
 #define DISPATCH_CSI \
     case ICH: \
@@ -286,6 +302,7 @@ HANDLER(csi) {
     case CUU: \
         CALL_CSI_HANDLER1(screen_cursor_up2, 1); \
     case CUD: \
+    case VPR: \
         CALL_CSI_HANDLER1(screen_cursor_down, 1); \
     case CUF: \
     case HPR: \
@@ -298,12 +315,15 @@ HANDLER(csi) {
         CALL_CSI_HANDLER1(screen_cursor_up1, 1); \
     case CHA: \
         CALL_CSI_HANDLER1(screen_cursor_to_column, 1); \
+    case VPA: \
+        CALL_CSI_HANDLER1(screen_cursor_to_line, 1); \
     case CUP:  \
+    case HVP: \
         CALL_CSI_HANDLER2(screen_cursor_position, 1, 1); \
     case ED: \
-        CALL_CSI_HANDLER1P(screen_erase_in_display, 0); \
+        CALL_CSI_HANDLER1P(screen_erase_in_display, 0, '?'); \
     case EL: \
-        CALL_CSI_HANDLER1P(screen_erase_in_line, 0); \
+        CALL_CSI_HANDLER1P(screen_erase_in_line, 0, '?'); \
     case IL: \
         CALL_CSI_HANDLER1(screen_insert_lines, 1); \
     case DL: \
@@ -312,9 +332,19 @@ HANDLER(csi) {
         CALL_CSI_HANDLER1(screen_delete_characters, 1); \
     case ECH: \
         CALL_CSI_HANDLER1(screen_erase_characters, 1); \
+    case DA: \
+        CALL_CSI_HANDLER1P(report_device_attributes, 0, '>'); \
+    case TBC: \
+        CALL_CSI_HANDLER1(screen_clear_tab_stop, 0); \
+    case SM: \
+        SET_MODE(screen_set_mode); \
+    case RM: \
+        SET_MODE(screen_reset_mode); \
+    case SGR: \
+        CSI_HANDLER_MULTIPLE(select_graphic_rendition); \
 
     uint8_t ch = buf[(*pos)++];
-    unsigned int params[MAX_PARAMS], p1, p2, count;
+    unsigned int params[MAX_PARAMS], p1, p2, count, i;
     bool private;
     switch(screen->parser_buf_pos) {
         case 0:  // CSI starting

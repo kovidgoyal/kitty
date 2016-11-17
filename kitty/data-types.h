@@ -275,6 +275,7 @@ uint16_t* translation_table(char);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
+void cursor_reset_display_attrs(Cursor*);
 bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
 uint32_t to_color(ColorProfile *, uint32_t, uint32_t);
 
@@ -314,6 +315,9 @@ void screen_reverse_index(Screen *self);
 void screen_index(Screen *self);
 void screen_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
+void screen_clear_tab_stop(Screen *self, unsigned int how);
+void screen_set_mode(Screen *self, unsigned int mode);
+void screen_reset_mode(Screen *self, unsigned int mode);
 void screen_insert_characters(Screen *self, unsigned int count);
 void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/);
 void screen_cursor_to_column(Screen *self, unsigned int column);
@@ -321,10 +325,13 @@ void screen_cursor_down(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_forward(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_down1(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
+void screen_cursor_to_line(Screen *screen, unsigned int line);
 void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
 void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
 void screen_delete_characters(Screen *self, unsigned int count);
 void screen_erase_characters(Screen *self, unsigned int count);
+void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
+void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
