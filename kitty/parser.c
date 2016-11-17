@@ -219,7 +219,7 @@ HANDLER(esc) {
 #define MAX_PARAMS 100
 
 static inline unsigned int fill_params(Screen *screen, unsigned int *params, unsigned int expect) {
-    unsigned int start_pos = 1, i = 1, pi = 0;
+    unsigned int start_pos = 2, i = 2, pi = 0;
     uint8_t ch = 1;
     screen->parser_buf[screen->parser_buf_pos] = 0;
 
@@ -272,6 +272,12 @@ HANDLER(csi) {
     name(screen, p1, private); \
     END_DISPATCH;
 
+#define CALL_CSI_HANDLER1M(name, defval) \
+    p1 = fill_params(screen, params, 1) > 0 ? params[0] : defval; \
+    REPORT_COMMAND(name, p1, screen->parser_buf[1]); \
+    name(screen, p1, screen->parser_buf[1]); \
+    END_DISPATCH;
+
 #define CALL_CSI_HANDLER2(name, defval1, defval2) \
     count = fill_params(screen, params, 2); \
     p1 = count > 0 ? params[0] : defval1; \
@@ -314,6 +320,7 @@ HANDLER(csi) {
     case CPL:  \
         CALL_CSI_HANDLER1(screen_cursor_up1, 1); \
     case CHA: \
+    case HPA: \
         CALL_CSI_HANDLER1(screen_cursor_to_column, 1); \
     case VPA: \
         CALL_CSI_HANDLER1(screen_cursor_to_line, 1); \
@@ -346,6 +353,8 @@ HANDLER(csi) {
         CALL_CSI_HANDLER1P(report_device_status, 0, '?'); \
     case DECSTBM: \
         CALL_CSI_HANDLER2(screen_set_margins, 0, 0); \
+    case DECSCUSR: \
+        CALL_CSI_HANDLER1M(screen_set_cursor, 1); \
 
     uint8_t ch = buf[(*pos)++];
     unsigned int params[MAX_PARAMS], p1, p2, count, i;
@@ -354,10 +363,11 @@ HANDLER(csi) {
         case 0:  // CSI starting
             screen->parser_buf[0] = 0;
             screen->parser_buf[1] = 0;
+            screen->parser_buf[2] = 0;
             switch(ch) {
                 IS_DIGIT
-                    screen->parser_buf_pos = 2;
-                    screen->parser_buf[1] = ch;
+                    screen->parser_buf_pos = 3;
+                    screen->parser_buf[2] = ch;
                     break;
                 case '?':
                 case '>':
@@ -372,6 +382,8 @@ HANDLER(csi) {
                     break;
             }
             break;
+        case 1:
+            screen->parser_buf_pos = 2;  // we start params at 2
         default: // CSI started
             switch(ch) {
                 IS_DIGIT
@@ -380,6 +392,10 @@ HANDLER(csi) {
                         REPORT_ERROR("%s",  "CSI sequence too long, ignoring.");
                         SET_STATE(NORMAL_STATE); 
                     } else screen->parser_buf[screen->parser_buf_pos++] = ch;
+                    break;
+                case ' ':
+                case '"':
+                    screen->parser_buf[1] = ch;
                     break;
                 HANDLE_BASIC_CH
                 DISPATCH_CSI

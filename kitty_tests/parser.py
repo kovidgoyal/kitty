@@ -6,7 +6,7 @@ from functools import partial
 
 from . import BaseTest
 
-from kitty.fast_data_types import parse_bytes, parse_bytes_dump
+from kitty.fast_data_types import parse_bytes, parse_bytes_dump, CURSOR_BLOCK
 
 
 class CmdDump(list):
@@ -31,7 +31,7 @@ class Callbacks:
 
 class TestScreen(BaseTest):
 
-    def parse_buytes_dump(self, s, x, *cmds):
+    def parse_bytes_dump(self, s, x, *cmds):
         cd = CmdDump()
         if isinstance(x, str):
             x = x.encode('utf-8')
@@ -40,7 +40,7 @@ class TestScreen(BaseTest):
 
     def test_simple_parsing(self):
         s = self.create_screen()
-        pb = partial(self.parse_buytes_dump, s)
+        pb = partial(self.parse_bytes_dump, s)
 
         pb('12')
         self.ae(str(s.line(0)), '12   ')
@@ -60,7 +60,7 @@ class TestScreen(BaseTest):
 
     def test_esc_codes(self):
         s = self.create_screen()
-        pb = partial(self.parse_buytes_dump, s)
+        pb = partial(self.parse_bytes_dump, s)
         pb('12\033Da', 'screen_index')
         self.ae(str(s.line(0)), '12   ')
         self.ae(str(s.line(1)), '  a  ')
@@ -70,7 +70,7 @@ class TestScreen(BaseTest):
 
     def test_csi_codes(self):
         s = self.create_screen()
-        pb = partial(self.parse_buytes_dump, s)
+        pb = partial(self.parse_bytes_dump, s)
         pb('abcde')
         s.cursor_back(5)
         pb('x\033[2@y', ('screen_insert_characters', 2))
@@ -120,3 +120,6 @@ class TestScreen(BaseTest):
         self.ae(s.margin_top, 1), self.ae(s.margin_bottom, 3)
         pb('\033[r', ('screen_set_margins', 0, 0))
         self.ae(s.margin_top, 0), self.ae(s.margin_bottom, 4)
+        pb('\033[1 q', ('screen_set_cursor', 1, ord(' ')))
+        self.assertTrue(s.cursor.blink)
+        self.ae(s.cursor.shape, CURSOR_BLOCK)
