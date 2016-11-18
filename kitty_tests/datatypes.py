@@ -265,7 +265,7 @@ class TestDataTypes(BaseTest):
             self.assertTrue(is_simple_string(s))
             self.assertTrue(is_simple_string(d(s.encode('utf-8'))))
         self.assertFalse(is_simple_string('a1コ'))
-        self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
+        self.assertEqual(sanitize_title(b'a\0\01 \t\n\f\rb'), b'a b')
 
     def test_color_profile(self):
         c = ColorProfile()
