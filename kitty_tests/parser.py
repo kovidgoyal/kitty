@@ -146,3 +146,9 @@ class TestScreen(BaseTest):
         c.clear()
         pb('\033]2;;;;\x07', ('set_title', 3))
         self.ae(c.titlebuf, b';;;')
+
+    def test_dcs_codes(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb(b'a\033P2;xyz\x9cbcde')
+        self.ae(str(s.line(0)), 'abcde')

@@ -486,7 +486,11 @@ HANDLER(osc) {
 
 // Parse DCS {{{
 HANDLER(dcs) {
-    screen->parser_state = NORMAL_STATE;
+    // http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
+    uint8_t ch = buf[(*pos)++];
+    if (ch == ST) {
+        SET_STATE(NORMAL_STATE);
+    }
 }
 // }}}
 
