@@ -504,7 +504,7 @@ parse_bytes(PyObject UNUSED *self, PyObject *args) {
     Py_buffer pybuf;
     Screen *screen;
 #ifdef DUMP_COMMANDS
-    if (!PyArg_ParseTuple(args, "O!y*O", &Screen_Type, &screen, &pybuf, &dump_callback)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO!y*", &dump_callback, &Screen_Type, &screen, &pybuf)) return NULL;
     if (!PyCallable_Check(dump_callback)) { PyErr_SetString(PyExc_TypeError, "The dump callback must be a callable object"); return NULL; }
 #else
     if (!PyArg_ParseTuple(args, "O!y*", &Screen_Type, &screen, &pybuf)) return NULL;

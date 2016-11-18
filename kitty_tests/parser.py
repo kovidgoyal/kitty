@@ -41,7 +41,7 @@ class TestScreen(BaseTest):
         cd = CmdDump()
         if isinstance(x, str):
             x = x.encode('utf-8')
-        parse_bytes_dump(s, x, cd)
+        parse_bytes_dump(cd, s, x)
         self.ae(tuple(cd), cmds)
 
     def test_simple_parsing(self):

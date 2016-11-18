@@ -18,7 +18,7 @@ static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     PyObject *callbacks = Py_None;
-    unsigned int columns, lines;
+    unsigned int columns=80, lines=24;
     if (!PyArg_ParseTuple(args, "|OII", &callbacks, &lines, &columns)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
@@ -101,6 +101,12 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     // TODO: resize history buf
     return true;
 }
+
+static bool screen_change_scrollback_size(Screen UNUSED *self, unsigned int UNUSED size) {
+    // TODO: Implement this
+    return true;
+}
+
 
 static void
 dealloc(Screen* self) {
@@ -980,6 +986,36 @@ resize(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+change_scrollback_size(Screen *self, PyObject *args) {
+    unsigned int count = 1; 
+    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; 
+    if (!screen_change_scrollback_size(self, MAX(100, count))) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+screen_update_cell_data(Screen *self, PyObject *args) {
+    SpriteMap *spm;
+    ColorProfile *color_profile;
+    PyObject *dp;
+    unsigned int *data;
+    unsigned long default_bg, default_fg;
+    int force_screen_refresh;
+    if (!PyArg_ParseTuple(args, "O!O!O!kkp", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
+    data = PyLong_AsVoidPtr(dp);
+    PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
+    if (!tracker_update_cell_data(self->change_tracker, self->linebuf, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
+    Py_INCREF(cursor_changed);
+    return cursor_changed;
+}
+
+static PyObject* is_dirty(Screen *self) {
+    PyObject *ans = self->change_tracker->dirty ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
 #define COUNT_WRAP(name) \
     static PyObject* name(Screen *self, PyObject *args) { \
     unsigned int count = 1; \
@@ -1015,6 +1051,7 @@ static PyMethodDef methods[] = {
     MND(delete_lines, METH_VARARGS)
     MND(insert_characters, METH_VARARGS)
     MND(delete_characters, METH_VARARGS)
+    MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
     MND(cursor_up1, METH_VARARGS)
@@ -1023,7 +1060,9 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     MND(index, METH_NOARGS)
     MND(reverse_index, METH_NOARGS)
+    MND(is_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
+    {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
 };

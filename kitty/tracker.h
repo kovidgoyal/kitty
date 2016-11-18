@@ -52,3 +52,4 @@ static inline void tracker_reset(ChangeTracker *self) {
 
 PyObject* tracker_consolidate_changes(ChangeTracker *self);
 bool tracker_resize(ChangeTracker *self, unsigned int ynum, unsigned int xnum);
+bool tracker_update_cell_data(ChangeTracker *, LineBuf *, SpriteMap *, ColorProfile *, unsigned int *, unsigned long, unsigned long, bool);

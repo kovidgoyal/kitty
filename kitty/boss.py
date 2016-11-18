@@ -9,19 +9,20 @@ import select
 import subprocess
 import struct
 from itertools import repeat
+from functools import partial
 from time import monotonic
 from threading import Thread, current_thread
 from queue import Queue, Empty
 
 import glfw
-from pyte.streams import Stream, DebugStream
 
 from .constants import appname
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
-from .screen import Screen
 from .utils import resize_pty, create_pty, sanitize_title
-from .fast_data_types import BRACKETED_PASTE_START, BRACKETED_PASTE_END
+from .fast_data_types import (
+    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, parse_bytes_dump, parse_bytes
+)
 
 
 def handle_unix_signals():
@@ -53,10 +54,9 @@ class Boss(Thread):
         self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
-        self.screen = Screen(self.opts.scrollback_lines, self)
+        self.screen = Screen(self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
-        sclass = DebugStream if args.dump_commands else Stream
-        self.stream = sclass(self.screen)
+        self.parse_bytes = partial(parse_bytes_dump, print) if args.dump_commands else parse_bytes
         self.write_buf = memoryview(b'')
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
@@ -181,7 +181,7 @@ class Boss(Thread):
             if self.pending_update_screen is not None:
                 if monotonic() > self.pending_update_screen:
                     self.apply_update_screen()
-            elif self.screen.is_dirty:
+            elif self.screen.is_dirty():
                 self.pending_update_screen = monotonic() + self.SCREEN_UPDATE_DELAY
 
     def close(self):
@@ -209,7 +209,7 @@ class Boss(Thread):
         except EnvironmentError:
             data = b''
         if data:
-            self.stream.feed(data)
+            self.parse_bytes(self.screen, data)
         else:  # EOF
             self.shutdown()
 

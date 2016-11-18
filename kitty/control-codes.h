@@ -24,7 +24,7 @@
 // of the line if there is no earlier tab stop.
 #define HT 0x09
 
-// *Linefeed*: Give a line feed, and, if :data:`pyte.modes.LNM` (new
+// *Linefeed*: Give a line feed, and, if LNM (new
 // line mode) is set also a carriage return.
 #define LF 10
 
@@ -80,7 +80,7 @@
 // at the bottom margin, the screen performs a scroll-up.
 #define IND 'D'
 
-// *Next line*: Same as :data:`pyte.control.LF`.
+// *Next line*: Same as LF.
 #define NEL 'E'
 
 // Tabulation set: Set a horizontal tab stop at cursor position.
@@ -197,7 +197,7 @@
 
 // *Select graphics rendition*: The terminal can display the following
 // character attributes that change the character display without
-// changing the character (see :mod:`pyte.graphics`).
+// changing the character 
 #define SGR 'm'
 
 // *Device status report*.
