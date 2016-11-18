@@ -51,6 +51,7 @@ class TestScreen(BaseTest):
 
         pb('12', '12')
         self.ae(str(s.line(0)), '12   ')
+        self.ae(s.cursor.x, 2)
         pb('3456', '3456')
         self.ae(str(s.line(0)), '12345')
         self.ae(str(s.line(1)), '6    ')

@@ -231,6 +231,7 @@ screen_draw_charset(Screen *self, unsigned short *table, uint8_t *buf, unsigned 
 }
 
 void screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
+    unsigned int x = self->cursor->x, y = self->cursor->y;
     switch(self->current_charset) {
         case 0:
             screen_draw_charset(self, self->g0_charset, buf, buflen); break;
@@ -239,6 +240,7 @@ void screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
         default:
             screen_draw_utf8(self, buf, buflen); break;
     }
+    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
 // }}}
 
