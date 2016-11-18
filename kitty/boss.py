@@ -16,10 +16,11 @@ from queue import Queue, Empty
 import glfw
 from pyte.streams import Stream, DebugStream
 
+from .constants import appname
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
 from .screen import Screen
-from .utils import resize_pty, create_pty
+from .utils import resize_pty, create_pty, sanitize_title
 from .fast_data_types import BRACKETED_PASTE_START, BRACKETED_PASTE_END
 
 
@@ -144,7 +145,8 @@ class Boss(Thread):
 
     def render(self):
         if self.pending_title_change is not None:
-            glfw.glfwSetWindowTitle(self.window, self.pending_title_change)
+            t = sanitize_title(self.pending_title_change or appname)
+            glfw.glfwSetWindowTitle(self.window, t)
             self.pending_title_change = None
         if self.pending_icon_change is not None:
             self.pending_icon_change = None  # TODO: Implement this

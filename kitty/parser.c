@@ -414,8 +414,73 @@ HANDLER(csi) {
 // }}}
 
 // Parse OSC {{{
+
+static inline void handle_osc(Screen *screen, PyObject UNUSED *dump_callback) {
+    unsigned int code = 0;
+    unsigned int start = screen->parser_buf[0] ? screen->parser_buf[0] : 2;
+    unsigned int sz = screen->parser_buf_pos > start ? screen->parser_buf_pos - start : 0;
+    screen->parser_buf[screen->parser_buf_pos] = 0;
+    if (screen->parser_buf[0] && screen->parser_buf[1]) code = (unsigned int)atoi((const char*)screen->parser_buf + 2);
+#define DISPATCH_OSC(name) \
+    REPORT_COMMAND(name, sz); \
+    name(screen, screen->parser_buf + start, sz);
+
+    switch(code) {
+        case 0:
+            DISPATCH_OSC(set_title);
+            DISPATCH_OSC(set_icon);
+            break;
+        case 1:
+            DISPATCH_OSC(set_icon);
+            break;
+        case 2:
+            DISPATCH_OSC(set_title);
+            break;
+        default:
+            REPORT_ERROR("Unknown OSC code: %u", code);
+    }
+#undef DISPATCH_OSC
+}
+
+
 HANDLER(osc) {
-    screen->parser_state = NORMAL_STATE;
+#ifdef DUMP_COMMANDS
+#define HANDLE_OSC handle_osc(screen, dump_callback);
+#else
+#define HANDLE_OSC handle_osc(screen, NULL);
+#endif
+    uint8_t ch = buf[(*pos)++];
+    if (screen->parser_buf_pos == 0) {
+        screen->parser_buf[0] = 0;
+        screen->parser_buf[1] = 1;
+        screen->parser_buf_pos = 2;
+    }
+    switch(ch) {
+        case ST:
+        case BEL:
+            HANDLE_OSC;
+            SET_STATE(NORMAL_STATE);
+            break;
+        case 0:
+            break;  // ignore null bytes
+        case ';':
+            if (!screen->parser_buf[0] && screen->parser_buf_pos < 10) { 
+                // Initial numeric parameter found
+                screen->parser_buf[0] = screen->parser_buf_pos; 
+                break; 
+            }
+        default:
+            if (!screen->parser_buf[0] && (ch < '0' || ch > '9')) {
+                screen->parser_buf[1] = 0;  // No initial numeric parameter
+            }
+            if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
+                REPORT_ERROR("OSC control sequence too long, truncating");
+                HANDLE_OSC;
+                SET_STATE(NORMAL_STATE);
+                break;
+            }
+            screen->parser_buf[screen->parser_buf_pos++] = ch;
+    }
 }
 // }}}
 

@@ -25,8 +25,14 @@ class Callbacks:
     def write_to_child(self, data):
         self.wtcbuf += data
 
+    def title_changed(self, data):
+        self.titlebuf += data
+
+    def icon_changed(self, data):
+        self.iconbuf += data
+
     def clear(self):
-        self.wtcbuf = b''
+        self.wtcbuf = self.iconbuf = self.titlebuf = b''
 
 
 class TestScreen(BaseTest):
@@ -123,3 +129,20 @@ class TestScreen(BaseTest):
         pb('\033[1 q', ('screen_set_cursor', 1, ord(' ')))
         self.assertTrue(s.cursor.blink)
         self.ae(s.cursor.shape, CURSOR_BLOCK)
+
+    def test_osc_codes(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        c = Callbacks()
+        s.callbacks = c
+        pb(b'a\033]2;xyz\x9cbcde', ('set_title', 3))
+        self.ae(str(s.line(0)), 'abcde')
+        self.ae(c.titlebuf, b'xyz')
+        c.clear()
+        pb('\033]\x07', ('set_title', 0), ('set_icon', 0))
+        self.ae(c.titlebuf, b''), self.ae(c.iconbuf, b'')
+        pb('\033]23\x07', ('set_title', 2), ('set_icon', 2))
+        self.ae(c.titlebuf, b'23'), self.ae(c.iconbuf, b'23')
+        c.clear()
+        pb('\033]2;;;;\x07', ('set_title', 3))
+        self.ae(c.titlebuf, b';;;')

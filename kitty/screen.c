@@ -741,16 +741,16 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 
 // Device control {{{
 
-static inline void write_to_child(Screen *self, const char *data, unsigned int sz) {
-    if (sz) PyObject_CallMethod(self->callbacks, "write_to_child", "y#", data, sz);
-    else PyObject_CallMethod(self->callbacks, "write_to_child", "y", data);
+static inline void callback(const char *name, Screen *self, const char *data, unsigned int sz) {
+    if (sz) PyObject_CallMethod(self->callbacks, name, "y#", data, sz);
+    else PyObject_CallMethod(self->callbacks, name, "y", data);
     if (PyErr_Occurred()) PyErr_Print();
     PyErr_Clear(); 
 }
 
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
     // Do the same as libvte, which gives the below response regardless of mode and secondary
-    write_to_child(self, "\x1b[?62c", 0);  // Corresponds to VT-220
+    callback("write_to_child", self, "\x1b[?62c", 0);  // Corresponds to VT-220
 }
 
 void report_device_status(Screen *self, unsigned int which, bool UNUSED private) {
@@ -760,7 +760,7 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED private)
     char buf[50] = {0};
     switch(which) {
         case 5:  // device status
-            write_to_child(self, "\x1b[0n", 0); 
+            callback("write_to_child", self, "\x1b[0n", 0); 
             break;
         case 6:  // cursor position
             x = self->cursor->x; y = self->cursor->y;
@@ -770,7 +770,7 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED private)
             }
             if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
             x++; y++;  // 1-based indexing
-            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%u;%uR", y, x) > 0) write_to_child(self, buf, 0);
+            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%u;%uR", y, x) > 0) callback("write_to_child", self, buf, 0);
             break;
     }
 }
@@ -811,6 +811,14 @@ void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
             }
             break;
     }
+}
+
+void set_title(Screen *self, const uint8_t *buf, unsigned int sz) {
+    callback("title_changed", self, (const char*)buf, sz);
+}
+
+void set_icon(Screen *self, const uint8_t *buf, unsigned int sz) {
+    callback("icon_changed", self, (const char*)buf, sz);
 }
 
 // }}}

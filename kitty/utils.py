@@ -113,6 +113,8 @@ def timeit(name, do_timing=False):
 
 
 def sanitize_title(x):
+    if isinstance(x, bytes):
+        x = x.decode('utf-8', 'replace')
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
