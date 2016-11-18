@@ -415,10 +415,12 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
 #define next_dest_line(continued) {\
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
-        PyObject *l = create_line_copy_inner(dest, dest_y); \
-        if (l == NULL) return false; \
-        if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
-        Py_CLEAR(l); \
+        if (extra_lines != NULL) {\
+            PyObject *l = create_line_copy_inner(dest, dest_y); \
+            if (l == NULL) return false; \
+            if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
+            Py_CLEAR(l); \
+        }\
     } else dest_y++; \
     INIT_LINE(dest, dest->line, dest->line_map[dest_y]); \
     dest->continued_map[dest_y] = continued; \
@@ -426,6 +428,7 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
 }
 
 static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, PyObject *extra_lines) {
+    // TODO: Change this to put the extra lines into the history buf
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
     INIT_LINE(dest, dest->line, dest->line_map[dest_y]);
@@ -452,17 +455,9 @@ static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit
     return true;
 }
 
-static PyObject*
-rewrap(LineBuf *self, PyObject *val) {
-    LineBuf* other;
+bool linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, PyObject *extra_lines) {
     index_type first, i;
-    int cursor_y = -1;
     bool is_empty = true;
-
-    if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
-    other = (LineBuf*) val;
-    PyObject *ret = PyList_New(0);
-    if (ret == NULL) return PyErr_NoMemory();
 
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
@@ -471,7 +466,7 @@ rewrap(LineBuf *self, PyObject *val) {
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * CELL_SIZE);
         Py_END_ALLOW_THREADS;
-        goto end;
+        return true;
     }
 
     // Find the first line that contains some content
@@ -485,16 +480,27 @@ rewrap(LineBuf *self, PyObject *val) {
     }
     Py_END_ALLOW_THREADS;
 
-    if (first == 0) { cursor_y = 0; goto end; }  // All lines are empty
+    if (first == 0) { *cursor_y_out = 0; return true; }  // All lines are empty
 
-    if (!rewrap_inner(self, other, first + 1, ret)) {
-        Py_CLEAR(ret);
-        return PyErr_NoMemory();
+    if (!rewrap_inner(self, other, first + 1, extra_lines)) {
+        PyErr_NoMemory();
+        return false;
     }
+    *cursor_y_out = other->line->ynum;
+    return true;
+}
 
-    cursor_y = other->line->ynum;
+static PyObject*
+rewrap(LineBuf *self, PyObject *val) {
+    LineBuf* other;
+    int cursor_y = -1;
 
-end:
+    if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
+    other = (LineBuf*) val;
+    PyObject *ret = PyList_New(0);
+    if (ret == NULL) return PyErr_NoMemory();
+    if(!linebuf_rewrap(self, other, &cursor_y, ret)) return NULL;
+
     return Py_BuildValue("Ni", ret, cursor_y);
 }
 

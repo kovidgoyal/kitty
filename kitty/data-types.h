@@ -295,6 +295,7 @@ void linebuf_clear_line(LineBuf *self, index_type y);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
+bool linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, PyObject *extra_lines);
 
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

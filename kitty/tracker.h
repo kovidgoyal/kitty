@@ -51,3 +51,4 @@ static inline void tracker_reset(ChangeTracker *self) {
 }
 
 PyObject* tracker_consolidate_changes(ChangeTracker *self);
+bool tracker_resize(ChangeTracker *self, unsigned int ynum, unsigned int xnum);

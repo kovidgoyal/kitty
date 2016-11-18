@@ -66,6 +66,41 @@ void screen_reset(Screen *self) {
     tracker_update_screen(self->change_tracker);
 }
 
+static inline LineBuf* realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y) {
+    LineBuf *ans = alloc_linebuf(lines, columns);
+    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    if(!linebuf_rewrap(old, ans, cursor_y, NULL)) return NULL;
+    return ans;
+}
+
+static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
+    lines = MAX(1, lines); columns = MAX(1, columns);
+
+    bool is_main = self->linebuf == self->main_linebuf;
+    int cursor_y = -1;
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y);
+    if (n == NULL) return false;
+    Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
+    if (is_main) self->cursor->y = MAX(0, cursor_y);
+    cursor_y = -1;
+    n = realloc_lb(self->alt_linebuf, lines, columns, &cursor_y);
+    if (n == NULL) return false;
+    Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
+    if (!is_main) self->cursor->y = MAX(0, cursor_y);
+    self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
+
+    if (!tracker_resize(self->change_tracker, lines, columns)) return false;
+
+    PyMem_Free(self->tabstops);
+    self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
+    if (self->tabstops == NULL) { PyErr_NoMemory(); return false; }
+
+    self->lines = lines; self->columns = columns;
+    self->margin_top = 0; self->margin_bottom = self->lines - 1;
+    screen_reset_mode(self, DECOM);
+    // TODO: resize history buf
+    return true;
+}
 
 static void
 dealloc(Screen* self) {
@@ -555,6 +590,8 @@ void screen_restore_cursor(Screen *self) {
         self->utf8_state = sp->utf8_state;
         if (sp->mDECOM) screen_set_mode(self, DECOM);
         if (sp->mDECAWM) screen_set_mode(self, DECAWM);
+        self->cursor = cursor_copy(sp->cursor);
+        screen_ensure_bounds(self, false);
         PyList_SetSlice(self->savepoints, sz-1, sz, NULL);
     } else {
         screen_cursor_position(self, 1, 1);
@@ -935,6 +972,14 @@ reverse_index(Screen *self) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+resize(Screen *self, PyObject *args) {
+    unsigned int lines = 1, columns = 1;
+    if (!PyArg_ParseTuple(args, "II", &lines, &columns)) return NULL;
+    if (!screen_resize(self, lines, columns)) return NULL;
+    Py_RETURN_NONE;
+}
+
 #define COUNT_WRAP(name) \
     static PyObject* name(Screen *self, PyObject *args) { \
     unsigned int count = 1; \
@@ -978,6 +1023,7 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     MND(index, METH_NOARGS)
     MND(reverse_index, METH_NOARGS)
+    MND(resize, METH_VARARGS)
 
     {NULL}  /* Sentinel */
 };
