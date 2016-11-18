@@ -145,9 +145,8 @@ class Boss(Thread):
 
     def render(self):
         if self.pending_title_change is not None:
-            t = sanitize_title(self.pending_title_change or appname)
+            t, self.pending_title_change = sanitize_title(self.pending_title_change or appname), None
             glfw.glfwSetWindowTitle(self.window, t)
-            self.pending_title_change = None
         if self.pending_icon_change is not None:
             self.pending_icon_change = None  # TODO: Implement this
         self.char_grid.render()
