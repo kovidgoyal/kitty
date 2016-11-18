@@ -12,8 +12,6 @@ from kitty.fast_data_types import parse_bytes, parse_bytes_dump, CURSOR_BLOCK
 class CmdDump(list):
 
     def __call__(self, *a):
-        if len(a) == 1:
-            a = a[0]
         self.append(a)
 
 
@@ -41,6 +39,9 @@ class TestScreen(BaseTest):
         cd = CmdDump()
         if isinstance(x, str):
             x = x.encode('utf-8')
+        if isinstance(s, str):
+            s = s.encode('utf-8')
+        cmds = tuple(('draw', x.encode('utf-8')) if isinstance(x, str) else x for x in cmds)
         parse_bytes_dump(cd, s, x)
         self.ae(tuple(cd), cmds)
 
@@ -48,43 +49,43 @@ class TestScreen(BaseTest):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
 
-        pb('12')
+        pb('12', '12')
         self.ae(str(s.line(0)), '12   ')
-        pb('3456')
+        pb('3456', '3456')
         self.ae(str(s.line(0)), '12345')
         self.ae(str(s.line(1)), '6    ')
-        pb(b'\n123\n\r45', ('screen_linefeed', ord('\n')), ('screen_linefeed', ord('\n')), ('screen_carriage_return', ord('\r')))
+        pb(b'\n123\n\r45', ('screen_linefeed', ord('\n')), '123', ('screen_linefeed', ord('\n')), ('screen_carriage_return', ord('\r')), '45')
         self.ae(str(s.line(1)), '6    ')
         self.ae(str(s.line(2)), ' 123 ')
         self.ae(str(s.line(3)), '45   ')
         parse_bytes(s, b'\rabcde')
         self.ae(str(s.line(3)), 'abcde')
-        parse_bytes(s, '\rßxyz1'.encode('utf-8'))
+        pb('\rßxyz1', ('screen_carriage_return', 13), 'ßxyz1')
         self.ae(str(s.line(3)), 'ßxyz1')
-        pb('ニチ '.encode('utf-8'))
+        pb('ニチ ', 'ニチ ')
         self.ae(str(s.line(4)), 'ニチ ')
 
     def test_esc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('12\033Da', 'screen_index')
+        pb('12\033Da', '12', ('screen_index',), 'a')
         self.ae(str(s.line(0)), '12   ')
         self.ae(str(s.line(1)), '  a  ')
-        pb('\033x', 'Unknown char in escape_dispatch: %d' % ord('x'))
-        pb('\033c123', 'screen_reset')
+        pb('\033x', ('Unknown char in escape_dispatch: %d' % ord('x'),))
+        pb('\033c123', ('screen_reset',), '123')
         self.ae(str(s.line(0)), '123  ')
 
     def test_csi_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('abcde')
+        pb('abcde', 'abcde')
         s.cursor_back(5)
-        pb('x\033[2@y', ('screen_insert_characters', 2))
+        pb('x\033[2@y', 'x', ('screen_insert_characters', 2), 'y')
         self.ae(str(s.line(0)), 'xy bc')
-        pb('x\033[2;7@y', ('screen_insert_characters', 2))
-        pb('x\033[@y', ('screen_insert_characters', 1))
-        pb('x\033[345@y', ('screen_insert_characters', 345))
-        pb('x\033[345;@y', ('screen_insert_characters', 345))
+        pb('x\033[2;7@y', 'x', ('screen_insert_characters', 2), 'y')
+        pb('x\033[@y', 'x', ('screen_insert_characters', 1), 'y')
+        pb('x\033[345@y', 'x', ('screen_insert_characters', 345), 'y')
+        pb('x\033[345;@y', 'x', ('screen_insert_characters', 345), 'y')
         pb('\033[H', ('screen_cursor_position', 1, 1))
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 0)
         pb('\033[4H', ('screen_cursor_position', 4, 1))
@@ -118,7 +119,7 @@ class TestScreen(BaseTest):
         c.clear()
         pb('\033[6n', ('report_device_status', 6, 0))
         self.ae(c.wtcbuf, b'\033[1;1R')
-        pb('12345')
+        pb('12345', '12345')
         c.clear()
         pb('\033[6n', ('report_device_status', 6, 0))
         self.ae(c.wtcbuf, b'\033[2;1R')
@@ -135,7 +136,7 @@ class TestScreen(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         c = Callbacks()
         s.callbacks = c
-        pb(b'a\033]2;xyz\x9cbcde', ('set_title', 3))
+        pb(b'a\033]2;xyz\x9cbcde', 'a', ('set_title', 3), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.titlebuf, b'xyz')
         c.clear()
@@ -150,5 +151,5 @@ class TestScreen(BaseTest):
     def test_dcs_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb(b'a\033P2;xyz\x9cbcde')
+        pb(b'a\033P2;xyz\x9cbcde', 'a', 'bcde')
         self.ae(str(s.line(0)), 'abcde')

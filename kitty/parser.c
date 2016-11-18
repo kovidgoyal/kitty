@@ -54,6 +54,9 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define GET_MACRO(_1,_2,_3,NAME,...) NAME
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 
+#define REPORT_DRAW(start, sz) \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "draw", start, sz)); PyErr_Clear();
+
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos, PyObject UNUSED *dump_callback)
 
@@ -62,6 +65,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define REPORT_ERROR(...) fprintf(stderr, "[PARSE ERROR] "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
 
 #define REPORT_COMMAND(...)
+#define REPORT_DRAW(...)
 
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos)
@@ -76,18 +80,21 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 HANDLER(text) {
     uint8_t ch;
+    unsigned int sz;
 
     while(*pos < buflen) {
         ch = buf[(*pos)++];
-#define DRAW_TEXT \
+#define DRAW_TEXT(limit) \
         if (screen->parser_has_pending_text) { \
             screen->parser_has_pending_text = false; \
-            screen_draw(screen, buf + screen->parser_text_start, (*pos) - screen->parser_text_start); \
+            sz = (limit) > screen->parser_text_start ? (limit) - screen->parser_text_start : 0; \
+            REPORT_DRAW(buf + screen->parser_text_start, sz); \
+            screen_draw(screen, buf + screen->parser_text_start, sz); \
             screen->parser_text_start = 0; \
         } 
 
 #define CALL_SCREEN_HANDLER(name) \
-        DRAW_TEXT; REPORT_COMMAND(name, ch); \
+        DRAW_TEXT((*pos) - 1); REPORT_COMMAND(name, ch); \
         name(screen, ch); break;
         
         switch(ch) {
@@ -108,11 +115,11 @@ HANDLER(text) {
             case SI:
                 CALL_SCREEN_HANDLER(screen_shift_in);
             case ESC:
-                DRAW_TEXT; SET_STATE(ESC_STATE); return;
+                DRAW_TEXT((*pos)-1); SET_STATE(ESC_STATE); return;
             case CSI:
-                DRAW_TEXT; SET_STATE(CSI_STATE); return;
+                DRAW_TEXT((*pos)-1); SET_STATE(CSI_STATE); return;
             case OSC:
-                DRAW_TEXT; SET_STATE(OSC_STATE); return;
+                DRAW_TEXT((*pos)-1); SET_STATE(OSC_STATE); return;
             case NUL:
             case DEL:
                 break;  // no-op
@@ -123,9 +130,9 @@ HANDLER(text) {
                 }
         }
     }
-    DRAW_TEXT;
+    DRAW_TEXT(*pos);
 }
-#define moo 1
+#undef DRAW_TEXT
 // }}}
 
 // Parse ESC {{{
