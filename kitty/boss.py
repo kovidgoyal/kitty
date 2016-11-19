@@ -254,6 +254,7 @@ class Boss(Thread):
                 if code >= 110:
                     val = None
                 self.pending_color_changes[w] = val
+            code += 1
         self.queue_action(self.apply_change_colors)
 
     def apply_change_colors(self):
