@@ -6,7 +6,7 @@ import unicodedata
 import itertools
 import sys
 
-IGNORED_CATEGORIES = ('Cc', 'Cf', 'Cn', 'Cs')
+IGNORED_CATEGORIES = ('Cc', 'Cf', 'Cs')
 
 
 def ranges(i):
@@ -51,6 +51,7 @@ def main():
         print('#pragma once', file=f)
         print(cc, file=f)
         print(ig, file=f)
+
 
 if __name__ == '__main__':
     main()
