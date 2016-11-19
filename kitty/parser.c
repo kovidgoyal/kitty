@@ -472,6 +472,10 @@ HANDLER(osc) {
     switch(ch) {
         case ST:
         case BEL:
+            if(!screen->parser_buf[0] && screen->parser_buf[1]) {
+                // Only a numeric component
+                screen->parser_buf[0] = screen->parser_buf_pos;
+            }
             HANDLE_OSC;
             SET_STATE(NORMAL_STATE);
             break;

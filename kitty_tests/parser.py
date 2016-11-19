@@ -29,8 +29,11 @@ class Callbacks:
     def icon_changed(self, data):
         self.iconbuf += data
 
+    def set_dynamic_color(self, code, data):
+        self.colorbuf += data
+
     def clear(self):
-        self.wtcbuf = self.iconbuf = self.titlebuf = b''
+        self.wtcbuf = self.iconbuf = self.titlebuf = self.colorbuf = b''
 
 
 class TestScreen(BaseTest):
@@ -143,11 +146,13 @@ class TestScreen(BaseTest):
         c.clear()
         pb('\033]\x07', ('set_title', 0), ('set_icon', 0))
         self.ae(c.titlebuf, b''), self.ae(c.iconbuf, b'')
-        pb('\033]23\x07', ('set_title', 2), ('set_icon', 2))
-        self.ae(c.titlebuf, b'23'), self.ae(c.iconbuf, b'23')
+        pb('\033]ab\x07', ('set_title', 2), ('set_icon', 2))
+        self.ae(c.titlebuf, b'ab'), self.ae(c.iconbuf, b'ab')
         c.clear()
         pb('\033]2;;;;\x07', ('set_title', 3))
         self.ae(c.titlebuf, b';;;')
+        pb('\033]110\x07', ('set_dynamic_color', 110, 0))
+        self.ae(c.colorbuf, b'')
 
     def test_dcs_codes(self):
         s = self.create_screen()
