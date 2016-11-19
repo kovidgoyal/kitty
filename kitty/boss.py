@@ -40,10 +40,10 @@ class Boss(Thread):
     shutting_down = False
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
-    SCREEN_UPDATE_DELAY = 2 / 100  # seconds
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.screen_update_delay = opts.repaint_delay / 1000.0
         self.pending_update_screen = None
         self.action_queue = Queue()
         self.child_fd = create_pty()[0]
@@ -137,6 +137,7 @@ class Boss(Thread):
 
     def apply_opts(self, opts):
         self.opts = opts
+        self.screen_update_delay = opts.repaint_delay / 1000.0
         self.queue_action(self.apply_opts_to_screen)
 
     def apply_opts_to_screen(self):
@@ -181,7 +182,7 @@ class Boss(Thread):
                 if monotonic() > self.pending_update_screen:
                     self.apply_update_screen()
             elif self.screen.is_dirty():
-                self.pending_update_screen = monotonic() + self.SCREEN_UPDATE_DELAY
+                self.pending_update_screen = monotonic() + self.screen_update_delay
 
     def close(self):
         if not self.shutting_down:

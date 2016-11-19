@@ -204,12 +204,14 @@ def to_bool(x):
 def to_opacity(x):
     return max(0.3, min(float(x), 1))
 
+
 type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
     'cursor_shape': to_cursor_shape,
     'cursor_blink': to_bool,
     'cursor_opacity': to_opacity,
+    'repaint_delay': int,
 }
 
 for name in 'foreground foreground_bold background cursor'.split():
@@ -220,16 +222,39 @@ for i in range(16):
 
 for line in '''
 term xterm-kitty
+# The foreground color
 foreground       #dddddd
-foreground_bold  #ffffff
-cursor           #ffffff
-cursor_opacity   0.7
-cursor_shape     block
-cursor_blink     no
+# The background color
 background       #000000
+
+# The high intensity foreground color
+foreground_bold  #ffffff
+
+# The cursor color
+cursor           #ffffff
+
+# The cursor opacity
+cursor_opacity   0.7
+
+# The cursor shape can be one of (block, beam, underline)
+cursor_shape     block
+
+# Whether to blink the cursor or not
+cursor_blink     no
+
+# Font family
 font_family      monospace
+
+# Font size (in pts)
 font_size        11.0
+
+# Number of lines of history to keep in memory for scrolling back
 scrollback_lines 2000
+
+# Delay (in milliseconds) between screen updates. Decreasing it, increases fps
+# at the cost of more CPU usage. The default value yields ~50fps which is more
+# that sufficient for most uses.
+repaint_delay    20
 
 # black
 color0   #000000
