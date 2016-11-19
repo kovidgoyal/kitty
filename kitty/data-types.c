@@ -13,6 +13,8 @@ static PyMethodDef module_methods[] = {
     GL_METHODS
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
+    {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
+    {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

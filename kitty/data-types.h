@@ -231,6 +231,7 @@ typedef struct {
 } SavepointBuffer;
 
 #define PARSER_BUF_SZ 8192
+#define READ_BUF_SZ (1024*1024)
 
 typedef struct {
     PyObject_HEAD
@@ -250,6 +251,7 @@ typedef struct {
     uint8_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
+    uint8_t read_buf[READ_BUF_SZ];
 
 } Screen;
 PyTypeObject Screen_Type;
@@ -275,6 +277,8 @@ int init_SpriteMap(PyObject *);
 int init_ChangeTracker(PyObject *);
 int init_Screen(PyObject *);
 PyObject* create_256_color_table();
+PyObject* read_bytes_dump(PyObject UNUSED *, PyObject *);
+PyObject* read_bytes(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 uint16_t* translation_table(char);

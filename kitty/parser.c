@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 #include "data-types.h"
 #include "control-codes.h"
 
@@ -554,3 +556,34 @@ parse_bytes(PyObject UNUSED *self, PyObject *args) {
     _parse_bytes(screen, pybuf.buf, pybuf.len, dump_callback);
     Py_RETURN_NONE;
 }
+
+PyObject*
+#ifdef DUMP_COMMANDS
+read_bytes_dump(PyObject UNUSED *self, PyObject *args) {
+#else
+read_bytes(PyObject UNUSED *self, PyObject *args) {
+#endif
+    PyObject *dump_callback = NULL;
+    Py_ssize_t len;
+    Screen *screen;
+    int fd;
+#ifdef DUMP_COMMANDS
+    if (!PyArg_ParseTuple(args, "OOi", &dump_callback, &screen, &fd)) return NULL;
+#else
+    if (!PyArg_ParseTuple(args, "Oi", &screen, &fd)) return NULL;
+#endif
+
+    while(true) {
+        len = read(fd, screen->read_buf, READ_BUF_SZ);
+        if (len == -1) {
+            if (errno == EINTR) continue;
+            if (errno == EIO) { Py_RETURN_FALSE; }
+            return PyErr_SetFromErrno(PyExc_OSError);
+        }
+        break;
+    }
+    _parse_bytes(screen, screen->read_buf, len, dump_callback);
+    if(len > 0) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+

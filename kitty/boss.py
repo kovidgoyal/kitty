@@ -21,7 +21,7 @@ from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
 from .utils import resize_pty, create_pty, sanitize_title
 from .fast_data_types import (
-    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, parse_bytes_dump, parse_bytes
+    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
 
 
@@ -56,7 +56,7 @@ class Boss(Thread):
         self.window, self.opts = window, opts
         self.screen = Screen(self)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
-        self.parse_bytes = partial(parse_bytes_dump, print) if args.dump_commands else parse_bytes
+        self.read_bytes = partial(read_bytes_dump, print) if args.dump_commands else read_bytes
         self.write_buf = memoryview(b'')
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
@@ -201,16 +201,8 @@ class Boss(Thread):
     def read_ready(self):
         if self.shutting_down:
             return
-        try:
-            data = os.read(self.child_fd, 100 * io.DEFAULT_BUFFER_SIZE)
-        except BlockingIOError:
-            return
-        except EnvironmentError:
-            data = b''
-        if data:
-            self.parse_bytes(self.screen, data)
-        else:  # EOF
-            self.shutdown()
+        if self.read_bytes(self.screen, self.child_fd) is False:
+            self.shutdown()  # EOF
 
     def write_ready(self):
         if not self.shutting_down:
