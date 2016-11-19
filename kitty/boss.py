@@ -40,7 +40,7 @@ class Boss(Thread):
     shutting_down = False
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
-    SCREEN_UPDATE_DELAY = 1 / 100  # seconds
+    SCREEN_UPDATE_DELAY = 2 / 100  # seconds
 
     def __init__(self, window, window_width, window_height, opts, args):
         Thread.__init__(self, name='ChildMonitor')
