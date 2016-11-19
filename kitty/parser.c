@@ -512,30 +512,15 @@ HANDLER(dcs) {
 }
 // }}}
 
-PyObject*
-#ifdef DUMP_COMMANDS
-parse_bytes_dump(PyObject UNUSED *self, PyObject *args) {
-    PyObject *dump_callback = NULL;
-#else
-parse_bytes(PyObject UNUSED *self, PyObject *args) {
-#endif
-    Py_buffer pybuf;
-    Screen *screen;
-#ifdef DUMP_COMMANDS
-    if (!PyArg_ParseTuple(args, "OO!y*", &dump_callback, &Screen_Type, &screen, &pybuf)) return NULL;
-    if (!PyCallable_Check(dump_callback)) { PyErr_SetString(PyExc_TypeError, "The dump callback must be a callable object"); return NULL; }
-#else
-    if (!PyArg_ParseTuple(args, "O!y*", &Screen_Type, &screen, &pybuf)) return NULL;
-#endif
-    uint8_t *buf = pybuf.buf;
+static inline void _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject UNUSED *dump_callback) {
     unsigned int i = 0;
 #ifdef DUMP_COMMANDS
-#define CALL_HANDLER(name) read_##name(screen, buf, pybuf.len, &i, dump_callback); break;
+#define CALL_HANDLER(name) read_##name(screen, buf, len, &i, dump_callback); break;
 #else
-#define CALL_HANDLER(name) read_##name(screen, buf, pybuf.len, &i); break;
+#define CALL_HANDLER(name) read_##name(screen, buf, len, &i); break;
 #endif
         
-    while (i < pybuf.len) {
+    while (i < len) {
         switch(screen->parser_state) {
             case ESC_STATE:
                 CALL_HANDLER(esc);
@@ -549,5 +534,23 @@ parse_bytes(PyObject UNUSED *self, PyObject *args) {
                 CALL_HANDLER(text);
         }
     }
+}
+
+PyObject*
+#ifdef DUMP_COMMANDS
+parse_bytes_dump(PyObject UNUSED *self, PyObject *args) {
+#else
+parse_bytes(PyObject UNUSED *self, PyObject *args) {
+#endif
+    PyObject *dump_callback = NULL;
+    Py_buffer pybuf;
+    Screen *screen;
+#ifdef DUMP_COMMANDS
+    if (!PyArg_ParseTuple(args, "OO!y*", &dump_callback, &Screen_Type, &screen, &pybuf)) return NULL;
+    if (!PyCallable_Check(dump_callback)) { PyErr_SetString(PyExc_TypeError, "The dump callback must be a callable object"); return NULL; }
+#else
+    if (!PyArg_ParseTuple(args, "O!y*", &Screen_Type, &screen, &pybuf)) return NULL;
+#endif
+    _parse_bytes(screen, pybuf.buf, pybuf.len, dump_callback);
     Py_RETURN_NONE;
 }

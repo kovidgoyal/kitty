@@ -202,7 +202,7 @@ class Boss(Thread):
         if self.shutting_down:
             return
         try:
-            data = os.read(self.child_fd, io.DEFAULT_BUFFER_SIZE)
+            data = os.read(self.child_fd, 100 * io.DEFAULT_BUFFER_SIZE)
         except BlockingIOError:
             return
         except EnvironmentError:
