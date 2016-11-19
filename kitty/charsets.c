@@ -163,8 +163,9 @@ uint16_t* translation_table(char which) {
             return charset_translations[2];
         case 'V':
             return charset_translations[3];
+        default:
+            return charset_translations[0];
     }
-    return charset_translations[0];
 }
 
 // UTF-8 decode taken from: http://bjoern.hoehrmann.de/utf-8/decoder/dfa/

@@ -587,6 +587,9 @@ void screen_restore_cursor(Screen *self) {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
         screen_reset_mode(self, DECOM);
+        self->current_charset = 2;
+        self->g0_charset = translation_table('B');
+        self->g1_charset = translation_table('0');
     } else {
         self->g0_charset = sp->g0_charset;
         self->g1_charset = sp->g1_charset;
