@@ -24,3 +24,8 @@ Savepoint* savepoints_pop(SavepointBuffer *self) {
     RETREAT(end_of_data);
     return self->end_of_data;
 }
+
+void savepoints_init(SavepointBuffer *self) {
+    self->end_of_data = self->buf;
+    self->start_of_data = self->buf;
+}
