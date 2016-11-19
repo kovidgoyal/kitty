@@ -246,8 +246,14 @@ class Boss(Thread):
         self.pending_icon_change = new_icon
         glfw.glfwPostEmptyEvent()
 
-    def change_default_color(self, which, value):
-        self.pending_color_changes[which] = value
+    def set_dynamic_color(self, code, value):
+        wmap = {10: 'fg', 11: 'bg', 110: 'fg', 111: 'bg'}
+        for val in value.decode('utf-8').split(';'):
+            w = wmap.get(code)
+            if w is not None:
+                if code >= 110:
+                    val = None
+                self.pending_color_changes[w] = val
         self.queue_action(self.apply_change_colors)
 
     def apply_change_colors(self):

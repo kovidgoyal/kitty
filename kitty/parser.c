@@ -430,7 +430,7 @@ static inline void handle_osc(Screen *screen, PyObject UNUSED *dump_callback) {
     if (screen->parser_buf[0] && screen->parser_buf[1]) code = (unsigned int)atoi((const char*)screen->parser_buf + 2);
 #define DISPATCH_OSC(name) \
     REPORT_COMMAND(name, sz); \
-    name(screen, screen->parser_buf + start, sz);
+    name(screen, (const char*)(screen->parser_buf + start), sz);
 
     switch(code) {
         case 0:
@@ -442,6 +442,13 @@ static inline void handle_osc(Screen *screen, PyObject UNUSED *dump_callback) {
             break;
         case 2:
             DISPATCH_OSC(set_title);
+            break;
+        case 10:
+        case 11:
+        case 110:
+        case 111:
+            REPORT_COMMAND(set_dynamic_color, code, sz);
+            set_dynamic_color(screen, code, (const char*)(screen->parser_buf + start), sz);
             break;
         default:
             REPORT_ERROR("Unknown OSC code: %u", code);

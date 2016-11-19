@@ -849,12 +849,18 @@ void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     }
 }
 
-void set_title(Screen *self, const uint8_t *buf, unsigned int sz) {
-    callback("title_changed", self, (const char*)buf, sz);
+void set_title(Screen *self, const char *buf, unsigned int sz) {
+    callback("title_changed", self, buf, sz);
 }
 
-void set_icon(Screen *self, const uint8_t *buf, unsigned int sz) {
-    callback("icon_changed", self, (const char*)buf, sz);
+void set_icon(Screen *self, const char *buf, unsigned int sz) {
+    callback("icon_changed", self, buf, sz);
+}
+
+void set_dynamic_color(Screen *self, unsigned int code, const char *buf, unsigned int sz) {
+    if (sz) PyObject_CallMethod(self->callbacks, "set_dynamic_color", "Iy#", code, buf, sz);
+    if (PyErr_Occurred()) PyErr_Print();
+    PyErr_Clear(); 
 }
 
 // }}}
