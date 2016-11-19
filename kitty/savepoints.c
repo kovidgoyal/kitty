@@ -14,9 +14,10 @@
     self->x = self->x == self->buf ? self->buf + SAVEPOINTS_SZ - 1 : self->x - 1;
 
 Savepoint* savepoints_push(SavepointBuffer *self) {
+    Savepoint *ans = self->end_of_data;
     ADVANCE(end_of_data);
     if (self->end_of_data == self->start_of_data) ADVANCE(start_of_data);
-    return self->end_of_data;
+    return ans;
 }
 
 Savepoint* savepoints_pop(SavepointBuffer *self) {
