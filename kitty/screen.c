@@ -34,12 +34,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->cursor = alloc_cursor();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
-        // TODO: Change the savepoints objects to use a circular buffer, so there are no mallocs during normal operation
-        self->main_savepoints = PyList_New(0); self->alt_savepoints = PyList_New(0);
-        self->savepoints = self->main_savepoints;
         self->change_tracker = alloc_change_tracker(lines, columns);
         self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_savepoints == NULL || self->alt_savepoints == NULL || self->change_tracker == NULL || self->tabstops == NULL) {
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL) {
             Py_CLEAR(self); return NULL;
         }
     }
@@ -114,7 +111,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->cursor); 
     Py_CLEAR(self->main_linebuf); 
     Py_CLEAR(self->alt_linebuf);
-    Py_CLEAR(self->main_savepoints); Py_CLEAR(self->alt_savepoints); Py_CLEAR(self->change_tracker);
+    Py_CLEAR(self->change_tracker);
     PyMem_Free(self->tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
@@ -341,10 +338,8 @@ void screen_toggle_screen_buffer(Screen *self) {
     screen_save_cursor(self);
     if (self->linebuf == self->main_linebuf) {
         self->linebuf = self->alt_linebuf;
-        self->savepoints = self->alt_savepoints;
     } else {
         self->linebuf = self->main_linebuf;
-        self->savepoints = self->main_savepoints;
     }
     screen_restore_cursor(self);
     tracker_update_screen(self->change_tracker);
@@ -573,38 +568,33 @@ void screen_linefeed(Screen *self, uint8_t UNUSED ch) {
 }
 
 void screen_save_cursor(Screen *self) {
-    // We fail silently on out of memory errors
-    Savepoint *sp = alloc_savepoint();
-    if (sp == NULL) { PyErr_Clear(); return; } 
-    sp->cursor = cursor_copy(self->cursor);
-    if (sp->cursor == NULL) { Py_CLEAR(sp); PyErr_Clear(); return; }
+    SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
+    Savepoint *sp = savepoints_push(pts);
+    cursor_copy_to(self->cursor, &(sp->cursor));
     sp->g0_charset = self->g0_charset;
     sp->g1_charset = self->g1_charset;
     sp->current_charset = self->current_charset;
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->utf8_state = self->utf8_state;
-    PyList_Append(self->savepoints, (PyObject*)sp); // We ignore failures
-    Py_CLEAR(sp);
 }
 
 void screen_restore_cursor(Screen *self) {
-    Py_ssize_t sz = PyList_GET_SIZE(self->savepoints);
-    if (sz > 0) {
-        Savepoint *sp = (Savepoint*)PyList_GET_ITEM(self->savepoints, sz - 1);
+    SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
+    Savepoint *sp = savepoints_pop(pts);
+    if (sp == NULL) {
+        screen_cursor_position(self, 1, 1);
+        tracker_cursor_changed(self->change_tracker);
+        screen_reset_mode(self, DECOM);
+    } else {
         self->g0_charset = sp->g0_charset;
         self->g1_charset = sp->g1_charset;
         self->current_charset = sp->current_charset;
         self->utf8_state = sp->utf8_state;
         if (sp->mDECOM) screen_set_mode(self, DECOM);
         if (sp->mDECAWM) screen_set_mode(self, DECAWM);
-        self->cursor = cursor_copy(sp->cursor);
+        cursor_copy_to(&(sp->cursor), self->cursor);
         screen_ensure_bounds(self, false);
-        PyList_SetSlice(self->savepoints, sz-1, sz, NULL);
-    } else {
-        screen_cursor_position(self, 1, 1);
-        tracker_cursor_changed(self->change_tracker);
-        screen_reset_mode(self, DECOM);
     }
 }
 

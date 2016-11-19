@@ -213,17 +213,22 @@ typedef struct {
 PyTypeObject ScreenModes_Type;
 
 typedef struct {
-    PyObject_HEAD
-
     unsigned int current_charset;
     uint16_t *g0_charset, *g1_charset;
     uint32_t utf8_state;
-    Cursor *cursor;
+    Cursor cursor;
     bool mDECOM;
     bool mDECAWM;
 
 } Savepoint;
-PyTypeObject Savepoint_Type;
+
+#define SAVEPOINTS_SZ 256
+
+typedef struct {
+    Savepoint buf[SAVEPOINTS_SZ];
+    Savepoint *start_of_data;
+    Savepoint *end_of_data;
+} SavepointBuffer;
 
 #define PARSER_BUF_SZ 8192
 
@@ -235,7 +240,8 @@ typedef struct {
     uint32_t utf8_state;
     uint16_t *g0_charset, *g1_charset;
     Cursor *cursor;
-    PyObject *savepoints, *main_savepoints, *alt_savepoints, *callbacks;
+    SavepointBuffer main_savepoints, alt_savepoints;
+    PyObject *callbacks;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     bool *tabstops;
     ChangeTracker *change_tracker;
@@ -273,8 +279,11 @@ PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 uint16_t* translation_table(char);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
+Savepoint* savepoints_pop(SavepointBuffer *pts);
+Savepoint* savepoints_push(SavepointBuffer *pts);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
+void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 bool update_cell_range_data(SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
 uint32_t to_color(ColorProfile *, uint32_t, uint32_t);

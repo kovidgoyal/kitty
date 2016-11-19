@@ -7,41 +7,20 @@
 
 #include "data-types.h"
 
-static PyObject *
-new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
-    Savepoint *self;
-    self = (Savepoint *)type->tp_alloc(type, 0);
-    return (PyObject*) self;
+#define ADVANCE(x) \
+    self->x = (self->x >= self->buf + SAVEPOINTS_SZ - 1) ? self->buf : self->x + 1;
+
+#define RETREAT(x) \
+    self->x = self->x == self->buf ? self->buf + SAVEPOINTS_SZ - 1 : self->x - 1;
+
+Savepoint* savepoints_push(SavepointBuffer *self) {
+    ADVANCE(end_of_data);
+    if (self->end_of_data == self->start_of_data) ADVANCE(start_of_data);
+    return self->end_of_data;
 }
 
-static void
-dealloc(Savepoint* self) {
-    Py_TYPE(self)->tp_free((PyObject*)self);
+Savepoint* savepoints_pop(SavepointBuffer *self) {
+    if (self->start_of_data == self->end_of_data) return NULL;
+    RETREAT(end_of_data);
+    return self->end_of_data;
 }
-
-
-// Boilerplate {{{
-
-static PyMethodDef methods[] = {
-    {NULL}  /* Sentinel */
-};
-
-
-PyTypeObject Savepoint_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "fast_data_types.Savepoint",
-    .tp_basicsize = sizeof(Savepoint),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
-    .tp_doc = "Savepoint",
-    .tp_methods = methods,
-    .tp_new = new,                
-};
-
-INIT_TYPE(Savepoint)
-
-Savepoint *alloc_savepoint() {
-    return (Savepoint*)new(&Savepoint_Type, NULL, NULL);
-}
-
-// }}}

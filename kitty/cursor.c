@@ -55,6 +55,12 @@ void cursor_reset(Cursor *self) {
     self->color = 0; self->hidden = false;
 }
 
+void cursor_copy_to(Cursor *src, Cursor *dest) {
+#define CCY(x) dest->x = src->x;
+    CCY(x); CCY(y); CCY(shape); CCY(blink); CCY(color); CCY(hidden);
+    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
+}
+
 static PyObject*
 copy(Cursor *self);
 #define copy_doc "Create a clone of this cursor"
@@ -127,12 +133,10 @@ RICHCMP(Cursor)
  
 Cursor*
 cursor_copy(Cursor *self) {
-#define CCY(x) ans->x = self->x;
     Cursor* ans;
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    CCY(x); CCY(y); CCY(shape); CCY(blink); CCY(color); CCY(hidden);
-    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
+    cursor_copy_to(self, ans);
     return ans;
 }
 
