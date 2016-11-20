@@ -405,52 +405,7 @@ copy_old(LineBuf *self, PyObject *y) {
     Py_RETURN_NONE;
 }
 
-static inline void copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
-    memcpy(dest->chars + dest_at, src->chars + src_at, num * sizeof(char_type));
-    memcpy(dest->colors + dest_at, src->colors + src_at, num * sizeof(color_type));
-    memcpy(dest->decoration_fg + dest_at, src->decoration_fg + src_at, num * sizeof(decoration_type));
-    memcpy(dest->combining_chars + dest_at, src->combining_chars + src_at, num * sizeof(combining_type));
-}
-
-#define next_dest_line(continued) {\
-    if (dest_y >= dest->ynum - 1) { \
-        linebuf_index(dest, 0, dest->ynum - 1); \
-        if (historybuf != NULL) { \
-            linebuf_init_line(dest, dest->ynum - 1); \
-            historybuf_add_line(historybuf, dest->line); \
-        }\
-    } else dest_y++; \
-    INIT_LINE(dest, dest->line, dest->line_map[dest_y]); \
-    dest->continued_map[dest_y] = continued; \
-    dest_x = 0; \
-}
-
-static void rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, HistoryBuf *historybuf) {
-    // TODO: Change this to put the extra lines into the history buf
-    bool src_line_is_continued = false;
-    index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
-    INIT_LINE(dest, dest->line, dest->line_map[dest_y]);
-
-    do {
-        INIT_LINE(src, src->line, src->line_map[src_y]);
-        src_line_is_continued = src_y < src->ynum - 1 ? src->continued_map[src_y + 1] : false;
-        src_x_limit = src->xnum;
-        if (!src_line_is_continued) {
-            // Trim trailing white-space since there is a hard line break at the end of this line
-            while(src_x_limit && (src->line->chars[src_x_limit - 1] & CHAR_MASK) == 32) src_x_limit--;
-            
-        }
-        while (src_x < src_x_limit) {
-            if (dest_x >= dest->xnum) next_dest_line(true);
-            num = MIN(src->line->xnum - src_x, dest->xnum - dest_x);
-            copy_range(src->line, src_x, dest->line, dest_x, num);
-            src_x += num; dest_x += num;
-        }
-        src_y++; src_x = 0;
-        if (!src_line_is_continued && src_y < src_limit) next_dest_line(false);
-    } while (src_y < src_limit);
-    dest->line->ynum = dest_y;
-}
+#include "rewrap.h"
 
 void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *historybuf) {
     index_type first, i;

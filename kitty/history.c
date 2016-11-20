@@ -163,8 +163,37 @@ PyTypeObject HistoryBuf_Type = {
 };
 
 INIT_TYPE(HistoryBuf)
-// }}}
 
 HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
     return (HistoryBuf*)new(&HistoryBuf_Type, Py_BuildValue("II", lines, columns), NULL);
 }
+// }}}
+
+#define BufType HistoryBuf
+
+#define map_src_index(y) ((src->start_of_data + y) % src->ynum)
+
+#define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
+
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? *(start_of(src, map_src_index(src_y + 1))) : false)
+
+#define next_dest_line(cont) historybuf_push(dest); dest->line->continued = cont;
+
+#define first_dest_line next_dest_line(false); 
+
+#include "rewrap.h"
+
+void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
+    // Fast path
+    if (other->xnum == self->xnum && other->ynum == self->ynum) {
+        Py_BEGIN_ALLOW_THREADS;
+        memcpy(other->buf, self->buf, CELL_SIZE_H * self->xnum * self->ynum);
+        other->count = self->count; other->start_of_data = self->start_of_data;
+        Py_END_ALLOW_THREADS;
+        return;
+    }
+    other->count = 0; other->start_of_data = 0;
+    if (self->count > 0) rewrap_inner(self, other, self->count, NULL);
+}
+
+
