@@ -567,6 +567,19 @@ void screen_linefeed(Screen *self, uint8_t UNUSED ch) {
     screen_ensure_bounds(self, false);
 }
 
+static inline Savepoint* savepoints_push(SavepointBuffer *self) {
+    Savepoint *ans = self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
+    if (self->count == SAVEPOINTS_SZ) self->start_of_data = (self->start_of_data + 1) % SAVEPOINTS_SZ;
+    else self->count++;
+    return ans;
+}
+
+static inline Savepoint* savepoints_pop(SavepointBuffer *self) {
+    if (self->count == 0) return NULL;
+    self->count--;
+    return self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
+}
+
 void screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_push(pts);

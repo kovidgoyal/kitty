@@ -221,6 +221,8 @@ typedef struct {
 } ScreenModes;
 PyTypeObject ScreenModes_Type;
 
+#define SAVEPOINTS_SZ 256
+
 typedef struct {
     unsigned int current_charset;
     uint16_t *g0_charset, *g1_charset;
@@ -231,12 +233,12 @@ typedef struct {
 
 } Savepoint;
 
-#define SAVEPOINTS_SZ 256
 
 typedef struct {
     Savepoint buf[SAVEPOINTS_SZ];
     index_type start_of_data, count;
 } SavepointBuffer;
+
 
 #define PARSER_BUF_SZ 8192
 #define READ_BUF_SZ (1024*1024)
@@ -277,7 +279,6 @@ Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
 ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
-Savepoint* alloc_savepoint();
 int init_LineBuf(PyObject *);
 int init_HistoryBuf(PyObject *);
 int init_Cursor(PyObject *);
@@ -293,8 +294,6 @@ PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 uint16_t* translation_table(char);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
-Savepoint* savepoints_pop(SavepointBuffer *);
-Savepoint* savepoints_push(SavepointBuffer *);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
