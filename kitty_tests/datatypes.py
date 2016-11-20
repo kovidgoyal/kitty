@@ -310,3 +310,21 @@ class TestDataTypes(BaseTest):
         hb.push(lb.line(2))
         self.ae(str(hb.line(0)), '2' * hb.xnum)
         self.ae(str(hb.line(4)), '1' * hb.xnum)
+
+        # rewrap
+        hb = filled_history_buf(5, 5)
+        hb2 = HistoryBuf(hb.ynum, hb.xnum)
+        hb.rewrap(hb2)
+        for i in range(hb.ynum):
+            self.ae(hb2.line(i), hb.line(i))
+        hb2 = HistoryBuf(8, 5)
+        hb.rewrap(hb2)
+        for i in range(hb.ynum):
+            self.ae(hb2.line(i), hb.line(i))
+        for i in range(hb.ynum, hb2.ynum):
+            with self.assertRaises(IndexError):
+                hb2.line(i)
+        hb2 = HistoryBuf(3, 5)
+        hb.rewrap(hb2)
+        for i in range(hb2.ynum):
+            self.ae(hb2.line(i), hb.line(i))

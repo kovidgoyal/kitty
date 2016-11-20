@@ -136,10 +136,14 @@ push(HistoryBuf *self, PyObject *args) {
 }
 
 // Boilerplate {{{
+static PyObject* rewrap(HistoryBuf *self, PyObject *args);
+#define rewrap_doc ""
+
 static PyMethodDef methods[] = {
     METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
     METHOD(push, METH_VARARGS)
+    METHOD(rewrap, METH_VARARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
@@ -196,4 +200,10 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
     if (self->count > 0) rewrap_inner(self, other, self->count, NULL);
 }
 
-
+static PyObject*
+rewrap(HistoryBuf *self, PyObject *args) {
+    HistoryBuf *other;
+    if (!PyArg_ParseTuple(args, "O!", &HistoryBuf_Type, &other)) return NULL;
+    historybuf_rewrap(self, other);
+    Py_RETURN_NONE;
+}
