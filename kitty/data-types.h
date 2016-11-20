@@ -235,8 +235,7 @@ typedef struct {
 
 typedef struct {
     Savepoint buf[SAVEPOINTS_SZ];
-    Savepoint *start_of_data;
-    Savepoint *end_of_data;
+    index_type start_of_data, count;
 } SavepointBuffer;
 
 #define PARSER_BUF_SZ 8192
@@ -296,7 +295,6 @@ uint16_t* translation_table(char);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
 Savepoint* savepoints_pop(SavepointBuffer *);
 Savepoint* savepoints_push(SavepointBuffer *);
-void savepoints_init(SavepointBuffer *);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);

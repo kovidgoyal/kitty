@@ -39,7 +39,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL) {
             Py_CLEAR(self); return NULL;
         }
-        savepoints_init(&self->main_savepoints); savepoints_init(&self->alt_savepoints);
     }
     return (PyObject*) self;
 }
