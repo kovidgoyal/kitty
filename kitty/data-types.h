@@ -321,6 +321,7 @@ void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
 bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
+void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

@@ -63,6 +63,12 @@ void screen_reset(Screen *self) {
     screen_change_default_color(self, BG, 0);
     tracker_update_screen(self->change_tracker);
 }
+static inline HistoryBuf* realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
+    HistoryBuf *ans = alloc_historybuf(lines, columns);
+    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    historybuf_rewrap(old, ans);
+    return ans;
+}
 
 static inline LineBuf* realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y, HistoryBuf *hb) {
     LineBuf *ans = alloc_linebuf(lines, columns);
@@ -76,6 +82,9 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
 
     bool is_main = self->linebuf == self->main_linebuf;
     int cursor_y = -1;
+    HistoryBuf *nh = realloc_hb(self->historybuf, lines, columns);
+    if (nh == NULL) return false;
+    Py_CLEAR(self->historybuf); self->historybuf = nh;
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
