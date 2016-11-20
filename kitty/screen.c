@@ -35,8 +35,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->change_tracker = alloc_change_tracker(lines, columns);
+        self->historybuf = alloc_historybuf(lines, columns);
         self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL) {
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL || self->historybuf == NULL) {
             Py_CLEAR(self); return NULL;
         }
     }
@@ -63,10 +64,10 @@ void screen_reset(Screen *self) {
     tracker_update_screen(self->change_tracker);
 }
 
-static inline LineBuf* realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y) {
+static inline LineBuf* realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y, HistoryBuf *hb) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    if(!linebuf_rewrap(old, ans, cursor_y, NULL)) return NULL;
+    linebuf_rewrap(old, ans, cursor_y, hb);
     return ans;
 }
 
@@ -75,12 +76,12 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
 
     bool is_main = self->linebuf == self->main_linebuf;
     int cursor_y = -1;
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y);
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) self->cursor->y = MAX(0, cursor_y);
     cursor_y = -1;
-    n = realloc_lb(self->alt_linebuf, lines, columns, &cursor_y);
+    n = realloc_lb(self->alt_linebuf, lines, columns, &cursor_y, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
     if (!is_main) self->cursor->y = MAX(0, cursor_y);
@@ -99,9 +100,8 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     return true;
 }
 
-static bool screen_change_scrollback_size(Screen UNUSED *self, unsigned int UNUSED size) {
-    // TODO: Implement this
-    return true;
+static bool screen_change_scrollback_size(Screen *self, unsigned int size) {
+    return historybuf_resize(self->historybuf, size);
 }
 
 
@@ -524,8 +524,10 @@ void screen_index(Screen *self) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == bottom) {
         linebuf_index(self->linebuf, top, bottom);
-        if (self->linebuf == self->main_linebuf) {
-            // TODO: Add line to tophistorybuf
+        if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) {
+            // Only add to history when no page margins have been set
+            linebuf_init_line(self->linebuf, bottom);
+            historybuf_add_line(self->historybuf, self->linebuf->line);
             tracker_line_added_to_history(self->change_tracker);
         }
         linebuf_clear_line(self->linebuf, bottom);

@@ -41,9 +41,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 }
 
 static void
-dealloc(LineBuf* self) {
-    PyMem_Free(self->buf);
+dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
+    PyMem_Free(self->buf);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -55,7 +55,7 @@ static inline index_type index_of(HistoryBuf *self, index_type lnum) {
     return (self->start_of_data + idx) % self->ynum;
 }
 
-static inline void* start_of(HistoryBuf *self, index_type num) {
+static inline uint8_t* start_of(HistoryBuf *self, index_type num) {
     // Pointer to the start of the line with index (buffer position) num
     return self->buf + CELL_SIZE_H * num * self->xnum;
 }
@@ -70,25 +70,26 @@ static inline void init_line(HistoryBuf *self, index_type num, Line *l) {
     l->combining_chars = (combining_type*)(l->decoration_fg + self->xnum);
 }
 
-static inline void historybuf_push(HistoryBuf *self) {
-    init_line(self, (self->start_of_data + self->count) % self->ynum, self->line);
+static inline index_type historybuf_push(HistoryBuf *self) {
+    index_type idx = (self->start_of_data + self->count) % self->ynum;
+    init_line(self, idx, self->line);
     if (self->count == self->ynum) self->start_of_data = (self->start_of_data + 1) % self->ynum;
     else self->count++;
+    return idx;
 }
 
-static PyObject*
-change_num_of_lines(HistoryBuf *self, PyObject *val) {
-#define change_num_of_lines_doc "Change the number of lines in this buffer"
+bool
+historybuf_resize(HistoryBuf *self, index_type lines) {
     HistoryBuf t = {0};
     t.xnum=self->xnum;
-    t.ynum=(index_type) PyLong_AsUnsignedLong(val);
+    t.ynum=lines;
     if (t.ynum > 0 && t.ynum != self->ynum) {
         t.buf = PyMem_Calloc(t.xnum * t.ynum, CELL_SIZE_H);
-        if (t.buf == NULL) return PyErr_NoMemory();
+        if (t.buf == NULL) { PyErr_NoMemory(); return false; }
         t.count = MIN(self->count, t.ynum);
         if (t.count > 0) {
             for (index_type s=0; s < t.count; s++) {
-                void *src = start_of(self, index_of(self, s)), *dest = start_of(&t, index_of(&t, s));
+                uint8_t *src = start_of(self, index_of(self, s)), *dest = start_of(&t, index_of(&t, s));
                 memcpy(dest, src, CELL_SIZE_H * t.xnum);
             }
         }
@@ -98,6 +99,19 @@ change_num_of_lines(HistoryBuf *self, PyObject *val) {
         PyMem_Free(self->buf);
         self->buf = t.buf;
     }
+    return true;
+}
+
+void historybuf_add_line(HistoryBuf *self, const Line *line) {
+    index_type idx = historybuf_push(self);
+    COPY_LINE(line, self->line);
+    *(start_of(self, idx)) = line->continued;
+}
+
+static PyObject*
+change_num_of_lines(HistoryBuf *self, PyObject *val) {
+#define change_num_of_lines_doc "Change the number of lines in this buffer"
+    if(!historybuf_resize(self, (index_type)PyLong_AsUnsignedLong(val))) return NULL;
     Py_RETURN_NONE;
 }
 

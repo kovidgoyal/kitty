@@ -345,7 +345,7 @@ copy_old(LineBuf *self, PyObject *y);
 #define copy_old_doc "Copy the contents of the specified LineBuf to this LineBuf. Both must have the same number of columns, but the number of lines can be different, in which case the bottom lines are copied."
 
 static PyObject*
-rewrap(LineBuf *self, PyObject *val);
+rewrap(LineBuf *self, PyObject *args);
 #define rewrap_doc "rewrap(new_screen) -> Fill up new screen (which can have different size to this screen) with as much of the contents of this screen as will fit. Return lines that overflow."
 
 static PyMethodDef methods[] = {
@@ -354,7 +354,7 @@ static PyMethodDef methods[] = {
     METHOD(copy_old, METH_O)
     METHOD(copy_line_to, METH_VARARGS)
     METHOD(create_line_copy, METH_O)
-    METHOD(rewrap, METH_O)
+    METHOD(rewrap, METH_VARARGS)
     METHOD(clear, METH_NOARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
@@ -415,11 +415,9 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
 #define next_dest_line(continued) {\
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
-        if (extra_lines != NULL) {\
-            PyObject *l = create_line_copy_inner(dest, dest_y); \
-            if (l == NULL) return false; \
-            if (PyList_Append(extra_lines, l) != 0) { Py_CLEAR(l); return false; } \
-            Py_CLEAR(l); \
+        if (historybuf != NULL) { \
+            linebuf_init_line(dest, dest->ynum - 1); \
+            historybuf_add_line(historybuf, dest->line); \
         }\
     } else dest_y++; \
     INIT_LINE(dest, dest->line, dest->line_map[dest_y]); \
@@ -427,7 +425,7 @@ static inline void copy_range(Line *src, index_type src_at, Line* dest, index_ty
     dest_x = 0; \
 }
 
-static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, PyObject *extra_lines) {
+static void rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit, HistoryBuf *historybuf) {
     // TODO: Change this to put the extra lines into the history buf
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
@@ -452,10 +450,9 @@ static bool rewrap_inner(LineBuf *src, LineBuf *dest, const index_type src_limit
         if (!src_line_is_continued && src_y < src_limit) next_dest_line(false);
     } while (src_y < src_limit);
     dest->line->ynum = dest_y;
-    return true;
 }
 
-bool linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, PyObject *extra_lines) {
+void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *historybuf) {
     index_type first, i;
     bool is_empty = true;
 
@@ -466,7 +463,7 @@ bool linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, PyObject *
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * CELL_SIZE);
         Py_END_ALLOW_THREADS;
-        return true;
+        return;
     }
 
     // Find the first line that contains some content
@@ -480,28 +477,22 @@ bool linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, PyObject *
     }
     Py_END_ALLOW_THREADS;
 
-    if (first == 0) { *cursor_y_out = 0; return true; }  // All lines are empty
+    if (first == 0) { *cursor_y_out = 0; return; }  // All lines are empty
 
-    if (!rewrap_inner(self, other, first + 1, extra_lines)) {
-        PyErr_NoMemory();
-        return false;
-    }
+    rewrap_inner(self, other, first + 1, historybuf);
     *cursor_y_out = other->line->ynum;
-    return true;
 }
 
 static PyObject*
-rewrap(LineBuf *self, PyObject *val) {
+rewrap(LineBuf *self, PyObject *args) {
     LineBuf* other;
+    HistoryBuf *historybuf;
     int cursor_y = -1;
 
-    if (!PyObject_TypeCheck(val, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
-    other = (LineBuf*) val;
-    PyObject *ret = PyList_New(0);
-    if (ret == NULL) return PyErr_NoMemory();
-    if(!linebuf_rewrap(self, other, &cursor_y, ret)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!", &LineBuf_Type, &other, &HistoryBuf_Type, &historybuf)) return NULL;
+    linebuf_rewrap(self, other, &cursor_y, historybuf);
 
-    return Py_BuildValue("Ni", ret, cursor_y);
+    return Py_BuildValue("i", cursor_y);
 }
 
 LineBuf *alloc_linebuf(unsigned int lines, unsigned int columns) {

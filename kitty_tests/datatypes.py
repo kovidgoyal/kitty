@@ -8,7 +8,7 @@ from . import BaseTest, filled_line_buf, filled_cursor
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap
+from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf
 
 
 def create_lbuf(*lines):
@@ -210,15 +210,20 @@ class TestDataTypes(BaseTest):
         l.set_char(0, 'x', 1, q)
         self.assertEqualAttributes(l.cursor_from(0), q)
 
+    def rewrap(self, lb, lb2):
+        hb = HistoryBuf(lb2.ynum, lb2.xnum)
+        cy = lb.rewrap(lb2, hb)
+        return hb, cy
+
     def test_rewrap_simple(self):
         ' Same width buffers '
         lb = filled_line_buf(5, 5)
         lb2 = LineBuf(lb.ynum, lb.xnum)
-        lb.rewrap(lb2)
+        self.rewrap(lb, lb2)
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
         lb2 = LineBuf(8, 5)
-        cy = lb.rewrap(lb2)[1]
+        cy = self.rewrap(lb, lb2)[1]
         self.ae(cy, 4)
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
@@ -226,14 +231,14 @@ class TestDataTypes(BaseTest):
         for i in range(lb.ynum, lb2.ynum):
             self.ae(str(lb2.line(i)), str(empty.line(0)))
         lb2 = LineBuf(3, 5)
-        extra, cy = lb.rewrap(lb2)
+        cy = self.rewrap(lb, lb2)[1]
         self.ae(cy, 2)
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
 
     def line_comparison(self, lb, *lines):
         lb2 = LineBuf(len(lines), max(map(len, lines)))
-        lb.rewrap(lb2)
+        self.rewrap(lb, lb2)
         for i, l in enumerate(lines):
             l2 = lb2.line(i)
             self.ae(l, str(l2))
