@@ -522,7 +522,7 @@ void screen_cursor_to_column(Screen *self, unsigned int column) {
 void screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
-    if (self->cursor->y == self->margin_bottom) {
+    if (self->cursor->y == bottom) {
         linebuf_index(self->linebuf, top, bottom);
         if (self->linebuf == self->main_linebuf) {
             // TODO: Add line to tophistorybuf
