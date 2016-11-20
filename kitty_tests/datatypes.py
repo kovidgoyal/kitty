@@ -4,7 +4,7 @@
 
 import codecs
 
-from . import BaseTest, filled_line_buf, filled_cursor
+from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import is_simple_string, wcwidth, sanitize_title
@@ -236,12 +236,15 @@ class TestDataTypes(BaseTest):
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
 
-    def line_comparison(self, lb, *lines):
+    def line_comparison(self, buf, *lines):
+        for i, l in enumerate(lines):
+            l2 = buf.line(i)
+            self.ae(l, str(l2))
+
+    def line_comparison_rewrap(self, lb, *lines):
         lb2 = LineBuf(len(lines), max(map(len, lines)))
         self.rewrap(lb, lb2)
-        for i, l in enumerate(lines):
-            l2 = lb2.line(i)
-            self.ae(l, str(l2))
+        self.line_comparison(lb2, *lines)
         return lb2
 
     def assertContinued(self, lb, *vals):
@@ -250,17 +253,17 @@ class TestDataTypes(BaseTest):
     def test_rewrap_wider(self):
         ' New buffer wider '
         lb = create_lbuf('0123 ', '56789')
-        lb2 = self.line_comparison(lb, '0123 5', '6789  ', ' ' * 6)
+        lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789  ', ' ' * 6)
         self.assertContinued(lb2, False, True)
 
         lb = create_lbuf('12', 'abc')
-        lb2 = self.line_comparison(lb, '12  ', 'abc ')
+        lb2 = self.line_comparison_rewrap(lb, '12  ', 'abc ')
         self.assertContinued(lb2, False, False)
 
     def test_rewrap_narrower(self):
         ' New buffer narrower '
         lb = create_lbuf('123 ', 'abcde')
-        lb2 = self.line_comparison(lb, '123', 'abc', 'de ')
+        lb2 = self.line_comparison_rewrap(lb, '123', 'abc', 'de ')
         self.assertContinued(lb2, False, False, True)
 
     def test_utils(self):
@@ -292,3 +295,18 @@ class TestDataTypes(BaseTest):
         self.ae(s.position_for(0, 1), (0, 1, 1))
         self.ae(s.position_for(0, 2), (1, 1, 1))
         self.ae(s.position_for(0, 2), (1, 1, 1))
+
+    def test_historybuf(self):
+        lb = filled_line_buf()
+        hb = HistoryBuf(5, 5)
+        hb.push(lb.line(1))
+        hb.push(lb.line(2))
+        self.ae(hb.count, 2)
+        self.ae(hb.line(0), lb.line(2))
+        self.ae(hb.line(1), lb.line(1))
+        hb = filled_history_buf()
+        self.ae(str(hb.line(0)), '4' * hb.xnum)
+        self.ae(str(hb.line(4)), '0' * hb.xnum)
+        hb.push(lb.line(2))
+        self.ae(str(hb.line(0)), '2' * hb.xnum)
+        self.ae(str(hb.line(4)), '1' * hb.xnum)

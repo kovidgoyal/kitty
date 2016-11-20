@@ -116,17 +116,30 @@ change_num_of_lines(HistoryBuf *self, PyObject *val) {
 }
 
 static PyObject*
-line(HistoryBuf *self, PyObject *lnum) {
-#define line_doc "Return the line with line number lnum. This buffer grows upwards, i.e. 0 is the most recently added line"
-    init_line(self, index_of(self, PyLong_AsUnsignedLong(lnum)), self->line);
+line(HistoryBuf *self, PyObject *val) {
+#define line_doc "Return the line with line number val. This buffer grows upwards, i.e. 0 is the most recently added line"
+    if (self->count == 0) { PyErr_SetString(PyExc_IndexError, "This buffer is empty"); return NULL; }
+    index_type lnum = PyLong_AsUnsignedLong(val);
+    if (lnum > self->count - 1) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
+    init_line(self, index_of(self, lnum), self->line);
     Py_INCREF(self->line);
     return (PyObject*)self->line;
+}
+
+static PyObject*
+push(HistoryBuf *self, PyObject *args) {
+#define push_doc "Push a line into this buffer, removing the oldest line, if necessary"
+    Line *line;
+    if (!PyArg_ParseTuple(args, "O!", &Line_Type, &line)) return NULL;
+    historybuf_add_line(self, line);
+    Py_RETURN_NONE;
 }
 
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
+    METHOD(push, METH_VARARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 

@@ -4,7 +4,7 @@
 
 from unittest import TestCase
 
-from kitty.fast_data_types import LineBuf, Cursor, Screen
+from kitty.fast_data_types import LineBuf, Cursor, Screen, HistoryBuf
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
@@ -22,6 +22,14 @@ def filled_cursor():
     ans.fg = 0x101
     ans.bg = 0x201
     ans.decoration_fg = 0x301
+    return ans
+
+
+def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
+    lb = filled_line_buf(ynum, xnum, cursor)
+    ans = HistoryBuf(ynum, xnum)
+    for i in range(ynum):
+        ans.push(lb.line(i))
     return ans
 
 
