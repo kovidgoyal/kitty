@@ -116,14 +116,6 @@ dealloc(Screen* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
-void screen_bell(Screen UNUSED *self, uint8_t ch) {  // {{{
-    FILE *f = fopen("/dev/tty", "w");
-    if (f != NULL) {
-        fwrite(&ch, 1, 1, f);
-        fclose(f);
-    }
-} // }}}
-
 // Draw text {{{
  
 void screen_shift_out(Screen *self, uint8_t UNUSED ch) {
@@ -791,6 +783,14 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 // }}}
 
 // Device control {{{
+
+void screen_bell(Screen UNUSED *self, uint8_t ch) {  
+    FILE *f = fopen("/dev/tty", "w");
+    if (f != NULL) {
+        fwrite(&ch, 1, 1, f);
+        fclose(f);
+    }
+} 
 
 static inline void callback(const char *name, Screen *self, const char *data, unsigned int sz) {
     if (sz) PyObject_CallMethod(self->callbacks, name, "y#", data, sz);
