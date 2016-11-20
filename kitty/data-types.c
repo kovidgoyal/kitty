@@ -36,6 +36,7 @@ PyInit_fast_data_types(void) {
 
     if (m != NULL) {
         if (!init_LineBuf(m)) return NULL;
+        if (!init_HistoryBuf(m)) return NULL;
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;

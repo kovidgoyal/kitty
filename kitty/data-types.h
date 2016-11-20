@@ -133,7 +133,7 @@ PyTypeObject Line_Type;
 typedef struct {
     PyObject_HEAD
 
-    bool *buf;
+    uint8_t *buf;
     index_type xnum, ynum, *line_map, *scratch;
     index_type block_size;
     bool *continued_map;
@@ -147,6 +147,15 @@ typedef struct {
 } LineBuf;
 PyTypeObject LineBuf_Type;
 
+typedef struct {
+    PyObject_HEAD
+
+    uint8_t *buf;
+    index_type xnum, ynum;
+    Line *line;
+    index_type start_of_data, count;
+} HistoryBuf;
+PyTypeObject HistoryBuf_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -267,9 +276,11 @@ PyTypeObject Screen_Type;
 Line* alloc_line();
 Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
+HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
 ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
 Savepoint* alloc_savepoint();
 int init_LineBuf(PyObject *);
+int init_HistoryBuf(PyObject *);
 int init_Cursor(PyObject *);
 int init_Line(PyObject *);
 int init_ColorProfile(PyObject *);
