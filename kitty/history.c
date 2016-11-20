@@ -78,7 +78,7 @@ static inline void historybuf_push(HistoryBuf *self) {
 
 static PyObject*
 change_num_of_lines(HistoryBuf *self, PyObject *val) {
-#define change_num_of_lines_doc "Change the number of lines in thsi buffer"
+#define change_num_of_lines_doc "Change the number of lines in this buffer"
     HistoryBuf t = {0};
     t.xnum=self->xnum;
     t.ynum=(index_type) PyLong_AsUnsignedLong(val);
