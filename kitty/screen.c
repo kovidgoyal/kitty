@@ -1029,11 +1029,40 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!O!O!kkp", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
+    unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
+
     if (!tracker_update_cell_data(self->change_tracker, self->linebuf, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
-    Py_INCREF(cursor_changed);
-    return cursor_changed;
+    return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
+static PyObject*
+set_scroll_cell_data(Screen *self, PyObject *args) {
+    SpriteMap *spm;
+    ColorProfile *color_profile;
+    PyObject *dp, *sp;
+    unsigned int *data, *src, scrolled_by;
+    unsigned long default_bg, default_fg;
+    if (!PyArg_ParseTuple(args, "O!O!O!kkIO", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &sp, &default_fg, &default_bg, &scrolled_by, &dp)) return NULL;
+    data = PyLong_AsVoidPtr(dp);
+    src = PyLong_AsVoidPtr(sp);
+    unsigned int line_size = 9 * self->columns;
+
+    scrolled_by = MIN(self->historybuf->count, scrolled_by);
+
+    for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
+        historybuf_init_line(self->historybuf, scrolled_by - y, self->historybuf->line);
+        self->historybuf->line->ynum = y;
+        if (!update_cell_range_data(spm, self->historybuf->line, 0, self->columns - 1, color_profile, default_bg, default_fg, data)) return NULL;
+    }
+    if (scrolled_by < self->lines) {
+        // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer
+        index_type num_to_copy = self->lines - scrolled_by;
+        index_type offset = line_size * scrolled_by;
+        memcpy(data + offset, src, line_size * num_to_copy * sizeof(unsigned int));
+    }
+    Py_RETURN_NONE;
+}
+ 
 static PyObject* is_dirty(Screen *self) {
     PyObject *ans = self->change_tracker->dirty ? Py_True : Py_False;
     Py_INCREF(ans);
@@ -1096,6 +1125,7 @@ static PyMethodDef methods[] = {
     MND(reverse_index, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
+    MND(set_scroll_cell_data, METH_VARARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

@@ -218,15 +218,25 @@ class CharGrid:
             self.render_queue.put(RenderData(clear_color=self.default_bg))
             self.clear_count = 4
 
+    def scroll(self, amt, upwards=True):
+        amt = 1 if amt == 'line' else self.screen.lines - 1 if amt == 'page' else max(0, min(int(amt), self.screen.lines - 1))
+        if not upwards:
+            amt *= -1
+        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))
+        if y != self.scrolled_by:
+            self.scrolled_by = y
+            self.update_cell_data()
+
     def update_cell_data(self, add_viewport_data=False):
-        rd = RenderData(sprite_layout=self.sprites.layout)
+        rd = RenderData(sprite_layout=self.sprites.layout, cell_data_changed=True)
         if add_viewport_data:
             rd.viewport = Size(self.width, self.height)
             rd.screen_geometry = self.screen_geometry
         with self.sprites_lock:
-            cursor_changed = self.screen.update_cell_data(
+            cursor_changed, history_line_added_count = self.screen.update_cell_data(
                 self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, add_viewport_data)
             if self.scrolled_by:
+                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
                     self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
@@ -234,7 +244,6 @@ class CharGrid:
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         with self.buffer_lock:
             memmove(self.render_buf, data, sizeof(type(data)))
-        rd.cell_data_changed = True
         if cursor_changed:
             c = self.screen.cursor
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)

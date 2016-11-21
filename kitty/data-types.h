@@ -323,6 +323,7 @@ unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
+void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

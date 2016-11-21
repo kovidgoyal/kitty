@@ -70,6 +70,10 @@ static inline void init_line(HistoryBuf *self, index_type num, Line *l) {
     l->combining_chars = (combining_type*)(l->decoration_fg + self->xnum);
 }
 
+void historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
+    init_line(self, index_of(self, lnum), l);
+}
+
 static inline index_type historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);

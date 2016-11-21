@@ -281,4 +281,15 @@ class Boss(Thread):
         text = subprocess.check_output(['xsel'])
         self.paste(text)
 
+    def scroll_line_up(self):
+        self.queue_action(self.char_grid.scroll, 'line', True)
+
+    def scroll_line_down(self):
+        self.queue_action(self.char_grid.scroll, 'line', False)
+
+    def scroll_page_up(self):
+        self.queue_action(self.char_grid.scroll, 'page', True)
+
+    def scroll_page_down(self):
+        self.queue_action(self.char_grid.scroll, 'page', False)
     # }}}
