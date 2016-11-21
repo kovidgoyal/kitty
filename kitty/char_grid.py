@@ -16,16 +16,13 @@ from .fast_data_types import (
     glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
     GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
     glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
-    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile, REVERSE,
+    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 )
 
 Size = namedtuple('Size', 'width height')
 Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
-COL_MASK = 0xFFFFFFFF
-COL_SHIFT = 32
-REVERSE_MASK = 1 << REVERSE
 
 # cell shader {{{
 
@@ -112,7 +109,7 @@ void main() {
 # }}}
 
 
-def calculate_vertices(cell_width, cell_height, screen_width, screen_height):
+def calculate_screen_geometry(cell_width, cell_height, screen_width, screen_height):
     xnum = screen_width // cell_width
     ynum = screen_height // cell_height
     dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
@@ -138,8 +135,6 @@ class RenderData:
             val = getattr(other, k)
             if val is not None:
                 setattr(self, k, val)
-
-empty_cell = (' ', 0)
 
 
 def color_as_int(val):
@@ -198,7 +193,7 @@ class CharGrid:
 
     def do_layout(self, w, h):
         self.width, self.height = w, h
-        self.screen_geometry = sg = calculate_vertices(self.cell_width, self.cell_height, self.width, self.height)
+        self.screen_geometry = sg = calculate_screen_geometry(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
         self.sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
         self.update_cell_data(add_viewport_data=True)

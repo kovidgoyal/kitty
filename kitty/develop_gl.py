@@ -8,7 +8,7 @@ import ctypes
 
 from kitty.shaders import ShaderProgram, GL_VERSION, Sprites
 from kitty.fonts import set_font_family, cell_size
-from kitty.char_grid import calculate_vertices, cell_shader
+from kitty.char_grid import calculate_screen_geometry, cell_shader
 from kitty.fast_data_types import (
     glViewport, enable_automatic_opengl_error_checking, glClearColor,
     glUniform2f, glUniform4f, glUniform2ui, glUniform1i, glewInit, glGetString,
@@ -54,7 +54,7 @@ class Renderer:
         cell_width, cell_height = cell_size()
         self.sprites.do_layout(cell_width, cell_height)
         self.sprites.ensure_state()
-        self.screen_geometry = sg = calculate_vertices(cell_width, cell_height, self.w, self.h)
+        self.screen_geometry = sg = calculate_screen_geometry(cell_width, cell_height, self.w, self.h)
         data = (ctypes.c_uint * (sg.xnum * sg.ynum * 9))()
         lb = LineBuf(sg.ynum, sg.xnum)
         i = -1
