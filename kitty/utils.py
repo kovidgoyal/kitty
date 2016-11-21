@@ -2,20 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import re
 import subprocess
-import sys
-import termios
-import struct
-import fcntl
-import signal
 import ctypes
 from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import terminfo_dir
 
 libc = ctypes.CDLL(None)
 wcwidth_native = libc.wcwidth
@@ -30,78 +23,6 @@ def wcwidth(c: str) -> int:
     if ans == -1:
         ans = 1
     return ans
-
-
-def create_pty():
-    if not hasattr(create_pty, 'master'):
-        create_pty.master, create_pty.slave = os.openpty()
-        fcntl.fcntl(create_pty.slave, fcntl.F_SETFD, fcntl.fcntl(create_pty.slave, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
-        # Note that master and slave are in blocking mode
-    return create_pty.master, create_pty.slave
-
-
-def fork_child(argv, cwd, opts):
-    master, slave = create_pty()
-    pid = os.fork()
-    if pid == 0:
-        try:
-            os.chdir(cwd)
-        except EnvironmentError:
-            os.chdir('/')
-        os.setsid()
-        for i in range(3):
-            os.dup2(slave, i)
-        os.close(slave), os.close(master)
-        os.closerange(3, 200)
-        # Establish the controlling terminal (see man 7 credentials)
-        os.close(os.open(os.ttyname(1), os.O_RDWR))
-        os.environ['TERM'] = opts.term
-        os.environ['COLORTERM'] = 'truecolor'
-        if os.path.isdir(terminfo_dir):
-            os.environ['TERMINFO'] = terminfo_dir
-        try:
-            os.execvp(argv[0], argv)
-        except Exception as err:
-            print('Could not launch:', argv[0])
-            print('\t', err)
-            input('\nPress Enter to exit:')
-    else:
-        os.close(slave)
-        fork_child.pid = pid
-        return pid
-
-
-def resize_pty(w, h):
-    master = create_pty()[0]
-    fcntl.ioctl(master, termios.TIOCSWINSZ, struct.pack('4H', h, w, 0, 0))
-
-
-def hangup():
-    if hasattr(fork_child, 'pid'):
-        pid = fork_child.pid
-        del fork_child.pid
-        try:
-            pgrp = os.getpgid(pid)
-        except ProcessLookupError:
-            return
-        os.killpg(pgrp, signal.SIGHUP)
-        os.close(create_pty()[0])
-
-
-def get_child_status():
-    if hasattr(fork_child, 'pid'):
-        try:
-            return os.waitid(os.P_PID, fork_child.pid, os.WEXITED | os.WNOHANG)
-        except ChildProcessError:
-            del fork_child.pid
-
-
-base_size = sys.getsizeof('')
-
-
-def is_simple_string(x):
-    ' We use the fact that python stores unicode strings with a 1-byte representation when possible '
-    return sys.getsizeof(x) == base_size + len(x)
 
 
 @contextmanager

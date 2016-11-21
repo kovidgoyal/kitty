@@ -19,7 +19,7 @@ import glfw
 from .constants import appname
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event
-from .utils import resize_pty, create_pty, sanitize_title
+from .utils import sanitize_title
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
@@ -41,12 +41,14 @@ class Boss(Thread):
     pending_title_change = pending_icon_change = None
     pending_color_changes = {}
 
-    def __init__(self, window, window_width, window_height, opts, args):
+    def __init__(self, window, window_width, window_height, opts, args, child):
         Thread.__init__(self, name='ChildMonitor')
+        self.child = child
         self.screen_update_delay = opts.repaint_delay / 1000.0
         self.pending_update_screen = None
         self.action_queue = Queue()
-        self.child_fd = create_pty()[0]
+        self.child.fork()
+        self.child_fd = self.child.child_fd
         self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
         self.signal_fd = handle_unix_signals()
         self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
@@ -132,7 +134,7 @@ class Boss(Thread):
     def apply_resize_screen(self, w, h):
         self.char_grid.resize_screen(w, h)
         sg = self.char_grid.screen_geometry
-        resize_pty(sg.xnum, sg.ynum)
+        self.child.resize_pty(sg.xnum, sg.ynum)
         glfw.glfwPostEmptyEvent()
 
     def apply_opts(self, opts):
@@ -194,6 +196,8 @@ class Boss(Thread):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         self.char_grid.destroy()
+        self.child.hangup()
+        self.child.get_child_status()  # Ensure child does not become zombie
 
     def shutdown(self):
         self.shutting_down = True

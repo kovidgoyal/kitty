@@ -10,10 +10,10 @@ import pwd
 from gettext import gettext as _
 
 
+from .child import Child
 from .config import load_config
 from .constants import appname, str_version, config_dir
 from .boss import Boss
-from .utils import fork_child, hangup, get_child_status
 from .shaders import GL_VERSION
 from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
 import glfw
@@ -44,7 +44,7 @@ def setup_opengl():
     glfw.glfwWindowHint(glfw.GLFW_SAMPLES, 0)
 
 
-def run_app(opts, args):
+def run_app(opts, args, child):
     setup_opengl()
     window_width = window_height = 1024
     window = glfw.glfwCreateWindow(
@@ -56,7 +56,7 @@ def run_app(opts, args):
         glfw.glfwMakeContextCurrent(window)
         glewInit()
         glfw.glfwSwapInterval(1)
-        boss = Boss(window, window_width, window_height, opts, args)
+        boss = Boss(window, window_width, window_height, opts, args, child)
         glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
         boss.start()
         try:
@@ -69,7 +69,6 @@ def run_app(opts, args):
                 boss.close()
                 boss.join()
             boss.destroy()
-            get_child_status()  # Ensure child does not become zombie
     finally:
         glfw.glfwDestroyWindow(window)
 
@@ -90,7 +89,7 @@ def main():
         return
     opts = load_config(args.config)
     child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
-    fork_child(child, args.directory, opts)
+    child = Child(child, args.directory, opts)
     glfw.glfwSetErrorCallback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
     if not glfw.glfwInit():
@@ -103,7 +102,7 @@ def main():
             import pstats
             pr = cProfile.Profile()
             pr.enable()
-            run_app(opts, args)
+            run_app(opts, args, child)
             pr.disable()
             pr.create_stats()
             s = pstats.Stats(pr)
@@ -113,8 +112,7 @@ def main():
             s.sort_stats('time', 'name')
             s.print_stats(30)
         else:
-            run_app(opts, args)
+            run_app(opts, args, child)
     finally:
         glfw.glfwTerminate()
-        hangup()
         os.closerange(3, 100)
