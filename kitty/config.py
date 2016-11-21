@@ -7,7 +7,7 @@ import sys
 from collections import namedtuple
 from itertools import repeat
 
-import glfw
+import glfw_constants as glfw
 
 from .fast_data_types import CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
 

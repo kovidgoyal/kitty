@@ -16,7 +16,7 @@ from .constants import appname, str_version, config_dir
 from .boss import Boss
 from .shaders import GL_VERSION
 from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
-import glfw
+import glfw, glfw_constants
 
 
 def option_parser():
@@ -37,11 +37,11 @@ def option_parser():
 
 
 def setup_opengl():
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
-    glfw.glfwWindowHint(glfw.GLFW_OPENGL_PROFILE, glfw.GLFW_OPENGL_CORE_PROFILE)
-    glfw.glfwWindowHint(glfw.GLFW_OPENGL_FORWARD_COMPAT, True)
-    glfw.glfwWindowHint(glfw.GLFW_SAMPLES, 0)
+    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_PROFILE, glfw_constants.GLFW_OPENGL_CORE_PROFILE)
+    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_FORWARD_COMPAT, True)
+    glfw.glfwWindowHint(glfw_constants.GLFW_SAMPLES, 0)
 
 
 def run_app(opts, args, child):

@@ -15,6 +15,7 @@ from threading import Thread, current_thread
 from queue import Queue, Empty
 
 import glfw
+import glfw_constants
 
 from .constants import appname
 from .char_grid import CharGrid
@@ -107,8 +108,8 @@ class Boss(Thread):
                 self.write_to_child(b'\x1b[O')
 
     def on_mouse_button(self, window, button, action, mods):
-        if action == glfw.GLFW_RELEASE:
-            if button == glfw.GLFW_MOUSE_BUTTON_MIDDLE:
+        if action == glfw_constants.GLFW_RELEASE:
+            if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
                 # glfw has no way to get the primary selection
                 # text = glfw.glfwGetClipboardString(window)
                 text = subprocess.check_output(['xsel'])
@@ -118,7 +119,7 @@ class Boss(Thread):
                     self.write_to_child(text)
 
     def on_key(self, window, key, scancode, action, mods):
-        if action == glfw.GLFW_PRESS or action == glfw.GLFW_REPEAT:
+        if action == glfw_constants.GLFW_PRESS or action == glfw_constants.GLFW_REPEAT:
             data = interpret_key_event(key, scancode, mods)
             if data:
                 self.write_to_child(data)
