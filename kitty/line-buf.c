@@ -367,8 +367,8 @@ static PyMethodDef methods[] = {
 };
 
 static PyMemberDef members[] = {
-    {"xnum", T_UINT, offsetof(LineBuf, xnum), 0, "xnum"},
-    {"ynum", T_UINT, offsetof(LineBuf, ynum), 0, "ynum"},
+    {"xnum", T_UINT, offsetof(LineBuf, xnum), READONLY, "xnum"},
+    {"ynum", T_UINT, offsetof(LineBuf, ynum), READONLY, "ynum"},
     {NULL}  /* Sentinel */
 };
 

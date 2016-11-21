@@ -18,8 +18,8 @@ static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     PyObject *callbacks = Py_None;
-    unsigned int columns=80, lines=24;
-    if (!PyArg_ParseTuple(args, "|OII", &callbacks, &lines, &columns)) return NULL;
+    unsigned int columns=80, lines=24, scrollback=0;
+    if (!PyArg_ParseTuple(args, "|OIII", &callbacks, &lines, &columns, &scrollback)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -35,7 +35,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->change_tracker = alloc_change_tracker(lines, columns);
-        self->historybuf = alloc_historybuf(lines, columns);
+        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
         self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL || self->historybuf == NULL) {
             Py_CLEAR(self); return NULL;
@@ -82,7 +82,7 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
 
     bool is_main = self->linebuf == self->main_linebuf;
     int cursor_y = -1;
-    HistoryBuf *nh = realloc_hb(self->historybuf, lines, columns);
+    HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y, self->historybuf);
@@ -110,7 +110,8 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
 }
 
 static bool screen_change_scrollback_size(Screen *self, unsigned int size) {
-    return historybuf_resize(self->historybuf, size);
+    if (size != self->historybuf->ynum) return historybuf_resize(self->historybuf, size);
+    return true;
 }
 
 
@@ -1015,7 +1016,7 @@ static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
     unsigned int count = 1; 
     if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; 
-    if (!screen_change_scrollback_size(self, MAX(100, count))) return NULL;
+    if (!screen_change_scrollback_size(self, MAX(self->lines, count))) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -1094,13 +1095,14 @@ static PyMethodDef methods[] = {
 
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
-    {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), 0, "cursor"},
-    {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), 0, "linebuf"},
-    {"lines", T_UINT, offsetof(Screen, lines), 0, "lines"},
-    {"columns", T_UINT, offsetof(Screen, columns), 0, "columns"},
-    {"margin_top", T_UINT, offsetof(Screen, margin_top), 0, "margin_top"},
-    {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), 0, "margin_bottom"},
-    {"current_charset", T_UINT, offsetof(Screen, current_charset), 0, "current_charset"},
+    {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
+    {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
+    {"historybuf", T_OBJECT_EX, offsetof(Screen, historybuf), READONLY, "historybuf"},
+    {"lines", T_UINT, offsetof(Screen, lines), READONLY, "lines"},
+    {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
+    {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
+    {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
+    {"current_charset", T_UINT, offsetof(Screen, current_charset), READONLY, "current_charset"},
     {NULL}
 };
  

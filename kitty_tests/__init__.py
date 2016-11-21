@@ -37,8 +37,8 @@ class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
 
-    def create_screen(self, cols=5, lines=5):
-        return Screen(None, lines, cols)
+    def create_screen(self, cols=5, lines=5, scrollback=5):
+        return Screen(None, lines, cols, scrollback)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

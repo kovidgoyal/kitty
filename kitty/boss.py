@@ -54,7 +54,7 @@ class Boss(Thread):
         self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
-        self.screen = Screen(self)
+        self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         self.read_bytes = partial(read_bytes_dump, print) if args.dump_commands else read_bytes
         self.write_buf = memoryview(b'')
@@ -143,6 +143,7 @@ class Boss(Thread):
     def apply_opts_to_screen(self):
         self.char_grid.apply_opts(self.opts)
         self.char_grid.dirty_everything()
+        self.screen.change_scrollback_size(self.opts.scrollback_lines)
 
     def render(self):
         if self.pending_title_change is not None:

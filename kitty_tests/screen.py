@@ -232,3 +232,17 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), ' ' * 5)
         for i in range(1, 5):
             self.ae(str(s.line(i)), '12345')
+
+    def test_resize(self):
+        s = self.create_screen(scrollback=6)
+        s.draw(''.join([str(i) * s.columns for i in range(s.lines)]).encode('utf-8'))
+        s.resize(3, 10)
+        self.ae(str(s.line(0)), '0'*5 + '1'*5)
+        self.ae(str(s.line(1)), '2'*5 + '3'*5)
+        self.ae(str(s.line(2)), '4'*5 + ' '*5)
+        s.resize(5, 1)
+        self.ae(str(s.line(0)), '4')
+        hb = s.historybuf
+        for i in range(s.lines):
+            self.ae(str(hb.line(i)), '3')
+        self.ae(str(hb.line(5)), '2')
