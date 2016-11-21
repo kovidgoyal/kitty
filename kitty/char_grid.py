@@ -3,8 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
-from copy import copy
-from ctypes import c_uint, addressof
+from ctypes import c_uint, addressof, memmove, sizeof
 from queue import Queue, Empty
 from threading import Lock
 
@@ -122,10 +121,10 @@ def calculate_screen_geometry(cell_width, cell_height, screen_width, screen_heig
 
 class RenderData:
 
-    __slots__ = 'viewport clear_color cell_data screen_geometry sprite_layout cursor'.split()
+    __slots__ = 'viewport clear_color cell_data_changed screen_geometry sprite_layout cursor'.split()
 
-    def __init__(self, viewport=None, clear_color=None, cell_data=None, screen_geometry=None, sprite_layout=None, cursor=None):
-        self.viewport, self.clear_color, self.cell_data = viewport, clear_color, cell_data
+    def __init__(self, viewport=None, clear_color=None, cell_data_changed=False, screen_geometry=None, sprite_layout=None, cursor=None):
+        self.viewport, self.clear_color, self.cell_data_changed = viewport, clear_color, cell_data_changed
         self.screen_geometry = screen_geometry
         self.sprite_layout = sprite_layout
         self.cursor = cursor
@@ -144,7 +143,7 @@ def color_as_int(val):
 class CharGrid:
 
     def __init__(self, screen, opts, window_width, window_height):
-        self.lock = Lock()
+        self.sprites_lock, self.buffer_lock = Lock(), Lock()
         self.scrolled_by = 0
         self.dpix, self.dpiy = get_logical_dpi()
         self.width, self.height = window_width, window_height
@@ -196,8 +195,10 @@ class CharGrid:
         self.width, self.height = w, h
         self.screen_geometry = sg = calculate_screen_geometry(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
-        self.main_sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
-        self.scroll_sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
+        self.sprite_map_type = (c_uint * (sg.ynum * sg.xnum * 9))
+        self.main_sprite_map = self.sprite_map_type()
+        self.scroll_sprite_map = self.sprite_map_type()
+        self.render_buf = self.sprite_map_type()
         self.update_cell_data(add_viewport_data=True)
         self.clear_count = 4
 
@@ -222,7 +223,7 @@ class CharGrid:
         if add_viewport_data:
             rd.viewport = Size(self.width, self.height)
             rd.screen_geometry = self.screen_geometry
-        with self.lock:
+        with self.sprites_lock:
             cursor_changed = self.screen.update_cell_data(
                 self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, add_viewport_data)
             if self.scrolled_by:
@@ -230,7 +231,10 @@ class CharGrid:
                     self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
 
-        rd.cell_data = copy(self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map)
+        data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
+        with self.buffer_lock:
+            memmove(self.render_buf, data, sizeof(type(data)))
+        rd.cell_data_changed = True
         if cursor_changed:
             c = self.screen.cursor
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
@@ -243,10 +247,11 @@ class CharGrid:
             self.clear_count -= 1
         cell_data_changed = self.get_all_render_changes()
         with self.sprites:
-            with self.lock:
+            with self.sprites_lock:
                 self.sprites.render_dirty_cells()
             if cell_data_changed:
-                self.sprites.set_sprite_map(self.last_render_data.cell_data)
+                with self.buffer_lock:
+                    self.sprites.set_sprite_map(self.render_buf)
             data = self.last_render_data
 
             if data.screen_geometry is None:
@@ -264,7 +269,7 @@ class CharGrid:
                 rd = self.render_queue.get_nowait()
             except Empty:
                 break
-            cell_data_changed |= rd.cell_data is not None
+            cell_data_changed |= rd.cell_data_changed
             if rd.clear_color is not None:
                 bg = rd.clear_color
                 glClearColor((bg >> 16) / 255, ((bg >> 8) & 0xff) / 255, (bg & 0xff) / 255, 1)
