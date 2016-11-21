@@ -145,6 +145,7 @@ class CharGrid:
 
     def __init__(self, screen, opts, window_width, window_height):
         self.lock = Lock()
+        self.scrolled_by = 0
         self.dpix, self.dpiy = get_logical_dpi()
         self.width, self.height = window_width, window_height
         self.color_profile = ColorProfile()
@@ -195,7 +196,8 @@ class CharGrid:
         self.width, self.height = w, h
         self.screen_geometry = sg = calculate_screen_geometry(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
-        self.sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
+        self.main_sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
+        self.scroll_sprite_map = (c_uint * (sg.ynum * sg.xnum * 9))()
         self.update_cell_data(add_viewport_data=True)
         self.clear_count = 4
 
@@ -220,13 +222,15 @@ class CharGrid:
         if add_viewport_data:
             rd.viewport = Size(self.width, self.height)
             rd.screen_geometry = self.screen_geometry
-        ptr = addressof(self.sprite_map)
         with self.lock:
             cursor_changed = self.screen.update_cell_data(
-                self.sprites.backend, self.color_profile, ptr, self.default_fg, self.default_bg, add_viewport_data)
+                self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, add_viewport_data)
+            if self.scrolled_by:
+                self.screen.set_scroll_cell_data(
+                    self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
+                    self.scrolled_by, addressof(self.scroll_sprite_map))
 
-        rd.cell_data = copy(self.sprite_map)
-        rd.sprite_layout = self.sprites.layout
+        rd.cell_data = copy(self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map)
         if cursor_changed:
             c = self.screen.cursor
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
@@ -249,7 +253,7 @@ class CharGrid:
                 return
             sg = data.screen_geometry
             self.render_cells(sg, data.sprite_layout)
-        if not data.cursor.hidden:
+        if not data.cursor.hidden and not self.scrolled_by:
             self.render_cursor(sg, data.cursor)
 
     def get_all_render_changes(self):
