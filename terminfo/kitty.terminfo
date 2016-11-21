@@ -1,13 +1,23 @@
 # vim: noet:ts=8:sw=8:sts=0
 xterm-kitty|KovIdTTY,
+# auto_right_margin (terminal has automatic margins)
 	am,
+# can_change (terminal can redefine existing colors)
 	ccc,
+# has_meta key (i.e. sets the eight bit)
 	km,
+# prtr_silent (printer will not echo on screen)
 	mc5i,
+# move_insert_mode (safe to move while in insert mode)
 	mir,
+# move_standout_mode (safe to move while in standout mode)
 	msgr,
+# no_pad_char (pad character does not exist)
 	npc,
+# eat_newline_glitch (newline ignored after 80 columns)
 	xenl,
+# has_status_line (has extra status line)
+	hs,
 	colors#256,
 	cols#80,
 	it#8,
@@ -115,7 +125,6 @@ xterm-kitty|KovIdTTY,
 	u8=\E[?1;2c,
 	u9=\E[c,
 	vpa=\E[%i%p1%dd,
-	hs,
 	tsl=\E]2;,
 	fsl=^G,
 	dsl=\E]2;\007,
