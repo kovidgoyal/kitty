@@ -3,8 +3,11 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+import sys
 from collections import namedtuple
 from itertools import repeat
+
+import glfw
 
 from .fast_data_types import CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
 
@@ -163,8 +166,6 @@ color_names = {
 Color = namedtuple('Color', 'red green blue')
 # }}}
 
-defaults = {}
-
 
 def to_color(raw, validate=False):
     x = raw.strip().lower()
@@ -220,7 +221,47 @@ for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)
 
 
-for line in '''
+def parse_key(val, keymap):
+    sc, action = val.partition(' ')[::2]
+    if not sc or not action:
+        return
+    parts = sc.split('+')
+
+    def map_mod(m):
+        return {'CTRL': 'CONTROL', 'CMD': 'CONTROL'}.get(m, m)
+
+    try:
+        mods = frozenset(getattr(glfw, 'GLFW_MOD_' + map_mod(m.upper())) for m in parts[:-1])
+    except AttributeError:
+        print('Shortcut: {} has an unknown modifier, ignoring'.format(val), file=sys.stderr)
+        return
+    key = getattr(glfw, 'GLFW_KEY_' + parts[-1].upper(), None)
+    if key is None:
+        print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
+        return
+    keymap[(mods, key)] = action
+
+
+def parse_config(lines):
+    ans = {'keymap': {}}
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        m = key_pat.match(line)
+        if m is not None:
+            key, val = m.groups()
+            if key == 'map':
+                parse_key(val, ans['keymap'])
+                continue
+            tm = type_map.get(key)
+            if tm is not None:
+                val = tm(val)
+            ans[key] = val
+    return ans
+
+
+default_config = '''
 term xterm-kitty
 # The foreground color
 foreground       #dddddd
@@ -287,42 +328,49 @@ color14  #14ffff
 # white
 color7   #dddddd
 color15  #ffffff
-'''.splitlines():
-    line = line.strip()
-    if not line or line.startswith('#'):
-        continue
-    m = key_pat.match(line)
-    if m is not None:
-        key, val = m.groups()
-        tm = type_map.get(key)
-        if tm is not None:
-            val = tm(val)
-        defaults[key] = val
+
+# Key mapping
+# For a list of key names, see: http://www.glfw.org/docs/latest/group__keys.html
+# For a list of modifier names, see: http://www.glfw.org/docs/latest/group__mods.html
+map ctrl+shift+v paste_from_clipboard
+map ctrl+shift+s paste_from_selection
+map ctrl+shift+c copy_to_clipboard
+map ctrl+shift+up scroll_line_up
+map ctrl+shift+down scroll_line_down
+map ctrl+shift+page_up scroll_page_up
+map Ctrl+Shift+page_down scroll_page_down
+'''
+
+
+defaults = parse_config(default_config.splitlines())
+
+
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
+
+
+def update_dict(a, b):
+    a.update(b)
+    return a
+
+
+def merge_dicts(vals, defaults):
+    return {k: update_dict(v, vals.get(k, {})) if isinstance(v, dict) else vals.get(k, v) for k, v in defaults.items()}
 
 
 def load_config(path: str) -> Options:
     if not path:
         return defaults
-    ans = defaults._asdict()
     try:
         f = open(path)
     except FileNotFoundError:
         return defaults
+    ans = defaults._asdict()
+    actions = frozenset(defaults.keymap.values())
     with f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            m = key_pat.match(line)
-            if m is not None:
-                key, val = m.groups()
-                if key in ans:
-                    tm = type_map.get(key)
-                    if tm is not None:
-                        val = tm(val)
-                    ans[key] = val
+        vals = parse_config(f)
+    vals['keymap'] = {k: v for k, v in vals.get('keymap', {}).items() if v in actions}
+    ans = merge_dicts(vals, ans)
     return Options(**ans)
 
 
