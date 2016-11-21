@@ -19,7 +19,7 @@ import glfw_constants
 
 from .constants import appname
 from .char_grid import CharGrid
-from .keys import interpret_text_event, interpret_key_event
+from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .utils import sanitize_title
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
@@ -110,16 +110,18 @@ class Boss(Thread):
     def on_mouse_button(self, window, button, action, mods):
         if action == glfw_constants.GLFW_RELEASE:
             if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
-                # glfw has no way to get the primary selection
-                # text = glfw.glfwGetClipboardString(window)
-                text = subprocess.check_output(['xsel'])
-                if text:
-                    if self.screen.in_bracketed_paste_mode():
-                        text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
-                    self.write_to_child(text)
+                self.paste_from_selection()
+                return
 
     def on_key(self, window, key, scancode, action, mods):
         if action == glfw_constants.GLFW_PRESS or action == glfw_constants.GLFW_REPEAT:
+            func = get_shortcut(self.opts.keymap, mods, key)
+            if func is not None:
+                func = getattr(self, func, None)
+                if func is not None:
+                    passthrough = func()
+                    if not passthrough:
+                        return
             data = interpret_key_event(key, scancode, mods)
             if data:
                 self.write_to_child(data)
@@ -260,3 +262,23 @@ class Boss(Thread):
         self.char_grid.change_colors(self.pending_color_changes)
         self.pending_color_changes = {}
         glfw.glfwPostEmptyEvent()
+
+    # actions {{{
+
+    def paste(self, text):
+        if text:
+            if self.screen.in_bracketed_paste_mode():
+                text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
+            self.write_to_child(text)
+
+    def paste_from_clipboard(self):
+        text = glfw.glfwGetClipboardString(self.window)
+        self.paste(text)
+
+    def paste_from_selection(self):
+        # glfw has no way to get the primary selection
+        # https://github.com/glfw/glfw/issues/894
+        text = subprocess.check_output(['xsel'])
+        self.paste(text)
+
+    # }}}

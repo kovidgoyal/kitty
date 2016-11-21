@@ -230,11 +230,14 @@ def parse_key(val, keymap):
     def map_mod(m):
         return {'CTRL': 'CONTROL', 'CMD': 'CONTROL'}.get(m, m)
 
-    try:
-        mods = frozenset(getattr(glfw, 'GLFW_MOD_' + map_mod(m.upper())) for m in parts[:-1])
-    except AttributeError:
-        print('Shortcut: {} has an unknown modifier, ignoring'.format(val), file=sys.stderr)
-        return
+    mods = 0
+    for m in parts[:-1]:
+        try:
+            mods |= getattr(glfw, 'GLFW_MOD_' + map_mod(m.upper()))
+        except AttributeError:
+            print('Shortcut: {} has an unknown modifier, ignoring'.format(val), file=sys.stderr)
+            return
+
     key = getattr(glfw, 'GLFW_KEY_' + parts[-1].upper(), None)
     if key is None:
         print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)

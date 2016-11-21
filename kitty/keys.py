@@ -61,3 +61,7 @@ def interpret_text_event(codepoint, mods):
         return b''  # Handled by interpret_key_event above
     data = chr(codepoint).encode('utf-8')
     return data
+
+
+def get_shortcut(keymap, mods, key):
+    return keymap.get((mods & 0b1111, key))
