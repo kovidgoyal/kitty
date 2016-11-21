@@ -1040,6 +1040,15 @@ static PyObject* is_dirty(Screen *self) {
     return ans;
 }
 
+static PyObject* current_char_width(Screen *self) {
+#define current_char_width_doc "The width of the character under the cursor"
+    unsigned long ans = 1;
+    if (self->cursor->x < self->columns - 1 && self->cursor->y < self->lines) {
+        ans = linebuf_char_width_at(self->linebuf, self->cursor->x, self->cursor->y);
+    }
+    return PyLong_FromUnsignedLong(ans);
+}
+
 #define COUNT_WRAP(name) \
     static PyObject* name(Screen *self, PyObject *args) { \
     unsigned int count = 1; \
@@ -1071,6 +1080,7 @@ static PyMethodDef methods[] = {
     METHOD(cursor_back, METH_VARARGS)
     METHOD(erase_in_line, METH_VARARGS)
     METHOD(erase_in_display, METH_VARARGS)
+    METHOD(current_char_width, METH_NOARGS)
     MND(insert_lines, METH_VARARGS)
     MND(delete_lines, METH_VARARGS)
     MND(insert_characters, METH_VARARGS)

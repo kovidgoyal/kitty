@@ -301,7 +301,8 @@ class CharGrid:
             alpha = self.opts.cursor_opacity
             if alpha < 1.0 and shape == CURSOR_BLOCK:
                 glEnable(GL_BLEND)
-            right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx)
+            mult = self.screen.current_char_width()
+            right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx * mult)
             bottom = top - sg.dy
             if shape == CURSOR_UNDERLINE:
                 top = bottom + width(vert=False)

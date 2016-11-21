@@ -319,6 +319,7 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
+unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
