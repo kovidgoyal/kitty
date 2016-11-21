@@ -2,7 +2,7 @@ addons:
   apt:
     packages:
         - libglew-dev
-        - libglfw-dev
+        - libglfw3-dev
 dist: trusty
 group: beta
 language: python
