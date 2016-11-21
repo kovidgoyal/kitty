@@ -219,7 +219,7 @@ class CharGrid:
             self.clear_count = 4
 
     def scroll(self, amt, upwards=True):
-        amt = 1 if amt == 'line' else self.screen.lines - 1 if amt == 'page' else max(0, min(int(amt), self.screen.lines - 1))
+        amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
         if not upwards:
             amt *= -1
         y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))

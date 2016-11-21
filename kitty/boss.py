@@ -122,6 +122,8 @@ class Boss(Thread):
                     passthrough = func()
                     if not passthrough:
                         return
+            if self.char_grid.scrolled_by:
+                self.scroll_end()
             data = interpret_key_event(key, scancode, mods)
             if data:
                 self.write_to_child(data)
@@ -292,4 +294,10 @@ class Boss(Thread):
 
     def scroll_page_down(self):
         self.queue_action(self.char_grid.scroll, 'page', False)
+
+    def scroll_home(self):
+        self.queue_action(self.char_grid.scroll, 'full', True)
+
+    def scroll_end(self):
+        self.queue_action(self.char_grid.scroll, 'full', False)
     # }}}

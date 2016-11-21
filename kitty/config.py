@@ -341,7 +341,9 @@ map ctrl+shift+c copy_to_clipboard
 map ctrl+shift+up scroll_line_up
 map ctrl+shift+down scroll_line_down
 map ctrl+shift+page_up scroll_page_up
-map Ctrl+Shift+page_down scroll_page_down
+map ctrl+shift+page_down scroll_page_down
+map ctrl+shift+home scroll_home
+map ctrl+shift+end scroll_end
 '''
 
 
