@@ -232,11 +232,6 @@ class CharGrid:
             rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
         self.render_queue.put(rd)
 
-    def update_line(self, y, cell_ranges, dffg, dfbg, ptr):
-        line = self.screen.line(y)
-        for x, xmax in cell_ranges:
-            self.sprites.update_cell_data(line, x, xmax, self.color_profile, dfbg, dffg, ptr)
-
     def render(self):
         ' This is the only method in this class called in the UI thread (apart from __init__) '
         if self.clear_count > 0:
