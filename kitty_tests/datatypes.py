@@ -2,12 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import codecs
-
 from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
 
 from kitty.config import build_ansi_color_table, defaults
-from kitty.utils import is_simple_string, wcwidth, sanitize_title
+from kitty.utils import wcwidth, sanitize_title
 from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf
 
 
@@ -267,12 +265,7 @@ class TestDataTypes(BaseTest):
         self.assertContinued(lb2, False, False, True)
 
     def test_utils(self):
-        d = codecs.getincrementaldecoder('utf-8')('strict').decode
         self.ae(tuple(map(wcwidth, 'a1\0コ')), (1, 1, 0, 2))
-        for s in ('abd38453*(+\n\t\f\r !\0~[]{}()"\':;<>/?ASD`',):
-            self.assertTrue(is_simple_string(s))
-            self.assertTrue(is_simple_string(d(s.encode('utf-8'))))
-        self.assertFalse(is_simple_string('a1コ'))
         self.assertEqual(sanitize_title(b'a\0\01 \t\n\f\rb'), b'a b')
 
     def test_color_profile(self):
