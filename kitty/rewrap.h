@@ -27,8 +27,10 @@
 #define next_dest_line(continued) \
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
-        linebuf_init_line(dest, dest->ynum - 1); \
-        historybuf_add_line(historybuf, dest->line); \
+        if (historybuf != NULL) { \
+            linebuf_init_line(dest, dest->ynum - 1); \
+            historybuf_add_line(historybuf, dest->line); \
+        }\
     } else dest_y++; \
     init_dest_line(dest_y); \
     dest->continued_map[dest_y] = continued;

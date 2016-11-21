@@ -104,8 +104,6 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
 
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
-    screen_reset_mode(self, DECOM);
-    // TODO: resize history buf
     return true;
 }
 
