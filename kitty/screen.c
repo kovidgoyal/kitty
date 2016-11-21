@@ -667,22 +667,22 @@ void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         :param bool private: when ``True`` character attributes are left
                              unchanged.
         */
-    unsigned int s, n;
+    unsigned int s = 0, n = 0;
     switch(how) {
         case 0:
             s = self->cursor->x;
             n = self->columns - self->cursor->x;
             break;
         case 1:
-            s = 0; n = self->cursor->x + 1;
+            n = self->cursor->x + 1;
             break;
         case 2:
-            s = 0; n = self->columns;
+            n = self->columns;
             break;
         default:
-            return;
+            break;
     }
-    if (n > s) {
+    if (n > 0) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
             line_clear_text(self->linebuf->line, s, n, ' ');
