@@ -131,7 +131,6 @@ position_for(SpriteMap *self, PyObject *args) {
 
 bool
 update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
-#define update_cell_data_doc "update_cell_data(line, xstart, xmax, color_profile, default_bg, default_fg, data_pointer) -> Update the range [xstart, xmax] in data_pointer with the data from line"
     SpritePosition *sp;
     char_type previous_ch=0, ch;
     color_type color;
@@ -157,6 +156,20 @@ update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigne
         PACK_COL(offset + 6, bg);
     }
     return true;
+}
+
+static PyObject*
+update_cell_data(SpriteMap *self, PyObject *args) {
+#define update_cell_data_doc "update_cell_data(line, xstart, xmax, color_profile, default_bg, default_fg, data_pointer) -> Update the range [xstart, xmax] in data_pointer with the data from line"
+    unsigned int xstart, xmax;
+    uint32_t default_fg, default_bg;
+    Line *line; ColorProfile *color_profile;
+    PyObject *data_pointer;
+
+    if (!PyArg_ParseTuple(args, "O!IIO!IIO!", &Line_Type, &line, &xstart, &xmax, &ColorProfile_Type, &color_profile, &default_bg, &default_fg, &PyLong_Type, &data_pointer)) return NULL;
+    unsigned int *dp = PyLong_AsVoidPtr(data_pointer);
+    if (!update_cell_range_data(self, line, xstart, xmax, color_profile, default_bg, default_fg, dp)) return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -208,6 +221,7 @@ static PyMethodDef methods[] = {
     METHOD(layout, METH_VARARGS)
     METHOD(position_for, METH_VARARGS)
     METHOD(render_dirty_cells, METH_VARARGS)
+    METHOD(update_cell_data, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

@@ -3,6 +3,7 @@
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import glfw
+import glfw_constants
 import sys
 import ctypes
 
@@ -68,7 +69,8 @@ class Renderer:
                 c.bg = (bg << 8) | 3
                 c.x = x
                 line.set_text('%d' % (i % 10), 0, 1, c)
-            self.sprites.update_cell_data(line, 0, sg.xnum - 1, self.color_profile, 0xffffff, 0, ctypes.addressof(data))
+            self.sprites.backend.update_cell_data(line, 0, sg.xnum - 1, self.color_profile, 0xffffff, 0, ctypes.addressof(data))
+        self.sprites.render_dirty_cells()
         self.sprites.set_sprite_map(data)
 
     def render(self):
@@ -106,11 +108,11 @@ def _main():
     # These Window hints are used to specify
     # which opengl version to use and other details
     # for the opengl context that will be created
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw.glfwWindowHint(glfw.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
-    glfw.glfwWindowHint(glfw.GLFW_OPENGL_PROFILE,
-                        glfw.GLFW_OPENGL_CORE_PROFILE)
-    glfw.glfwWindowHint(glfw.GLFW_OPENGL_FORWARD_COMPAT, True)
+    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_PROFILE,
+                        glfw_constants.GLFW_OPENGL_CORE_PROFILE)
+    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_FORWARD_COMPAT, True)
 
     window = glfw.glfwCreateWindow(
         1024, 1024, "Trying this crap".encode('utf-8'), None, None)
