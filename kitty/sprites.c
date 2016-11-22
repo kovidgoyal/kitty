@@ -133,13 +133,11 @@ bool
 update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
     SpritePosition *sp;
     char_type previous_ch=0, ch;
-    color_type color;
-    uint32_t bg, fg;
     uint8_t previous_width = 0;
     int err = 0;
 
-    size_t base = line->ynum * line->xnum * 9;
-    for (size_t i = xstart, offset = base + xstart * 9; i <= xmax; i++, offset += 9) {
+    size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
+    for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
         ch = line->chars[i];
         if (previous_width == 2) sp = sprite_position_for(self, previous_ch, 0, true, &err);
         else sp = sprite_position_for(self, ch, line->combining_chars[i], false, &err);
@@ -147,13 +145,10 @@ update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigne
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
-        color = line->colors[i];
-        fg = to_color(color_profile, color & COL_MASK, default_fg);
-        bg = to_color(color_profile, color >> COL_SHIFT, default_bg);
+        data[offset+3] = to_color(color_profile, line->colors[i] & COL_MASK, default_fg);
+        data[offset+4] = to_color(color_profile, line->colors[i] >> COL_SHIFT, default_bg);
+        data[offset+5] = to_color(color_profile, line->decoration_fg[i] & COL_MASK, default_fg);
         previous_ch = ch; previous_width = (ch >> ATTRS_SHIFT) & WIDTH_MASK;
-#define PACK_COL(b, col) data[b] = col >> 16; data[b + 1] = (col >> 8) & 0xff; data[b + 2] = col & 0xff;
-        PACK_COL(offset + 3, fg);
-        PACK_COL(offset + 6, bg);
     }
     return true;
 }

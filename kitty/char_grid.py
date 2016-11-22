@@ -16,7 +16,7 @@ from .fast_data_types import (
     GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
     glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
     glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
-    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE
 )
 
 Size = namedtuple('Size', 'width height')
@@ -42,6 +42,14 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(0, 0)   // left, top
 );
 
+vec4 to_color(uint c) {
+    uint r, g, b;
+    r = (c >> 16) & uint(255);
+    g = (c >> 8) & uint(255);
+    b = c & uint(255);
+    return vec4(r / 255.0, g / 255.0, b / 255.0, 1);
+}
+
 void main() {
     uint instance_id = uint(gl_InstanceID);
     uint r = instance_id / dimensions[0];
@@ -58,8 +66,9 @@ void main() {
     vec2 s_xpos = vec2(spos[0], spos[0] + 1.0) * sprite_layout[0];
     vec2 s_ypos = vec2(spos[1], spos[1] + 1.0) * sprite_layout[1];
     sprite_pos = vec3(s_xpos[pos[0]], s_ypos[pos[1]], spos[2]);
-    foreground = texelFetch(sprite_map, sprite_id + 1) / 255.0;
-    background = texelFetch(sprite_map, sprite_id + 2) / 255.0;
+    uvec4 colors = texelFetch(sprite_map, sprite_id + 1);
+    foreground = to_color(colors[0]);
+    background = to_color(colors[1]);
 }
 ''',
 
@@ -195,7 +204,7 @@ class CharGrid:
         self.width, self.height = w, h
         self.screen_geometry = sg = calculate_screen_geometry(self.cell_width, self.cell_height, self.width, self.height)
         self.screen.resize(sg.ynum, sg.xnum)
-        self.sprite_map_type = (c_uint * (sg.ynum * sg.xnum * 9))
+        self.sprite_map_type = (c_uint * (sg.ynum * sg.xnum * DATA_CELL_SIZE))
         self.main_sprite_map = self.sprite_map_type()
         self.scroll_sprite_map = self.sprite_map_type()
         self.render_buf = self.sprite_map_type()

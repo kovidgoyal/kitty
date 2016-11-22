@@ -56,6 +56,7 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
         PyModule_AddIntMacro(m, DECAWM);
         PyModule_AddIntMacro(m, IRM);
+        PyModule_AddIntMacro(m, DATA_CELL_SIZE);
     }
 
     return m;

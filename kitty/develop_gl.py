@@ -15,7 +15,7 @@ from kitty.fast_data_types import (
     glUniform2f, glUniform4f, glUniform2ui, glUniform1i, glewInit, glGetString,
     GL_VERSION as GL_VERSION_C, GL_VENDOR, GL_SHADING_LANGUAGE_VERSION, GL_RENDERER,
     glClear, GL_COLOR_BUFFER_BIT, GL_TRIANGLE_FAN, glDrawArraysInstanced,
-    Cursor, LineBuf, ColorProfile
+    Cursor, LineBuf, ColorProfile, DATA_CELL_SIZE
 )
 
 
@@ -56,7 +56,7 @@ class Renderer:
         self.sprites.do_layout(cell_width, cell_height)
         self.sprites.ensure_state()
         self.screen_geometry = sg = calculate_screen_geometry(cell_width, cell_height, self.w, self.h)
-        data = (ctypes.c_uint * (sg.xnum * sg.ynum * 9))()
+        data = (ctypes.c_uint * (sg.xnum * sg.ynum * DATA_CELL_SIZE))()
         lb = LineBuf(sg.ynum, sg.xnum)
         i = -1
         for y in range(sg.ynum):
