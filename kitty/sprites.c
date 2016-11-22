@@ -46,6 +46,7 @@ layout(SpriteMap *self, PyObject *args) {
     self->xnum = MAX(1, self->max_texture_size / cell_width);
     self->max_y = MAX(1, self->max_texture_size / cell_height);
     self->ynum = 1;
+    self->x = 0; self->y = 0; self->z = 0;
 
     for (size_t i = 0; i < sizeof(self->cache)/sizeof(self->cache[0]); i++) {
         SpritePosition *s = &(self->cache[i]);
@@ -62,7 +63,7 @@ layout(SpriteMap *self, PyObject *args) {
 }
 
 static void
-increment(SpriteMap *self, int *error) {
+do_increment(SpriteMap *self, int *error) {
     self->x++;
     if (self->x >= self->xnum) {
         self->x = 0; self->y++;
@@ -100,7 +101,7 @@ sprite_position_for(SpriteMap *self, char_type ch, combining_type cc, bool is_se
     s->filled = true;
     s->rendered = false;
     s->x = self->x; s->y = self->y; s->z = self->z;
-    increment(self, error);
+    do_increment(self, error);
     self->dirty = true;
     return s;
 }
@@ -114,6 +115,16 @@ static void set_sprite_error(int error) {
         default:
             PyErr_SetString(PyExc_RuntimeError, "Unknown error occurred while allocating sprites"); break;
     }
+}
+
+static PyObject*
+increment(SpriteMap *self) {
+#define increment_doc "Increment the current position and return the old (x, y, z) values"
+    unsigned int x = self->x, y = self->y, z = self->z;
+    int error = 0;
+    do_increment(self, &error);
+    if (error) { set_sprite_error(error); return NULL; }
+    return Py_BuildValue("III", x, y, z);
 }
 
 static PyObject*
@@ -217,6 +228,7 @@ static PyMethodDef methods[] = {
     METHOD(position_for, METH_VARARGS)
     METHOD(render_dirty_cells, METH_VARARGS)
     METHOD(update_cell_data, METH_VARARGS)
+    METHOD(increment, METH_NOARGS)
     {NULL}  /* Sentinel */
 };
 

@@ -54,13 +54,12 @@ class Boss(Thread):
         self.signal_fd = handle_unix_signals()
         self.readers = [self.child_fd, self.signal_fd, self.read_wakeup_fd]
         self.writers = [self.child_fd]
-        self.queue_action(self.initialize)
         self.profile = args.profile
         self.window, self.opts = window, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
-        self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         self.read_bytes = partial(read_bytes_dump, print) if args.dump_commands else read_bytes
         self.write_buf = memoryview(b'')
+        self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
         glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
@@ -94,10 +93,6 @@ class Boss(Thread):
             signals = struct.unpack('%uB' % len(data), data)
             if signal.SIGINT in signals or signal.SIGTERM in signals:
                 self.shutdown()
-
-    def initialize(self):
-        self.char_grid.initialize()
-        glfw.glfwPostEmptyEvent()
 
     def on_focus(self, window, focused):
         if focused:

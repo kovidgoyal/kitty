@@ -249,7 +249,7 @@ def add_curl(buf, position, thickness):
             buf[offset + x] = 255
 
 
-def render_cell(text, bold=False, italic=False, underline=0, strikeout=False):
+def render_cell(text=' ', bold=False, italic=False, underline=0, strikeout=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]

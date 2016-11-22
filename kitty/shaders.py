@@ -46,11 +46,8 @@ class Sprites:
         self.texture_id = self.buffer_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
-
-    def initialize(self):
         self.texture_unit = GL_TEXTURE0
         self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
-        self.do_layout(getattr(self, 'cell_width', 1), getattr(self, 'cell_height', 1))
 
     def do_layout(self, cell_width=1, cell_height=1):
         self.cell_width, self.cell_height = cell_width, cell_height
@@ -58,6 +55,25 @@ class Sprites:
         if self.texture_id is not None:
             glDeleteTexture(self.texture_id)
             self.texture_id = None
+        self.ensure_state()
+        self.pre_render()
+
+    def pre_render(self):
+        # Pre-render the basic cells to ensure they have known sprite numbers
+
+        def send(*a, **kw):
+            buf = render_cell(*a, **kw)[0]
+            x, y, z = self.backend.increment()
+            self.send_to_gpu(x, y, z, buf)
+            return x
+
+        send()  # blank
+        send(underline=1)
+        send(strikeout=True)
+        send(underline=1, strikeout=True)
+        send(underline=2)
+        if send(underline=2, strikeout=True) != 5:
+            raise RuntimeError('Available OpenGL texture size is too small')
 
     @property
     def layout(self):
@@ -82,12 +98,10 @@ class Sprites:
         glBindTexture(tgt, self.texture_id)
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         x, y = x * self.cell_width, y * self.cell_height
-        glTexSubImage3D(tgt, 0, x, y, self.backend.z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
+        glTexSubImage3D(tgt, 0, x, y, z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
         glBindTexture(tgt, 0)
 
     def realloc_texture(self):
-        if self.texture_id is None:
-            self.initialize()
         tgt = GL_TEXTURE_2D_ARRAY
         tex = glGenTextures(1)
         glBindTexture(tgt, tex)

@@ -42,7 +42,6 @@ class Renderer:
         self.color_profile = ColorProfile()
         self.program = ShaderProgram(*cell_shader)
         self.sprites = Sprites()
-        self.sprites.initialize()
         self.do_layout()
 
     def on_resize(self, window, w, h):

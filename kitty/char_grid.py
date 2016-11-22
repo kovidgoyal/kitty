@@ -172,16 +172,13 @@ class CharGrid:
         self.render_queue.put(RenderData(
             viewport=Size(self.width, self.height), clear_color=color_as_int(self.original_bg),
             cursor=self.default_cursor))
-        self.sprites.ensure_state()
         self.clear_count = 4
-
-    def destroy(self):
-        self.sprites.destroy()
-
-    def initialize(self):
         self.default_bg = color_as_int(self.original_bg)
         self.default_fg = color_as_int(self.original_fg)
         self.apply_opts(self.opts)
+
+    def destroy(self):
+        self.sprites.destroy()
 
     def apply_opts(self, opts):
         self.dpix, self.dpiy = get_logical_dpi()
