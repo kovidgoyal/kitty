@@ -22,6 +22,7 @@ from .utils import get_logical_dpi, wcwidth
 def escape_family_name(name):
     return re.sub(r'([-:,\\])', lambda m: '\\' + m.group(1), name)
 
+
 Font = namedtuple('Font', 'face hinting hintstyle bold italic')
 
 
@@ -127,6 +128,7 @@ def set_font_family(family, size_in_pts):
         alt_face_cache.clear()
     return cell_width, cell_height
 
+
 CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
 
 
@@ -226,7 +228,28 @@ def split_char_bitmap(bitmap_char):
     return first, second
 
 
-def render_cell(text, bold=False, italic=False):
+def add_line(buf, position, thickness):
+    y = position - thickness // 2
+    while thickness:
+        thickness -= 1
+        offset = cell_width * y
+        for x in range(cell_width):
+            buf[offset + x] = 255
+        y += 1
+
+
+def add_curl(buf, position, thickness):
+    for y in range(position - thickness, position):
+        for x in range(0, cell_width // 2):
+            offset = cell_width * y
+            buf[offset + x] = 255
+    for y in range(position, position + thickness):
+        for x in range(cell_width // 2, cell_width):
+            offset = cell_width * y
+            buf[offset + x] = 255
+
+
+def render_cell(text, bold=False, italic=False, underline=0, strikeout=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]
@@ -237,7 +260,23 @@ def render_cell(text, bold=False, italic=False):
         bitmap_char, second = split_char_bitmap(bitmap_char)
         second = place_char_in_cell(second)
 
-    return place_char_in_cell(bitmap_char), second
+    first = place_char_in_cell(bitmap_char)
+
+    def dl(f, *a):
+        f(first, *a)
+        if second is not None:
+            f(second, pos, underline_thickness)
+
+    if underline:
+        t = min(cell_height - underline_position - 1, underline_thickness)
+        if underline == 2:
+            dl(add_curl, underline_position, t)
+        else:
+            dl(add_line, underline_position, t)
+    if strikeout:
+        pos = int(0.65 * baseline)
+        dl(add_line, pos, underline_thickness)
+    return first, second
 
 
 def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, src_start_column, dest_start_column, column_count):
@@ -277,7 +316,7 @@ def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kov
     set_font_family(family, sz)
     cells = []
     for c in text:
-        f, s = render_cell(c)
+        f, s = render_cell(c, underline=2, strikeout=True)
         cells.append(f)
         if s is not None:
             cells.append(s)
