@@ -35,7 +35,7 @@ def timeit(name, do_timing=False):
 
 
 def sanitize_title(x):
-    return re.sub(br'\s+', b' ', re.sub(br'[\0-\x19]', b'', x))
+    return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
 def get_logical_dpi():

@@ -266,7 +266,7 @@ class TestDataTypes(BaseTest):
 
     def test_utils(self):
         self.ae(tuple(map(wcwidth, 'a1\0コ')), (1, 1, 0, 2))
-        self.assertEqual(sanitize_title(b'a\0\01 \t\n\f\rb'), b'a b')
+        self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
     def test_color_profile(self):
         c = ColorProfile()
