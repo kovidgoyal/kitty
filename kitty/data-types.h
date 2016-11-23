@@ -293,7 +293,6 @@ PyObject* read_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* read_bytes(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
-uint16_t* translation_table(char);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
