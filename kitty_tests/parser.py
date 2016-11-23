@@ -42,11 +42,21 @@ class TestParser(BaseTest):
         cd = CmdDump()
         if isinstance(x, str):
             x = x.encode('utf-8')
-        if isinstance(s, str):
-            s = s.encode('utf-8')
-        cmds = tuple(('draw', x.encode('utf-8')) if isinstance(x, str) else x for x in cmds)
+        cmds = tuple(('draw', x) if isinstance(x, str) else x for x in cmds)
         parse_bytes_dump(cd, s, x)
-        self.ae(tuple(cd), cmds)
+        current = ''
+        q = []
+        for args in cd:
+            if args[0] == 'draw':
+                current += args[1]
+            else:
+                if current:
+                    q.append(('draw', current))
+                    current = ''
+                q.append(args)
+        if current:
+            q.append(('draw', current))
+        self.ae(tuple(q), cmds)
 
     def test_simple_parsing(self):
         s = self.create_screen()
@@ -72,11 +82,11 @@ class TestParser(BaseTest):
     def test_esc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('12\033Da', '12', ('screen_index',), 'a')
+        pb('12\033Da', '12', ('screen_index', ord('D')), 'a')
         self.ae(str(s.line(0)), '12   ')
         self.ae(str(s.line(1)), '  a  ')
-        pb('\033x', ('Unknown char in escape_dispatch: %d' % ord('x'),))
-        pb('\033c123', ('screen_reset',), '123')
+        pb('\033x', ('Unknown char after ESC: 0x%x' % ord('x'),))
+        pb('\033c123', ('screen_reset', ord('c')), '123')
         self.ae(str(s.line(0)), '123  ')
 
     def test_csi_codes(self):

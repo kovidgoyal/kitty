@@ -56,7 +56,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 // Normal mode {{{
 static inline void 
 handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
-#define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(#name, ch); name(screen); break;
+#define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name, ch); name(screen); break;
     switch(ch) {
         case BEL:
             CALL_SCREEN_HANDLER(screen_bell);
@@ -67,6 +67,7 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
         case LF:
         case VT:
         case FF:
+        case NEL:
             CALL_SCREEN_HANDLER(screen_linefeed);
         case CR:
             CALL_SCREEN_HANDLER(screen_carriage_return);
@@ -78,8 +79,6 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
             CALL_SCREEN_HANDLER(screen_index);
         case RI:
             CALL_SCREEN_HANDLER(screen_reverse_index);
-        case NEL:
-            CALL_SCREEN_HANDLER(screen_linefeed);
         case HTS:
             CALL_SCREEN_HANDLER(screen_set_tab_stop);
         case ESC:
