@@ -90,19 +90,27 @@ def load_char(font, face, text):
     face.load_char(text, flags)
 
 
+def ceil_int(x):
+    return int(math.ceil(x))
+
+
 def calc_cell_width(font, face):
     ans = 0
     for i in range(32, 128):
         ch = chr(i)
         load_char(font, face, ch)
         m = face.glyph.metrics
-        ans = max(ans, max(int(math.ceil(m.horiAdvance / 64)), face.glyph.bitmap.width))
+        ans = max(ans, max(ceil_int(m.horiAdvance / 64), face.glyph.bitmap.width))
     return ans
 
 
 @lru_cache(maxsize=2**10)
 def font_for_char(char, bold=False, italic=False):
     return find_font_for_character(current_font_family_name, char, bold, italic)
+
+
+def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
+    return ceil_int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
 
 
 def set_font_family(family, size_in_pts):
@@ -113,7 +121,7 @@ def set_font_family(family, size_in_pts):
         current_font_family = get_font_files(family)
         current_font_family_name = family
         dpi = get_logical_dpi()
-        cff_size = int(64 * size_in_pts)
+        cff_size = ceil_int(64 * size_in_pts)
         cff_size = {'width': cff_size, 'height': cff_size, 'hres': dpi[0], 'vres': dpi[1]}
         for fobj in current_font_family.values():
             fobj.face.set_char_size(**cff_size)
@@ -130,12 +138,6 @@ def set_font_family(family, size_in_pts):
 
 
 CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
-
-
-def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
-    return int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
-
-
 freetype_lock = Lock()
 
 
@@ -177,8 +179,8 @@ def render_char(text, bold=False, italic=False, width=1):
             finally:
                 face.set_char_size(**cff_size)
         m = face.glyph.metrics
-        return CharBitmap(bitmap.buffer, int(abs(m.horiBearingX) / 64),
-                          int(abs(m.horiBearingY) / 64), int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
+        return CharBitmap(bitmap.buffer, ceil_int(abs(m.horiBearingX) / 64),
+                          ceil_int(abs(m.horiBearingY) / 64), ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
 
 
 def is_wide_char(bitmap_char):
