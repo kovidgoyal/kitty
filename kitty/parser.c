@@ -15,8 +15,10 @@ static unsigned int pow10[10] = {
 static inline unsigned int 
 utoi(uint32_t *buf, unsigned int sz) {
     unsigned int ans = 0;
-    for (int i = sz-1, j=0; i >=0; i--, j++) {
-        ans += (buf[i] - '0') * pow10[j];
+    if (sz < 10) {
+        for (int i = sz-1, j=0; i >=0; i--, j++) {
+            ans += (buf[i] - '0') * pow10[j];
+        }
     }
     return ans;
 }
