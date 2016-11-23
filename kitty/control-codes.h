@@ -55,13 +55,13 @@
 // *Delete*: Is ignored.
 #define DEL 0x7f
 
-// *Control sequence introducer*: An equivalent for ``ESC [``.
+#define IND 0x84
+#define NEL 0x85
+#define HTS 0x88
+#define RI  0x8d
+#define DCS 0x90
 #define CSI 0x9b
-
-// *String terminator*.
 #define ST 0x9c
-
-// *Operating system command*.
 #define OSC 0x9d
 
 // Sharp control codes
@@ -73,38 +73,43 @@
 // Esc control codes
 // ------------------
 
+#define ESC_DCS 'P'
+#define ESC_OSC ']'
+#define ESC_CSI '['
+#define ESC_ST '\\'
+
 // *Reset*.
-#define RIS 'c'
+#define ESC_RIS 'c'
 
 // *Index*: Move cursor down one line in same column. If the cursor is
 // at the bottom margin, the screen performs a scroll-up.
-#define IND 'D'
+#define ESC_IND 'D'
 
 // *Next line*: Same as LF.
-#define NEL 'E'
+#define ESC_NEL 'E'
 
 // Tabulation set: Set a horizontal tab stop at cursor position.
-#define HTS 'H'
+#define ESC_HTS 'H'
 
 // *Reverse index*: Move cursor up one line in same column. If the
 // cursor is at the top margin, the screen performs a scroll-down.
-#define RI 'M'
+#define ESC_RI 'M'
 
 // Save cursor: Save cursor position, character attribute (graphic
 // rendition), character set, and origin mode selection (see
 // :data:`DECRC`).
-#define DECSC '7'
+#define ESC_DECSC '7'
 
 // *Restore cursor*: Restore previously saved cursor position, character
 // attribute (graphic rendition), character set, and origin mode
 // selection. If none were saved, move cursor to home position.
-#define DECRC '8'
+#define ESC_DECRC '8'
 
 // Set normal keypad mode
-#define DECPNM '>'
+#define ESC_DECPNM '>'
 
 // Set alternate keypad mode
-#define DECPAM  '='
+#define ESC_DECPAM  '='
 
 // ECMA-48 CSI sequences.
 // ---------------------

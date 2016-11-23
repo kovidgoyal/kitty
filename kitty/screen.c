@@ -23,9 +23,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->current_charset = 2;
-        self->g0_charset = translation_table('B');
-        self->g1_charset = translation_table('0');
         self->columns = columns; self->lines = lines;
         self->modes = empty_modes;
         self->utf8_state = 0;
@@ -47,9 +44,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 void screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf);
-    self->current_charset = 2;
-    self->g0_charset = translation_table('B');
-    self->g1_charset = translation_table('0');
     self->modes = empty_modes;
     self->utf8_state = 0;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -126,52 +120,22 @@ dealloc(Screen* self) {
 
 // Draw text {{{
  
-void screen_shift_out(Screen *self, uint8_t UNUSED ch) {
-    self->current_charset = 1;
-    self->utf8_state = 0;
-}
-
-void screen_shift_in(Screen *self, uint8_t UNUSED ch) {
-    self->current_charset = 0;
-    self->utf8_state = 0;
-}
-
-void screen_define_charset(Screen *self, uint8_t code, uint8_t mode) {
-    switch(mode) {
-        case '(':
-            self->g0_charset = translation_table(code);
-            break;
-        default:
-            self->g1_charset = translation_table(code);
-            break;
-    }
-}
-
-void screen_select_other_charset(Screen *self, uint8_t code, uint8_t UNUSED unused) {
-    switch(code) {
-        case '@':
-            self->current_charset = 0;
-            break;
-        default:
-            self->current_charset = 2;
-            self->utf8_state = 0;
-    }
-}
-
-static inline unsigned int safe_wcwidth(uint32_t ch) {
+static inline unsigned int 
+safe_wcwidth(uint32_t ch) {
     int ans = wcwidth(ch);
     if (ans < 0) ans = 1;
     return MIN(2, ans);
 }
 
-static inline void
-draw_codepoint(Screen UNUSED *self, uint32_t ch) {
+void
+screen_draw(Screen *self, uint32_t ch) {
     if (is_ignored_char(ch)) return;
+    unsigned int x = self->cursor->x, y = self->cursor->y;
     unsigned int char_width = safe_wcwidth(ch);
     if (self->columns - self->cursor->x < char_width) {
         if (self->modes.mDECAWM) {
-            screen_carriage_return(self, 13);
-            screen_linefeed(self, 10);
+            screen_carriage_return(self);
+            screen_linefeed(self);
             self->linebuf->continued_map[self->cursor->y] = true;
         } else {
             self->cursor->x = self->columns - char_width;
@@ -202,43 +166,9 @@ draw_codepoint(Screen UNUSED *self, uint32_t ch) {
             tracker_update_cell_range(self->change_tracker, self->cursor->y - 1, self->columns - 1, self->columns - 1);
         }
     }
-}
-
-static inline void 
-screen_draw_utf8(Screen *self, uint8_t *buf, unsigned int buflen) {
-    uint32_t prev = UTF8_ACCEPT, codepoint = 0;
-    for (unsigned int i = 0; i < buflen; i++, prev = self->utf8_state) {
-        switch (decode_utf8(&self->utf8_state, &codepoint, buf[i])) {
-            case UTF8_ACCEPT:
-                draw_codepoint(self, codepoint);
-                break;
-            case UTF8_REJECT:
-                self->utf8_state = UTF8_ACCEPT;
-                if (prev != UTF8_ACCEPT) i--;
-                break;
-        }
-    }
-}
-
-static inline void 
-screen_draw_charset(Screen *self, unsigned short *table, uint8_t *buf, unsigned int buflen) {
-    for (unsigned int i = 0; i < buflen; i++) {
-        draw_codepoint(self, table[buf[i]]);
-    }
-}
-
-void screen_draw(Screen *self, uint8_t *buf, unsigned int buflen) {
-    unsigned int x = self->cursor->x, y = self->cursor->y;
-    switch(self->current_charset) {
-        case 0:
-            screen_draw_charset(self, self->g0_charset, buf, buflen); break;
-        case 1:
-            screen_draw_charset(self, self->g1_charset, buf, buflen); break;
-        default:
-            screen_draw_utf8(self, buf, buflen); break;
-    }
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
+
 // }}}
 
 // Graphics {{{
@@ -451,10 +381,10 @@ void screen_reset_mode(Screen *self, unsigned int mode) {
 
 // Cursor {{{
 
-void screen_backspace(Screen *self, uint8_t UNUSED ch) {
+void screen_backspace(Screen *self) {
     screen_cursor_back(self, 1, -1);
 }
-void screen_tab(Screen *self, uint8_t UNUSED ch) {
+void screen_tab(Screen *self) {
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
     unsigned int found = 0;
     for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
@@ -556,16 +486,16 @@ void screen_reverse_index(Screen *self) {
 }
 
 
-void screen_carriage_return(Screen *self, uint8_t UNUSED ch) {
+void screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
         tracker_cursor_changed(self->change_tracker);
     }
 }
 
-void screen_linefeed(Screen *self, uint8_t UNUSED ch) {
+void screen_linefeed(Screen *self) {
     screen_index(self);
-    if (self->modes.mLNM) screen_carriage_return(self, 13);
+    if (self->modes.mLNM) screen_carriage_return(self);
     screen_ensure_bounds(self, false);
 }
 
@@ -586,9 +516,6 @@ void screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_push(pts);
     cursor_copy_to(self->cursor, &(sp->cursor));
-    sp->g0_charset = self->g0_charset;
-    sp->g1_charset = self->g1_charset;
-    sp->current_charset = self->current_charset;
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->utf8_state = self->utf8_state;
@@ -601,13 +528,7 @@ void screen_restore_cursor(Screen *self) {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
         screen_reset_mode(self, DECOM);
-        self->current_charset = 2;
-        self->g0_charset = translation_table('B');
-        self->g1_charset = translation_table('0');
     } else {
-        self->g0_charset = sp->g0_charset;
-        self->g1_charset = sp->g1_charset;
-        self->current_charset = sp->current_charset;
         self->utf8_state = sp->utf8_state;
         if (sp->mDECOM) screen_set_mode(self, DECOM);
         if (sp->mDECAWM) screen_set_mode(self, DECAWM);
@@ -739,7 +660,7 @@ void screen_insert_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
-        screen_carriage_return(self, 13);
+        screen_carriage_return(self);
     }
 }
 
@@ -749,7 +670,7 @@ void screen_delete_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
-        screen_carriage_return(self, 13);
+        screen_carriage_return(self);
     }
 }
 
@@ -794,10 +715,11 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 
 // Device control {{{
 
-void screen_bell(Screen UNUSED *self, uint8_t ch) {  
+void screen_bell(Screen UNUSED *self) {  
     FILE *f = fopen("/dev/tty", "w");
+    static const char *bell = "\007";
     if (f != NULL) {
-        fwrite(&ch, 1, 1, f);
+        fwrite(bell, 1, 1, f);
         fclose(f);
     }
 } 
@@ -901,11 +823,14 @@ line(Screen *self, PyObject *val) {
 }
 
 static PyObject*
-draw(Screen *self, PyObject *args) {
+draw(Screen *self, PyObject *src) {
 #define draw_doc ""
-    Py_buffer pybuf;
-    if(!PyArg_ParseTuple(args, "y*", &pybuf)) return NULL;
-    screen_draw(self, pybuf.buf, pybuf.len);
+    if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
+    if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
+    int kind = PyUnicode_KIND(src);
+    void *buf = PyUnicode_DATA(src);
+    Py_ssize_t sz = PyUnicode_GET_LENGTH(src);
+    for (Py_ssize_t i = 0; i < sz; i++) screen_draw(self, PyUnicode_READ(kind, buf, i));
     Py_RETURN_NONE;
 }
 
@@ -1097,7 +1022,7 @@ COUNT_WRAP(cursor_forward)
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
-    METHOD(draw, METH_VARARGS)
+    METHOD(draw, METH_O)
     METHOD(set_mode, METH_VARARGS)
     METHOD(reset_mode, METH_VARARGS)
     METHOD(enable_focus_tracking, METH_NOARGS)
@@ -1139,7 +1064,6 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
-    {"current_charset", T_UINT, offsetof(Screen, current_charset), READONLY, "current_charset"},
     {NULL}
 };
  

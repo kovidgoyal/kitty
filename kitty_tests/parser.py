@@ -36,7 +36,7 @@ class Callbacks:
         self.wtcbuf = self.iconbuf = self.titlebuf = self.colorbuf = b''
 
 
-class TestScreen(BaseTest):
+class TestParser(BaseTest):
 
     def parse_bytes_dump(self, s, x, *cmds):
         cd = CmdDump()

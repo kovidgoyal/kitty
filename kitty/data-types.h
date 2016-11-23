@@ -227,8 +227,6 @@ PyTypeObject ScreenModes_Type;
 #define SAVEPOINTS_SZ 256
 
 typedef struct {
-    unsigned int current_charset;
-    uint16_t *g0_charset, *g1_charset;
     uint32_t utf8_state;
     Cursor cursor;
     bool mDECOM;
@@ -243,16 +241,14 @@ typedef struct {
 } SavepointBuffer;
 
 
-#define PARSER_BUF_SZ 8192
+#define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)
 
 typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom;
-    unsigned int current_charset;
     uint32_t utf8_state;
-    uint16_t *g0_charset, *g1_charset;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     PyObject *callbacks;
@@ -262,7 +258,7 @@ typedef struct {
     ChangeTracker *change_tracker;
     ScreenModes modes;
 
-    uint8_t parser_buf[PARSER_BUF_SZ];
+    uint32_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ];
@@ -334,14 +330,12 @@ void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
-void screen_draw(Screen *screen, uint8_t *buf, unsigned int buflen);
+void screen_draw(Screen *screen, uint32_t codepoint);
 void screen_ensure_bounds(Screen *self, bool use_margins);
 void screen_toggle_screen_buffer(Screen *self);
 void screen_normal_keypad_mode(Screen *self); 
 void screen_alternate_keypad_mode(Screen *self);  
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
-void screen_define_charset(Screen *self, uint8_t code, uint8_t mode);
-void screen_select_other_charset(Screen *self, uint8_t code, uint8_t mode);
 void screen_alignment_display(Screen *self);
 void screen_reverse_index(Screen *self);
 void screen_index(Screen *self);
@@ -370,11 +364,9 @@ void set_dynamic_color(Screen *self, unsigned int code, const char *buf, unsigne
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
-#define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen, uint8_t ch);
+#define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
-DECLARE_CH_SCREEN_HANDLER(shift_out)
-DECLARE_CH_SCREEN_HANDLER(shift_in)
