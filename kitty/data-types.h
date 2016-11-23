@@ -117,7 +117,8 @@ typedef unsigned int index_type;
         return result; \
     }
 
-
+#define START_ALLOW_CASE_RANGE _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+#define END_ALLOW_CASE_RANGE _Pragma("GCC diagnostic pop")
 
 typedef struct {
     PyObject_HEAD

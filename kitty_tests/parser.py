@@ -151,7 +151,7 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         c = Callbacks()
         s.callbacks = c
-        pb(b'a\033]2;xyz\x07bcde', 'a', ('set_title', 'xyz'), 'bcde')
+        pb('a\033]2;xyz\x9cbcde', 'a', ('set_title', 'xyz'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.titlebuf, 'xyz')
         c.clear()
@@ -165,8 +165,8 @@ class TestParser(BaseTest):
         pb('\033]110\x07', ('set_dynamic_color', ''))
         self.ae(c.colorbuf, '')
 
-    # def test_dcs_codes(self):
-    #     s = self.create_screen()
-    #     pb = partial(self.parse_bytes_dump, s)
-    #     pb(b'a\033P2;xyz\x9cbcde', 'a', 'bcde')
-    #     self.ae(str(s.line(0)), 'abcde')
+    def test_dcs_codes(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('a\033P2;xyz\x9cbcde', 'abcde')
+        self.ae(str(s.line(0)), 'abcde')

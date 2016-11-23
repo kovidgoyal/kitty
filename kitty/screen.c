@@ -241,7 +241,7 @@ void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int c
                 self->cursor->reverse = false;  break;
             case 29:
                 self->cursor->strikethrough = false;  break;
-#pragma GCC diagnostic ignored "-Wpedantic"
+START_ALLOW_CASE_RANGE
             case 30 ... 37:
             case 39:
             case 90 ... 97:
@@ -249,7 +249,7 @@ void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int c
             case 40 ... 47:
             case 49:
             case 100 ... 107:
-#pragma GCC diagnostic pop
+END_ALLOW_CASE_RANGE
                 self->cursor->bg = (attr << 8) | 1;  break;
             case 38: 
                 SET_COLOR(fg);
