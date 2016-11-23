@@ -522,7 +522,7 @@ HANDLER(dcs) {
 #endif
 #define DISPATCH_DCS \
     SET_STATE(NORMAL_STATE); \
-    if (!screen->parser_buf_pos) { REPORT_ERROR("Empty DCS sequence, ignoring."); return; } \
+    if (screen->parser_buf_pos == 0) { REPORT_ERROR("Empty DCS sequence, ignoring."); return; } \
     REPORT_DCS; \
     handle_dcs(screen, dump_callback);
 

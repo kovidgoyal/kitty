@@ -140,7 +140,7 @@ class TestScreen(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         c = Callbacks()
         s.callbacks = c
-        pb(b'a\033]2;xyz\x9cbcde', 'a', ('set_title', 3), 'bcde')
+        pb(b'a\033]2;xyz\x07bcde', 'a', ('set_title', 3), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.titlebuf, b'xyz')
         c.clear()
@@ -154,8 +154,8 @@ class TestScreen(BaseTest):
         pb('\033]110\x07', ('set_dynamic_color', 110, 0))
         self.ae(c.colorbuf, b'')
 
-    def test_dcs_codes(self):
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-        pb(b'a\033P2;xyz\x9cbcde', 'a', 'bcde')
-        self.ae(str(s.line(0)), 'abcde')
+    # def test_dcs_codes(self):
+    #     s = self.create_screen()
+    #     pb = partial(self.parse_bytes_dump, s)
+    #     pb(b'a\033P2;xyz\x9cbcde', 'a', 'bcde')
+    #     self.ae(str(s.line(0)), 'abcde')
