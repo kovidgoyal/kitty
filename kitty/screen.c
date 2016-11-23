@@ -810,8 +810,7 @@ static inline void callback(const char *name, Screen *self, const char *data, un
 }
 
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
-    // Do the same as libvte, which gives the below response regardless of mode and secondary
-    callback("write_to_child", self, "\x1b[?62c", 0);  // Corresponds to VT-220
+    callback("write_to_child", self, "\x1b[>1;4600;0c", 0);  // same as libvte
 }
 
 void report_device_status(Screen *self, unsigned int which, bool UNUSED private) {

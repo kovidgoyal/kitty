@@ -59,6 +59,9 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define REPORT_DRAW(start, sz) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "draw", start, sz)); PyErr_Clear();
 
+#define REPORT_DCS \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "dcs", screen->parser_buf, screen->parser_buf_pos)); PyErr_Clear();
+
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos, PyObject UNUSED *dump_callback)
 
@@ -68,6 +71,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_COMMAND(...)
 #define REPORT_DRAW(...)
+#define REPORT_DCS
 
 #define HANDLER(name) \
     static inline void read_##name(Screen *screen, uint8_t UNUSED *buf, unsigned int UNUSED buflen, unsigned int UNUSED *pos)
@@ -505,11 +509,33 @@ HANDLER(osc) {
 // }}}
 
 // Parse DCS {{{
+
+static void handle_dcs(Screen *screen, PyObject UNUSED *dump_callback) {
+    screen->parser_buf_pos = 0;
+    return;
+}
+
 HANDLER(dcs) {
     // http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Device-Control-functions
+#ifndef DUMP_COMMANDS
+    PyObject *dump_callback = NULL;
+#endif
+#define DISPATCH_DCS \
+    SET_STATE(NORMAL_STATE); \
+    if (!screen->parser_buf_pos) { REPORT_ERROR("Empty DCS sequence, ignoring."); return; } \
+    REPORT_DCS; \
+    handle_dcs(screen, dump_callback);
+
     uint8_t ch = buf[(*pos)++];
-    if (ch == ST) {
-        SET_STATE(NORMAL_STATE);
+    switch (ch) {
+        case ST:
+            DISPATCH_DCS;
+            break;
+        default:
+            if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
+                DISPATCH_DCS;
+            } else screen->parser_buf[screen->parser_buf_pos++] = ch;
+            break;
     }
 }
 // }}}
@@ -521,6 +547,7 @@ static inline void _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, Py
 #else
 #define CALL_HANDLER(name) read_##name(screen, buf, len, &i); break;
 #endif
+    /* PyObject_Print(Py_BuildValue("y#", buf, len), stdout, 0); */
         
     while (i < len) {
         switch(screen->parser_state) {
