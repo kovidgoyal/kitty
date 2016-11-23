@@ -7,7 +7,33 @@
 #include "data-types.h"
 #include "control-codes.h"
 
+static unsigned int pow10[10] = {
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+};
+
+static inline unsigned int 
+utoi(uint32_t *buf, unsigned int sz) {
+    unsigned int ans = 0;
+    for (int i = sz-1, j=0; i >=0; i--, j++) {
+        ans += (buf[i] - '0') * pow10[j];
+    }
+    return ans;
+}
+
 // Macros {{{
+#define IS_DIGIT \
+    case '0': \
+    case '1': \
+    case '2': \
+    case '3': \
+    case '4': \
+    case '5': \
+    case '6': \
+    case '7': \
+    case '8': \
+    case '9':
+
+
 #ifdef DUMP_COMMANDS
 static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
     va_list argptr;
@@ -39,6 +65,9 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", "draw", ch)); PyErr_Clear();
 
+#define REPORT_OSC(name, string) \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", #name, string)); PyErr_Clear();
+
 #else
 
 #define DUMP_UNUSED UNUSED
@@ -47,6 +76,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_COMMAND(...)
 #define REPORT_DRAW(ch)
+#define REPORT_OSC(name, string)
 
 #endif
 
@@ -157,8 +187,41 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 
 // OSC mode {{{
 static inline void
-dispatch_osc(Screen *screen) {
-    screen->parser_buf_pos++;
+dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+#define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
+    const unsigned int limit = screen->parser_buf_pos;
+    unsigned int code=0, i;
+    for (i = 0; i < MIN(limit, 5); i++) {
+        if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break;
+    }
+    if (i > 0) {
+        code = utoi(screen->parser_buf, i);
+        if (i < limit - 1 && screen->parser_buf[i] == ';') i++;
+    }
+    PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i);
+    switch(code) {
+        case 0:
+            DISPATCH_OSC(set_title);
+            DISPATCH_OSC(set_icon);
+            break;
+        case 1:
+            DISPATCH_OSC(set_icon);
+            break;
+        case 2:
+            DISPATCH_OSC(set_title);
+            break;
+        case 10:
+        case 11:
+        case 110:
+        case 111:
+            REPORT_OSC(set_dynamic_color, string);
+            set_dynamic_color(screen, code, string);
+            break;
+        default:
+            REPORT_ERROR("Unknown OSC code: %u", code);
+    }
+    Py_CLEAR(string);
+#undef DISPATCH_OSC
 }
 // }}}
 
@@ -239,7 +302,7 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
                     /* case CSI_STATE: */
                     /*     CALL_HANDLER(csi); */
                     case OSC:
-                        if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen); SET_STATE(0); }
+                        if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
                         break;
                     case DCS:
                         if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen); SET_STATE(0); }

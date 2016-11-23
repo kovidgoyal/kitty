@@ -795,18 +795,19 @@ void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     }
 }
 
-void set_title(Screen *self, const char *buf, unsigned int sz) {
-    callback("title_changed", self, buf, sz);
+void set_title(Screen *self, PyObject *title) {
+    PyObject_CallMethod(self->callbacks, "title_changed", "O", title);
+    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
-void set_icon(Screen *self, const char *buf, unsigned int sz) {
-    callback("icon_changed", self, buf, sz);
+void set_icon(Screen *self, PyObject *icon) {
+    PyObject_CallMethod(self->callbacks, "icon_changed", "O", icon);
+    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
-void set_dynamic_color(Screen *self, unsigned int code, const char *buf, unsigned int sz) {
-    PyObject_CallMethod(self->callbacks, "set_dynamic_color", "Iy#", code, buf, sz);
-    if (PyErr_Occurred()) PyErr_Print();
-    PyErr_Clear(); 
+void set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
+    PyObject_CallMethod(self->callbacks, "set_dynamic_color", "IO", code, color);
+    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
 // }}}

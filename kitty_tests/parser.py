@@ -33,7 +33,8 @@ class Callbacks:
         self.colorbuf += data
 
     def clear(self):
-        self.wtcbuf = self.iconbuf = self.titlebuf = self.colorbuf = b''
+        self.wtcbuf = b''
+        self.iconbuf = self.titlebuf = self.colorbuf = ''
 
 
 class TestParser(BaseTest):
@@ -150,19 +151,19 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         c = Callbacks()
         s.callbacks = c
-        pb(b'a\033]2;xyz\x07bcde', 'a', ('set_title', 3), 'bcde')
+        pb(b'a\033]2;xyz\x07bcde', 'a', ('set_title', 'xyz'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
-        self.ae(c.titlebuf, b'xyz')
+        self.ae(c.titlebuf, 'xyz')
         c.clear()
-        pb('\033]\x07', ('set_title', 0), ('set_icon', 0))
-        self.ae(c.titlebuf, b''), self.ae(c.iconbuf, b'')
-        pb('\033]ab\x07', ('set_title', 2), ('set_icon', 2))
-        self.ae(c.titlebuf, b'ab'), self.ae(c.iconbuf, b'ab')
+        pb('\033]\x07', ('set_title', ''), ('set_icon', ''))
+        self.ae(c.titlebuf, ''), self.ae(c.iconbuf, '')
+        pb('\033]ab\x07', ('set_title', 'ab'), ('set_icon', 'ab'))
+        self.ae(c.titlebuf, 'ab'), self.ae(c.iconbuf, 'ab')
         c.clear()
-        pb('\033]2;;;;\x07', ('set_title', 3))
-        self.ae(c.titlebuf, b';;;')
-        pb('\033]110\x07', ('set_dynamic_color', 110, 0))
-        self.ae(c.colorbuf, b'')
+        pb('\033]2;;;;\x07', ('set_title', ';;;'))
+        self.ae(c.titlebuf, ';;;')
+        pb('\033]110\x07', ('set_dynamic_color', ''))
+        self.ae(c.colorbuf, '')
 
     # def test_dcs_codes(self):
     #     s = self.create_screen()
