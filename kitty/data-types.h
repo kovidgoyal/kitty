@@ -22,13 +22,15 @@ typedef uint32_t decoration_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
 #define CELL_SIZE (sizeof(char_type) + sizeof(color_type) + sizeof(decoration_type) + sizeof(combining_type))
-#define DATA_CELL_SIZE 9
+// The data cell size must be a multiple of 3
+#define DATA_CELL_SIZE 2 * 3
 
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24
 #define ATTRS_MASK_WITHOUT_WIDTH 0xFC000000
 #define WIDTH_MASK  3
 #define DECORATION_SHIFT  2
+#define DECORATION_MASK 3
 #define BOLD_SHIFT 4
 #define ITALIC_SHIFT 5
 #define REVERSE_SHIFT 6

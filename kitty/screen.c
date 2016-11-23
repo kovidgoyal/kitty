@@ -1045,7 +1045,6 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!O!O!kkIO", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &sp, &default_fg, &default_bg, &scrolled_by, &dp)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     src = PyLong_AsVoidPtr(sp);
-    unsigned int line_size = 9 * self->columns;
 
     scrolled_by = MIN(self->historybuf->count, scrolled_by);
 
@@ -1056,6 +1055,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer
+        unsigned int line_size = DATA_CELL_SIZE * self->columns;
         index_type num_to_copy = self->lines - scrolled_by;
         index_type offset = line_size * scrolled_by;
         memcpy(data + offset, src, line_size * num_to_copy * sizeof(unsigned int));

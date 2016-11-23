@@ -23,6 +23,9 @@ Size = namedtuple('Size', 'width height')
 Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
 
+if DATA_CELL_SIZE % 3:
+    raise ValueError('Incorrect data cell size, must be a multiple of 3')
+
 # cell shader {{{
 
 cell_shader = (
@@ -32,8 +35,11 @@ uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
 out vec3 sprite_pos;
-out vec4 foreground;
-out vec4 background;
+out vec3 underline_pos;
+out vec3 strike_pos;
+out vec3 foreground;
+out vec3 background;
+out vec3 decoration_fg;
 
 const uvec2 pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
@@ -42,12 +48,22 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(0, 0)   // left, top
 );
 
-vec4 to_color(uint c) {
+const uint BYTE_MASK = uint(255);
+const uint ZERO = uint(0);
+const uint SMASK = uint(3);
+
+vec3 to_color(uint c) {
     uint r, g, b;
-    r = (c >> 16) & uint(255);
-    g = (c >> 8) & uint(255);
-    b = c & uint(255);
-    return vec4(r / 255.0, g / 255.0, b / 255.0, 1);
+    r = (c >> 16) & BYTE_MASK;
+    g = (c >> 8) & BYTE_MASK;
+    b = c & BYTE_MASK;
+    return vec3(r / 255.0, g / 255.0, b / 255.0);
+}
+
+vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
+    vec2 s_xpos = vec2(x, x + 1.0) * sprite_layout[0];
+    vec2 s_ypos = vec2(y, y + 1.0) * sprite_layout[1];
+    return vec3(s_xpos[pos[0]], s_ypos[pos[1]], z);
 }
 
 void main() {
@@ -61,27 +77,44 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
 
-    int sprite_id = int(instance_id) * 3;
+    int sprite_id = int(instance_id) * STRIDE;
     uvec4 spos = texelFetch(sprite_map, sprite_id);
-    vec2 s_xpos = vec2(spos[0], spos[0] + 1.0) * sprite_layout[0];
-    vec2 s_ypos = vec2(spos[1], spos[1] + 1.0) * sprite_layout[1];
-    sprite_pos = vec3(s_xpos[pos[0]], s_ypos[pos[1]], spos[2]);
     uvec4 colors = texelFetch(sprite_map, sprite_id + 1);
+    sprite_pos = to_sprite_pos(pos, spos[0], spos[1], spos[2]);
     foreground = to_color(colors[0]);
     background = to_color(colors[1]);
+    uint decoration = colors[2];
+    decoration_fg = to_color(decoration);
+    underline_pos = to_sprite_pos(pos, (decoration >> 24) & SMASK, ZERO, ZERO);
+    strike_pos = to_sprite_pos(pos, (decoration >> 26) & SMASK, ZERO, ZERO);
 }
-''',
+'''.replace('STRIDE', str(DATA_CELL_SIZE // 3)),
 
     '''\
 uniform sampler2DArray sprites;
 in vec3 sprite_pos;
-in vec4 foreground;
-in vec4 background;
+in vec3 underline_pos;
+in vec3 strike_pos;
+in vec3 foreground;
+in vec3 background;
+in vec3 decoration_fg;
 out vec4 final_color;
 
+vec3 blend(float alpha, vec3 over, vec3 under) {
+    return over + (1 - alpha) * under;
+}
+
 void main() {
-    float alpha = texture(sprites, sprite_pos).r;
-    final_color = background * (1 - alpha) + foreground * alpha;
+    float text_alpha = texture(sprites, sprite_pos).r;
+    float underline_alpha = texture(sprites, underline_pos).r;
+    float strike_alpha = texture(sprites, strike_pos).r;
+    vec3 underline = underline_alpha * decoration_fg;
+    vec3 strike = strike_alpha * foreground;
+    vec3 fg = text_alpha * foreground;
+    vec3 decoration = blend(underline_alpha, underline, strike);
+    vec3 combined_fg = blend(text_alpha, fg, decoration);
+    float combined_alpha = max(max(underline_alpha, strike_alpha), text_alpha);
+    final_color = vec4(blend(combined_alpha, combined_fg, background), 1);
 }
 ''')
 # }}}

@@ -69,10 +69,8 @@ class Sprites:
 
         send()  # blank
         send(underline=1)
-        send(strikeout=True)
-        send(underline=1, strikeout=True)
         send(underline=2)
-        if send(underline=2, strikeout=True) != 5:
+        if send(strikethrough=True) != 3:
             raise RuntimeError('Available OpenGL texture size is too small')
 
     @property

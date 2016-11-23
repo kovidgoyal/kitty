@@ -249,7 +249,7 @@ def add_curl(buf, position, thickness):
             buf[offset + x] = 255
 
 
-def render_cell(text=' ', bold=False, italic=False, underline=0, strikeout=False):
+def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]
@@ -272,7 +272,7 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikeout=False
         if underline == 2:
             t = min(cell_height - underline_position - 1, t)
         dl(add_curl if underline == 2 else add_line, underline_position, t)
-    if strikeout:
+    if strikethrough:
         pos = int(0.65 * baseline)
         dl(add_line, pos, underline_thickness)
     return first, second
@@ -315,7 +315,7 @@ def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kov
     set_font_family(family, sz)
     cells = []
     for c in text:
-        f, s = render_cell(c, underline=2, strikeout=True)
+        f, s = render_cell(c, underline=2, strikethrough=True)
         cells.append(f)
         if s is not None:
             cells.append(s)

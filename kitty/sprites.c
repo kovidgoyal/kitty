@@ -139,7 +139,6 @@ position_for(SpriteMap *self, PyObject *args) {
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
-
 bool
 update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
     SpritePosition *sp;
@@ -153,13 +152,17 @@ update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigne
         if (previous_width == 2) sp = sprite_position_for(self, previous_ch, 0, true, &err);
         else sp = sprite_position_for(self, ch, line->combining_chars[i], false, &err);
         if (sp == NULL) { set_sprite_error(err); return false; }
+        char_type attrs = ch >> ATTRS_SHIFT;
+        unsigned int decoration = (attrs >> DECORATION_SHIFT) & DECORATION_MASK;
+        unsigned int strikethrough = ((attrs >> STRIKE_SHIFT) & 1) ? 3 : 0;
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
         data[offset+3] = to_color(color_profile, line->colors[i] & COL_MASK, default_fg);
         data[offset+4] = to_color(color_profile, line->colors[i] >> COL_SHIFT, default_bg);
-        data[offset+5] = to_color(color_profile, line->decoration_fg[i] & COL_MASK, default_fg);
-        previous_ch = ch; previous_width = (ch >> ATTRS_SHIFT) & WIDTH_MASK;
+        unsigned int decoration_fg = decoration > 1 ? to_color(color_profile, line->decoration_fg[i] & COL_MASK, data[offset+3]) : data[offset+3];
+        data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
+        previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }
     return true;
 }

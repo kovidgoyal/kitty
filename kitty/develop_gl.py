@@ -66,6 +66,8 @@ class Renderer:
                 fg, bg = self.color_pairs[i % 3]
                 c.fg = (fg << 8) | 3
                 c.bg = (bg << 8) | 3
+                c.decoration = 2
+                c.strikethrough = True
                 c.x = x
                 line.set_text('%d' % (i % 10), 0, 1, c)
             self.sprites.backend.update_cell_data(line, 0, sg.xnum - 1, self.color_profile, 0xffffff, 0, ctypes.addressof(data))
