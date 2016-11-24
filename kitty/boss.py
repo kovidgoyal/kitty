@@ -58,13 +58,24 @@ class Boss(Thread):
         self.profile = args.profile
         self.window, self.opts = window, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
-        self.read_bytes = partial(read_bytes_dump, print) if args.dump_commands else read_bytes
+        self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands else read_bytes
+        self.draw_dump_buf = []
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts, window_width, window_height)
         glfw.glfwSetCharModsCallback(window, self.on_text_input)
         glfw.glfwSetKeyCallback(window, self.on_key)
         glfw.glfwSetMouseButtonCallback(window, self.on_mouse_button)
         glfw.glfwSetWindowFocusCallback(window, self.on_focus)
+
+    def dump_commands(self, *a):
+        if a:
+            if a[0] == 'draw':
+                self.draw_dump_buf.append(a[1])
+            else:
+                if self.draw_dump_buf:
+                    print('draw', ''.join(self.draw_dump_buf))
+                    self.draw_dump_buf = []
+                print(*a)
 
     def queue_action(self, func, *args):
         self.action_queue.put((func, args))
