@@ -294,105 +294,78 @@ void screen_toggle_screen_buffer(Screen *self) {
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
 void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
 
-static inline void set_mode_from_const(Screen *self, unsigned int mode, bool val) {
+static inline void 
+set_mode_from_const(Screen *self, unsigned int mode, bool val) {
+#define SIMPLE_MODE(name) \
+    case name: \
+        self->modes.m##name = val; break;
+
+    bool private;
     switch(mode) {
-        case LNM: 
-            self->modes.mLNM = val; break;
-        case IRM: 
-            self->modes.mIRM = val; break;
+        SIMPLE_MODE(LNM)
+        SIMPLE_MODE(IRM)
+        SIMPLE_MODE(BRACKETED_PASTE)
+        SIMPLE_MODE(MOUSE_BUTTON_TRACKING)
+        SIMPLE_MODE(MOUSE_MOTION_TRACKING)
+        SIMPLE_MODE(MOUSE_SGR_MODE)
+        SIMPLE_MODE(FOCUS_TRACKING)
+
+        case DECCKM:
+            break;  // we ignore this mode
         case DECTCEM: 
-            self->modes.mDECTCEM = val; break;
+            self->modes.mDECTCEM = val; 
+            if ((val && self->cursor->hidden) || (!val && !self->cursor->hidden)) {
+                self->cursor->hidden = !val;
+                tracker_cursor_changed(self->change_tracker);
+            }
+            break;
         case DECSCNM: 
-            self->modes.mDECSCNM = val; break;
+            // Mark all displayed characters as reverse.
+            self->modes.mDECSCNM = val; 
+            linebuf_set_attribute(self->linebuf, REVERSE_SHIFT, 0);
+            tracker_update_screen(self->change_tracker);
+            self->cursor->reverse = val;
+            tracker_cursor_changed(self->change_tracker);
+            break;
         case DECOM: 
-            self->modes.mDECOM = val; break;
+            self->modes.mDECOM = val; 
+            // According to `vttest`, DECOM should also home the cursor, see
+            // vttest/main.c:303.
+            screen_cursor_position(self, 1, 1);
+            break;
         case DECAWM: 
             self->modes.mDECAWM = val; break;
         case DECCOLM: 
-            self->modes.mDECCOLM = val; break;
-        case BRACKETED_PASTE: 
-            self->modes.mBRACKETED_PASTE = val; break;
-        case FOCUS_TRACKING: 
-            self->modes.mFOCUS_TRACKING = val; break;
+            // When DECCOLM mode is set, the screen is erased and the cursor
+            // moves to the home position.
+            self->modes.mDECCOLM = val; 
+            screen_erase_in_display(self, 2, false);
+            screen_cursor_position(self, 1, 1);
+            break;
+        case CONTROL_CURSOR_BLINK:
+            self->cursor->blink = val; 
+            tracker_cursor_changed(self->change_tracker);
+            break;
+        case ALTERNATE_SCREEN:
+            if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
+            else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self);
+            break;  
+        default:
+            private = mode >= 1 << 5;
+            if (private) mode >>= 5;
+            fprintf(stderr, "%s %s %u %s\n", ERROR_PREFIX, "Unsupported screen mode: ", mode, private ? "(private)" : "");
     }
+#undef SIMPLE_MODE
 }
 
 void screen_set_mode(Screen *self, unsigned int mode) {
-    if (mode == DECCOLM) {
-        // When DECCOLM mode is set, the screen is erased and the cursor
-        // moves to the home position.
-        screen_erase_in_display(self, 2, false);
-        screen_cursor_position(self, 1, 1);
-    }
-    // According to `vttest`, DECOM should also home the cursor, see
-    // vttest/main.c:303.
-    if (mode == DECOM) screen_cursor_position(self, 1, 1);
-
-    if (mode == DECSCNM) {
-        // Mark all displayed characters as reverse.
-        linebuf_set_attribute(self->linebuf, REVERSE_SHIFT, 1);
-        tracker_update_screen(self->change_tracker);
-        self->cursor->reverse = true;
-        tracker_cursor_changed(self->change_tracker);
-    }
-
-    if (mode == DECTCEM && self->cursor->hidden) {
-        self->cursor->hidden = false;
-        tracker_cursor_changed(self->change_tracker);
-    }
-
-    if (mode == ALTERNATE_SCREEN && self->linebuf == self->main_linebuf) { 
-        screen_toggle_screen_buffer(self);
-    }
     set_mode_from_const(self, mode, true);
 }
 
-static PyObject*
-in_bracketed_paste_mode(Screen *self) {
-#define in_bracketed_paste_mode_doc ""
-    PyObject *ans = self->modes.mBRACKETED_PASTE ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
-}
-
-static PyObject*
-focus_tracking_enabled(Screen *self) {
-#define focus_tracking_enabled_doc ""
-    PyObject *ans = self->modes.mFOCUS_TRACKING ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
-}
-
 void screen_reset_mode(Screen *self, unsigned int mode) {
-    if (mode == DECCOLM) {
-        // When DECCOLM mode is set, the screen is erased and the cursor
-        // moves to the home position.
-        screen_erase_in_display(self, 2, false);
-        screen_cursor_position(self, 1, 1);
-    }
-    // According to `vttest`, DECOM should also home the cursor, see
-    // vttest/main.c:303.
-    if (mode == DECOM) screen_cursor_position(self, 1, 1);
-
-    if (mode == DECSCNM) {
-        // Mark all displayed characters as reverse.
-        linebuf_set_attribute(self->linebuf, REVERSE_SHIFT, 0);
-        tracker_update_screen(self->change_tracker);
-        self->cursor->reverse = false;
-        tracker_cursor_changed(self->change_tracker);
-    }
-
-    if (mode == DECTCEM && !self->cursor->hidden) {
-        self->cursor->hidden = true;
-        tracker_cursor_changed(self->change_tracker);
-    }
-
-    if (mode == ALTERNATE_SCREEN && self->linebuf != self->main_linebuf) { 
-        screen_toggle_screen_buffer(self);
-    }
- 
     set_mode_from_const(self, mode, false);
 }
+
 // }}}
 
 // Cursor {{{
@@ -934,6 +907,16 @@ erase_in_display(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#define MODE_GETTER(name, uname) \
+    static PyObject* name(Screen *self) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } 
+
+MODE_GETTER(in_bracketed_paste, BRACKETED_PASTE)
+MODE_GETTER(focus_tracking_enabled, FOCUS_TRACKING)
+MODE_GETTER(mouse_button_tracking_enabled, MOUSE_BUTTON_TRACKING)
+MODE_GETTER(mouse_motion_tracking_enabled, MOUSE_MOTION_TRACKING)
+MODE_GETTER(mouse_in_sgr_mode, MOUSE_SGR_MODE)
+
+
 static PyObject*
 cursor_up(Screen *self, PyObject *args) {
     unsigned int count = 1;
@@ -1059,8 +1042,6 @@ static PyMethodDef methods[] = {
     METHOD(draw, METH_O)
     METHOD(set_mode, METH_VARARGS)
     METHOD(reset_mode, METH_VARARGS)
-    METHOD(focus_tracking_enabled, METH_NOARGS)
-    METHOD(in_bracketed_paste_mode, METH_NOARGS)
     METHOD(reset, METH_NOARGS)
     METHOD(reset_dirty, METH_NOARGS)
     METHOD(consolidate_changes, METH_NOARGS)
@@ -1085,6 +1066,11 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
+    MND(in_bracketed_paste, METH_NOARGS)
+    MND(focus_tracking_enabled, METH_NOARGS)
+    MND(mouse_button_tracking_enabled, METH_NOARGS)
+    MND(mouse_motion_tracking_enabled, METH_NOARGS)
+    MND(mouse_in_sgr_mode, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

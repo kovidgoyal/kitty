@@ -23,8 +23,13 @@
 
 // Private modes.
 
-// *Text Cursor Enable Mode*: determines if the text cursor is visible.
-#define DECTCEM (25 << 5)
+// Arrow keys send application sequences or cursor movement commands
+#define DECCKM (1 << 5)
+
+// *Column Mode*: selects the number of columns per line (80 or 132)
+// on the screen.
+#define DECCOLM (3 << 5)
+
 
 // *Screen Mode*: toggles screen-wide reverse-video mode.
 #define DECSCNM  (5 << 5)
@@ -39,23 +44,23 @@
 // when the cursor is at the right margin.
 #define DECAWM (7 << 5)
 
-// *Column Mode*: selects the number of columns per line (80 or 132)
-// on the screen.
-#define DECCOLM (3 << 5)
+// Toggle cursor blinking
+#define CONTROL_CURSOR_BLINK (12 << 5)
+
+// *Text Cursor Enable Mode*: determines if the text cursor is visible.
+#define DECTCEM (25 << 5)
+
+// Xterm mouse protocol
+#define MOUSE_BUTTON_TRACKING (1000 << 5)
+#define MOUSE_MOTION_TRACKING  (1002 << 5)
+#define FOCUS_TRACKING (1004 << 5)
+#define MOUSE_SGR_MODE (1006 << 6)
+
+// Alternate screen buffer
+#define ALTERNATE_SCREEN  (1049 << 5)
 
 // Bracketed paste mode
 // http://cirw.in/blog/bracketed-paste
 #define BRACKETED_PASTE (2004 << 5)
 #define BRACKETED_PASTE_START "\033[200~"
 #define BRACKETED_PASTE_END  "\033[201~"
-
-// Alternate screen buffer
-#define ALTERNATE_SCREEN  (1049 << 5)
-
-// Xterm mouse protocol
-#define SEND_MOUSE_ON_PRESS_AND_RELEASE (1000 << 5)
-#define HILITE_MOUSE_TRACKING  (1001 << 5)
-#define CELL_MOTION_MOUSE_TRACKING  (1002 << 5)
-#define FOCUS_TRACKING (1004 << 5)
-#define SGR_MOUSE_MODE (1006 << 6)
-
