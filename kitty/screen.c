@@ -14,6 +14,15 @@
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true};
 
 // Constructor/destructor {{{
+
+static inline void 
+init_tabstops(Screen *self) {
+    // In terminfo we specify the number of initial tabstops (it) as 8
+    for (unsigned int t=0; t < self->columns; t++) {
+        self->tabstops[t] = (t+1) % 8 == 0 ? true : false;
+    }
+}
+
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
@@ -37,6 +46,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL || self->historybuf == NULL) {
             Py_CLEAR(self); return NULL;
         }
+        init_tabstops(self);
     }
     return (PyObject*) self;
 }
@@ -47,9 +57,8 @@ void screen_reset(Screen *self) {
     self->modes = empty_modes;
     self->utf8_state = 0;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
-    // In terminfo we specify the number of initial tabstops (it) as 8
-    for (unsigned int t=0; t < self->columns; t++) self->tabstops[t] = t > 0 && (t+1) % 8 == 0;
     screen_normal_keypad_mode(self);
+    init_tabstops(self);
     cursor_reset(self->cursor);
     tracker_cursor_changed(self->change_tracker);
     screen_cursor_position(self, 1, 1);
@@ -92,13 +101,14 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
 
     if (!tracker_resize(self->change_tracker, lines, columns)) return false;
+    self->lines = lines; self->columns = columns;
+    self->margin_top = 0; self->margin_bottom = self->lines - 1;
 
     PyMem_Free(self->tabstops);
     self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
     if (self->tabstops == NULL) { PyErr_NoMemory(); return false; }
+    init_tabstops(self);
 
-    self->lines = lines; self->columns = columns;
-    self->margin_top = 0; self->margin_bottom = self->lines - 1;
     return true;
 }
 
