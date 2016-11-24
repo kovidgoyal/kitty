@@ -258,7 +258,7 @@ typedef struct {
     PyObject *callbacks;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     HistoryBuf *historybuf;
-    bool *tabstops;
+    bool *tabstops, *main_tabstops, *alt_tabstops;
     ChangeTracker *change_tracker;
     ScreenModes modes;
 

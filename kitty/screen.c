@@ -16,10 +16,10 @@ static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true};
 // Constructor/destructor {{{
 
 static inline void 
-init_tabstops(Screen *self) {
+init_tabstops(bool *tabstops, index_type count) {
     // In terminfo we specify the number of initial tabstops (it) as 8
-    for (unsigned int t=0; t < self->columns; t++) {
-        self->tabstops[t] = (t+1) % 8 == 0 ? true : false;
+    for (unsigned int t=0; t < count; t++) {
+        tabstops[t] = (t+1) % 8 == 0 ? true : false;
     }
 }
 
@@ -42,11 +42,14 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->linebuf = self->main_linebuf;
         self->change_tracker = alloc_change_tracker(lines, columns);
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
-        self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->tabstops == NULL || self->historybuf == NULL) {
+        self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->main_tabstops == NULL || self->historybuf == NULL) {
             Py_CLEAR(self); return NULL;
         }
-        init_tabstops(self);
+        self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
+        self->tabstops = self->main_tabstops;
+        init_tabstops(self->main_tabstops, self->columns);
+        init_tabstops(self->alt_tabstops, self->columns);
     }
     return (PyObject*) self;
 }
@@ -58,7 +61,8 @@ void screen_reset(Screen *self) {
     self->utf8_state = 0;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
-    init_tabstops(self);
+    init_tabstops(self->main_tabstops, self->columns);
+    init_tabstops(self->alt_tabstops, self->columns);
     cursor_reset(self->cursor);
     tracker_cursor_changed(self->change_tracker);
     screen_cursor_position(self, 1, 1);
@@ -67,6 +71,7 @@ void screen_reset(Screen *self) {
     set_color_table_color(self, 104, NULL);
     tracker_update_screen(self->change_tracker);
 }
+
 static inline HistoryBuf* realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
     HistoryBuf *ans = alloc_historybuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
@@ -104,10 +109,13 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
 
-    PyMem_Free(self->tabstops);
-    self->tabstops = PyMem_Calloc(self->columns, sizeof(bool));
-    if (self->tabstops == NULL) { PyErr_NoMemory(); return false; }
-    init_tabstops(self);
+    PyMem_Free(self->main_tabstops);
+    self->main_tabstops = PyMem_Calloc(2*self->columns, sizeof(bool));
+    if (self->main_tabstops == NULL) { PyErr_NoMemory(); return false; }
+    self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
+    self->tabstops = self->main_tabstops;
+    init_tabstops(self->main_tabstops, self->columns);
+    init_tabstops(self->alt_tabstops, self->columns);
 
     return true;
 }
@@ -125,7 +133,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->main_linebuf); 
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->change_tracker);
-    PyMem_Free(self->tabstops);
+    PyMem_Free(self->main_tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
@@ -274,8 +282,10 @@ void screen_toggle_screen_buffer(Screen *self) {
     screen_save_cursor(self);
     if (self->linebuf == self->main_linebuf) {
         self->linebuf = self->alt_linebuf;
+        self->tabstops = self->alt_tabstops;
     } else {
         self->linebuf = self->main_linebuf;
+        self->tabstops = self->main_tabstops;
     }
     screen_restore_cursor(self);
     tracker_update_screen(self->change_tracker);
