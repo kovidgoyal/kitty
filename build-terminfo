@@ -1,7 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
+import sys
+
 base = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base)
+sys.path.insert(0, base)
+
+from kitty.terminfo import generate_terminfo  # noqa
+
+with open('terminfo/kitty.terminfo', 'w') as f:
+    f.write(generate_terminfo())
+
 os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
 os.execvp('tic', 'tic terminfo/kitty.terminfo'.split())

@@ -1,0 +1,332 @@
+#!/usr/bin/env python
+# vim:fileencoding=utf-8
+# License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
+
+names = 'xterm-kitty', 'KovIdTTY'
+
+termcap_aliases = {
+    'TN': 'name'
+}
+
+bool_capabilities = {
+    # auto_right_margin (terminal has automatic margins)
+    'am',
+    # can_change (terminal can redefine existing colors)
+    'ccc',
+    # has_meta key (i.e. sets the eight bit)
+    'km',
+    # prtr_silent (printer will not echo on screen)
+    'mc5i',
+    # move_insert_mode (safe to move while in insert mode)
+    'mir',
+    # move_standout_mode (safe to move while in standout mode)
+    'msgr',
+    # no_pad_char (pad character does not exist)
+    'npc',
+    # eat_newline_glitch (newline ignored after 80 columns)
+    'xenl',
+}
+
+termcap_aliases.update({
+    'am': 'am',
+    'cc': 'ccc',
+    'km': 'km',
+    '5i': 'mc5i',
+    'mi': 'mir',
+    'ms': 'msgr',
+    'NP': 'npc',
+    'xn': 'xenl',
+})
+
+numeric_capabilities = {
+    # maximum number of colors on screen
+    'colors': 256,
+    'cols': 80,
+    'lines': 24,
+    # tabs initially every # spaces
+    'it': 8,
+    # maximum number of color-pairs on the screen
+    'pairs': 32767,
+}
+
+termcap_aliases.update({
+    'Co': 'colors',
+    'pa': 'pairs',
+    'li': 'lines',
+    'co': 'cols',
+    'it': 'it',
+})
+
+string_capabilities = {
+    # graphics charset pairs
+    'acsc': r'++\,\,--..00``aaffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~',
+    # The audible bell character
+    'bel': r'^G',
+    # Escape code for bold
+    'bold': r'\E[1m',
+    # Back tab
+    'cbt': r'\E[Z',
+    'kcbt': r'\E[Z',
+    # Make cursor invisible
+    'civis': r'\E[?25l',
+    # Clear screen
+    'clear': r'\E[H\E[2J',
+    # Make cursor appear normal
+    'cnorm': r'\E[?12l\E[?25h',
+    # Carriage return
+    'cr': r'^M',
+    # Change scroll region
+    'csr': r'\E[%i%p1%d;%p2%dr',
+    # Move cursor to the left by the specified amount
+    'cub': r'\E[%p1%dD',
+    'cub1': r'^H',
+    # Move cursor down specified number of lines
+    'cud': r'\E[%p1%dB',
+    'cud1': r'^J',
+    # Move cursor to the right by the specified amount
+    'cuf': r'\E[%p1%dC',
+    'cuf1': r'\E[C',
+    # Move cursor up specified number of lines
+    'cuu': r'\E[%p1%dA',
+    'cuu1': r'\E[A',
+    # Move cursor to specified location
+    'cup': r'\E[%i%p1%d;%p2%dH',
+    # Make cursor very visible
+    'cvvis': r'\E[?12;25h',
+    # Delete the specified number of characters
+    'dch': r'\E[%p1%dP',
+    'dch1': r'\E[P',
+    # Turn on half bright mode
+    'dim': r'\E[2m',
+    # Delete the specified number of lines
+    'dl': r'\E[%p1%dM',
+    'dl1': r'\E[M',
+    # Erase specified number of characters
+    'ech': r'\E[%p1%dX',
+    # Clear to end of screen
+    'ed': r'\E[J',
+    # Clear to end of line
+    'el': r'\E[K',
+    # Clear to start of line
+    'el1': r'\E[1K',
+    # visible bell
+    'flash': r'\E[?5h$<100/>\E[?5l',
+    # Home cursor
+    'home': r'\E[H',
+    # Move cursor to column
+    'hpa': r'\E[%i%p1%dG',
+    # Move to next tab
+    'ht': r'^I',
+    # Set tabstop at current position
+    'hts': r'\EH',
+    # Insert specified number of characters
+    'ich': r'\E[%p1%d@',
+    # Insert specified number of lines
+    'il': r'\E[%p1%dL',
+    'il1': r'\E[L',
+    # scroll up by specified amount
+    'ind': r'^J',
+    'indn': r'\E[%p1%dS',
+    # initialize color
+    # 'initc': r'\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\',
+    # turn on blank mode (characters invisible)
+    # 'invis': r'\E[8m',
+    # Backspace
+    'kbs': r'\177',
+    # Left
+    'kcub1': r'\EOD',
+    # Down
+    'kcud1': r'\EOB',
+    # Right
+    'kcuf1': r'\EOC',
+    # Up
+    'kcuu1': r'\EOA',
+    # Function keys
+    'kf1': r'\EOP',
+    'kf2': r'\EOQ',
+    'kf3': r'\EOR',
+    'kf4': r'\EOS',
+    'kf5': r'\E[15~',
+    'kf6': r'\E[17~',
+    'kf7': r'\E[18~',
+    'kf8': r'\E[19~',
+    'kf9': r'\E[20~',
+    'kf10': r'\E[21~',
+    'kf11': r'\E[23~',
+    'kf12': r'\E[24~',
+    # Home
+    'khome': r'\EOH',
+    # End
+    'kend': r'\EOF',
+    # Insert character key
+    'kich1': r'\E[2~',
+    # Delete character key
+    'kdch1': r'\E[3~',
+    # Mouse event has occurred
+    'kmous': r'\E[M',
+    # Page down
+    'knp': r'\E[6~',
+    # Page up
+    'kpp': r'\E[5~',
+    # Scroll backwards (reverse index)
+    'kri': r'\E[1;2A',
+    # Restore cursor
+    'rc': r'\E8',
+    # Reverse video
+    'rev': r'\E[7m',
+    # Scroll backwards the specified number of lines (reverse index)
+    'ri': r'\EM',
+    'rin': r'\E[%p1%dT',
+    # Turn off automatic margins
+    'rmam': r'\E[?7l',
+    # Exit alternate screen
+    'rmcup': r'\E[?1049l',
+    # Exit insert mode
+    'rmir': r'\E[4l',
+    # Exit standout mode
+    'rmso': r'\E[27m',
+    # Exit underline mode
+    'rmul': r'\E[24m',
+    # Reset string1
+    'rs1': r'\Ec',
+    # Save cursor
+    'sc': r'\E7',
+    # Set background color
+    'setab': r'\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m',
+    # Set foreground color
+    'setaf': r'\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m',
+    # Set attributes
+    'sgr': r'%?%p9%t\E(0%e\E(B%;\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;%?%p7%t;8%;m',
+    # Clear all attributes
+    'sgr0': r'\E(B\E[m',
+    # Turn on automatic margins
+    'smam': r'\E[?7h',
+    # Start alternate screen
+    'smcup': r'\E[?1049h',
+    # Enster insert mode
+    'smir': r'\E[4h',
+    # Enter standout mode
+    'smso': r'\E[7m',
+    # Enter underline mode
+    'smul': r'\E[4m',
+    # Clear all tab stops
+    'tbc': r'\E[3g',
+    # Move to specified line
+    'vpa': r'\E[%i%p1%dd',
+    # Enter italics mode
+    'sitm': r'\E[3m',
+    # Leave italics mode
+    'ritm': r'\E[23m',
+    # Select alternate charset
+    'smacs': r'\E(0',
+    'rmacs': r'\E(B',
+}
+
+termcap_aliases.update({
+    'ac': 'acsc',
+    'bl': 'bel',
+    'md': 'bold',
+    'bt': 'cbt',
+    'kB': 'kcbt',
+    'cl': 'clear',
+    'vi': 'civis',
+    'vs': 'cvvis',
+    've': 'cnorm',
+    'cr': 'cr',
+    'cs': 'csr',
+    'LE': 'cub',
+    'le': 'cub1',
+    'DO': 'cud',
+    'do': 'cud1',
+    'UP': 'cuu',
+    'up': 'cuu1',
+    'nd': 'cuf1',
+    'RI': 'cuf',
+    'cm': 'cup',
+    'DC': 'dch',
+    'dc': 'dch1',
+    'mh': 'dim',
+    'DL': 'dl',
+    'dl': 'dl1',
+    'ec': 'ech',
+    'cd': 'ed',
+    'ce': 'el',
+    'cb': 'el1',
+    'vb': 'flash',
+    'ho': 'home',
+    'ch': 'hpa',
+    'ta': 'ht',
+    'st': 'hts',
+    'IC': 'ich',
+    'AL': 'il',
+    'al': 'il1',
+    'sf': 'ind',
+    'SF': 'indn',
+    # 'Ic': 'initc',
+    # 'mk': 'invis',
+    'bs': 'kbs',
+    'kl': 'kcub1',
+    'kd': 'kcud1',
+    'kr': 'kcuf1',
+    'ku': 'kcuu1',
+    'k1': 'kf1',
+    'k2': 'kf2',
+    'k3': 'kf3',
+    'k4': 'kf4',
+    'k5': 'kf5',
+    'k6': 'kf6',
+    'k7': 'kf7',
+    'k8': 'kf8',
+    'k9': 'kf9',
+    'k;': 'kf10',
+    'F1': 'kf11',
+    'F2': 'kf12',
+    'kh': 'khome',
+    '@7': 'kend',
+    'kI': 'kich1',
+    'kD': 'kdch1',
+    'Km': 'kmous',
+    'kN': 'knp',
+    'kP': 'kpp',
+    'kR': 'kri',
+    'rc': 'rc',
+    'mr': 'rev',
+    'sr': 'ri',
+    'SR': 'rin',
+    'RA': 'rmam',
+    'te': 'rmcup',
+    'ei': 'rmir',
+    'se': 'rmso',
+    'ue': 'rmul',
+    'r1': 'rs1',
+    'sc': 'sc',
+    'AB': 'setab',
+    'AF': 'setaf',
+    'sa': 'sgr',
+    'me': 'sgr0',
+    'SA': 'smam',
+    'ti': 'smcup',
+    'im': 'smir',
+    'so': 'smso',
+    'us': 'smul',
+    'ct': 'tbc',
+    'cv': 'vpa',
+    'ZH': 'sitm',
+    'ZR': 'ritm',
+    'as': 'smacs',
+    'ae': 'rmacs',
+
+})
+
+extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
+if extra:
+    raise Exception('Termcap aliases not complete, missing: {}'.format(extra))
+del extra
+
+
+def generate_terminfo():
+    ans = ['|'.join(names)]
+    ans.extend(bool_capabilities)
+    ans.extend('{}#{}'.format(k, v) for k, v in numeric_capabilities.items())
+    ans.extend('{}={}'.format(k, string_capabilities[k]) for k in sorted(string_capabilities))
+    return ',\n\t'.join(ans) + ',\n'
