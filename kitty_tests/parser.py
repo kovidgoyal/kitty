@@ -15,31 +15,6 @@ class CmdDump(list):
         self.append(a)
 
 
-class Callbacks:
-
-    def __init__(self):
-        self.clear()
-
-    def write_to_child(self, data):
-        self.wtcbuf += data
-
-    def title_changed(self, data):
-        self.titlebuf += data
-
-    def icon_changed(self, data):
-        self.iconbuf += data
-
-    def set_dynamic_color(self, code, data):
-        self.colorbuf += data
-
-    def request_capabilities(self, q):
-        self.qbuf += q
-
-    def clear(self):
-        self.wtcbuf = b''
-        self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = ''
-
-
 class TestParser(BaseTest):
 
     def parse_bytes_dump(self, s, x, *cmds):
@@ -131,8 +106,7 @@ class TestParser(BaseTest):
         pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', 10))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
-        c = Callbacks()
-        s.callbacks = c
+        c = s.callbacks
         pb('\033[5n', ('report_device_status', 5, 0))
         self.ae(c.wtcbuf, b'\033[0n')
         c.clear()
@@ -153,8 +127,7 @@ class TestParser(BaseTest):
     def test_osc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        c = Callbacks()
-        s.callbacks = c
+        c = s.callbacks
         pb('a\033]2;xyz\x9cbcde', 'a', ('set_title', 'xyz'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.titlebuf, 'xyz')
@@ -171,7 +144,6 @@ class TestParser(BaseTest):
 
     def test_dcs_codes(self):
         s = self.create_screen()
-        s.callbacks = Callbacks()
         pb = partial(self.parse_bytes_dump, s)
         pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')

@@ -7,6 +7,34 @@ from unittest import TestCase
 from kitty.fast_data_types import LineBuf, Cursor, Screen, HistoryBuf
 
 
+class Callbacks:
+
+    def __init__(self):
+        self.clear()
+
+    def write_to_child(self, data):
+        self.wtcbuf += data
+
+    def title_changed(self, data):
+        self.titlebuf += data
+
+    def icon_changed(self, data):
+        self.iconbuf += data
+
+    def set_dynamic_color(self, code, data):
+        self.colorbuf += data or ''
+
+    def set_color_table_color(self, code, data):
+        self.ctbuf += ''
+
+    def request_capabilities(self, q):
+        self.qbuf += q
+
+    def clear(self):
+        self.wtcbuf = b''
+        self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = self.ctbuf = ''
+
+
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     ans = LineBuf(ynum, xnum)
     cursor.x = 0
@@ -38,7 +66,7 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
 
     def create_screen(self, cols=5, lines=5, scrollback=5):
-        return Screen(None, lines, cols, scrollback)
+        return Screen(Callbacks(), lines, cols, scrollback)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

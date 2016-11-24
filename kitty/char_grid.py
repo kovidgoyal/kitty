@@ -7,10 +7,10 @@ from ctypes import c_uint, addressof, memmove, sizeof
 from queue import Queue, Empty
 from threading import Lock
 
-from .config import build_ansi_color_table, to_color
+from .config import build_ansi_color_table
 from .fonts import set_font_family
 from .shaders import Sprites, ShaderProgram
-from .utils import get_logical_dpi
+from .utils import get_logical_dpi, to_color
 from .fast_data_types import (
     glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
     GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,

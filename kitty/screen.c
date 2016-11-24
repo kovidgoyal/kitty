@@ -53,8 +53,9 @@ void screen_reset(Screen *self) {
     cursor_reset(self->cursor);
     tracker_cursor_changed(self->change_tracker);
     screen_cursor_position(self, 1, 1);
-    screen_change_default_color(self, FG, 0);
-    screen_change_default_color(self, BG, 0);
+    set_dynamic_color(self, 110, NULL);
+    set_dynamic_color(self, 111, NULL);
+    set_color_table_color(self, 104, NULL);
     tracker_update_screen(self->change_tracker);
 }
 static inline HistoryBuf* realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
@@ -172,15 +173,6 @@ screen_draw(Screen *self, uint32_t ch) {
 // }}}
 
 // Graphics {{{
-
-void screen_change_default_color(Screen *self, unsigned int which, uint32_t col) {
-    if (self->callbacks == Py_None) return;
-    if (col & 0xFF) PyObject_CallMethod(self->callbacks, "change_default_color", "s(III)", which == FG ? "fg" : "bg", 
-            (col >> 24) & 0xFF, (col >> 16) & 0xFF, (col >> 8) & 0xFF);
-    else PyObject_CallMethod(self->callbacks, "change_default_color", "sO", which == FG ? "fg" : "bg", Py_None);
-    if (PyErr_Occurred()) PyErr_Print();
-    PyErr_Clear(); 
-}
 
 void screen_alignment_display(Screen *self) {
     // http://www.vt100.net/docs/vt510-rm/DECALN.html 
@@ -810,12 +802,14 @@ void set_icon(Screen *self, PyObject *icon) {
 }
 
 void set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
-    PyObject_CallMethod(self->callbacks, "set_dynamic_color", "IO", code, color);
+    if (color == NULL) PyObject_CallMethod(self->callbacks, "set_dynamic_color", "Is", code, "");
+    else PyObject_CallMethod(self->callbacks, "set_dynamic_color", "IO", code, color);
     if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
 void set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
-    PyObject_CallMethod(self->callbacks, "set_color_table_color", "IO", code, color);
+    if (color == NULL) PyObject_CallMethod(self->callbacks, "set_color_table_color", "Is", code, "");
+    else PyObject_CallMethod(self->callbacks, "set_color_table_color", "IO", code, color);
     if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
@@ -1008,6 +1002,11 @@ static PyObject* is_dirty(Screen *self) {
     return ans;
 }
 
+static PyObject* mark_as_dirty(Screen *self) {
+    tracker_update_screen(self->change_tracker);
+    Py_RETURN_NONE;
+}
+
 static PyObject* current_char_width(Screen *self) {
 #define current_char_width_doc "The width of the character under the cursor"
     unsigned long ans = 1;
@@ -1063,6 +1062,7 @@ static PyMethodDef methods[] = {
     MND(index, METH_NOARGS)
     MND(reverse_index, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
+    MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},

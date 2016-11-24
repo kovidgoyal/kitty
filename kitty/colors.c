@@ -106,6 +106,32 @@ as_color(ColorProfile *self, PyObject *val) {
     return ans;
 }
 
+static PyObject*
+reset_color_table(ColorProfile *self) {
+#define reset_color_table_doc "Reset all customized colors back to defaults"
+    memcpy(self->color_table, self->orig_color_table, sizeof(FG_BG_256));
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+reset_color(ColorProfile *self, PyObject *val) {
+#define reset_color_doc "Reset the specified color"
+    uint8_t i = PyLong_AsUnsignedLong(val) & 0xff;
+    self->color_table[i] = self->orig_color_table[i];
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+set_color(ColorProfile *self, PyObject *args) {
+#define set_color_doc "Set the specified color"
+    unsigned char i;
+    unsigned long val;
+    if (!PyArg_ParseTuple(args, "Bk", &i, &val)) return NULL;
+    self->color_table[i] = val;
+    Py_RETURN_NONE;
+}
+
+
 uint32_t 
 to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
     unsigned int t = entry & 0xFF, r;
@@ -125,7 +151,10 @@ to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
 
 static PyMethodDef methods[] = {
     METHOD(update_ansi_color_table, METH_O)
+    METHOD(reset_color_table, METH_NOARGS)
     METHOD(as_color, METH_O)
+    METHOD(reset_color, METH_O)
+    METHOD(set_color, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

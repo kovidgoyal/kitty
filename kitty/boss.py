@@ -20,7 +20,7 @@ import glfw_constants
 from .constants import appname
 from .char_grid import CharGrid
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
-from .utils import sanitize_title
+from .utils import sanitize_title, parse_color_set
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
@@ -274,8 +274,27 @@ class Boss(Thread):
             code += 1
         self.queue_action(self.apply_change_colors)
 
+    def refresh(self):
+        self.screen.mark_as_dirty()
+        self.wakeup()
+
     def set_color_table_color(self, code, value):
-        print(11111111, code, value)
+        if code == 4:
+            for c, val in parse_color_set(value):
+                self.char_grid.color_profile.set_color(c, val)
+            self.refresh()
+        elif code == 104:
+            if not value.strip():
+                self.char_grid.color_profile.reset_color_table()
+            else:
+                for c in value.split(';'):
+                    try:
+                        c = int(c)
+                    except Exception:
+                        continue
+                    if 0 <= c <= 255:
+                        self.char_grid.color_profile.reset_color(c)
+            self.refresh()
 
     def apply_change_colors(self):
         self.char_grid.change_colors(self.pending_color_changes)
