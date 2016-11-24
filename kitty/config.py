@@ -4,6 +4,7 @@
 
 import re
 import sys
+import os
 from collections import namedtuple
 
 import glfw_constants as glfw
@@ -94,89 +95,8 @@ def parse_config(lines):
     return ans
 
 
-default_config = '''
-term xterm-kitty
-# The foreground color
-foreground       #dddddd
-# The background color
-background       #000000
-
-# The cursor color
-cursor           #ffffff
-
-# The cursor opacity
-cursor_opacity   0.7
-
-# The cursor shape can be one of (block, beam, underline)
-cursor_shape     block
-
-# Whether to blink the cursor or not
-cursor_blink     no
-
-# Font family
-font_family      monospace
-
-# Font size (in pts)
-font_size        11.0
-
-# Number of lines of history to keep in memory for scrolling back
-scrollback_lines 2000
-
-# Delay (in milliseconds) between screen updates. Decreasing it, increases fps
-# at the cost of more CPU usage. The default value yields ~50fps which is more
-# that sufficient for most uses.
-repaint_delay    20
-
-# black
-color0   #000000
-color8   #4d4d4d
-
-# red
-color1   #cc0403
-color9   #f2201f
-
-# green
-color2   #19cb00
-color10  #23fd00
-
-# yellow
-color3   #cecb00
-color11  #fffd00
-
-# blue
-color4  #0d73cc
-color12 #1a8fff
-
-# magenta
-color5   #cb1ed1
-color13  #fd28ff
-
-# cyan
-color6   #0dcdcd
-color14  #14ffff
-
-# white
-color7   #dddddd
-color15  #ffffff
-
-# Key mapping
-# For a list of key names, see: http://www.glfw.org/docs/latest/group__keys.html
-# For a list of modifier names, see: http://www.glfw.org/docs/latest/group__mods.html
-map ctrl+shift+v paste_from_clipboard
-map ctrl+shift+s paste_from_selection
-map ctrl+shift+c copy_to_clipboard
-map ctrl+shift+up scroll_line_up
-map ctrl+shift+down scroll_line_down
-map ctrl+shift+page_up scroll_page_up
-map ctrl+shift+page_down scroll_page_down
-map ctrl+shift+home scroll_home
-map ctrl+shift+end scroll_end
-'''
-
-
-defaults = parse_config(default_config.splitlines())
-
-
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')) as f:
+    defaults = parse_config(f.readlines())
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
 
