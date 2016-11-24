@@ -171,6 +171,12 @@
 // of cursor move left.
 #define DCH 'P'
 
+// Scroll up by the specified number of lines
+#define SU 'S'
+
+// Scroll down by the specified number of lines
+#define SD 'T'
+ 
 // *Erase character*: Erase the indicated # of characters on the
 // current line.
 #define ECH 'X'

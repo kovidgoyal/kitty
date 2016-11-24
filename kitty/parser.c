@@ -247,6 +247,10 @@ static inline void
 screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
 static inline void 
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
+static inline void 
+screen_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_index(s); }
+static inline void 
+screen_reverse_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_reverse_index(s); }
 
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
@@ -370,6 +374,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
         case DECSCUSR: 
             CALL_CSI_HANDLER1M(screen_set_cursor, 1); 
+        case SU:
+            CALL_CSI_HANDLER1(screen_indexn, 1); 
+        case SD:
+            CALL_CSI_HANDLER1(screen_reverse_indexn, 1); 
         default:
             REPORT_ERROR("Unknown CSI code: 0x%x", code);
     }
