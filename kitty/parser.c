@@ -183,10 +183,10 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
             }
             break;
         default:
-            if (screen->parser_buf[0] == '%' && ch == 'G') { 
-                // switch to utf-8, since we are always in utf-8, ignore.
+            if ((screen->parser_buf[0] == '%' && ch == 'G') || (screen->parser_buf[0] == '(' && ch == 'B')) { 
+                // switch to utf-8 or ascii, since we are always in utf-8, ignore.
             } else {
-                REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], screen->parser_buf[1]);
+                REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], ch);
             }
             SET_STATE(0);
             break;
@@ -611,6 +611,7 @@ FNAME(read_bytes)(PyObject UNUSED *self, PyObject *args) {
             if (errno == EIO) { Py_RETURN_FALSE; }
             return PyErr_SetFromErrno(PyExc_OSError);
         }
+        /* PyObject_Print(Py_BuildValue("y#", screen->read_buf, len), stderr, 0); */
         break;
     }
     _parse_bytes(screen, screen->read_buf, len, dump_callback);
