@@ -113,10 +113,10 @@ class Boss(Thread):
 
     def on_focus(self, window, focused):
         if focused:
-            if self.screen.enable_focus_tracking():
+            if self.screen.focus_tracking_enabled():
                 self.write_to_child(b'\x1b[I')
         else:
-            if self.screen.enable_focus_tracking():
+            if self.screen.focus_tracking_enabled():
                 self.write_to_child(b'\x1b[O')
 
     def on_mouse_button(self, window, button, action, mods):

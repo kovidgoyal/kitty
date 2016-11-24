@@ -57,6 +57,5 @@
 #define HILITE_MOUSE_TRACKING  (1001 << 5)
 #define CELL_MOTION_MOUSE_TRACKING  (1002 << 5)
 #define FOCUS_TRACKING (1004 << 5)
-#define UTF8_MOUSE_MODE (1005 << 5)
 #define SGR_MOUSE_MODE (1006 << 6)
 

@@ -356,8 +356,8 @@ in_bracketed_paste_mode(Screen *self) {
 }
 
 static PyObject*
-enable_focus_tracking(Screen *self) {
-#define enable_focus_tracking_doc ""
+focus_tracking_enabled(Screen *self) {
+#define focus_tracking_enabled_doc ""
     PyObject *ans = self->modes.mFOCUS_TRACKING ? Py_True : Py_False;
     Py_INCREF(ans);
     return ans;
@@ -1059,7 +1059,7 @@ static PyMethodDef methods[] = {
     METHOD(draw, METH_O)
     METHOD(set_mode, METH_VARARGS)
     METHOD(reset_mode, METH_VARARGS)
-    METHOD(enable_focus_tracking, METH_NOARGS)
+    METHOD(focus_tracking_enabled, METH_NOARGS)
     METHOD(in_bracketed_paste_mode, METH_NOARGS)
     METHOD(reset, METH_NOARGS)
     METHOD(reset_dirty, METH_NOARGS)
