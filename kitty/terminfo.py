@@ -222,6 +222,18 @@ string_capabilities = {
     # Select alternate charset
     'smacs': r'\E(0',
     'rmacs': r'\E(B',
+    # Shifted keys
+    'kRIT': r'\E[1;2C',
+    'kLFT': r'\E[1;2D',
+    'kEND': r'\E[1;2F',
+    'kHOM': r'\E[1;2H',
+    # Special keys
+    'khlp': r'',
+    'kund': r'',
+    'ka1': r'',
+    'ka3': r'',
+    'kc1': r'',
+    'kc3': r'',
 }
 
 termcap_aliases.update({
@@ -317,7 +329,16 @@ termcap_aliases.update({
     'ZR': 'ritm',
     'as': 'smacs',
     'ae': 'rmacs',
-
+    '#2': 'kHOM',
+    '#4': 'kLFT',
+    '*7': 'kEND',
+    '%i': 'kRIT',
+    '%1': 'khlp',
+    '&8': 'kund',
+    'K1': 'ka1',
+    'K3': 'ka3',
+    'K4': 'kc1',
+    'K5': 'kc3',
 })
 
 queryable_capabilities = numeric_capabilities.copy()

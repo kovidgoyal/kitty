@@ -27,6 +27,14 @@ key_map[defines.GLFW_KEY_ENTER] = b'\r'
 key_map[defines.GLFW_KEY_BACKSPACE] = b'\x08'
 key_map[defines.GLFW_KEY_TAB] = b'\t'
 
+SHIFTED_KEYS = {
+    defines.GLFW_KEY_TAB: key_as_bytes('kcbt'),
+    defines.GLFW_KEY_HOME: key_as_bytes('kHOM'),
+    defines.GLFW_KEY_END: key_as_bytes('kEND'),
+    defines.GLFW_KEY_LEFT: key_as_bytes('kLFT'),
+    defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
+}
+
 control_codes = {k: 1 + i for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET))}
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET))}
 
@@ -43,8 +51,7 @@ def interpret_key_event(key, scancode, mods):
         x = key_map.get(key)
         if x is not None:
             if mods == defines.GLFW_MOD_SHIFT:
-                if key == defines.GLFW_KEY_TAB:
-                    x = b'\x1b[Z'
+                x = SHIFTED_KEYS.get(key, x)
             data.extend(x)
     return bytes(data)
 
