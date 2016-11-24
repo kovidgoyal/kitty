@@ -179,8 +179,8 @@ PyTypeObject Cursor_Type;
 typedef struct {
     PyObject_HEAD
 
-    uint32_t color_table_256[256];
-    uint32_t ansi_color_table[120];
+    uint32_t color_table[256];
+    uint32_t orig_color_table[256];
 
 } ColorProfile;
 PyTypeObject ColorProfile_Type;
@@ -364,6 +364,7 @@ void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
 void set_title(Screen *self, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
+void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 void screen_request_capabilities(Screen *, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);

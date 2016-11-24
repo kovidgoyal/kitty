@@ -198,6 +198,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
+#define SET_COLOR(name) REPORT_OSC(name, string); name(screen, code, string);
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
     for (i = 0; i < MIN(limit, 5); i++) {
@@ -220,12 +221,15 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             case 2:
                 DISPATCH_OSC(set_title);
                 break;
+            case 4:
+            case 104:
+                SET_COLOR(set_color_table_color);
+                break;
             case 10:
             case 11:
             case 110:
             case 111:
-                REPORT_OSC(set_dynamic_color, string);
-                set_dynamic_color(screen, code, string);
+                SET_COLOR(set_dynamic_color);
                 break;
             default:
                 REPORT_ERROR("Unknown OSC code: %u", code);
@@ -234,6 +238,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         Py_CLEAR(string);
     }
 #undef DISPATCH_OSC
+#undef SET_COLOR
 }
 // }}}
 

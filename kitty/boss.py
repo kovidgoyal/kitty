@@ -274,6 +274,9 @@ class Boss(Thread):
             code += 1
         self.queue_action(self.apply_change_colors)
 
+    def set_color_table_color(self, code, value):
+        print(11111111, code, value)
+
     def apply_change_colors(self):
         self.char_grid.change_colors(self.pending_color_changes)
         self.pending_color_changes = {}

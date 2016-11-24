@@ -5,7 +5,6 @@
 import re
 import sys
 from collections import namedtuple
-from itertools import repeat
 
 import glfw_constants as glfw
 
@@ -215,7 +214,7 @@ type_map = {
     'repaint_delay': int,
 }
 
-for name in 'foreground foreground_bold background cursor'.split():
+for name in 'foreground background cursor'.split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)
@@ -270,9 +269,6 @@ term xterm-kitty
 foreground       #dddddd
 # The background color
 background       #000000
-
-# The high intensity foreground color
-foreground_bold  #ffffff
 
 # The cursor color
 cursor           #ffffff
@@ -385,16 +381,4 @@ def build_ansi_color_table(opts: Options=defaults):
 
     def col(i):
         return as_int(getattr(opts, 'color{}'.format(i)))
-    ans = list(repeat(0, 120))
-    fg = {30 + i: col(i) for i in range(8)}
-    fg[39] = as_int(opts.foreground)
-    fg.update({90 + i: col(i + 8) for i in range(8)})
-    fg[99] = as_int(opts.foreground_bold)
-    bg = {40 + i: col(i) for i in range(8)}
-    bg[49] = as_int(opts.background)
-    bg.update({100 + i: col(i + 8) for i in range(8)})
-    for k, val in fg.items():
-        ans[k] = val
-    for k, val in bg.items():
-        ans[k] = val
-    return ans
+    return list(map(col, range(16)))

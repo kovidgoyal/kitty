@@ -273,8 +273,8 @@ class TestDataTypes(BaseTest):
         c.update_ansi_color_table(build_ansi_color_table())
         for i in range(8):
             col = getattr(defaults, 'color{}'.format(i))
-            self.assertEqual(c.ansi_color(30 + i), col[0] << 16 | col[1] << 8 | col[2])
-        self.ae(c.color_256(255), 0xeeeeee)
+            self.assertEqual(c.as_color(i << 8 | 1), (col[0], col[1], col[2]))
+        self.ae(c.as_color(255 << 8 | 1), (0xee, 0xee, 0xee))
 
     def test_sprite_map(self):
         s = SpriteMap(10, 2)

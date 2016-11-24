@@ -57,7 +57,8 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     self = (ColorProfile *)type->tp_alloc(type, 0);
     if (self != NULL) {
         if (FG_BG_256[255] == 0) create_256_color_table();
-        memcpy(self->color_table_256, FG_BG_256, sizeof(FG_BG_256));
+        memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
+        memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
     }
     return (PyObject*) self;
 }
@@ -72,52 +73,14 @@ static PyObject*
 update_ansi_color_table(ColorProfile *self, PyObject *val) {
 #define update_ansi_color_table_doc "Update the 16 basic colors"
     index_type i;
-    PyObject *t;
 
     if (!PyList_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a list"); return NULL; }
-
-#define TO_COLOR \
-    t = PyList_GET_ITEM(val, i); \
-    self->ansi_color_table[i] = PyLong_AsUnsignedLong(t);
-
-    for(i = 30; i < 38; i++) {
-        TO_COLOR;
-    }
-    i = 39; TO_COLOR;
-    for(i = 90; i < 98; i++) {
-        TO_COLOR;
-    }
-    i = 99; TO_COLOR;
-    for(i = 40; i < 48; i++) {
-        TO_COLOR;
-    }
-    i = 49; TO_COLOR;
-    for(i = 100; i < 108; i++) {
-        TO_COLOR;
+    if (PyList_GET_SIZE(val) != 16) { PyErr_SetString(PyExc_TypeError, "color table must have 16 items"); return NULL; }
+    for (i = 0; i < 16; i++) {
+        self->color_table[i] = PyLong_AsUnsignedLong(PyList_GET_ITEM(val, i));
+        self->orig_color_table[i] = self->color_table[i];
     }
     Py_RETURN_NONE;
-}
-
-static PyObject*
-ansi_color(ColorProfile *self, PyObject *val) {
-#define ansi_color_doc "Return the color at the specified index"
-    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
-    unsigned long idx = PyLong_AsUnsignedLong(val);
-    if (idx >= sizeof(self->ansi_color_table) / sizeof(self->ansi_color_table[0])) {
-        PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL;
-    }
-    return PyLong_FromUnsignedLong(self->ansi_color_table[idx]);
-}
-
-static PyObject*
-color_256(ColorProfile *self, PyObject *val) {
-#define color_256_doc "Return the color at the specified 256-color index"
-    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "index must be an int"); return NULL; }
-    unsigned long idx = PyLong_AsUnsignedLong(val);
-    if (idx >= 256) {
-        PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL;
-    }
-    return PyLong_FromUnsignedLong(self->color_table_256[idx]);
 }
 
 static PyObject*
@@ -126,24 +89,16 @@ as_color(ColorProfile *self, PyObject *val) {
     if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "val must be an int"); return NULL; }
     unsigned long entry = PyLong_AsUnsignedLong(val);
     unsigned int t = entry & 0xFF;
-    uint8_t r, g, b;
+    uint8_t r;
     uint32_t col = 0;
     PyObject *ans = NULL;
     switch(t) {
         case 1:
             r = (entry >> 8) & 0xff;
-            col = self->ansi_color_table[r];
+            col = self->color_table[r];
             break;
         case 2:
-            r = (entry >> 8) & 0xff;
-            col = self->color_table_256[r];
-            break;
-        case 3:
-            r = (entry >> 8) & 0xff;
-            g = (entry >> 16) & 0xff;
-            b = (entry >> 24) & 0xff;
-            ans = Py_BuildValue("BBB", r, g, b);
-            break;
+            col = entry >> 8;
         default:
             ans = Py_None; Py_INCREF(Py_None);
     }
@@ -151,16 +106,14 @@ as_color(ColorProfile *self, PyObject *val) {
     return ans;
 }
 
-uint32_t to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
+uint32_t 
+to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
     unsigned int t = entry & 0xFF, r;
     switch(t) {
         case 1:
             r = (entry >> 8) & 0xff;
-            return self->ansi_color_table[r];
+            return self->color_table[r];
         case 2:
-            r = (entry >> 8) & 0xff;
-            return self->color_table_256[r];
-        case 3:
             return entry >> 8;
         default:
             return defval;
@@ -172,8 +125,6 @@ uint32_t to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
 
 static PyMethodDef methods[] = {
     METHOD(update_ansi_color_table, METH_O)
-    METHOD(ansi_color, METH_O)
-    METHOD(color_256, METH_O)
     METHOD(as_color, METH_O)
     {NULL}  /* Sentinel */
 };

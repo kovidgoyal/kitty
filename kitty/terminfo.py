@@ -130,8 +130,8 @@ string_capabilities = {
     'ind': r'^J',
     'indn': r'\E[%p1%dS',
     # initialize color (set dynamic colors)
-    # 'initc': r'\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\',
-    # Set all color pairs to original values
+    'initc': r'\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\',
+    # Set all colors to original values
     'oc': r'\E]104\007',
     # turn on blank mode (characters invisible)
     # 'invis': r'\E[8m',
@@ -278,7 +278,7 @@ termcap_aliases.update({
     'al': 'il1',
     'sf': 'ind',
     'SF': 'indn',
-    # 'Ic': 'initc',
+    'Ic': 'initc',
     'oc': 'oc',
     # 'mk': 'invis',
     'kb': 'kbs',
