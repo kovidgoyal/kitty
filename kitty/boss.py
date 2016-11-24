@@ -70,7 +70,12 @@ class Boss(Thread):
     def dump_commands(self, *a):
         if a:
             if a[0] == 'draw':
-                self.draw_dump_buf.append(a[1])
+                if a[1] is None:
+                    if self.draw_dump_buf:
+                        print('draw', ''.join(self.draw_dump_buf))
+                        self.draw_dump_buf = []
+                else:
+                    self.draw_dump_buf.append(a[1])
             else:
                 if self.draw_dump_buf:
                     print('draw', ''.join(self.draw_dump_buf))

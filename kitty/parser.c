@@ -69,6 +69,9 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", "draw", ch)); PyErr_Clear();
 
+#define FLUSH_DRAW \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", "draw", Py_None)); PyErr_Clear();
+
 #define REPORT_OSC(name, string) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", #name, string)); PyErr_Clear();
 
@@ -80,6 +83,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_COMMAND(...)
 #define REPORT_DRAW(ch)
+#define FLUSH_DRAW
 #define REPORT_OSC(name, string)
 
 #endif
@@ -562,6 +566,7 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
                 break;
         }
     }
+FLUSH_DRAW;
 #undef HANDLE
 }
 // }}}

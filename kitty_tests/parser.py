@@ -52,7 +52,8 @@ class TestParser(BaseTest):
         q = []
         for args in cd:
             if args[0] == 'draw':
-                current += args[1]
+                if args[1] is not None:
+                    current += args[1]
             else:
                 if current:
                     q.append(('draw', current))
