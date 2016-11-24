@@ -32,9 +32,12 @@ class Callbacks:
     def set_dynamic_color(self, code, data):
         self.colorbuf += data
 
+    def request_capabilities(self, q):
+        self.qbuf += q
+
     def clear(self):
         self.wtcbuf = b''
-        self.iconbuf = self.titlebuf = self.colorbuf = ''
+        self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = ''
 
 
 class TestParser(BaseTest):
@@ -168,5 +171,5 @@ class TestParser(BaseTest):
     def test_dcs_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('a\033P2;xyz\x9cbcde', 'abcde')
+        pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')

@@ -810,6 +810,11 @@ void set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
     if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
 
+void screen_request_capabilities(Screen *self, PyObject *q) {
+    PyObject_CallMethod(self->callbacks, "request_capabilities", "O", q);
+    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+}
+
 // }}}
 
 // Python interface {{{

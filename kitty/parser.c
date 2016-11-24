@@ -204,29 +204,31 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         if (i < limit - 1 && screen->parser_buf[i] == ';') i++;
     }
     PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i);
-    switch(code) {
-        case 0:
-            DISPATCH_OSC(set_title);
-            DISPATCH_OSC(set_icon);
-            break;
-        case 1:
-            DISPATCH_OSC(set_icon);
-            break;
-        case 2:
-            DISPATCH_OSC(set_title);
-            break;
-        case 10:
-        case 11:
-        case 110:
-        case 111:
-            REPORT_OSC(set_dynamic_color, string);
-            set_dynamic_color(screen, code, string);
-            break;
-        default:
-            REPORT_ERROR("Unknown OSC code: %u", code);
-            break;
+    if (string != NULL) {
+        switch(code) {
+            case 0:
+                DISPATCH_OSC(set_title);
+                DISPATCH_OSC(set_icon);
+                break;
+            case 1:
+                DISPATCH_OSC(set_icon);
+                break;
+            case 2:
+                DISPATCH_OSC(set_title);
+                break;
+            case 10:
+            case 11:
+            case 110:
+            case 111:
+                REPORT_OSC(set_dynamic_color, string);
+                set_dynamic_color(screen, code, string);
+                break;
+            default:
+                REPORT_ERROR("Unknown OSC code: %u", code);
+                break;
+        }
+        Py_CLEAR(string);
     }
-    Py_CLEAR(string);
 #undef DISPATCH_OSC
 }
 // }}}
@@ -376,8 +378,26 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 
 // DCS mode {{{
 static inline void
-dispatch_dcs(Screen *screen) {
-    screen->parser_buf_pos++;
+dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+    PyObject *string = NULL;
+    if (screen->parser_buf_pos < 2) return;
+    switch(screen->parser_buf[0]) {
+        case '+':
+            if (screen->parser_buf[1] == 'q') {
+                string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 2, screen->parser_buf_pos - 2);
+                if (string != NULL) {
+                    REPORT_OSC(screen_request_capabilities, string);
+                    screen_request_capabilities(screen, string);
+                    Py_CLEAR(string);
+                }
+            } else {
+                REPORT_ERROR("Unrecognized DCS+ code: 0x%x", screen->parser_buf[1]);
+            }
+            break;
+        default:
+            REPORT_ERROR("Unrecognized DCS code: 0x%x", screen->parser_buf[0]);
+            break;
+    }
 }
 // }}}
 
@@ -521,7 +541,7 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
                         if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
                         break;
                     case DCS:
-                        if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen); SET_STATE(0); }
+                        if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }
                         if (screen->parser_state == ESC) { HANDLE(esc_mode_char); }
                         break;
                     default:

@@ -361,6 +361,7 @@ void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
 void set_title(Screen *self, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
+void screen_request_capabilities(Screen *, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
