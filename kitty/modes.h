@@ -54,7 +54,7 @@
 #define MOUSE_BUTTON_TRACKING (1000 << 5)
 #define MOUSE_MOTION_TRACKING  (1002 << 5)
 #define FOCUS_TRACKING (1004 << 5)
-#define MOUSE_SGR_MODE (1006 << 6)
+#define MOUSE_SGR_MODE (1006 << 5)
 
 // Alternate screen buffer
 #define ALTERNATE_SCREEN  (1049 << 5)
