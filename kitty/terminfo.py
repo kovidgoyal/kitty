@@ -330,3 +330,8 @@ def generate_terminfo():
     ans.extend('{}#{}'.format(k, v) for k, v in numeric_capabilities.items())
     ans.extend('{}={}'.format(k, string_capabilities[k]) for k in sorted(string_capabilities))
     return ',\n\t'.join(ans) + ',\n'
+
+
+def key_as_bytes(name):
+    ans = string_capabilities[name]
+    return ans.replace(r'\E', '\033').encode('ascii')

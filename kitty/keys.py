@@ -3,33 +3,26 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import glfw_constants as defines
+from .terminfo import key_as_bytes
 
 key_map = {
-    defines.GLFW_KEY_UP: b'OA',
-    defines.GLFW_KEY_DOWN: b'OB',
-    defines.GLFW_KEY_LEFT: b'OD',
-    defines.GLFW_KEY_RIGHT: b'OC',
-    defines.GLFW_KEY_HOME: b'OH',
-    defines.GLFW_KEY_END: b'OF',
-    defines.GLFW_KEY_ESCAPE: b'',
-    defines.GLFW_KEY_INSERT: b'[2~',
-    defines.GLFW_KEY_DELETE: b'[3~',
-    defines.GLFW_KEY_PAGE_UP: b'[5~',
-    defines.GLFW_KEY_PAGE_DOWN: b'[6~',
-    defines.GLFW_KEY_F1: b'OP',
-    defines.GLFW_KEY_F2: b'OQ',
-    defines.GLFW_KEY_F3: b'OR',
-    defines.GLFW_KEY_F4: b'OS',
-    defines.GLFW_KEY_F5: b'[15~',
-    defines.GLFW_KEY_F6: b'[17~',
-    defines.GLFW_KEY_F7: b'[18~',
-    defines.GLFW_KEY_F8: b'[19~',
-    defines.GLFW_KEY_F9: b'[20~',
-    defines.GLFW_KEY_F10: b'[21~',
-    defines.GLFW_KEY_F11: b'[23~',
-    defines.GLFW_KEY_F12: b'[24~',
+    defines.GLFW_KEY_UP: 'kcuu1',
+    defines.GLFW_KEY_DOWN: 'kcud1',
+    defines.GLFW_KEY_LEFT: 'kcub1',
+    defines.GLFW_KEY_RIGHT: 'kcuf1',
+    defines.GLFW_KEY_HOME: 'khome',
+    defines.GLFW_KEY_END: 'kend',
+    defines.GLFW_KEY_INSERT: 'kich1',
+    defines.GLFW_KEY_DELETE: 'kdch1',
+    defines.GLFW_KEY_PAGE_UP: 'kpp',
+    defines.GLFW_KEY_PAGE_DOWN: 'knp',
 }
-key_map = {k: b'\x1b' + v for k, v in key_map.items()}
+key_map = {k: key_as_bytes(v) for k, v in key_map.items()}
+for f in range(1, 13):
+    key_map[getattr(defines, 'GLFW_KEY_F{}'.format(f))] = key_as_bytes('kf{}'.format(f))
+del f
+
+key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
 key_map[defines.GLFW_KEY_ENTER] = b'\r'
 key_map[defines.GLFW_KEY_BACKSPACE] = b'\x08'
 key_map[defines.GLFW_KEY_TAB] = b'\t'
