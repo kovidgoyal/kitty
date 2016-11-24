@@ -129,8 +129,10 @@ string_capabilities = {
     # scroll up by specified amount
     'ind': r'^J',
     'indn': r'\E[%p1%dS',
-    # initialize color
+    # initialize color (set dynamic colors)
     # 'initc': r'\E]4;%p1%d;rgb\:%p2%{255}%*%{1000}%/%2.2X/%p3%{255}%*%{1000}%/%2.2X/%p4%{255}%*%{1000}%/%2.2X\E\\',
+    # Set all color pairs to original values
+    'oc': r'\E]104\007',
     # turn on blank mode (characters invisible)
     # 'invis': r'\E[8m',
     # Backspace
@@ -277,6 +279,7 @@ termcap_aliases.update({
     'sf': 'ind',
     'SF': 'indn',
     # 'Ic': 'initc',
+    'oc': 'oc',
     # 'mk': 'invis',
     'kb': 'kbs',
     'kl': 'kcub1',
@@ -351,8 +354,8 @@ del extra
 
 def generate_terminfo():
     ans = ['|'.join(names)]
-    ans.extend(bool_capabilities)
-    ans.extend('{}#{}'.format(k, v) for k, v in numeric_capabilities.items())
+    ans.extend(sorted(bool_capabilities))
+    ans.extend('{}#{}'.format(k, numeric_capabilities[k]) for k in sorted(numeric_capabilities))
     ans.extend('{}={}'.format(k, string_capabilities[k]) for k in sorted(string_capabilities))
     return ',\n\t'.join(ans) + ',\n'
 
