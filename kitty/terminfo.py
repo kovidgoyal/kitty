@@ -2,6 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from binascii import unhexlify, hexlify
+
 names = 'xterm-kitty', 'KovIdTTY'
 
 termcap_aliases = {
@@ -264,7 +266,7 @@ termcap_aliases.update({
     'SF': 'indn',
     # 'Ic': 'initc',
     # 'mk': 'invis',
-    'bs': 'kbs',
+    'kb': 'kbs',
     'kl': 'kcub1',
     'kd': 'kcud1',
     'kr': 'kcuf1',
@@ -318,6 +320,8 @@ termcap_aliases.update({
 
 })
 
+queryable_capabilities = numeric_capabilities.copy()
+queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 if extra:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra))
@@ -335,3 +339,26 @@ def generate_terminfo():
 def key_as_bytes(name):
     ans = string_capabilities[name]
     return ans.replace(r'\E', '\033').encode('ascii')
+
+
+def get_capabilities(query_string):
+    from .fast_data_types import ERROR_PREFIX
+    ans = []
+    try:
+        for q in query_string.split(';'):
+            name = unhexlify(q).decode('utf-8')
+            if name == 'TN':
+                val = names[0]
+            else:
+                try:
+                    val = queryable_capabilities[name]
+                except KeyError:
+                    try:
+                        val = queryable_capabilities[termcap_aliases[name]]
+                    except Exception as e:
+                        print(ERROR_PREFIX, 'Unknown terminfo property:', name)
+                        raise
+            ans.append(q + '=' + hexlify(str(val)))
+        return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
+    except Exception:
+        return b'\033P0+r' + query_string.encode('utf-8') + b'\033\\'

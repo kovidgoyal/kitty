@@ -24,6 +24,7 @@ from .utils import sanitize_title
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
+from .terminfo import get_capabilities
 
 
 def handle_unix_signals():
@@ -246,7 +247,9 @@ class Boss(Thread):
 
     def set_dynamic_color(self, code, value):
         wmap = {10: 'fg', 11: 'bg', 110: 'fg', 111: 'bg'}
-        for val in value.decode('utf-8').split(';'):
+        if isinstance(value, bytes):
+            value = value.decode('utf-8')
+        for val in value.split(';'):
             w = wmap.get(code)
             if w is not None:
                 if code >= 110:
@@ -259,6 +262,9 @@ class Boss(Thread):
         self.char_grid.change_colors(self.pending_color_changes)
         self.pending_color_changes = {}
         glfw.glfwPostEmptyEvent()
+
+    def request_capabilities(self, q):
+        self.write_to_child(get_capabilities(q))
 
     # actions {{{
 

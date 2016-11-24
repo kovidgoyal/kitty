@@ -21,6 +21,9 @@ typedef uint64_t color_type;
 typedef uint32_t decoration_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
+
+#define ERROR_PREFIX "[PARSE ERROR]"
+
 #define CELL_SIZE (sizeof(char_type) + sizeof(color_type) + sizeof(decoration_type) + sizeof(combining_type))
 // The data cell size must be a multiple of 3
 #define DATA_CELL_SIZE 2 * 3

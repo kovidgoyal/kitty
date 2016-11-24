@@ -51,6 +51,7 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
         PyModule_AddStringMacro(m, BRACKETED_PASTE_START);
         PyModule_AddStringMacro(m, BRACKETED_PASTE_END);
+        PyModule_AddStringMacro(m, ERROR_PREFIX);
         PyModule_AddIntMacro(m, CURSOR_BLOCK);
         PyModule_AddIntMacro(m, CURSOR_BEAM);
         PyModule_AddIntMacro(m, CURSOR_UNDERLINE);

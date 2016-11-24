@@ -76,7 +76,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define DUMP_UNUSED UNUSED
 
-#define REPORT_ERROR(...) fprintf(stderr, "[PARSE ERROR] "); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
+#define REPORT_ERROR(...) fprintf(stderr, "%s ", ERROR_PREFIX); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
 
 #define REPORT_COMMAND(...)
 #define REPORT_DRAW(ch)
