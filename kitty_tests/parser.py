@@ -171,6 +171,7 @@ class TestParser(BaseTest):
 
     def test_dcs_codes(self):
         s = self.create_screen()
+        s.callbacks = Callbacks()
         pb = partial(self.parse_bytes_dump, s)
         pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
