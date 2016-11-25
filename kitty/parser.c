@@ -610,7 +610,9 @@ FNAME(read_bytes)(PyObject UNUSED *self, PyObject *args) {
 #endif
 
     while(true) {
+        Py_BEGIN_ALLOW_THREADS;
         len = read(fd, screen->read_buf, READ_BUF_SZ);
+        Py_END_ALLOW_THREADS;
         if (len == -1) {
             if (errno == EINTR) continue;
             if (errno == EIO) { Py_RETURN_FALSE; }
