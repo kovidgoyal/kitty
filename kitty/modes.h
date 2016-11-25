@@ -53,6 +53,7 @@
 // Xterm mouse protocol
 #define MOUSE_BUTTON_TRACKING (1000 << 5)
 #define MOUSE_MOTION_TRACKING  (1002 << 5)
+#define MOUSE_MOVE_TRACKING (1003 << 5)
 #define FOCUS_TRACKING (1004 << 5)
 #define MOUSE_SGR_MODE (1006 << 5)
 

@@ -226,7 +226,7 @@ PyTypeObject ChangeTracker_Type;
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, 
          mBRACKETED_PASTE, mFOCUS_TRACKING, mMOUSE_BUTTON_TRACKING,
-         mMOUSE_MOTION_TRACKING, mMOUSE_SGR_MODE;
+         mMOUSE_MOTION_TRACKING, mMOUSE_SGR_MODE, mMOUSE_MOVE_TRACKING;
 } ScreenModes;
 PyTypeObject ScreenModes_Type;
 

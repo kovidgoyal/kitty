@@ -306,6 +306,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(MOUSE_BUTTON_TRACKING)
+        SIMPLE_MODE(MOUSE_MOVE_TRACKING)
         SIMPLE_MODE(MOUSE_MOTION_TRACKING)
         SIMPLE_MODE(MOUSE_SGR_MODE)
         SIMPLE_MODE(FOCUS_TRACKING)
@@ -914,6 +915,7 @@ MODE_GETTER(in_bracketed_paste, BRACKETED_PASTE)
 MODE_GETTER(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETTER(mouse_button_tracking_enabled, MOUSE_BUTTON_TRACKING)
 MODE_GETTER(mouse_motion_tracking_enabled, MOUSE_MOTION_TRACKING)
+MODE_GETTER(mouse_move_tracking_enabled, MOUSE_MOVE_TRACKING)
 MODE_GETTER(mouse_in_sgr_mode, MOUSE_SGR_MODE)
 
 
@@ -1070,6 +1072,7 @@ static PyMethodDef methods[] = {
     MND(focus_tracking_enabled, METH_NOARGS)
     MND(mouse_button_tracking_enabled, METH_NOARGS)
     MND(mouse_motion_tracking_enabled, METH_NOARGS)
+    MND(mouse_move_tracking_enabled, METH_NOARGS)
     MND(mouse_in_sgr_mode, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
 
