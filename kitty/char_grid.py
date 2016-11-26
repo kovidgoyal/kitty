@@ -181,8 +181,8 @@ class CharGrid:
         dx, dy = 2 * cell_size.width / viewport_size.width, 2 * cell_size.height / viewport_size.height
         xmargin = window_geometry.left / viewport_size.width
         ymargin = window_geometry.top / viewport_size.height
-        xstart = -1 + xmargin
-        ystart = 1 - ymargin
+        xstart = -1 + 2 * xmargin
+        ystart = 1 - 2 * ymargin
         self.screen_geometry = ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
     def resize(self, window_geometry):
