@@ -4,6 +4,7 @@
 
 from ctypes import addressof, sizeof
 from functools import lru_cache
+from threading import Lock
 
 from .fonts import render_cell
 from .fast_data_types import (
@@ -48,6 +49,7 @@ class Sprites:
         self.last_ynum = -1
         self.texture_unit = GL_TEXTURE0
         self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
+        self.lock = Lock()
 
     def do_layout(self, cell_width=1, cell_height=1):
         self.cell_width, self.cell_height = cell_width, cell_height
@@ -84,7 +86,8 @@ class Sprites:
         return first
 
     def render_dirty_cells(self):
-        self.backend.render_dirty_cells(self.render_cell, self.send_to_gpu)
+        with self.lock:
+            self.backend.render_dirty_cells(self.render_cell, self.send_to_gpu)
 
     def send_to_gpu(self, x, y, z, buf):
         if self.backend.z >= self.last_num_of_layers:

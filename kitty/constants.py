@@ -4,10 +4,14 @@
 
 import os
 import threading
+import pwd
+from collections import namedtuple
 
 appname = 'kitty'
 version = (0, 1, 0)
 str_version = '.'.join(map(str, version))
+ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
+WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
 
 
 def _get_config_dir():
@@ -22,8 +26,38 @@ def _get_config_dir():
     except FileExistsError:
         pass
     return ans
+
+
 config_dir = _get_config_dir()
 del _get_config_dir
 
+
+class ViewportSize:
+
+    __slots__ = ('width', 'height')
+
+    def __init__(self):
+        self.width = self.height = 1024
+
+
+def tab_manager():
+    return tab_manager.manager
+
+
+def set_tab_manager(m):
+    tab_manager.manager = m
+
+
+def wakeup():
+    os.write(tab_manager.manager.write_wakeup_fd, b'1')
+
+
+def queue_action(func, *args):
+    tab_manager.manager.queue_action(func, *args)
+
+
+viewport_size = ViewportSize()
+cell_size = ViewportSize()
 terminfo_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'terminfo')
 main_thread = threading.current_thread()
+shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'

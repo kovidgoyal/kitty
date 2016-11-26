@@ -4,24 +4,19 @@
 
 from collections import namedtuple
 from ctypes import c_uint, addressof, memmove, sizeof
-from queue import Queue, Empty
+from itertools import count
 from threading import Lock
 
 from .config import build_ansi_color_table
-from .fonts import set_font_family
-from .shaders import Sprites, ShaderProgram
+from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry
 from .utils import get_logical_dpi, to_color
 from .fast_data_types import (
-    glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClear,
-    GL_COLOR_BUFFER_BIT, glClearColor, glViewport, glUniform2ui, glUniform4f,
-    glUniform1i, glUniform2f, glDrawArraysInstanced, GL_TRIANGLE_FAN,
-    glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
+    glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
+    GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE
 )
 
-Size = namedtuple('Size', 'width height')
 Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
-ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
 
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
@@ -150,96 +145,54 @@ void main() {
 # }}}
 
 
-def calculate_screen_geometry(cell_width, cell_height, screen_width, screen_height):
-    xnum = screen_width // cell_width
-    ynum = screen_height // cell_height
-    dx, dy = 2 * cell_width / screen_width, 2 * cell_height / screen_height
-    xmargin = (screen_width - (xnum * cell_width)) / screen_width
-    ymargin = (screen_height - (ynum * cell_height)) / screen_height
-    xstart = -1 + xmargin
-    ystart = 1 - ymargin
-    return ScreenGeometry(xstart, ystart, xnum, ynum, dx, dy)
-
-
-class RenderData:
-
-    __slots__ = 'viewport clear_color cell_data_changed screen_geometry sprite_layout cursor'.split()
-
-    def __init__(self, viewport=None, clear_color=None, cell_data_changed=False, screen_geometry=None, sprite_layout=None, cursor=None):
-        self.viewport, self.clear_color, self.cell_data_changed = viewport, clear_color, cell_data_changed
-        self.screen_geometry = screen_geometry
-        self.sprite_layout = sprite_layout
-        self.cursor = cursor
-
-    def update(self, other):
-        for k in self.__slots__:
-            val = getattr(other, k)
-            if val is not None:
-                setattr(self, k, val)
-
-
 def color_as_int(val):
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
+render_data_num = count()
+
+
 class CharGrid:
 
-    def __init__(self, screen, opts, window_width, window_height):
-        self.sprites_lock, self.buffer_lock = Lock(), Lock()
+    def __init__(self, screen, opts):
+        self.buffer_lock = Lock()
+        self.render_num = next(render_data_num)
+        self.render_data = None
+        self.last_render_send_num = -1
         self.scrolled_by = 0
-        self.dpix, self.dpiy = get_logical_dpi()
-        self.width, self.height = window_width, window_height
         self.color_profile = ColorProfile()
-        self.as_color = self.color_profile.as_color
+        self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen = screen
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
-        self.render_queue = Queue()
-        self.program = ShaderProgram(*cell_shader)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        self.sprites = Sprites()
-        self.cursor_program = ShaderProgram(*cursor_shader)
-        self.last_render_data = RenderData()
         self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
-        self.render_queue.put(RenderData(
-            viewport=Size(self.width, self.height), clear_color=color_as_int(self.original_bg),
-            cursor=self.default_cursor))
-        self.clear_count = 4
         self.default_bg = color_as_int(self.original_bg)
         self.default_fg = color_as_int(self.original_fg)
-        self.apply_opts(self.opts)
-
-    def destroy(self):
-        self.sprites.destroy()
-
-    def apply_opts(self, opts):
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.screen.change_scrollback_size(opts.scrollback_lines)
-        self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-        self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
+        self.default_cursor = self.current_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
-        self.cell_width, self.cell_height = set_font_family(opts.font_family, opts.font_size)
-        self.sprites.do_layout(self.cell_width, self.cell_height)
-        self.do_layout(self.width, self.height)
+        self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
-    def resize_screen(self, w, h):
-        ' Screen was resized by the user (called in non-UI thread) '
-        self.do_layout(w, h)
+    def update_position(self, window_geometry):
+        dx, dy = 2 * cell_size.width / viewport_size.width, 2 * cell_size.height / viewport_size.height
+        xmargin = window_geometry.left / viewport_size.width
+        ymargin = window_geometry.top / viewport_size.height
+        xstart = -1 + xmargin
+        ystart = 1 - ymargin
+        self.screen_geometry = ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
-    def do_layout(self, w, h):
-        self.width, self.height = w, h
-        self.screen_geometry = sg = calculate_screen_geometry(self.cell_width, self.cell_height, self.width, self.height)
-        self.screen.resize(sg.ynum, sg.xnum)
-        self.sprite_map_type = (c_uint * (sg.ynum * sg.xnum * DATA_CELL_SIZE))
+    def resize(self, window_geometry):
+        self.update_position(window_geometry)
+        self.sprite_map_type = (c_uint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
         self.main_sprite_map = self.sprite_map_type()
         self.scroll_sprite_map = self.sprite_map_type()
-        self.render_buf = self.sprite_map_type()
-        self.update_cell_data(add_viewport_data=True)
-        self.clear_count = 4
+        with self.buffer_lock:
+            self.render_buf = self.sprite_map_type()
+            self.render_num = next(render_data_num)
 
     def change_colors(self, changes):
         dirtied = False
@@ -254,8 +207,7 @@ class CharGrid:
                         setattr(self, 'default_' + which, color_as_int(val))
                         dirtied = True
         if dirtied:
-            self.render_queue.put(RenderData(clear_color=self.default_bg))
-            self.clear_count = 4
+            self.screen.mark_as_dirty()
 
     def scroll(self, amt, upwards=True):
         amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
@@ -266,77 +218,49 @@ class CharGrid:
             self.scrolled_by = y
             self.update_cell_data()
 
-    def update_cell_data(self, add_viewport_data=False):
-        rd = RenderData(sprite_layout=self.sprites.layout, cell_data_changed=True)
-        if add_viewport_data:
-            rd.viewport = Size(self.width, self.height)
-            rd.screen_geometry = self.screen_geometry
-        with self.sprites_lock:
+    def update_cell_data(self, force_full_refresh=False):
+        sprites = tab_manager().sprites
+        with sprites.lock:
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
-                self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, add_viewport_data)
+                sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, force_full_refresh)
             if self.scrolled_by:
                 self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
-                    self.sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
+                    sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         with self.buffer_lock:
             memmove(self.render_buf, data, sizeof(type(data)))
+            self.render_num = next(render_data_num)
+            self.render_data = self.screen_geometry
         if cursor_changed:
             c = self.screen.cursor
-            rd.cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
-        self.render_queue.put(rd)
+            self.current_cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
 
-    def render(self):
-        ' This is the only method in this class called in the UI thread (apart from __init__) '
-        if self.clear_count > 0:
-            glClear(GL_COLOR_BUFFER_BIT)
-            self.clear_count -= 1
-        cell_data_changed = self.get_all_render_changes()
-        with self.sprites:
-            with self.sprites_lock:
-                self.sprites.render_dirty_cells()
-            if cell_data_changed:
-                with self.buffer_lock:
-                    self.sprites.set_sprite_map(self.render_buf)
-            data = self.last_render_data
-
-            if data.screen_geometry is None:
+    def prepare_for_render(self, sprites):
+        with self.buffer_lock:
+            sg = self.render_data
+            if sg is None:
                 return
-            sg = data.screen_geometry
-            self.render_cells(sg, data.sprite_layout)
-        if not data.cursor.hidden and not self.scrolled_by:
-            self.render_cursor(sg, data.cursor)
+            if self.last_render_send_num != self.render_num:
+                sprites.set_sprite_map(self.render_buf)
+                self.last_render_send_num = self.render_num
+        return sg
 
-    def get_all_render_changes(self):
-        cell_data_changed = False
-        data = self.last_render_data
-        while True:
-            try:
-                rd = self.render_queue.get_nowait()
-            except Empty:
-                break
-            cell_data_changed |= rd.cell_data_changed
-            if rd.clear_color is not None:
-                bg = rd.clear_color
-                glClearColor((bg >> 16) / 255, ((bg >> 8) & 0xff) / 255, (bg & 0xff) / 255, 1)
-            if rd.viewport is not None:
-                glViewport(0, 0, self.width, self.height)
-            data.update(rd)
-        return cell_data_changed
+    def render_cells(self, sg, cell_program, sprites):
+        ul = cell_program.uniform_location
+        glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+        glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
+        glUniform1i(ul('sprites'), sprites.sampler_num)
+        glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
+        glUniform2f(ul('sprite_layout'), *(sprites.layout))
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
-    def render_cells(self, sg, sprite_layout):
-        with self.program:
-            ul = self.program.uniform_location
-            glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-            glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-            glUniform1i(ul('sprites'), self.sprites.sampler_num)
-            glUniform1i(ul('sprite_map'), self.sprites.buffer_sampler_num)
-            glUniform2f(ul('sprite_layout'), *sprite_layout)
-            glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
-
-    def render_cursor(self, sg, cursor):
+    def render_cursor(self, sg, cursor_program):
+        cursor = self.current_cursor
+        if cursor.hidden or self.scrolled_by:
+            return
 
         def width(w=2, vert=True):
             dpi = self.dpix if vert else self.dpiy
@@ -344,22 +268,21 @@ class CharGrid:
             factor = 2 / (self.width if vert else self.height)
             return w * factor
 
-        with self.cursor_program:
-            ul = self.cursor_program.uniform_location
-            left = sg.xstart + cursor.x * sg.dx
-            top = sg.ystart - cursor.y * sg.dy
-            col = cursor.color or self.default_cursor.color
-            shape = cursor.shape or self.default_cursor.shape
-            alpha = self.opts.cursor_opacity
-            if alpha < 1.0 and shape == CURSOR_BLOCK:
-                glEnable(GL_BLEND)
-            mult = self.screen.current_char_width()
-            right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx * mult)
-            bottom = top - sg.dy
-            if shape == CURSOR_UNDERLINE:
-                top = bottom + width(vert=False)
-            glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
-            glUniform2f(ul('xpos'), left, right)
-            glUniform2f(ul('ypos'), top, bottom)
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
-            glDisable(GL_BLEND)
+        ul = cursor_program.uniform_location
+        left = sg.xstart + cursor.x * sg.dx
+        top = sg.ystart - cursor.y * sg.dy
+        col = cursor.color or self.default_cursor.color
+        shape = cursor.shape or self.default_cursor.shape
+        alpha = self.opts.cursor_opacity
+        if alpha < 1.0 and shape == CURSOR_BLOCK:
+            glEnable(GL_BLEND)
+        mult = self.screen.current_char_width()
+        right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx * mult)
+        bottom = top - sg.dy
+        if shape == CURSOR_UNDERLINE:
+            top = bottom + width(vert=False)
+        glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
+        glUniform2f(ul('xpos'), left, right)
+        glUniform2f(ul('ypos'), top, bottom)
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+        glDisable(GL_BLEND)

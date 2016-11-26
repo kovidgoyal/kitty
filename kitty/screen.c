@@ -911,7 +911,7 @@ erase_in_display(Screen *self, PyObject *args) {
 #define MODE_GETTER(name, uname) \
     static PyObject* name(Screen *self) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } 
 
-MODE_GETTER(in_bracketed_paste, BRACKETED_PASTE)
+MODE_GETTER(in_bracketed_paste_mode, BRACKETED_PASTE)
 MODE_GETTER(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETTER(mouse_button_tracking_enabled, MOUSE_BUTTON_TRACKING)
 MODE_GETTER(mouse_motion_tracking_enabled, MOUSE_MOTION_TRACKING)
@@ -1068,7 +1068,7 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
-    MND(in_bracketed_paste, METH_NOARGS)
+    MND(in_bracketed_paste_mode, METH_NOARGS)
     MND(focus_tracking_enabled, METH_NOARGS)
     MND(mouse_button_tracking_enabled, METH_NOARGS)
     MND(mouse_motion_tracking_enabled, METH_NOARGS)

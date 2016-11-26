@@ -6,17 +6,16 @@ import argparse
 import tempfile
 import os
 import sys
-import pwd
 from gettext import gettext as _
 
 
-from .child import Child
 from .config import load_config
-from .constants import appname, str_version, config_dir
-from .boss import Boss
+from .constants import appname, str_version, config_dir, viewport_size
+from .tabs import TabManager
 from .shaders import GL_VERSION
 from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
-import glfw, glfw_constants
+import glfw
+import glfw_constants
 
 
 def option_parser():
@@ -44,11 +43,10 @@ def setup_opengl():
     glfw.glfwWindowHint(glfw_constants.GLFW_SAMPLES, 0)
 
 
-def run_app(opts, args, child):
+def run_app(opts, args):
     setup_opengl()
-    window_width = window_height = 1024
     window = glfw.glfwCreateWindow(
-        window_width, window_height, args.cls.encode('utf-8'), None, None)
+        viewport_size.width, viewport_size.height, args.cls.encode('utf-8'), None, None)
     if not window:
         raise SystemExit("glfwCreateWindow failed")
     glfw.glfwSetWindowTitle(window, appname.encode('utf-8'))
@@ -56,19 +54,15 @@ def run_app(opts, args, child):
         glfw.glfwMakeContextCurrent(window)
         glewInit()
         glfw.glfwSwapInterval(1)
-        boss = Boss(window, window_width, window_height, opts, args, child)
-        glfw.glfwSetFramebufferSizeCallback(window, boss.on_window_resize)
-        boss.start()
+        tabs = TabManager(window, opts, args)
+        tabs.start()
         try:
             while not glfw.glfwWindowShouldClose(window):
-                boss.render()
+                tabs.render()
                 glfw.glfwSwapBuffers(window)
                 glfw.glfwWaitEvents()
         finally:
-            if boss.is_alive():
-                boss.close()
-                boss.join()
-            boss.destroy()
+            tabs.destroy()
     finally:
         glfw.glfwDestroyWindow(window)
 
@@ -88,8 +82,6 @@ def main():
         exec(args.cmd)
         return
     opts = load_config(args.config)
-    child = args.args or [pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh']
-    child = Child(child, args.directory, opts)
     glfw.glfwSetErrorCallback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
     if not glfw.glfwInit():
@@ -102,7 +94,7 @@ def main():
             import pstats
             pr = cProfile.Profile()
             pr.enable()
-            run_app(opts, args, child)
+            run_app(opts, args)
             pr.disable()
             pr.create_stats()
             s = pstats.Stats(pr)
@@ -112,7 +104,7 @@ def main():
             s.sort_stats('time', 'name')
             s.print_stats(30)
         else:
-            run_app(opts, args, child)
+            run_app(opts, args)
     finally:
         glfw.glfwTerminate()
         os.closerange(3, 100)

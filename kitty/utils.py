@@ -3,6 +3,8 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+import os
+import signal
 import subprocess
 import ctypes
 from collections import namedtuple
@@ -249,3 +251,12 @@ def parse_color_set(raw):
             yield c, r << 16 | g << 8 | b
         except Exception:
             continue
+
+
+def handle_unix_signals():
+    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda x, y: None)
+        signal.siginterrupt(sig, False)
+    signal.set_wakeup_fd(write_fd)
+    return read_fd
