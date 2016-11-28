@@ -13,7 +13,7 @@ from .config import load_config
 from .constants import appname, str_version, config_dir, viewport_size
 from .tabs import TabManager
 from .shaders import GL_VERSION
-from .fast_data_types import glewInit, enable_automatic_opengl_error_checking
+from .fast_data_types import glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor, GL_COLOR_BUFFER_BIT
 import glfw
 import glfw_constants
 
@@ -43,6 +43,16 @@ def setup_opengl():
     glfw.glfwWindowHint(glfw_constants.GLFW_SAMPLES, 0)
 
 
+def clear_buffers(window, opts):
+    bg = opts.background
+    glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
+    glfw.glfwSwapInterval(0)
+    glClear(GL_COLOR_BUFFER_BIT)
+    glfw.glfwSwapBuffers(window)
+    glClear(GL_COLOR_BUFFER_BIT)
+    glfw.glfwSwapInterval(1)
+
+
 def run_app(opts, args):
     setup_opengl()
     window = glfw.glfwCreateWindow(
@@ -53,7 +63,7 @@ def run_app(opts, args):
     try:
         glfw.glfwMakeContextCurrent(window)
         glewInit()
-        glfw.glfwSwapInterval(1)
+        clear_buffers(window, opts)
         tabs = TabManager(window, opts, args)
         tabs.start()
         try:

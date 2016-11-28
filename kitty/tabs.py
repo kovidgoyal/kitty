@@ -18,7 +18,7 @@ import glfw
 import glfw_constants
 from .child import Child
 from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size
-from .fast_data_types import glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClearColor, glClear, GL_COLOR_BUFFER_BIT
+from .fast_data_types import glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
 from .char_grid import cursor_shader, cell_shader
@@ -135,9 +135,6 @@ class TabManager(Thread):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.queue_action(self.active_tab.new_window, False)
-        bg = opts.background
-        glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
-        glClear(GL_COLOR_BUFFER_BIT)
 
     def signal_received(self):
         try:
