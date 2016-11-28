@@ -1,6 +1,7 @@
 addons:
   apt:
     packages:
+        - libfreetype6-dev
         - libglew-dev
         - libglfw3-dev
 dist: trusty
