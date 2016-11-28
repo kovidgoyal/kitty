@@ -175,6 +175,7 @@ typedef struct {
 } Cursor;
 PyTypeObject Cursor_Type;
 
+PyTypeObject Face_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -293,6 +294,7 @@ int init_ColorProfile(PyObject *);
 int init_SpriteMap(PyObject *);
 int init_ChangeTracker(PyObject *);
 int init_Screen(PyObject *);
+int init_Face(PyObject *);
 PyObject* create_256_color_table();
 PyObject* read_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* read_bytes(PyObject UNUSED *, PyObject *);
@@ -377,3 +379,5 @@ DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
+
+bool init_freetype_library(PyObject*);

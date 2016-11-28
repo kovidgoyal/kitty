@@ -11,10 +11,7 @@ from collections import namedtuple
 from functools import lru_cache
 from threading import Lock
 
-from freetype import (
-    Face, FT_LOAD_RENDER, FT_LOAD_TARGET_NORMAL, FT_LOAD_TARGET_LIGHT,
-    FT_LOAD_NO_HINTING, FT_PIXEL_MODE_GRAY
-)
+from .fast_data_types import Face, FT_PIXEL_MODE_GRAY
 
 from .utils import get_logical_dpi, wcwidth
 
@@ -78,16 +75,12 @@ CharTexture = underline_position = underline_thickness = None
 alt_face_cache = {}
 
 
+def set_char_size(face, width=0, height=0, hres=0, vres=0):
+    face.set_char_size(width, height, hres, vres)
+
+
 def load_char(font, face, text):
-    flags = FT_LOAD_RENDER
-    if font.hinting:
-        if font.hintstyle >= 3:
-            flags |= FT_LOAD_TARGET_NORMAL
-        elif 0 < font.hintstyle < 3:
-            flags |= FT_LOAD_TARGET_LIGHT
-    else:
-        flags |= FT_LOAD_NO_HINTING
-    face.load_char(text, flags)
+    face.load_char(text, font.hinting, font.hintstyle)
 
 
 def ceil_int(x):
@@ -99,8 +92,8 @@ def calc_cell_width(font, face):
     for i in range(32, 128):
         ch = chr(i)
         load_char(font, face, ch)
-        m = face.glyph.metrics
-        ans = max(ans, max(ceil_int(m.horiAdvance / 64), face.glyph.bitmap.width))
+        m = face.glyph_metrics()
+        ans = max(ans, max(ceil_int(m.horiAdvance / 64), face.bitmap().width))
     return ans
 
 
@@ -122,9 +115,9 @@ def set_font_family(family, size_in_pts):
         current_font_family_name = family
         dpi = get_logical_dpi()
         cff_size = ceil_int(64 * size_in_pts)
-        cff_size = {'width': cff_size, 'height': cff_size, 'hres': dpi[0], 'vres': dpi[1]}
+        cff_size = {'width': cff_size, 'height': cff_size, 'hres': int(dpi[0]), 'vres': int(dpi[1])}
         for fobj in current_font_family.values():
-            fobj.face.set_char_size(**cff_size)
+            set_char_size(fobj.face, **cff_size)
         face = current_font_family['regular'].face
         cell_width = calc_cell_width(current_font_family['regular'], face)
         cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
@@ -143,7 +136,7 @@ freetype_lock = Lock()
 
 def render_to_bitmap(font, face, text):
     load_char(font, face, text)
-    bitmap = face.glyph.bitmap
+    bitmap = face.bitmap()
     if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
         raise ValueError(
             'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
@@ -159,12 +152,12 @@ def render_char(text, bold=False, italic=False, width=1):
     with freetype_lock:
         font = current_font_family.get(key) or current_font_family['regular']
         face = font.face
-        if not face.get_char_index(ord(text[0])):
+        if not face.get_char_index(text[0]):
             font = font_for_char(text[0], bold, italic)
             face = alt_face_cache.get(font)
             if face is None:
                 face = alt_face_cache[font] = Face(font.face)
-                face.set_char_size(**cff_size)
+                set_char_size(face, **cff_size)
         bitmap = render_to_bitmap(font, face, text)
         if width == 1 and bitmap.width > cell_width * 1.1:
             # rescale the font size so that the glyph is visible in a single
@@ -174,11 +167,11 @@ def render_char(text, bold=False, italic=False, width=1):
             # Preserve aspect ratio
             sz['height'] = int(sz['height'] * cell_width / bitmap.width)
             try:
-                face.set_char_size(**sz)
+                set_char_size(face, **sz)
                 bitmap = render_to_bitmap(font, face, text)
             finally:
-                face.set_char_size(**cff_size)
-        m = face.glyph.metrics
+                set_char_size(face, **cff_size)
+        m = face.glyph_metrics()
         return CharBitmap(bitmap.buffer, ceil_int(abs(m.horiBearingX) / 64),
                           ceil_int(abs(m.horiBearingY) / 64), ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
 

@@ -43,6 +43,8 @@ PyInit_fast_data_types(void) {
         if (!init_SpriteMap(m)) return NULL;
         if (!init_ChangeTracker(m)) return NULL;
         if (!init_Screen(m)) return NULL;
+        if (!init_freetype_library(m)) return NULL;
+        if (!init_Face(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
@@ -58,6 +60,7 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, DECAWM);
         PyModule_AddIntMacro(m, IRM);
         PyModule_AddIntMacro(m, DATA_CELL_SIZE);
+
     }
 
     return m;

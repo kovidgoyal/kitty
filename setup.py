@@ -59,11 +59,12 @@ def init_env(debug=False):
 
     cflags.append('-pthread')
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
+    cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
     ldflags.append('-pthread')
     ldflags.append('-shared')
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
     lib = sysconfig.get_config_var('LDLIBRARY')[3:-3]
-    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + pkg_config('glew', '--libs')
+    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs')
 
     try:
         os.mkdir(build_dir)
@@ -83,6 +84,7 @@ def run_tool(cmd):
     ret = p.wait()
     if ret != 0:
         raise SystemExit(ret)
+
 
 SPECIAL_SOURCES = {
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
@@ -131,6 +133,7 @@ def main():
         compile_c_extension('kitty/fast_data_types', *find_c_files())
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
+
 
 if __name__ == '__main__':
     main()
