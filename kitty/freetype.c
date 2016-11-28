@@ -9,18 +9,6 @@
 #include <structmember.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
-#undef FTERRORS_H_
-#define FT_ERRORDEF( e, v, s )  { e, s },
-#define FT_ERROR_START_LIST     {
-#define FT_ERROR_END_LIST       { 0, NULL } };
-
-const struct {
-    int          err_code;
-    const char*  err_msg;
-} ft_errors[] =
-
-#include FT_ERRORS_H
-
 typedef struct {
     PyObject_HEAD
 
@@ -32,6 +20,19 @@ typedef struct {
 
 void 
 set_freetype_error(const char* prefix, int err_code) {
+#undef FTERRORS_H_
+#define FT_ERRORDEF( e, v, s )  { e, s },
+#define FT_ERROR_START_LIST     {
+#define FT_ERROR_END_LIST       { 0, NULL } };
+
+    static const struct {
+        int          err_code;
+        const char*  err_msg;
+    } ft_errors[] =
+
+#include FT_ERRORS_H
+
+
     int i = 0;
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
