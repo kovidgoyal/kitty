@@ -63,9 +63,9 @@ def run_app(opts, args):
     try:
         glfw.glfwMakeContextCurrent(window)
         glewInit()
-        clear_buffers(window, opts)
         tabs = TabManager(window, opts, args)
         tabs.start()
+        clear_buffers(window, opts)
         try:
             while not glfw.glfwWindowShouldClose(window):
                 tabs.render()
