@@ -101,6 +101,17 @@ Uniform4f(PyObject UNUSED *self, PyObject *args) {
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
+
+static PyObject* 
+Uniform3fv(PyObject UNUSED *self, PyObject *args) {
+    int location;
+    unsigned int count;
+    PyObject *l;
+    if (!PyArg_ParseTuple(args, "iIO!", &location, &count, &PyLong_Type, &l)) return NULL;
+    glUniform3fv(location, count, PyLong_AsVoidPtr(l));
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
 // }}}
 
 
@@ -148,6 +159,17 @@ DrawArrays(PyObject UNUSED *self, PyObject *args) {
     unsigned int count;
     if (!PyArg_ParseTuple(args, "iiI", &mode, &first, &count)) return NULL;
     glDrawArrays(mode, first, count);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+ 
+static PyObject* 
+MultiDrawArrays(PyObject UNUSED *self, PyObject *args) {
+    int mode;
+    unsigned int draw_count;
+    PyObject *a, *b;
+    if (!PyArg_ParseTuple(args, "iO!O!I", &mode, &PyLong_Type, &a, &PyLong_Type, &b, &draw_count)) return NULL;
+    glMultiDrawArrays(mode, PyLong_AsVoidPtr(a), PyLong_AsVoidPtr(b), draw_count);
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -431,14 +453,14 @@ TexSubImage3D(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
-BufferData(PyObject UNUSED *self, PyObject *args) {
-    int target, usage;
-    unsigned long size;
+NamedBufferData(PyObject UNUSED *self, PyObject *args) {
+    int usage;
+    unsigned long size, target;
     PyObject *address;
-    if (!PyArg_ParseTuple(args, "ikO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
+    if (!PyArg_ParseTuple(args, "kkO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    glBufferData(target, size, data, usage);
+    glNamedBufferData(target, size, data, usage);
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -520,13 +542,34 @@ Disable(PyObject UNUSED *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
+static PyObject* 
+EnableVertexAttribArray(PyObject UNUSED *self, PyObject *val) {
+    long x = PyLong_AsLong(val);
+    glEnableVertexAttribArray(x);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+VertexAttribPointer(PyObject UNUSED *self, PyObject *args) {
+    unsigned int index, stride;
+    int type=GL_FLOAT, normalized, size;
+    void *offset;
+    PyObject *l;
+    if (!PyArg_ParseTuple(args, "IiipIO!", &index, &size, &type, &normalized, &stride, &PyLong_Type, &l)) return NULL;
+    offset = PyLong_AsVoidPtr(l);
+    glVertexAttribPointer(index, size, type, normalized, stride, offset);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
 int add_module_gl_constants(PyObject *module) {
 #define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return 0; }
     GLC(GL_VERSION);
     GLC(GL_VENDOR);
     GLC(GL_SHADING_LANGUAGE_VERSION);
     GLC(GL_RENDERER);
-    GLC(GL_TRIANGLE_FAN);
+    GLC(GL_TRIANGLE_FAN); GLC(GL_TRIANGLE_STRIP);
     GLC(GL_COLOR_BUFFER_BIT);
     GLC(GL_VERTEX_SHADER);
     GLC(GL_FRAGMENT_SHADER);
@@ -543,9 +586,9 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_TEXTURE_WRAP_S); GLC(GL_TEXTURE_WRAP_T);
     GLC(GL_UNPACK_ALIGNMENT);
     GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_RGB32UI);
-    GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW);
+    GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
-    GLC(GL_BLEND);
+    GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_ARRAY_BUFFER);
     return 1;
 }
 
@@ -562,6 +605,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(Uniform1i, METH_VARARGS) \
     METH(Uniform2f, METH_VARARGS) \
     METH(Uniform4f, METH_VARARGS) \
+    METH(Uniform3fv, METH_VARARGS) \
     METH(GetUniformLocation, METH_VARARGS) \
     METH(GetAttribLocation, METH_VARARGS) \
     METH(ShaderSource, METH_VARARGS) \
@@ -582,11 +626,14 @@ int add_module_gl_constants(PyObject *module) {
     METH(DeleteShader, METH_O) \
     METH(Enable, METH_O) \
     METH(Disable, METH_O) \
+    METH(EnableVertexAttribArray, METH_O) \
+    METH(VertexAttribPointer, METH_VARARGS) \
     METH(GetProgramInfoLog, METH_O) \
     METH(GetShaderInfoLog, METH_O) \
     METH(ActiveTexture, METH_O) \
     METH(DrawArraysInstanced, METH_VARARGS) \
     METH(DrawArrays, METH_VARARGS) \
+    METH(MultiDrawArrays, METH_VARARGS) \
     METH(CreateProgram, METH_NOARGS) \
     METH(AttachShader, METH_VARARGS) \
     METH(BindTexture, METH_VARARGS) \
@@ -597,6 +644,6 @@ int add_module_gl_constants(PyObject *module) {
     METH(TexStorage3D, METH_VARARGS) \
     METH(CopyImageSubData, METH_VARARGS) \
     METH(TexSubImage3D, METH_VARARGS) \
-    METH(BufferData, METH_VARARGS) \
+    METH(NamedBufferData, METH_VARARGS) \
     METH(BlendFunc, METH_VARARGS) \
 

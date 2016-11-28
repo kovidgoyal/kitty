@@ -20,6 +20,7 @@ from .child import Child
 from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size
 from .fast_data_types import glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glClearColor, glClear, GL_COLOR_BUFFER_BIT
 from .fonts import set_font_family
+from .borders import Borders, BordersProgram
 from .char_grid import cursor_shader, cell_shader
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .layout import Stack
@@ -36,7 +37,8 @@ class Tab:
     def __init__(self, opts, args):
         self.opts, self.args = opts, args
         self.windows = deque()
-        self.current_layout = Stack()
+        self.borders = Borders(opts)
+        self.current_layout = Stack(opts, self.borders.border_width)
 
     @property
     def is_visible(self):
@@ -58,6 +60,7 @@ class Tab:
     def relayout(self):
         if self.windows:
             self.current_layout(self.windows)
+        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders)
 
     def launch_child(self, use_shell=False):
         if use_shell:
@@ -92,8 +95,7 @@ class Tab:
         del self.windows
 
     def render(self):
-        # TODO: Render window borders and clear the extra pixels
-        pass
+        self.borders.render(tab_manager().borders_program)
 
 
 class TabManager(Thread):
@@ -103,6 +105,7 @@ class TabManager(Thread):
     def __init__(self, glfw_window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
         self.glfw_window_title = None
+        self.current_tab_bar_height = 0
         self.action_queue = Queue()
         self.pending_resize = None
         self.resize_gl_viewport = False
@@ -128,12 +131,13 @@ class TabManager(Thread):
         self.sprites = Sprites()
         self.cell_program = ShaderProgram(*cell_shader)
         self.cursor_program = ShaderProgram(*cursor_shader)
+        self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
+        self.queue_action(self.active_tab.new_window, False)
         bg = opts.background
         glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
         glClear(GL_COLOR_BUFFER_BIT)
-        self.queue_action(self.active_tab.new_window, False)
 
     def signal_received(self):
         try:

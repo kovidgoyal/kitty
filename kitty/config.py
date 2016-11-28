@@ -44,9 +44,10 @@ type_map = {
     'cursor_blink': to_bool,
     'cursor_opacity': to_opacity,
     'repaint_delay': int,
+    'window_border_width': float,
 }
 
-for name in 'foreground background cursor'.split():
+for name in 'foreground background cursor active_border_color inactive_border_color'.split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)

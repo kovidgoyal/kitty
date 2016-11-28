@@ -14,14 +14,16 @@ from .fast_data_types import (
     glCreateShader, glShaderSource, glCompileShader, glGetShaderiv,
     GL_COMPILE_STATUS, glGetShaderInfoLog, glGetUniformLocation,
     glGetAttribLocation, glUseProgram, glBindVertexArray, GL_TEXTURE0,
-    GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glBufferData,
+    GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glNamedBufferData,
     GL_MAX_TEXTURE_SIZE, glDeleteTexture, GL_TEXTURE_2D_ARRAY, glGenTextures,
     glBindTexture, glTexParameteri, GL_CLAMP_TO_EDGE, glDeleteBuffer,
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
     GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
-    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_TEXTURE_BUFFER,
-    GL_RGB32UI, glBindBuffer, glPixelStorei, glTexBuffer, glActiveTexture,
-    glTexStorage3D, glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap
+    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_STREAM_DRAW,
+    GL_TEXTURE_BUFFER, GL_RGB32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
+    glPixelStorei, glTexBuffer, glActiveTexture, glTexStorage3D,
+    glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap,
+    glEnableVertexAttribArray, glVertexAttribPointer
 )
 
 GL_VERSION = (3, 3)
@@ -143,11 +145,8 @@ class Sprites:
             self.buffer_texture_id = glGenTextures(1)
             self.buffer_texture_unit = GL_TEXTURE1
 
-    def set_sprite_map(self, data):
-        tgt = GL_TEXTURE_BUFFER
-        glBindBuffer(tgt, self.buffer_id)
-        glBufferData(tgt, sizeof(data), addressof(data), GL_STATIC_DRAW)
-        glBindBuffer(tgt, 0)
+    def set_sprite_map(self, data, usage=GL_STREAM_DRAW):
+        glNamedBufferData(self.buffer_id, sizeof(data), addressof(data), usage)
 
     def __enter__(self):
         self.ensure_state()
@@ -175,7 +174,6 @@ class ShaderProgram:
 
         """
         self.program_id = glCreateProgram()
-        self.is_active = False
         vs_id = self.add_shader(vertex, GL_VERTEX_SHADER)
         glAttachShader(self.program_id, vs_id)
 
@@ -192,6 +190,22 @@ class ShaderProgram:
         glDeleteShader(vs_id)
         glDeleteShader(frag_id)
         self.vao_id = glGenVertexArrays(1)
+        self.buffers = {}
+
+    def add_vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0):
+        glBindVertexArray(self.vao_id)
+        if name not in self.buffers:
+            self.buffers[name] = glGenBuffers(1)
+        glBindBuffer(GL_ARRAY_BUFFER, self.buffers[name])
+        aid = self.attribute_location(name)
+        glEnableVertexAttribArray(aid)
+        glVertexAttribPointer(aid, size, dtype, normalized, stride, offset)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glBindVertexArray(0)
+
+    def send_vertex_data(self, name, data, usage=GL_STATIC_DRAW):
+        bufid = self.buffers[name]
+        glNamedBufferData(bufid, sizeof(data), addressof(data), usage)
 
     def __hash__(self) -> int:
         return self.program_id
@@ -230,9 +244,7 @@ class ShaderProgram:
     def __enter__(self):
         glUseProgram(self.program_id)
         glBindVertexArray(self.vao_id)
-        self.is_active = True
 
     def __exit__(self, *args):
         glUseProgram(0)
         glBindVertexArray(0)
-        self.is_active = False
