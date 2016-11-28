@@ -315,12 +315,14 @@ class TabManager(Thread):
 
     def window_for_pos(self, x, y):
         for w in self.active_tab:
-            if w.contains(x, y):
+            if w.is_visible_in_layout and w.contains(x, y):
                 return w
 
     def on_mouse_button(self, window, button, action, mods):
         w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
         if w is not None:
+            if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
+                pass  # TODO: Switch focus to this window
             w.on_mouse_button(button, action, mods)
 
     def on_mouse_move(self, window, xpos, ypos):
