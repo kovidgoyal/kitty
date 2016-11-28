@@ -5,7 +5,7 @@
 import ctypes
 
 from .constants import viewport_size
-from .fast_data_types import glUniform3fv, GL_TRIANGLE_STRIP, glDrawArrays
+from .fast_data_types import glUniform3fv, GL_TRIANGLE_FAN, glMultiDrawArrays
 from .layout import available_height
 from .utils import get_dpi
 from .shaders import ShaderProgram
@@ -20,7 +20,7 @@ def to_opengl(x, y):
 
 
 def as_rect(left, top, right, bottom, color=0):
-    for (x, y) in ((left, bottom), (right, bottom), (right, top), (left, top)):
+    for (x, y) in ((right, top), (right, bottom), (left, bottom), (left, top)):
         x, y = to_opengl(x, y)
         yield x
         yield y
@@ -32,12 +32,12 @@ class BordersProgram(ShaderProgram):
     def __init__(self):
         ShaderProgram.__init__(self, '''\
 uniform vec3 colors[3];
-in vec3 vertex;
+in vec3 rect;
 out vec3 color;
 
 void main() {
-    gl_Position = vec4(vertex[0], vertex[1], 0, 1);
-    color = colors[uint(vertex[2])];
+    gl_Position = vec4(rect[0], rect[1], 0, 1);
+    color = colors[uint(rect[2])];
 }
 ''', '''\
 in vec3 color;
@@ -47,10 +47,10 @@ void main() {
     final_color = vec4(color, 1);
 }
         ''')
-        self.add_vertex_array('rects')
+        self.add_vertex_array('rect')
 
     def send_data(self, data):
-        self.send_vertex_data('rects', data)
+        self.send_vertex_data('rect', data)
 
     def set_colors(self, color_buf):
         glUniform3fv(self.uniform_location('colors'), 3, ctypes.addressof(color_buf))
@@ -101,16 +101,23 @@ class Borders:
                 rects.extend(as_rect(g.left - bw, g.top - bw, g.right + bw, g.top, color))
                 rects.extend(as_rect(g.right, g.top - bw, g.right + bw, g.bottom + bw, color))
                 rects.extend(as_rect(g.left - bw, g.bottom, g.right + bw, g.bottom + bw, color))
-        self.data = (ctypes.c_float * len(rects))()
+        self.num_of_rects = len(rects) // 12
+        self.rects = (ctypes.c_float * len(rects))()
+        self.starts = (ctypes.c_int * self.num_of_rects)()
+        self.counts = (ctypes.c_uint * self.num_of_rects)()
         for i, x in enumerate(rects):
-            self.data[i] = x
+            self.rects[i] = x
+            if i % 12 == 0:
+                idx = i // 12
+                self.starts[idx] = i // 3
+                self.counts[idx] = 4
 
     def render(self, program):
         if not self.can_render:
             return
         with program:
             if self.is_dirty:
-                program.send_data(self.data)
+                program.send_data(self.rects)
                 program.set_colors(self.color_buf)
                 self.is_dirty = False
-            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4)
+            glMultiDrawArrays(GL_TRIANGLE_FAN, ctypes.addressof(self.starts), ctypes.addressof(self.counts), self.num_of_rects)
