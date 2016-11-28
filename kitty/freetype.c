@@ -20,6 +20,7 @@ typedef struct {
 
 void 
 set_freetype_error(const char* prefix, int err_code) {
+    int i = 0;
 #undef FTERRORS_H_
 #define FT_ERRORDEF( e, v, s )  { e, s },
 #define FT_ERROR_START_LIST     {
@@ -32,13 +33,12 @@ set_freetype_error(const char* prefix, int err_code) {
 
 #include FT_ERRORS_H
 
-
-    int i = 0;
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
             PyErr_Format(PyExc_Exception, "%s %s", prefix, ft_errors[i].err_msg);
             return;
         }
+        i++;
     }
     PyErr_Format(PyExc_Exception, "%s (error code: %d)", prefix, err_code);
 }
