@@ -3,11 +3,11 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
-from ctypes import c_uint, addressof, memmove, sizeof
+from ctypes import addressof, memmove, sizeof
 from threading import Lock
 
 from .config import build_ansi_color_table
-from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry
+from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry, GLuint
 from .utils import get_logical_dpi, to_color
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
@@ -182,7 +182,7 @@ class CharGrid:
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)
-        self.sprite_map_type = (c_uint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
+        self.sprite_map_type = (GLuint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
         self.main_sprite_map = self.sprite_map_type()
         self.scroll_sprite_map = self.sprite_map_type()
         with self.buffer_lock:

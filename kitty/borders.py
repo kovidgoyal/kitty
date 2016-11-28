@@ -2,9 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import ctypes
+from ctypes import addressof
 
-from .constants import viewport_size
+from .constants import viewport_size, GLfloat, GLint, GLuint
 from .fast_data_types import glUniform3fv, GL_TRIANGLE_FAN, glMultiDrawArrays
 from .layout import available_height
 from .utils import get_dpi
@@ -53,7 +53,7 @@ void main() {
         self.send_vertex_data('rect', data)
 
     def set_colors(self, color_buf):
-        glUniform3fv(self.uniform_location('colors'), 3, ctypes.addressof(color_buf))
+        glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))
 
 
 class Borders:
@@ -64,7 +64,7 @@ class Borders:
         dpix, dpiy = get_dpi()['logical']
         dpi = (dpix + dpiy) / 2
         self.border_width = round(opts.window_border_width * dpi / 72)
-        self.color_buf = (ctypes.c_float * 9)(
+        self.color_buf = (GLfloat * 9)(
             *as_color(opts.background),
             *as_color(opts.active_border_color),
             *as_color(opts.inactive_border_color)
@@ -102,9 +102,9 @@ class Borders:
                 rects.extend(as_rect(g.right, g.top - bw, g.right + bw, g.bottom + bw, color))
                 rects.extend(as_rect(g.left - bw, g.bottom, g.right + bw, g.bottom + bw, color))
         self.num_of_rects = len(rects) // 12
-        self.rects = (ctypes.c_float * len(rects))()
-        self.starts = (ctypes.c_int * self.num_of_rects)()
-        self.counts = (ctypes.c_uint * self.num_of_rects)()
+        self.rects = (GLfloat * len(rects))()
+        self.starts = (GLint * self.num_of_rects)()
+        self.counts = (GLuint * self.num_of_rects)()
         for i, x in enumerate(rects):
             self.rects[i] = x
             if i % 12 == 0:
@@ -120,4 +120,4 @@ class Borders:
                 program.send_data(self.rects)
                 program.set_colors(self.color_buf)
                 self.is_dirty = False
-            glMultiDrawArrays(GL_TRIANGLE_FAN, ctypes.addressof(self.starts), ctypes.addressof(self.counts), self.num_of_rects)
+            glMultiDrawArrays(GL_TRIANGLE_FAN, addressof(self.starts), addressof(self.counts), self.num_of_rects)

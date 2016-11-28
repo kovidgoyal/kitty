@@ -5,6 +5,7 @@
 import os
 import threading
 import pwd
+import ctypes
 from collections import namedtuple
 
 appname = 'kitty'
@@ -61,3 +62,11 @@ cell_size = ViewportSize()
 terminfo_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'terminfo')
 main_thread = threading.current_thread()
 shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+
+GLint = ctypes.c_int if ctypes.sizeof(ctypes.c_int) == 4 else ctypes.c_long
+GLuint = ctypes.c_uint if ctypes.sizeof(ctypes.c_uint) == 4 else ctypes.c_ulong
+GLfloat = ctypes.c_float
+if ctypes.sizeof(GLfloat) != 4:
+    raise RuntimeError('float size is not 4')
+if ctypes.sizeof(GLint) != 4:
+    raise RuntimeError('int size is not 4')
