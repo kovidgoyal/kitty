@@ -40,12 +40,12 @@ set_freetype_error(const char* prefix, int err_code) {
 
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
-            PyErr_Format(PyExc_Exception, "%s %s", prefix, ft_errors[i].err_msg);
+            PyErr_Format(PyExc_ValueError, "%s %s", prefix, ft_errors[i].err_msg);
             return;
         }
         i++;
     }
-    PyErr_Format(PyExc_Exception, "%s (error code: %d)", prefix, err_code);
+    PyErr_Format(PyExc_ValueError, "%s (error code: %d)", prefix, err_code);
 }
 
 static FT_Library  library;
@@ -63,11 +63,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         Py_BEGIN_ALLOW_THREADS;
         error = FT_New_Face(library, path, 0, &(self->face));
-        if(error) { set_freetype_error("Failed to load face, with error: ", error); Py_CLEAR(self); return NULL; }
+        Py_END_ALLOW_THREADS;
+        if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;
         CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
-        Py_END_ALLOW_THREADS;
     }
     return (PyObject*)self;
 }
@@ -85,7 +85,7 @@ set_char_size(Face *self, PyObject *args) {
     unsigned int xdpi, ydpi;
     if (!PyArg_ParseTuple(args, "llII", &char_width, &char_height, &xdpi, &ydpi)) return NULL;
     int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
-    if (error) { set_freetype_error("Failed to set char size, with error: ", error); Py_CLEAR(self); return NULL; }
+    if (error) { set_freetype_error("Failed to set char size, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
 
@@ -104,7 +104,7 @@ load_char(Face *self, PyObject *args) {
     Py_BEGIN_ALLOW_THREADS;
     error = FT_Load_Glyph(self->face, glyph_index, flags);
     Py_END_ALLOW_THREADS;
-    if (error) { set_freetype_error("Failed to load glyph, with error: ", error); Py_CLEAR(self); return NULL; }
+    if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
 
@@ -221,7 +221,7 @@ bool
 init_freetype_library(PyObject *m) {
     int error = FT_Init_FreeType(&library);
     if (error) {
-        set_freetype_error("Failed to initialize FreeType library, with error: ", error);
+        set_freetype_error("Failed to initialize FreeType library, with error:", error);
         return false;
     }
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;
