@@ -83,8 +83,11 @@ set_char_size(Face *self, PyObject *args) {
 #define set_char_size_doc "set_char_size(width, height, xdpi, ydpi) -> set the character size. width, height is in 1/64th of a pt. dpi is in pixels per inch"
     long char_width, char_height;
     unsigned int xdpi, ydpi;
+    int error;
     if (!PyArg_ParseTuple(args, "llII", &char_width, &char_height, &xdpi, &ydpi)) return NULL;
-    int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
+    Py_BEGIN_ALLOW_THREADS;
+    error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
+    Py_END_ALLOW_THREADS;
     if (error) { set_freetype_error("Failed to set char size, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
@@ -112,9 +115,13 @@ static PyObject*
 get_char_index(Face *self, PyObject *args) {
 #define get_char_index_doc ""
     int code;
+    unsigned int ans;
     if (!PyArg_ParseTuple(args, "C", &code)) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
+    ans = FT_Get_Char_Index(self->face, code);
+    Py_END_ALLOW_THREADS;
 
-    return Py_BuildValue("I", FT_Get_Char_Index(self->face, code));
+    return Py_BuildValue("I", ans);
 }
  
 static PyStructSequence_Field gm_fields[] = {
