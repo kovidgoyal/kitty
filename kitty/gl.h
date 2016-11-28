@@ -460,11 +460,15 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "kkO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+#ifdef glNamedBufferData
     if(GLEW_VERSION_4_5) {
         glNamedBufferData(target, size, data, usage);
     } else {
         glBindBuffer(target, GL_TEXTURE_BUFFER); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
     }
+#else
+        glBindBuffer(target, GL_TEXTURE_BUFFER); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
+#endif
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
