@@ -22,6 +22,7 @@ void
 set_freetype_error(const char* prefix, int err_code) {
     int i = 0;
 #undef FTERRORS_H_
+#undef __FTERRORS_H__
 #define FT_ERRORDEF( e, v, s )  { e, s },
 #define FT_ERROR_START_LIST     {
 #define FT_ERROR_END_LIST       { 0, NULL } };
@@ -31,7 +32,11 @@ set_freetype_error(const char* prefix, int err_code) {
         const char*  err_msg;
     } ft_errors[] =
 
+#ifdef FT_ERRORS_H
 #include FT_ERRORS_H
+#else 
+    FT_ERROR_START_LIST FT_ERROR_END_LIST
+#endif
 
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
@@ -58,11 +63,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         Py_BEGIN_ALLOW_THREADS;
         error = FT_New_Face(library, path, 0, &(self->face));
+        if(error) { set_freetype_error("Failed to load face, with error: ", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;
         CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
         Py_END_ALLOW_THREADS;
-        if(error) { set_freetype_error("Failed to load face, with error: ", error); Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
 }
