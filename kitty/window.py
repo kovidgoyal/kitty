@@ -8,6 +8,7 @@ import subprocess
 from functools import partial
 
 import glfw
+import glfw_constants
 from .char_grid import CharGrid
 from .constants import wakeup, tab_manager, appname, WindowGeometry
 from .fast_data_types import (
@@ -46,6 +47,10 @@ class Window:
         else:
             self.char_grid.update_position(new_geometry)
         self.geometry = new_geometry
+
+    def contains(self, x, y):
+        g = self.geometry
+        return g.left <= x <= g.right and g.top <= y <= g.bottom
 
     def close(self):
         tab_manager().close_window(self)
@@ -108,6 +113,19 @@ class Window:
 
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
+
+    def on_mouse_button(self, button, action, mods):
+        # ignore_mouse_mode = mods == glfw_constants.GLFW_MOD_SHIFT
+        if action == glfw_constants.GLFW_RELEASE:
+            if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
+                self.paste_from_selection()
+                return
+
+    def on_mouse_move(self, xpos, ypos):
+        pass
+
+    def on_mouse_scroll(self, x, y):
+        pass
 
     # actions {{{
 

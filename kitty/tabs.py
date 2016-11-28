@@ -125,6 +125,8 @@ class TabManager(Thread):
         glfw.glfwSetCharModsCallback(glfw_window, partial(self.queue_action, self.on_text_input))
         glfw.glfwSetKeyCallback(glfw_window, partial(self.queue_action, self.on_key))
         glfw.glfwSetMouseButtonCallback(glfw_window, partial(self.queue_action, self.on_mouse_button))
+        glfw.glfwSetScrollCallback(glfw_window, partial(self.queue_action, self.on_mouse_scroll))
+        glfw.glfwSetCursorPosCallback(glfw_window, partial(self.queue_action, self.on_mouse_move))
         glfw.glfwSetWindowFocusCallback(glfw_window, partial(self.queue_action, self.on_focus))
         self.tabs = deque()
         self.tabs.append(Tab(opts, args))
@@ -311,13 +313,25 @@ class TabManager(Thread):
         if w is not None:
             w.focus_changed(focused)
 
+    def window_for_pos(self, x, y):
+        for w in self.active_tab:
+            if w.contains(x, y):
+                return w
+
     def on_mouse_button(self, window, button, action, mods):
-        if action == glfw_constants.GLFW_RELEASE:
-            if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
-                w = self.active_window
-                if w is not None:
-                    w.paste_from_selection()
-                return
+        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        if w is not None:
+            w.on_mouse_button(button, action, mods)
+
+    def on_mouse_move(self, window, xpos, ypos):
+        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        if w is not None:
+            w.on_mouse_move(xpos, ypos)
+
+    def on_mouse_scroll(self, window, x, y):
+        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        if w is not None:
+            w.on_mouse_scroll(x, y)
 
     # GUI thread API {{{
     def render(self):
