@@ -4,7 +4,6 @@
 
 from collections import namedtuple
 from ctypes import c_uint, addressof, memmove, sizeof
-from itertools import count
 from threading import Lock
 
 from .config import build_ansi_color_table
@@ -149,16 +148,12 @@ def color_as_int(val):
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
-render_data_num = count()
-
-
 class CharGrid:
 
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
-        self.render_num = next(render_data_num)
+        self.render_buf_is_dirty = True
         self.render_data = None
-        self.last_render_send_num = -1
         self.scrolled_by = 0
         self.color_profile = ColorProfile()
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -192,7 +187,7 @@ class CharGrid:
         self.scroll_sprite_map = self.sprite_map_type()
         with self.buffer_lock:
             self.render_buf = self.sprite_map_type()
-            self.render_num = next(render_data_num)
+            self.render_buf_is_dirty = True
 
     def change_colors(self, changes):
         dirtied = False
@@ -232,8 +227,8 @@ class CharGrid:
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         with self.buffer_lock:
             memmove(self.render_buf, data, sizeof(type(data)))
-            self.render_num = next(render_data_num)
             self.render_data = self.screen_geometry
+            self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
             self.current_cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
@@ -243,9 +238,9 @@ class CharGrid:
             sg = self.render_data
             if sg is None:
                 return
-            if self.last_render_send_num != self.render_num:
+            if self.render_buf_is_dirty:
                 sprites.set_sprite_map(self.render_buf)
-                self.last_render_send_num = self.render_num
+                self.render_buf_is_dirty = False
         return sg
 
     def render_cells(self, sg, cell_program, sprites):
