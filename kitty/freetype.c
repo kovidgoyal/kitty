@@ -6,13 +6,13 @@
  */
 
 #include "data-types.h"
+#include <structmember.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #undef FTERRORS_H_
 #define FT_ERRORDEF( e, v, s )  { e, s },
 #define FT_ERROR_START_LIST     {
 #define FT_ERROR_END_LIST       { 0, NULL } };
-#include <structmember.h>
 
 const struct {
     int          err_code;
