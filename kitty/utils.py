@@ -260,3 +260,17 @@ def handle_unix_signals():
         signal.siginterrupt(sig, False)
     signal.set_wakeup_fd(write_fd)
     return read_fd
+
+
+def get_primary_selection():
+    # glfw has no way to get the primary selection
+    # https://github.com/glfw/glfw/issues/894
+    return subprocess.check_output(['xsel', '-p']).decode('utf-8')
+
+
+def set_primary_selection(text):
+    if isinstance(text, str):
+        text = text.encode('utf-8')
+    p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE)
+    p.stdin.write(text), p.stdin.close()
+    p.wait()

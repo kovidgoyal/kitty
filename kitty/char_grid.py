@@ -8,7 +8,7 @@ from threading import Lock
 
 from .config import build_ansi_color_table
 from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color
+from .utils import get_logical_dpi, to_color, set_primary_selection
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
@@ -277,6 +277,38 @@ class CharGrid:
                 self.current_selection.end_scrolled_by = self.scrolled_by
                 if is_press is False:
                     self.current_selection.in_progress = False
+                    text = self.text_for_selection()
+                    if text and text.strip():
+                        set_primary_selection(text)
+
+    def screen_line(self, y):
+        ' Return the Line object corresponding to the yth line on the rendered screen '
+        if y >= 0 and y < self.screen.lines:
+            if self.scrolled_by:
+                if y < self.scrolled_by:
+                    return self.screen.historybuf.line(self.scrolled_by - y)
+                return self.screen.line(y - self.scrolled_by)
+            else:
+                return self.screen.line(y)
+
+    def text_for_selection(self, sel=None):
+        start, end = (sel or self.current_selection).limits(self.scrolled_by)
+        lines = []
+        if start != end:
+            for y in range(start[1], end[1] + 1):
+                line = self.screen_line(y)
+                if line is not None:
+                    buf = []
+                    startx, endx = 0, self.screen.columns - 1
+                    if y == start[1]:
+                        startx = max(0, min(start[0], endx))
+                    if y == end[1]:
+                        endx = max(0, min(end[0], endx))
+                    for x in range(startx, endx + 1):
+                        buf.append(line[x])
+                    line = ''.join(buf).rstrip(' ')
+                    lines.append(line)
+        return '\n'.join(lines)
 
     def prepare_for_render(self, sprites):
         with self.buffer_lock:

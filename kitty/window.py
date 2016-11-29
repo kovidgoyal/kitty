@@ -4,7 +4,6 @@
 
 import os
 import weakref
-import subprocess
 from functools import partial
 
 import glfw
@@ -15,7 +14,7 @@ from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
 from .terminfo import get_capabilities
-from .utils import sanitize_title
+from .utils import sanitize_title, get_primary_selection
 
 
 class Window:
@@ -143,19 +142,23 @@ class Window:
 
     def paste(self, text):
         if text:
+            if isinstance(text, str):
+                text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode():
                 text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
             self.write_to_child(text)
 
     def paste_from_clipboard(self):
-        text = glfw.glfwGetClipboardString(self.window)
-        self.paste(text)
+        text = glfw.glfwGetClipboardString(tab_manager().glfw_window)
+        if text:
+            self.paste(text.decode('utf-8'))
 
     def paste_from_selection(self):
-        # glfw has no way to get the primary selection
-        # https://github.com/glfw/glfw/issues/894
-        text = subprocess.check_output(['xsel'])
-        self.paste(text)
+        text = get_primary_selection()
+        if text:
+            if isinstance(text, bytes):
+                text = text.decode('utf-8')
+            self.paste(text)
 
     def scroll_line_up(self):
         self.char_grid.scroll('line', True)
