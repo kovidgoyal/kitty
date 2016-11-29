@@ -6,6 +6,7 @@ import argparse
 import tempfile
 import os
 import sys
+from queue import Empty
 from gettext import gettext as _
 
 
@@ -73,6 +74,16 @@ def run_app(opts, args):
             tabs.render()
             window.swap_buffers()
             glfw_wait_events()
+            try:
+                func, args = tabs.pending_ui_thread_calls.get_nowait()
+            except Empty:
+                pass
+            else:
+                try:
+                    func(*args)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
     finally:
         tabs.destroy()
     del window

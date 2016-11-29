@@ -9,11 +9,11 @@ import signal
 import struct
 from collections import deque
 from functools import partial
-from threading import Thread
+from threading import Thread, current_thread
 from queue import Queue, Empty
 
 from .child import Child
-from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS
+from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS, main_thread
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
     GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event
@@ -113,6 +113,7 @@ class TabManager(Thread):
         self.read_dispatch_map = {self.signal_fd: self.signal_received, self.read_wakeup_fd: self.on_wakeup}
         self.all_writers = []
         self.timers = Timers()
+        self.pending_ui_thread_calls = Queue()
         self.write_dispatch_map = {}
         set_tab_manager(self)
         cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
@@ -144,13 +145,9 @@ class TabManager(Thread):
         if data:
             signals = struct.unpack('%uB' % len(data), data)
             if signal.SIGINT in signals or signal.SIGTERM in signals:
-                self.shutdown()
-
-    def shutdown(self):
-        if not self.shutting_down:
-            self.shutting_down = True
-            self.glfw_window.set_should_close(True)
-            glfw_post_empty_event()
+                if not self.shutting_down:
+                    self.glfw_window.set_should_close(True)
+                    glfw_post_empty_event()
 
     def __iter__(self):
         yield from iter(self.tabs)
@@ -192,20 +189,18 @@ class TabManager(Thread):
         except Exception:
             pass
 
+    def queue_ui_action(self, func, *args):
+        self.pending_ui_thread_calls.put((func, args))
+        glfw_post_empty_event()
+
     def close_window(self, window):
-        self.remove_child_fd(window.child_fd)
-        for tab in self.tabs:
-            if window in tab:
-                break
+        ' Can be called in either thread, will first kill the child (with SIGHUP), then remove the window from the gui '
+        if current_thread() is main_thread:
+            self.queue_action(self.close_window, window)
         else:
-            return
-        tab.remove_window(window)
-        window.destroy()
-        if len(tab) == 0:
-            self.tabs.remove(tab)
-            tab.destroy()
-            if len(self.tabs) == 0:
-                self.shutdown()
+            self.remove_child_fd(window.child_fd)
+            window.destroy()
+            self.queue_ui_action(self.gui_close_window, window)
 
     def run(self):
         if self.args.profile:
@@ -337,6 +332,21 @@ class TabManager(Thread):
                 if rd is not None:
                     with self.cursor_program:
                         active.char_grid.render_cursor(rd, self.cursor_program)
+
+    def gui_close_window(self, window):
+        for tab in self.tabs:
+            if window in tab:
+                break
+        else:
+            return
+        tab.remove_window(window)
+        if len(tab) == 0:
+            self.tabs.remove(tab)
+            tab.destroy()
+            if len(self.tabs) == 0:
+                if not self.shutting_down:
+                    self.glfw_window.set_should_close(True)
+                    glfw_post_empty_event()
 
     def destroy(self):
         # Must be called in the main thread as it manipulates signal handlers

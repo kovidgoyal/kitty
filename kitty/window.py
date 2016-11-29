@@ -61,6 +61,9 @@ class Window:
     def destroy(self):
         self.child.hangup()
         self.child.get_child_status()  # Ensure child does not become zombie
+        # At this point this window can still render to screen using its
+        # existing buffers in char_grid. The rest of the cleanup must be
+        # performed in the GUI thread.
 
     def read_ready(self):
         if self.read_bytes(self.screen, self.child_fd) is False:
