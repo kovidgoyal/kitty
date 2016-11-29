@@ -1000,6 +1000,21 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     }
     Py_RETURN_NONE;
 }
+
+static PyObject*
+apply_selection(Screen *self, PyObject *args) {
+    unsigned int fg, bg, startx, endx, starty, endy;
+    PyObject *l;
+    if (!PyArg_ParseTuple(args, "O!IIIIII", &PyLong_Type, &l, &startx, &starty, &endx, &endy, &fg, &bg)) return NULL;
+    if (startx >= self->columns || starty >= self->lines || endx >= self->columns || endy >= self->lines) { Py_RETURN_NONE; }
+    unsigned int *data = PyLong_AsVoidPtr(l), offset;
+    for(unsigned int i = starty * self->columns + startx; i <= endy * self->columns + endx; i++) {
+        offset = DATA_CELL_SIZE * i;
+        data[offset + 3] = fg;
+        data[offset + 4] = bg;
+    }
+    Py_RETURN_NONE;
+}
  
 static PyObject* is_dirty(Screen *self) {
     PyObject *ans = self->change_tracker->dirty ? Py_True : Py_False;
@@ -1068,6 +1083,7 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
+    MND(apply_selection, METH_VARARGS)
     MND(in_bracketed_paste_mode, METH_NOARGS)
     MND(focus_tracking_enabled, METH_NOARGS)
     MND(mouse_button_tracking_enabled, METH_NOARGS)

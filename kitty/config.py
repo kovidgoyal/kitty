@@ -47,7 +47,7 @@ type_map = {
     'window_border_width': float,
 }
 
-for name in 'foreground background cursor active_border_color inactive_border_color'.split():
+for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)

@@ -148,10 +148,30 @@ def color_as_int(val):
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
+class Selection:
+
+    __slots__ = tuple('in_progress start_x start_y start_scrolled_by end_x end_y end_scrolled_by'.split())
+
+    def __init__(self):
+        self.clear()
+
+    def clear(self):
+        self.in_progress = False
+        self.start_x = self.start_y = self.end_x = self.end_y = 0
+        self.start_scrolled_by = self.end_scrolled_by = 0
+
+    def limits(self, scrolled_by):
+        a = (self.start_x, self.start_y - self.start_scrolled_by + scrolled_by)
+        b = (self.end_x, self.end_y - self.end_scrolled_by + scrolled_by)
+        return (a, b) if a <= b else (b, a)
+
+
 class CharGrid:
 
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
+        self.current_selection = Selection()
+        self.last_rendered_selection = self.current_selection.limits(0)
         self.render_buf_is_dirty = True
         self.render_data = None
         self.scrolled_by = 0
@@ -170,6 +190,7 @@ class CharGrid:
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
+        self.selection_foreground, self.selection_background = map(color_as_int, (opts.selection_foreground, opts.selection_background))
         self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
     def update_position(self, window_geometry):
@@ -187,7 +208,9 @@ class CharGrid:
         self.scroll_sprite_map = self.sprite_map_type()
         with self.buffer_lock:
             self.render_buf = self.sprite_map_type()
+            self.selection_buf = self.sprite_map_type()
             self.render_buf_is_dirty = True
+            self.current_selection.clear()
 
     def change_colors(self, changes):
         dirtied = False
@@ -215,6 +238,7 @@ class CharGrid:
 
     def update_cell_data(self, force_full_refresh=False):
         sprites = tab_manager().sprites
+        is_dirty = self.screen.is_dirty()
         with sprites.lock:
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
                 sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, force_full_refresh)
@@ -226,6 +250,8 @@ class CharGrid:
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         with self.buffer_lock:
+            if is_dirty:
+                self.current_selection.clear()
             memmove(self.render_buf, data, sizeof(type(data)))
             self.render_data = self.screen_geometry
             self.render_buf_is_dirty = True
@@ -233,14 +259,40 @@ class CharGrid:
             c = self.screen.cursor
             self.current_cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
 
+    def cell_for_pos(self, x, y):
+        return int(x // cell_size.width), int(y // cell_size.height)
+
+    def update_drag(self, is_press, x, y):
+        with self.buffer_lock:
+            x, y = self.cell_for_pos(x, y)
+            if is_press:
+                self.current_selection.start_x = self.current_selection.end_x = x
+                self.current_selection.start_y = self.current_selection.end_y = y
+                self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
+                self.current_selection.in_progress = True
+            elif self.current_selection.in_progress:
+                self.current_selection.end_x = x
+                self.current_selection.end_y = y
+                self.current_selection.end_scrolled_by = self.scrolled_by
+                if is_press is False:
+                    self.current_selection.in_progress = False
+
     def prepare_for_render(self, sprites):
         with self.buffer_lock:
             sg = self.render_data
             if sg is None:
                 return
-            if self.render_buf_is_dirty:
-                sprites.set_sprite_map(self.render_buf)
+            buf = self.render_buf
+            start, end = sel = self.current_selection.limits(self.scrolled_by)
+            if start != end:
+                buf = self.selection_buf
+                if self.render_buf_is_dirty or sel != self.last_rendered_selection:
+                    memmove(buf, self.render_buf, sizeof(type(buf)))
+                    self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], self.selection_foreground, self.selection_background)
+            if self.render_buf_is_dirty or self.last_rendered_selection != sel:
+                sprites.set_sprite_map(buf)
                 self.render_buf_is_dirty = False
+                self.last_rendered_selection = sel
         return sg
 
     def render_cells(self, sg, cell_program, sprites):

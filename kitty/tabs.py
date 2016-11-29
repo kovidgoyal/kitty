@@ -302,7 +302,7 @@ class TabManager(Thread):
                     if not passthrough:
                         return
             if window:
-                if window.char_grid.scrolled_by:
+                if window.char_grid.scrolled_by and key not in glfw_constants.MODIFIER_KEYS:
                     window.scroll_end()
                 data = interpret_key_event(key, scancode, mods)
                 if data:
@@ -323,7 +323,7 @@ class TabManager(Thread):
         if w is not None:
             if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
                 pass  # TODO: Switch focus to this window
-            w.on_mouse_button(button, action, mods)
+            w.on_mouse_button(window, button, action, mods)
 
     def on_mouse_move(self, window, xpos, ypos):
         w = self.window_for_pos(*glfw.glfwGetCursorPos(window))

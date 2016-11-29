@@ -10,7 +10,7 @@ from functools import partial
 import glfw
 import glfw_constants
 from .char_grid import CharGrid
-from .constants import wakeup, tab_manager, appname, WindowGeometry
+from .constants import wakeup, tab_manager, appname, WindowGeometry, queue_action
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
 )
@@ -114,15 +114,19 @@ class Window:
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
 
-    def on_mouse_button(self, button, action, mods):
-        # ignore_mouse_mode = mods == glfw_constants.GLFW_MOD_SHIFT
+    def on_mouse_button(self, window, button, action, mods):
+        ignore_mouse_mode = mods == glfw_constants.GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
+        if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and ignore_mouse_mode:
+            x, y = glfw.glfwGetCursorPos(window)
+            self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, max(0, x - self.geometry.left), max(0, y - self.geometry.top))
         if action == glfw_constants.GLFW_RELEASE:
             if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
                 self.paste_from_selection()
                 return
 
-    def on_mouse_move(self, xpos, ypos):
-        pass
+    def on_mouse_move(self, x, y):
+        if self.char_grid.current_selection.in_progress:
+            self.char_grid.update_drag(None, max(0, x - self.geometry.left), max(0, y - self.geometry.top))
 
     def on_mouse_scroll(self, x, y):
         pass
@@ -146,22 +150,22 @@ class Window:
         self.paste(text)
 
     def scroll_line_up(self):
-        self.queue_action(self.char_grid.scroll, 'line', True)
+        queue_action(self.char_grid.scroll, 'line', True)
 
     def scroll_line_down(self):
-        self.queue_action(self.char_grid.scroll, 'line', False)
+        queue_action(self.char_grid.scroll, 'line', False)
 
     def scroll_page_up(self):
-        self.queue_action(self.char_grid.scroll, 'page', True)
+        queue_action(self.char_grid.scroll, 'page', True)
 
     def scroll_page_down(self):
-        self.queue_action(self.char_grid.scroll, 'page', False)
+        queue_action(self.char_grid.scroll, 'page', False)
 
     def scroll_home(self):
-        self.queue_action(self.char_grid.scroll, 'full', True)
+        queue_action(self.char_grid.scroll, 'full', True)
 
     def scroll_end(self):
-        self.queue_action(self.char_grid.scroll, 'full', False)
+        queue_action(self.char_grid.scroll, 'full', False)
     # }}}
 
     def dump_commands(self, *a):
