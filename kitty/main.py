@@ -89,7 +89,7 @@ def on_glfw_error(code, msg):
             msg = msg.decode('utf-8')
         except Exception:
             msg = repr(msg)
-    print('[glfw error]:', msg, file=sys.stderr)
+    print('[glfw error] ', msg, file=sys.stderr)
 
 
 def main():
