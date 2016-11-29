@@ -125,29 +125,29 @@ class Window:
             glfw.glfwPostEmptyEvent()
 
     def on_mouse_button(self, window, button, action, mods):
-        ignore_mouse_mode = mods == glfw_constants.GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
-        if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and ignore_mouse_mode:
-            x, y = glfw.glfwGetCursorPos(window)
-            x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
-            self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, x, y)
-            if action == glfw_constants.GLFW_RELEASE:
-                self.click_queue.append(monotonic())
-                self.dispatch_multi_click(x, y)
-        if action == glfw_constants.GLFW_RELEASE:
-            if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
-                self.paste_from_selection()
-                return
+        handle_event = mods == glfw_constants.GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
+        if handle_event:
+            if button == glfw_constants.GLFW_MOUSE_BUTTON_1:
+                x, y = glfw.glfwGetCursorPos(window)
+                x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+                self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, x, y)
+                if action == glfw_constants.GLFW_RELEASE:
+                    self.click_queue.append(monotonic())
+                    self.dispatch_multi_click(x, y)
+            elif button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
+                if action == glfw_constants.GLFW_RELEASE:
+                    self.paste_from_selection()
 
     def on_mouse_move(self, window, x, y):
         if self.char_grid.current_selection.in_progress:
             self.char_grid.update_drag(None, max(0, x - self.geometry.left), max(0, y - self.geometry.top))
 
     def on_mouse_scroll(self, window, x, y):
-        ignore_mouse_mode = (
+        handle_event = (
             glfw.glfwGetKey(window, glfw_constants.GLFW_KEY_LEFT_SHIFT) == glfw_constants.GLFW_PRESS or
             glfw.glfwGetKey(window, glfw_constants.GLFW_KEY_RIGHT_SHIFT) == glfw_constants.GLFW_PRESS or
             not self.screen.mouse_button_tracking_enabled())
-        if ignore_mouse_mode:
+        if handle_event:
             s = int(round(y * self.opts.wheel_scroll_multiplier))
             if abs(s) > 0:
                 self.char_grid.scroll(abs(s), s > 0)
