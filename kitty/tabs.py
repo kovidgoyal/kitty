@@ -176,7 +176,11 @@ class TabManager(Thread):
                     func, args = self.action_queue.get_nowait()
                 except Empty:
                     break
-                func(*args)
+                try:
+                    func(*args)
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
 
     def add_child_fd(self, child_fd, read_ready, write_ready):
         self.read_dispatch_map[child_fd] = read_ready
