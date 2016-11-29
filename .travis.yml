@@ -17,12 +17,12 @@ install:
     - wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
     - unzip glfw-3.2.1.zip
     - cd glfw-3.2.1
-    - cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw -DLIB_SUFFIX=/x86_64-linux-gnu
+    - cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
     - make
     - make install
     - cd ..
-    - PKG_CONFIG_PATH=$HOME/glfw/lib/x86_64-linux-gnu/pkgconfig pkg-config --cflags glfw3
+    - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig pkg-config --cflags glfw3
 before_script:
-    - PKG_CONFIG_PATH=$HOME/glfw/lib/x86_64-linux-gnu/pkgconfig python setup.py 
+    - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig python setup.py 
 script: 
-    - PKG_CONFIG_PATH=$HOME/glfw/lib/x86_64-linux-gnu/pkgconfig python setup.py test
+    - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig LD_LIBRARY_PATH=$HOME/glfw/lib python setup.py test
