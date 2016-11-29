@@ -17,7 +17,7 @@ from .fast_data_types import (
     GLFW_KEY_RIGHT_SHIFT, glfw_post_empty_event
 )
 from .terminfo import get_capabilities
-from .utils import sanitize_title, get_primary_selection
+from .utils import sanitize_title, get_primary_selection, parse_color_set
 
 
 class Window:
@@ -116,6 +116,24 @@ class Window:
             code += 1
         self.char_grid.change_colors(color_changes)
         glfw_post_empty_event()
+
+    def set_color_table_color(self, code, value):
+        if code == 4:
+            for c, val in parse_color_set(value):
+                self.char_grid.color_profile.set_color(c, val)
+            self.refresh()
+        elif code == 104:
+            if not value.strip():
+                self.char_grid.color_profile.reset_color_table()
+            else:
+                for c in value.split(';'):
+                    try:
+                        c = int(c)
+                    except Exception:
+                        continue
+                    if 0 <= c <= 255:
+                        self.char_grid.color_profile.reset_color(c)
+            self.refresh()
 
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
