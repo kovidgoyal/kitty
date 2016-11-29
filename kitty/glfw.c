@@ -28,7 +28,10 @@ typedef struct {
 
     GLFWwindow *window;
     PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *mouse_button_callback, *scroll_callback, *cursor_pos_callback, *window_focus_callback;
+    GLFWcursor *standard_cursor, *click_cursor;
 } Window;
+
+// callbacks {{{
 static Window* window_weakrefs[MAX_WINDOWS] = {0};
 
 static inline Window*
@@ -74,6 +77,7 @@ static void
 window_focus_callback(GLFWwindow *w, int focused) {
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
+// }}}
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -90,6 +94,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             if (window_weakrefs[i] == NULL) { window_weakrefs[i] = self; break; }
         }
         if (i >= MAX_WINDOWS) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Too many windows created"); return NULL; }
+        self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+        self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+        if (self->standard_cursor == NULL || self->click_cursor == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
         glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
         glfwSetCharModsCallback(self->window, char_mods_callback);
         glfwSetKeyCallback(self->window, key_callback);
@@ -228,6 +235,13 @@ is_key_pressed(Window *self, PyObject *args) {
     return ans;
 }
 
+static PyObject*
+set_click_cursor(Window *self, PyObject *args) {
+    int c;
+    if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
+    glfwSetCursor(self->window, c ? self->click_cursor : self->standard_cursor);
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 _set_title(Window *self, PyObject *args) {
@@ -246,6 +260,7 @@ static PyMethodDef methods[] = {
     MND(should_close, METH_NOARGS),
     MND(set_should_close, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
+    MND(set_click_cursor, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
     {NULL}  /* Sentinel */

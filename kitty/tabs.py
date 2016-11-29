@@ -138,9 +138,7 @@ class TabManager(Thread):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.queue_action(self.active_tab.new_window, False)
-        # self.standard_cursor = glfw.glfwCreateStandardCursor(GLFW_IBEAM_CURSOR)
-        # self.click_cursor = glfw.glfwCreateStandardCursor(GLFW_HAND_CURSOR)
-        # glfw.glfwSetCursor(self.glfw_window, self.standard_cursor)
+        self.glfw_window.set_click_cursor(False)
 
     def signal_received(self):
         try:
