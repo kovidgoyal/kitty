@@ -4,7 +4,9 @@
 
 import os
 import weakref
+from collections import deque
 from functools import partial
+from time import monotonic
 
 import glfw
 import glfw_constants
@@ -21,6 +23,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
+        self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
         self.title = appname
@@ -113,11 +116,23 @@ class Window:
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
 
+    def dispatch_multi_click(self, x, y):
+        if len(self.click_queue) > 2 and self.click_queue[-1] - self.click_queue[-3] <= 2 * self.opts.click_interval:
+            self.char_grid.multi_click(3, x, y)
+            glfw.glfwPostEmptyEvent()
+        elif len(self.click_queue) > 1 and self.click_queue[-1] - self.click_queue[-2] <= self.opts.click_interval:
+            self.char_grid.multi_click(2, x, y)
+            glfw.glfwPostEmptyEvent()
+
     def on_mouse_button(self, window, button, action, mods):
         ignore_mouse_mode = mods == glfw_constants.GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
         if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and ignore_mouse_mode:
             x, y = glfw.glfwGetCursorPos(window)
-            self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, max(0, x - self.geometry.left), max(0, y - self.geometry.top))
+            x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+            self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, x, y)
+            if action == glfw_constants.GLFW_RELEASE:
+                self.click_queue.append(monotonic())
+                self.dispatch_multi_click(x, y)
         if action == glfw_constants.GLFW_RELEASE:
             if button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
                 self.paste_from_selection()

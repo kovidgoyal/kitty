@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 from collections import namedtuple
 from ctypes import addressof, memmove, sizeof
 from threading import Lock
@@ -264,22 +265,24 @@ class CharGrid:
         return int(x // cell_size.width), int(y // cell_size.height)
 
     def update_drag(self, is_press, x, y):
-        with self.buffer_lock:
-            x, y = self.cell_for_pos(x, y)
-            if is_press:
-                self.current_selection.start_x = self.current_selection.end_x = x
-                self.current_selection.start_y = self.current_selection.end_y = y
-                self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
-                self.current_selection.in_progress = True
-            elif self.current_selection.in_progress:
-                self.current_selection.end_x = x
-                self.current_selection.end_y = y
-                self.current_selection.end_scrolled_by = self.scrolled_by
-                if is_press is False:
-                    self.current_selection.in_progress = False
-                    text = self.text_for_selection()
-                    if text and text.strip():
-                        set_primary_selection(text)
+        x, y = self.cell_for_pos(x, y)
+        if 0 <= x < self.screen.columns and 0 <= y < self.screen.lines:
+            ps = None
+            with self.buffer_lock:
+                if is_press:
+                    self.current_selection.start_x = self.current_selection.end_x = x
+                    self.current_selection.start_y = self.current_selection.end_y = y
+                    self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
+                    self.current_selection.in_progress = True
+                elif self.current_selection.in_progress:
+                    self.current_selection.end_x = x
+                    self.current_selection.end_y = y
+                    self.current_selection.end_scrolled_by = self.scrolled_by
+                    if is_press is False:
+                        self.current_selection.in_progress = False
+                        ps = self.text_for_selection()
+            if ps and ps.strip():
+                set_primary_selection(ps)
 
     def screen_line(self, y):
         ' Return the Line object corresponding to the yth line on the rendered screen '
@@ -290,6 +293,39 @@ class CharGrid:
                 return self.screen.line(y - self.scrolled_by)
             else:
                 return self.screen.line(y)
+
+    def multi_click(self, count, x, y):
+        x, y = self.cell_for_pos(x, y)
+        line = self.screen_line(y)
+        if line is not None and 0 <= x < self.screen.columns and count in (2, 3):
+            s = self.current_selection
+            s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
+            s.start_y = s.end_y = y
+            s.in_progress = False
+            if count == 3:
+                for i in range(self.screen.columns):
+                    if line[i] != ' ':
+                        s.start_x = i
+                        break
+                else:
+                    s.start_x = 0
+                for i in range(self.screen.columns):
+                    c = self.screen.columns - 1 - i
+                    if line[c] != ' ':
+                        s.end_x = c
+                        break
+                else:
+                    s.end_x = self.screen.columns - 1
+            elif count == 2:
+                i = x
+                pat = re.compile(r'\w')
+                while i >= 0 and pat.match(line[i]) is not None:
+                    i -= 1
+                s.start_x = i if i == x else i + 1
+                i = x
+                while i < self.screen.columns and pat.match(line[i]) is not None:
+                    i += 1
+                s.end_x = i if i == x else i - 1
 
     def text_for_selection(self, sel=None):
         start, end = (sel or self.current_selection).limits(self.scrolled_by)

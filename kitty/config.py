@@ -46,6 +46,7 @@ type_map = {
     'repaint_delay': int,
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
+    'click_interval': float,
 }
 
 for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():
