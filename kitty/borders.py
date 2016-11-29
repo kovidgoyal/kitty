@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from ctypes import addressof
+from threading import Lock
 
 from .constants import viewport_size, GLfloat, GLint, GLuint
 from .fast_data_types import glUniform3fv, GL_TRIANGLE_FAN, glMultiDrawArrays
@@ -60,6 +61,7 @@ class Borders:
 
     def __init__(self, opts):
         self.is_dirty = False
+        self.lock = Lock()
         self.can_render = False
         dpix, dpiy = get_dpi()['logical']
         dpi = (dpix + dpiy) / 2
@@ -71,8 +73,6 @@ class Borders:
         )
 
     def __call__(self, windows, active_window, draw_window_borders=True):
-        self.can_render = True
-        self.is_dirty = True
         vw, vh = viewport_size.width, available_height()
         if windows:
             left_edge = min(w.geometry.left for w in windows)
@@ -101,23 +101,27 @@ class Borders:
                 rects.extend(as_rect(g.left - bw, g.top - bw, g.right + bw, g.top, color))
                 rects.extend(as_rect(g.right, g.top - bw, g.right + bw, g.bottom + bw, color))
                 rects.extend(as_rect(g.left - bw, g.bottom, g.right + bw, g.bottom + bw, color))
-        self.num_of_rects = len(rects) // 12
-        self.rects = (GLfloat * len(rects))()
-        self.starts = (GLint * self.num_of_rects)()
-        self.counts = (GLuint * self.num_of_rects)()
-        for i, x in enumerate(rects):
-            self.rects[i] = x
-            if i % 12 == 0:
-                idx = i // 12
-                self.starts[idx] = i // 3
-                self.counts[idx] = 4
+        with self.lock:
+            self.num_of_rects = len(rects) // 12
+            self.rects = (GLfloat * len(rects))()
+            self.starts = (GLint * self.num_of_rects)()
+            self.counts = (GLuint * self.num_of_rects)()
+            for i, x in enumerate(rects):
+                self.rects[i] = x
+                if i % 12 == 0:
+                    idx = i // 12
+                    self.starts[idx] = i // 3
+                    self.counts[idx] = 4
+            self.is_dirty = True
+            self.can_render = True
 
     def render(self, program):
-        if not self.can_render:
-            return
-        with program:
-            if self.is_dirty:
-                program.send_data(self.rects)
-                program.set_colors(self.color_buf)
-                self.is_dirty = False
-            glMultiDrawArrays(GL_TRIANGLE_FAN, addressof(self.starts), addressof(self.counts), self.num_of_rects)
+        with self.lock:
+            if not self.can_render:
+                return
+            with program:
+                if self.is_dirty:
+                    program.send_data(self.rects)
+                    program.set_colors(self.color_buf)
+                    self.is_dirty = False
+                glMultiDrawArrays(GL_TRIANGLE_FAN, addressof(self.starts), addressof(self.counts), self.num_of_rects)
