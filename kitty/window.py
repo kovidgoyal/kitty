@@ -8,14 +8,13 @@ from collections import deque
 from functools import partial
 from time import monotonic
 
-import glfw
 from .char_grid import CharGrid
 from .constants import wakeup, tab_manager, appname, WindowGeometry
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
     GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, GLFW_KEY_LEFT_SHIFT,
-    GLFW_KEY_RIGHT_SHIFT
+    GLFW_KEY_RIGHT_SHIFT, glfw_post_empty_event
 )
 from .terminfo import get_capabilities
 from .utils import sanitize_title, get_primary_selection
@@ -83,7 +82,7 @@ class Window:
 
     def update_screen(self):
         self.char_grid.update_cell_data()
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def focus_changed(self, focused):
         if focused:
@@ -95,7 +94,7 @@ class Window:
 
     def title_changed(self, new_title):
         self.title = sanitize_title(new_title or appname)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def icon_changed(self, new_icon):
         pass  # TODO: Implement this
@@ -113,7 +112,7 @@ class Window:
                 color_changes[w] = val
             code += 1
         self.char_grid.change_colors(color_changes)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
@@ -121,16 +120,16 @@ class Window:
     def dispatch_multi_click(self, x, y):
         if len(self.click_queue) > 2 and self.click_queue[-1] - self.click_queue[-3] <= 2 * self.opts.click_interval:
             self.char_grid.multi_click(3, x, y)
-            glfw.glfwPostEmptyEvent()
+            glfw_post_empty_event()
         elif len(self.click_queue) > 1 and self.click_queue[-1] - self.click_queue[-2] <= self.opts.click_interval:
             self.char_grid.multi_click(2, x, y)
-            glfw.glfwPostEmptyEvent()
+            glfw_post_empty_event()
 
     def on_mouse_button(self, window, button, action, mods):
         handle_event = mods == GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
         if handle_event:
             if button == GLFW_MOUSE_BUTTON_1:
-                x, y = glfw.glfwGetCursorPos(window)
+                x, y = window.get_cursor_pos()
                 x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
                 self.char_grid.update_drag(action == GLFW_PRESS, x, y)
                 if action == GLFW_RELEASE:
@@ -140,7 +139,7 @@ class Window:
                 if action == GLFW_RELEASE:
                     self.paste_from_selection()
         else:
-            x, y = glfw.glfwGetCursorPos(window)
+            x, y = window.get_cursor_pos()
             x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
             x, y = self.char_grid.cell_for_pos(x, y)
 
@@ -150,14 +149,14 @@ class Window:
 
     def on_mouse_scroll(self, window, x, y):
         handle_event = (
-            glfw.glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS or
-            glfw.glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS or
+            window.is_key_pressed(GLFW_KEY_LEFT_SHIFT) or
+            window.is_key_pressed(GLFW_KEY_RIGHT_SHIFT) or
             not self.screen.mouse_button_tracking_enabled())
         if handle_event:
             s = int(round(y * self.opts.wheel_scroll_multiplier))
             if abs(s) > 0:
                 self.char_grid.scroll(abs(s), s > 0)
-                glfw.glfwPostEmptyEvent()
+                glfw_post_empty_event()
 
     # actions {{{
 
@@ -170,9 +169,9 @@ class Window:
             self.write_to_child(text)
 
     def paste_from_clipboard(self):
-        text = glfw.glfwGetClipboardString(tab_manager().glfw_window)
+        text = tab_manager().glfw_window.get_clipboard_string()
         if text:
-            self.paste(text.decode('utf-8'))
+            self.paste(text)
 
     def paste_from_selection(self):
         text = get_primary_selection()
@@ -183,27 +182,27 @@ class Window:
 
     def scroll_line_up(self):
         self.char_grid.scroll('line', True)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def scroll_line_down(self):
         self.char_grid.scroll('line', False)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def scroll_page_up(self):
         self.char_grid.scroll('page', True)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def scroll_page_down(self):
         self.char_grid.scroll('page', False)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def scroll_home(self):
         self.char_grid.scroll('full', True)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     def scroll_end(self):
         self.char_grid.scroll('full', False)
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
     # }}}
 
     def dump_commands(self, *a):

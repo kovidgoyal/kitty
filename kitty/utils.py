@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
+from .fast_data_types import glfw_get_physical_dpi
 
 libc = ctypes.CDLL(None)
 wcwidth_native = libc.wcwidth
@@ -50,14 +51,9 @@ def get_logical_dpi():
 
 
 def get_dpi():
-    import glfw
     if not hasattr(get_dpi, 'ans'):
-        m = glfw.glfwGetPrimaryMonitor()
-        width, height = glfw.glfwGetMonitorPhysicalSize(m)
-        vmode = glfw.glfwGetVideoMode(m)
-        dpix = vmode.width / (width / 25.4)
-        dpiy = vmode.height / (height / 25.4)
-        get_dpi.ans = {'physical': (dpix, dpiy), 'logical': get_logical_dpi()}
+        pdpi = glfw_get_physical_dpi()
+        get_dpi.ans = {'physical': pdpi, 'logical': get_logical_dpi()}
     return get_dpi.ans
 
 # Color names  {{{

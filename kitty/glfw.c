@@ -5,22 +5,103 @@
  */
 
 #include "data-types.h"
+#include <structmember.h>
 #include <GLFW/glfw3.h>
 
-#define MAX_WINDOWS 255
-/* static PyObject* window_weakrefs[MAX_WINDOWS + 1] = {0}; */
+#define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
     if ((name) != NULL) { \
         PyGILState_STATE _pystate = PyGILState_Ensure(); \
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
-        PyGILState_Release(_pystate); \
-        if (_pyret == NULL) { PyErr_Print(); PyErr_Clear(); return; } \
+        if (_pyret == NULL && PyErr_Occurred() != NULL) PyErr_Print(); \
         Py_CLEAR(_pyret); \
+        PyGILState_Release(_pystate); \
     } 
 
+#define WINDOW_CALLBACK(name, fmt, ...) \
+    Window *self = find_window(w); \
+    if (self) { CALLBACK(self->name, "O" fmt, self, __VA_ARGS__); }
 
-// Library Setup {{{
+typedef struct {
+    PyObject_HEAD
+
+    GLFWwindow *window;
+    PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *mouse_button_callback, *scroll_callback, *cursor_pos_callback, *window_focus_callback;
+} Window;
+static Window* window_weakrefs[MAX_WINDOWS] = {0};
+
+static inline Window*
+find_window(GLFWwindow *w) {
+    for(int i = 0; i < MAX_WINDOWS; i++) {
+        if (window_weakrefs[i] == NULL) break; 
+        if (window_weakrefs[i]->window == w) return window_weakrefs[i];
+    }
+    return NULL;
+}
+
+static void 
+framebuffer_size_callback(GLFWwindow *w, int width, int height) {
+    WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
+}
+
+static void 
+char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
+    WINDOW_CALLBACK(char_mods_callback, "Ii", codepoint, mods);
+}
+
+static void 
+key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
+    WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
+}
+
+static void 
+mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
+    WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods);
+}
+
+static void 
+scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
+    WINDOW_CALLBACK(scroll_callback, "dd", xoffset, yoffset);
+}
+
+static void 
+cursor_pos_callback(GLFWwindow *w, double x, double y) {
+    WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
+}
+
+static void 
+window_focus_callback(GLFWwindow *w, int focused) {
+    WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
+}
+
+static PyObject*
+new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
+    Window *self;
+    char *title;
+    int width, height, i;
+    if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
+
+    self = (Window *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->window = glfwCreateWindow(width, height, title, NULL, NULL);
+        if (self->window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWWindow"); return NULL; }
+        for(i = 0; i < MAX_WINDOWS; i++) {
+            if (window_weakrefs[i] == NULL) { window_weakrefs[i] = self; break; }
+        }
+        if (i >= MAX_WINDOWS) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Too many windows created"); return NULL; }
+        glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
+        glfwSetCharModsCallback(self->window, char_mods_callback);
+        glfwSetKeyCallback(self->window, key_callback);
+        glfwSetMouseButtonCallback(self->window, mouse_button_callback);
+        glfwSetScrollCallback(self->window, scroll_callback);
+        glfwSetCursorPosCallback(self->window, cursor_pos_callback);
+        glfwSetWindowFocusCallback(self->window, window_focus_callback);
+    }
+    return (PyObject*)self;
+}
+ 
+// Global functions {{{
 static PyObject *error_callback = NULL;
 
 static void 
@@ -35,6 +116,7 @@ glfw_set_error_callback(PyObject UNUSED *self, PyObject *callback) {
     Py_INCREF(callback);
     Py_RETURN_NONE;
 }
+
 
 PyObject*
 glfw_init(PyObject UNUSED *self) {
@@ -73,7 +155,129 @@ glfw_wait_events(PyObject UNUSED *self) {
     Py_RETURN_NONE;
 }
 
+PyObject*
+glfw_post_empty_event(PyObject UNUSED *self) {
+    glfwPostEmptyEvent();
+    Py_RETURN_NONE;
+}
+
+PyObject*
+glfw_get_physical_dpi(PyObject UNUSED *self) {
+    GLFWmonitor *m = glfwGetPrimaryMonitor();
+    if (m == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor"); return NULL; }
+    int width = 0, height = 0;
+    glfwGetMonitorPhysicalSize(m, &width, &height);
+    if (width == 0 || height == 0) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor size"); return NULL; }
+    const GLFWvidmode *vm = glfwGetVideoMode(m);
+    if (vm == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get video mode for monitor"); return NULL; }
+    float dpix = vm->width / (width / 25.4);
+    float dpiy = vm->height / (height / 25.4);
+    return Py_BuildValue("ff", dpix, dpiy);
+}
+
 // }}}
+
+static void
+dealloc(Window* self) {
+    for(unsigned int i = 0; i < MAX_WINDOWS; i++) {
+        if (window_weakrefs[i] == self) window_weakrefs[i] = NULL;
+    }
+    Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->mouse_button_callback); Py_CLEAR(self->scroll_callback); Py_CLEAR(self->cursor_pos_callback); Py_CLEAR(self->window_focus_callback);
+    if (self->window != NULL) glfwDestroyWindow(self->window);
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject*
+swap_buffers(Window *self) {
+    glfwSwapBuffers(self->window);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+make_context_current(Window *self) {
+    glfwMakeContextCurrent(self->window);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+should_close(Window *self) {
+    PyObject *ans = glfwWindowShouldClose(self->window) ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+static PyObject*
+get_clipboard_string(Window *self) {
+    return Py_BuildValue("s", glfwGetClipboardString(self->window));
+}
+
+static PyObject*
+set_should_close(Window *self, PyObject *args) {
+    int c;
+    if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
+    glfwSetWindowShouldClose(self->window, c);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+is_key_pressed(Window *self, PyObject *args) {
+    int c;
+    if (!PyArg_ParseTuple(args, "i", &c)) return NULL;
+    PyObject *ans = glfwGetKey(self->window, c) == GLFW_PRESS ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+
+static PyObject*
+_set_title(Window *self, PyObject *args) {
+    char *title;
+    if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
+    glfwSetWindowTitle(self->window, title);
+    Py_RETURN_NONE;
+}
+
+// Boilerplate {{{
+#define MND(name, args) {#name, (PyCFunction)name, args, ""}
+
+static PyMethodDef methods[] = {
+    MND(swap_buffers, METH_NOARGS),
+    MND(get_clipboard_string, METH_NOARGS),
+    MND(should_close, METH_NOARGS),
+    MND(set_should_close, METH_VARARGS),
+    MND(is_key_pressed, METH_VARARGS),
+    MND(make_context_current, METH_NOARGS),
+    {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
+    {NULL}  /* Sentinel */
+};
+
+static PyMemberDef members[] = {
+#define CBE(name) {#name, T_OBJECT_EX, offsetof(Window, name), 0, #name}
+    CBE(framebuffer_size_callback),
+    CBE(char_mods_callback),
+    CBE(key_callback),
+    CBE(mouse_button_callback),
+    CBE(scroll_callback),
+    CBE(cursor_pos_callback),
+    CBE(window_focus_callback),
+    {NULL}
+#undef CBE
+};
+ 
+PyTypeObject Window_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.Window",
+    .tp_basicsize = sizeof(Window),
+    .tp_dealloc = (destructor)dealloc, 
+    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_doc = "A GLFW window",
+    .tp_methods = methods,
+    .tp_members = members,
+    .tp_new = new,                
+};
+
+INIT_TYPE(Window)
+
 
 // constants {{{
 bool
@@ -335,4 +539,5 @@ init_glfw(PyObject *m) {
 return true;
 #undef ADDC
 }
+// }}}
 // }}}

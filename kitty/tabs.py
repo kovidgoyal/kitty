@@ -14,12 +14,11 @@ from threading import Thread
 from time import monotonic
 from queue import Queue, Empty
 
-import glfw
 from .child import Child
 from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
-    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1
+    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event
 )
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
@@ -123,13 +122,13 @@ class TabManager(Thread):
         cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
-        glfw.glfwSetFramebufferSizeCallback(glfw_window, partial(self.queue_action, self.on_window_resize))
-        glfw.glfwSetCharModsCallback(glfw_window, partial(self.queue_action, self.on_text_input))
-        glfw.glfwSetKeyCallback(glfw_window, partial(self.queue_action, self.on_key))
-        glfw.glfwSetMouseButtonCallback(glfw_window, partial(self.queue_action, self.on_mouse_button))
-        glfw.glfwSetScrollCallback(glfw_window, partial(self.queue_action, self.on_mouse_scroll))
-        glfw.glfwSetCursorPosCallback(glfw_window, partial(self.queue_action, self.on_mouse_move))
-        glfw.glfwSetWindowFocusCallback(glfw_window, partial(self.queue_action, self.on_focus))
+        glfw_window.framebuffer_size_callback = partial(self.queue_action, self.on_window_resize)
+        glfw_window.char_mods_callback = partial(self.queue_action, self.on_text_input)
+        glfw_window.key_callback = partial(self.queue_action, self.on_key)
+        glfw_window.mouse_button_callback = partial(self.queue_action, self.on_mouse_button)
+        glfw_window.scroll_callback = partial(self.queue_action, self.on_mouse_scroll)
+        glfw_window.cursor_pos_callback = partial(self.queue_action, self.on_mouse_move)
+        glfw_window.window_focus_callback = partial(self.queue_action, self.on_focus)
         self.tabs = deque()
         self.tabs.append(Tab(opts, args))
         self.sprites = Sprites()
@@ -156,8 +155,8 @@ class TabManager(Thread):
     def shutdown(self):
         if not self.shutting_down:
             self.shutting_down = True
-            glfw.glfwSetWindowShouldClose(self.glfw_window, True)
-            glfw.glfwPostEmptyEvent()
+            self.glfw_window.set_should_close(True)
+            glfw_post_empty_event()
 
     def __iter__(self):
         yield from iter(self.tabs)
@@ -277,7 +276,7 @@ class TabManager(Thread):
             tab.relayout()
         self.pending_resize = None
         self.resize_gl_viewport = True
-        glfw.glfwPostEmptyEvent()
+        glfw_post_empty_event()
 
     @property
     def active_tab(self):
@@ -328,19 +327,19 @@ class TabManager(Thread):
                 return w
 
     def on_mouse_button(self, window, button, action, mods):
-        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
             if button == GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
                 pass  # TODO: Switch focus to this window
             w.on_mouse_button(window, button, action, mods)
 
     def on_mouse_move(self, window, xpos, ypos):
-        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
             w.on_mouse_move(window, xpos, ypos)
 
     def on_mouse_scroll(self, window, x, y):
-        w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
+        w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
             w.on_mouse_scroll(window, x, y)
 
@@ -355,7 +354,7 @@ class TabManager(Thread):
         if tab is not None:
             if tab.title != self.glfw_window_title:
                 self.glfw_window_title = tab.title
-                glfw.glfwSetWindowTitle(self.glfw_window, self.glfw_window_title.encode('utf-8'))
+                self.glfw_window.set_title(self.glfw_window_title)
             with self.sprites:
                 self.sprites.render_dirty_cells()
                 tab.render()

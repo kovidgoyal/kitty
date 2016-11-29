@@ -19,9 +19,8 @@ from .fast_data_types import (
     GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES,
     glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
-    glfw_swap_interval, glfw_wait_events
+    glfw_swap_interval, glfw_wait_events, Window
 )
-import glfw
 
 
 def option_parser():
@@ -54,33 +53,29 @@ def clear_buffers(window, opts):
     glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
     glfw_swap_interval(0)
     glClear(GL_COLOR_BUFFER_BIT)
-    glfw.glfwSwapBuffers(window)
+    window.swap_buffers()
     glClear(GL_COLOR_BUFFER_BIT)
     glfw_swap_interval(1)
 
 
 def run_app(opts, args):
     setup_opengl()
-    window = glfw.glfwCreateWindow(
-        viewport_size.width, viewport_size.height, args.cls.encode('utf-8'), None, None)
-    if not window:
-        raise SystemExit("glfwCreateWindow failed")
-    glfw.glfwSetWindowTitle(window, appname.encode('utf-8'))
+    window = Window(
+        viewport_size.width, viewport_size.height, args.cls)
+    window.set_title(appname)
+    window.make_context_current()
+    glewInit()
+    tabs = TabManager(window, opts, args)
+    tabs.start()
+    clear_buffers(window, opts)
     try:
-        glfw.glfwMakeContextCurrent(window)
-        glewInit()
-        tabs = TabManager(window, opts, args)
-        tabs.start()
-        clear_buffers(window, opts)
-        try:
-            while not glfw.glfwWindowShouldClose(window):
-                tabs.render()
-                glfw.glfwSwapBuffers(window)
-                glfw_wait_events()
-        finally:
-            tabs.destroy()
+        while not window.should_close():
+            tabs.render()
+            window.swap_buffers()
+            glfw_wait_events()
     finally:
-        glfw.glfwDestroyWindow(window)
+        tabs.destroy()
+    del window
 
 
 def on_glfw_error(code, msg):

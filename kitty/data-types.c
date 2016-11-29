@@ -22,6 +22,8 @@ static PyMethodDef module_methods[] = {
     {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""},
     {"glfw_swap_interval", (PyCFunction)glfw_swap_interval, METH_VARARGS, ""},
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_NOARGS, ""},
+    {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""},
+    {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -54,6 +56,7 @@ PyInit_fast_data_types(void) {
         if (!init_Face(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;
+        if (!init_Window(m)) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
