@@ -158,7 +158,9 @@ DrawArrays(PyObject UNUSED *self, PyObject *args) {
     int mode, first;
     unsigned int count;
     if (!PyArg_ParseTuple(args, "iiI", &mode, &first, &count)) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
     glDrawArrays(mode, first, count);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -169,7 +171,9 @@ MultiDrawArrays(PyObject UNUSED *self, PyObject *args) {
     unsigned int draw_count;
     PyObject *a, *b;
     if (!PyArg_ParseTuple(args, "iO!O!I", &mode, &PyLong_Type, &a, &PyLong_Type, &b, &draw_count)) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
     glMultiDrawArrays(mode, PyLong_AsVoidPtr(a), PyLong_AsVoidPtr(b), draw_count);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -179,7 +183,9 @@ DrawArraysInstanced(PyObject UNUSED *self, PyObject *args) {
     int mode, first;
     unsigned int count, primcount;
     if (!PyArg_ParseTuple(args, "iiII", &mode, &first, &count, &primcount)) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
     glDrawArraysInstanced(mode, first, count, primcount);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
