@@ -219,6 +219,13 @@ get_clipboard_string(Window *self) {
 }
 
 static PyObject*
+get_cursor_pos(Window *self) {
+    double x=0, y=0;
+    glfwGetCursorPos(self->window, &x, &y);
+    return Py_BuildValue("dd", x, y);
+}
+
+static PyObject*
 set_should_close(Window *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
@@ -257,6 +264,7 @@ _set_title(Window *self, PyObject *args) {
 static PyMethodDef methods[] = {
     MND(swap_buffers, METH_NOARGS),
     MND(get_clipboard_string, METH_NOARGS),
+    MND(get_cursor_pos, METH_NOARGS),
     MND(should_close, METH_NOARGS),
     MND(set_should_close, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
