@@ -464,10 +464,10 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
     if(GLEW_VERSION_4_5) {
         glNamedBufferData(target, size, data, usage);
     } else {
-        glBindBuffer(target, GL_TEXTURE_BUFFER); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
+        glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
     }
 #else
-        glBindBuffer(target, GL_TEXTURE_BUFFER); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
+        glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
 #endif
     CHECK_ERROR;
     Py_RETURN_NONE;
