@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 from binascii import unhexlify, hexlify
 
 names = 'xterm-kitty', 'KovIdTTY'
@@ -360,9 +361,15 @@ def generate_terminfo():
     return ',\n\t'.join(ans) + ',\n'
 
 
+octal_escape = re.compile(r'\\([0-7]{3})')
+escape_escape = re.compile(r'\\[eE]')
+
+
 def key_as_bytes(name):
     ans = string_capabilities[name]
-    return ans.replace(r'\E', '\033').encode('ascii')
+    ans = octal_escape.sub(lambda m: chr(int(m.group(1), 8)), ans)
+    ans = escape_escape.sub('\033', ans)
+    return ans.encode('ascii')
 
 
 def get_capabilities(query_string):
