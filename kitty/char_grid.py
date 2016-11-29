@@ -228,7 +228,8 @@ class CharGrid:
             self.screen.mark_as_dirty()
 
     def scroll(self, amt, upwards=True):
-        amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
+        if not isinstance(amt, int):
+            amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
         if not upwards:
             amt *= -1
         y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))

@@ -332,12 +332,12 @@ class TabManager(Thread):
     def on_mouse_move(self, window, xpos, ypos):
         w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
         if w is not None:
-            w.on_mouse_move(xpos, ypos)
+            w.on_mouse_move(window, xpos, ypos)
 
     def on_mouse_scroll(self, window, x, y):
         w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
         if w is not None:
-            w.on_mouse_scroll(x, y)
+            w.on_mouse_scroll(window, x, y)
 
     # GUI thread API {{{
     def render(self):

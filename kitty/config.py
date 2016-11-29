@@ -45,6 +45,7 @@ type_map = {
     'cursor_opacity': to_opacity,
     'repaint_delay': int,
     'window_border_width': float,
+    'wheel_scroll_multiplier': float,
 }
 
 for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():
