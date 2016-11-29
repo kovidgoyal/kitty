@@ -3,7 +3,6 @@
 # License: GPLv3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import glfw
-import glfw_constants
 import sys
 import ctypes
 
@@ -15,7 +14,9 @@ from kitty.fast_data_types import (
     glUniform2f, glUniform4f, glUniform2ui, glUniform1i, glewInit, glGetString,
     GL_VERSION as GL_VERSION_C, GL_VENDOR, GL_SHADING_LANGUAGE_VERSION, GL_RENDERER,
     glClear, GL_COLOR_BUFFER_BIT, GL_TRIANGLE_FAN, glDrawArraysInstanced,
-    Cursor, LineBuf, ColorProfile, DATA_CELL_SIZE
+    Cursor, LineBuf, ColorProfile, DATA_CELL_SIZE, GLFW_CONTEXT_VERSION_MAJOR,
+    GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE,
+    GLFW_OPENGL_FORWARD_COMPAT
 )
 
 
@@ -109,11 +110,11 @@ def _main():
     # These Window hints are used to specify
     # which opengl version to use and other details
     # for the opengl context that will be created
-    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
-    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_PROFILE,
-                        glfw_constants.GLFW_OPENGL_CORE_PROFILE)
-    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_FORWARD_COMPAT, True)
+    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw.glfwWindowHint(GLFW_OPENGL_PROFILE,
+                        GLFW_OPENGL_CORE_PROFILE)
+    glfw.glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, True)
 
     window = glfw.glfwCreateWindow(
         1024, 1024, "Trying this crap".encode('utf-8'), None, None)

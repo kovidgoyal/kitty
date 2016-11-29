@@ -7,9 +7,10 @@ import sys
 import os
 from collections import namedtuple
 
-import glfw_constants as glfw
-
-from .fast_data_types import CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
+from .fast_data_types import (
+    CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
+)
+import kitty.fast_data_types as defines
 from .utils import to_color
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
@@ -67,12 +68,12 @@ def parse_key(val, keymap):
     mods = 0
     for m in parts[:-1]:
         try:
-            mods |= getattr(glfw, 'GLFW_MOD_' + map_mod(m.upper()))
+            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
             print('Shortcut: {} has an unknown modifier, ignoring'.format(val), file=sys.stderr)
             return
 
-    key = getattr(glfw, 'GLFW_KEY_' + parts[-1].upper(), None)
+    key = getattr(defines, 'GLFW_KEY_' + parts[-1].upper(), None)
     if key is None:
         print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
         return

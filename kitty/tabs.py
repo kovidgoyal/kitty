@@ -15,10 +15,12 @@ from time import monotonic
 from queue import Queue, Empty
 
 import glfw
-import glfw_constants
 from .child import Child
-from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size
-from .fast_data_types import glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS
+from .fast_data_types import (
+    glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
+    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1
+)
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
 from .char_grid import cursor_shader, cell_shader
@@ -137,6 +139,9 @@ class TabManager(Thread):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.queue_action(self.active_tab.new_window, False)
+        # self.standard_cursor = glfw.glfwCreateStandardCursor(GLFW_IBEAM_CURSOR)
+        # self.click_cursor = glfw.glfwCreateStandardCursor(GLFW_HAND_CURSOR)
+        # glfw.glfwSetCursor(self.glfw_window, self.standard_cursor)
 
     def signal_received(self):
         try:
@@ -295,7 +300,7 @@ class TabManager(Thread):
                 w.write_to_child(data)
 
     def on_key(self, window, key, scancode, action, mods):
-        if action == glfw_constants.GLFW_PRESS or action == glfw_constants.GLFW_REPEAT:
+        if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
             tab = self.active_tab
             window = self.active_window
@@ -306,7 +311,7 @@ class TabManager(Thread):
                     if not passthrough:
                         return
             if window:
-                if window.char_grid.scrolled_by and key not in glfw_constants.MODIFIER_KEYS:
+                if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
                     window.scroll_end()
                 data = interpret_key_event(key, scancode, mods)
                 if data:
@@ -325,7 +330,7 @@ class TabManager(Thread):
     def on_mouse_button(self, window, button, action, mods):
         w = self.window_for_pos(*glfw.glfwGetCursorPos(window))
         if w is not None:
-            if button == glfw_constants.GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
+            if button == GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
                 pass  # TODO: Switch focus to this window
             w.on_mouse_button(window, button, action, mods)
 

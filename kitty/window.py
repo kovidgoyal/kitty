@@ -9,11 +9,13 @@ from functools import partial
 from time import monotonic
 
 import glfw
-import glfw_constants
 from .char_grid import CharGrid
 from .constants import wakeup, tab_manager, appname, WindowGeometry
 from .fast_data_types import (
-    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump, read_bytes
+    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
+    read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
+    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, GLFW_KEY_LEFT_SHIFT,
+    GLFW_KEY_RIGHT_SHIFT
 )
 from .terminfo import get_capabilities
 from .utils import sanitize_title, get_primary_selection
@@ -125,18 +127,22 @@ class Window:
             glfw.glfwPostEmptyEvent()
 
     def on_mouse_button(self, window, button, action, mods):
-        handle_event = mods == glfw_constants.GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
+        handle_event = mods == GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
         if handle_event:
-            if button == glfw_constants.GLFW_MOUSE_BUTTON_1:
+            if button == GLFW_MOUSE_BUTTON_1:
                 x, y = glfw.glfwGetCursorPos(window)
                 x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
-                self.char_grid.update_drag(action == glfw_constants.GLFW_PRESS, x, y)
-                if action == glfw_constants.GLFW_RELEASE:
+                self.char_grid.update_drag(action == GLFW_PRESS, x, y)
+                if action == GLFW_RELEASE:
                     self.click_queue.append(monotonic())
                     self.dispatch_multi_click(x, y)
-            elif button == glfw_constants.GLFW_MOUSE_BUTTON_MIDDLE:
-                if action == glfw_constants.GLFW_RELEASE:
+            elif button == GLFW_MOUSE_BUTTON_MIDDLE:
+                if action == GLFW_RELEASE:
                     self.paste_from_selection()
+        else:
+            x, y = glfw.glfwGetCursorPos(window)
+            x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+            x, y = self.char_grid.cell_for_pos(x, y)
 
     def on_mouse_move(self, window, x, y):
         if self.char_grid.current_selection.in_progress:
@@ -144,8 +150,8 @@ class Window:
 
     def on_mouse_scroll(self, window, x, y):
         handle_event = (
-            glfw.glfwGetKey(window, glfw_constants.GLFW_KEY_LEFT_SHIFT) == glfw_constants.GLFW_PRESS or
-            glfw.glfwGetKey(window, glfw_constants.GLFW_KEY_RIGHT_SHIFT) == glfw_constants.GLFW_PRESS or
+            glfw.glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS or
+            glfw.glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS or
             not self.screen.mouse_button_tracking_enabled())
         if handle_event:
             s = int(round(y * self.opts.wheel_scroll_multiplier))

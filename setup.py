@@ -24,7 +24,7 @@ cflags = ldflags = cc = ldpaths = None
 
 
 def pkg_config(pkg, *args):
-    return shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))
+    return list(filter(None, shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))))
 
 
 def cc_version():
@@ -60,11 +60,13 @@ def init_env(debug=False):
     cflags.append('-pthread')
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
     cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
+    cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     ldflags.append('-pthread')
     ldflags.append('-shared')
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
     lib = sysconfig.get_config_var('LDLIBRARY')[3:-3]
-    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs')
+    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + \
+        pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + pkg_config('glfw3', '--libs')
 
     try:
         os.mkdir(build_dir)

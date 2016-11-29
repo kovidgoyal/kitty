@@ -13,9 +13,13 @@ from .config import load_config
 from .constants import appname, str_version, config_dir, viewport_size
 from .tabs import TabManager
 from .shaders import GL_VERSION
-from .fast_data_types import glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor, GL_COLOR_BUFFER_BIT
+from .fast_data_types import (
+    glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor,
+    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
+    GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
+    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES
+)
 import glfw
-import glfw_constants
 
 
 def option_parser():
@@ -36,11 +40,11 @@ def option_parser():
 
 
 def setup_opengl():
-    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw.glfwWindowHint(glfw_constants.GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
-    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_PROFILE, glfw_constants.GLFW_OPENGL_CORE_PROFILE)
-    glfw.glfwWindowHint(glfw_constants.GLFW_OPENGL_FORWARD_COMPAT, True)
-    glfw.glfwWindowHint(glfw_constants.GLFW_SAMPLES, 0)
+    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw.glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
+    glfw.glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, True)
+    glfw.glfwWindowHint(GLFW_SAMPLES, 0)
 
 
 def clear_buffers(window, opts):

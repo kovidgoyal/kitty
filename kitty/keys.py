@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import glfw_constants as defines
+import kitty.fast_data_types as defines
 from .terminfo import key_as_bytes
 
 key_map = {

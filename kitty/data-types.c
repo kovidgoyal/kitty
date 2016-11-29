@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "glfw.h"
 #include "gl.h"
 #include "modes.h"
 
@@ -46,6 +47,7 @@ PyInit_fast_data_types(void) {
         if (!init_freetype_library(m)) return NULL;
         if (!init_Face(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
+        if (!init_glfw(m)) return NULL;
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
