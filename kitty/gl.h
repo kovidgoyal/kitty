@@ -148,7 +148,9 @@ GetString(PyObject UNUSED *self, PyObject *val) {
 static PyObject* 
 Clear(PyObject UNUSED *self, PyObject *val) {
     unsigned long m = PyLong_AsUnsignedLong(val);
+    Py_BEGIN_ALLOW_THREADS;
     glClear((GLbitfield)m);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -426,7 +428,9 @@ TexStorage3D(PyObject UNUSED *self, PyObject *args) {
     int target, fmt;
     unsigned int levels, width, height, depth;
     if (!PyArg_ParseTuple(args, "iIiIII", &target, &levels, &fmt, &width, &height, &depth)) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
     glTexStorage3D(target, levels, fmt, width, height, depth);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -440,7 +444,9 @@ CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
         &dest, &dest_target, &dest_level, &destX, &destY, &destZ,
         &width, &height, &depth
     )) return NULL;
+    Py_BEGIN_ALLOW_THREADS;
     glCopyImageSubData(src, src_target, src_level, srcX, srcY, srcZ, dest, dest_target, dest_level, destX, destY, destZ, width, height, depth);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -453,7 +459,9 @@ TexSubImage3D(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "iiiiiIIIiiO!", &target, &level, &x, &y, &z, &width, &height, &depth, &fmt, &type, &PyLong_Type, &pixels)) return NULL;
     void *data = PyLong_AsVoidPtr(pixels);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    Py_BEGIN_ALLOW_THREADS;
     glTexSubImage3D(target, level, x, y, z, width, height, depth, fmt, type, data);
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -466,6 +474,7 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "kkO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    Py_BEGIN_ALLOW_THREADS;
 #ifdef glNamedBufferData
     if(GLEW_VERSION_4_5) {
         glNamedBufferData(target, size, data, usage);
@@ -475,6 +484,7 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
 #else
         glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
 #endif
+    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
