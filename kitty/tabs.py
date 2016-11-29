@@ -9,9 +9,7 @@ import signal
 import struct
 from collections import deque
 from functools import partial
-from itertools import count
 from threading import Thread
-from time import monotonic
 from queue import Queue, Empty
 
 from .child import Child
@@ -26,11 +24,9 @@ from .char_grid import cursor_shader, cell_shader
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .layout import Stack
 from .shaders import Sprites, ShaderProgram
+from .timers import Timers
 from .utils import handle_unix_signals
 from .window import Window
-
-
-timer_id = count()
 
 
 class Tab:
@@ -108,7 +104,7 @@ class TabManager(Thread):
         self.glfw_window_title = None
         self.current_tab_bar_height = 0
         self.action_queue = Queue()
-        self.pending_resize = None
+        self.pending_resize = True
         self.resize_gl_viewport = False
         self.shutting_down = False
         self.screen_update_delay = opts.repaint_delay / 1000.0
@@ -116,7 +112,7 @@ class TabManager(Thread):
         self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
         self.read_dispatch_map = {self.signal_fd: self.signal_received, self.read_wakeup_fd: self.on_wakeup}
         self.all_writers = []
-        self.timers = []
+        self.timers = Timers()
         self.write_dispatch_map = {}
         set_tab_manager(self)
         cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
@@ -211,13 +207,6 @@ class TabManager(Thread):
             if len(self.tabs) == 0:
                 self.shutdown()
 
-    def call_after(self, delay, callback):
-        tid = next(timer_id)
-        self.timers.append((monotonic() + delay, tid, callback))
-        if len(self.timers) > 1:
-            self.timers.sort()
-        return tid
-
     def run(self):
         if self.args.profile:
             import cProfile
@@ -235,45 +224,27 @@ class TabManager(Thread):
         while not self.shutting_down:
             all_readers = list(self.read_dispatch_map)
             all_writers = [w.child_fd for w in self.iterwindows() if w.write_buf]
-            timeout = max(0, self.timers[0][0] - monotonic()) if self.timers else None
-            readers, writers, _ = select.select(all_readers, all_writers, [], timeout)
+            readers, writers, _ = select.select(all_readers, all_writers, [], self.timers.timeout())
             for r in readers:
                 self.read_dispatch_map[r]()
             for w in writers:
                 self.write_dispatch_map[w]()
-            timers = []
-            callbacks = set()
-            for epoch, tid, callback in self.timers:
-                if epoch <= monotonic():
-                    callback()
-                else:
-                    timers.append((epoch, tid, callback))
-                    callbacks.add(callback)
-            update_at = monotonic() + self.screen_update_delay
-            before = len(timers)
+            self.timers()
             for w in self.iterwindows():
-                if w.screen.is_dirty() and w.update_screen not in callbacks:
-                    timers.append((update_at, next(timer_id), w.update_screen))
-            if len(timers) > before:
-                timers.sort()
-            self.timers = timers
+                if w.screen.is_dirty():
+                    self.timers.add_if_missing(self.screen_update_delay, w.update_screen)
 
     def on_window_resize(self, window, w, h):
         # debounce resize events
-        self.pending_resize = [monotonic(), w, h]
-        self.call_after(0.02, self.apply_pending_resize)
+        self.timers.add(0.02, self.apply_pending_resize, w, h)
+        self.pending_resize = True
 
-    def apply_pending_resize(self):
-        if self.pending_resize is None:
-            return
-        if monotonic() - self.pending_resize[0] < 0.02:
-            self.call_after(0.02, self.apply_pending_resize)
-            return
-        viewport_size.width, viewport_size.height = self.pending_resize[1:]
+    def apply_pending_resize(self, w, h):
+        viewport_size.width, viewport_size.height = w, h
         for tab in self.tabs:
             tab.relayout()
-        self.pending_resize = None
         self.resize_gl_viewport = True
+        self.pending_resize = False
         glfw_post_empty_event()
 
     @property
