@@ -116,6 +116,7 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     self->tabstops = self->main_tabstops;
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
+    tracker_update_screen(self->change_tracker);
 
     return true;
 }
