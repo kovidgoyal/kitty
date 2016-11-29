@@ -16,6 +16,12 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
     {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
+    {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""},
+    {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""},
+    {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
+    {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""},
+    {"glfw_swap_interval", (PyCFunction)glfw_swap_interval, METH_VARARGS, ""},
+    {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

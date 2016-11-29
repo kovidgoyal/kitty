@@ -382,4 +382,5 @@ class TabManager(Thread):
         del self.tabs
         self.sprites.destroy()
         del self.sprites
+        del self.glfw_window
     # }}}

@@ -7,8 +7,79 @@
 #include "data-types.h"
 #include <GLFW/glfw3.h>
 
+#define MAX_WINDOWS 255
+/* static PyObject* window_weakrefs[MAX_WINDOWS + 1] = {0}; */
+
+#define CALLBACK(name, fmt, ...) \
+    if ((name) != NULL) { \
+        PyGILState_STATE _pystate = PyGILState_Ensure(); \
+        PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
+        PyGILState_Release(_pystate); \
+        if (_pyret == NULL) { PyErr_Print(); PyErr_Clear(); return; } \
+        Py_CLEAR(_pyret); \
+    } 
+
+
+// Library Setup {{{
+static PyObject *error_callback = NULL;
+
+static void 
+cb_error_callback(int error, const char* description) {
+    CALLBACK(error_callback, "is", error, description) else fprintf(stderr, "[glfw error]: %s\n", description);
+}
+
+PyObject*
+glfw_set_error_callback(PyObject UNUSED *self, PyObject *callback) {
+    Py_CLEAR(error_callback);
+    error_callback = callback;
+    Py_INCREF(callback);
+    Py_RETURN_NONE;
+}
+
+PyObject*
+glfw_init(PyObject UNUSED *self) {
+    PyObject *ans = glfwInit() ? Py_True: Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+PyObject*
+glfw_terminate(PyObject UNUSED *self) {
+    glfwTerminate();
+    Py_RETURN_NONE;
+}
+
+PyObject*
+glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
+    int hint, value;
+    if (!PyArg_ParseTuple(args, "ii", &hint, &value)) return NULL;
+    glfwWindowHint(hint, value);
+    Py_RETURN_NONE;
+}
+
+PyObject* 
+glfw_swap_interval(PyObject UNUSED *self, PyObject *args) {
+    int value;
+    if (!PyArg_ParseTuple(args, "i", &value)) return NULL;
+    glfwSwapInterval(value);
+    Py_RETURN_NONE;
+}
+
+PyObject*
+glfw_wait_events(PyObject UNUSED *self) {
+    Py_BEGIN_ALLOW_THREADS;
+    glfwWaitEvents();
+    Py_END_ALLOW_THREADS;
+    Py_RETURN_NONE;
+}
+
+// }}}
+
+// constants {{{
 bool
 init_glfw(PyObject *m) {
+    PyEval_InitThreads();
+    glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
@@ -264,5 +335,4 @@ init_glfw(PyObject *m) {
 return true;
 #undef ADDC
 }
-
-
+// }}}

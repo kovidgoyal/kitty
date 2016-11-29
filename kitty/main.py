@@ -17,7 +17,9 @@ from .fast_data_types import (
     glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor,
     GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
-    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES
+    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES,
+    glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
+    glfw_swap_interval, glfw_wait_events
 )
 import glfw
 
@@ -40,21 +42,21 @@ def option_parser():
 
 
 def setup_opengl():
-    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw.glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
-    glfw.glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-    glfw.glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, True)
-    glfw.glfwWindowHint(GLFW_SAMPLES, 0)
+    glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
+    glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
+    glfw_window_hint(GLFW_OPENGL_FORWARD_COMPAT, True)
+    glfw_window_hint(GLFW_SAMPLES, 0)
 
 
 def clear_buffers(window, opts):
     bg = opts.background
     glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
-    glfw.glfwSwapInterval(0)
+    glfw_swap_interval(0)
     glClear(GL_COLOR_BUFFER_BIT)
     glfw.glfwSwapBuffers(window)
     glClear(GL_COLOR_BUFFER_BIT)
-    glfw.glfwSwapInterval(1)
+    glfw_swap_interval(1)
 
 
 def run_app(opts, args):
@@ -74,7 +76,7 @@ def run_app(opts, args):
             while not glfw.glfwWindowShouldClose(window):
                 tabs.render()
                 glfw.glfwSwapBuffers(window)
-                glfw.glfwWaitEvents()
+                glfw_wait_events()
         finally:
             tabs.destroy()
     finally:
@@ -96,9 +98,9 @@ def main():
         exec(args.cmd)
         return
     opts = load_config(args.config)
-    glfw.glfwSetErrorCallback(on_glfw_error)
+    glfw_set_error_callback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
-    if not glfw.glfwInit():
+    if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
         if args.profile:
@@ -120,5 +122,5 @@ def main():
         else:
             run_app(opts, args)
     finally:
-        glfw.glfwTerminate()
+        glfw_terminate()
         os.closerange(3, 100)
