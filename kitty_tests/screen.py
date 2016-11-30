@@ -313,3 +313,17 @@ class TestScreen(BaseTest):
                 c = chr(ord('I') + l - 2)
                 self.ae(c + ' ' * (s.columns - 2) + c.lower(), str(s.line(l)))
             s.reset_mode(DECOM)
+
+    def test_sgr(self):
+        s = self.create_screen()
+        s.select_graphic_rendition(0, 1, 37, 42)
+        s.draw('a')
+        c = s.line(0).cursor_from(0)
+        self.assertTrue(c.bold)
+        self.ae(c.bg, (2 << 8) | 1)
+        s.cursor_position(2, 1)
+        s.select_graphic_rendition(0, 35)
+        s.draw('b')
+        c = s.line(1).cursor_from(0)
+        self.ae(c.fg, (5 << 8) | 1)
+        self.ae(c.bg, 0)

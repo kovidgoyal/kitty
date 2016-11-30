@@ -933,6 +933,14 @@ reset_mode(Screen *self, PyObject *args) {
 }
  
 static PyObject*
+_select_graphic_rendition(Screen *self, PyObject *args) {
+    unsigned int params[256] = {0};
+    for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, i)); }
+    select_graphic_rendition(self, params, PyList_GET_SIZE(args));
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 set_mode(Screen *self, PyObject *args) {
     int private = false;
     unsigned int mode;
@@ -1139,6 +1147,7 @@ static PyMethodDef methods[] = {
     MND(mouse_move_tracking_enabled, METH_NOARGS)
     MND(mouse_in_sgr_mode, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
+    {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
 };
