@@ -11,7 +11,7 @@
 #include "tracker.h"
 #include "modes.h"
 
-static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true};
+static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
 // Constructor/destructor {{{
 
@@ -305,6 +305,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
     switch(mode) {
         SIMPLE_MODE(LNM)
         SIMPLE_MODE(IRM)
+        SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
         SIMPLE_MODE(MOUSE_BUTTON_TRACKING)
         SIMPLE_MODE(MOUSE_MOVE_TRACKING)
@@ -313,7 +314,8 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(FOCUS_TRACKING)
 
         case DECCKM:
-            break;  // we ignore this mode
+        case DECSCLM:
+            break;  // we ignore these modes
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
             if ((val && self->cursor->hidden) || (!val && !self->cursor->hidden)) {
@@ -918,6 +920,7 @@ MODE_GETTER(mouse_button_tracking_enabled, MOUSE_BUTTON_TRACKING)
 MODE_GETTER(mouse_motion_tracking_enabled, MOUSE_MOTION_TRACKING)
 MODE_GETTER(mouse_move_tracking_enabled, MOUSE_MOVE_TRACKING)
 MODE_GETTER(mouse_in_sgr_mode, MOUSE_SGR_MODE)
+MODE_GETTER(auto_repeat_enabled, DECARM)
 
 
 static PyObject*
@@ -1086,6 +1089,7 @@ static PyMethodDef methods[] = {
     MND(set_scroll_cell_data, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
     MND(in_bracketed_paste_mode, METH_NOARGS)
+    MND(auto_repeat_enabled, METH_NOARGS)
     MND(focus_tracking_enabled, METH_NOARGS)
     MND(mouse_button_tracking_enabled, METH_NOARGS)
     MND(mouse_motion_tracking_enabled, METH_NOARGS)

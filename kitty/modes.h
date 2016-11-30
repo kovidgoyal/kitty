@@ -30,9 +30,14 @@
 // on the screen.
 #define DECCOLM (3 << 5)
 
+// Scroll speed
+#define DECSCLM (4 << 5)
 
 // *Screen Mode*: toggles screen-wide reverse-video mode.
 #define DECSCNM  (5 << 5)
+
+// Auto-repeat of keys
+#define DECARM (8 << 5)
 
 /* *Origin Mode*: allows cursor addressing relative to a user-defined
    origin. This mode resets when the terminal is powered up or reset.

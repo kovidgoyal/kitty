@@ -274,11 +274,12 @@ class TabManager(Thread):
                     if not passthrough:
                         return
             if window:
-                if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
-                    window.scroll_end()
-                data = interpret_key_event(key, scancode, mods)
-                if data:
-                    window.write_to_child(data)
+                if window.screen.auto_repeat_enabled() or action == GLFW_PRESS:
+                    if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
+                        window.scroll_end()
+                    data = interpret_key_event(key, scancode, mods)
+                    if data:
+                        window.write_to_child(data)
 
     def on_focus(self, window, focused):
         w = self.active_window
