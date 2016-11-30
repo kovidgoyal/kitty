@@ -427,11 +427,13 @@ void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_directi
     if (x != self->cursor->x) tracker_cursor_changed(self->change_tracker);
 }
 
-void screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
+void 
+screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_back(self, count, 1);
 }
 
-void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
+void 
+screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
@@ -441,19 +443,23 @@ void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_r
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
 
-void screen_cursor_up1(Screen *self, unsigned int count/*=1*/) {
+void 
+screen_cursor_up1(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, true, -1);
 }
 
-void screen_cursor_down(Screen *self, unsigned int count/*=1*/) {
+void 
+screen_cursor_down(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, false, 1);
 }
 
-void screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
+void 
+screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, true, 1);
 }
 
-void screen_cursor_to_column(Screen *self, unsigned int column) {
+void 
+screen_cursor_to_column(Screen *self, unsigned int column) {
     unsigned int x = MAX(column, 1) - 1;
     if (x != self->cursor->x) {
         self->cursor->x = x;
@@ -462,7 +468,8 @@ void screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
-void screen_index(Screen *self) {
+void 
+screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == bottom) {
@@ -479,7 +486,8 @@ void screen_index(Screen *self) {
     } else screen_cursor_down(self, 1);
 }
 
-void screen_reverse_index(Screen *self) {
+void 
+screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == top) {
@@ -491,33 +499,38 @@ void screen_reverse_index(Screen *self) {
 }
 
 
-void screen_carriage_return(Screen *self) {
+void 
+screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
         tracker_cursor_changed(self->change_tracker);
     }
 }
 
-void screen_linefeed(Screen *self) {
+void 
+screen_linefeed(Screen *self) {
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
     screen_ensure_bounds(self, false);
 }
 
-static inline Savepoint* savepoints_push(SavepointBuffer *self) {
+static inline Savepoint* 
+savepoints_push(SavepointBuffer *self) {
     Savepoint *ans = self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
     if (self->count == SAVEPOINTS_SZ) self->start_of_data = (self->start_of_data + 1) % SAVEPOINTS_SZ;
     else self->count++;
     return ans;
 }
 
-static inline Savepoint* savepoints_pop(SavepointBuffer *self) {
+static inline Savepoint* 
+savepoints_pop(SavepointBuffer *self) {
     if (self->count == 0) return NULL;
     self->count--;
     return self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
 }
 
-void screen_save_cursor(Screen *self) {
+void 
+screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_push(pts);
     cursor_copy_to(self->cursor, &(sp->cursor));
@@ -526,7 +539,8 @@ void screen_save_cursor(Screen *self) {
     sp->utf8_state = self->utf8_state;
 }
 
-void screen_restore_cursor(Screen *self) {
+void 
+screen_restore_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_pop(pts);
     if (sp == NULL) {
@@ -542,7 +556,8 @@ void screen_restore_cursor(Screen *self) {
     }
 }
 
-void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
+void 
+screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
     unsigned int top, bottom;
     if (use_margins || self->modes.mDECOM) {
         top = self->margin_top; bottom = self->margin_bottom;
@@ -553,7 +568,8 @@ void screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
     self->cursor->y = MAX(top, MIN(self->cursor->y, bottom));
 }
 
-void screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
+void 
+screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
     if (self->modes.mDECOM) {
@@ -566,7 +582,8 @@ void screen_cursor_position(Screen *self, unsigned int line, unsigned int column
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
 }
 
-void screen_cursor_to_line(Screen *self, unsigned int line) {
+void 
+screen_cursor_to_line(Screen *self, unsigned int line) {
     unsigned int y = MAX(line, 1) - 1;
     y += self->margin_top; 
     if (y != self->cursor->y) {
@@ -830,6 +847,13 @@ void screen_request_capabilities(Screen *self, PyObject *q) {
 // }}}
 
 // Python interface {{{
+#define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
+#define WRAP1(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v); Py_RETURN_NONE; }
+#define WRAP1E(name, defval, ...) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v, __VA_ARGS__); Py_RETURN_NONE; }
+#define WRAP1B(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; int b=false; if(!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL; screen_##name(self, v, b); Py_RETURN_NONE; }
+#define WRAP1E(name, defval, ...) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v, __VA_ARGS__); Py_RETURN_NONE; }
+#define WRAP2(name, defval1, defval2) static PyObject* name(Screen *self, PyObject *args) { unsigned int a=defval1, b=defval2; if(!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL; screen_##name(self, a, b); Py_RETURN_NONE; }
+
 static PyObject*
 line(Screen *self, PyObject *val) {
 #define line_doc ""
@@ -887,34 +911,9 @@ consolidate_changes(Screen *self) {
     return tracker_consolidate_changes(self->change_tracker);
 }
 
-static PyObject*
-cursor_back(Screen *self, PyObject *args) {
-#define cursor_back_doc ""
-    unsigned int count = 1;
-    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL;
-    screen_cursor_back(self, count, -1);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
-erase_in_line(Screen *self, PyObject *args) {
-#define erase_in_line_doc ""
-    int private = false;
-    unsigned int how = 0;
-    if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
-    screen_erase_in_line(self, how, private);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
-erase_in_display(Screen *self, PyObject *args) {
-#define erase_in_display_doc ""
-    int private = false;
-    unsigned int how = 0;
-    if (!PyArg_ParseTuple(args, "|Ip", &how, &private)) return NULL;
-    screen_erase_in_display(self, how, private);
-    Py_RETURN_NONE;
-}
+WRAP1E(cursor_back, 1, -1)
+WRAP1B(erase_in_line, 0)
+WRAP1B(erase_in_display, 0)
 
 #define MODE_GETTER(name, uname) \
     static PyObject* name(Screen *self) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } 
@@ -937,22 +936,14 @@ cursor_up(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-#define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
-
 WRAP0(index)
 WRAP0(reverse_index)
 WRAP0(reset)
 WRAP0(set_tab_stop)
+WRAP1(clear_tab_stop, 0)
 WRAP0(backspace)
 WRAP0(tab)
-
-static PyObject*
-resize(Screen *self, PyObject *args) {
-    unsigned int lines = 1, columns = 1;
-    if (!PyArg_ParseTuple(args, "II", &lines, &columns)) return NULL;
-    if (!screen_resize(self, lines, columns)) return NULL;
-    Py_RETURN_NONE;
-}
+WRAP2(resize, 1, 1)
 
 static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
@@ -1042,12 +1033,7 @@ static PyObject* current_char_width(Screen *self) {
     return PyLong_FromUnsignedLong(ans);
 }
 
-#define COUNT_WRAP(name) \
-    static PyObject* name(Screen *self, PyObject *args) { \
-    unsigned int count = 1; \
-    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; \
-    screen_##name(self, count); \
-    Py_RETURN_NONE; }
+#define COUNT_WRAP(name) WRAP1(name, 1)
 COUNT_WRAP(insert_lines)
 COUNT_WRAP(delete_lines)
 COUNT_WRAP(insert_characters)
@@ -1058,7 +1044,7 @@ COUNT_WRAP(cursor_down)
 COUNT_WRAP(cursor_down1)
 COUNT_WRAP(cursor_forward)
 
-#define MND(name, args) {#name, (PyCFunction)name, args, ""},
+#define MND(name, args) {#name, (PyCFunction)name, args, #name},
 
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
@@ -1068,9 +1054,9 @@ static PyMethodDef methods[] = {
     MND(reset, METH_NOARGS)
     METHOD(reset_dirty, METH_NOARGS)
     METHOD(consolidate_changes, METH_NOARGS)
-    METHOD(cursor_back, METH_VARARGS)
-    METHOD(erase_in_line, METH_VARARGS)
-    METHOD(erase_in_display, METH_VARARGS)
+    MND(cursor_back, METH_VARARGS)
+    MND(erase_in_line, METH_VARARGS)
+    MND(erase_in_display, METH_VARARGS)
     METHOD(current_char_width, METH_NOARGS)
     MND(insert_lines, METH_VARARGS)
     MND(delete_lines, METH_VARARGS)
@@ -1087,6 +1073,7 @@ static PyMethodDef methods[] = {
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(set_tab_stop, METH_NOARGS)
+    MND(clear_tab_stop, METH_VARARGS)
     MND(reverse_index, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
