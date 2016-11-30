@@ -15,9 +15,16 @@ static unsigned int pow10[10] = {
 static inline unsigned int 
 utoi(uint32_t *buf, unsigned int sz) {
     unsigned int ans = 0;
+    uint32_t *p = buf;
+    // Ignore leading zeros
+    while(sz > 0) {
+        printf("*p=%c\n", *p);
+        if (*p == '0') { p++; sz--; }
+        else break;
+    }
     if (sz < sizeof(pow10)/sizeof(pow10[10])) {
         for (int i = sz-1, j=0; i >=0; i--, j++) {
-            ans += (buf[i] - '0') * pow10[j];
+            ans += (p[i] - '0') * pow10[j];
         }
     }
     return ans;
