@@ -210,7 +210,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
             }
             break;
         default:
-            if ((screen->parser_buf[0] == '%' && ch == 'G') || (screen->parser_buf[0] == '(' && ch == 'B')) { 
+            if ((screen->parser_buf[0] == '%' && ch == 'G') || ((screen->parser_buf[0] == '(' || screen->parser_buf[0] == ')') && ch == 'B')) { 
                 // switch to utf-8 or ascii, since we are always in utf-8, ignore.
             } else if (screen->parser_buf[0] == '#') {
                 if (ch == '8') {
@@ -574,29 +574,35 @@ END_ALLOW_CASE_RANGE
 #undef ENSURE_SPACE
 }
 
+static inline void
+dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *dump_callback) {
+#define HANDLE(name) handle_##name(screen, codepoint, dump_callback); break
+    switch(screen->parser_state) {
+        case ESC:
+            HANDLE(esc_mode_char);
+        case CSI:
+            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); }
+            break;
+        case OSC:
+            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
+            break;
+        case DCS:
+            if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }
+            if (screen->parser_state == ESC) { HANDLE(esc_mode_char); }
+            break;
+        default:
+            HANDLE(normal_mode_char);
+    }
+#undef HANDLE
+}
+
 static inline void 
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
-#define HANDLE(name) handle_##name(screen, codepoint, dump_callback); break
     uint32_t prev = screen->utf8_state, codepoint = 0;
     for (unsigned int i = 0; i < len; i++, prev = screen->utf8_state) {
         switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
             case UTF8_ACCEPT:
-                switch(screen->parser_state) {
-                    case ESC:
-                        HANDLE(esc_mode_char);
-                    case CSI:
-                        if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); }
-                        break;
-                    case OSC:
-                        if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
-                        break;
-                    case DCS:
-                        if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }
-                        if (screen->parser_state == ESC) { HANDLE(esc_mode_char); }
-                        break;
-                    default:
-                        HANDLE(normal_mode_char);
-                }
+                dispatch_unicode_char(screen, codepoint, dump_callback);
                 break;
             case UTF8_REJECT:
                 screen->utf8_state = UTF8_ACCEPT;
@@ -605,7 +611,6 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
         }
     }
 FLUSH_DRAW;
-#undef HANDLE
 }
 // }}}
 
