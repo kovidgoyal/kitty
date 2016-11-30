@@ -237,7 +237,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                         case '0':
                         case 'U':
                         case 'V':
-                            CALL_ED2(screen_designate_charset, screen->parser_buf[0], ch);
+                            CALL_ED2(screen_designate_charset, screen->parser_buf[0] - '(', ch); break;
                         default:
                             REPORT_ERROR("Unknown charset: 0x%x", ch); break;
                     }
@@ -621,38 +621,30 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
 #undef HANDLE
 }
 
-static inline void
-parse_utf8(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
+static inline void 
+_parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state, codepoint = 0;
-    for (unsigned int i = 0; i < len; i++, prev = screen->utf8_state) {
-        switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
-            case UTF8_ACCEPT:
-                dispatch_unicode_char(screen, codepoint, dump_callback);
+    for (unsigned int i = 0; i < len; i++) {
+        switch(screen->charset) {
+            case 0:
+                dispatch_unicode_char(screen, screen->g0_charset[buf[i]], dump_callback);
                 break;
-            case UTF8_REJECT:
-                screen->utf8_state = UTF8_ACCEPT;
-                if (prev != UTF8_ACCEPT) i--;
+            case 1:
+                dispatch_unicode_char(screen, screen->g1_charset[buf[i]], dump_callback);
+                break;
+            default:
+                switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
+                    case UTF8_ACCEPT:
+                        dispatch_unicode_char(screen, codepoint, dump_callback);
+                        break;
+                    case UTF8_REJECT:
+                        screen->utf8_state = UTF8_ACCEPT;
+                        if (prev != UTF8_ACCEPT) i--;
+                        break;
+                }
                 break;
         }
     }
-
-}
-
-static inline void 
-_parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
-#define DECODE(charset) for (unsigned int i = 0; i < len; i++) dispatch_unicode_char(screen, screen->charset[buf[i]], dump_callback);
-    switch(screen->charset) {
-        case 0:
-            DECODE(g0_charset);
-            break;
-        case 1:
-            DECODE(g1_charset);
-            break;
-        default:
-            parse_utf8(screen, buf, len, dump_callback);
-            break;
-    }
-#undef DECODE
 FLUSH_DRAW;
 }
 // }}}

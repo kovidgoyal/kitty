@@ -69,6 +69,12 @@ class TestParser(BaseTest):
         pb('\033c123', ('screen_reset', ), '123')
         self.ae(str(s.line(0)), '123  ')
 
+    def test_charsets(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033)0\x0e/_', ('screen_designate_charset', 1, ord('0')), ('screen_change_charset', 1), '/\xa0')
+        pb('\033%G_', ('screen_change_charset', 2), '_')
+
     def test_csi_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

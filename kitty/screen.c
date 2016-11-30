@@ -352,6 +352,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 
         case DECCKM:
         case DECSCLM:
+        case DECNRCM:
             break;  // we ignore these modes
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
@@ -1151,6 +1152,7 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
+    {"charset", T_UINT, offsetof(Screen, charset), READONLY, "charset"},
     {NULL}
 };
  

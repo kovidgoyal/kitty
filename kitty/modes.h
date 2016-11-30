@@ -55,6 +55,9 @@
 // *Text Cursor Enable Mode*: determines if the text cursor is visible.
 #define DECTCEM (25 << 5)
 
+// National Replacement Character Set Mode
+#define DECNRCM (42 << 5)
+
 // Xterm mouse protocol
 #define MOUSE_BUTTON_TRACKING (1000 << 5)
 #define MOUSE_MOTION_TRACKING  (1002 << 5)
