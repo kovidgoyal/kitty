@@ -228,6 +228,9 @@
 // Back tab
 #define CBT 'Z'
 
+// Forward tab
+#define CHT 'I'
+
 // Misc sequences
 // ----------------
 

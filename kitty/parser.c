@@ -314,7 +314,9 @@ screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, fa
 static inline void 
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
 static inline void 
-screen_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_index(s); }
+screen_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_index(s); }
+static inline void 
+screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
 static inline void 
 screen_reverse_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_reverse_index(s); }
 
@@ -412,6 +414,8 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CALL_CSI_HANDLER1(screen_cursor_to_line, 1); 
         case CBT:
             CALL_CSI_HANDLER1(screen_backtab, 1); 
+        case CHT:
+            CALL_CSI_HANDLER1(screen_tabn, 1); 
         case CUP:  
         case HVP: 
             CALL_CSI_HANDLER2(screen_cursor_position, 1, 1); 
