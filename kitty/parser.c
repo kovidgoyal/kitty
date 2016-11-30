@@ -18,7 +18,6 @@ utoi(uint32_t *buf, unsigned int sz) {
     uint32_t *p = buf;
     // Ignore leading zeros
     while(sz > 0) {
-        printf("*p=%c\n", *p);
         if (*p == '0') { p++; sz--; }
         else break;
     }
