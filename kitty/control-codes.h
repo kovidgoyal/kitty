@@ -223,7 +223,7 @@
 #define DECSTBM 'r'
 
 // *Horizontal position adjust*: Same as :data:`CHA`.
-#define HPA '\''
+#define HPA '`'
 
 
 // Misc sequences
