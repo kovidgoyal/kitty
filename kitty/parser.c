@@ -320,7 +320,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define SET_MODE(func) \
     p1 = start_modifier == '?' ? 5 : 0; \
     for (i = 0; i < num_params; i++) { \
-        REPORT_COMMAND(func, params[i] << p1); \
+        REPORT_COMMAND(func, params[i], start_modifier == '?'); \
         func(screen, params[i] << p1); \
     } \
     break;

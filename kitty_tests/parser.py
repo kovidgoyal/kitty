@@ -92,9 +92,9 @@ class TestParser(BaseTest):
         pb('\033[?J', ('screen_erase_in_display', 0, 1))
         pb('\033[?2J', ('screen_erase_in_display', 2, 1))
         pb('\033[h')
-        pb('\033[20;4h', ('screen_set_mode', 20), ('screen_set_mode', 4))
-        pb('\033[?1000;1004h', ('screen_set_mode', 1000 << 5), ('screen_set_mode', 1004 << 5))
-        pb('\033[20;4;20l', ('screen_reset_mode', 20), ('screen_reset_mode', 4), ('screen_reset_mode', 20))
+        pb('\033[20;4h', ('screen_set_mode', 20, 0), ('screen_set_mode', 4, 0))
+        pb('\033[?1000;1004h', ('screen_set_mode', 1000, 1), ('screen_set_mode', 1004, 1))
+        pb('\033[20;4;20l', ('screen_reset_mode', 20, 0), ('screen_reset_mode', 4, 0), ('screen_reset_mode', 20, 0))
         s.reset()
         pb('\033[1;3;4;7;9;34;44m', ('select_graphic_rendition', '1 3 4 7 9 34 44 '))
         for attr in 'bold italic reverse strikethrough'.split():
