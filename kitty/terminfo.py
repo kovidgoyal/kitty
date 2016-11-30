@@ -28,6 +28,12 @@ bool_capabilities = {
     'npc',
     # eat_newline_glitch (newline ignored after 80 columns)
     'xenl',
+
+    # The following are entries from termite's terminfo that we dont need
+    # # background color erase
+    # 'bce',
+    # # has extra status line
+    # 'hs',
 }
 
 termcap_aliases.update({
@@ -204,6 +210,8 @@ string_capabilities = {
     'sgr': r'%?%p9%t\E(0%e\E(B%;\E[0%?%p6%t;1%;%?%p2%t;4%;%?%p1%p3%|%t;7%;%?%p4%t;5%;%?%p7%t;8%;m',
     # Clear all attributes
     'sgr0': r'\E(B\E[m',
+    # Reset color pair to its original value
+    'op': r'\E[39;49m',
     # Turn on automatic margins
     'smam': r'\E[?7h',
     # Start alternate screen
@@ -237,6 +245,22 @@ string_capabilities = {
     'ka3': r'',
     'kc1': r'',
     'kc3': r'',
+
+    # The following are entries from termite's terminfo that we dont need
+    # # display status line
+    # 'dsl': r'\E]2;\007',
+    # # return from status line
+    # 'fsl': r'^G',
+    # # turn on blank mode, (characters invisible)
+    # 'invis': r'\E[8m',
+    # # init2 string
+    # 'is2': r'\E[!p\E[?3;4l\E[4l\E>',
+    # # Enter/send key
+    # 'kent': r'\EOM',
+    # # scroll forwards
+    # 'kind': r'\E[1;2B',
+    # # reset2
+    # 'rs2': r'\E[!p\E[?3;4l\E[4l\E>',
 }
 
 termcap_aliases.update({
@@ -322,6 +346,7 @@ termcap_aliases.update({
     'AF': 'setaf',
     'sa': 'sgr',
     'me': 'sgr0',
+    'op': 'op',
     'SA': 'smam',
     'ti': 'smcup',
     'im': 'smir',
@@ -343,6 +368,17 @@ termcap_aliases.update({
     'K3': 'ka3',
     'K4': 'kc1',
     'K5': 'kc3',
+
+
+    # 'ut': 'bce',
+    # 'hs': 'hs',
+    # 'ds': 'dsl',
+    # 'fs': 'fsl',
+    # 'mk': 'invis',
+    # 'is': 'is2',
+    # '@8': 'kent',
+    # 'kF': 'kind',
+    # 'r2': 'rs2',
 })
 
 queryable_capabilities = numeric_capabilities.copy()
