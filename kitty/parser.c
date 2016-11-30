@@ -356,6 +356,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 break;
             default:
                 if (i > start) params[num_params++] = utoi(buf + start, i - start);
+                else if (i == start && buf[i] == ';') params[num_params++] = 0;
                 if (num_params >= MAX_PARAMS) { i = num; start = num + 1; }
                 start = i + 1;
                 break;

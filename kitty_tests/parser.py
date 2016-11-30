@@ -108,6 +108,7 @@ class TestParser(BaseTest):
         pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 48 2 7 8 9 '))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
+        pb('\033[;2m', ('select_graphic_rendition', '0 2 '))
         c = s.callbacks
         pb('\033[5n', ('report_device_status', 5, 0))
         self.ae(c.wtcbuf, b'\033[0n')
