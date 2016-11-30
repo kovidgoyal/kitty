@@ -34,6 +34,7 @@ def option_parser():
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
     a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
     a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
+    a('--replay-commands', default=None, help=_('Replay previously dumped commands'))
     a('args', nargs=argparse.REMAINDER, help=_(
         'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
         ' directly to the program being invoked.'
@@ -102,6 +103,10 @@ def main():
     args = option_parser().parse_args()
     if args.cmd:
         exec(args.cmd)
+        return
+    if args.replay_commands:
+        from kitty.client import main
+        main(args.replay_commands)
         return
     opts = load_config(args.config)
     glfw_set_error_callback(on_glfw_error)
