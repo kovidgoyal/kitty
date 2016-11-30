@@ -56,7 +56,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 void screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
-    linebuf_clear(self->linebuf);
+    linebuf_clear(self->linebuf, ' ');
     self->modes = empty_modes;
     self->utf8_state = 0;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -187,6 +187,13 @@ screen_draw(Screen *self, uint32_t ch) {
         }
     }
     if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
+}
+
+void
+screen_align(Screen *self) {
+    self->margin_top = 0; self->margin_bottom = self->lines - 1;
+    screen_cursor_position(self, 1, 1);
+    linebuf_clear(self->linebuf, 'E');
 }
 
 // }}}

@@ -9,16 +9,16 @@
 #include <structmember.h>
 
 static inline void
-clear_chars_to_space(LineBuf* linebuf, index_type y) {
+clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     char_type *chars = linebuf->chars + linebuf->xnum * y;
-    for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | 32;
+    for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | ch;
 }
 
-void linebuf_clear(LineBuf *self) {
+void linebuf_clear(LineBuf *self, char_type ch) {
     memset(self->buf, 0, self->block_size * CELL_SIZE);
     memset(self->continued_map, 0, self->ynum * sizeof(bool));
     for (index_type i = 0; i < self->ynum; i++) {
-        clear_chars_to_space(self, i);
+        clear_chars_to(self, i, ch);
         self->line_map[i] = i;
     }
 }
@@ -26,7 +26,7 @@ void linebuf_clear(LineBuf *self) {
 static PyObject*
 clear(LineBuf *self) {
 #define clear_doc "Clear all lines in this LineBuf"
-    linebuf_clear(self);
+    linebuf_clear(self, ' ');
     Py_RETURN_NONE;
 }
 
@@ -69,7 +69,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             self->line->xnum = xnum;
             for(index_type i = 0; i < ynum; i++) {
                 self->line_map[i] = i;
-                clear_chars_to_space(self, i);
+                clear_chars_to(self, i, ' ');
             }
         }
     }

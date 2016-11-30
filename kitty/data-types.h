@@ -318,7 +318,7 @@ void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 
 void linebuf_init_line(LineBuf *, index_type);
-void linebuf_clear(LineBuf *);
+void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
@@ -333,6 +333,7 @@ void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 
+void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);

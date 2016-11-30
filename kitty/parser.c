@@ -191,6 +191,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                 case '.':
                 case '/':
                 case ' ':
+                case '#':
                     screen->parser_buf[screen->parser_buf_pos++] = ch;
                     break;
                 default:
@@ -201,6 +202,12 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
         default:
             if ((screen->parser_buf[0] == '%' && ch == 'G') || (screen->parser_buf[0] == '(' && ch == 'B')) { 
                 // switch to utf-8 or ascii, since we are always in utf-8, ignore.
+            } else if (screen->parser_buf[0] == '#') {
+                if (ch == '8') {
+                    screen_align(screen);
+                } else {
+                    REPORT_ERROR("Unhandled Esc # code: 0x%x", ch);
+                }
             } else {
                 REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], ch);
             }
