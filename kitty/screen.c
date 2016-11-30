@@ -540,6 +540,7 @@ screen_save_cursor(Screen *self) {
     cursor_copy_to(self->cursor, &(sp->cursor));
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
+    sp->mDECSCNM = self->modes.mDECSCNM;
     sp->utf8_state = self->utf8_state;
 }
 
@@ -551,10 +552,12 @@ screen_restore_cursor(Screen *self) {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
         screen_reset_mode(self, DECOM);
+        screen_reset_mode(self, DECSCNM);
     } else {
         self->utf8_state = sp->utf8_state;
-        if (sp->mDECOM) screen_set_mode(self, DECOM);
-        if (sp->mDECAWM) screen_set_mode(self, DECAWM);
+        set_mode_from_const(self, DECOM, sp->mDECOM);
+        set_mode_from_const(self, DECAWM, sp->mDECAWM);
+        set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
         cursor_copy_to(&(sp->cursor), self->cursor);
         screen_ensure_bounds(self, false);
     }

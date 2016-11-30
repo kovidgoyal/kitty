@@ -239,6 +239,7 @@ typedef struct {
     Cursor cursor;
     bool mDECOM;
     bool mDECAWM;
+    bool mDECSCNM;
 
 } Savepoint;
 
