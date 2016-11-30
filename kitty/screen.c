@@ -381,10 +381,13 @@ void screen_reset_mode(Screen *self, unsigned int mode) {
 
 // Cursor {{{
 
-void screen_backspace(Screen *self) {
+void 
+screen_backspace(Screen *self) {
     screen_cursor_back(self, 1, -1);
 }
-void screen_tab(Screen *self) {
+
+void 
+screen_tab(Screen *self) {
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
     unsigned int found = 0;
     for (unsigned int i = self->cursor->x + 1; i < self->columns; i++) {
@@ -397,7 +400,8 @@ void screen_tab(Screen *self) {
     }
 }
 
-void screen_clear_tab_stop(Screen *self, unsigned int how) {
+void 
+screen_clear_tab_stop(Screen *self, unsigned int how) {
     switch(how) {
         case 0:
             if (self->cursor->x < self->columns) self->tabstops[self->cursor->x] = false;
@@ -408,7 +412,8 @@ void screen_clear_tab_stop(Screen *self, unsigned int how) {
     }
 }
 
-void screen_set_tab_stop(Screen *self) {
+void 
+screen_set_tab_stop(Screen *self) {
     if (self->cursor->x < self->columns)
         self->tabstops[self->cursor->x] = true;
 }
@@ -848,13 +853,6 @@ draw(Screen *self, PyObject *src) {
 }
 
 static PyObject*
-reset(Screen *self) {
-#define reset_doc ""
-    screen_reset(self);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 reset_mode(Screen *self, PyObject *args) {
 #define reset_mode_doc ""
     int private = false;
@@ -939,17 +937,14 @@ cursor_up(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-index(Screen *self) {
-    screen_index(self);
-    Py_RETURN_NONE;
-}
+#define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
 
-static PyObject*
-reverse_index(Screen *self) {
-    screen_reverse_index(self);
-    Py_RETURN_NONE;
-}
+WRAP0(index)
+WRAP0(reverse_index)
+WRAP0(reset)
+WRAP0(set_tab_stop)
+WRAP0(backspace)
+WRAP0(tab)
 
 static PyObject*
 resize(Screen *self, PyObject *args) {
@@ -1070,7 +1065,7 @@ static PyMethodDef methods[] = {
     METHOD(draw, METH_O)
     METHOD(set_mode, METH_VARARGS)
     METHOD(reset_mode, METH_VARARGS)
-    METHOD(reset, METH_NOARGS)
+    MND(reset, METH_NOARGS)
     METHOD(reset_dirty, METH_NOARGS)
     METHOD(consolidate_changes, METH_NOARGS)
     METHOD(cursor_back, METH_VARARGS)
@@ -1089,6 +1084,9 @@ static PyMethodDef methods[] = {
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
     MND(index, METH_NOARGS)
+    MND(tab, METH_NOARGS)
+    MND(backspace, METH_NOARGS)
+    MND(set_tab_stop, METH_NOARGS)
     MND(reverse_index, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
