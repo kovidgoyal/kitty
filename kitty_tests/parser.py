@@ -83,6 +83,7 @@ class TestParser(BaseTest):
         pb('\033[H', ('screen_cursor_position', 1, 1))
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 0)
         pb('\033[4H', ('screen_cursor_position', 4, 1))
+        pb('\033[4;0H', ('screen_cursor_position', 4, 0))
         pb('\033[3;2H', ('screen_cursor_position', 3, 2))
         pb('\033[3;2;H', ('screen_cursor_position', 3, 2))
         pb('\033[00000000003;0000000000000002H', ('screen_cursor_position', 3, 2))
