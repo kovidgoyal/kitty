@@ -157,7 +157,10 @@ glfw_swap_interval(PyObject UNUSED *self, PyObject *args) {
 PyObject*
 glfw_wait_events(PyObject UNUSED *self, PyObject *args) {
     double time = -1;
-    if(!PyArg_ParseTuple(args, "|d", &time)) return NULL;
+    if (PyTuple_GET_SIZE(args) > 0) {
+        time = PyFloat_AsDouble(PyTuple_GET_ITEM(args, 0));
+        if (PyErr_Occurred()) PyErr_Clear();
+    }
     Py_BEGIN_ALLOW_THREADS;
     if (time < 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(time);
