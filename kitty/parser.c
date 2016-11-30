@@ -25,6 +25,7 @@ utoi(uint32_t *buf, unsigned int sz) {
 // }}}
 
 // Macros {{{
+#define MAX_PARAMS 256
 #define IS_DIGIT \
     case '0': \
     case '1': \
@@ -39,7 +40,8 @@ utoi(uint32_t *buf, unsigned int sz) {
 
 
 #ifdef DUMP_COMMANDS
-static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
+static void 
+_report_error(PyObject *dump_callback, const char *fmt, ...) {
     va_list argptr;
     va_start(argptr, fmt);
     PyObject *temp = PyUnicode_FromFormatV(fmt, argptr);
@@ -48,6 +50,17 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
         Py_XDECREF(PyObject_CallFunctionObjArgs(dump_callback, temp, NULL)); PyErr_Clear();
         Py_CLEAR(temp);
     }
+}
+
+static void 
+_report_params(PyObject *dump_callback, const char *name, unsigned int *params, unsigned int count) {
+    static char buf[MAX_PARAMS*3] = {0};
+    unsigned int i, p;
+    for(i = 0, p=0; i < count && p < MAX_PARAMS*3-20; i++) {
+        p += snprintf(buf + p, MAX_PARAMS*3 - p, "%u ", params[i]);
+    }
+    buf[p] = 0;
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "ss", name, buf)); PyErr_Clear();
 }
 
 #define DUMP_UNUSED
@@ -69,6 +82,8 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", "draw", ch)); PyErr_Clear();
 
+#define REPORT_PARAMS(name, params, num) _report_params(dump_callback, #name, params, num_params)
+
 #define FLUSH_DRAW \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", "draw", Py_None)); PyErr_Clear();
 
@@ -83,6 +98,7 @@ static void _report_error(PyObject *dump_callback, const char *fmt, ...) {
 
 #define REPORT_COMMAND(...)
 #define REPORT_DRAW(ch)
+#define REPORT_PARAMS(...)
 #define FLUSH_DRAW
 #define REPORT_OSC(name, string)
 
@@ -243,7 +259,6 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // }}}
 
 // CSI mode {{{
-#define MAX_PARAMS 256
 #define CSI_SECONDARY \
         case ';': \
         case '"': \
@@ -298,7 +313,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     break;
 
 #define CSI_HANDLER_MULTIPLE(name) \
-    REPORT_COMMAND(name, num_params); \
+    REPORT_PARAMS(name, params, num_params); \
     name(screen, params, num_params); \
     break;
 
