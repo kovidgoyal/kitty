@@ -856,7 +856,6 @@ void screen_request_capabilities(Screen *self, PyObject *q) {
 
 static PyObject*
 line(Screen *self, PyObject *val) {
-#define line_doc ""
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->lines) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
     linebuf_init_line(self->linebuf, y);
@@ -866,7 +865,6 @@ line(Screen *self, PyObject *val) {
 
 static PyObject*
 draw(Screen *self, PyObject *src) {
-#define draw_doc ""
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
     int kind = PyUnicode_KIND(src);
@@ -878,7 +876,6 @@ draw(Screen *self, PyObject *src) {
 
 static PyObject*
 reset_mode(Screen *self, PyObject *args) {
-#define reset_mode_doc ""
     int private = false;
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
@@ -889,7 +886,6 @@ reset_mode(Screen *self, PyObject *args) {
  
 static PyObject*
 set_mode(Screen *self, PyObject *args) {
-#define set_mode_doc ""
     int private = false;
     unsigned int mode;
     if (!PyArg_ParseTuple(args, "I|p", &mode, &private)) return NULL;
@@ -900,14 +896,12 @@ set_mode(Screen *self, PyObject *args) {
 
 static PyObject*
 reset_dirty(Screen *self) {
-#define reset_dirty_doc ""
     tracker_reset(self->change_tracker);
     Py_RETURN_NONE;
 }
 
 static PyObject*
 consolidate_changes(Screen *self) {
-#define consolidate_changes_doc ""
     return tracker_consolidate_changes(self->change_tracker);
 }
 
@@ -1047,13 +1041,13 @@ COUNT_WRAP(cursor_forward)
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 
 static PyMethodDef methods[] = {
-    METHOD(line, METH_O)
-    METHOD(draw, METH_O)
-    METHOD(set_mode, METH_VARARGS)
-    METHOD(reset_mode, METH_VARARGS)
+    MND(line, METH_O)
+    MND(draw, METH_O)
+    MND(set_mode, METH_VARARGS)
+    MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)
-    METHOD(reset_dirty, METH_NOARGS)
-    METHOD(consolidate_changes, METH_NOARGS)
+    MND(reset_dirty, METH_NOARGS)
+    MND(consolidate_changes, METH_NOARGS)
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
