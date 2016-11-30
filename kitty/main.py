@@ -74,11 +74,11 @@ def run_app(opts, args):
             tabs.render()
             window.swap_buffers()
             glfw_wait_events()
-            try:
-                func, args = tabs.pending_ui_thread_calls.get_nowait()
-            except Empty:
-                pass
-            else:
+            while True:
+                try:
+                    func, args = tabs.pending_ui_thread_calls.get_nowait()
+                except Empty:
+                    break
                 try:
                     func(*args)
                 except Exception:
