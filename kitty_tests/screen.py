@@ -288,12 +288,23 @@ class TestScreen(BaseTest):
             region = s.lines - 6
             s.set_margins(3, region + 3)
             s.set_mode(DECOM)
-            for i, ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
+            for i in range(26):
+                ch = chr(ord('A') + i)
                 which = i % 4
                 if which == 0:
                     s.cursor_position(region + 1, 1), s.draw(ch)
                     s.cursor_position(region + 1, s.columns), s.draw(ch.lower())
                     nl()
+                elif which == 1:
+                    # Simple wrapping
+                    s.cursor_position(region, s.columns), s.draw(chr(ord('A') + i - 1).lower() + ch)
+                    # Backspace at right margin
+                    s.cursor_position(region + 1, s.columns), s.draw(ch), s.backspace(), s.draw(ch.lower())
+                    nl()
+                elif which == 2:
+                    # Tab to right margin
+                    s.cursor_position(region + 1, s.columns), s.draw(ch), s.backspace(), s.backspace(), s.tab(), s.tab(), s.draw(ch.lower())
+                    s.cursor_position(region + 1, 2), s.backspace(), s.draw(ch), nl()
                 else:
                     s.cursor_position(region + 1, 1), nl()
                     s.cursor_position(region, 1), s.draw(ch)
