@@ -331,12 +331,11 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             }
             break;
         case DECSCNM: 
-            // Mark all displayed characters as reverse.
-            self->modes.mDECSCNM = val; 
-            linebuf_set_attribute(self->linebuf, REVERSE_SHIFT, 0);
-            tracker_update_screen(self->change_tracker);
-            self->cursor->reverse = val;
-            tracker_cursor_changed(self->change_tracker);
+            // Render screen in reverse video
+            if (self->modes.mDECSCNM != val) {
+                self->modes.mDECSCNM = val; 
+                tracker_update_screen(self->change_tracker);
+            }
             break;
         case DECOM: 
             self->modes.mDECOM = val; 
@@ -965,7 +964,7 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
     unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
 
-    if (!tracker_update_cell_data(self->change_tracker, self->linebuf, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
+    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
     return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
@@ -985,7 +984,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(spm, self->historybuf->line, 0, self->columns - 1, color_profile, default_bg, default_fg, data)) return NULL;
+        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, color_profile, default_bg, default_fg, data)) return NULL;
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer

@@ -140,11 +140,12 @@ position_for(SpriteMap *self, PyObject *args) {
 }
 
 bool
-update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
+update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
     SpritePosition *sp;
     char_type previous_ch=0, ch;
     uint8_t previous_width = 0;
     int err = 0;
+    const bool screen_reversed = modes->mDECSCNM;
 
     size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
     for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
@@ -155,30 +156,17 @@ update_cell_range_data(SpriteMap *self, Line *line, unsigned int xstart, unsigne
         char_type attrs = ch >> ATTRS_SHIFT;
         unsigned int decoration = (attrs >> DECORATION_SHIFT) & DECORATION_MASK;
         unsigned int strikethrough = ((attrs >> STRIKE_SHIFT) & 1) ? 3 : 0;
+        bool reverse = ((attrs >> REVERSE_SHIFT) & 1) ^ screen_reversed;
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
-        data[offset+3] = to_color(color_profile, line->colors[i] & COL_MASK, default_fg);
-        data[offset+4] = to_color(color_profile, line->colors[i] >> COL_SHIFT, default_bg);
+        data[offset+(reverse ? 4 : 3)] = to_color(color_profile, line->colors[i] & COL_MASK, default_fg);
+        data[offset+(reverse ? 3 : 4)] = to_color(color_profile, line->colors[i] >> COL_SHIFT, default_bg);
         unsigned int decoration_fg = decoration > 1 ? to_color(color_profile, line->decoration_fg[i] & COL_MASK, data[offset+3]) : data[offset+3];
         data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
         previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }
     return true;
-}
-
-static PyObject*
-update_cell_data(SpriteMap *self, PyObject *args) {
-#define update_cell_data_doc "update_cell_data(line, xstart, xmax, color_profile, default_bg, default_fg, data_pointer) -> Update the range [xstart, xmax] in data_pointer with the data from line"
-    unsigned int xstart, xmax;
-    uint32_t default_fg, default_bg;
-    Line *line; ColorProfile *color_profile;
-    PyObject *data_pointer;
-
-    if (!PyArg_ParseTuple(args, "O!IIO!IIO!", &Line_Type, &line, &xstart, &xmax, &ColorProfile_Type, &color_profile, &default_bg, &default_fg, &PyLong_Type, &data_pointer)) return NULL;
-    unsigned int *dp = PyLong_AsVoidPtr(data_pointer);
-    if (!update_cell_range_data(self, line, xstart, xmax, color_profile, default_bg, default_fg, dp)) return NULL;
-    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -230,7 +218,6 @@ static PyMethodDef methods[] = {
     METHOD(layout, METH_VARARGS)
     METHOD(position_for, METH_VARARGS)
     METHOD(render_dirty_cells, METH_VARARGS)
-    METHOD(update_cell_data, METH_VARARGS)
     METHOD(increment, METH_NOARGS)
     {NULL}  /* Sentinel */
 };

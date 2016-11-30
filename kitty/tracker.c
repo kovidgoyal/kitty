@@ -97,7 +97,7 @@ update_cell_range(ChangeTracker *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-bool tracker_update_cell_data(ChangeTracker *self, LineBuf *lb, SpriteMap *spm, ColorProfile *color_profile, unsigned int *data, unsigned long default_fg, unsigned long default_bg, bool force_screen_refresh) {
+bool tracker_update_cell_data(ScreenModes *modes, ChangeTracker *self, LineBuf *lb, SpriteMap *spm, ColorProfile *color_profile, unsigned int *data, unsigned long default_fg, unsigned long default_bg, bool force_screen_refresh) {
     unsigned int y;
     Py_ssize_t start;
     default_fg &= COL_MASK;
@@ -105,7 +105,7 @@ bool tracker_update_cell_data(ChangeTracker *self, LineBuf *lb, SpriteMap *spm, 
 
 #define UPDATE_RANGE(xstart, xmax) \
     linebuf_init_line(lb, y); \
-    if (!update_cell_range_data(spm, lb->line, (xstart), (xmax), color_profile, default_bg, default_fg, data)) return false;
+    if (!update_cell_range_data(modes, spm, lb->line, (xstart), (xmax), color_profile, default_bg, default_fg, data)) return false;
 
     if (self->screen_changed || force_screen_refresh) {
         for (y = 0; y < self->ynum; y++) {
@@ -138,24 +138,6 @@ bool tracker_update_cell_data(ChangeTracker *self, LineBuf *lb, SpriteMap *spm, 
     }
     tracker_reset(self);
     return true;
-}
-
-PyObject*
-update_cell_data(ChangeTracker *self, PyObject *args) {
-#define update_cell_data_doc "update_cell_data(line_buf, sprite_map, color_profile, data_ptr, default_fg, default_bg, force_screen_refresh)"
-    SpriteMap *spm;
-    LineBuf *lb;
-    ColorProfile *color_profile;
-    PyObject *dp;
-    unsigned int *data;
-    unsigned long default_bg, default_fg;
-    int force_screen_refresh;
-    if (!PyArg_ParseTuple(args, "O!O!O!O!kkp", &LineBuf_Type, &lb, &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
-    data = PyLong_AsVoidPtr(dp);
-    PyObject *cursor_changed = self->cursor_changed ? Py_True : Py_False;
-    if (!tracker_update_cell_data(self, lb, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
-    Py_INCREF(cursor_changed);
-    return cursor_changed;
 }
 
 static inline PyObject*
@@ -252,7 +234,6 @@ static PyGetSetDef getseters[] = {
 
 static PyMethodDef methods[] = {
     METHOD(resize, METH_VARARGS)
-    METHOD(update_cell_data, METH_VARARGS)
     METHOD(reset, METH_NOARGS)
     METHOD(cursor_changed, METH_NOARGS)
     {"consolidate_changes", (PyCFunction)tracker_consolidate_changes, METH_NOARGS, ""},
