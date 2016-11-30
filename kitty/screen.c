@@ -26,8 +26,9 @@ init_tabstops(bool *tabstops, index_type count) {
 #define RESET_CHARSETS \
         self->g0_charset = translation_table(0); \
         self->g1_charset = self->g0_charset; \
-        self->charset = 2; \
-        self->utf8_state = 0; 
+        self->g_charset = self->g0_charset; \
+        self->utf8_state = 0; \
+        self->use_latin1 = false; 
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -152,9 +153,13 @@ dealloc(Screen* self) {
 // Draw text {{{
  
 void 
-screen_change_charset(Screen *self, uint32_t to) {
-    self->charset = to;
-    self->utf8_state = 0;
+screen_change_charset(Screen *self, uint32_t which) {
+    switch(which) {
+        case 0:
+            self->g_charset = self->g0_charset; break;
+        case 1:
+            self->g_charset = self->g1_charset; break;
+    }
 }
 
 void 
@@ -178,8 +183,9 @@ safe_wcwidth(uint32_t ch) {
 }
 
 void
-screen_draw(Screen *self, uint32_t ch) {
-    if (is_ignored_char(ch)) return;
+screen_draw(Screen *self, uint32_t och) {
+    if (is_ignored_char(och)) return;
+    uint32_t ch = och < 256 ? self->g_charset[och] : och;
     unsigned int x = self->cursor->x, y = self->cursor->y;
     unsigned int char_width = safe_wcwidth(ch);
     if (self->columns - self->cursor->x < char_width) {
@@ -584,7 +590,8 @@ savepoints_pop(SavepointBuffer *self) {
     sp->utf8_state = self->utf8_state; \
     sp->g0_charset = self->g0_charset; \
     sp->g1_charset = self->g1_charset; \
-    sp->charset = self->charset; \
+    sp->g_charset = self->g_charset; \
+    sp->use_latin1 = self->use_latin1;
 
 void 
 screen_save_cursor(Screen *self) {

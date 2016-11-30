@@ -235,8 +235,8 @@ PyTypeObject ScreenModes_Type;
 #define SAVEPOINTS_SZ 256
 
 typedef struct {
-    unsigned int charset;
-    uint32_t utf8_state, *g0_charset, *g1_charset;
+    uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
+    bool use_latin1;
     Cursor cursor;
     bool mDECOM;
     bool mDECAWM;
@@ -258,7 +258,8 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset;
-    uint32_t utf8_state, *g0_charset, *g1_charset;
+    uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
+    bool use_latin1;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     PyObject *callbacks;
@@ -379,6 +380,7 @@ void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
+uint32_t *latin1_charset;
 void screen_request_capabilities(Screen *, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);

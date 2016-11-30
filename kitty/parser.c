@@ -218,9 +218,11 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                 case '%':
                     switch(ch) {
                         case '@':
-                            CALL_ED1(screen_change_charset, 0); break;
+                            REPORT_COMMAND(screen_use_latin1, 1);
+                            screen->use_latin1 = true; screen->utf8_state = 0; break;
                         case 'G':
-                            CALL_ED1(screen_change_charset, 2); break;
+                            REPORT_COMMAND(screen_use_latin1, 0);
+                            screen->use_latin1 = false; screen->utf8_state = 0; break;
                         default:
                             REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
                     }
@@ -631,12 +633,9 @@ static inline void
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state, codepoint = 0;
     for (unsigned int i = 0; i < len; i++) {
-        switch(screen->charset) {
-            case 0:
-                dispatch_unicode_char(screen, screen->g0_charset[buf[i]], dump_callback);
-                break;
-            case 1:
-                dispatch_unicode_char(screen, screen->g1_charset[buf[i]], dump_callback);
+        switch(screen->use_latin1) {
+            case true:
+                dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
                 break;
             default:
                 switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
