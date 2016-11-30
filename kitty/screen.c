@@ -406,9 +406,14 @@ screen_clear_tab_stop(Screen *self, unsigned int how) {
         case 0:
             if (self->cursor->x < self->columns) self->tabstops[self->cursor->x] = false;
             break;
+        case 2:
+            break;  // no-op
         case 3:
-            break;
             for (unsigned int i = 0; i < self->columns; i++) self->tabstops[i] = false;
+            break;
+        default:
+            fprintf(stderr, "%s %s %u\n", ERROR_PREFIX, "Unsupported clear tab stop mode: ", how);
+            break;
     }
 }
 
@@ -1027,6 +1032,8 @@ static PyObject* current_char_width(Screen *self) {
     return PyLong_FromUnsignedLong(ans);
 }
 
+WRAP2(cursor_position, 1, 1)
+
 #define COUNT_WRAP(name) WRAP1(name, 1)
 COUNT_WRAP(insert_lines)
 COUNT_WRAP(delete_lines)
@@ -1043,6 +1050,7 @@ COUNT_WRAP(cursor_forward)
 static PyMethodDef methods[] = {
     MND(line, METH_O)
     MND(draw, METH_O)
+    MND(cursor_position, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)

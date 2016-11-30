@@ -246,3 +246,28 @@ class TestScreen(BaseTest):
         for i in range(s.lines):
             self.ae(str(hb.line(i)), '3')
         self.ae(str(hb.line(5)), '2')
+
+    def test_tab_stops(self):
+        # Taken from vttest/main.c
+        s = self.create_screen(cols=80, lines=2)
+        s.cursor_position(1, 1)
+        s.clear_tab_stop(3)
+        for col in range(1, s.columns - 1, 3):
+            s.cursor_forward(3)
+            s.set_tab_stop()
+        s.cursor_position(1, 4)
+        for col in range(4, s.columns - 1, 6):
+            s.clear_tab_stop(0)
+            s.cursor_forward(6)
+        s.cursor_position(1, 7)
+        s.clear_tab_stop(2)
+        s.cursor_position(1, 1)
+        for col in range(1, s.columns - 1, 6):
+            s.tab()
+            s.draw('*')
+        s.cursor_position(2, 2)
+        for col in range(2, s.columns - 1, 6):
+            for i in range(5):
+                s.draw(' ')
+            s.draw('*')
+        self.ae(str(s.line(0)), str(s.line(1)))
