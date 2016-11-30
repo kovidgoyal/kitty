@@ -225,6 +225,8 @@
 // *Horizontal position adjust*: Same as :data:`CHA`.
 #define HPA '`'
 
+// Back tab
+#define CBT 'Z'
 
 // Misc sequences
 // ----------------

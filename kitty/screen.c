@@ -431,6 +431,22 @@ screen_tab(Screen *self) {
 }
 
 void 
+screen_backtab(Screen *self, unsigned int count) {
+    // Move back count tabs
+    if (!count) count = 1;
+    unsigned int before = self->cursor->x;
+    int i;
+    while (count > 0 && self->cursor->x > 0) {
+        count--;
+        for (i = self->cursor->x - 1; i >= 0; i--) {
+            if (self->tabstops[i]) { self->cursor->x = i; break; }
+        }
+        if (i <= 0) self->cursor->x = 0;
+    }
+    if (before != self->cursor->x) tracker_cursor_changed(self->change_tracker);
+}
+
+void 
 screen_clear_tab_stop(Screen *self, unsigned int how) {
     switch(how) {
         case 0:

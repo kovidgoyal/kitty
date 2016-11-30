@@ -410,6 +410,8 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CALL_CSI_HANDLER1(screen_cursor_to_column, 1); 
         case VPA: 
             CALL_CSI_HANDLER1(screen_cursor_to_line, 1); 
+        case CBT:
+            CALL_CSI_HANDLER1(screen_backtab, 1); 
         case CUP:  
         case HVP: 
             CALL_CSI_HANDLER2(screen_cursor_position, 1, 1); 
