@@ -62,11 +62,11 @@ class TestParser(BaseTest):
     def test_esc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('12\033Da', '12', ('screen_index', ord('D')), 'a')
+        pb('12\033Da', '12', ('screen_index',), 'a')
         self.ae(str(s.line(0)), '12   ')
         self.ae(str(s.line(1)), '  a  ')
         pb('\033x', ('Unknown char after ESC: 0x%x' % ord('x'),))
-        pb('\033c123', ('screen_reset', ord('c')), '123')
+        pb('\033c123', ('screen_reset', ), '123')
         self.ae(str(s.line(0)), '123  ')
 
     def test_csi_codes(self):

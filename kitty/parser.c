@@ -135,10 +135,12 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
             CALL_SCREEN_HANDLER(screen_linefeed);
         case CR:
             CALL_SCREEN_HANDLER(screen_carriage_return);
-        case SO:
-            REPORT_ERROR("Unhandled charset change command (SO), ignoring"); break;
         case SI:
-            REPORT_ERROR("Unhandled charset change command (SI), ignoring"); break;
+            REPORT_COMMAND(screen_change_charset, 0);
+            screen_change_charset(screen, 0); break;
+        case SO:
+            REPORT_COMMAND(screen_change_charset, 1);
+            screen_change_charset(screen, 1); break;
         case IND:
             CALL_SCREEN_HANDLER(screen_index);
         case RI:
@@ -164,7 +166,9 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
 // Esc mode {{{
 static inline void 
 handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
-#define CALL_ED(name) REPORT_COMMAND(name, ch); name(screen); SET_STATE(0); break;
+#define CALL_ED(name) REPORT_COMMAND(name); name(screen); SET_STATE(0); 
+#define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(screen, ch); SET_STATE(0); 
+#define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(screen, a, b); SET_STATE(0); 
     switch(screen->parser_buf_pos) {
         case 0:
             switch (ch) {
@@ -175,23 +179,23 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                 case ESC_CSI:
                     SET_STATE(CSI); break;
                 case ESC_RIS:
-                    CALL_ED(screen_reset);
+                    CALL_ED(screen_reset); break;
                 case ESC_IND:
-                    CALL_ED(screen_index);
+                    CALL_ED(screen_index); break;
                 case ESC_NEL:
-                    CALL_ED(screen_nel);
+                    CALL_ED(screen_nel); break;
                 case ESC_RI:
-                    CALL_ED(screen_reverse_index);
+                    CALL_ED(screen_reverse_index); break;
                 case ESC_HTS:
-                    CALL_ED(screen_set_tab_stop);
+                    CALL_ED(screen_set_tab_stop); break;
                 case ESC_DECSC:
-                    CALL_ED(screen_save_cursor);
+                    CALL_ED(screen_save_cursor); break;
                 case ESC_DECRC:
-                    CALL_ED(screen_restore_cursor);
+                    CALL_ED(screen_restore_cursor); break;
                 case ESC_DECPNM: 
-                    CALL_ED(screen_normal_keypad_mode);
+                    CALL_ED(screen_normal_keypad_mode); break;
                 case ESC_DECPAM: 
-                    CALL_ED(screen_alternate_keypad_mode);
+                    CALL_ED(screen_alternate_keypad_mode); break;
                 case '%':
                 case '(':
                 case ')':
@@ -210,21 +214,42 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
             }
             break;
         default:
-            if ((screen->parser_buf[0] == '%' && ch == 'G') || ((screen->parser_buf[0] == '(' || screen->parser_buf[0] == ')') && ch == 'B')) { 
-                // switch to utf-8 or ascii, since we are always in utf-8, ignore.
-            } else if (screen->parser_buf[0] == '#') {
-                if (ch == '8') {
-                    screen_align(screen);
-                } else {
-                    REPORT_ERROR("Unhandled Esc # code: 0x%x", ch);
-                }
-            } else {
-                REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], ch);
+            switch(screen->parser_buf[0]) {
+                case '%':
+                    switch(ch) {
+                        case '@':
+                            CALL_ED1(screen_change_charset, 0); break;
+                        case 'G':
+                            CALL_ED1(screen_change_charset, 2); break;
+                        default:
+                            REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
+                    }
+                    break;
+                case '#':
+                    if (ch == '8') { CALL_ED(screen_align); }
+                    else { REPORT_ERROR("Unhandled Esc # code: 0x%x", ch); }
+                    break;
+                case '(':
+                case ')':
+                    switch(ch) {
+                        case 'A':
+                        case 'B':
+                        case '0':
+                        case 'U':
+                        case 'V':
+                            CALL_ED2(screen_designate_charset, screen->parser_buf[0], ch);
+                        default:
+                            REPORT_ERROR("Unknown charset: 0x%x", ch); break;
+                    }
+                    break;
+                default:
+                    REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], ch); break;
             }
             SET_STATE(0);
             break;
     }
 #undef CALL_ED
+#undef CALL_ED1
 } // }}}
 
 // OSC mode {{{
@@ -596,8 +621,8 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
 #undef HANDLE
 }
 
-static inline void 
-_parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
+static inline void
+parse_utf8(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state, codepoint = 0;
     for (unsigned int i = 0; i < len; i++, prev = screen->utf8_state) {
         switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
@@ -610,6 +635,24 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
                 break;
         }
     }
+
+}
+
+static inline void 
+_parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
+#define DECODE(charset) for (unsigned int i = 0; i < len; i++) dispatch_unicode_char(screen, screen->charset[buf[i]], dump_callback);
+    switch(screen->charset) {
+        case 0:
+            DECODE(g0_charset);
+            break;
+        case 1:
+            DECODE(g1_charset);
+            break;
+        default:
+            parse_utf8(screen, buf, len, dump_callback);
+            break;
+    }
+#undef DECODE
 FLUSH_DRAW;
 }
 // }}}

@@ -23,6 +23,12 @@ init_tabstops(bool *tabstops, index_type count) {
     }
 }
 
+#define RESET_CHARSETS \
+        self->g0_charset = translation_table(0); \
+        self->g1_charset = self->g0_charset; \
+        self->charset = 2; \
+        self->utf8_state = 0; 
+
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
@@ -34,8 +40,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->columns = columns; self->lines = lines;
         self->modes = empty_modes;
-        self->utf8_state = 0;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
+        RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
@@ -59,7 +65,7 @@ screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, ' ');
     self->modes = empty_modes;
-    self->utf8_state = 0;
+    RESET_CHARSETS;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
     init_tabstops(self->main_tabstops, self->columns);
@@ -145,6 +151,25 @@ dealloc(Screen* self) {
 
 // Draw text {{{
  
+void 
+screen_change_charset(Screen *self, uint32_t to) {
+    self->charset = to;
+    self->utf8_state = 0;
+}
+
+void 
+screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
+    switch(which) {
+        case 0:
+            self->g0_charset = translation_table(as);
+            break;
+        case 1:
+            self->g1_charset = translation_table(as);
+            break;
+        // We dont care about default as this is guaranteed to only be called with correct which by the parser
+    }
+}
+
 static inline unsigned int 
 safe_wcwidth(uint32_t ch) {
     int ans = wcwidth(ch);
@@ -538,6 +563,12 @@ savepoints_pop(SavepointBuffer *self) {
     return self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
 }
 
+#define COPY_CHARSETS(self, sp) \
+    sp->utf8_state = self->utf8_state; \
+    sp->g0_charset = self->g0_charset; \
+    sp->g1_charset = self->g1_charset; \
+    sp->charset = self->charset; \
+
 void 
 screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
@@ -546,7 +577,7 @@ screen_save_cursor(Screen *self) {
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
-    sp->utf8_state = self->utf8_state;
+    COPY_CHARSETS(self, sp);
 }
 
 void 
@@ -557,9 +588,10 @@ screen_restore_cursor(Screen *self) {
         screen_cursor_position(self, 1, 1);
         tracker_cursor_changed(self->change_tracker);
         screen_reset_mode(self, DECOM);
+        RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
     } else {
-        self->utf8_state = sp->utf8_state;
+        COPY_CHARSETS(sp, self);
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
