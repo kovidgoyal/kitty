@@ -4,7 +4,7 @@
 
 from . import BaseTest
 
-from kitty.fast_data_types import DECAWM, IRM, Cursor
+from kitty.fast_data_types import DECAWM, IRM, Cursor, DECCOLM, DECOM
 
 
 class TestScreen(BaseTest):
@@ -271,3 +271,34 @@ class TestScreen(BaseTest):
                 s.draw(' ')
             s.draw('*')
         self.ae(str(s.line(0)), str(s.line(1)))
+
+    def test_margins(self):
+        # Taken from vttest/main.c
+        s = self.create_screen(cols=80, lines=24)
+
+        def nl():
+            s.carriage_return(), s.linefeed()
+
+        for deccolm in (False, True):
+            if deccolm:
+                s.resize(24, 132)
+                s.set_mode(DECCOLM)
+            else:
+                s.reset_mode(DECCOLM)
+            region = s.lines - 6
+            s.set_margins(3, region + 3)
+            s.set_mode(DECOM)
+            for i, ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
+                which = i % 4
+                if which == 0:
+                    s.cursor_position(region + 1, 1), s.draw(ch)
+                    s.cursor_position(region + 1, s.columns), s.draw(ch.lower())
+                    nl()
+                else:
+                    s.cursor_position(region + 1, 1), nl()
+                    s.cursor_position(region, 1), s.draw(ch)
+                    s.cursor_position(region, s.columns), s.draw(ch.lower())
+            for l in range(2, region + 2):
+                c = chr(ord('I') + l - 2)
+                self.ae(c + ' ' * (s.columns - 2) + c.lower(), str(s.line(l)))
+            s.reset_mode(DECOM)

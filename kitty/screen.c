@@ -54,7 +54,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     return (PyObject*) self;
 }
 
-void screen_reset(Screen *self) {
+void 
+screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, ' ');
     self->modes = empty_modes;
@@ -72,21 +73,24 @@ void screen_reset(Screen *self) {
     tracker_update_screen(self->change_tracker);
 }
 
-static inline HistoryBuf* realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
+static inline HistoryBuf* 
+realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
     HistoryBuf *ans = alloc_historybuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     historybuf_rewrap(old, ans);
     return ans;
 }
 
-static inline LineBuf* realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y, HistoryBuf *hb) {
+static inline LineBuf* 
+realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y, HistoryBuf *hb) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     linebuf_rewrap(old, ans, cursor_y, hb);
     return ans;
 }
 
-static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
+static bool 
+screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     lines = MAX(1, lines); columns = MAX(1, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
@@ -121,7 +125,8 @@ static bool screen_resize(Screen *self, unsigned int lines, unsigned int columns
     return true;
 }
 
-static bool screen_change_scrollback_size(Screen *self, unsigned int size) {
+static bool 
+screen_change_scrollback_size(Screen *self, unsigned int size) {
     if (size != self->historybuf->ynum) return historybuf_resize(self->historybuf, size);
     return true;
 }
@@ -564,9 +569,9 @@ screen_restore_cursor(Screen *self) {
 }
 
 void 
-screen_ensure_bounds(Screen *self, bool use_margins/*=false*/) {
+screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/) {
     unsigned int top, bottom;
-    if (use_margins || self->modes.mDECOM) {
+    if (force_use_margins || self->modes.mDECOM) {
         top = self->margin_top; bottom = self->margin_bottom;
     } else {
         top = 0; bottom = self->lines - 1;
@@ -581,7 +586,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
     column = (column == 0 ? 1: column) - 1;
     if (self->modes.mDECOM) {
         line += self->margin_top;
-        if (line < self->margin_bottom || line > self->margin_top) return;
+        line = MAX(self->margin_top, MIN(line, self->margin_bottom));
     }
     unsigned int x = self->cursor->x, y = self->cursor->y;
     self->cursor->x = column; self->cursor->y = line;
@@ -786,7 +791,8 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED private)
     }
 }
 
-void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
+void 
+screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
     if (!top) top = 1;
     if (!bottom) bottom = self->lines;
     top = MIN(self->lines, top);
@@ -803,7 +809,8 @@ void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
     }
 }
 
-void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
+void 
+screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     uint8_t shape; bool blink;
     switch(secondary) {
         case 0: // DECLL
@@ -824,7 +831,8 @@ void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     }
 }
 
-void set_title(Screen *self, PyObject *title) {
+void 
+set_title(Screen *self, PyObject *title) {
     PyObject_CallMethod(self->callbacks, "title_changed", "O", title);
     if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
 }
@@ -944,7 +952,10 @@ WRAP0(set_tab_stop)
 WRAP1(clear_tab_stop, 0)
 WRAP0(backspace)
 WRAP0(tab)
+WRAP0(linefeed)
+WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
+WRAP2(set_margins, 1, 1)
 
 static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
@@ -1076,12 +1087,15 @@ static PyMethodDef methods[] = {
     MND(index, METH_NOARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
+    MND(linefeed, METH_NOARGS)
+    MND(carriage_return, METH_NOARGS)
     MND(set_tab_stop, METH_NOARGS)
     MND(clear_tab_stop, METH_VARARGS)
     MND(reverse_index, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
+    MND(set_margins, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
     MND(in_bracketed_paste_mode, METH_NOARGS)
