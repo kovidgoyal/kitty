@@ -24,6 +24,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
+        self.destroyed = False
         self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
@@ -59,6 +60,7 @@ class Window:
         tab_manager().close_window(self)
 
     def destroy(self):
+        self.destroyed = True
         self.child.hangup()
         self.child.get_child_status()  # Ensure child does not become zombie
         # At this point this window can still render to screen using its

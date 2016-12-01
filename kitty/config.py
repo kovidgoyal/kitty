@@ -48,6 +48,8 @@ type_map = {
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
     'click_interval': float,
+    'mouse_hide_wait': float,
+    'cursor_stop_blinking_after': float,
 }
 
 for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():

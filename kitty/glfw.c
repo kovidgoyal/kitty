@@ -240,6 +240,14 @@ set_should_close(Window *self, PyObject *args) {
 }
 
 static PyObject*
+set_input_mode(Window *self, PyObject *args) {
+    int which, value;
+    if (!PyArg_ParseTuple(args, "ii", &which, &value)) return NULL;
+    glfwSetInputMode(self->window, which, value);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 is_key_pressed(Window *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "i", &c)) return NULL;
@@ -273,6 +281,7 @@ static PyMethodDef methods[] = {
     MND(get_cursor_pos, METH_NOARGS),
     MND(should_close, METH_NOARGS),
     MND(set_should_close, METH_VARARGS),
+    MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
     MND(set_click_cursor, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),

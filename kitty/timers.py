@@ -16,21 +16,23 @@ class Timers:
     def __init__(self):
         self.timers = []
 
-    def add(self, delay, callback, *args):
-        self.remove(callback)
+    def _add(self, delay, callback, args):
         self.timers.append(Event(monotonic() + delay, callback, args))
         self.timers.sort(key=get_at)
 
+    def add(self, delay, callback, *args):
+        self.remove(callback)
+        self._add(delay, callback, args)
+
     def add_if_missing(self, delay, callback, *args):
         for ev in self.timers:
-            if ev.callback is callback:
-                break
-        else:
-            self.add(delay, callback, *args)
+            if ev.callback == callback:
+                return
+        self._add(delay, callback, args)
 
     def remove(self, callback):
         for i, ev in enumerate(self.timers):
-            if ev.callback is callback:
+            if ev.callback == callback:
                 break
         else:
             return

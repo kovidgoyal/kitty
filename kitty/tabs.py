@@ -7,8 +7,9 @@ import io
 import select
 import signal
 import struct
+import inspect
 from collections import deque
-from functools import partial
+from functools import wraps
 from threading import Thread, current_thread
 from queue import Queue, Empty
 
@@ -16,7 +17,8 @@ from .child import Child
 from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS, main_thread
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
-    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event
+    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
+    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN
 )
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
@@ -27,6 +29,32 @@ from .shaders import Sprites, ShaderProgram
 from .timers import Timers
 from .utils import handle_unix_signals
 from .window import Window
+
+
+def conditional_run(w, i):
+    if w is None or not w.destroyed:
+        next(i, None)
+
+
+def callback(func):
+    ''' Wrapper for function that executes first half (up to a yield statement)
+    in the UI thread and the rest in the child thread. If the function yields
+    something, the destroyed attribute of that something is checked before
+    running the second half. If the function returns before the yield, the
+    second half is not run. '''
+
+    assert inspect.isgeneratorfunction(func)
+
+    @wraps(func)
+    def f(self, *a):
+        i = func(self, *a)
+        try:
+            w = next(i)
+        except StopIteration:
+            pass
+        else:
+            self.queue_action(conditional_run, w, i)
+    return f
 
 
 class Tab:
@@ -120,13 +148,13 @@ class TabManager(Thread):
         cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
-        glfw_window.framebuffer_size_callback = partial(self.queue_action, self.on_window_resize)
-        glfw_window.char_mods_callback = partial(self.queue_action, self.on_text_input)
-        glfw_window.key_callback = partial(self.queue_action, self.on_key)
-        glfw_window.mouse_button_callback = partial(self.queue_action, self.on_mouse_button)
-        glfw_window.scroll_callback = partial(self.queue_action, self.on_mouse_scroll)
-        glfw_window.cursor_pos_callback = partial(self.queue_action, self.on_mouse_move)
-        glfw_window.window_focus_callback = partial(self.queue_action, self.on_focus)
+        glfw_window.framebuffer_size_callback = self.on_window_resize
+        glfw_window.char_mods_callback = self.on_text_input
+        glfw_window.key_callback = self.on_key
+        glfw_window.mouse_button_callback = self.on_mouse_button
+        glfw_window.scroll_callback = self.on_mouse_scroll
+        glfw_window.cursor_pos_callback = self.on_mouse_move
+        glfw_window.window_focus_callback = self.on_focus
         self.tabs = deque()
         self.tabs.append(Tab(opts, args))
         self.sprites = Sprites()
@@ -137,6 +165,7 @@ class TabManager(Thread):
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.queue_action(self.active_tab.new_window, False)
         self.glfw_window.set_click_cursor(False)
+        self.show_mouse_cursor()
 
     def signal_received(self):
         try:
@@ -230,10 +259,12 @@ class TabManager(Thread):
                 if w.screen.is_dirty():
                     self.timers.add_if_missing(self.screen_update_delay, w.update_screen)
 
+    @callback
     def on_window_resize(self, window, w, h):
         # debounce resize events
-        self.timers.add(0.02, self.apply_pending_resize, w, h)
         self.pending_resize = True
+        yield
+        self.timers.add(0.02, self.apply_pending_resize, w, h)
 
     def apply_pending_resize(self, w, h):
         viewport_size.width, viewport_size.height = w, h
@@ -256,25 +287,35 @@ class TabManager(Thread):
         if t is not None:
             return t.active_window
 
+    @callback
     def on_text_input(self, window, codepoint, mods):
         data = interpret_text_event(codepoint, mods)
         if data:
             w = self.active_window
             if w is not None:
+                yield w
                 w.write_to_child(data)
 
+    @callback
     def on_key(self, window, key, scancode, action, mods):
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
             tab = self.active_tab
-            window = self.active_window
             if func is not None:
-                func = getattr(self, func, getattr(tab, func, getattr(window, func, None)))
-                if func is not None:
-                    passthrough = func()
+                f = getattr(self, func, getattr(tab, func, None))
+                if f is not None:
+                    passthrough = f()
                     if not passthrough:
                         return
-            if window:
+            window = self.active_window
+            if window is not None:
+                yield window
+                if func is not None:
+                    f = getattr(window, func, None)
+                    if f is not None:
+                        passthrough = f()
+                        if not passthrough:
+                            return
                 if window.screen.auto_repeat_enabled() or action == GLFW_PRESS:
                     if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
                         window.scroll_end()
@@ -282,34 +323,64 @@ class TabManager(Thread):
                     if data:
                         window.write_to_child(data)
 
+    @callback
     def on_focus(self, window, focused):
         w = self.active_window
         if w is not None:
+            yield w
             w.focus_changed(focused)
 
     def window_for_pos(self, x, y):
-        for w in self.active_tab:
-            if w.is_visible_in_layout and w.contains(x, y):
-                return w
+        tab = self.active_tab
+        if tab is not None:
+            for w in tab:
+                if w.is_visible_in_layout and w.contains(x, y):
+                    return w
 
+    @callback
     def on_mouse_button(self, window, button, action, mods):
+        self.show_mouse_cursor()
         w = self.window_for_pos(*window.get_cursor_pos())
-        if w is not None:
-            if button == GLFW_MOUSE_BUTTON_1 and w is not self.active_window:
-                pass  # TODO: Switch focus to this window
-            w.on_mouse_button(window, button, action, mods)
+        if w is None:
+            return
+        focus_moved = False
+        old_focus = self.active_window
+        if button == GLFW_MOUSE_BUTTON_1 and w is not old_focus:
+            # TODO: Switch focus to this window
+            focus_moved = True
+        yield
+        if focus_moved:
+            if old_focus is not None and not old_focus.destroyed:
+                old_focus.focus_changed(False)
+            w.focus_changed(True)
+        w.on_mouse_button(window, button, action, mods)
 
+    @callback
     def on_mouse_move(self, window, xpos, ypos):
+        self.show_mouse_cursor()
         w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
+            yield w
             w.on_mouse_move(window, xpos, ypos)
 
+    @callback
     def on_mouse_scroll(self, window, x, y):
+        self.show_mouse_cursor()
         w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
+            yield w
             w.on_mouse_scroll(window, x, y)
 
     # GUI thread API {{{
+
+    def show_mouse_cursor(self):
+        self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL)
+        if self.opts.mouse_hide_wait > 0:
+            self.ui_timers.add(self.opts.mouse_hide_wait, self.hide_mouse_cursor)
+
+    def hide_mouse_cursor(self):
+        self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_HIDDEN)
+
     def render(self):
         if self.pending_resize:
             return
