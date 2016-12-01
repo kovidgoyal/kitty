@@ -267,6 +267,15 @@ set_click_cursor(Window *self, PyObject *args) {
 }
 
 static PyObject*
+set_clipboard_string(Window *self, PyObject *args) {
+    char *title;
+    if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
+    glfwSetClipboardString(self->window, title);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
 _set_title(Window *self, PyObject *args) {
     char *title;
     if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
@@ -286,6 +295,7 @@ static PyMethodDef methods[] = {
     MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
     MND(set_click_cursor, METH_VARARGS),
+    MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
     {NULL}  /* Sentinel */

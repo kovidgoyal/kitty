@@ -208,6 +208,12 @@ class Window:
                 text = text.decode('utf-8')
             self.paste(text)
 
+    def copy_to_clipboard(self):
+        text = self.char_grid.text_for_selection()
+        if text:
+            tm = tab_manager()
+            tm.queue_ui_action(tm.glfw_window.set_clipboard_string, text)
+
     def scroll_line_up(self):
         self.char_grid.scroll('line', True)
         glfw_post_empty_event()
