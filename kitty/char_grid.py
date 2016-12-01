@@ -302,7 +302,7 @@ class CharGrid:
             text = l.as_base_text()
             for m in self.url_pat.finditer(text):
                 if m.start() <= x < m.end():
-                    url = ''.join(l[i] for i in range(*m.span()))
+                    url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
                     if url:
                         open_url(url, self.opts.open_url_with)
 
