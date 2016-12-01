@@ -9,7 +9,7 @@ from threading import Lock
 
 from .config import build_ansi_color_table
 from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color, set_primary_selection
+from .utils import get_logical_dpi, to_color, set_primary_selection, open_url
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
@@ -169,6 +169,8 @@ class Selection:
 
 class CharGrid:
 
+    url_pat = re.compile('(?:http|https|file|ftp)://\S+', re.IGNORECASE)
+
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
         self.current_selection = Selection()
@@ -282,6 +284,27 @@ class CharGrid:
                         ps = self.text_for_selection()
             if ps and ps.strip():
                 set_primary_selection(ps)
+
+    def has_url_at(self, x, y):
+        x, y = self.cell_for_pos(x, y)
+        l = self.screen_line(y)
+        if l is not None:
+            text = l.as_base_text()
+            for m in self.url_pat.finditer(text):
+                if m.start() <= x < m.end():
+                    return True
+        return False
+
+    def click_url(self, x, y):
+        x, y = self.cell_for_pos(x, y)
+        l = self.screen_line(y)
+        if l is not None:
+            text = l.as_base_text()
+            for m in self.url_pat.finditer(text):
+                if m.start() <= x < m.end():
+                    url = ''.join(l[i] for i in range(*m.span()))
+                    if url:
+                        open_url(url, self.opts.open_url_with)
 
     def screen_line(self, y):
         ' Return the Line object corresponding to the yth line on the rendered screen '

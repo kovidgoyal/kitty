@@ -156,6 +156,8 @@ class Window:
                 x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
                 self.char_grid.update_drag(action == GLFW_PRESS, x, y)
                 if action == GLFW_RELEASE:
+                    if mods == self.char_grid.opts.open_url_modifiers:
+                        self.char_grid.click_url(x, y)
                     self.click_queue.append(monotonic())
                     self.dispatch_multi_click(x, y)
             elif button == GLFW_MOUSE_BUTTON_MIDDLE:
@@ -167,8 +169,11 @@ class Window:
             x, y = self.char_grid.cell_for_pos(x, y)
 
     def on_mouse_move(self, window, x, y):
+        x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
         if self.char_grid.current_selection.in_progress:
-            self.char_grid.update_drag(None, max(0, x - self.geometry.left), max(0, y - self.geometry.top))
+            self.char_grid.update_drag(None, x, y)
+        tm = tab_manager()
+        tm.queue_ui_action(tab_manager().change_mouse_cursor, self.char_grid.has_url_at(x, y))
 
     def on_mouse_scroll(self, window, x, y):
         handle_event = (

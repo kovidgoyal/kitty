@@ -19,7 +19,7 @@ from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
     GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
-    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN
+    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
 )
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
@@ -384,6 +384,9 @@ class TabManager(Thread):
 
     def hide_mouse_cursor(self):
         self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_HIDDEN)
+
+    def change_mouse_cursor(self, click=False):
+        self.glfw_window.set_click_cursor(click)
 
     def start_cursor_blink(self):
         self.cursor_blinking = True

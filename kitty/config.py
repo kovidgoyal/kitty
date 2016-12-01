@@ -38,11 +38,45 @@ def to_opacity(x):
     return max(0.3, min(float(x), 1))
 
 
+def parse_mods(parts):
+
+    def map_mod(m):
+        return {'CTRL': 'CONTROL', 'CMD': 'CONTROL'}.get(m, m)
+
+    mods = 0
+    for m in parts:
+        try:
+            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
+        except AttributeError:
+            print('Shortcut: {} has an unknown modifier, ignoring'.format(parts.join('+')), file=sys.stderr)
+            return
+
+    return mods
+
+
+def parse_key(val, keymap):
+    sc, action = val.partition(' ')[::2]
+    if not sc or not action:
+        return
+    parts = sc.split('+')
+    mods = parse_mods(parts[:-1])
+    key = getattr(defines, 'GLFW_KEY_' + parts[-1].upper(), None)
+    if key is None:
+        print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
+        return
+    keymap[(mods, key)] = action
+
+
+def to_open_url_modifiers(val):
+    return parse_mods(val.split('+'))
+
+
 type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
     'cursor_shape': to_cursor_shape,
     'cursor_opacity': to_opacity,
+    'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': int,
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
@@ -56,30 +90,6 @@ for name in 'foreground background cursor active_border_color inactive_border_co
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)
-
-
-def parse_key(val, keymap):
-    sc, action = val.partition(' ')[::2]
-    if not sc or not action:
-        return
-    parts = sc.split('+')
-
-    def map_mod(m):
-        return {'CTRL': 'CONTROL', 'CMD': 'CONTROL'}.get(m, m)
-
-    mods = 0
-    for m in parts[:-1]:
-        try:
-            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
-        except AttributeError:
-            print('Shortcut: {} has an unknown modifier, ignoring'.format(val), file=sys.stderr)
-            return
-
-    key = getattr(defines, 'GLFW_KEY_' + parts[-1].upper(), None)
-    if key is None:
-        print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
-        return
-    keymap[(mods, key)] = action
 
 
 def parse_config(lines):

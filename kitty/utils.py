@@ -5,6 +5,7 @@
 import re
 import os
 import signal
+import shlex
 import subprocess
 import ctypes
 from collections import namedtuple
@@ -270,3 +271,12 @@ def set_primary_selection(text):
     p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE)
     p.stdin.write(text), p.stdin.close()
     p.wait()
+
+
+def open_url(url, program='default'):
+    if program == 'default':
+        cmd = ['xdg-open']
+    else:
+        cmd = shlex.split(program)
+    cmd.append(url)
+    subprocess.Popen(cmd).wait()
