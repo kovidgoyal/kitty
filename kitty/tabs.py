@@ -113,6 +113,7 @@ class TabManager(Thread):
         self.read_dispatch_map = {self.signal_fd: self.signal_received, self.read_wakeup_fd: self.on_wakeup}
         self.all_writers = []
         self.timers = Timers()
+        self.ui_timers = Timers()
         self.pending_ui_thread_calls = Queue()
         self.write_dispatch_map = {}
         set_tab_manager(self)

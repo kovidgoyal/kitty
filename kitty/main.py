@@ -61,6 +61,20 @@ def clear_buffers(window, opts):
     glfw_swap_interval(1)
 
 
+def dispatch_pending_calls(tabs):
+    while True:
+        try:
+            func, args = tabs.pending_ui_thread_calls.get_nowait()
+        except Empty:
+            break
+        try:
+            func(*args)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+    tabs.ui_timers()
+
+
 def run_app(opts, args):
     setup_opengl()
     window = Window(
@@ -75,17 +89,8 @@ def run_app(opts, args):
         while not window.should_close():
             tabs.render()
             window.swap_buffers()
-            glfw_wait_events()
-            while True:
-                try:
-                    func, args = tabs.pending_ui_thread_calls.get_nowait()
-                except Empty:
-                    break
-                try:
-                    func(*args)
-                except Exception:
-                    import traceback
-                    traceback.print_exc()
+            glfw_wait_events(tabs.ui_timers.timeout())
+            dispatch_pending_calls(tabs)
     finally:
         tabs.destroy()
     del window
