@@ -11,6 +11,7 @@ import inspect
 from collections import deque
 from functools import wraps
 from threading import Thread, current_thread
+from time import monotonic
 from queue import Queue, Empty
 
 from .child import Child
@@ -129,6 +130,7 @@ class TabManager(Thread):
 
     def __init__(self, glfw_window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.cursor_blinking = True
         self.glfw_window_title = None
         self.current_tab_bar_height = 0
         self.action_queue = Queue()
@@ -166,6 +168,7 @@ class TabManager(Thread):
         self.queue_action(self.active_tab.new_window, False)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
+        self.start_cursor_blink()
 
     def signal_received(self):
         try:
@@ -298,6 +301,7 @@ class TabManager(Thread):
 
     @callback
     def on_key(self, window, key, scancode, action, mods):
+        self.start_cursor_blink()
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
             tab = self.active_tab
@@ -381,6 +385,14 @@ class TabManager(Thread):
     def hide_mouse_cursor(self):
         self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_HIDDEN)
 
+    def start_cursor_blink(self):
+        self.cursor_blinking = True
+        if self.opts.cursor_stop_blinking_after > 0:
+            self.ui_timers.add(self.opts.cursor_stop_blinking_after, self.stop_cursor_blinking)
+
+    def stop_cursor_blinking(self):
+        self.cursor_blinking = False
+
     def render(self):
         if self.pending_resize:
             return
@@ -403,8 +415,17 @@ class TabManager(Thread):
                             window.char_grid.render_cells(rd, self.cell_program, self.sprites)
                 rd = render_data.get(active)
                 if rd is not None:
-                    with self.cursor_program:
-                        active.char_grid.render_cursor(rd, self.cursor_program)
+                    draw_cursor = True
+                    if self.cursor_blinking and self.opts.cursor_blink_interval > 0:
+                        now = monotonic()
+                        t = int(now * 1000)
+                        d = int(self.opts.cursor_blink_interval * 1000)
+                        n = t // d
+                        draw_cursor = n % 2 == 0
+                        self.ui_timers.add_if_missing(((n + 1) * d / 1000) - now, glfw_post_empty_event)
+                    if draw_cursor:
+                        with self.cursor_program:
+                            active.char_grid.render_cursor(rd, self.cursor_program)
 
     def gui_close_window(self, window):
         for tab in self.tabs:

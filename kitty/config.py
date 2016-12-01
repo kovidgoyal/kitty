@@ -42,13 +42,13 @@ type_map = {
     'scrollback_lines': int,
     'font_size': to_font_size,
     'cursor_shape': to_cursor_shape,
-    'cursor_blink': to_bool,
     'cursor_opacity': to_opacity,
     'repaint_delay': int,
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
     'click_interval': float,
     'mouse_hide_wait': float,
+    'cursor_blink_interval': float,
     'cursor_stop_blinking_after': float,
 }
 

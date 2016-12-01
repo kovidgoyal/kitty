@@ -182,12 +182,11 @@ class CharGrid:
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
-        self.default_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
         self.default_bg = color_as_int(self.original_bg)
         self.default_fg = color_as_int(self.original_fg)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = self.current_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink)
+        self.default_cursor = self.current_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
