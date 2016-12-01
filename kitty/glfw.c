@@ -202,7 +202,9 @@ dealloc(Window* self) {
 
 static PyObject*
 swap_buffers(Window *self) {
+    Py_BEGIN_ALLOW_THREADS;
     glfwSwapBuffers(self->window);
+    Py_END_ALLOW_THREADS;
     Py_RETURN_NONE;
 }
 
