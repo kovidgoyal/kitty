@@ -403,7 +403,7 @@ class CharGrid:
         def width(w=2, vert=True):
             dpi = self.dpix if vert else self.dpiy
             w *= dpi / 72.0  # as pixels
-            factor = 2 / (self.width if vert else self.height)
+            factor = 2 / (viewport_size.width if vert else viewport_size.height)
             return w * factor
 
         ul = cursor_program.uniform_location
