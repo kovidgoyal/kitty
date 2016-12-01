@@ -26,9 +26,10 @@ from .fast_data_types import (
 
 def option_parser():
     parser = argparse.ArgumentParser(prog=appname, description=_('The {} terminal emulator').format(appname))
+    defconf = os.path.join(config_dir, 'kitty.conf')
     a = parser.add_argument
     a('--class', default=appname, dest='cls', help=_('Set the WM_CLASS property'))
-    a('--config', default=os.path.join(config_dir, 'kitty.conf'), help=_('Specify a path to the config file to use'))
+    a('--config', default=defconf, help=_('Specify a path to the config file to use. Default: {}').format(defconf))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
     a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
