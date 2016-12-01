@@ -80,6 +80,19 @@ as_unicode(Line* self) {
     return ans;
 }
 
+static PyObject *
+as_base_text(Line* self) {
+#define as_base_text_doc "Return the line as a string, discarding all combining characters"
+    PyObject *ans = PyUnicode_New(self->xnum, 1114111);
+    if (ans == NULL) return PyErr_NoMemory();
+    for(index_type i = 0; i < self->xnum; i++) {
+        char_type attrs = self->chars[i] >> ATTRS_SHIFT;
+        if ((attrs & WIDTH_MASK) < 1) continue;
+        PyUnicode_WRITE(PyUnicode_4BYTE_KIND, PyUnicode_DATA(ans), i, self->chars[i] & CHAR_MASK);
+    }
+    return ans;
+}
+
 static PyObject*
 __repr__(Line* self) {
     PyObject *s = as_unicode(self);
@@ -348,6 +361,7 @@ static PyMethodDef methods[] = {
     METHOD(left_shift, METH_VARARGS)
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
+    METHOD(as_base_text, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(basic_cell_data, METH_O)
         
