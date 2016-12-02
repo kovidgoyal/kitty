@@ -15,7 +15,10 @@ from time import monotonic
 from queue import Queue, Empty
 
 from .child import Child
-from .constants import viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup, cell_size, MODIFIER_KEYS, main_thread
+from .constants import (
+    viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup,
+    cell_size, MODIFIER_KEYS, main_thread, mouse_button_pressed
+)
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
     GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
@@ -345,6 +348,7 @@ class TabManager(Thread):
 
     @callback
     def on_mouse_button(self, window, button, action, mods):
+        mouse_button_pressed[button] = action == GLFW_PRESS
         self.show_mouse_cursor()
         w = self.window_for_pos(*window.get_cursor_pos())
         if w is None:

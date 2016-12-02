@@ -66,6 +66,7 @@ def queue_action(func, *args):
 
 
 is_key_pressed = defaultdict(lambda: False)
+mouse_button_pressed = defaultdict(lambda: False)
 viewport_size = ViewportSize()
 cell_size = ViewportSize()
 terminfo_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'terminfo')

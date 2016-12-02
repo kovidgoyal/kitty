@@ -4,12 +4,12 @@
 
 import os
 import weakref
-from collections import deque, defaultdict
+from collections import deque
 from functools import partial
 from time import monotonic
 
 from .char_grid import CharGrid
-from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed
+from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed, mouse_button_pressed
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
@@ -27,7 +27,6 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
-        self.mouse_button_pressed = defaultdict(lambda: False)
         self.last_mouse_cursor_pos = 0, 0
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
@@ -154,7 +153,6 @@ class Window:
             glfw_post_empty_event()
 
     def on_mouse_button(self, button, action, mods):
-        self.mouse_button_pressed[button] = action == GLFW_PRESS
         mode = self.screen.mouse_tracking_mode()
         send_event = mods != GLFW_MOD_SHIFT and mode > 0
         x, y = self.last_mouse_cursor_pos
@@ -182,7 +180,7 @@ class Window:
     def on_mouse_move(self, x, y):
         button = None
         for b in range(0, GLFW_MOUSE_BUTTON_5 + 1):
-            if self.mouse_button_pressed[b]:
+            if mouse_button_pressed[b]:
                 button = b
                 break
         action = MOVE if button is None else DRAG
