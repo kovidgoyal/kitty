@@ -22,7 +22,7 @@ from .constants import (
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
     GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
-    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
+    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN, drain_read
 )
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
@@ -199,10 +199,7 @@ class TabManager(Thread):
 
     def on_wakeup(self):
         if not self.shutting_down:
-            try:
-                os.read(self.read_wakeup_fd, io.DEFAULT_BUFFER_SIZE)
-            except (EnvironmentError, BlockingIOError):
-                pass
+            drain_read(self.read_wakeup_fd)
             while True:
                 try:
                     func, args = self.action_queue.get_nowait()

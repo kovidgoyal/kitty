@@ -10,8 +10,17 @@
 #include "gl.h"
 #include "modes.h"
 
+static char drain_buf[1024] = {0};
+
+static PyObject*
+drain_read(PyObject UNUSED *self, PyObject *fd) {
+    read(PyLong_AsLong(fd), drain_buf, sizeof(drain_buf));
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     GL_METHODS
+    {"drain_read", (PyCFunction)drain_read, METH_O, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
