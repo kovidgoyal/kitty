@@ -227,6 +227,9 @@ class Window:
                 k = key_map[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
                 self.write_to_child(k * abs(s))
 
+    def buf_toggled(self, is_main_linebuf):
+        self.char_grid.scroll('full', False)
+
     # actions {{{
 
     def paste(self, text):

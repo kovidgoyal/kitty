@@ -331,6 +331,8 @@ void screen_toggle_screen_buffer(Screen *self) {
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
     }
+    PyObject_CallMethod(self->callbacks, "buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
+    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
     screen_restore_cursor(self);
     tracker_update_screen(self->change_tracker);
 }
