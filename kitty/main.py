@@ -58,7 +58,9 @@ def clear_buffers(window, opts):
     glClear(GL_COLOR_BUFFER_BIT)
     window.swap_buffers()
     glClear(GL_COLOR_BUFFER_BIT)
-    glfw_swap_interval(1)
+    # We dont turn this on as it causes rendering performance to be much worse,
+    # for example, dragging the mouse to select is laggy
+    # glfw_swap_interval(1)
 
 
 def dispatch_pending_calls(tabs):
