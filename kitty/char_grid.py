@@ -234,7 +234,7 @@ class CharGrid:
             amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
         if not upwards:
             amt *= -1
-        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))
+        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count - 1))
         if y != self.scrolled_by:
             self.scrolled_by = y
             self.update_cell_data()
@@ -246,7 +246,7 @@ class CharGrid:
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
                 sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, force_full_refresh)
             if self.scrolled_by:
-                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
+                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count - 1)
                 self.screen.set_scroll_cell_data(
                     sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
