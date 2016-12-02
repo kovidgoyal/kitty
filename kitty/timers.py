@@ -45,16 +45,13 @@ class Timers:
     def __call__(self):
         if self.timers:
             now = monotonic()
-            for i, ev in enumerate(self.timers):
-                if ev[0] <= now:
+            expired_timers, waiting_timers = [], []
+            for ev in self.timers:
+                (expired_timers if ev[0] <= now else waiting_timers).append(ev)
+            self.timers = waiting_timers
+            for ev in expired_timers:
                     try:
                         ev.callback(*ev.args)
                     except Exception:
                         import traceback
                         traceback.print_exc()
-                else:
-                    break
-            else:
-                del self.timers[:]
-                return
-            del self.timers[:i]
