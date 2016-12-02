@@ -17,7 +17,7 @@ from queue import Queue, Empty
 from .child import Child
 from .constants import (
     viewport_size, shell_path, appname, set_tab_manager, tab_manager, wakeup,
-    cell_size, MODIFIER_KEYS, main_thread, mouse_button_pressed
+    cell_size, MODIFIER_KEYS, main_thread, mouse_button_pressed, mouse_cursor_pos
 )
 from .fast_data_types import (
     glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
@@ -350,7 +350,7 @@ class TabManager(Thread):
     def on_mouse_button(self, window, button, action, mods):
         mouse_button_pressed[button] = action == GLFW_PRESS
         self.show_mouse_cursor()
-        w = self.window_for_pos(*window.get_cursor_pos())
+        w = self.window_for_pos(*mouse_cursor_pos)
         if w is None:
             return
         focus_moved = False
@@ -367,8 +367,9 @@ class TabManager(Thread):
 
     @callback
     def on_mouse_move(self, window, xpos, ypos):
+        mouse_cursor_pos[:2] = xpos, ypos
         self.show_mouse_cursor()
-        w = self.window_for_pos(*window.get_cursor_pos())
+        w = self.window_for_pos(xpos, ypos)
         if w is not None:
             yield w
             w.on_mouse_move(xpos, ypos)
@@ -376,7 +377,7 @@ class TabManager(Thread):
     @callback
     def on_mouse_scroll(self, window, x, y):
         self.show_mouse_cursor()
-        w = self.window_for_pos(*window.get_cursor_pos())
+        w = self.window_for_pos(*mouse_cursor_pos)
         if w is not None:
             yield w
             w.on_mouse_scroll(x, y)
