@@ -149,7 +149,7 @@ def color_as_int(val):
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
-class Selection:
+class Selection:  # {{{
 
     __slots__ = tuple('in_progress start_x start_y start_scrolled_by end_x end_y end_scrolled_by'.split())
 
@@ -161,10 +161,49 @@ class Selection:
         self.start_x = self.start_y = self.end_x = self.end_y = 0
         self.start_scrolled_by = self.end_scrolled_by = 0
 
-    def limits(self, scrolled_by):
-        a = (self.start_x, self.start_y - self.start_scrolled_by + scrolled_by)
-        b = (self.end_x, self.end_y - self.end_scrolled_by + scrolled_by)
+    def limits(self, scrolled_by, lines, columns):
+
+        def coord(x, y, ydelta):
+            y = y - ydelta + scrolled_by
+            if y < 0:
+                x, y = 0, 0
+            elif y >= lines:
+                x, y = columns - 1, lines - 1
+            return x, y
+
+        a = coord(self.start_x, self.start_y, self.start_scrolled_by)
+        b = coord(self.end_x, self.end_y, self.end_scrolled_by)
         return (a, b) if a[1] < b[1] or (a[1] == b[1] and a[0] <= b[0]) else (b, a)
+
+    def text(self, linebuf, historybuf):
+        sy = self.start_y - self.start_scrolled_by
+        ey = self.end_y - self.end_scrolled_by
+        if sy == ey and self.start_x == self.end_x:
+            return ''
+        a, b = (sy, self.start_x), (ey, self.end_x)
+        if a > b:
+            a, b = b, a
+
+        def line(y):
+            if y < 0:
+                return historybuf.line(-y)
+            return linebuf.line(y)
+
+        lines = []
+        for y in range(a[0], b[0] + 1):
+            startx, endx = 0, linebuf.xnum - 1
+            if y == a[0]:
+                startx = max(0, min(a[1], endx))
+            if y == b[0]:
+                endx = max(0, min(b[1], endx))
+            l = line(y)
+            if endx - startx >= linebuf.xnum - 1:
+                l = str(l).rstrip(' ')
+            else:
+                l = ''.join(l[x] for x in range(startx, endx + 1))
+            lines.append(l)
+        return '\n'.join(lines)
+# }}}
 
 
 class CharGrid:
@@ -174,7 +213,7 @@ class CharGrid:
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
         self.current_selection = Selection()
-        self.last_rendered_selection = self.current_selection.limits(0)
+        self.last_rendered_selection = self.current_selection.limits(0, screen.lines, screen.columns)
         self.render_buf_is_dirty = True
         self.render_data = None
         self.scrolled_by = 0
@@ -356,25 +395,13 @@ class CharGrid:
                     while i < self.screen.columns and pat.match(line[i]) is not None:
                         i += 1
                     s.end_x = i if i == x else i - 1
+            ps = self.text_for_selection()
+            if ps:
+                set_primary_selection(ps)
 
     def text_for_selection(self, sel=None):
-        start, end = (sel or self.current_selection).limits(self.scrolled_by)
-        lines = []
-        if start != end:
-            for y in range(start[1], end[1] + 1):
-                line = self.screen_line(y)
-                if line is not None:
-                    buf = []
-                    startx, endx = 0, self.screen.columns - 1
-                    if y == start[1]:
-                        startx = max(0, min(start[0], endx))
-                    if y == end[1]:
-                        endx = max(0, min(end[0], endx))
-                    for x in range(startx, endx + 1):
-                        buf.append(line[x])
-                    line = ''.join(buf).rstrip(' ')
-                    lines.append(line)
-        return '\n'.join(lines)
+        s = sel or self.current_selection
+        return s.text(self.screen.linebuf, self.screen.historybuf)
 
     def prepare_for_render(self, sprites):
         with self.buffer_lock:
@@ -382,7 +409,7 @@ class CharGrid:
             if sg is None:
                 return
             buf = self.render_buf
-            start, end = sel = self.current_selection.limits(self.scrolled_by)
+            start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
             if start != end:
                 buf = self.selection_buf
                 if self.render_buf_is_dirty or sel != self.last_rendered_selection:
