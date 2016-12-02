@@ -24,6 +24,7 @@ from .fast_data_types import (
 from .fonts import set_font_family
 from .borders import Borders, BordersProgram
 from .char_grid import cursor_shader, cell_shader
+from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .layout import Stack
 from .shaders import Sprites, ShaderProgram
@@ -301,6 +302,7 @@ class TabManager(Thread):
 
     @callback
     def on_key(self, window, key, scancode, action, mods):
+        is_key_pressed[key] = action == GLFW_PRESS
         self.start_cursor_blink()
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
@@ -357,7 +359,7 @@ class TabManager(Thread):
             if old_focus is not None and not old_focus.destroyed:
                 old_focus.focus_changed(False)
             w.focus_changed(True)
-        w.on_mouse_button(window, button, action, mods)
+        w.on_mouse_button(button, action, mods)
 
     @callback
     def on_mouse_move(self, window, xpos, ypos):
@@ -365,7 +367,7 @@ class TabManager(Thread):
         w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
             yield w
-            w.on_mouse_move(window, xpos, ypos)
+            w.on_mouse_move(xpos, ypos)
 
     @callback
     def on_mouse_scroll(self, window, x, y):
@@ -373,7 +375,7 @@ class TabManager(Thread):
         w = self.window_for_pos(*window.get_cursor_pos())
         if w is not None:
             yield w
-            w.on_mouse_scroll(window, x, y)
+            w.on_mouse_scroll(x, y)
 
     # GUI thread API {{{
 
@@ -458,4 +460,12 @@ class TabManager(Thread):
         self.sprites.destroy()
         del self.sprites
         del self.glfw_window
+
+    def paste_from_clipboard(self):
+        text = self.glfw_window.get_clipboard_string()
+        if text:
+            w = self.active_window
+            if w is not None:
+                self.queue_action(w.paste, text)
+
     # }}}

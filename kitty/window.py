@@ -9,7 +9,7 @@ from functools import partial
 from time import monotonic
 
 from .char_grid import CharGrid
-from .constants import wakeup, tab_manager, appname, WindowGeometry
+from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
@@ -28,6 +28,7 @@ class Window:
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
         self.mouse_button_pressed = defaultdict(lambda: False)
+        self.last_mouse_cursor_pos = 0, 0
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
@@ -152,12 +153,11 @@ class Window:
             self.char_grid.multi_click(2, x, y)
             glfw_post_empty_event()
 
-    def on_mouse_button(self, window, button, action, mods):
+    def on_mouse_button(self, button, action, mods):
         self.mouse_button_pressed[button] = action == GLFW_PRESS
         mode = self.screen.mouse_tracking_mode()
         send_event = mods != GLFW_MOD_SHIFT and mode > 0
-        x, y = window.get_cursor_pos()
-        x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+        x, y = self.last_mouse_cursor_pos
         if not send_event:
             if button == GLFW_MOUSE_BUTTON_1:
                 self.char_grid.update_drag(action == GLFW_PRESS, x, y)
@@ -179,7 +179,7 @@ class Window:
                 if ev:
                     self.write_to_child(ev)
 
-    def on_mouse_move(self, window, x, y):
+    def on_mouse_move(self, x, y):
         button = None
         for b in range(0, GLFW_MOUSE_BUTTON_5 + 1):
             if self.mouse_button_pressed[b]:
@@ -188,8 +188,9 @@ class Window:
         action = MOVE if button is None else DRAG
         mode = self.screen.mouse_tracking_mode()
         send_event = (mode == ANY_MODE or (mode == MOTION_MODE and button is not None)) and not (
-            window.is_key_pressed(GLFW_KEY_LEFT_SHIFT) or window.is_key_pressed(GLFW_KEY_RIGHT_SHIFT))
+            is_key_pressed[GLFW_KEY_LEFT_SHIFT] or is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+        self.last_mouse_cursor_pos = x, y
         tm = tab_manager()
         tm.queue_ui_action(tab_manager().change_mouse_cursor, self.char_grid.has_url_at(x, y))
         if send_event:
@@ -203,7 +204,7 @@ class Window:
             if self.char_grid.current_selection.in_progress:
                 self.char_grid.update_drag(None, x, y)
 
-    def on_mouse_scroll(self, window, x, y):
+    def on_mouse_scroll(self, x, y):
         s = int(round(y * self.opts.wheel_scroll_multiplier))
         if abs(s) < 0:
             return
@@ -215,8 +216,7 @@ class Window:
             mode = self.screen.mouse_tracking_mode()
             send_event = mode > 0
             if send_event:
-                x, y = window.get_cursor_pos()
-                x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+                x, y = self.last_mouse_cursor_pos
                 x, y = self.char_grid.cell_for_pos(x, y)
                 if x is not None:
                     ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
@@ -233,17 +233,12 @@ class Window:
     # actions {{{
 
     def paste(self, text):
-        if text:
+        if text and not self.destroyed:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode():
                 text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
             self.write_to_child(text)
-
-    def paste_from_clipboard(self):
-        text = tab_manager().glfw_window.get_clipboard_string()
-        if text:
-            self.paste(text)
 
     def paste_from_selection(self):
         text = get_primary_selection()
