@@ -256,28 +256,34 @@ class Window:
             tm.queue_ui_action(tm.glfw_window.set_clipboard_string, text)
 
     def scroll_line_up(self):
-        self.char_grid.scroll('line', True)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('line', True)
+            glfw_post_empty_event()
 
     def scroll_line_down(self):
-        self.char_grid.scroll('line', False)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('line', False)
+            glfw_post_empty_event()
 
     def scroll_page_up(self):
-        self.char_grid.scroll('page', True)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('page', True)
+            glfw_post_empty_event()
 
     def scroll_page_down(self):
-        self.char_grid.scroll('page', False)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('page', False)
+            glfw_post_empty_event()
 
     def scroll_home(self):
-        self.char_grid.scroll('full', True)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('full', True)
+            glfw_post_empty_event()
 
     def scroll_end(self):
-        self.char_grid.scroll('full', False)
-        glfw_post_empty_event()
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll('full', False)
+            glfw_post_empty_event()
     # }}}
 
     def dump_commands(self, *a):  # {{{
