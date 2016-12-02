@@ -268,25 +268,27 @@ class CharGrid:
             return x, y
         return None, None
 
-    def update_drag(self, is_press, x, y):
-        x, y = self.cell_for_pos(x, y)
-        if x is not None:
-            ps = None
-            with self.buffer_lock:
-                if is_press:
-                    self.current_selection.start_x = self.current_selection.end_x = x
-                    self.current_selection.start_y = self.current_selection.end_y = y
-                    self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
-                    self.current_selection.in_progress = True
-                elif self.current_selection.in_progress:
-                    self.current_selection.end_x = x
-                    self.current_selection.end_y = y
-                    self.current_selection.end_scrolled_by = self.scrolled_by
-                    if is_press is False:
-                        self.current_selection.in_progress = False
-                        ps = self.text_for_selection()
-            if ps and ps.strip():
-                set_primary_selection(ps)
+    def update_drag(self, is_press, mx, my):
+        x, y = self.cell_for_pos(mx, my)
+        if x is None:
+            x = 0 if mx <= cell_size.width else self.screen.columns - 1
+            y = 0 if my <= cell_size.height else self.screen.lines - 1
+        ps = None
+        with self.buffer_lock:
+            if is_press:
+                self.current_selection.start_x = self.current_selection.end_x = x
+                self.current_selection.start_y = self.current_selection.end_y = y
+                self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
+                self.current_selection.in_progress = True
+            elif self.current_selection.in_progress:
+                self.current_selection.end_x = x
+                self.current_selection.end_y = y
+                self.current_selection.end_scrolled_by = self.scrolled_by
+                if is_press is False:
+                    self.current_selection.in_progress = False
+                    ps = self.text_for_selection()
+        if ps and ps.strip():
+            set_primary_selection(ps)
 
     def has_url_at(self, x, y):
         x, y = self.cell_for_pos(x, y)
