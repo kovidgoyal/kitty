@@ -23,6 +23,13 @@ typedef uint32_t combining_type;
 typedef unsigned int index_type;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
+#define ANY_MODE 3
+#define MOTION_MODE 2
+#define BUTTON_MODE 1
+#define NORMAL_PROTOCOL 0
+#define UTF8_PROTOCOL 1
+#define SGR_PROTOCOL 2
+#define URXVT_PROTOCOL 3
 
 #define CELL_SIZE (sizeof(char_type) + sizeof(color_type) + sizeof(decoration_type) + sizeof(combining_type))
 // The data cell size must be a multiple of 3
@@ -227,8 +234,8 @@ PyTypeObject ChangeTracker_Type;
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, 
-         mBRACKETED_PASTE, mFOCUS_TRACKING, mMOUSE_BUTTON_TRACKING,
-         mMOUSE_MOTION_TRACKING, mMOUSE_SGR_MODE, mMOUSE_MOVE_TRACKING;
+         mBRACKETED_PASTE, mFOCUS_TRACKING;
+    unsigned long mouse_tracking_mode, mouse_tracking_protocol;
 } ScreenModes;
 PyTypeObject ScreenModes_Type;
 

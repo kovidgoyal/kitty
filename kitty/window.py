@@ -4,7 +4,7 @@
 
 import os
 import weakref
-from collections import deque
+from collections import deque, defaultdict
 from functools import partial
 from time import monotonic
 
@@ -13,9 +13,12 @@ from .constants import wakeup, tab_manager, appname, WindowGeometry
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
-    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, GLFW_KEY_LEFT_SHIFT,
-    GLFW_KEY_RIGHT_SHIFT, glfw_post_empty_event
+    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, glfw_post_empty_event,
+    GLFW_MOUSE_BUTTON_5, ANY_MODE, MOTION_MODE, GLFW_KEY_LEFT_SHIFT,
+    GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_MOUSE_BUTTON_4
 )
+from .keys import key_map
+from .mouse import encode_mouse_event, PRESS, RELEASE, MOVE, DRAG
 from .terminfo import get_capabilities
 from .utils import sanitize_title, get_primary_selection, parse_color_set
 
@@ -24,6 +27,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
+        self.mouse_button_pressed = defaultdict(lambda: False)
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
@@ -149,11 +153,13 @@ class Window:
             glfw_post_empty_event()
 
     def on_mouse_button(self, window, button, action, mods):
-        handle_event = mods == GLFW_MOD_SHIFT or not self.screen.mouse_button_tracking_enabled()
-        if handle_event:
+        self.mouse_button_pressed[button] = action == GLFW_PRESS
+        mode = self.screen.mouse_tracking_mode()
+        send_event = mods != GLFW_MOD_SHIFT and mode > 0
+        x, y = window.get_cursor_pos()
+        x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+        if not send_event:
             if button == GLFW_MOUSE_BUTTON_1:
-                x, y = window.get_cursor_pos()
-                x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
                 self.char_grid.update_drag(action == GLFW_PRESS, x, y)
                 if action == GLFW_RELEASE:
                     if mods == self.char_grid.opts.open_url_modifiers:
@@ -164,27 +170,62 @@ class Window:
                 if action == GLFW_RELEASE:
                     self.paste_from_selection()
         else:
-            x, y = window.get_cursor_pos()
-            x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+            if action == GLFW_RELEASE and button == GLFW_MOUSE_BUTTON_1 and mods == self.char_grid.opts.open_url_modifiers:
+                self.char_grid.click_url(x, y)
             x, y = self.char_grid.cell_for_pos(x, y)
+            if x is not None:
+                ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
+                                        button, PRESS if action == GLFW_PRESS else RELEASE, mods, x, y)
+                if ev:
+                    self.write_to_child(ev)
 
     def on_mouse_move(self, window, x, y):
+        button = None
+        for b in range(0, GLFW_MOUSE_BUTTON_5 + 1):
+            if self.mouse_button_pressed[b]:
+                button = b
+                break
+        action = MOVE if button is None else DRAG
+        mode = self.screen.mouse_tracking_mode()
+        send_event = (mode == ANY_MODE or (mode == MOTION_MODE and button is not None)) and not (
+            window.is_key_pressed(GLFW_KEY_LEFT_SHIFT) or window.is_key_pressed(GLFW_KEY_RIGHT_SHIFT))
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
-        if self.char_grid.current_selection.in_progress:
-            self.char_grid.update_drag(None, x, y)
         tm = tab_manager()
         tm.queue_ui_action(tab_manager().change_mouse_cursor, self.char_grid.has_url_at(x, y))
+        if send_event:
+            x, y = self.char_grid.cell_for_pos(x, y)
+            if x is not None:
+                ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
+                                        button, action, 0, x, y)
+                if ev:
+                    self.write_to_child(ev)
+        else:
+            if self.char_grid.current_selection.in_progress:
+                self.char_grid.update_drag(None, x, y)
 
     def on_mouse_scroll(self, window, x, y):
-        handle_event = (
-            window.is_key_pressed(GLFW_KEY_LEFT_SHIFT) or
-            window.is_key_pressed(GLFW_KEY_RIGHT_SHIFT) or
-            not self.screen.mouse_button_tracking_enabled())
-        if handle_event:
-            s = int(round(y * self.opts.wheel_scroll_multiplier))
-            if abs(s) > 0:
-                self.char_grid.scroll(abs(s), s > 0)
-                glfw_post_empty_event()
+        s = int(round(y * self.opts.wheel_scroll_multiplier))
+        if abs(s) < 0:
+            return
+        upwards = s > 0
+        if self.screen.is_main_linebuf():
+            self.char_grid.scroll(abs(s), upwards)
+            glfw_post_empty_event()
+        else:
+            mode = self.screen.mouse_tracking_mode()
+            send_event = mode > 0
+            if send_event:
+                x, y = window.get_cursor_pos()
+                x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
+                x, y = self.char_grid.cell_for_pos(x, y)
+                if x is not None:
+                    ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
+                                            GLFW_MOUSE_BUTTON_4 if upwards else GLFW_MOUSE_BUTTON_5, PRESS, 0, x, y)
+                    if ev:
+                        self.write_to_child(ev)
+            else:
+                k = key_map[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
+                self.write_to_child(k * abs(s))
 
     # actions {{{
 
@@ -239,7 +280,7 @@ class Window:
         glfw_post_empty_event()
     # }}}
 
-    def dump_commands(self, *a):
+    def dump_commands(self, *a):  # {{{
         if a:
             if a[0] == 'draw':
                 if a[1] is None:
@@ -253,3 +294,4 @@ class Window:
                     print('draw', ''.join(self.draw_dump_buf))
                     self.draw_dump_buf = []
                 print(*a)
+    # }}}

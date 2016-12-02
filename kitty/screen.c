@@ -344,17 +344,23 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
     case name: \
         self->modes.m##name = val; break;
 
+#define MOUSE_MODE(name, attr, value) \
+    case name: \
+        self->modes.attr = val ? value : 0; break;
+
     bool private;
     switch(mode) {
         SIMPLE_MODE(LNM)
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
-        SIMPLE_MODE(MOUSE_BUTTON_TRACKING)
-        SIMPLE_MODE(MOUSE_MOVE_TRACKING)
-        SIMPLE_MODE(MOUSE_MOTION_TRACKING)
-        SIMPLE_MODE(MOUSE_SGR_MODE)
         SIMPLE_MODE(FOCUS_TRACKING)
+        MOUSE_MODE(MOUSE_BUTTON_TRACKING, mouse_tracking_mode, BUTTON_MODE)
+        MOUSE_MODE(MOUSE_MOTION_TRACKING, mouse_tracking_mode, MOTION_MODE)
+        MOUSE_MODE(MOUSE_MOVE_TRACKING, mouse_tracking_mode, ANY_MODE)
+        MOUSE_MODE(MOUSE_UTF8_MODE, mouse_tracking_protocol, UTF8_PROTOCOL)
+        MOUSE_MODE(MOUSE_SGR_MODE, mouse_tracking_protocol, SGR_PROTOCOL)
+        MOUSE_MODE(MOUSE_URXVT_MODE, mouse_tracking_protocol, URXVT_PROTOCOL)
 
         case DECCKM:
         case DECSCLM:
@@ -403,6 +409,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             fprintf(stderr, "%s %s %u %s\n", ERROR_PREFIX, "Unsupported screen mode: ", mode, private ? "(private)" : "");
     }
 #undef SIMPLE_MODE
+#undef MOUSE_MODE
 }
 
 void screen_set_mode(Screen *self, unsigned int mode) {
@@ -993,12 +1000,17 @@ WRAP1B(erase_in_display, 0)
 
 MODE_GETTER(in_bracketed_paste_mode, BRACKETED_PASTE)
 MODE_GETTER(focus_tracking_enabled, FOCUS_TRACKING)
-MODE_GETTER(mouse_button_tracking_enabled, MOUSE_BUTTON_TRACKING)
-MODE_GETTER(mouse_motion_tracking_enabled, MOUSE_MOTION_TRACKING)
-MODE_GETTER(mouse_move_tracking_enabled, MOUSE_MOVE_TRACKING)
-MODE_GETTER(mouse_in_sgr_mode, MOUSE_SGR_MODE)
 MODE_GETTER(auto_repeat_enabled, DECARM)
 
+static PyObject*
+mouse_tracking_mode(Screen *self) {
+    return PyLong_FromUnsignedLong(self->modes.mouse_tracking_mode);
+}
+
+static PyObject*
+mouse_tracking_protocol(Screen *self) {
+    return PyLong_FromUnsignedLong(self->modes.mouse_tracking_protocol);
+}
 
 static PyObject*
 cursor_up(Screen *self, PyObject *args) {
@@ -1100,13 +1112,21 @@ static PyObject* mark_as_dirty(Screen *self) {
     Py_RETURN_NONE;
 }
 
-static PyObject* current_char_width(Screen *self) {
+static PyObject* 
+current_char_width(Screen *self) {
 #define current_char_width_doc "The width of the character under the cursor"
     unsigned long ans = 1;
     if (self->cursor->x < self->columns - 1 && self->cursor->y < self->lines) {
         ans = linebuf_char_width_at(self->linebuf, self->cursor->x, self->cursor->y);
     }
     return PyLong_FromUnsignedLong(ans);
+}
+
+static PyObject* 
+is_main_linebuf(Screen *self) {
+    PyObject *ans = (self->linebuf == self->main_linebuf) ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
 }
 
 WRAP2(cursor_position, 1, 1)
@@ -1132,6 +1152,7 @@ static PyMethodDef methods[] = {
     MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)
     MND(reset_dirty, METH_NOARGS)
+    MND(is_main_linebuf, METH_NOARGS)
     MND(consolidate_changes, METH_NOARGS)
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
@@ -1144,6 +1165,8 @@ static PyMethodDef methods[] = {
     MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
+    MND(mouse_tracking_mode, METH_NOARGS)
+    MND(mouse_tracking_protocol, METH_NOARGS)
     MND(cursor_up1, METH_VARARGS)
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
@@ -1165,10 +1188,6 @@ static PyMethodDef methods[] = {
     MND(in_bracketed_paste_mode, METH_NOARGS)
     MND(auto_repeat_enabled, METH_NOARGS)
     MND(focus_tracking_enabled, METH_NOARGS)
-    MND(mouse_button_tracking_enabled, METH_NOARGS)
-    MND(mouse_motion_tracking_enabled, METH_NOARGS)
-    MND(mouse_move_tracking_enabled, METH_NOARGS)
-    MND(mouse_in_sgr_mode, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 

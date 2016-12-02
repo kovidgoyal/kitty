@@ -63,7 +63,9 @@
 #define MOUSE_MOTION_TRACKING  (1002 << 5)
 #define MOUSE_MOVE_TRACKING (1003 << 5)
 #define FOCUS_TRACKING (1004 << 5)
+#define MOUSE_UTF8_MODE (1005 << 5)
 #define MOUSE_SGR_MODE (1006 << 5)
+#define MOUSE_URXVT_MODE (1015 << 5)
 
 // Alternate screen buffer
 #define ALTERNATE_SCREEN  (1049 << 5)

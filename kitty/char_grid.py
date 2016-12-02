@@ -263,11 +263,14 @@ class CharGrid:
             self.current_cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
 
     def cell_for_pos(self, x, y):
-        return int(x // cell_size.width), int(y // cell_size.height)
+        x, y = int(x // cell_size.width), int(y // cell_size.height)
+        if 0 <= x < self.screen.columns and 0 <= y < self.screen.lines:
+            return x, y
+        return None, None
 
     def update_drag(self, is_press, x, y):
         x, y = self.cell_for_pos(x, y)
-        if 0 <= x < self.screen.columns and 0 <= y < self.screen.lines:
+        if x is not None:
             ps = None
             with self.buffer_lock:
                 if is_press:
@@ -287,24 +290,26 @@ class CharGrid:
 
     def has_url_at(self, x, y):
         x, y = self.cell_for_pos(x, y)
-        l = self.screen_line(y)
-        if l is not None:
-            text = l.as_base_text()
-            for m in self.url_pat.finditer(text):
-                if m.start() <= x < m.end():
-                    return True
+        if x is not None:
+            l = self.screen_line(y)
+            if l is not None:
+                text = l.as_base_text()
+                for m in self.url_pat.finditer(text):
+                    if m.start() <= x < m.end():
+                        return True
         return False
 
     def click_url(self, x, y):
         x, y = self.cell_for_pos(x, y)
-        l = self.screen_line(y)
-        if l is not None:
-            text = l.as_base_text()
-            for m in self.url_pat.finditer(text):
-                if m.start() <= x < m.end():
-                    url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
-                    if url:
-                        open_url(url, self.opts.open_url_with)
+        if x is not None:
+            l = self.screen_line(y)
+            if l is not None:
+                text = l.as_base_text()
+                for m in self.url_pat.finditer(text):
+                    if m.start() <= x < m.end():
+                        url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
+                        if url:
+                            open_url(url, self.opts.open_url_with)
 
     def screen_line(self, y):
         ' Return the Line object corresponding to the yth line on the rendered screen '
@@ -318,36 +323,37 @@ class CharGrid:
 
     def multi_click(self, count, x, y):
         x, y = self.cell_for_pos(x, y)
-        line = self.screen_line(y)
-        if line is not None and 0 <= x < self.screen.columns and count in (2, 3):
-            s = self.current_selection
-            s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
-            s.start_y = s.end_y = y
-            s.in_progress = False
-            if count == 3:
-                for i in range(self.screen.columns):
-                    if line[i] != ' ':
-                        s.start_x = i
-                        break
-                else:
-                    s.start_x = 0
-                for i in range(self.screen.columns):
-                    c = self.screen.columns - 1 - i
-                    if line[c] != ' ':
-                        s.end_x = c
-                        break
-                else:
-                    s.end_x = self.screen.columns - 1
-            elif count == 2:
-                i = x
-                pat = re.compile(r'\w')
-                while i >= 0 and pat.match(line[i]) is not None:
-                    i -= 1
-                s.start_x = i if i == x else i + 1
-                i = x
-                while i < self.screen.columns and pat.match(line[i]) is not None:
-                    i += 1
-                s.end_x = i if i == x else i - 1
+        if x is not None:
+            line = self.screen_line(y)
+            if line is not None and count in (2, 3):
+                s = self.current_selection
+                s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
+                s.start_y = s.end_y = y
+                s.in_progress = False
+                if count == 3:
+                    for i in range(self.screen.columns):
+                        if line[i] != ' ':
+                            s.start_x = i
+                            break
+                    else:
+                        s.start_x = 0
+                    for i in range(self.screen.columns):
+                        c = self.screen.columns - 1 - i
+                        if line[c] != ' ':
+                            s.end_x = c
+                            break
+                    else:
+                        s.end_x = self.screen.columns - 1
+                elif count == 2:
+                    i = x
+                    pat = re.compile(r'\w')
+                    while i >= 0 and pat.match(line[i]) is not None:
+                        i -= 1
+                    s.start_x = i if i == x else i + 1
+                    i = x
+                    while i < self.screen.columns and pat.match(line[i]) is not None:
+                        i += 1
+                    s.end_x = i if i == x else i - 1
 
     def text_for_selection(self, sel=None):
         start, end = (sel or self.current_selection).limits(self.scrolled_by)
