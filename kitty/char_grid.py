@@ -164,7 +164,7 @@ class Selection:
     def limits(self, scrolled_by):
         a = (self.start_x, self.start_y - self.start_scrolled_by + scrolled_by)
         b = (self.end_x, self.end_y - self.end_scrolled_by + scrolled_by)
-        return (a, b) if a <= b else (b, a)
+        return (a, b) if a[1] < b[1] or (a[1] == b[1] and a[0] <= b[0]) else (b, a)
 
 
 class CharGrid:
