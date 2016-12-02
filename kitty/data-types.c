@@ -14,7 +14,9 @@ static char drain_buf[1024] = {0};
 
 static PyObject*
 drain_read(PyObject UNUSED *self, PyObject *fd) {
-    (void)read(PyLong_AsLong(fd), drain_buf, sizeof(drain_buf));
+    ALLOW_UNUSED_RESULT
+    read(PyLong_AsLong(fd), drain_buf, sizeof(drain_buf));
+    END_ALLOW_UNUSED_RESULT 
     Py_RETURN_NONE;
 }
 

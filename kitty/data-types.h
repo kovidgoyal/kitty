@@ -129,6 +129,8 @@ typedef unsigned int index_type;
 
 #define START_ALLOW_CASE_RANGE _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
 #define END_ALLOW_CASE_RANGE _Pragma("GCC diagnostic pop")
+#define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
+#define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 
 typedef struct {
     PyObject_HEAD
