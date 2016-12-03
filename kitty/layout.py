@@ -35,13 +35,21 @@ class Layout:
         self.opts = opts
         self.border_width = border_width
 
-    def add_window(self, windows, window):
+    def next_window(self, windows, active_window_idx):
+        active_window_idx = (active_window_idx + 1) % len(windows)
+        self.set_active_window(windows, active_window_idx)
+        return active_window_idx
+
+    def add_window(self, windows, window, active_window_idx):
         raise NotImplementedError()
 
-    def remove_window(self, windows, window):
+    def remove_window(self, windows, window, active_window_idx):
         raise NotImplementedError()
 
-    def __call__(self, windows):
+    def set_active_window(self, windows, active_window_idx):
+        raise NotImplementedError()
+
+    def __call__(self, windows, active_window_idx):
         raise NotImplementedError()
 
 
@@ -50,18 +58,26 @@ class Stack(Layout):
     name = 'stack'
     needs_window_borders = False
 
-    def add_window(self, windows, window):
-        windows.appendleft(window)
-        self(windows)
+    def add_window(self, windows, window, active_window_idx):
+        windows.append(window)
+        active_window_idx = len(windows) - 1
+        self(windows, active_window_idx)
+        return active_window_idx
 
-    def remove_window(self, windows, window):
+    def remove_window(self, windows, window, active_window_idx):
         windows.remove(window)
-        self(windows)
+        active_window_idx = max(0, min(active_window_idx, len(windows) - 1))
+        self(windows, active_window_idx)
+        return active_window_idx
 
-    def __call__(self, windows):
+    def set_active_window(self, windows, active_window_idx):
+        for i, w in enumerate(windows):
+            w.is_visible_in_layout = i == active_window_idx
+
+    def __call__(self, windows, active_window_idx):
         xstart, xnum = next(layout_dimension(viewport_size.width, cell_size.width))
         ystart, ynum = next(layout_dimension(available_height(), cell_size.height))
         wg = WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_size.width * xnum, bottom=ystart + cell_size.height * ynum)
         for i, w in enumerate(windows):
-            w.is_visible_in_layout = i == 0
+            w.is_visible_in_layout = i == active_window_idx
             w.set_geometry(wg)

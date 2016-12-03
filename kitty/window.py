@@ -33,7 +33,7 @@ class Window:
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
         self.title = appname
-        self.is_visible_in_layout = True
+        self._is_visible_in_layout = True
         self.child, self.opts = child, opts
         self.child_fd = child.child_fd
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
@@ -41,6 +41,18 @@ class Window:
         self.draw_dump_buf = []
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
+
+    @property
+    def is_visible_in_layout(self):
+        return self._is_visible_in_layout
+
+    @is_visible_in_layout.setter
+    def is_visible_in_layout(self, val):
+        val = bool(val)
+        if val != self._is_visible_in_layout:
+            self._is_visible_in_layout = val
+            if val:
+                self.refresh()
 
     def refresh(self):
         self.screen.mark_as_dirty()

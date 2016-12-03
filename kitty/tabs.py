@@ -67,6 +67,7 @@ class Tab:
     def __init__(self, opts, args):
         self.opts, self.args = opts, args
         self.windows = deque()
+        self.active_window_idx = 0
         self.borders = Borders(opts)
         self.current_layout = Stack(opts, self.borders.border_width)
 
@@ -76,7 +77,7 @@ class Tab:
 
     @property
     def active_window(self):
-        return self.windows[0] if self.windows else None
+        return self.windows[self.active_window_idx] if self.windows else None
 
     @property
     def title(self):
@@ -89,7 +90,7 @@ class Tab:
 
     def relayout(self):
         if self.windows:
-            self.current_layout(self.windows)
+            self.current_layout(self.windows, self.active_window_idx)
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders)
 
     def launch_child(self, use_shell=False):
@@ -101,14 +102,36 @@ class Tab:
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=False):
+    def new_window(self, use_shell=True):
         child = self.launch_child(use_shell=use_shell)
         window = Window(self, child, self.opts, self.args)
         tab_manager().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
-        self.current_layout.add_window(self.windows, window)
+        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
+        glfw_post_empty_event()
+
+    def close_window(self):
+        if self.windows:
+            self.remove_window(self.windows[self.active_window_idx])
+            glfw_post_empty_event()
 
     def remove_window(self, window):
-        self.current_layout.remove_window(self.windows, window)
+        self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
+        glfw_post_empty_event()
+
+    def set_active_window(self, window):
+        try:
+            idx = self.windows.index(window)
+        except ValueError:
+            return
+        if idx != self.active_window_idx:
+            self.current_layout.set_active_window(self.windows, idx)
+            self.active_window_idx = idx
+            glfw_post_empty_event()
+
+    def next_window(self):
+        if len(self.windows) > 1:
+            self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx)
+            glfw_post_empty_event()
 
     def __iter__(self):
         yield from iter(self.windows)
@@ -227,8 +250,10 @@ class TabManager(Thread):
         self.pending_ui_thread_calls.put((func, args))
         glfw_post_empty_event()
 
-    def close_window(self, window):
+    def close_window(self, window=None):
         ' Can be called in either thread, will first kill the child (with SIGHUP), then remove the window from the gui '
+        if window is None:
+            window = self.active_window
         if current_thread() is main_thread:
             self.queue_action(self.close_window, window)
         else:
@@ -307,8 +332,10 @@ class TabManager(Thread):
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
             tab = self.active_tab
+            if tab is None:
+                return
             if func is not None:
-                f = getattr(self, func, getattr(tab, func, None))
+                f = getattr(self, func, None)
                 if f is not None:
                     passthrough = f()
                     if not passthrough:
@@ -317,7 +344,7 @@ class TabManager(Thread):
             if window is not None:
                 yield window
                 if func is not None:
-                    f = getattr(window, func, None)
+                    f = getattr(tab, func, getattr(window, func, None))
                     if f is not None:
                         passthrough = f()
                         if not passthrough:
@@ -352,10 +379,11 @@ class TabManager(Thread):
             return
         focus_moved = False
         old_focus = self.active_window
-        if button == GLFW_MOUSE_BUTTON_1 and w is not old_focus:
-            # TODO: Switch focus to this window
-            focus_moved = True
+        tab = self.active_tab
         yield
+        if button == GLFW_MOUSE_BUTTON_1 and w is not old_focus:
+            tab.set_active_window(w)
+            focus_moved = True
         if focus_moved:
             if old_focus is not None and not old_focus.destroyed:
                 old_focus.focus_changed(False)

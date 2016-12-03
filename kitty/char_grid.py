@@ -21,6 +21,11 @@ Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
 
+
+def color_as_int(val):
+    return val[0] << 16 | val[1] << 8 | val[2]
+
+
 # cell shader {{{
 
 cell_shader = (
@@ -143,10 +148,6 @@ void main() {
 }
 ''')
 # }}}
-
-
-def color_as_int(val):
-    return val[0] << 16 | val[1] << 8 | val[2]
 
 
 class Selection:  # {{{
