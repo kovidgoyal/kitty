@@ -9,7 +9,7 @@ from functools import partial
 from time import monotonic
 
 from .char_grid import CharGrid
-from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed, mouse_button_pressed
+from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed, mouse_button_pressed, cell_size
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
@@ -201,6 +201,18 @@ class Window:
         else:
             if self.char_grid.current_selection.in_progress:
                 self.char_grid.update_drag(None, x, y)
+                margin = cell_size.height // 2
+                if y <= margin or y >= self.geometry.bottom - margin:
+                    tab_manager().timers.add(0.02, self.drag_scroll)
+
+    def drag_scroll(self):
+        x, y = self.last_mouse_cursor_pos
+        tm = tab_manager()
+        margin = cell_size.height // 2
+        if y <= margin or y >= self.geometry.bottom - margin:
+            self.scroll_line_up() if y < 50 else self.scroll_line_down()
+            self.char_grid.update_drag(None, x, y)
+            tm.timers.add(0.02, self.drag_scroll)
 
     def on_mouse_scroll(self, x, y):
         s = int(round(y * self.opts.wheel_scroll_multiplier))
