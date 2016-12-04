@@ -12,6 +12,7 @@ from .fast_data_types import (
 )
 import kitty.fast_data_types as defines
 from .utils import to_color
+from .layout import all_layouts
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 
@@ -54,13 +55,19 @@ def parse_mods(parts):
     return mods
 
 
+named_keys = {"'": 'APOSTROPHE', ',': 'COMMA', '-': 'MINUS', '.': 'PERIOD',
+              '/': 'SLASH', ';': 'SEMICOLON', '=': 'EQUAL', '[': 'LEFT_BRACKET',
+              ']': 'RIGHT_BRACKET', '`': 'GRAVE_ACCENT'}
+
+
 def parse_key(val, keymap):
     sc, action = val.partition(' ')[::2]
     if not sc or not action:
         return
     parts = sc.split('+')
     mods = parse_mods(parts[:-1])
-    key = getattr(defines, 'GLFW_KEY_' + parts[-1].upper(), None)
+    key = parts[-1].upper()
+    key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     if key is None:
         print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
         return
@@ -69,6 +76,15 @@ def parse_key(val, keymap):
 
 def to_open_url_modifiers(val):
     return parse_mods(val.split('+'))
+
+
+def to_layout_names(raw):
+    parts = [x.strip().lower() for x in raw.split(',')]
+    if '*' in parts:
+        return sorted(all_layouts)
+    for p in parts:
+        if p not in all_layouts:
+            raise ValueError('The window layout {} is unknown'.format(p))
 
 
 type_map = {
@@ -84,6 +100,7 @@ type_map = {
     'mouse_hide_wait': float,
     'cursor_blink_interval': float,
     'cursor_stop_blinking_after': float,
+    'enabled_layouts': to_layout_names,
 }
 
 for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():

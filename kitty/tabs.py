@@ -29,7 +29,7 @@ from .borders import Borders, BordersProgram
 from .char_grid import cursor_shader, cell_shader
 from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
-from .layout import Stack
+from .layout import all_layouts
 from .shaders import Sprites, ShaderProgram
 from .timers import Timers
 from .utils import handle_unix_signals
@@ -66,10 +66,17 @@ class Tab:
 
     def __init__(self, opts, args):
         self.opts, self.args = opts, args
+        self.enabled_layouts = opts.enabled_layouts
+        self.borders = Borders(opts)
+        if args.window_layout:
+            if args.window_layout not in self.enabled_layouts:
+                self.enabled_layouts.insert(0, args.window_layout)
+            self.current_layout = all_layouts[args.window_layout]
+        else:
+            self.current_layout = all_layouts[self.enabled_layouts[0]]
         self.windows = deque()
         self.active_window_idx = 0
-        self.borders = Borders(opts)
-        self.current_layout = Stack(opts, self.borders.border_width)
+        self.current_layout = self.current_layout(opts, self.borders.border_width)
 
     @property
     def is_visible(self):
@@ -91,7 +98,7 @@ class Tab:
     def relayout(self):
         if self.windows:
             self.current_layout(self.windows, self.active_window_idx)
-        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders)
+        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def launch_child(self, use_shell=False):
         if use_shell:
@@ -112,7 +119,6 @@ class Tab:
     def close_window(self):
         if self.windows:
             self.remove_window(self.windows[self.active_window_idx])
-            glfw_post_empty_event()
 
     def remove_window(self, window):
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
@@ -442,12 +448,12 @@ class TabManager(Thread):
             with self.sprites:
                 self.sprites.render_dirty_cells()
                 tab.render()
-                render_data = {window: window.char_grid.prepare_for_render(self.sprites) for window in tab.visible_windows()}
-                active = self.active_window
+                render_data = {window: window.char_grid.prepare_for_render(self.sprites) for window in tab.visible_windows() if not window.needs_layout}
                 with self.cell_program:
                     for window, rd in render_data.items():
                         if rd is not None:
                             window.char_grid.render_cells(rd, self.cell_program, self.sprites)
+                active = self.active_window
                 rd = render_data.get(active)
                 if rd is not None:
                     draw_cursor = True
