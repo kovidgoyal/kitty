@@ -11,7 +11,7 @@ def available_height():
     return viewport_size.height - tab_manager().current_tab_bar_height
 
 
-def layout_dimension(length, cell_length, number_of_windows=1, border_length=0):
+def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, left_align=False):
     number_of_cells = length // cell_length
     space_needed_for_border = number_of_windows * 2 * border_length
     extra = length - number_of_cells * cell_length
@@ -20,7 +20,8 @@ def layout_dimension(length, cell_length, number_of_windows=1, border_length=0):
         extra = length - number_of_cells * cell_length
     cells_per_window = number_of_cells // number_of_windows
     extra -= space_needed_for_border
-    pos = (extra // 2) + border_length
+    pos = 0 if left_align else (extra // 2)
+    pos += border_length
     inner_length = cells_per_window * cell_length
     window_length = 2 * border_length + inner_length
     extra = number_of_cells - (cells_per_window * number_of_windows)
@@ -104,10 +105,10 @@ class Tall(Layout):
             return
         xlayout = layout_dimension(viewport_size.width, cell_size.width, 2, self.border_width)
         xstart, xnum = next(xlayout)
-        ystart, ynum = next(layout_dimension(available_height(), cell_size.height, 1, self.border_width))
+        ystart, ynum = next(layout_dimension(available_height(), cell_size.height, 1, self.border_width, left_align=True))
         windows[0].set_geometry(window_geometry(xstart, xnum, ystart, ynum))
         xstart, xnum = next(xlayout)
-        ylayout = layout_dimension(available_height(), cell_size.height, len(windows) - 1, self.border_width)
+        ylayout = layout_dimension(available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True)
         for w, (ystart, ynum) in zip(islice(windows, 1, None), ylayout):
             w.set_geometry(window_geometry(xstart, xnum, ystart, ynum))
 
