@@ -13,7 +13,7 @@ from gettext import gettext as _
 from .config import load_config
 from .constants import appname, str_version, config_dir, viewport_size
 from .layout import all_layouts
-from .tabs import TabManager
+from .boss import Boss
 from .shaders import GL_VERSION
 from .fast_data_types import (
     glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor,
@@ -66,10 +66,10 @@ def clear_buffers(window, opts):
     # glfw_swap_interval(1)
 
 
-def dispatch_pending_calls(tabs):
+def dispatch_pending_calls(boss):
     while True:
         try:
-            func, args = tabs.pending_ui_thread_calls.get_nowait()
+            func, args = boss.pending_ui_thread_calls.get_nowait()
         except Empty:
             break
         try:
@@ -77,7 +77,7 @@ def dispatch_pending_calls(tabs):
         except Exception:
             import traceback
             traceback.print_exc()
-    tabs.ui_timers()
+    boss.ui_timers()
 
 
 def run_app(opts, args):
@@ -87,17 +87,17 @@ def run_app(opts, args):
     window.set_title(appname)
     window.make_context_current()
     glewInit()
-    tabs = TabManager(window, opts, args)
-    tabs.start()
+    boss = Boss(window, opts, args)
+    boss.start()
     clear_buffers(window, opts)
     try:
         while not window.should_close():
-            tabs.render()
+            boss.render()
             window.swap_buffers()
-            glfw_wait_events(tabs.ui_timers.timeout())
-            dispatch_pending_calls(tabs)
+            glfw_wait_events(boss.ui_timers.timeout())
+            dispatch_pending_calls(boss)
     finally:
-        tabs.destroy()
+        boss.destroy()
     del window
 
 
