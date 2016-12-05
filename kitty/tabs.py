@@ -146,11 +146,17 @@ class Tab:
             self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
             glfw_post_empty_event()
 
-    def next_window(self):
+    def _next_window(self, delta=1):
         if len(self.windows) > 1:
-            self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx)
+            self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
             self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
             glfw_post_empty_event()
+
+    def next_window(self):
+        self._next_window()
+
+    def previous_window(self):
+        self._next_window(-1)
 
     def __iter__(self):
         yield from iter(self.windows)

@@ -39,8 +39,8 @@ class Layout:
         self.opts = opts
         self.border_width = border_width
 
-    def next_window(self, windows, active_window_idx):
-        active_window_idx = (active_window_idx + 1) % len(windows)
+    def next_window(self, windows, active_window_idx, delta=1):
+        active_window_idx = (active_window_idx + len(windows) + delta) % len(windows)
         self.set_active_window(windows, active_window_idx)
         return active_window_idx
 
