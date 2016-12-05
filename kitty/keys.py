@@ -35,7 +35,7 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
 }
 
-control_codes = {k: 1 + i for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET))}
+control_codes = {k: 1 + i for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET))}
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET))}
 
 
