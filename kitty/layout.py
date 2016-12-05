@@ -13,7 +13,7 @@ def available_height():
 
 def layout_dimension(length, cell_length, number_of_windows=1, border_length=0):
     number_of_cells = length // cell_length
-    space_needed_for_border = number_of_windows * border_length
+    space_needed_for_border = number_of_windows * 2 * border_length
     extra = length - number_of_cells * cell_length
     while extra < space_needed_for_border:
         number_of_cells -= 1
