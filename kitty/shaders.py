@@ -46,7 +46,7 @@ class Sprites:
         self.first_cell_cache = {}
         self.second_cell_cache = {}
         self.x = self.y = self.z = 0
-        self.texture_id = self.buffer_id = self.buffer_texture_id = None
+        self.texture_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
         self.texture_unit = GL_TEXTURE0
@@ -135,18 +135,25 @@ class Sprites:
             self.texture_id = None
         if self.buffer_texture_id is not None:
             glDeleteTexture(self.buffer_texture_id)
-        if self.buffer_id is not None:
-            glDeleteBuffer(self.buffer_id)
 
     def ensure_state(self):
         if self.texture_id is None:
             self.realloc_texture()
-            self.buffer_id = glGenBuffers(1)
             self.buffer_texture_id = glGenTextures(1)
             self.buffer_texture_unit = GL_TEXTURE1
 
-    def set_sprite_map(self, data, usage=GL_STREAM_DRAW):
-        glNamedBufferData(self.buffer_id, sizeof(data), addressof(data), usage)
+    def add_sprite_map(self):
+        return glGenBuffers(1)
+
+    def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
+        glNamedBufferData(buf_id, sizeof(data), addressof(data), usage)
+
+    def bind_sprite_map(self, buf_id):
+        glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, buf_id)
+
+    def destroy_sprite_map(self, buf_id):
+        glDeleteBuffer(buf_id)
 
     def __enter__(self):
         self.ensure_state()
@@ -155,8 +162,6 @@ class Sprites:
 
         glActiveTexture(self.buffer_texture_unit)
         glBindTexture(GL_TEXTURE_BUFFER, self.buffer_texture_id)
-        glBindBuffer(GL_TEXTURE_BUFFER, self.buffer_id)
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, self.buffer_id)
 
     def __exit__(self, *a):
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)

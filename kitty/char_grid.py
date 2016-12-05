@@ -213,6 +213,7 @@ class CharGrid:
 
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
+        self.buffer_id = None
         self.current_selection = Selection()
         self.last_rendered_selection = self.current_selection.limits(0, screen.lines, screen.columns)
         self.render_buf_is_dirty = True
@@ -409,6 +410,8 @@ class CharGrid:
             sg = self.render_data
             if sg is None:
                 return
+            if self.buffer_id is None:
+                self.buffer_id = sprites.add_sprite_map()
             buf = self.render_buf
             start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
             if start != end:
@@ -417,12 +420,13 @@ class CharGrid:
                     memmove(buf, self.render_buf, sizeof(type(buf)))
                     self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], self.selection_foreground, self.selection_background)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
-                sprites.set_sprite_map(buf)
+                sprites.set_sprite_map(self.buffer_id, buf)
                 self.render_buf_is_dirty = False
                 self.last_rendered_selection = sel
         return sg
 
     def render_cells(self, sg, cell_program, sprites):
+        sprites.bind_sprite_map(self.buffer_id)
         ul = cell_program.uniform_location
         glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
         glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)

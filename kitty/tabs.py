@@ -266,7 +266,7 @@ class TabManager(Thread):
         glfw_post_empty_event()
 
     def close_window(self, window=None):
-        ' Can be called in either thread, will first kill the child (with SIGHUP), then remove the window from the gui '
+        ' Can be called in either thread, will first kill the child, then remove the window from the gui '
         if window is None:
             window = self.active_window
         if current_thread() is main_thread:
@@ -275,6 +275,18 @@ class TabManager(Thread):
             self.remove_child_fd(window.child_fd)
             window.destroy()
             self.queue_ui_action(self.gui_close_window, window)
+
+    def close_tab(self, tab=None):
+        ' Can be called in either thread, will first kill all children, then remove the tab from the gui '
+        if tab is None:
+            tab = self.active_tab
+        if current_thread() is main_thread:
+            self.queue_action(self.close_tab, tab)
+        else:
+            for window in tab:
+                self.remove_child_fd(window.child_fd)
+                window.destroy()
+                self.queue_ui_action(self.gui_close_window, window)
 
     def run(self):
         if self.args.profile:
@@ -478,6 +490,9 @@ class TabManager(Thread):
                             active.char_grid.render_cursor(rd, self.cursor_program)
 
     def gui_close_window(self, window):
+        if window.char_grid.buffer_id is not None:
+            self.sprites.destroy_sprite_map(window.char_grid.buffer_id)
+            window.char_grid.buffer_id = None
         for tab in self.tabs:
             if window in tab:
                 break
