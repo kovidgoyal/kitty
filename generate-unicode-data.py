@@ -55,4 +55,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # TODO: delete kitty/unicode.py alongwith kitty/screen.py
