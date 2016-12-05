@@ -123,6 +123,7 @@ class Tab:
         window = Window(self, child, self.opts, self.args)
         tab_manager().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
+        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
         glfw_post_empty_event()
 
     def close_window(self):
@@ -131,6 +132,7 @@ class Tab:
 
     def remove_window(self, window):
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
+        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
         glfw_post_empty_event()
 
     def set_active_window(self, window):
@@ -141,11 +143,13 @@ class Tab:
         if idx != self.active_window_idx:
             self.current_layout.set_active_window(self.windows, idx)
             self.active_window_idx = idx
+            self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
             glfw_post_empty_event()
 
     def next_window(self):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx)
+            self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
             glfw_post_empty_event()
 
     def __iter__(self):

@@ -53,7 +53,8 @@ class Layout:
     def remove_window(self, windows, window, active_window_idx):
         windows.remove(window)
         active_window_idx = max(0, min(active_window_idx, len(windows) - 1))
-        self(windows, active_window_idx)
+        if windows:
+            self(windows, active_window_idx)
         return active_window_idx
 
     def set_active_window(self, windows, active_window_idx):
