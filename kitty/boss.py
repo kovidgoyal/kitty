@@ -67,7 +67,6 @@ class Boss(Thread):
         Thread.__init__(self, name='ChildMonitor')
         self.cursor_blinking = True
         self.glfw_window_title = None
-        self.current_tab_bar_height = 0
         self.action_queue = Queue()
         self.pending_resize = True
         self.resize_gl_viewport = False
@@ -115,6 +114,10 @@ class Boss(Thread):
                 if not self.shutting_down:
                     self.glfw_window.set_should_close(True)
                     glfw_post_empty_event()
+
+    @property
+    def current_tab_bar_height(self):
+        return self.tab_manager.tab_bar_height
 
     def __iter__(self):
         return iter(self.tab_manager)

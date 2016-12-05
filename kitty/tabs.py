@@ -5,7 +5,7 @@
 from collections import deque
 
 from .child import Child
-from .constants import get_boss, appname, shell_path
+from .constants import get_boss, appname, shell_path, cell_size
 from .fast_data_types import glfw_post_empty_event
 from .layout import all_layouts
 from .borders import Borders
@@ -118,9 +118,10 @@ class Tab:
         return window in self.windows
 
     def destroy(self):
-        for w in self.windows:
-            w.destroy()
-        del self.windows
+        if hasattr(self, 'windows'):
+            for w in self.windows:
+                w.destroy()
+            del self.windows
 
     def render(self):
         self.borders.render(get_boss().borders_program)
@@ -141,6 +142,10 @@ class TabManager:
     @property
     def active_tab(self):
         return self.tabs[0] if self.tabs else None
+
+    @property
+    def tab_bar_height(self):
+        return 0 if len(self.tabs) < 1 else cell_size.height
 
     def remove(self, tab):
         ' Must be called in the GUI thread '
