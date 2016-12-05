@@ -265,7 +265,7 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
     if underline:
         t = underline_thickness
         if underline == 2:
-            t = min(cell_height - underline_position - 1, t)
+            t = max(1, min(cell_height - underline_position - 1, t))
         dl(add_curl if underline == 2 else add_line, underline_position, t)
     if strikethrough:
         pos = int(0.65 * baseline)

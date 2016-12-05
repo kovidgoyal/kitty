@@ -281,6 +281,8 @@ void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int c
                 self->cursor->italic = true;  break;
             case 4:
                 self->cursor->decoration = 1;  break;
+            case 6:
+                self->cursor->decoration = 2;  break;
             case 7:
                 self->cursor->reverse = true;  break;
             case 9:
@@ -313,6 +315,8 @@ END_ALLOW_CASE_RANGE
                 SET_COLOR(fg);
             case 48: 
                 SET_COLOR(bg);
+            case 58:
+                SET_COLOR(decoration_fg);
         }
     }
 }

@@ -162,7 +162,7 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
         data[offset+2] = sp->z;
         data[offset+(reverse ? 4 : 3)] = to_color(color_profile, line->colors[i] & COL_MASK, default_fg);
         data[offset+(reverse ? 3 : 4)] = to_color(color_profile, line->colors[i] >> COL_SHIFT, default_bg);
-        unsigned int decoration_fg = decoration > 1 ? to_color(color_profile, line->decoration_fg[i] & COL_MASK, data[offset+3]) : data[offset+3];
+        unsigned int decoration_fg = to_color(color_profile, line->decoration_fg[i] & COL_MASK, data[offset+3]);
         data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
         previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }
