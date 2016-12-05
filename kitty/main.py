@@ -38,7 +38,7 @@ def option_parser():
     a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
     a('--replay-commands', default=None, help=_('Replay previously dumped commands'))
     a('--window-layout', default=None, choices=frozenset(all_layouts.keys()), help=_(
-        'The window layout to use on startup. Choices: {}').format(', '.join(all_layouts)))
+        'The window layout to use on startup'))
     a('args', nargs=argparse.REMAINDER, help=_(
         'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
         ' directly to the program being invoked.'
