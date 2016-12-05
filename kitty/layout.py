@@ -35,7 +35,7 @@ class Layout:
     name = None
     needs_window_borders = True
 
-    def __init__(self, opts, border_width):
+    def __init__(self, opts, border_width, windows):
         self.opts = opts
         self.border_width = border_width
 

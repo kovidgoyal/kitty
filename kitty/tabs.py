@@ -68,15 +68,15 @@ class Tab:
         self.opts, self.args = opts, args
         self.enabled_layouts = opts.enabled_layouts
         self.borders = Borders(opts)
+        self.windows = deque()
         if args.window_layout:
             if args.window_layout not in self.enabled_layouts:
                 self.enabled_layouts.insert(0, args.window_layout)
             self.current_layout = all_layouts[args.window_layout]
         else:
             self.current_layout = all_layouts[self.enabled_layouts[0]]
-        self.windows = deque()
         self.active_window_idx = 0
-        self.current_layout = self.current_layout(opts, self.borders.border_width)
+        self.current_layout = self.current_layout(opts, self.borders.border_width, self.windows)
 
     @property
     def is_visible(self):
@@ -99,6 +99,15 @@ class Tab:
         if self.windows:
             self.current_layout(self.windows, self.active_window_idx)
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+
+    def next_layout(self):
+        if len(self.opts.enabled_layouts) > 1:
+            idx = self.opts.enabled_layouts.index(self.current_layout.name)
+            nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
+            self.current_layout = all_layouts[nl](self.opts, self.borders.border_width, self.windows)
+            for w in self.windows:
+                w.is_visible_in_layout = True
+            self.relayout()
 
     def launch_child(self, use_shell=False):
         if use_shell:
