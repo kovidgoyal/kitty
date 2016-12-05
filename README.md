@@ -31,6 +31,10 @@ following dependencies are installed first:
     * gcc (required for building, clang should also work, but it is not tested)
     * pkg-config (required for building)
 
+Install kitty with:
+
+    git clone https://github.com/kovidgoyal/kitty && cd kitty
+
 Now build the C parts of kitty with the following command:
 
     python3 setup.py build
