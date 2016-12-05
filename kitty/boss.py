@@ -8,14 +8,13 @@ import select
 import signal
 import struct
 import inspect
-from collections import deque
 from functools import wraps
 from threading import Thread, current_thread
 from time import monotonic
 from queue import Queue, Empty
 
 from .constants import (
-    viewport_size, set_tab_manager, wakeup, cell_size, MODIFIER_KEYS,
+    viewport_size, set_boss, wakeup, cell_size, MODIFIER_KEYS,
     main_thread, mouse_button_pressed, mouse_cursor_pos
 )
 from .fast_data_types import (
@@ -29,7 +28,7 @@ from .char_grid import cursor_shader, cell_shader
 from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .shaders import Sprites, ShaderProgram
-from .tabs import Tab
+from .tabs import TabManager
 from .timers import Timers
 from .utils import handle_unix_signals
 
@@ -82,7 +81,7 @@ class Boss(Thread):
         self.ui_timers = Timers()
         self.pending_ui_thread_calls = Queue()
         self.write_dispatch_map = {}
-        set_tab_manager(self)
+        set_boss(self)
         cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
@@ -93,8 +92,7 @@ class Boss(Thread):
         glfw_window.scroll_callback = self.on_mouse_scroll
         glfw_window.cursor_pos_callback = self.on_mouse_move
         glfw_window.window_focus_callback = self.on_focus
-        self.tabs = deque()
-        self.tabs.append(Tab(opts, args))
+        self.tab_manager = TabManager(opts, args)
         self.sprites = Sprites()
         self.cell_program = ShaderProgram(*cell_shader)
         self.cursor_program = ShaderProgram(*cursor_shader)
@@ -119,7 +117,7 @@ class Boss(Thread):
                     glfw_post_empty_event()
 
     def __iter__(self):
-        yield from iter(self.tabs)
+        return iter(self.tab_manager)
 
     def iterwindows(self):
         for t in self:
@@ -218,7 +216,7 @@ class Boss(Thread):
 
     def apply_pending_resize(self, w, h):
         viewport_size.width, viewport_size.height = w, h
-        for tab in self.tabs:
+        for tab in self.tab_manager:
             tab.relayout()
         self.resize_gl_viewport = True
         self.pending_resize = False
@@ -226,7 +224,7 @@ class Boss(Thread):
 
     @property
     def active_tab(self):
-        return self.tabs[0] if self.tabs else None
+        return self.tab_manager.active_tab
 
     def is_tab_visible(self, tab):
         return self.active_tab is tab
@@ -387,16 +385,16 @@ class Boss(Thread):
         if window.char_grid.buffer_id is not None:
             self.sprites.destroy_sprite_map(window.char_grid.buffer_id)
             window.char_grid.buffer_id = None
-        for tab in self.tabs:
+        for tab in self.tab_manager:
             if window in tab:
                 break
         else:
             return
         tab.remove_window(window)
         if len(tab) == 0:
-            self.tabs.remove(tab)
+            self.tab_manager.remove(tab)
             tab.destroy()
-            if len(self.tabs) == 0:
+            if len(self.tab_manager) == 0:
                 if not self.shutting_down:
                     self.glfw_window.set_should_close(True)
                     glfw_post_empty_event()
@@ -408,9 +406,9 @@ class Boss(Thread):
         self.shutting_down = True
         wakeup()
         self.join()
-        for t in self.tabs:
+        for t in self.tab_manager:
             t.destroy()
-        del self.tabs
+        del self.tab_manager
         self.sprites.destroy()
         del self.sprites
         del self.glfw_window

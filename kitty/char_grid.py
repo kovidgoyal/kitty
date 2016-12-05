@@ -8,7 +8,7 @@ from ctypes import addressof, memmove, sizeof
 from threading import Lock
 
 from .config import build_ansi_color_table
-from .constants import tab_manager, viewport_size, cell_size, ScreenGeometry, GLuint
+from .constants import get_boss, viewport_size, cell_size, ScreenGeometry, GLuint
 from .utils import get_logical_dpi, to_color, set_primary_selection, open_url
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
@@ -281,7 +281,7 @@ class CharGrid:
             self.update_cell_data()
 
     def update_cell_data(self, force_full_refresh=False):
-        sprites = tab_manager().sprites
+        sprites = get_boss().sprites
         is_dirty = self.screen.is_dirty()
         with sprites.lock:
             cursor_changed, history_line_added_count = self.screen.update_cell_data(

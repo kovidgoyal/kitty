@@ -49,20 +49,20 @@ class ViewportSize:
         return '(width={}, height={})'.format(self.width, self.height)
 
 
-def tab_manager():
-    return tab_manager.manager
+def get_boss():
+    return get_boss.boss
 
 
-def set_tab_manager(m):
-    tab_manager.manager = m
+def set_boss(m):
+    get_boss.boss = m
 
 
 def wakeup():
-    os.write(tab_manager.manager.write_wakeup_fd, b'1')
+    os.write(get_boss.boss.write_wakeup_fd, b'1')
 
 
 def queue_action(func, *args):
-    tab_manager.manager.queue_action(func, *args)
+    get_boss.boss.queue_action(func, *args)
 
 
 is_key_pressed = defaultdict(lambda: False)

@@ -9,7 +9,7 @@ from functools import partial
 from time import monotonic
 
 from .char_grid import CharGrid
-from .constants import wakeup, tab_manager, appname, WindowGeometry, is_key_pressed, mouse_button_pressed, cell_size
+from .constants import wakeup, get_boss, appname, WindowGeometry, is_key_pressed, mouse_button_pressed, cell_size
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
     read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
@@ -73,7 +73,7 @@ class Window:
         return g.left <= x <= g.right and g.top <= y <= g.bottom
 
     def close(self):
-        tab_manager().close_window(self)
+        get_boss().close_window(self)
 
     def destroy(self):
         self.destroyed = True
@@ -201,8 +201,8 @@ class Window:
             is_key_pressed[GLFW_KEY_LEFT_SHIFT] or is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
         self.last_mouse_cursor_pos = x, y
-        tm = tab_manager()
-        tm.queue_ui_action(tab_manager().change_mouse_cursor, self.char_grid.has_url_at(x, y))
+        tm = get_boss()
+        tm.queue_ui_action(get_boss().change_mouse_cursor, self.char_grid.has_url_at(x, y))
         if send_event:
             x, y = self.char_grid.cell_for_pos(x, y)
             if x is not None:
@@ -215,11 +215,11 @@ class Window:
                 self.char_grid.update_drag(None, x, y)
                 margin = cell_size.height // 2
                 if y <= margin or y >= self.geometry.bottom - margin:
-                    tab_manager().timers.add(0.02, self.drag_scroll)
+                    get_boss().timers.add(0.02, self.drag_scroll)
 
     def drag_scroll(self):
         x, y = self.last_mouse_cursor_pos
-        tm = tab_manager()
+        tm = get_boss()
         margin = cell_size.height // 2
         if y <= margin or y >= self.geometry.bottom - margin:
             self.scroll_line_up() if y < 50 else self.scroll_line_down()
@@ -272,7 +272,7 @@ class Window:
     def copy_to_clipboard(self):
         text = self.char_grid.text_for_selection()
         if text:
-            tm = tab_manager()
+            tm = get_boss()
             tm.queue_ui_action(tm.glfw_window.set_clipboard_string, text)
 
     def scroll_line_up(self):

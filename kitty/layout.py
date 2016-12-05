@@ -4,11 +4,11 @@
 
 from itertools import islice
 
-from .constants import WindowGeometry, viewport_size, cell_size, tab_manager
+from .constants import WindowGeometry, viewport_size, cell_size, get_boss
 
 
 def available_height():
-    return viewport_size.height - tab_manager().current_tab_bar_height
+    return viewport_size.height - get_boss().current_tab_bar_height
 
 
 def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, left_align=False):

@@ -62,6 +62,8 @@ named_keys = {"'": 'APOSTROPHE', ',': 'COMMA', '-': 'MINUS', '.': 'PERIOD',
 
 def parse_key(val, keymap):
     sc, action = val.partition(' ')[::2]
+    action = action.strip()
+    sc = sc.strip()
     if not sc or not action:
         return
     parts = sc.split('+')

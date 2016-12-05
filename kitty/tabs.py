@@ -5,7 +5,7 @@
 from collections import deque
 
 from .child import Child
-from .constants import tab_manager, appname, shell_path
+from .constants import get_boss, appname, shell_path
 from .fast_data_types import glfw_post_empty_event
 from .layout import all_layouts
 from .borders import Borders
@@ -30,7 +30,7 @@ class Tab:
 
     @property
     def is_visible(self):
-        return tab_manager().is_tab_visible(self)
+        return get_boss().is_tab_visible(self)
 
     @property
     def active_window(self):
@@ -71,7 +71,7 @@ class Tab:
     def new_window(self, use_shell=True):
         child = self.launch_child(use_shell=use_shell)
         window = Window(self, child, self.opts, self.args)
-        tab_manager().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
+        get_boss().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
         glfw_post_empty_event()
@@ -123,4 +123,26 @@ class Tab:
         del self.windows
 
     def render(self):
-        self.borders.render(tab_manager().borders_program)
+        self.borders.render(get_boss().borders_program)
+
+
+class TabManager:
+
+    def __init__(self, opts, args):
+        self.opts, self.args = opts, args
+        self.tabs = [Tab(opts, args)]
+
+    def __iter__(self):
+        return iter(self.tabs)
+
+    def __len__(self):
+        return len(self.tabs)
+
+    @property
+    def active_tab(self):
+        return self.tabs[0] if self.tabs else None
+
+    def remove(self, tab):
+        ' Must be called in the GUI thread '
+        self.tabs.remove(tab)
+        tab.destroy()
