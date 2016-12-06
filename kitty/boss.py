@@ -27,6 +27,7 @@ from .borders import BordersProgram
 from .char_grid import cursor_shader, cell_shader
 from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
+from .session import create_session
 from .shaders import Sprites, ShaderProgram
 from .tabs import TabManager
 from .timers import Timers
@@ -65,6 +66,7 @@ class Boss(Thread):
 
     def __init__(self, glfw_window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        startup_session = create_session(opts, args)
         self.cursor_blinking = True
         self.glfw_window_title = None
         self.action_queue = Queue()
@@ -91,14 +93,13 @@ class Boss(Thread):
         glfw_window.scroll_callback = self.on_mouse_scroll
         glfw_window.cursor_pos_callback = self.on_mouse_move
         glfw_window.window_focus_callback = self.on_focus
-        self.tab_manager = TabManager(opts, args)
+        self.tab_manager = TabManager(opts, args, startup_session)
         self.sprites = Sprites()
         self.cell_program = ShaderProgram(*cell_shader)
         self.cursor_program = ShaderProgram(*cursor_shader)
         self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
-        self.queue_action(self.active_tab.new_window, False)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
         self.start_cursor_blink()

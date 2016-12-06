@@ -52,6 +52,33 @@ By default kitty looks for a config file in the OS
 config directory (usually `~/.config/kitty/kitty.conf` on linux) but you can pass
 a specific path via the `--config` option.
 
+Startup Sessions
+-------------------
+
+You can control the tabs, window layout, working directory, startup programs, etc. by creating a
+"session" file and using the `--session` command line flag. For example:
+
+```
+# Set the window layout for the current tab
+layout tall
+# Set the working directory for the current tab
+cd ~
+# Create a window and run the specified command in it
+launch zsh
+launch vim
+launch irssi --profile x
+
+# Create a new tab
+new_tab
+cd ~/somewhere
+# Set the layouts allowed in this tab
+enabled_layouts tall, stack
+layout stack
+launch zsh
+# Make the previous window the currently focused window
+focus
+launch emacs
+```
 
 Resources on terminal behavior
 ------------------------------------------

@@ -39,6 +39,8 @@ def option_parser():
     a('--replay-commands', default=None, help=_('Replay previously dumped commands'))
     a('--window-layout', default=None, choices=frozenset(all_layouts.keys()), help=_(
         'The window layout to use on startup'))
+    a('--session', default=None, help=_(
+        'Path to a file containing the startup session (tabs, windows, layout, programs)'))
     a('args', nargs=argparse.REMAINDER, help=_(
         'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
         ' directly to the program being invoked.'

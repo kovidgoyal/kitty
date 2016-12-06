@@ -5,7 +5,7 @@
 from collections import deque
 
 from .child import Child
-from .constants import get_boss, appname, shell_path, cell_size
+from .constants import get_boss, appname, shell_path, cell_size, queue_action
 from .fast_data_types import glfw_post_empty_event
 from .layout import all_layouts
 from .borders import Borders
@@ -14,19 +14,25 @@ from .window import Window
 
 class Tab:
 
-    def __init__(self, opts, args):
+    def __init__(self, opts, args, session_tab=None):
         self.opts, self.args = opts, args
-        self.enabled_layouts = opts.enabled_layouts
+        self.enabled_layouts = list((session_tab or opts).enabled_layouts)
         self.borders = Borders(opts)
         self.windows = deque()
-        if args.window_layout:
-            if args.window_layout not in self.enabled_layouts:
-                self.enabled_layouts.insert(0, args.window_layout)
-            self.current_layout = all_layouts[args.window_layout]
-        else:
-            self.current_layout = all_layouts[self.enabled_layouts[0]]
         self.active_window_idx = 0
-        self.current_layout = self.current_layout(opts, self.borders.border_width, self.windows)
+        if session_tab is None:
+            self.cwd = args.directory
+            self.current_layout = self.enabled_layouts[0]
+            queue_action(self.new_window)
+        else:
+            self.cwd = session_tab.cwd or args.directory
+            self.current_layout = all_layouts[session_tab.layout](opts, self.borders.border_width, self.windows)
+            queue_action(self.startup, session_tab)
+
+    def startup(self, session_tab):
+        for cmd in session_tab.windows:
+            self.new_window(cmd=cmd)
+        self.active_window_idx = session_tab.active_window_idx
 
     @property
     def is_visible(self):
@@ -52,24 +58,28 @@ class Tab:
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
-            idx = self.opts.enabled_layouts.index(self.current_layout.name)
+            try:
+                idx = self.opts.enabled_layouts.index(self.current_layout.name)
+            except Exception:
+                idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
             self.current_layout = all_layouts[nl](self.opts, self.borders.border_width, self.windows)
             for w in self.windows:
                 w.is_visible_in_layout = True
             self.relayout()
 
-    def launch_child(self, use_shell=False):
-        if use_shell:
-            cmd = [shell_path]
-        else:
-            cmd = self.args.args or [shell_path]
-        ans = Child(cmd, self.args.directory, self.opts)
+    def launch_child(self, use_shell=False, cmd=None):
+        if cmd is None:
+            if use_shell:
+                cmd = [shell_path]
+            else:
+                cmd = self.args.args or [shell_path]
+        ans = Child(cmd, self.cwd, self.opts)
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True):
-        child = self.launch_child(use_shell=use_shell)
+    def new_window(self, use_shell=True, cmd=None):
+        child = self.launch_child(use_shell=use_shell, cmd=cmd)
         window = Window(self, child, self.opts, self.args)
         get_boss().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
@@ -129,9 +139,10 @@ class Tab:
 
 class TabManager:
 
-    def __init__(self, opts, args):
+    def __init__(self, opts, args, startup_session):
         self.opts, self.args = opts, args
-        self.tabs = [Tab(opts, args)]
+        self.tabs = [Tab(opts, args, t) for t in startup_session.tabs]
+        self.active_tab_idx = startup_session.active_tab_idx
 
     def __iter__(self):
         return iter(self.tabs)
@@ -141,7 +152,7 @@ class TabManager:
 
     @property
     def active_tab(self):
-        return self.tabs[0] if self.tabs else None
+        return self.tabs[self.active_tab_idx] if self.tabs else None
 
     @property
     def tab_bar_height(self):
