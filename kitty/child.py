@@ -18,7 +18,7 @@ class Child:
 
     def __init__(self, argv, cwd, opts):
         self.argv = argv
-        self.cwd = cwd
+        self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
         self.opts = opts
 
     def fork(self):
