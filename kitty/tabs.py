@@ -145,7 +145,7 @@ class TabManager:
 
     @property
     def tab_bar_height(self):
-        return 0 if len(self.tabs) < 1 else cell_size.height
+        return 0 if len(self.tabs) < 2 else cell_size.height
 
     def remove(self, tab):
         ' Must be called in the GUI thread '
