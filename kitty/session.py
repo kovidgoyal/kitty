@@ -73,6 +73,9 @@ def parse_session(raw, opts):
                 ans.set_cwd(rest)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
+    for t in ans.tabs:
+        if not t.windows:
+            t.windows.append([shell_path])
     return ans
 
 
