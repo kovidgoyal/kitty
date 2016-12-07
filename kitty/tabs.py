@@ -184,7 +184,6 @@ class TabManager:
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
-        self.close_fg = as_rgb(0xff << 16)
         self.can_render = False
 
     def resize(self, only_tabs=False):
@@ -252,26 +251,28 @@ class TabManager:
         s.cursor.x = 0
         s.erase_in_line(2, False)
         at = self.active_tab
+        max_title_length = (self.screen_geometry.xnum // len(self.tabs)) - 1
 
         for t in self.tabs:
             title = (t.name or t.title or appname) + ' '
             s.cursor.bg = self.active_bg if t is at else 0
             s.cursor.fg = self.active_fg if t is at else 0
-            s.cursor.bold = t is at
+            s.cursor.bold = s.cursor.italic = t is at
+            before = s.cursor.x
             s.draw(title)
-            if s.cursor.x > s.columns - 2:
-                s.cursor.x = s.columns - 3
+            extra = s.cursor.x - before - max_title_length
+            if extra > 0:
+                s.cursor.x -= extra + 1
                 s.draw('…')
-            s.cursor.bold = False
-            s.cursor.fg = self.close_fg
-            s.draw('X')
+            s.cursor.bold = s.cursor.italic = False
             s.cursor.fg = s.cursor.bg = 0
             s.draw('┇')
-            if s.cursor.x > s.columns - 5:
+            if s.cursor.x > s.columns - max_title_length:
                 s.draw('…')
                 break
         s.update_cell_data(
             sprites.backend, self.color_profile, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
+        sprites.render_dirty_cells()
         if self.buffer_id is None:
             self.buffer_id = sprites.add_sprite_map()
         sprites.set_sprite_map(self.buffer_id, self.sprite_map)
