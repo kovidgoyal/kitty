@@ -65,6 +65,9 @@ class Tab:
     def relayout(self):
         if self.windows:
             self.current_layout(self.windows, self.active_window_idx)
+        self.relayout_borders()
+
+    def relayout_borders(self):
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
@@ -198,6 +201,7 @@ class TabManager:
         if len(self.tabs) > 1:
             self.active_tab_idx = (self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs)
             self.tabbar_dirty = True
+            self.active_tab.relayout_borders()
             glfw_post_empty_event()
 
     def __iter__(self):
