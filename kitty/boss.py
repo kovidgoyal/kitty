@@ -22,7 +22,7 @@ from .fast_data_types import (
     GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
     GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN, drain_read
 )
-from .fonts import set_font_family
+from .fonts.render import set_font_family
 from .borders import BordersProgram
 from .char_grid import cursor_shader, cell_shader
 from .constants import is_key_pressed

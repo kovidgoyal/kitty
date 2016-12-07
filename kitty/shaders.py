@@ -6,7 +6,7 @@ from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
 
-from .fonts import render_cell
+from .fonts.render import render_cell
 from .fast_data_types import (
     glCreateProgram, glAttachShader, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER,
     glLinkProgram, GL_TRUE, GL_LINK_STATUS, glGetProgramiv,
