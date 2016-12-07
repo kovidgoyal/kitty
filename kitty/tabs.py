@@ -191,6 +191,12 @@ class TabManager:
         self.screen = s
         self.can_render = True
 
+    def next_tab(self, delta=1):
+        if len(self.tabs) > 1:
+            self.active_tab_idx = (self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs)
+            self.tabbar_dirty = True
+            glfw_post_empty_event()
+
     def __iter__(self):
         return iter(self.tabs)
 

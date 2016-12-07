@@ -257,15 +257,17 @@ class Boss(Thread):
         self.start_cursor_blink()
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
-            tab = self.active_tab
-            if tab is None:
-                return
+            import pprint
+            pprint.pprint(self.opts.keymap)
             if func is not None:
                 f = getattr(self, func, None)
                 if f is not None:
                     passthrough = f()
                     if not passthrough:
                         return
+            tab = self.active_tab
+            if tab is None:
+                return
             window = self.active_window
             if window is not None:
                 yield window
@@ -427,5 +429,11 @@ class Boss(Thread):
             w = self.active_window
             if w is not None:
                 self.queue_action(w.paste, text)
+
+    def next_tab(self):
+        self.queue_action(self.tab_manager.next_tab)
+
+    def previous_tab(self):
+        self.queue_action(self.tab_manager.next_tab, -1)
 
     # }}}
