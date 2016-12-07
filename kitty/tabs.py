@@ -29,12 +29,13 @@ class Tab:
         self.active_window_idx = 0
         if session_tab is None:
             self.cwd = args.directory
-            self.current_layout = self.enabled_layouts[0]
+            l = self.enabled_layouts[0]
             queue_action(self.new_window)
         else:
             self.cwd = session_tab.cwd or args.directory
-            self.current_layout = all_layouts[session_tab.layout](opts, self.borders.border_width, self.windows)
+            l = session_tab.layout
             queue_action(self.startup, session_tab)
+        self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
@@ -209,6 +210,10 @@ class TabManager:
 
     def __len__(self):
         return len(self.tabs)
+
+    def new_tab(self):
+        self.active_tab_idx = len(self.tabs)
+        self.tabs.append(Tab(self.opts, self.args, self.title_changed))
 
     @property
     def active_tab(self):

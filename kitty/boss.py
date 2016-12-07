@@ -434,4 +434,6 @@ class Boss(Thread):
     def previous_tab(self):
         self.queue_action(self.tab_manager.next_tab, -1)
 
+    def new_tab(self):
+        self.tab_manager.new_tab()
     # }}}
