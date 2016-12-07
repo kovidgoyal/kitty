@@ -9,7 +9,7 @@ from threading import Lock
 
 from .config import build_ansi_color_table
 from .constants import get_boss, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color, set_primary_selection, open_url
+from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
@@ -20,10 +20,6 @@ Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
 
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
-
-
-def color_as_int(val):
-    return val[0] << 16 | val[1] << 8 | val[2]
 
 
 # cell shader {{{
@@ -214,6 +210,17 @@ def calculate_gl_geometry(window_geometry):
     xstart = -1 + 2 * xmargin
     ystart = 1 - 2 * ymargin
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
+
+
+def render_cells(buffer_id, sg, cell_program, sprites):
+    sprites.bind_sprite_map(buffer_id)
+    ul = cell_program.uniform_location
+    glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+    glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
+    glUniform1i(ul('sprites'), sprites.sampler_num)
+    glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
+    glUniform2f(ul('sprite_layout'), *(sprites.layout))
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 
 class CharGrid:
@@ -430,14 +437,7 @@ class CharGrid:
         return sg
 
     def render_cells(self, sg, cell_program, sprites):
-        sprites.bind_sprite_map(self.buffer_id)
-        ul = cell_program.uniform_location
-        glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-        glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-        glUniform1i(ul('sprites'), sprites.sampler_num)
-        glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
-        glUniform2f(ul('sprite_layout'), *(sprites.layout))
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+        render_cells(self.buffer_id, sg, cell_program, sprites)
 
     def render_cursor(self, sg, cursor_program):
         cursor = self.current_cursor

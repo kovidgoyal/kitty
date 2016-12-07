@@ -9,13 +9,10 @@ from ctypes import addressof
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import get_boss, appname, shell_path, cell_size, queue_action, viewport_size, WindowGeometry, GLuint
-from .fast_data_types import (
-    glfw_post_empty_event, Screen, DECAWM, DATA_CELL_SIZE,
-    ColorProfile, glUniform2ui, glUniform4f, glUniform1i, glUniform2f,
-    glDrawArraysInstanced, GL_TRIANGLE_FAN
-)
-from .char_grid import calculate_gl_geometry
+from .fast_data_types import glfw_post_empty_event, Screen, DECAWM, DATA_CELL_SIZE, ColorProfile
+from .char_grid import calculate_gl_geometry, render_cells
 from .layout import all_layouts
+from .utils import color_as_int
 from .borders import Borders
 from .window import Window
 
@@ -154,12 +151,15 @@ class TabManager:
 
     def __init__(self, opts, args, startup_session):
         self.opts, self.args = opts, args
+        self.buffer_id = None
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
         self.active_tab_idx = startup_session.active_tab_idx
         self.tabbar_lock = Lock()
         self.tabbar_dirty = True
         self.color_profile = ColorProfile()
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+        self.default_fg = color_as_int(opts.inactive_tab_foreground)
+        self.default_bg = color_as_int(opts.inactive_tab_background)
 
     def resize(self):
         for tab in self.tabs:
@@ -225,12 +225,4 @@ class TabManager:
         with self.tabbar_lock:
             if self.tabbar_dirty:
                 self.update_tab_bar_data(sprites)
-        sprites.bind_sprite_map(self.buffer_id)
-        ul, sg = cell_program.uniform_location, self.screen_geometry
-        ul = cell_program.uniform_location
-        glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-        glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-        glUniform1i(ul('sprites'), sprites.sampler_num)
-        glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
-        glUniform2f(ul('sprite_layout'), *(sprites.layout))
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+        render_cells(self.buffer_id, self.screen_geometry, cell_program, sprites)

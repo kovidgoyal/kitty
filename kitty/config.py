@@ -109,6 +109,9 @@ for name in 'foreground background cursor active_border_color inactive_border_co
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)
+for a in ('active', 'inactive'):
+    for b in ('foreground', 'background'):
+        type_map['%s_tab_%s' % (a, b)] = lambda x: to_color(x, validate=True)
 
 
 def parse_config(lines):
