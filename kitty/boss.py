@@ -220,8 +220,7 @@ class Boss(Thread):
 
     def apply_pending_resize(self, w, h):
         viewport_size.width, viewport_size.height = w, h
-        for tab in self.tab_manager:
-            tab.relayout()
+        self.tab_manager.resize()
         self.resize_gl_viewport = True
         self.pending_resize = False
         glfw_post_empty_event()
@@ -367,6 +366,7 @@ class Boss(Thread):
                 tab.render()
                 render_data = {window: window.char_grid.prepare_for_render(self.sprites) for window in tab.visible_windows() if not window.needs_layout}
                 with self.cell_program:
+                    self.tab_manager.render(self.cell_program, self.sprites)
                     for window, rd in render_data.items():
                         if rd is not None:
                             window.char_grid.render_cells(rd, self.cell_program, self.sprites)

@@ -207,6 +207,15 @@ class Selection:  # {{{
 # }}}
 
 
+def calculate_gl_geometry(window_geometry):
+    dx, dy = 2 * cell_size.width / viewport_size.width, 2 * cell_size.height / viewport_size.height
+    xmargin = window_geometry.left / viewport_size.width
+    ymargin = window_geometry.top / viewport_size.height
+    xstart = -1 + 2 * xmargin
+    ystart = 1 - 2 * ymargin
+    return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
+
+
 class CharGrid:
 
     url_pat = re.compile('(?:http|https|file|ftp)://\S+', re.IGNORECASE)
@@ -237,12 +246,7 @@ class CharGrid:
         self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
     def update_position(self, window_geometry):
-        dx, dy = 2 * cell_size.width / viewport_size.width, 2 * cell_size.height / viewport_size.height
-        xmargin = window_geometry.left / viewport_size.width
-        ymargin = window_geometry.top / viewport_size.height
-        xstart = -1 + 2 * xmargin
-        ystart = 1 - 2 * ymargin
-        self.screen_geometry = ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
+        self.screen_geometry = calculate_gl_geometry(window_geometry)
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)

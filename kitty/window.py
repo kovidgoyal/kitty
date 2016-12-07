@@ -115,6 +115,9 @@ class Window:
 
     def title_changed(self, new_title):
         self.title = sanitize_title(new_title or appname)
+        t = self.tabref()
+        if t is not None:
+            t.title_changed(self)
         glfw_post_empty_event()
 
     def icon_changed(self, new_icon):
