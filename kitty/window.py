@@ -42,6 +42,9 @@ class Window:
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
 
+    def __repr__(self):
+        return 'Window(title={}, id={})'.format(self.title, hex(id(self)))
+
     @property
     def is_visible_in_layout(self):
         return self._is_visible_in_layout

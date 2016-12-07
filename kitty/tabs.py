@@ -147,6 +147,9 @@ class Tab:
     def render(self):
         self.borders.render(get_boss().borders_program)
 
+    def __repr__(self):
+        return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
+
 
 class TabManager:
 
