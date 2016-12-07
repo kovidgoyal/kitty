@@ -169,10 +169,12 @@ class TabManager:
         self.close_fg = as_rgb(0xff << 16)
         self.can_render = False
 
-    def resize(self):
-        self.can_render = False
+    def resize(self, only_tabs=False):
         for tab in self.tabs:
             tab.relayout()
+        if only_tabs:
+            return
+        self.can_render = False
         ncells = viewport_size.width // cell_size.width
         s = Screen(None, 1, ncells)
         s.reset_mode(DECAWM)
@@ -208,8 +210,13 @@ class TabManager:
 
     def remove(self, tab):
         ' Must be called in the GUI thread '
+        needs_resize = len(self.tabs) == 2
         self.tabs.remove(tab)
+        self.active_tab_idx = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
+        self.tabbar_dirty = True
         tab.destroy()
+        if needs_resize:
+            queue_action(get_boss().tabbar_visibility_changed)
 
     def update_tab_bar_data(self, sprites):
         s = self.tab_bar_screen

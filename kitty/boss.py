@@ -225,6 +225,10 @@ class Boss(Thread):
         self.pending_resize = False
         glfw_post_empty_event()
 
+    def tabbar_visibility_changed(self):
+        self.tab_manager.resize(only_tabs=True)
+        glfw_post_empty_event()
+
     @property
     def active_tab(self):
         return self.tab_manager.active_tab
