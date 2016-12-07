@@ -296,12 +296,20 @@ class Boss(Thread):
                 if w.is_visible_in_layout and w.contains(x, y):
                     return w
 
+    def in_tab_bar(self, y):
+        th = self.current_tab_bar_height
+        return th > 0 and y >= viewport_size.height - th
+
     @callback
     def on_mouse_button(self, window, button, action, mods):
         mouse_button_pressed[button] = action == GLFW_PRESS
         self.show_mouse_cursor()
-        w = self.window_for_pos(*mouse_cursor_pos)
+        x, y = mouse_cursor_pos
+        w = self.window_for_pos(x, y)
         if w is None:
+            if self.in_tab_bar(y):
+                if button == GLFW_MOUSE_BUTTON_1 and action == GLFW_PRESS:
+                    self.tab_manager.activate_tab_at(x)
             return
         focus_moved = False
         old_focus = self.active_window
@@ -324,6 +332,8 @@ class Boss(Thread):
         if w is not None:
             yield w
             w.on_mouse_move(xpos, ypos)
+        else:
+            self.change_mouse_cursor(self.in_tab_bar(ypos))
 
     @callback
     def on_mouse_scroll(self, window, x, y):

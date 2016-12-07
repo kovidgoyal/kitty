@@ -171,6 +171,7 @@ class TabManager:
         self.opts, self.args = opts, args
         self.buffer_id = None
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
+        self.cell_ranges = []
         self.active_tab_idx = startup_session.active_tab_idx
         self.tabbar_lock = Lock()
         self.tabbar_dirty = True
@@ -207,12 +208,15 @@ class TabManager:
         self.screen = s
         self.can_render = True
 
+    def set_active_tab(self, idx):
+        self.active_tab_idx = idx
+        self.tabbar_dirty = True
+        self.active_tab.relayout_borders()
+        glfw_post_empty_event()
+
     def next_tab(self, delta=1):
         if len(self.tabs) > 1:
-            self.active_tab_idx = (self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs)
-            self.tabbar_dirty = True
-            self.active_tab.relayout_borders()
-            glfw_post_empty_event()
+            self.set_active_tab((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
     def __iter__(self):
         return iter(self.tabs)
@@ -252,6 +256,7 @@ class TabManager:
         s.erase_in_line(2, False)
         at = self.active_tab
         max_title_length = (self.screen_geometry.xnum // len(self.tabs)) - 1
+        self.cell_ranges = []
 
         for t in self.tabs:
             title = (t.name or t.title or appname) + ' '
@@ -264,6 +269,7 @@ class TabManager:
             if extra > 0:
                 s.cursor.x -= extra + 1
                 s.draw('…')
+            self.cell_ranges.append((before, s.cursor.x))
             s.cursor.bold = s.cursor.italic = False
             s.cursor.fg = s.cursor.bg = 0
             s.draw('┇')
@@ -276,6 +282,13 @@ class TabManager:
         if self.buffer_id is None:
             self.buffer_id = sprites.add_sprite_map()
         sprites.set_sprite_map(self.buffer_id, self.sprite_map)
+
+    def activate_tab_at(self, x):
+        x = (x - self.window_geometry.left) // cell_size.width
+        for i, (a, b) in enumerate(self.cell_ranges):
+            if a <= x <= b:
+                queue_action(self.set_active_tab, i)
+                return
 
     def render(self, cell_program, sprites):
         if not self.can_render or len(self.tabs) < 2:
