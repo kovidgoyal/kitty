@@ -42,7 +42,7 @@ class Session:
 
     def focus(self):
         self.active_tab_idx = max(0, len(self.tabs) - 1)
-        self.tabs[-1].active_window_idx = max(0, len(self.tabs.windows) - 1)
+        self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
 
     def set_enabled_layouts(self, raw):
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
@@ -53,6 +53,7 @@ class Session:
 
 def parse_session(raw, opts):
     ans = Session()
+    ans.add_tab(opts)
     for line in raw.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
@@ -72,6 +73,7 @@ def parse_session(raw, opts):
                 ans.set_cwd(rest)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
+    return ans
 
 
 def create_session(opts, args):
