@@ -161,7 +161,16 @@ class TabManager:
         self.default_fg = color_as_int(opts.inactive_tab_foreground)
         self.default_bg = color_as_int(opts.inactive_tab_background)
 
+        def as_rgb(x):
+            return (x << 8) | 2
+
+        self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
+        self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
+        self.close_fg = as_rgb(0xff << 16)
+        self.can_render = False
+
     def resize(self):
+        self.can_render = False
         for tab in self.tabs:
             tab.relayout()
         ncells = viewport_size.width // cell_size.width
@@ -173,9 +182,11 @@ class TabManager:
             self.tab_bar_screen = s
             self.tabbar_dirty = True
         margin = (viewport_size.width - ncells * cell_size.width) // 2
-        self.screen_geometry = calculate_gl_geometry(WindowGeometry(
-            margin, viewport_size.height - cell_size.height, viewport_size.width - margin, viewport_size.height, s.columns, s.lines))
+        self.window_geometry = WindowGeometry(
+            margin, viewport_size.height - cell_size.height, viewport_size.width - margin, viewport_size.height, s.columns, s.lines)
+        self.screen_geometry = calculate_gl_geometry(self.window_geometry)
         self.screen = s
+        self.can_render = True
 
     def __iter__(self):
         return iter(self.tabs)
@@ -202,14 +213,24 @@ class TabManager:
 
     def update_tab_bar_data(self, sprites):
         s = self.tab_bar_screen
+        s.cursor.x = 0
+        s.erase_in_line(2, False)
+        at = self.active_tab
+
         for t in self.tabs:
-            title = (t.title or appname)
+            title = (t.title or appname) + ' '
+            s.cursor.bg = self.active_bg if t is at else 0
+            s.cursor.fg = self.active_fg if t is at else 0
+            s.cursor.bold = t is at
             s.draw(title)
-            if s.cursor.x > s.columns - 3:
-                # TODO: Handle trailing wide character
-                s.cursor.x = s.columns - 4
+            if s.cursor.x > s.columns - 2:
+                s.cursor.x = s.columns - 3
                 s.draw('…')
-            s.draw(' X┇')
+            s.cursor.bold = False
+            s.cursor.fg = self.close_fg
+            s.draw('X')
+            s.cursor.fg = s.cursor.bg = 0
+            s.draw('┇')
             if s.cursor.x > s.columns - 5:
                 s.draw('…')
                 break
@@ -220,7 +241,7 @@ class TabManager:
         sprites.set_sprite_map(self.buffer_id, self.sprite_map)
 
     def render(self, cell_program, sprites):
-        if not hasattr(self, 'screen_geometry') or len(self.tabs) < 2:
+        if not self.can_render or len(self.tabs) < 2:
             return
         with self.tabbar_lock:
             if self.tabbar_dirty:
