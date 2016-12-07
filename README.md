@@ -77,7 +77,7 @@ cd ~/somewhere
 enabled_layouts tall, stack
 layout stack
 launch zsh
-# Make the previous window the currently focused window
+# Make the current window the active (focused) window
 focus
 launch emacs
 ```
