@@ -11,8 +11,9 @@ from .layout import all_layouts
 
 class Tab:
 
-    def __init__(self, opts):
+    def __init__(self, opts, name):
         self.windows = []
+        self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
@@ -25,8 +26,10 @@ class Session:
         self.tabs = []
         self.active_tab_idx = 0
 
-    def add_tab(self, opts):
-        self.tabs.append(Tab(opts))
+    def add_tab(self, opts, name=''):
+        if self.tabs and not self.tabs[-1].windows:
+            del self.tabs[-1]
+        self.tabs.append(Tab(opts, name))
 
     def set_layout(self, val):
         if val not in all_layouts:
@@ -60,7 +63,7 @@ def parse_session(raw, opts):
             cmd, rest = line.partition(' ')[::2]
             cmd, rest = cmd.strip(), rest.strip()
             if cmd == 'new_tab':
-                ans.add_tab(opts)
+                ans.add_tab(opts, rest)
             elif cmd == 'layout':
                 ans.set_layout(rest)
             elif cmd == 'launch':

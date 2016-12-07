@@ -21,6 +21,7 @@ class Tab:
 
     def __init__(self, opts, args, on_title_change, session_tab=None):
         self.opts, self.args = opts, args
+        self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
         self.enabled_layouts = list((session_tab or opts).enabled_layouts)
         self.borders = Borders(opts)
@@ -225,7 +226,7 @@ class TabManager:
         at = self.active_tab
 
         for t in self.tabs:
-            title = (t.title or appname) + ' '
+            title = (t.name or t.title or appname) + ' '
             s.cursor.bg = self.active_bg if t is at else 0
             s.cursor.fg = self.active_fg if t is at else 0
             s.cursor.bold = t is at

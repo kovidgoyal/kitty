@@ -68,8 +68,10 @@ launch zsh
 launch vim
 launch irssi --profile x
 
-# Create a new tab
-new_tab
+# Create a new tab (the part after new_tab is the optional tab name which will
+# be displayed in the tab bar, if ommitted, the title of the active window will
+# be used instead)
+new_tab my tab
 cd ~/somewhere
 # Set the layouts allowed in this tab
 enabled_layouts tall, stack
