@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque
+from functools import partial
 from threading import Lock
 from ctypes import addressof
 
@@ -36,6 +37,8 @@ class Tab:
             l = session_tab.layout
             queue_action(self.startup, session_tab)
         self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
+        for i, which in enumerate('first second third fourth fifth sixth seventh eight ninth tenth'.split()):
+            setattr(self, which + '_window', partial(self.nth_window, num=i))
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
@@ -110,16 +113,23 @@ class Tab:
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
         glfw_post_empty_event()
 
-    def set_active_window(self, window):
-        try:
-            idx = self.windows.index(window)
-        except ValueError:
-            return
+    def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
             self.current_layout.set_active_window(self.windows, idx)
             self.active_window_idx = idx
             self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
             glfw_post_empty_event()
+
+    def set_active_window(self, window):
+        try:
+            idx = self.windows.index(window)
+        except ValueError:
+            return
+        self.set_active_window_idx(idx)
+
+    def nth_window(self, num=0):
+        if self.windows:
+            self.set_active_window_idx(min(num, len(self.windows)-1))
 
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
