@@ -1,6 +1,36 @@
 = kitty - A terminal emulator
 :toc:
 :toc-placement!:
+// START_SHORTCUT_BLOCK
+:sc_paste_from_clipboard: `ctrl+shift+v`
+:sc_paste_from_selection: `ctrl+shift+s`
+:sc_copy_to_clipboard: `ctrl+shift+c`
+:sc_scroll_line_up: `ctrl+shift+up`
+:sc_scroll_line_down: `ctrl+shift+down`
+:sc_scroll_page_up: `ctrl+shift+page_up`
+:sc_scroll_page_down: `ctrl+shift+page_down`
+:sc_scroll_home: `ctrl+shift+home`
+:sc_scroll_end: `ctrl+shift+end`
+:sc_new_window: `ctrl+shift+enter`
+:sc_next_window: `ctrl+shift+]`
+:sc_previous_window: `ctrl+shift+[`
+:sc_close_window: `ctrl+shift+w`
+:sc_next_layout: `ctrl+shift+l`
+:sc_first_window: `ctrl+shift+1`
+:sc_second_window: `ctrl+shift+2`
+:sc_third_window: `ctrl+shift+3`
+:sc_fourth_window: `ctrl+shift+4`
+:sc_fifth_window: `ctrl+shift+5`
+:sc_sixth_window: `ctrl+shift+6`
+:sc_seventh_window: `ctrl+shift+7`
+:sc_eighth_window: `ctrl+shift+8`
+:sc_ninth_window: `ctrl+shift+9`
+:sc_tenth_window: `ctrl+shift+0`
+:sc_next_tab: `ctrl+shift+right`
+:sc_previous_tab: `ctrl+shift+left`
+:sc_new_tab: `ctrl+shift+t`
+:sc_close_tab: `ctrl+shift+q`
+// END_SHORTCUT_BLOCK
 
 image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, link=https://travis-ci.org/kovidgoyal/kitty]
 
@@ -90,8 +120,11 @@ windows are:
 |===
 |Action |Shortcut
 
-|New tab   |`new_tab`
-|Close tab |`close_tab`
+|New tab   | {sc_new_tab}
+
+|Close tab | {sc_close_tab}
+
+
 |===
 
 == Configuration
