@@ -1,0 +1,137 @@
+= kitty - A terminal emulator
+:toc:
+:toc-placement!:
+
+image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, link=https://travis-ci.org/kovidgoyal/kitty]
+
+Major features:
+
+* Uses OpenGL+FreeType for rendering, does not depend on any GUI
+toolkits.
+* Supports tiling multiple terminal windows side by side in different
+layouts without needing to use an extra program like tmux
+* Supports all modern terminal features: unicode, true-color, mouse
+protocol, focus tracking, bracketed paste and so on.
+* Easily hackable (UI layer written in python, inner loops in C for
+speed). Less than ten thousand lines of code.
+* Rendering of text is done in an actual character grid, so the common
+problems with most Terminals when using wide characters/complex scripts
+do not occur. The downside is that scripts with complex glyph layout,
+such as Arabic do not render well.
+
+toc::[]
+
+
+== Installation
+
+kitty is designed to run from source, for easy hackability. Make sure
+the following dependencies are installed first:
+
+* python >= 3.5
+* glew >= 2.0
+* glfw-dev >= 3.2
+* freetype
+* fontconfig
+* gcc (required for building, clang should also work, but it is not tested)
+* pkg-config (required for building)
+
+Install kitty with:
+
+....
+git clone https://github.com/kovidgoyal/kitty && cd kitty
+....
+
+Now build the C parts of kitty with the following command:
+
+....
+python3 setup.py build
+....
+
+You can run kitty, as:
+
+....
+python3 /path/to/kitty/folder
+....
+
+== Design philosophy
+
+kitty is designed for power keyboard users. To that end all its controls
+work with the keyboard (although it fully supports mouse interactions as
+well). It's configuration is a simple, human editable, single file for
+easy reproducability (I like to store config files in source control).
+
+The code in kitty is designed to be simple, modular and hackable. It is
+written in a mix of C (for performance sensitive parts) and Python (for
+easy hackability of the UI). It does not depend on any large and complex
+UI toolkit, using only OpenGL+FreeType for rendering everything.
+
+Finally, kitty is designed from the ground up to support all modern
+terminal features, such as unicode, true color, bold/italic fonts, text
+formatting, etc. It even extends existing text formatting escape codes,
+to add support for features not available elsewhere, such as colored and
+styled (curly) underlines. One of the design goals of kitty is to be
+easily extensible so that new features can be added in the future with
+relatively less effort.
+
+== Tabs and Windows
+
+kitty is capable of running multiple programs organized into tabs and
+windows. The top level of organization is the _Tab_. Each tab consists
+of one or more windows. The windows can be arranged in multiple
+different layouts, like windows are organized in a tiling window
+manager. The keyboard controls (which are all customizable) for tabs and
+windows are:
+
+[cols=",",options="header",]
+|======================
+|Action |Shortcut
+|New tab |`new_tab`
+|Close tab |`close_tab`
+|======================
+
+== Configuration
+
+kitty is highly customizable, everything from keyboard shortcuts, to
+painting frames-per-second. See the heavily commented
+link:kitty/kitty.conf[default config file]. By default kitty looks for a
+config file in the OS config directory (usually
+`~/.config/kitty/kitty.conf` on linux) but you can pass a specific path
+via the `--config` option.
+
+== Startup Sessions
+
+You can control the tabs, window layout, working directory, startup
+programs, etc. by creating a "session" file and using the `--session`
+command line flag. For example:
+
+....
+# Set the window layout for the current tab
+layout tall
+# Set the working directory for the current tab
+cd ~
+# Create a window and run the specified command in it
+launch zsh
+launch vim
+launch irssi --profile x
+
+# Create a new tab (the part after new_tab is the optional tab name which will
+# be displayed in the tab bar, if ommitted, the title of the active window will
+# be used instead)
+new_tab my tab
+cd ~/somewhere
+# Set the layouts allowed in this tab
+enabled_layouts tall, stack
+layout stack
+launch zsh
+# Make the current window the active (focused) window
+focus
+launch emacs
+....
+
+== Resources on terminal behavior
+
+http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+
+https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+
+http://vt100.net/
