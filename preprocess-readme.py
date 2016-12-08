@@ -14,7 +14,7 @@ defns = []
 for line in open('kitty/kitty.conf'):
     if line.startswith('map '):
         _, sc, name = line.split(maxsplit=3)
-        defns.append(':sc_{}: `{}`'.format(name, sc))
+        defns.append(':sc_{}: {}'.format(name, sc))
 
 defns = '\n'.join(defns)
 
