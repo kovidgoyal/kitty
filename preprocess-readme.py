@@ -4,18 +4,20 @@
 
 import os
 import re
+from collections import defaultdict
 
 base = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base)
 
 
-defns = []
+defns = defaultdict(list)
 
 for line in open('kitty/kitty.conf'):
     if line.startswith('map '):
         _, sc, name = line.split(maxsplit=3)
-        defns.append(':sc_{}: {}'.format(name, sc))
+        defns[name].append('`' + sc + '`')
 
+defns = [':sc_{}: pass:quotes[{}]'.format(name, ' or '.join(defns[name])) for name in sorted(defns)]
 defns = '\n'.join(defns)
 
 raw = open('README.asciidoc').read()
