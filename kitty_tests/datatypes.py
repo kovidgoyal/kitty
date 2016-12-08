@@ -6,7 +6,7 @@ from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf
+from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf, Cursor
 
 
 def create_lbuf(*lines):
@@ -321,3 +321,16 @@ class TestDataTypes(BaseTest):
         hb.rewrap(hb2)
         for i in range(hb2.ynum):
             self.ae(hb2.line(i), hb.line(i))
+
+    def test_ansi_repr(self):
+        lb = filled_line_buf()
+        l = lb.line(0)
+        self.ae(l.as_ansi(), '\x1b[0m00000')
+        c = Cursor()
+        c.bold = c.italic = c.reverse = c.strikethrough = True
+        c.fg = (4 << 8) | 1
+        c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
+        c.decoration_fg = (5 << 8) | 1
+        l.set_text('1', 0, 1, c)
+        self.ae(l.as_ansi(), '\x1b[0m\x1b[1m\x1b[3m\x1b[7m\x1b[9m\x1b[38;5;4m\x1b[48;2;1;2;3m\x1b[58;5;5m' '1'
+                '\x1b[22m\x1b[23m\x1b[27m\x1b[29m\x1b[39m\x1b[49m\x1b[59m' '0000')

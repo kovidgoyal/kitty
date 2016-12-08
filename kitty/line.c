@@ -93,6 +93,105 @@ as_base_text(Line* self) {
     return ans;
 }
 
+static inline bool
+write_sgr(unsigned int val, Py_UCS4 *buf, index_type buflen, index_type *i) {
+    static char s[20] = {0};
+    unsigned int num = snprintf(s, 20, "\x1b[%um", val);
+    if (buflen - (*i) < num + 3) return false;
+    for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
+    return true;
+}
+
+static inline bool
+write_color(uint32_t val, int code, Py_UCS4 *buf, index_type buflen, index_type *i) {
+    static char s[50] = {0};
+    unsigned int num;
+    switch(val & 3) {
+        case 1:
+            num = snprintf(s, 50, "\x1b[%d;5;%um", code, (val >> 8) & 0xFF); break;
+        case 2:
+            num = snprintf(s, 50, "\x1b[%d;2;%u;%u;%um", code, (val >> 24) & 0xFF, (val >> 16) & 0xFF, (val >> 8) & 0xFF); break;
+        default:
+            return true;
+    }
+    if (buflen - (*i) < num + 3) return false;
+    for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
+    return true;
+}
+
+index_type
+line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
+#define WRITE_SGR(val) if (!write_sgr(val, buf, buflen, &i)) return i;
+#define WRITE_COLOR(val, code) if (val) { if (!write_color(val, code, buf, buflen, &i)) return i; } else { WRITE_SGR(code+1); }
+#define CHECK_BOOL(name, shift, on, off) \
+        if (((attrs >> shift) & 1) != name) { \
+            name ^= 1; \
+            if (name) { WRITE_SGR(on); } else { WRITE_SGR(off); } \
+        }
+#define CHECK_COLOR(name, val, off_code) if (name != (val)) { name = (val); WRITE_COLOR(name, off_code); }
+#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val; 
+
+    index_type limit = self->xnum, i=0;
+    int r;
+    if (!self->continued) {  // Trim trailing spaces
+        for(r = self->xnum - 1; r >= 0; r--) {
+            if ((self->chars[r] & CHAR_MASK) != 32) break;
+        }
+        limit = r + 1;
+    }
+    bool bold = false, italic = false, reverse = false, strike = false;
+    uint32_t fg = 0, bg = 0, decoration_fg = 0, decoration = 0;
+
+    WRITE_SGR(0);
+    for (index_type pos=0; pos < limit; pos++) {
+        char_type attrs = self->chars[pos] >> ATTRS_SHIFT, ch = self->chars[pos] & CHAR_MASK;
+        if (ch == 0 || (attrs & WIDTH_MASK) < 1) continue;
+        CHECK_BOOL(bold, BOLD_SHIFT, 1, 22);
+        CHECK_BOOL(italic, ITALIC_SHIFT, 3, 23);
+        CHECK_BOOL(reverse, REVERSE_SHIFT, 7, 27);
+        CHECK_BOOL(strike, STRIKE_SHIFT, 9, 29);
+        if (((attrs >> DECORATION_SHIFT) & DECORATION_MASK) != decoration) {
+            decoration = ((attrs >> DECORATION_SHIFT) & DECORATION_MASK);
+            switch(decoration) {
+                case 1:
+                    WRITE_SGR(4); break;
+                case 2:
+                    WRITE_SGR(UNDERCURL_CODE); break;
+                default:
+                    WRITE_SGR(0); break;
+            }
+        }
+        color_type col = self->colors[pos];
+        CHECK_COLOR(fg, col & COL_MASK, 38);
+        CHECK_COLOR(bg, col >> COL_SHIFT, 48);
+        CHECK_COLOR(decoration_fg, self->decoration_fg[pos], DECORATION_FG_CODE);
+        WRITE_CH(ch);
+        char_type cc = self->combining_chars[pos];
+        Py_UCS4 cc1 = cc & CC_MASK;
+        if (cc1) {
+            WRITE_CH(cc1);
+            cc1 = cc >> 16;
+            if (cc1) { WRITE_CH(cc1); }
+        }
+    }
+    return i;
+#undef CHECK_BOOL
+#undef CHECK_COLOR
+#undef WRITE_SGR
+#undef WRITE_CH
+#undef WRITE_COLOR
+}
+
+static PyObject*
+as_ansi(Line* self) {
+#define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
+    static Py_UCS4 t[5120] = {0};
+    if (t == NULL) return PyErr_NoMemory();
+    index_type num = line_as_ansi(self, t, 5120);
+    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
+    return ans;
+}
+
 static PyObject*
 __repr__(Line* self) {
     PyObject *s = as_unicode(self);
@@ -362,6 +461,7 @@ static PyMethodDef methods[] = {
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(as_base_text, METH_NOARGS)
+    METHOD(as_ansi, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(basic_cell_data, METH_O)
         
