@@ -67,6 +67,7 @@ class Boss(Thread):
     def __init__(self, glfw_window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
         startup_session = create_session(opts, args)
+        self.cursor_blink_zero_time = monotonic()
         self.cursor_blinking = True
         self.glfw_window_title = None
         self.action_queue = Queue()
@@ -255,6 +256,7 @@ class Boss(Thread):
     def on_key(self, window, key, scancode, action, mods):
         is_key_pressed[key] = action == GLFW_PRESS
         self.start_cursor_blink()
+        self.cursor_blink_zero_time = monotonic()
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key)
             if func is not None:
@@ -389,7 +391,7 @@ class Boss(Thread):
                 if rd is not None:
                     draw_cursor = True
                     if self.cursor_blinking and self.opts.cursor_blink_interval > 0:
-                        now = monotonic()
+                        now = monotonic() - self.cursor_blink_zero_time
                         t = int(now * 1000)
                         d = int(self.opts.cursor_blink_interval * 1000)
                         n = t // d
