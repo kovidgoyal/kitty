@@ -197,8 +197,11 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
     bitmap_char = render_char(text, bold, italic, width)
     second = None
     if width == 2:
-        bitmap_char, second = split_char_bitmap(bitmap_char)
-        second = place_char_in_cell(second)
+        if bitmap_char.columns > cell_width:
+            bitmap_char, second = split_char_bitmap(bitmap_char)
+            second = place_char_in_cell(second)
+        else:
+            second = render_cell()
 
     first = place_char_in_cell(bitmap_char)
 
