@@ -52,6 +52,8 @@ typedef unsigned int index_type;
 #define CC_SHIFT 16
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
+#define UNDERCURL_CODE 6
+#define DECORATION_FG_CODE 58
 
 #define CURSOR_BLOCK 1
 #define CURSOR_BEAM 2

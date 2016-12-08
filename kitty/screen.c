@@ -281,7 +281,7 @@ void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int c
                 self->cursor->italic = true;  break;
             case 4:
                 self->cursor->decoration = 1;  break;
-            case 6:
+            case UNDERCURL_CODE:
                 self->cursor->decoration = 2;  break;
             case 7:
                 self->cursor->reverse = true;  break;
@@ -300,10 +300,14 @@ void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int c
 START_ALLOW_CASE_RANGE
             case 30 ... 37:
                 self->cursor->fg = ((attr - 30) << 8) | 1;  break;
+            case 38: 
+                SET_COLOR(fg);
             case 39:
                 self->cursor->fg = 0;  break;
             case 40 ... 47:
                 self->cursor->bg = ((attr - 40) << 8) | 1;  break;
+            case 48: 
+                SET_COLOR(bg);
             case 49:
                 self->cursor->bg = 0;  break;
             case 90 ... 97:
@@ -311,12 +315,10 @@ START_ALLOW_CASE_RANGE
             case 100 ... 107:
                 self->cursor->bg = ((attr - 100 + 8) << 8) | 1;  break;
 END_ALLOW_CASE_RANGE
-            case 38: 
-                SET_COLOR(fg);
-            case 48: 
-                SET_COLOR(bg);
-            case 58:
+            case DECORATION_FG_CODE:
                 SET_COLOR(decoration_fg);
+            case DECORATION_FG_CODE + 1:
+                self->cursor->decoration_fg = 0; break;
         }
     }
 }
