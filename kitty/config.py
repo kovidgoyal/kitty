@@ -159,8 +159,11 @@ def load_config(path: str) -> Options:
     actions = frozenset(defaults.keymap.values())
     with f:
         vals = parse_config(f)
+    remove_keys = {k for k, v in vals.get('keymap', {}).items() if v in ('noop', 'no-op', 'no_op')}
     vals['keymap'] = {k: v for k, v in vals.get('keymap', {}).items() if v in actions}
     ans = merge_dicts(vals, ans)
+    for k in remove_keys:
+        ans['keymap'].pop(k, None)
     return Options(**ans)
 
 
