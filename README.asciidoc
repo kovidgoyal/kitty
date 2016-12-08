@@ -9,6 +9,8 @@
 :sc_fifth_window: pass:quotes[`ctrl+shift+5`]
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
+:sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
+:sc_move_window_forward: pass:quotes[`ctrl+shift+f`]
 :sc_new_tab: pass:quotes[`ctrl+shift+t`]
 :sc_new_window: pass:quotes[`ctrl+shift+enter`]
 :sc_next_layout: pass:quotes[`ctrl+shift+l`]
@@ -153,6 +155,8 @@ windows are:
 |Close window | {sc_close_window}
 |Next window  | {sc_next_window}
 |Previous window | {sc_previous_window}
+|Move window forward | {sc_move_window_forward}
+|Move window backward | {sc_move_window_backward}
 |Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===

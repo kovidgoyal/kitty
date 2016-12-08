@@ -143,6 +143,20 @@ class Tab:
     def previous_window(self):
         self._next_window(-1)
 
+    def move_window(self, delta=1):
+        if len(self.windows) > 1:
+            idx = self.active_window_idx
+            nidx = (idx + len(self.windows) + delta) % len(self.windows)
+            self.windows[nidx], self.windows[idx] = self.windows[idx], self.windows[nidx]
+            self.active_window_idx = nidx
+            self.relayout()
+
+    def move_window_forward(self):
+        self.move_window()
+
+    def move_window_backward(self):
+        self.move_window(-1)
+
     def __iter__(self):
         yield from iter(self.windows)
 
