@@ -144,12 +144,15 @@ class Tab:
         self._next_window(-1)
 
     def move_window(self, delta=1):
-        if len(self.windows) > 1:
+        if len(self.windows) > 1 and abs(delta) > 0:
             idx = self.active_window_idx
             nidx = (idx + len(self.windows) + delta) % len(self.windows)
             self.windows[nidx], self.windows[idx] = self.windows[idx], self.windows[nidx]
             self.active_window_idx = nidx
             self.relayout()
+
+    def move_window_to_top(self):
+        self.move_window(-self.active_window_idx)
 
     def move_window_forward(self):
         self.move_window()

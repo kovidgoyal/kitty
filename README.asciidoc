@@ -157,6 +157,7 @@ windows are:
 |Previous window | {sc_previous_window}
 |Move window forward | {sc_move_window_forward}
 |Move window backward | {sc_move_window_backward}
+|Move window to top | {sc_move_window_to_top}
 |Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===
