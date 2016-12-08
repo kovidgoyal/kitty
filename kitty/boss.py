@@ -448,4 +448,10 @@ class Boss(Thread):
 
     def new_tab(self):
         self.tab_manager.new_tab()
+
+    def move_tab_forward(self):
+        self.queue_action(self.tab_manager.move_tab, 1)
+
+    def move_tab_backward(self):
+        self.queue_action(self.tab_manager.move_tab, -1)
     # }}}

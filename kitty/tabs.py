@@ -253,6 +253,14 @@ class TabManager:
     def tab_bar_height(self):
         return 0 if len(self.tabs) < 2 else cell_size.height
 
+    def move_tab(self, delta=1):
+        if len(self.tabs) > 1:
+            idx = self.active_tab_idx
+            nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
+            self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
+            self.active_tab_idx = nidx
+            glfw_post_empty_event()
+
     def title_changed(self, new_title):
         with self.tabbar_lock:
             self.tabbar_dirty = True

@@ -9,8 +9,11 @@
 :sc_fifth_window: pass:quotes[`ctrl+shift+5`]
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
+:sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
+:sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
 :sc_move_window_forward: pass:quotes[`ctrl+shift+f`]
+:sc_move_window_to_top: pass:quotes[`ctrl+shift+``]
 :sc_new_tab: pass:quotes[`ctrl+shift+t`]
 :sc_new_window: pass:quotes[`ctrl+shift+enter`]
 :sc_next_layout: pass:quotes[`ctrl+shift+l`]
@@ -142,6 +145,8 @@ windows are:
 |Next tab  | {sc_next_tab}
 |Previous tab | {sc_previous_tab}
 |Next layout | {sc_next_layout}
+|Move tab forward | {sc_move_tab_forward}
+|Move tab backward | {sc_move_tab_backward}
 
 |===
 
