@@ -153,6 +153,7 @@ windows are:
 |Close window | {sc_close_window}
 |Next window  | {sc_next_window}
 |Previous window | {sc_previous_window}
+|Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===
 
