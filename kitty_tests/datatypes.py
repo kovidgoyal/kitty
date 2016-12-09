@@ -344,3 +344,7 @@ class TestDataTypes(BaseTest):
         a = []
         lb.as_ansi(a.append)
         self.ae(a, ['\x1b[0m' + str(lb.line(i)) for i in range(lb.ynum)])
+        hb = filled_history_buf(5, 5)
+        a = []
+        hb.as_ansi(a.append)
+        self.ae(a, ['\x1b[0m' + str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])

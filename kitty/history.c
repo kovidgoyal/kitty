@@ -47,7 +47,8 @@ dealloc(HistoryBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline index_type index_of(HistoryBuf *self, index_type lnum) {
+static inline index_type 
+index_of(HistoryBuf *self, index_type lnum) {
     // The index (buffer position) of the line with line number lnum
     // This is reverse indexing, i.e. lnum = 0 corresponds to the *last* line in the buffer.
     if (self->count == 0) return 0;
@@ -55,12 +56,14 @@ static inline index_type index_of(HistoryBuf *self, index_type lnum) {
     return (self->start_of_data + idx) % self->ynum;
 }
 
-static inline uint8_t* start_of(HistoryBuf *self, index_type num) {
+static inline uint8_t* 
+start_of(HistoryBuf *self, index_type num) {
     // Pointer to the start of the line with index (buffer position) num
     return self->buf + CELL_SIZE_H * num * self->xnum;
 }
 
-static inline void init_line(HistoryBuf *self, index_type num, Line *l) {
+static inline void 
+init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     uint8_t *start_ptr = start_of(self, num);
     l->continued = *start_ptr;
@@ -70,11 +73,13 @@ static inline void init_line(HistoryBuf *self, index_type num, Line *l) {
     l->combining_chars = (combining_type*)(l->decoration_fg + self->xnum);
 }
 
-void historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
+void 
+historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
 }
 
-static inline index_type historybuf_push(HistoryBuf *self) {
+static inline 
+index_type historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);
     if (self->count == self->ynum) self->start_of_data = (self->start_of_data + 1) % self->ynum;
@@ -106,7 +111,8 @@ historybuf_resize(HistoryBuf *self, index_type lines) {
     return true;
 }
 
-void historybuf_add_line(HistoryBuf *self, const Line *line) {
+void 
+historybuf_add_line(HistoryBuf *self, const Line *line) {
     index_type idx = historybuf_push(self);
     COPY_LINE(line, self->line);
     *(start_of(self, idx)) = line->continued;
@@ -139,6 +145,28 @@ push(HistoryBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+as_ansi(HistoryBuf *self, PyObject *callback) {
+#define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
+    static Py_UCS4 t[5120];
+    Line l = {.xnum=self->xnum};
+    for(unsigned int i = 0; i < self->count; i++) {
+        init_line(self, i, &l);
+        if (i < self->count - 1) {
+            l.continued = *start_of(self, index_of(self, i + 1));
+        } else l.continued = false;
+        index_type num = line_as_ansi(&l, t, 5120);
+        if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
+        PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
+        if (ans == NULL) return PyErr_NoMemory();
+        PyObject *ret = PyObject_CallFunctionObjArgs(callback, ans, NULL);
+        Py_CLEAR(ans);
+        if (ret == NULL) return NULL;
+        Py_CLEAR(ret);
+    }
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 #define rewrap_doc ""
@@ -146,6 +174,7 @@ static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 static PyMethodDef methods[] = {
     METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
+    METHOD(as_ansi, METH_O)
     METHOD(push, METH_VARARGS)
     METHOD(rewrap, METH_VARARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */

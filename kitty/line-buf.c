@@ -345,7 +345,7 @@ delete_lines(LineBuf *self, PyObject *args) {
  
 static PyObject*
 as_ansi(LineBuf *self, PyObject *callback) {
-#define as_ansi_doc "as_ansi(callback) -> The contents of this buffer ans ANSI escaped text. callback is called with each successive line."
+#define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
     static Py_UCS4 t[5120];
     Line l = {.xnum=self->xnum};
     for(index_type i = 0; i < self->ynum; i++) {
