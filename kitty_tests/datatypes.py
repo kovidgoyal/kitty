@@ -326,6 +326,10 @@ class TestDataTypes(BaseTest):
         lb = filled_line_buf()
         l = lb.line(0)
         self.ae(l.as_ansi(), '\x1b[0m00000')
+        a = []
+        lb.as_ansi(a.append)
+        self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
+        l = lb.line(0)
         c = Cursor()
         c.bold = c.italic = c.reverse = c.strikethrough = True
         c.fg = (4 << 8) | 1

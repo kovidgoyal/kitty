@@ -343,6 +343,25 @@ delete_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
+static PyObject*
+as_ansi(LineBuf *self, PyObject *callback) {
+#define as_ansi_doc "as_ansi(callback) -> The contents of this buffer ans ANSI escaped text. callback is called with each successive line."
+    static Py_UCS4 t[5120];
+    Line l = {.xnum=self->xnum};
+    for(index_type i = 0; i < self->ynum; i++) {
+        l.continued = (i < self->ynum - 1) ? self->continued_map[i+1] : self->continued_map[i];
+        INIT_LINE(self, (&l), self->line_map[i]);
+        index_type num = line_as_ansi(&l, t, 5120);
+        if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
+        PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
+        if (ans == NULL) return PyErr_NoMemory();
+        PyObject *ret = PyObject_CallFunctionObjArgs(callback, ans, NULL);
+        Py_CLEAR(ans);
+        if (ret == NULL) return NULL;
+        Py_CLEAR(ret);
+    }
+    Py_RETURN_NONE;
+}
 
 // Boilerplate {{{
 static PyObject*
@@ -361,6 +380,7 @@ static PyMethodDef methods[] = {
     METHOD(create_line_copy, METH_O)
     METHOD(rewrap, METH_VARARGS)
     METHOD(clear, METH_NOARGS)
+    METHOD(as_ansi, METH_O)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
     METHOD(index, METH_VARARGS)
