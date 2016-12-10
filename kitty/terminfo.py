@@ -28,12 +28,12 @@ bool_capabilities = {
     'npc',
     # eat_newline_glitch (newline ignored after 80 columns)
     'xenl',
+    # has extra status line (window title)
+    'hs',
 
     # The following are entries from termite's terminfo that we dont need
     # # background color erase
     # 'bce',
-    # # has extra status line
-    # 'hs',
 }
 
 termcap_aliases.update({
@@ -45,6 +45,7 @@ termcap_aliases.update({
     'ms': 'msgr',
     'NP': 'npc',
     'xn': 'xenl',
+    'hs': 'hs',
 })
 
 numeric_capabilities = {
@@ -224,6 +225,12 @@ string_capabilities = {
     'smul': r'\E[4m',
     # Clear all tab stops
     'tbc': r'\E[3g',
+    # To status line (used to set window titles)
+    'tsl': r'\E]2;',
+    # From status line (end window title string)
+    'fsl': r'^G',
+    # Disable status line (clear window title)
+    'dsl': r'\E]2;\007',
     # Move to specified line
     'vpa': r'\E[%i%p1%dd',
     # Enter italics mode
@@ -368,10 +375,12 @@ termcap_aliases.update({
     'K3': 'ka3',
     'K4': 'kc1',
     'K5': 'kc3',
+    'ts': 'tsl',
+    'fs': 'fsl',
+    'ds': 'dsl',
 
 
     # 'ut': 'bce',
-    # 'hs': 'hs',
     # 'ds': 'dsl',
     # 'fs': 'fsl',
     # 'mk': 'invis',
