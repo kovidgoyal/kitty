@@ -130,7 +130,7 @@ line(HistoryBuf *self, PyObject *val) {
 #define line_doc "Return the line with line number val. This buffer grows upwards, i.e. 0 is the most recently added line"
     if (self->count == 0) { PyErr_SetString(PyExc_IndexError, "This buffer is empty"); return NULL; }
     index_type lnum = PyLong_AsUnsignedLong(val);
-    if (lnum > self->count - 1) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
+    if (lnum >= self->count) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
     init_line(self, index_of(self, lnum), self->line);
     Py_INCREF(self->line);
     return (PyObject*)self->line;

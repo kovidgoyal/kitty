@@ -1080,7 +1080,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     scrolled_by = MIN(self->historybuf->count, scrolled_by);
 
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
-        historybuf_init_line(self->historybuf, scrolled_by - y, self->historybuf->line);
+        historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
         if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, color_profile, default_bg, default_fg, data)) return NULL;
     }

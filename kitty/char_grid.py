@@ -183,7 +183,7 @@ class Selection:  # {{{
 
         def line(y):
             if y < 0:
-                return historybuf.line(-y)
+                return historybuf.line(-1 - y)
             return linebuf.line(y)
 
         lines = []
@@ -286,7 +286,7 @@ class CharGrid:
             amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
         if not upwards:
             amt *= -1
-        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count - 1))
+        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))
         if y != self.scrolled_by:
             self.scrolled_by = y
             self.update_cell_data()
@@ -298,7 +298,7 @@ class CharGrid:
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
                 sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, force_full_refresh)
             if self.scrolled_by:
-                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count - 1)
+                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
                     sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
@@ -370,7 +370,7 @@ class CharGrid:
         if y >= 0 and y < self.screen.lines:
             if self.scrolled_by:
                 if y < self.scrolled_by:
-                    return self.screen.historybuf.line(self.scrolled_by - y)
+                    return self.screen.historybuf.line(self.scrolled_by - 1 - y)
                 return self.screen.line(y - self.scrolled_by)
             else:
                 return self.screen.line(y)
