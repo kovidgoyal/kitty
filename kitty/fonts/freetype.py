@@ -201,7 +201,7 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
             bitmap_char, second = split_char_bitmap(bitmap_char)
             second = place_char_in_cell(second)
         else:
-            second = render_cell()
+            second = render_cell()[0]
 
     first = place_char_in_cell(bitmap_char)
 

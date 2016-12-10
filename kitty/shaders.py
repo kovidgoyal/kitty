@@ -83,11 +83,8 @@ class Sprites:
 
     def render_cell(self, text, bold, italic, is_second):
         first, second = render_cell(text, bold, italic)
-        if is_second:
-            ans = second or first
-        else:
-            ans = first
-        return ans or render_cell()
+        ans = (second or first) if is_second else first
+        return ans or render_cell()[0]
 
     def render_dirty_cells(self):
         with self.lock:
