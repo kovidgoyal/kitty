@@ -187,6 +187,12 @@ buffer using whatever program you normally use. Colors and text formatting are
 preserved.
 
 
+== Miscellaneous features
+
+You can double click to select a word and triple click to select a line. You can also
+hold down `ctrl+shift` and click on a URL to open it in a browser.
+
+
 == Configuration
 
 kitty is highly customizable, everything from keyboard shortcuts, to
