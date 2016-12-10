@@ -412,6 +412,12 @@ class CharGrid:
             if ps:
                 set_primary_selection(ps)
 
+    def get_scrollback_as_ansi(self):
+        ans = []
+        self.screen.historybuf.as_ansi(ans.append)
+        self.screen.linebuf.as_ansi(ans.append)
+        return ''.join(ans).encode('utf-8')
+
     def text_for_selection(self, sel=None):
         s = sel or self.current_selection
         return s.text(self.screen.linebuf, self.screen.historybuf)

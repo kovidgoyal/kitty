@@ -12,6 +12,7 @@ from functools import wraps
 from threading import Thread, current_thread
 from time import monotonic
 from queue import Queue, Empty
+from gettext import gettext as _
 
 from .constants import (
     viewport_size, set_boss, wakeup, cell_size, MODIFIER_KEYS,
@@ -29,7 +30,7 @@ from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut
 from .session import create_session
 from .shaders import Sprites, ShaderProgram
-from .tabs import TabManager
+from .tabs import TabManager, SpecialWindow
 from .timers import Timers
 from .utils import handle_unix_signals
 
@@ -291,6 +292,14 @@ class Boss(Thread):
             yield w
             w.focus_changed(focused)
 
+    def display_scrollback(self, data):
+        if self.opts.scrollback_in_new_tab:
+            self.queue_ui_action(self.display_scrollback_in_new_tab, data)
+        else:
+            tab = self.active_tab
+            if tab is not None:
+                tab.new_special_window(SpecialWindow(self.opts.scrollback_pager, data, _('History')))
+
     def window_for_pos(self, x, y):
         tab = self.active_tab
         if tab is not None:
@@ -454,4 +463,7 @@ class Boss(Thread):
 
     def move_tab_backward(self):
         self.queue_action(self.tab_manager.move_tab, -1)
+
+    def display_scrollback_in_new_tab(self, data):
+        self.tab_manager.new_tab(special_window=SpecialWindow(self.opts.scrollback_pager, data, _('History')))
     # }}}

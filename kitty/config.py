@@ -5,6 +5,7 @@
 import re
 import sys
 import os
+import shlex
 from collections import namedtuple
 
 from .fast_data_types import (
@@ -91,6 +92,8 @@ def to_layout_names(raw):
 
 type_map = {
     'scrollback_lines': int,
+    'scrollback_pager': shlex.split,
+    'scrollback_in_new_tab': to_bool,
     'font_size': to_font_size,
     'cursor_shape': to_cursor_shape,
     'cursor_opacity': to_opacity,

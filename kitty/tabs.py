@@ -18,9 +18,13 @@ from .borders import Borders
 from .window import Window
 
 
+def SpecialWindow(cmd, stdin=None, override_title=None):
+    return (cmd, stdin, override_title)
+
+
 class Tab:
 
-    def __init__(self, opts, args, on_title_change, session_tab=None):
+    def __init__(self, opts, args, on_title_change, session_tab=None, special_window=None):
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
@@ -31,7 +35,10 @@ class Tab:
         if session_tab is None:
             self.cwd = args.directory
             l = self.enabled_layouts[0]
-            queue_action(self.new_window)
+            if special_window is None:
+                queue_action(self.new_window)
+            else:
+                queue_action(self.new_special_window, special_window)
         else:
             self.cwd = session_tab.cwd or args.directory
             l = session_tab.layout
@@ -86,23 +93,29 @@ class Tab:
                 w.is_visible_in_layout = True
             self.relayout()
 
-    def launch_child(self, use_shell=False, cmd=None):
+    def launch_child(self, use_shell=False, cmd=None, stdin=None):
         if cmd is None:
             if use_shell:
                 cmd = [shell_path]
             else:
                 cmd = self.args.args or [shell_path]
-        ans = Child(cmd, self.cwd, self.opts)
+        ans = Child(cmd, self.cwd, self.opts, stdin)
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None):
-        child = self.launch_child(use_shell=use_shell, cmd=cmd)
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None):
+        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin)
         window = Window(self, child, self.opts, self.args)
+        if override_title is not None:
+            window.title = window.override_title = override_title
         get_boss().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
         glfw_post_empty_event()
+        return window
+
+    def new_special_window(self, special_window):
+        self.new_window(False, *special_window)
 
     def close_window(self):
         if self.windows:
@@ -129,7 +142,7 @@ class Tab:
 
     def nth_window(self, num=0):
         if self.windows:
-            self.set_active_window_idx(min(num, len(self.windows)-1))
+            self.set_active_window_idx(min(num, len(self.windows) - 1))
 
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
@@ -241,9 +254,9 @@ class TabManager:
     def __len__(self):
         return len(self.tabs)
 
-    def new_tab(self):
+    def new_tab(self, special_window=None):
         self.active_tab_idx = len(self.tabs)
-        self.tabs.append(Tab(self.opts, self.args, self.title_changed))
+        self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
 
     @property
     def active_tab(self):

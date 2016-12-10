@@ -27,6 +27,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.tabref = weakref.ref(tab)
+        self.override_title = None
         self.last_mouse_cursor_pos = 0, 0
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
@@ -117,11 +118,12 @@ class Window:
                 self.write_to_child(b'\x1b[O')
 
     def title_changed(self, new_title):
-        self.title = sanitize_title(new_title or appname)
-        t = self.tabref()
-        if t is not None:
-            t.title_changed(self)
-        glfw_post_empty_event()
+        if self.override_title is not None:
+            self.title = sanitize_title(new_title or appname)
+            t = self.tabref()
+            if t is not None:
+                t.title_changed(self)
+            glfw_post_empty_event()
 
     def icon_changed(self, new_icon):
         pass  # TODO: Implement this
@@ -259,6 +261,10 @@ class Window:
         self.char_grid.scroll('full', False)
 
     # actions {{{
+
+    def show_scrollback(self):
+        data = self.char_grid.get_scrollback_as_ansi()
+        get_boss().display_scrollback(data)
 
     def paste(self, text):
         if text and not self.destroyed:

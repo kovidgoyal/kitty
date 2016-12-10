@@ -32,6 +32,7 @@
 :sc_scroll_page_up: pass:quotes[`ctrl+shift+page_up`]
 :sc_second_window: pass:quotes[`ctrl+shift+2`]
 :sc_seventh_window: pass:quotes[`ctrl+shift+7`]
+:sc_show_scrollback: pass:quotes[`ctrl+shift+h`]
 :sc_sixth_window: pass:quotes[`ctrl+shift+6`]
 :sc_tenth_window: pass:quotes[`ctrl+shift+0`]
 :sc_third_window: pass:quotes[`ctrl+shift+3`]
@@ -48,6 +49,9 @@ layouts without needing to use an extra program like tmux
 
 * Supports all modern terminal features: unicode, true-color, mouse
 protocol, focus tracking, bracketed paste and so on.
+
+* Allows you to view the scrollback buffer in a separate window
+using your favorite pager program such as less
 
 * Easily hackable (UI layer written in python, inner loops in C for
 speed). Less than ten thousand lines of code.
@@ -121,6 +125,7 @@ different layouts, like windows are organized in a tiling window
 manager. The keyboard controls (which are all customizable) for tabs and
 windows are:
 
+[[scrolling-shortcuts]]
 [options="header"]
 .Scrolling
 |===
@@ -166,6 +171,20 @@ windows are:
 |Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===
+
+
+== The scrollback buffer
+
+kitty supports scrolling back to view history, just like most terminals. You
+can use either the <<scrolling-shortcuts,keyboard shortcuts>> or the mouse
+scroll wheel to do so.  However, kitty has an extra, neat feature. Sometime you
+need to explore the scrollback buffer in more detail, maybe search for some
+text or refer to it side-by-side while typing in a follow-up command. kitty
+allows you to do this by pressing the {sc_show_scrollback} key-combination,
+which will open the scrollback buffer in a new window, using your favorite
+pager program (which is less by default). You can then explore the scrollback
+buffer using whatever program you normally use. Colors and text formatting are
+preserved.
 
 
 == Configuration

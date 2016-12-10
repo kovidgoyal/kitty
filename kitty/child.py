@@ -7,8 +7,13 @@ import termios
 import struct
 import fcntl
 import signal
+from threading import Thread
 
 from .constants import terminfo_dir
+
+
+def remove_cloexec(fd):
+    fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
 
 
 class Child:
@@ -16,18 +21,23 @@ class Child:
     child_fd = pid = None
     forked = False
 
-    def __init__(self, argv, cwd, opts):
+    def __init__(self, argv, cwd, opts, stdin=None):
         self.argv = argv
         self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
         self.opts = opts
+        self.stdin = stdin
 
     def fork(self):
         if self.forked:
             return
         self.forked = True
-        master, slave = os.openpty()
-        fcntl.fcntl(slave, fcntl.F_SETFD, fcntl.fcntl(slave, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
-        # Note that master and slave are in blocking mode
+        master, slave = os.openpty()  # Note that master and slave are in blocking mode
+        remove_cloexec(slave)
+        stdin, self.stdin = self.stdin, None
+        if stdin is not None:
+            stdin_read_fd, stdin_write_fd = os.pipe()
+            remove_cloexec(stdin_read_fd)
+            stdin_file = os.fdopen(stdin_write_fd, 'wb')
         pid = os.fork()
         if pid == 0:  # child
             try:
@@ -36,7 +46,11 @@ class Child:
                 os.chdir('/')
             os.setsid()
             for i in range(3):
-                os.dup2(slave, i)
+                if stdin is not None and i == 0:
+                    os.dup2(stdin_read_fd, i)
+                    os.close(stdin_read_fd), os.close(stdin_write_fd)
+                else:
+                    os.dup2(slave, i)
             os.close(slave), os.close(master)
             os.closerange(3, 200)
             # Establish the controlling terminal (see man 7 credentials)
@@ -55,6 +69,10 @@ class Child:
             os.close(slave)
             self.pid = pid
             self.child_fd = master
+            if stdin is not None:
+                t = Thread(name='WriteStdin', target=stdin_file.write, args=(stdin,))
+                t.daemon = True
+                t.start()
             return pid
 
     def resize_pty(self, w, h):
