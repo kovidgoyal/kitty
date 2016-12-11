@@ -225,6 +225,7 @@ new_tab my tab
 cd ~/somewhere
 # Set the layouts allowed in this tab
 enabled_layouts tall, stack
+# Set the current layout
 layout stack
 launch zsh
 # Make the current window the active (focused) window
