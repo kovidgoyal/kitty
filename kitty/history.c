@@ -10,6 +10,12 @@
 
 #define CELL_SIZE_H (CELL_SIZE + 1)
 
+static inline uint8_t* 
+start_of(HistoryBuf *self, index_type num) {
+    // Pointer to the start of the line with index (buffer position) num
+    return self->buf + CELL_SIZE_H * num * self->xnum;
+}
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     HistoryBuf *self;
@@ -34,6 +40,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self);
         } else {
             self->line->xnum = xnum;
+            for(index_type y = 0; y < self->ynum; y++) {
+                self->line->chars = (char_type*)(start_of(self, y) + 1);
+                for (index_type i = 0; i < self->xnum; i++) self->line->chars[i] = (1 << ATTRS_SHIFT) | 32;
+            }
         }
     }
 
@@ -54,12 +64,6 @@ index_of(HistoryBuf *self, index_type lnum) {
     if (self->count == 0) return 0;
     index_type idx = self->count - 1 - MIN(self->count - 1, lnum);
     return (self->start_of_data + idx) % self->ynum;
-}
-
-static inline uint8_t* 
-start_of(HistoryBuf *self, index_type num) {
-    // Pointer to the start of the line with index (buffer position) num
-    return self->buf + CELL_SIZE_H * num * self->xnum;
 }
 
 static inline void 
@@ -214,7 +218,7 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 
 #define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? *(start_of(src, map_src_index(src_y + 1))) : false)
 
-#define next_dest_line(cont) historybuf_push(dest); dest->line->continued = cont;
+#define next_dest_line(cont) *start_of(dest, historybuf_push(dest)) = cont; dest->line->continued = cont; 
 
 #define first_dest_line next_dest_line(false); 
 

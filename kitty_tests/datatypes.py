@@ -321,6 +321,13 @@ class TestDataTypes(BaseTest):
         hb.rewrap(hb2)
         for i in range(hb2.ynum):
             self.ae(hb2.line(i), hb.line(i))
+        hb = filled_history_buf(5, 5)
+        hb2 = HistoryBuf(hb.ynum, hb.xnum * 2)
+        hb.rewrap(hb2)
+        hb3 = HistoryBuf(hb.ynum, hb.xnum)
+        hb2.rewrap(hb3)
+        for i in range(hb.ynum):
+            self.ae(hb.line(i), hb3.line(i))
 
     def test_ansi_repr(self):
         lb = filled_line_buf()
