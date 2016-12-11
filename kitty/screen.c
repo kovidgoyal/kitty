@@ -100,8 +100,8 @@ static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     lines = MAX(1, lines); columns = MAX(1, columns);
 
-    bool is_main = self->linebuf == self->main_linebuf;
-    int cursor_y = -1;
+    bool is_main = self->linebuf == self->main_linebuf, is_x_shrink = columns < self->columns;
+    int cursor_y = -1; unsigned int cursor_x = self->cursor->x;
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
@@ -115,6 +115,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
     if (!is_main) self->cursor->y = MAX(0, cursor_y);
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
+    if (is_x_shrink && cursor_x >= columns) self->cursor->x = columns - 1;
 
     if (!tracker_resize(self->change_tracker, lines, columns)) return false;
     self->lines = lines; self->columns = columns;
