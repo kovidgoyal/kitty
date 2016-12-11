@@ -95,9 +95,6 @@ class Tall(Layout):
 
     name = 'tall'
 
-    def set_active_window(self, windows, active_window_idx):
-        pass
-
     def __call__(self, windows, active_window_idx):
         if len(windows) == 1:
             wg = layout_single_window()
