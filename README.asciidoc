@@ -57,7 +57,7 @@ working directories and programs to run on startup.
 speed). Less than ten thousand lines of code.
 
 * Uses OpenGL+FreeType for rendering, does not depend on any GUI
-toolkits.
+toolkits, offloads rendering work to the GPU for lower system load.
 
 toc::[]
 
