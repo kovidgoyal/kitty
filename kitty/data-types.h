@@ -129,10 +129,17 @@ typedef unsigned int index_type;
         return result; \
     }
 
+#ifdef __clang__
+#define START_ALLOW_CASE_RANGE _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpedantic\"")
+#define END_ALLOW_CASE_RANGE _Pragma("clang diagnostic pop")
+#define ALLOW_UNUSED_RESULT _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-result\"")
+#define END_ALLOW_UNUSED_RESULT _Pragma("clang diagnostic pop")
+#else
 #define START_ALLOW_CASE_RANGE _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
 #define END_ALLOW_CASE_RANGE _Pragma("GCC diagnostic pop")
 #define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
+#endif
 
 typedef struct {
     PyObject_HEAD

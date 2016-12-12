@@ -195,7 +195,6 @@ static PyObject*
 as_ansi(Line* self) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     static Py_UCS4 t[5120] = {0};
-    if (t == NULL) return PyErr_NoMemory();
     index_type num = line_as_ansi(self, t, 5120);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
     return ans;

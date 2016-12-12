@@ -633,21 +633,17 @@ static inline void
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state, codepoint = 0;
     for (unsigned int i = 0; i < len; i++) {
-        switch(screen->use_latin1) {
-            case true:
-                dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
-                break;
-            default:
-                switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
-                    case UTF8_ACCEPT:
-                        dispatch_unicode_char(screen, codepoint, dump_callback);
-                        break;
-                    case UTF8_REJECT:
-                        screen->utf8_state = UTF8_ACCEPT;
-                        if (prev != UTF8_ACCEPT) i--;
-                        break;
-                }
-                break;
+        if (screen->use_latin1) dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
+        else {
+            switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
+                case UTF8_ACCEPT:
+                    dispatch_unicode_char(screen, codepoint, dump_callback);
+                    break;
+                case UTF8_REJECT:
+                    screen->utf8_state = UTF8_ACCEPT;
+                    if (prev != UTF8_ACCEPT) i--;
+                    break;
+            }
         }
     }
 FLUSH_DRAW;
