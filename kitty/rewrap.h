@@ -31,6 +31,7 @@
             linebuf_init_line(dest, dest->ynum - 1); \
             historybuf_add_line(historybuf, dest->line); \
         }\
+        linebuf_clear_line(dest, dest->ynum - 1); \
     } else dest_y++; \
     init_dest_line(dest_y); \
     dest->continued_map[dest_y] = continued;

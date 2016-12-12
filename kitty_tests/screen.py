@@ -246,6 +246,11 @@ class TestScreen(BaseTest):
         for i in range(s.lines):
             self.ae(str(hb.line(i)), '3')
         self.ae(str(hb.line(5)), '2')
+        s = self.create_screen(scrollback=6)
+        s.draw(''.join([str(i) * s.columns for i in range(s.lines*2)]))
+        self.ae(str(s.line(4)), '9'*5)
+        s.resize(5, 2)
+        self.ae(str(s.line(4)), '9 ')
 
     def test_tab_stops(self):
         # Taken from vttest/main.c
