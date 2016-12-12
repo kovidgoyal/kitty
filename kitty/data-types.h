@@ -331,6 +331,7 @@ void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *);
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
+unsigned int line_length(Line *self);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_clear(LineBuf *, char_type ch);

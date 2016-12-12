@@ -432,7 +432,8 @@ copy_old(LineBuf *self, PyObject *y) {
 
 #include "rewrap.h"
 
-void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *historybuf) {
+void 
+linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *historybuf) {
     index_type first, i;
     bool is_empty = true;
 

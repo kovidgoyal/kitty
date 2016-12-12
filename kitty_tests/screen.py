@@ -243,14 +243,14 @@ class TestScreen(BaseTest):
         s.resize(5, 1)
         self.ae(str(s.line(0)), '4')
         hb = s.historybuf
-        for i in range(s.lines):
-            self.ae(str(hb.line(i)), '3')
-        self.ae(str(hb.line(5)), '2')
+        for i in range(hb.ynum):
+            self.ae(str(hb.line(i)), '4' if i == 0 else '3')
         s = self.create_screen(scrollback=6)
         s.draw(''.join([str(i) * s.columns for i in range(s.lines*2)]))
         self.ae(str(s.line(4)), '9'*5)
         s.resize(5, 2)
-        self.ae(str(s.line(4)), '9 ')
+        self.ae(str(s.line(3)), '9 ')
+        self.ae(str(s.line(4)), '  ')
 
     def test_tab_stops(self):
         # Taken from vttest/main.c

@@ -24,7 +24,16 @@ dealloc(Line* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-PyObject* line_text_at(char_type ch, combining_type cc) {
+unsigned int
+line_length(Line *self) {
+    for (int i = self->xnum - 1; i >= 0; i++) {
+        if ((self->chars[i] & CHAR_MASK) != 32) return i + 1;
+    }
+    return 0;
+}
+
+PyObject* 
+line_text_at(char_type ch, combining_type cc) {
     PyObject *ans;
     if (cc == 0) {
         ans = PyUnicode_New(1, ch);

@@ -108,7 +108,17 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    if (is_main) self->cursor->y = MAX(0, cursor_y);
+    bool index_after_resize = false;
+    if (is_main) {
+        linebuf_init_line(self->main_linebuf, self->cursor->y);
+        if (is_x_shrink && (self->main_linebuf->continued_map[self->cursor->y] || line_length(self->main_linebuf->line) > columns)) {
+            // If the client is in line drawing mode, it will redraw the cursor
+            // line, this can cause rendering artifacts, so ensure that the
+            // cursor is on a new line
+            index_after_resize = true;
+        }
+        self->cursor->y = MAX(0, cursor_y);
+    }
     cursor_y = -1;
     n = realloc_lb(self->alt_linebuf, lines, columns, &cursor_y, NULL);
     if (n == NULL) return false;
@@ -129,6 +139,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
     tracker_update_screen(self->change_tracker);
+    if (index_after_resize) screen_index(self);
 
     return true;
 }
