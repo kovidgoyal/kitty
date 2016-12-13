@@ -118,7 +118,7 @@ class Window:
                 self.write_to_child(b'\x1b[O')
 
     def title_changed(self, new_title):
-        if self.override_title is not None:
+        if self.override_title is None:
             self.title = sanitize_title(new_title or appname)
             t = self.tabref()
             if t is not None:
