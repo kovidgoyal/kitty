@@ -180,7 +180,7 @@ need to explore the scrollback buffer in more detail, maybe search for some
 text or refer to it side-by-side while typing in a follow-up command. kitty
 allows you to do this by pressing the {sc_show_scrollback} key-combination,
 which will open the scrollback buffer in a new window, using your favorite
-pager program (which is less by default). You can then explore the scrollback
+pager program (which is `less` by default). You can then explore the scrollback
 buffer using whatever program you normally use. Colors and text formatting are
 preserved.
 
