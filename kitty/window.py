@@ -174,9 +174,10 @@ class Window:
 
     def on_mouse_button(self, button, action, mods):
         mode = self.screen.mouse_tracking_mode()
-        send_event = mods != GLFW_MOD_SHIFT and mode > 0
+        handle_event = mods == GLFW_MOD_SHIFT or mode == 0 or button == GLFW_MOUSE_BUTTON_MIDDLE or (
+            mods == self.opts.open_url_modifiers and button == GLFW_MOUSE_BUTTON_1)
         x, y = self.last_mouse_cursor_pos
-        if not send_event:
+        if handle_event:
             if button == GLFW_MOUSE_BUTTON_1:
                 self.char_grid.update_drag(action == GLFW_PRESS, x, y)
                 if action == GLFW_RELEASE:
@@ -188,8 +189,6 @@ class Window:
                 if action == GLFW_RELEASE:
                     self.paste_from_selection()
         else:
-            if action == GLFW_RELEASE and button == GLFW_MOUSE_BUTTON_1 and mods == self.char_grid.opts.open_url_modifiers:
-                self.char_grid.click_url(x, y)
             x, y = self.char_grid.cell_for_pos(x, y)
             if x is not None:
                 ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
