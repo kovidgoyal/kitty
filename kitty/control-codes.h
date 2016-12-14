@@ -231,6 +231,12 @@
 // Forward tab
 #define CHT 'I'
 
+// Save cursor
+#define SC 's'
+
+// Restore cursor
+#define RC 'u'
+
 // Misc sequences
 // ----------------
 

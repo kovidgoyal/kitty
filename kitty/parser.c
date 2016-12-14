@@ -321,6 +321,16 @@ static inline void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
 static inline void 
 screen_reverse_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_reverse_index(s); }
+static inline void
+save_cursor(Screen *s, unsigned int UNUSED param, bool private) {
+    if (private) fprintf(stderr, "%s %s", ERROR_PREFIX, "CSI s in private mode not supported");
+    else screen_save_cursor(s);
+}
+static inline void
+restore_cursor(Screen *s, unsigned int UNUSED param, bool private) {
+    if (private) fprintf(stderr, "%s %s", ERROR_PREFIX, "CSI u in private mode not supported");
+    else screen_restore_cursor(s);
+}
 
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
@@ -445,6 +455,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CSI_HANDLER_MULTIPLE(select_graphic_rendition); 
         case DSR: 
             CALL_CSI_HANDLER1P(report_device_status, 0, '?'); 
+        case SC: 
+            CALL_CSI_HANDLER1P(save_cursor, 0, '?'); 
+        case RC: 
+            CALL_CSI_HANDLER1P(restore_cursor, 0, '?'); 
         case DECSTBM: 
             CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
         case DECSCUSR: 
