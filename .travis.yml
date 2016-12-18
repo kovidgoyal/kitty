@@ -10,6 +10,7 @@ addons:
         - libxrandr-dev 
         - libxinerama-dev 
         - libxcursor-dev
+        - clang
 language: python
 python:
   - "3.5"
@@ -22,7 +23,10 @@ install:
     - make install
     - cd ..
     - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig pkg-config --cflags glfw3
+env:
+    - CC=gcc
+    - CC=clang
 before_script:
-    - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig python setup.py 
+    - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig python setup.py build --debug
 script: 
     - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig LD_LIBRARY_PATH=$HOME/glfw/lib python setup.py test

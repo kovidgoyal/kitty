@@ -73,7 +73,7 @@ the following dependencies are installed first.
 * glfw-dev >= 3.2
 * freetype
 * fontconfig
-* gcc (required for building, clang should also work, but it is not tested)
+* gcc or clang (required for building)
 * pkg-config (required for building)
 
 Install kitty with:
