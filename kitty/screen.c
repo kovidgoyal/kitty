@@ -110,8 +110,9 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     bool index_after_resize = false;
     if (is_main) {
-        linebuf_init_line(self->main_linebuf, self->cursor->y);
-        if (is_x_shrink && (self->main_linebuf->continued_map[self->cursor->y] || line_length(self->main_linebuf->line) > columns)) {
+        index_type cy = MIN(self->cursor->y, lines - 1);
+        linebuf_init_line(self->main_linebuf, cy);
+        if (is_x_shrink && (self->main_linebuf->continued_map[cy] || line_length(self->main_linebuf->line) > columns)) {
             // If the client is in line drawing mode, it will redraw the cursor
             // line, this can cause rendering artifacts, so ensure that the
             // cursor is on a new line

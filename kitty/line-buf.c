@@ -318,7 +318,7 @@ void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_typ
     for (i = y; i < y + num; i++) {
         self->scratch[i] = self->line_map[i];
     }
-    for (i = y; i < ylimit; i++) {
+    for (i = y; i < ylimit && i + num < self->ynum; i++) {
         self->line_map[i] = self->line_map[i + num];
         self->continued_map[i] = self->continued_map[i + num];
     }
