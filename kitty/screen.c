@@ -159,6 +159,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->main_linebuf); 
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->change_tracker);
+    Py_CLEAR(self->historybuf);
     PyMem_Free(self->main_tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
