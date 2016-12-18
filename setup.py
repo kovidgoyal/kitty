@@ -38,7 +38,7 @@ def cc_version():
     return ver
 
 
-def init_env(debug=False):
+def init_env(debug=False, asan=False):
     global cflags, ldflags, cc, ldpaths
     ccver = cc_version()
     stack_protector = '-fstack-protector'
@@ -48,11 +48,17 @@ def init_env(debug=False):
     if ccver < (5, 2):
         missing_braces = '-Wno-missing-braces'
     cc = os.environ.get('CC', 'gcc')
+    optimize = '-O3'
+    if debug or asan:
+        optimize = '-ggdb'
+        if asan:
+            optimize += ' -fsanitize=address -fno-omit-frame-pointer'
     cflags = os.environ.get('OVERRIDE_CFLAGS', (
         '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe').format('-ggdb' if debug else '-O3', stack_protector, missing_braces))
+        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe').format(optimize, stack_protector, missing_braces))
     cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
-    ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall -O3')
+    ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall ' + (
+        '-fsanitize=address' if asan else ('' if debug else '-O3')))
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
@@ -112,6 +118,9 @@ def option_parser():
     p.add_argument('action', nargs='?', default='build', choices='build test'.split(), help='Action to perform (default is build)')
     p.add_argument('--debug', default=False, action='store_true',
                    help='Build extension modules with debugging symbols')
+    p.add_argument('--asan', default=False, action='store_true',
+                   help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
+                   ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so')
     return p
 
 
@@ -130,8 +139,8 @@ def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args()
-    init_env(args.debug)
     if args.action == 'build':
+        init_env(args.debug, args.asan)
         compile_c_extension('kitty/fast_data_types', *find_c_files())
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
