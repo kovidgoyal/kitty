@@ -310,7 +310,8 @@ insert_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom) {
+void 
+linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom) {
     index_type i;
     index_type ylimit = bottom + 1;
     num = MIN(bottom + 1 - y, num);
