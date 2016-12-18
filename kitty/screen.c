@@ -140,6 +140,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
     tracker_update_screen(self->change_tracker);
+    tracker_cursor_changed(self->change_tracker);
     if (index_after_resize) screen_index(self);
 
     return true;
