@@ -67,7 +67,7 @@ def set_font_family(family, size_in_pts):
         cell_width = calc_cell_width(current_font_family['regular'], face)
         cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
         baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
-        underline_position = baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1])
+        underline_position = min(baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1]), cell_height - 1)
         underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
         CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
         font_for_char.cache_clear()
