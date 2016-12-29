@@ -351,6 +351,7 @@ END_ALLOW_CASE_RANGE
 void screen_toggle_screen_buffer(Screen *self) {
     screen_save_cursor(self);
     if (self->linebuf == self->main_linebuf) {
+        linebuf_clear(self->alt_linebuf, ' ');
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
     } else {
