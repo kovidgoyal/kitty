@@ -397,7 +397,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;  // we ignore these modes
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
-            if ((val && self->cursor->hidden) || (!val && !self->cursor->hidden)) {
+            if (val == self->cursor->hidden) {
                 self->cursor->hidden = !val;
                 tracker_cursor_changed(self->change_tracker);
             }
