@@ -111,10 +111,10 @@ class Window:
 
     def focus_changed(self, focused):
         if focused:
-            if self.screen.focus_tracking_enabled():
+            if self.screen.focus_tracking_enabled:
                 self.write_to_child(b'\x1b[I')
         else:
-            if self.screen.focus_tracking_enabled():
+            if self.screen.focus_tracking_enabled:
                 self.write_to_child(b'\x1b[O')
 
     def title_changed(self, new_title):

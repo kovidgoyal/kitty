@@ -30,9 +30,13 @@ class Callbacks:
     def request_capabilities(self, q):
         self.qbuf += q
 
+    def buf_toggled(self, is_alt):
+        self.is_alt = is_alt
+
     def clear(self):
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = self.ctbuf = ''
+        self.is_alt = False
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):

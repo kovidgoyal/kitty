@@ -332,3 +332,10 @@ class TestScreen(BaseTest):
         c = s.line(1).cursor_from(0)
         self.ae(c.fg, (5 << 8) | 1)
         self.ae(c.bg, 0)
+
+    def test_cursor_hidden(self):
+        s = self.create_screen()
+        s.toggle_alt_screen()
+        s.cursor_visible = False
+        s.toggle_alt_screen()
+        self.assertFalse(s.cursor_visible)

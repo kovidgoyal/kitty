@@ -447,7 +447,7 @@ class CharGrid:
 
     def render_cursor(self, sg, cursor_program):
         cursor = self.current_cursor
-        if self.screen.cursor_hidden() or self.scrolled_by:
+        if not self.screen.cursor_visible or self.scrolled_by:
             return
 
         def width(w=2, vert=True):

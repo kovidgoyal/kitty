@@ -278,7 +278,7 @@ class Boss(Thread):
                         passthrough = f()
                         if not passthrough:
                             return
-                if window.screen.auto_repeat_enabled() or action == GLFW_PRESS:
+                if window.screen.auto_repeat_enabled or action == GLFW_PRESS:
                     if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
                         window.scroll_end()
                     data = interpret_key_event(key, scancode, mods)

@@ -1025,12 +1025,14 @@ WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
 
-#define MODE_GETTER(name, uname) \
-    static PyObject* name(Screen *self) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } 
+#define MODE_GETSET(name, uname) \
+    static PyObject* name##_get(Screen *self, void UNUSED *closure) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
+    static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false); return 0; }
 
-MODE_GETTER(in_bracketed_paste_mode, BRACKETED_PASTE)
-MODE_GETTER(focus_tracking_enabled, FOCUS_TRACKING)
-MODE_GETTER(auto_repeat_enabled, DECARM)
+MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
+MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
+MODE_GETSET(auto_repeat_enabled, DECARM)
+MODE_GETSET(cursor_visible, DECTCEM)
 
 static PyObject*
 mouse_tracking_mode(Screen *self) {
@@ -1160,10 +1162,9 @@ is_main_linebuf(Screen *self) {
 }
 
 static PyObject*
-cursor_hidden(Screen *self) {
-    PyObject *ret = self->modes.mDECTCEM ? Py_False : Py_True;
-    Py_INCREF(ret);
-    return ret;
+toggle_alt_screen(Screen *self) {
+    screen_toggle_screen_buffer(self);
+    Py_RETURN_NONE;
 }
 
 WRAP2(cursor_position, 1, 1)
@@ -1180,6 +1181,7 @@ COUNT_WRAP(cursor_down1)
 COUNT_WRAP(cursor_forward)
 
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
+#define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
 static PyMethodDef methods[] = {
     MND(line, METH_O)
@@ -1202,7 +1204,6 @@ static PyMethodDef methods[] = {
     MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
-    MND(cursor_hidden, METH_NOARGS)
     MND(mouse_tracking_mode, METH_NOARGS)
     MND(mouse_tracking_protocol, METH_NOARGS)
     MND(cursor_up1, METH_VARARGS)
@@ -1223,12 +1224,18 @@ static PyMethodDef methods[] = {
     MND(set_margins, METH_VARARGS)
     MND(set_scroll_cell_data, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
-    MND(in_bracketed_paste_mode, METH_NOARGS)
-    MND(auto_repeat_enabled, METH_NOARGS)
-    MND(focus_tracking_enabled, METH_NOARGS)
+    MND(toggle_alt_screen, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
+    {NULL}  /* Sentinel */
+};
+
+static PyGetSetDef getsetters[] = {
+    GETSET(in_bracketed_paste_mode)
+    GETSET(auto_repeat_enabled)
+    GETSET(focus_tracking_enabled)
+    GETSET(cursor_visible)
     {NULL}  /* Sentinel */
 };
 
@@ -1254,6 +1261,7 @@ PyTypeObject Screen_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_new = new,                
+    .tp_getset = getsetters,
 };
 
 INIT_TYPE(Screen)
