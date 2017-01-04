@@ -256,9 +256,7 @@ typedef struct {
     uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
     bool use_latin1;
     Cursor cursor;
-    bool mDECOM;
-    bool mDECAWM;
-    bool mDECSCNM;
+    bool mDECOM, mDECAWM, mDECSCNM, mDECTCEM;
 
 } Savepoint;
 

@@ -348,7 +348,8 @@ END_ALLOW_CASE_RANGE
 // Modes {{{
 
 
-void screen_toggle_screen_buffer(Screen *self) {
+void 
+screen_toggle_screen_buffer(Screen *self) {
     screen_save_cursor(self);
     if (self->linebuf == self->main_linebuf) {
         linebuf_clear(self->alt_linebuf, ' ');
@@ -637,6 +638,7 @@ screen_save_cursor(Screen *self) {
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
+    sp->mDECTCEM = self->modes.mDECTCEM;
     COPY_CHARSETS(self, sp);
 }
 
@@ -650,11 +652,13 @@ screen_restore_cursor(Screen *self) {
         screen_reset_mode(self, DECOM);
         RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
+        screen_set_mode(self, DECTCEM);
     } else {
         COPY_CHARSETS(sp, self);
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
+        set_mode_from_const(self, DECTCEM, sp->mDECTCEM);
         cursor_copy_to(&(sp->cursor), self->cursor);
         screen_ensure_bounds(self, false);
     }
