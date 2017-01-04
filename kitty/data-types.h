@@ -185,7 +185,7 @@ PyTypeObject HistoryBuf_Type;
 typedef struct {
     PyObject_HEAD
 
-    bool bold, italic, reverse, strikethrough, blink, hidden;
+    bool bold, italic, reverse, strikethrough, blink;
     unsigned int x, y;
     uint8_t decoration, shape;
     unsigned long fg, bg, decoration_fg, color;
@@ -256,7 +256,7 @@ typedef struct {
     uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
     bool use_latin1;
     Cursor cursor;
-    bool mDECOM, mDECAWM, mDECSCNM, mDECTCEM;
+    bool mDECOM, mDECAWM, mDECSCNM;
 
 } Savepoint;
 

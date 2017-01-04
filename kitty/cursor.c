@@ -24,15 +24,15 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink) && EQ(color) && EQ(hidden);
+    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink) && EQ(color);
 }
 
 #define BOOL(x) ((x) ? Py_True : Py_False)
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%d, blink=%R, hidden=%R, color=#%08x, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
-        self->x, self->y, self->shape, BOOL(self->blink), BOOL(self->hidden), self->color, self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
+        "Cursor(x=%u, y=%u, shape=%d, blink=%R, color=#%08x, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
+        self->x, self->y, self->shape, BOOL(self->blink), self->color, self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
     );
 }
 
@@ -52,12 +52,12 @@ void cursor_reset(Cursor *self) {
     cursor_reset_display_attrs(self);
     self->x = 0; self->y = 0;
     self->shape = 0; self->blink = false;
-    self->color = 0; self->hidden = false;
+    self->color = 0; 
 }
 
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
-    CCY(x); CCY(y); CCY(shape); CCY(blink); CCY(color); CCY(hidden);
+    CCY(x); CCY(y); CCY(shape); CCY(blink); CCY(color); 
     CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
 }
 
@@ -76,7 +76,6 @@ BOOL_GETSET(Cursor, bold)
 BOOL_GETSET(Cursor, italic)
 BOOL_GETSET(Cursor, reverse)
 BOOL_GETSET(Cursor, strikethrough)
-BOOL_GETSET(Cursor, hidden)
 BOOL_GETSET(Cursor, blink)
 
 static PyMemberDef members[] = {
@@ -96,7 +95,6 @@ static PyGetSetDef getseters[] = {
     GETSET(italic)
     GETSET(reverse)
     GETSET(strikethrough)
-    GETSET(hidden)
     GETSET(blink)
     {"color", (getter) color_get, NULL, "color", NULL},
     {NULL}  /* Sentinel */

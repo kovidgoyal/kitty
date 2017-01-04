@@ -165,7 +165,7 @@ class TestDataTypes(BaseTest):
         c2, c3 = c.copy(), c.copy()
         self.ae(repr(c), repr(c2))
         self.ae(c, c2)
-        c2.bold = c2.hidden = False
+        c2.bold = False
         self.assertNotEqual(c, c2)
         l.set_text(t, 0, len(t), C())
         l.apply_cursor(c2, 3)

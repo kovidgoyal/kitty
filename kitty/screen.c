@@ -401,10 +401,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;  // we ignore these modes
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
-            if (val == self->cursor->hidden) {
-                self->cursor->hidden = !val;
-                tracker_cursor_changed(self->change_tracker);
-            }
+            tracker_cursor_changed(self->change_tracker);
             break;
         case DECSCNM: 
             // Render screen in reverse video
@@ -641,7 +638,6 @@ screen_save_cursor(Screen *self) {
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
-    sp->mDECTCEM = self->modes.mDECTCEM;
     COPY_CHARSETS(self, sp);
 }
 
@@ -655,13 +651,11 @@ screen_restore_cursor(Screen *self) {
         screen_reset_mode(self, DECOM);
         RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
-        screen_set_mode(self, DECTCEM);
     } else {
         COPY_CHARSETS(sp, self);
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
-        set_mode_from_const(self, DECTCEM, sp->mDECTCEM);
         cursor_copy_to(&(sp->cursor), self->cursor);
         screen_ensure_bounds(self, false);
     }
@@ -1165,6 +1159,13 @@ is_main_linebuf(Screen *self) {
     return ans;
 }
 
+static PyObject*
+cursor_hidden(Screen *self) {
+    PyObject *ret = self->modes.mDECTCEM ? Py_False : Py_True;
+    Py_INCREF(ret);
+    return ret;
+}
+
 WRAP2(cursor_position, 1, 1)
 
 #define COUNT_WRAP(name) WRAP1(name, 1)
@@ -1201,6 +1202,7 @@ static PyMethodDef methods[] = {
     MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
+    MND(cursor_hidden, METH_NOARGS)
     MND(mouse_tracking_mode, METH_NOARGS)
     MND(mouse_tracking_protocol, METH_NOARGS)
     MND(cursor_up1, METH_VARARGS)

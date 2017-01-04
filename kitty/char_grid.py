@@ -16,7 +16,7 @@ from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE
 )
 
-Cursor = namedtuple('Cursor', 'x y hidden shape color blink')
+Cursor = namedtuple('Cursor', 'x y shape color blink')
 
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
@@ -245,7 +245,7 @@ class CharGrid:
         self.default_fg = color_as_int(self.original_fg)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = self.current_cursor = Cursor(0, 0, False, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
+        self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
@@ -312,7 +312,7 @@ class CharGrid:
             self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
-            self.current_cursor = Cursor(c.x, c.y, c.hidden, c.shape, c.color, c.blink)
+            self.current_cursor = Cursor(c.x, c.y, c.shape, c.color, c.blink)
 
     def cell_for_pos(self, x, y):
         x, y = int(x // cell_size.width), int(y // cell_size.height)
@@ -447,7 +447,7 @@ class CharGrid:
 
     def render_cursor(self, sg, cursor_program):
         cursor = self.current_cursor
-        if cursor.hidden or self.scrolled_by:
+        if self.screen.cursor_hidden() or self.scrolled_by:
             return
 
         def width(w=2, vert=True):
