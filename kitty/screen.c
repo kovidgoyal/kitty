@@ -350,18 +350,21 @@ END_ALLOW_CASE_RANGE
 
 void 
 screen_toggle_screen_buffer(Screen *self) {
-    screen_save_cursor(self);
-    if (self->linebuf == self->main_linebuf) {
+    bool to_alt = self->linebuf == self->main_linebuf;
+    if (to_alt) {
         linebuf_clear(self->alt_linebuf, ' ');
+        screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
+        screen_cursor_position(self, 1, 1);
+        cursor_reset(self->cursor);
     } else {
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
+        screen_restore_cursor(self);
     }
     PyObject_CallMethod(self->callbacks, "buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
     if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
-    screen_restore_cursor(self);
     tracker_update_screen(self->change_tracker);
 }
 
