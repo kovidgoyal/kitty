@@ -70,7 +70,11 @@ def init_env(debug=False, asan=False):
     ldflags.append('-pthread')
     ldflags.append('-shared')
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
-    lib = sysconfig.get_config_var('LDLIBRARY')[3:-3]
+    lib = sysconfig.get_config_var('LDLIBRARY')
+    if lib.startswith('lib'):
+        lib = lib[3:]
+    if lib.endswith('.so'):
+        lib = lib[:-3]
     ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + \
         pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + pkg_config('glfw3', '--libs')
 
