@@ -17,6 +17,8 @@ with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
 version = tuple(map(int, re.search(r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE).group(1, 2, 3)))
+_plat = sys.platform.lower()
+isosx = 'darwin' in _plat
 is_travis = os.environ.get('TRAVIS') == 'true'
 
 
@@ -67,15 +69,20 @@ def init_env(debug=False, asan=False):
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
     cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
-    ldflags.append('-pthread')
     ldflags.append('-shared')
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
-    lib = sysconfig.get_config_var('LDLIBRARY')
-    if lib.startswith('lib'):
-        lib = lib[3:]
-    if lib.endswith('.so'):
-        lib = lib[:-3]
-    ldpaths = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib] + \
+    if isosx:
+        fd = sysconfig.get_config_var('LIBDIR')
+        fd = fd[:fd.index('/Python.framework')]
+        pylib = ['-F', fd, '-framework', 'Python.framework']
+    else:
+        lib = sysconfig.get_config_var('LDLIBRARY')
+        if lib.startswith('lib'):
+            lib = lib[3:]
+        if lib.endswith('.so'):
+            lib = lib[:-3]
+        pylib = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib]
+    ldpaths = pylib + \
         pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + pkg_config('glfw3', '--libs')
 
     try:
