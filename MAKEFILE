@@ -1,2 +1,3 @@
-#!/bin/bash
-./setup.py build
+SHELL := /bin/bash 
+all:
+  python3 `./setup.py build
