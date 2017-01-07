@@ -59,6 +59,10 @@ speed). Less than ten thousand lines of code.
 * Uses OpenGL+FreeType for rendering, does not depend on any GUI
 toolkits, offloads rendering work to the GPU for lower system load.
 
+* Cross-platform support: kitty currently works only on linux, but because it
+uses only OpenGL+FreeType for rendering, it should be trivial to port to
+other platforms 
+
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
 toc::[]
