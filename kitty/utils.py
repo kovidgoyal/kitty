@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
+from .constants import isosx
 from .fast_data_types import glfw_get_physical_dpi
 
 libc = ctypes.CDLL(None)
@@ -264,12 +265,16 @@ def handle_unix_signals():
 
 
 def get_primary_selection():
+    if isosx:
+        return ''  # There is no primary selection on OS X
     # glfw has no way to get the primary selection
     # https://github.com/glfw/glfw/issues/894
     return subprocess.check_output(['xsel', '-p']).decode('utf-8')
 
 
 def set_primary_selection(text):
+    if isosx:
+        return  # There is no primary selection on OS X
     if isinstance(text, str):
         text = text.encode('utf-8')
     p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE)
@@ -279,7 +284,7 @@ def set_primary_selection(text):
 
 def open_url(url, program='default'):
     if program == 'default':
-        cmd = ['xdg-open']
+        cmd = ['open'] if isosx else ['xdg-open']
     else:
         cmd = shlex.split(program)
     cmd.append(url)
