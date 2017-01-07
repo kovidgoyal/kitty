@@ -53,12 +53,12 @@ vec3 to_color(uint c) {
     r = (c >> 16) & BYTE_MASK;
     g = (c >> 8) & BYTE_MASK;
     b = c & BYTE_MASK;
-    return vec3(r / 255.0, g / 255.0, b / 255.0);
+    return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
-    vec2 s_xpos = vec2(x, x + 1.0) * sprite_layout[0];
-    vec2 s_ypos = vec2(y, y + 1.0) * sprite_layout[1];
+    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_layout[0];
+    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_layout[1];
     return vec3(s_xpos[pos[0]], s_ypos[pos[1]], z);
 }
 
