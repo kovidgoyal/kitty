@@ -46,9 +46,13 @@ def sanitize_title(x):
 
 def get_logical_dpi():
     if not hasattr(get_logical_dpi, 'ans'):
-        raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
-        m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
-        get_logical_dpi.ans = int(m.group(1)), int(m.group(2))
+        if isosx:
+            # TODO: Investigate if this needs a different implementation on OS X
+            get_logical_dpi.ans = glfw_get_physical_dpi()
+        else:
+            raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
+            m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
+            get_logical_dpi.ans = int(m.group(1)), int(m.group(2))
     return get_logical_dpi.ans
 
 
