@@ -269,7 +269,7 @@ class Window:
         if text and not self.destroyed:
             if isinstance(text, str):
                 text = text.encode('utf-8')
-            if self.screen.in_bracketed_paste_mode():
+            if self.screen.in_bracketed_paste_mode:
                 text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
             self.write_to_child(text)
 
