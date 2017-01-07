@@ -59,6 +59,8 @@ speed). Less than ten thousand lines of code.
 * Uses OpenGL+FreeType for rendering, does not depend on any GUI
 toolkits, offloads rendering work to the GPU for lower system load.
 
+image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
+
 toc::[]
 
 
