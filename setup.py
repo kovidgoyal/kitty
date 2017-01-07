@@ -66,7 +66,7 @@ def init_env(debug=False, asan=False):
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
-    if subprocess.Popen('pkg-config --atleast-version=2 glew'.split()).wait() != 0:
+    if not is_travis and subprocess.Popen('pkg-config --atleast-version=2 glew'.split()).wait() != 0:
         try:
             ver = subprocess.check_output('pkg-config --modversion glew'.split()).decode('utf-8').strip()
         except Exception:
