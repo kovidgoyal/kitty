@@ -6,6 +6,10 @@
 
 #pragma once
 
+#if GLFW_CONTEXT_VERSION_MAJOR < 3 || (GLFW_CONTEXT_VERSION_MAJOR == 3 && GLFW_CONTEXT_VERSION_MINOR < 2)
+#error "glfw >= 3.2 is required"
+#endif
+
 
 bool init_glfw(PyObject *m);
 
