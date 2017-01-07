@@ -66,6 +66,8 @@ def init_env(debug=False, asan=False):
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
+    if subprocess.Popen('pkg-config --atleast-version=2 glew'.split()).wait() != 0:
+        raise SystemExit('glew >= 2.0.0 is required')
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
     cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
