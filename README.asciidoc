@@ -61,7 +61,7 @@ toolkits, offloads rendering work to the GPU for lower system load.
 
 * Cross-platform support: kitty currently works only on linux, but because it
 uses only OpenGL+FreeType for rendering, it should be trivial to port to
-other platforms. See link:issues/5[5] for porting to OS X.
+other platforms. See link:../../issues/5[5] for porting to OS X.
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
