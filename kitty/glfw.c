@@ -8,6 +8,10 @@
 #include <structmember.h>
 #include <GLFW/glfw3.h>
 
+#if GLFW_VERSION_MAJOR < 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 2)
+#error "glfw >= 3.2 required"
+#endif
+
 #define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
