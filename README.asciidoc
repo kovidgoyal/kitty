@@ -79,6 +79,7 @@ the following dependencies are installed first.
 * glfw-dev >= 3.2
 * freetype
 * fontconfig
+* xdpyinfo and xsel (on X11 based systems)
 * gcc or clang (required for building)
 * pkg-config (required for building)
 
