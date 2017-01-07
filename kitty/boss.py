@@ -72,7 +72,7 @@ class Boss(Thread):
         self.cursor_blinking = True
         self.glfw_window_title = None
         self.action_queue = Queue()
-        self.pending_resize = True
+        self.pending_resize = False
         self.resize_gl_viewport = False
         self.shutting_down = False
         self.screen_update_delay = opts.repaint_delay / 1000.0
