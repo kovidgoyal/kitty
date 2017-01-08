@@ -40,8 +40,11 @@ control_codes[defines.GLFW_KEY_UP] = bytearray(key_as_bytes('cuu1').replace(b'['
 control_codes[defines.GLFW_KEY_DOWN] = bytearray(key_as_bytes('cud1').replace(b'[', b'[1;5'))
 control_codes[defines.GLFW_KEY_LEFT] = bytearray(key_as_bytes('cub1').replace(b'[', b'[1;5'))
 control_codes[defines.GLFW_KEY_RIGHT] = bytearray(key_as_bytes('cuf1').replace(b'[', b'[1;5'))
+control_codes[defines.GLFW_KEY_HOME] = bytearray(key_as_bytes('khome').replace(b'O', b'[1;5'))
+control_codes[defines.GLFW_KEY_END] = bytearray(key_as_bytes('kend').replace(b'O', b'[1;5'))
 control_codes[defines.GLFW_KEY_PAGE_UP] = bytearray(key_as_bytes('kpp').replace(b'~', b';5~'))
 control_codes[defines.GLFW_KEY_PAGE_DOWN] = bytearray(key_as_bytes('knp').replace(b'~', b';5~'))
+control_codes[defines.GLFW_KEY_DELETE] = bytearray(key_as_bytes('kdch1').replace(b'~', b';5~'))
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
 
 
