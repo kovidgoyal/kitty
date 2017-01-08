@@ -35,7 +35,13 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
 }
 
-control_codes = {k: 1 + i for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
+control_codes = {k: (1 + i,) for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
+control_codes[defines.GLFW_KEY_UP] = bytearray(key_as_bytes('cuu1').replace(b'[', b'[1;5'))
+control_codes[defines.GLFW_KEY_DOWN] = bytearray(key_as_bytes('cud1').replace(b'[', b'[1;5'))
+control_codes[defines.GLFW_KEY_LEFT] = bytearray(key_as_bytes('cub1').replace(b'[', b'[1;5'))
+control_codes[defines.GLFW_KEY_RIGHT] = bytearray(key_as_bytes('cuf1').replace(b'[', b'[1;5'))
+control_codes[defines.GLFW_KEY_PAGE_UP] = bytearray(key_as_bytes('kpp').replace(b'~', b';5~'))
+control_codes[defines.GLFW_KEY_PAGE_DOWN] = bytearray(key_as_bytes('knp').replace(b'~', b';5~'))
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
 
 
@@ -43,7 +49,7 @@ def interpret_key_event(key, scancode, mods):
     data = bytearray()
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
         # Map Ctrl-key to ascii control code
-        data.append(control_codes[key])
+        data.extend(control_codes[key])
     elif mods == defines.GLFW_MOD_ALT and key in alt_codes:
         # Map Alt+key to Esc-key
         data.extend(alt_codes[key])
