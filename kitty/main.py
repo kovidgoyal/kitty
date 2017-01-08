@@ -10,7 +10,7 @@ from queue import Empty
 from gettext import gettext as _
 
 
-from .config import load_config
+from .config import load_config, load_cached_values, cached_values, save_cached_values
 from .constants import appname, str_version, config_dir, viewport_size
 from .layout import all_layouts
 from .boss import Boss
@@ -84,6 +84,15 @@ def dispatch_pending_calls(boss):
 
 def run_app(opts, args):
     setup_opengl()
+    load_cached_values()
+    if 'window-size' in cached_values:
+        ws = cached_values['window-size']
+        try:
+            viewport_size.width, viewport_size.height = map(int, ws)
+        except Exception:
+            print('Invalid cached window size, ignoring', file=sys.stderr)
+        viewport_size.width = max(100, viewport_size.width)
+        viewport_size.height = max(80, viewport_size.height)
     window = Window(
         viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
@@ -101,6 +110,8 @@ def run_app(opts, args):
     finally:
         boss.destroy()
     del window
+    cached_values['window-size'] = viewport_size.width, viewport_size.height
+    save_cached_values()
 
 
 def on_glfw_error(code, msg):

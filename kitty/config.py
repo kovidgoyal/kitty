@@ -6,6 +6,8 @@ import re
 import sys
 import os
 import shlex
+import json
+import tempfile
 from collections import namedtuple
 
 from .fast_data_types import (
@@ -14,6 +16,7 @@ from .fast_data_types import (
 import kitty.fast_data_types as defines
 from .utils import to_color
 from .layout import all_layouts
+from .constants import config_dir
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 
@@ -177,3 +180,28 @@ def build_ansi_color_table(opts: Options=defaults):
     def col(i):
         return as_int(getattr(opts, 'color{}'.format(i)))
     return list(map(col, range(16)))
+
+
+cached_values = {}
+cached_path = os.path.join(config_dir, 'cached.json')
+
+
+def load_cached_values():
+    cached_values.clear()
+    try:
+        with open(cached_path, 'rb') as f:
+            cached_values.update(json.loads(f.read()))
+    except FileNotFoundError:
+        pass
+    except Exception as err:
+        print('Failed to load cached values with error: {}'.format(err), file=sys.stderr)
+
+
+def save_cached_values():
+    fd, p = tempfile.mkstemp(dir=os.path.dirname(cached_path), suffix='cached.json.tmp')
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(json.dumps(cached_values).encode('utf-8'))
+        os.rename(p, cached_path)
+    except Exception as err:
+        print('Failed to save cached values with error: {}'.format(err), file=sys.stderr)
