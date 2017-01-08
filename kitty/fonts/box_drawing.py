@@ -123,7 +123,6 @@ box_chars = {
     '┇': [p(vholes, num=2, level=3)],
     '┊': [p(vholes, num=3)],
     '┋': [p(vholes, num=3, level=3)],
-    '┌': [p(corner, '┌')],
 }
 
 t, f = 1, 3
