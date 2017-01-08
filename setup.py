@@ -79,7 +79,11 @@ def init_env(debug=False, asan=False):
     cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
     if isosx:
         fd = sysconfig.get_config_var('LIBDIR')
-        fd = fd[:fd.index('/Python.framework')]
+        try:
+            fd = fd[:fd.index('/Python.framework')]
+        except ValueError:
+            fd = sysconfig.get_config_var('LIBDEST')
+            fd = fd[:fd.index('/Python.framework')]
         pylib = ['-F', fd, '-framework', 'Python.framework']
     else:
         lib = sysconfig.get_config_var('LDLIBRARY')
