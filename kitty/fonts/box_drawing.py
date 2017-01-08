@@ -94,6 +94,18 @@ def corner(*a, hlevel=1, vlevel=1, which=None):
     half_vline(*a, level=vlevel, which=wv)
 
 
+def vert_t(*args, a=1, b=1, c=1, which=None):
+    half_vline(*args, level=a, which='top')
+    half_hline(*args, level=b, which='left' if which == '┤' else 'right')
+    half_vline(*args, level=c, which='bottom')
+
+
+def horz_t(*args, a=1, b=1, c=1, which=None):
+    half_hline(*args, level=a, which='left')
+    half_hline(*args, level=b, which='right')
+    half_vline(*args, level=c, which='top' if which == '┴' else 'bottom')
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -114,9 +126,18 @@ box_chars = {
     '┌': [p(corner, '┌')],
 }
 
+t, f = 1, 3
 for start in '┌┐└┘':
-    for i, (hlevel, vlevel) in enumerate(((1, 1), (3, 2), (2, 3), (3, 3))):
+    for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (t, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
+
+for starts, func, pattern in (
+        ('├┤', vert_t, ((t, t, t), (t, f, t), (f, t, t), (t, t, f), (f, t, f), (f, f, t), (t, f, f), (f, f, f))),
+        ('┬┴', horz_t, ((t, t, t), (f, t, t), (t, f, t), (f, f, t), (t, t, f), (f, t, f), (t, f, f), (f, f, f))),
+):
+    for start in starts:
+        for i, (a, b, c) in enumerate(pattern):
+            box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a, b=b, c=c)]
 
 is_renderable_box_char = box_chars.__contains__
 
