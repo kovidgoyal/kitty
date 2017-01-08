@@ -30,7 +30,7 @@ def _get_config_dir():
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['VISE_CONFIG_DIRECTORY']))
 
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
+    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if isosx else '~/.config')))
     ans = os.path.join(candidate, appname)
     try:
         os.makedirs(ans)
