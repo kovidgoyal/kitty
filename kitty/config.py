@@ -190,7 +190,7 @@ def load_cached_values():
     cached_values.clear()
     try:
         with open(cached_path, 'rb') as f:
-            cached_values.update(json.loads(f.read()))
+            cached_values.update(json.loads(f.read().decode('utf-8')))
     except FileNotFoundError:
         pass
     except Exception as err:
@@ -205,3 +205,10 @@ def save_cached_values():
         os.rename(p, cached_path)
     except Exception as err:
         print('Failed to save cached values with error: {}'.format(err), file=sys.stderr)
+    finally:
+        try:
+            os.remove(p)
+        except FileNotFoundError:
+            pass
+        except Exception as err:
+            print('Failed to delete temp file for saved cached values with error: {}'.format(err), file=sys.stderr)
