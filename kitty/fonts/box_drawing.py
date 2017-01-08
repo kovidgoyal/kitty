@@ -10,7 +10,7 @@ from kitty.utils import get_logical_dpi
 
 def thickness(level=1, horizontal=True):
     dpi = get_logical_dpi()[0 if horizontal else 1]
-    pts = (1, 1, 2, 4)[level]
+    pts = (0.001, 1, 1.2, 3)[level]
     return int(math.ceil(pts * dpi / 72.0))
 
 
