@@ -128,7 +128,7 @@ box_chars = {
 
 t, f = 1, 3
 for start in '┌┐└┘':
-    for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (t, f))):
+    for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
 
 for starts, func, pattern in (
