@@ -106,6 +106,13 @@ def horz_t(*args, a=1, b=1, c=1, which=None):
     half_vline(*args, level=c, which='top' if which == '┴' else 'bottom')
 
 
+def cross(*s, a=1, b=1, c=1, d=1):
+    half_hline(*s, level=a)
+    half_hline(*s, level=b, which='right')
+    half_vline(*s, level=c)
+    half_vline(*s, level=d, which='bottom')
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -141,6 +148,13 @@ t, f = 1, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
+
+for i, (a, b, c, d) in enumerate((
+        (t, t, t, t), (f, t, t, t), (t, f, t, t), (f, f, t, t), (t, t, f, t), (t, t, t, f), (t, t, f, f),
+        (f, t, f, t), (t, f, f, t), (f, t, t, f), (t, f, t, f), (f, f, f, t), (f, f, t, f), (f, t, f, f),
+        (t, f, f, f), (f, f, f, f)
+)):
+    box_chars[chr(ord('┼') + i)] = [p(cross, a=a, b=b, c=c, d=d)]
 
 for starts, func, pattern in (
         ('├┤', vert_t, ((t, t, t), (t, f, t), (f, t, t), (t, t, f), (f, t, f), (f, f, t), (t, f, f), (f, f, f))),
