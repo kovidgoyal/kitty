@@ -189,7 +189,7 @@ cached_path = os.path.join(config_dir, 'cached.json')
 def load_cached_values():
     cached_values.clear()
     try:
-        with open(cached_path, 'rb') as f:
+        with open(cached_path,'r', encoding='utf-8') as f:
             cached_values.update(json.loads(f.read()))
     except FileNotFoundError:
         pass
