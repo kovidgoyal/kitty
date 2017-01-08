@@ -7,6 +7,7 @@ import re
 import sys
 import sysconfig
 import shlex
+import shutil
 import subprocess
 import argparse
 
@@ -138,7 +139,7 @@ def compile_c_extension(module, *sources):
 
 def option_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('action', nargs='?', default='build', choices='build test'.split(), help='Action to perform (default is build)')
+    p.add_argument('action', nargs='?', default='build', choices='build test linux-package'.split(), help='Action to perform (default is build)')
     p.add_argument('--debug', default=False, action='store_true',
                    help='Build extension modules with debugging symbols')
     p.add_argument('--asan', default=False, action='store_true',
@@ -158,15 +159,38 @@ def find_c_files():
     return tuple(ans)
 
 
+def build(args):
+    init_env(args.debug, args.asan)
+    compile_c_extension('kitty/fast_data_types', *find_c_files())
+
+
+def package(args):
+    ddir = 'linux-package'
+    if os.path.exists(ddir):
+        shutil.rmtree(ddir)
+    os.makedirs(ddir + '/terminfo/x')
+    shutil.copy2('__main__.py', ddir)
+    shutil.copy2('terminfo/x/xterm-kitty', ddir + '/terminfo/x')
+
+    def src_ignore(parent, entries):
+        return [x for x in entries if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf')]
+
+    shutil.copytree('kitty', ddir + '/kitty', ignore=src_ignore)
+    import compileall
+    compileall.compile_dir(ddir, optimize=2, quiet=1, workers=4)
+
+
 def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args()
     if args.action == 'build':
-        init_env(args.debug, args.asan)
-        compile_c_extension('kitty/fast_data_types', *find_c_files())
+        build(args)
     elif args.action == 'test':
         os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
+    elif args.action == 'linux-package':
+        build(args)
+        package(args)
 
 
 if __name__ == '__main__':
