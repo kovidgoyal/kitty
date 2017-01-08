@@ -272,8 +272,8 @@ filesystem, it is self contained. So simply create a launcher script named
 `/usr/bin/kitty` that calls `python3 /path/to/the/installed/linux-package/directory`.
 
 You should also create a second package named kitty-terminfo that installs the
-file `linux-package/terminfo/x/xterm-kitty` into `/usr/share/terminfo` for
-whatever location your distribution uses for terminfo files. Make the main
+file `linux-package/terminfo/x/xterm-kitty` into `/usr/share/terminfo` (or
+whatever location your distribution uses for terminfo files). Make the main
 kitty package depend on `kitty-terminfo`. This allows users to install the
 terminfo file on servers into which they ssh, without needing to install all of
 kitty.
