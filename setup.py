@@ -177,7 +177,7 @@ def package(args):
 
     shutil.copytree('kitty', ddir + '/kitty', ignore=src_ignore)
     import compileall
-    compileall.compile_dir(ddir, optimize=2, quiet=1, workers=4)
+    compileall.compile_dir(ddir, quiet=1, workers=4)
 
 
 def main():
