@@ -87,6 +87,13 @@ def vholes(*a, level=1, num=1):
     add_vholes(*a, level=level, num=num)
 
 
+def corner(*a, hlevel=1, vlevel=1, which=None):
+    wh = 'right' if which in '┌└' else 'left'
+    half_hline(*a, level=hlevel, which=wh)
+    wv = 'top' if which in '└┘' else 'bottom'
+    half_vline(*a, level=vlevel, which=wv)
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -104,8 +111,12 @@ box_chars = {
     '┇': [p(vholes, num=2, level=3)],
     '┊': [p(vholes, num=3)],
     '┋': [p(vholes, num=3, level=3)],
+    '┌': [p(corner, '┌')],
 }
 
+for start in '┌┐└┘':
+    for i, (hlevel, vlevel) in enumerate(((1, 1), (3, 2), (2, 3), (3, 3))):
+        box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
 
 is_renderable_box_char = box_chars.__contains__
 
