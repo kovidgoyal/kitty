@@ -71,7 +71,9 @@ def init_env(debug=False, asan=False):
             ver = subprocess.check_output('pkg-config --modversion glew'.split()).decode('utf-8').strip()
         except Exception:
             ver = 'not found'
-        raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
+        major = int(re.match(r'\d+', ver))
+        if major < 2:
+            raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
     cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
