@@ -84,7 +84,7 @@ def init_env(debug=False, asan=False):
         except ValueError:
             fd = sysconfig.get_config_var('LIBDEST')
             fd = fd[:fd.index('/Python.framework')]
-        pylib = ['-F', fd, '-framework', 'Python.framework']
+        pylib = ['-F' + fd, '-framework', 'Python']
     else:
         lib = sysconfig.get_config_var('LDLIBRARY')
         if lib.startswith('lib'):
