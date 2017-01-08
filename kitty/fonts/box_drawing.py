@@ -77,7 +77,7 @@ def vline(*a, level=1):
     half_vline(*a, level=level, which='bottom')
 
 
-def hholes(*a, level=2, num=1):
+def hholes(*a, level=1, num=1):
     hline(*a, level=level)
     add_hholes(*a, level=level, num=num)
 
