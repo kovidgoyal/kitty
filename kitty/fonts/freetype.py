@@ -11,6 +11,7 @@ from threading import Lock
 
 from kitty.fast_data_types import Face, FT_PIXEL_MODE_GRAY
 from .fontconfig import find_font_for_character, get_font_files
+from .box_drawing import is_renderable_box_char, render_box_char
 
 from kitty.utils import get_logical_dpi, wcwidth
 
@@ -193,6 +194,8 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]
+    if is_renderable_box_char(text):
+        return render_box_char(text, CharTexture(), cell_width, cell_height), None
     width = wcwidth(text)
     bitmap_char = render_char(text, bold, italic, width)
     second = None
