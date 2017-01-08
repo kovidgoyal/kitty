@@ -123,6 +123,18 @@ box_chars = {
     '┇': [p(vholes, num=2, level=3)],
     '┊': [p(vholes, num=3)],
     '┋': [p(vholes, num=3, level=3)],
+    '╴': [half_hline],
+    '╵': [half_vline],
+    '╶': [p(half_hline, which='right')],
+    '╷': [p(half_vline, which='bottom')],
+    '╸': [p(half_hline, level=3)],
+    '╹': [p(half_vline, level=3)],
+    '╺': [p(half_hline, which='right', level=3)],
+    '╻': [p(half_vline, which='bottom', level=3)],
+    '╼': [half_hline, p(half_hline, level=3, which='right')],
+    '╽': [half_vline, p(half_vline, level=3, which='bottom')],
+    '╾': [p(half_hline, level=3), p(half_hline, which='right')],
+    '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
 }
 
 t, f = 1, 3
