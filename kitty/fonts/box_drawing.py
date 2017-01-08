@@ -14,17 +14,17 @@ def thickness(level=1, horizontal=True):
     return int(math.ceil(pts * dpi / 72.0))
 
 
-def half_hline(buf, width, height, level=1, which='left'):
-    sz = thickness(level=level, horizontal=True)
+def half_hline(buf, width, height, level=1, which='left', extend_by=0):
+    sz = thickness(level=level, horizontal=False)
     start = height // 2 - sz // 2
     for y in range(start, start + sz):
         offset = y * width
-        for x in (range(0, width // 2) if which == 'left' else range(width // 2, width)):
+        for x in (range(0, extend_by + width // 2) if which == 'left' else range(width // 2 - extend_by, width)):
             buf[offset + x] = 255
 
 
 def half_vline(buf, width, height, level=1, which='top'):
-    sz = thickness(level=level, horizontal=False)
+    sz = thickness(level=level, horizontal=True)
     start = width // 2 - sz // 2
     for x in range(start, start + sz):
         for y in (range(0, height // 2) if which == 'top' else range(height // 2, height)):
@@ -89,7 +89,7 @@ def vholes(*a, level=1, num=1):
 
 def corner(*a, hlevel=1, vlevel=1, which=None):
     wh = 'right' if which in '┌└' else 'left'
-    half_hline(*a, level=hlevel, which=wh)
+    half_hline(*a, level=hlevel, which=wh, extend_by=thickness(vlevel, horizontal=True) // 2)
     wv = 'top' if which in '└┘' else 'bottom'
     half_vline(*a, level=vlevel, which=wv)
 
