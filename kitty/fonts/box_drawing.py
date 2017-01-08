@@ -10,7 +10,7 @@ from kitty.utils import get_logical_dpi
 
 def thickness(level=1, horizontal=True):
     dpi = get_logical_dpi()[0 if horizontal else 1]
-    pts = (0.001, 1, 1.2, 3)[level]
+    pts = (0.001, 1, 1.5, 2)[level]
     return int(math.ceil(pts * dpi / 72.0))
 
 
@@ -35,18 +35,23 @@ def get_holes(sz, hole_sz, num):
     if num == 1:
         pts = [sz // 2]
     elif num == 2:
-        pts = (sz // 3, 2 * (sz // 3))
+        ssz = (sz - 2 * hole_sz) // 3
+        pts = (ssz + hole_sz // 2, 2 * ssz + hole_sz // 2 + hole_sz)
     elif num == 3:
-        pts = (sz // 4, sz // 2, 3 * (sz // 4))
+        ssz = (sz - 3 * hole_sz) // 4
+        pts = (ssz + hole_sz // 2, 2 * ssz + hole_sz // 2 + hole_sz, 3 * ssz + 2 * hole_sz + hole_sz // 2)
     holes = []
     for c in pts:
         holes.append(tuple(range(c - hole_sz // 2, c - hole_sz // 2 + hole_sz)))
     return holes
 
 
-def add_hholes(buf, width, height, level=1, num=1, hole_sz=3):
+hole_factor = 8
+
+
+def add_hholes(buf, width, height, level=1, num=1):
     line_sz = thickness(level=level, horizontal=True)
-    hole_sz = thickness(level=hole_sz, horizontal=False)
+    hole_sz = width // hole_factor
     start = height // 2 - line_sz // 2
     holes = get_holes(width, hole_sz, num)
     for y in range(start, start + line_sz):
@@ -56,9 +61,9 @@ def add_hholes(buf, width, height, level=1, num=1, hole_sz=3):
                 buf[offset + x] = 0
 
 
-def add_vholes(buf, width, height, level=1, num=1, hole_sz=3):
+def add_vholes(buf, width, height, level=1, num=1):
     line_sz = thickness(level=level, horizontal=False)
-    hole_sz = thickness(level=hole_sz, horizontal=True)
+    hole_sz = height // hole_factor
     start = width // 2 - line_sz // 2
     holes = get_holes(height, hole_sz, num)
     for x in range(start, start + line_sz):
