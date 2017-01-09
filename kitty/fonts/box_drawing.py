@@ -156,20 +156,34 @@ def triangle(buf, width, height, left=True):
             buf[x + offset] = 255 if upper <= y <= lower else 0
 
 
-def half_dhline(buf, width, height, level=1, which='left'):
+def half_dhline(buf, width, height, level=1, which='left', only=None):
     x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
     gap = thickness(level + 1, horizontal=False)
-    draw_hline(buf, width, x1, x2, height // 2 - gap, level)
-    draw_hline(buf, width, x1, x2, height // 2 + gap, level)
+    if only != 'bottom':
+        draw_hline(buf, width, x1, x2, height // 2 - gap, level)
+    if only != 'top':
+        draw_hline(buf, width, x1, x2, height // 2 + gap, level)
     return height // 2 - gap, height // 2 + gap
 
 
-def half_dvline(buf, width, height, level=1, which='top'):
+def half_dvline(buf, width, height, level=1, which='top', only=None):
     y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
     gap = thickness(level + 1, horizontal=True)
-    draw_vline(buf, width, y1, y2, width // 2 - gap, level)
-    draw_vline(buf, width, y1, y2, width // 2 + gap, level)
+    if only != 'right':
+        draw_vline(buf, width, y1, y2, width // 2 - gap, level)
+    if only != 'left':
+        draw_vline(buf, width, y1, y2, width // 2 + gap, level)
     return width // 2 - gap, width // 2 + gap
+
+
+def dvline(*s, only=None, level=1):
+    half_dvline(*s, only=only, level=level)
+    return half_dvline(*s, only=only, which='bottom', level=level)
+
+
+def dhline(*s, only=None, level=1):
+    half_dhline(*s, only=only, level=level)
+    return half_dhline(*s, only=only, which='bottom', level=level)
 
 
 def dvcorner(*s, level=1, which='╒'):
@@ -222,15 +236,25 @@ def dcorner(buf, width, height, level=1, which='╔'):
 
 def dpip(*a, level=1, which='╟'):
     if which in '╟╢':
-        left, right = half_dvline(*a)
-        half_dvline(*a, which='bottom')
+        left, right = dvline(*a)
         x1, x2 = (0, left) if which == '╢' else (right, a[1])
         draw_hline(a[0], a[1], x1, x2, a[2] // 2, level)
     else:
-        top, bottom = half_dhline(*a)
-        half_dhline(*a, which='right')
+        top, bottom = dhline(*a)
         y1, y2 = (0, top) if which == '╧' else (bottom, a[2])
         draw_vline(a[0], a[1], y1, y2, a[1] // 2, level)
+
+
+def inner_corner(buf, width, height, which='tl', level=1):
+    hgap = thickness(level + 1, horizontal=True)
+    vgap = thickness(level + 1, horizontal=False)
+    vthick = thickness(level, horizontal=True) // 2
+    x1, x2 = (0, width // 2 - hgap + vthick + 1) if 'l' in which else (width // 2 + hgap - vthick, width)
+    yd = -1 if 't' in which else 1
+    draw_hline(buf, width, x1, x2, height // 2 + (yd * vgap), level)
+    y1, y2 = (0, height // 2 - vgap) if 't' in which else (height // 2 + vgap, height)
+    xd = -1 if 'l' in which else 1
+    draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
 box_chars = {
@@ -264,14 +288,19 @@ box_chars = {
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
     '': [triangle],
     '': [p(triangle, left=False)],
-    '═': [half_dhline, p(half_dhline, which='right')],
-    '║': [half_dvline, p(half_dvline, which='bottom')],
+    '═': [dhline],
+    '║': [dvline],
     '╞': [vline, p(half_dhline, which='right')],
     '╡': [vline, half_dhline],
     '╥': [hline, p(half_dvline, which='bottom')],
     '╨': [hline, half_dvline],
     '╪': [vline, half_dhline, p(half_dhline, which='right')],
     '╫': [hline, half_dvline, p(half_dvline, which='bottom')],
+    '╬': [p(inner_corner, which=x) for x in 'tl tr bl br'.split()],
+    '╠': [p(inner_corner, which='tr'), p(inner_corner, which='br'), p(dvline, only='left')],
+    '╣': [p(inner_corner, which='tl'), p(inner_corner, which='bl'), p(dvline, only='right')],
+    '╦': [p(inner_corner, which='bl'), p(inner_corner, which='br'), p(dhline, only='top')],
+    '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
 }
 
 t, f = 1, 3
