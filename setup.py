@@ -70,9 +70,10 @@ def init_env(debug=False, asan=False):
     if not is_travis and subprocess.Popen('pkg-config --atleast-version=2 glew'.split()).wait() != 0:
         try:
             ver = subprocess.check_output('pkg-config --modversion glew'.split()).decode('utf-8').strip()
+            major = int(re.match(r'\d+', ver).group())
         except Exception:
             ver = 'not found'
-        major = int(re.match(r'\d+', ver).group())
+            major = 0
         if major < 2:
             raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
