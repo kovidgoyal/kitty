@@ -161,6 +161,7 @@ def half_dhline(buf, width, height, level=1, which='left'):
     gap = thickness(level + 1, horizontal=False)
     draw_hline(buf, width, x1, x2, height // 2 - gap, level)
     draw_hline(buf, width, x1, x2, height // 2 + gap, level)
+    return height // 2 - gap, height // 2 + gap
 
 
 def half_dvline(buf, width, height, level=1, which='top'):
@@ -168,6 +169,7 @@ def half_dvline(buf, width, height, level=1, which='top'):
     gap = thickness(level + 1, horizontal=True)
     draw_vline(buf, width, y1, y2, width // 2 - gap, level)
     draw_vline(buf, width, y1, y2, width // 2 + gap, level)
+    return width // 2 - gap, width // 2 + gap
 
 
 def dvcorner(*s, level=1, which='╒'):
@@ -212,10 +214,23 @@ def dcorner(buf, width, height, level=1, which='╔'):
         y1 -= hgap + yd
     draw_vline(buf, width, y1, y2, width // 2 - xdelta, level)
     if vw == 'top':
-        y2 -= 2*hgap
+        y2 -= 2 * hgap
     else:
-        y1 += 2*hgap
+        y1 += 2 * hgap
     draw_vline(buf, width, y1, y2, width // 2 + xdelta, level)
+
+
+def dpip(*a, level=1, which='╟'):
+    if which in '╟╢':
+        left, right = half_dvline(*a)
+        half_dvline(*a, which='bottom')
+        x1, x2 = (0, left) if which == '╢' else (right, a[1])
+        draw_hline(a[0], a[1], x1, x2, a[2] // 2, level)
+    else:
+        top, bottom = half_dhline(*a)
+        half_dhline(*a, which='right')
+        y1, y2 = (0, top) if which == '╧' else (bottom, a[2])
+        draw_vline(a[0], a[1], y1, y2, a[1] // 2, level)
 
 
 box_chars = {
@@ -279,7 +294,7 @@ for starts, func, pattern in (
         for i, (a, b, c) in enumerate(pattern):
             box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a, b=b, c=c)]
 
-for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner)):
+for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
         box_chars[ch] = [p(func, which=ch)]
 
