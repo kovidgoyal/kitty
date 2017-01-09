@@ -39,8 +39,8 @@ def half_hline(buf, width, height, level=1, which='left', extend_by=0):
     draw_hline(buf, width, x1, x2, height // 2, level)
 
 
-def half_vline(buf, width, height, level=1, which='top'):
-    y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
+def half_vline(buf, width, height, level=1, which='top', extend_by=0):
+    y1, y2 = (0, height // 2 + extend_by) if which == 'top' else (height // 2 - extend_by, height)
     draw_vline(buf, width, y1, y2, width // 2, level)
 
 
@@ -156,6 +156,36 @@ def triangle(buf, width, height, left=True):
             buf[x + offset] = 255 if upper <= y <= lower else 0
 
 
+def half_dhline(buf, width, height, level=1, which='left'):
+    x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
+    gap = thickness(level + 1, horizontal=False)
+    draw_hline(buf, width, x1, x2, height // 2 - gap, level)
+    draw_hline(buf, width, x1, x2, height // 2 + gap, level)
+
+
+def half_dvline(buf, width, height, level=1, which='top'):
+    y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
+    gap = thickness(level + 1, horizontal=True)
+    draw_vline(buf, width, y1, y2, width // 2 - gap, level)
+    draw_vline(buf, width, y1, y2, width // 2 + gap, level)
+
+
+def dvcorner(*s, level=1, which='╒'):
+    hw = 'right' if which in '╒╘' else 'left'
+    half_dhline(*s, which=hw)
+    vw = 'top' if which in '╘╛' else 'bottom'
+    gap = thickness(level + 1, horizontal=False)
+    half_vline(*s, which=vw, extend_by=gap // 2 + thickness(level, horizontal=False))
+
+
+def dhcorner(*s, level=1, which='╓'):
+    vw = 'top' if which in '╙╜' else 'bottom'
+    half_dvline(*s, which=vw)
+    hw = 'right' if which in '╓╙' else 'left'
+    gap = thickness(level + 1, horizontal=True)
+    half_hline(*s, which=hw, extend_by=gap // 2 + thickness(level, horizontal=True))
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -187,6 +217,8 @@ box_chars = {
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
     '': [triangle],
     '': [p(triangle, left=False)],
+    '═': [half_dhline, p(half_dhline, which='right')],
+    '║': [half_dvline, p(half_dvline, which='bottom')],
 }
 
 t, f = 1, 3
@@ -209,6 +241,9 @@ for starts, func, pattern in (
         for i, (a, b, c) in enumerate(pattern):
             box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a, b=b, c=c)]
 
+for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner)):
+    for ch in chars:
+        box_chars[ch] = [p(func, which=ch)]
 is_renderable_box_char = box_chars.__contains__
 
 
@@ -237,7 +272,7 @@ def test_drawing(sz=32, family='monospace'):
     space = render_cell()[0]
     space_row = join_cells(width, height, *repeat(space, 32))
 
-    for r in range(5):
+    for r in range(8):
         row = []
         for i in range(16):
             row.append(render_cell(chr(pos))[0]), row.append(space)
