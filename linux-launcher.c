@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 				final_argv[i+1] = argv[i];
 		}
 		execvp(final_argv[0], final_argv);
-		fprintf(stderr, "Failed to run python3: %s\n", strerror(errno));
+		fprintf(stderr, "Failed to run %s: %s\n", final_argv[0], strerror(errno));
 		return 0;
 }
 
