@@ -197,7 +197,7 @@ def package(args):
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    run_tool([cc, '-ggdb', 'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')])
+    run_tool([cc, '-O3', 'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')])
 
 
 def main():
