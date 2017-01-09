@@ -118,6 +118,31 @@ def cross(*s, a=1, b=1, c=1, d=1):
     half_vline(*s, level=d, which='bottom')
 
 
+def line_equation(x1, y1, x2, y2):
+    m = (y2 - y1) / (x2 - x1)
+    c = y1 - m * x1
+
+    def y(x):
+        return m * x + c
+
+    return y
+
+
+def triangle(buf, width, height, left=True):
+    ay1, by1, y2 = 0, height - 1, height // 2
+    if left:
+        x1, x2 = 0, width - 1
+    else:
+        x1, x2 = width - 1, 0
+    uppery = line_equation(x1, ay1, x2, y2)
+    lowery = line_equation(x1, by1, x2, y2)
+    xlimits = [(uppery(x), lowery(x)) for x in range(width)]
+    for y in range(height):
+        offset = y * width
+        for x, (upper, lower) in zip(range(width), xlimits):
+            buf[x + offset] = 255 if upper <= y <= lower else 0
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -147,6 +172,8 @@ box_chars = {
     '╽': [half_vline, p(half_vline, level=3, which='bottom')],
     '╾': [p(half_hline, level=3), p(half_hline, which='right')],
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
+    '': [triangle],
+    '': [p(triangle, left=False)],
 }
 
 t, f = 1, 3
