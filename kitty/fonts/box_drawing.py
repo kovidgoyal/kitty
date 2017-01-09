@@ -186,6 +186,38 @@ def dhcorner(*s, level=1, which='╓'):
     half_hline(*s, which=hw, extend_by=gap // 2 + thickness(level, horizontal=True))
 
 
+def dcorner(buf, width, height, level=1, which='╔'):
+    hw = 'right' if which in '╔╚' else 'left'
+    vw = 'top' if which in '╚╝' else 'bottom'
+    hgap = thickness(level + 1, horizontal=False)
+    vgap = thickness(level + 1, horizontal=True)
+    x1, x2 = (0, width // 2) if hw == 'left' else (width // 2, width)
+    ydelta = hgap if vw == 'top' else -hgap
+    if hw == 'left':
+        x2 += vgap
+    else:
+        x1 -= vgap
+    draw_hline(buf, width, x1, x2, height // 2 + ydelta, level)
+    if hw == 'left':
+        x2 -= 2 * vgap
+    else:
+        x1 += 2 * vgap
+    draw_hline(buf, width, x1, x2, height // 2 - ydelta, level)
+    y1, y2 = (0, height // 2) if vw == 'top' else (height // 2, height)
+    xdelta = vgap if hw == 'right' else -vgap
+    yd = thickness(level, horizontal=True) // 2
+    if vw == 'top':
+        y2 += hgap + yd
+    else:
+        y1 -= hgap + yd
+    draw_vline(buf, width, y1, y2, width // 2 - xdelta, level)
+    if vw == 'top':
+        y2 -= 2*hgap
+    else:
+        y1 += 2*hgap
+    draw_vline(buf, width, y1, y2, width // 2 + xdelta, level)
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -241,9 +273,10 @@ for starts, func, pattern in (
         for i, (a, b, c) in enumerate(pattern):
             box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a, b=b, c=c)]
 
-for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner)):
+for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner)):
     for ch in chars:
         box_chars[ch] = [p(func, which=ch)]
+
 is_renderable_box_char = box_chars.__contains__
 
 
