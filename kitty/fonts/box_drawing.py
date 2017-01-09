@@ -307,6 +307,8 @@ t, f = 1, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
+for ch, c in zip('╭╮╯╰', '┌┐┘└'):
+    box_chars[ch] = [p(corner, which=c)]  # TODO: Make these rounded
 
 for i, (a, b, c, d) in enumerate((
         (t, t, t, t), (f, t, t, t), (t, f, t, t), (f, f, t, t), (t, t, f, t), (t, t, t, f), (t, t, f, f),
