@@ -4,6 +4,7 @@
 
 import math
 from functools import partial as p
+from itertools import repeat
 
 from kitty.utils import get_logical_dpi
 
@@ -14,21 +15,33 @@ def thickness(level=1, horizontal=True):
     return int(math.ceil(pts * dpi / 72.0))
 
 
-def half_hline(buf, width, height, level=1, which='left', extend_by=0):
+def draw_hline(buf, width, x1, x2, y, level):
+    ' Draw a horizontal line between [x1, x2) centered at y with the thickness given by level '
     sz = thickness(level=level, horizontal=False)
-    start = height // 2 - sz // 2
+    start = y - sz // 2
     for y in range(start, start + sz):
         offset = y * width
-        for x in (range(0, extend_by + width // 2) if which == 'left' else range(width // 2 - extend_by, width)):
+        for x in range(x1, x2):
             buf[offset + x] = 255
 
 
-def half_vline(buf, width, height, level=1, which='top'):
+def draw_vline(buf, width, y1, y2, x, level):
+    ' Draw a horizontal line between [y1, y2) centered at x with the thickness given by level '
     sz = thickness(level=level, horizontal=True)
-    start = width // 2 - sz // 2
+    start = x - sz // 2
     for x in range(start, start + sz):
-        for y in (range(0, height // 2) if which == 'top' else range(height // 2, height)):
+        for y in range(y1, y2):
             buf[x + y * width] = 255
+
+
+def half_hline(buf, width, height, level=1, which='left', extend_by=0):
+    x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
+    draw_hline(buf, width, x1, x2, height // 2, level)
+
+
+def half_vline(buf, width, height, level=1, which='top'):
+    y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
+    draw_vline(buf, width, y1, y2, width // 2, level)
 
 
 def get_holes(sz, hole_sz, num):
@@ -203,3 +216,34 @@ def render_box_char(ch, buf, width, height):
     for func in box_chars[ch]:
         func(buf, width, height)
     return buf
+
+
+def join_rows(width, height, rows):
+    import ctypes
+    ans = (ctypes.c_ubyte * (width * height * len(rows)))()
+    pos = ctypes.addressof(ans)
+    row_sz = width * height
+    for row in rows:
+        ctypes.memmove(pos, ctypes.addressof(row), row_sz)
+        pos += row_sz
+    return ans
+
+
+def test_drawing(sz=32, family='monospace'):
+    from .freetype import join_cells, display_bitmap, render_cell, set_font_family
+    width, height = set_font_family(family, sz)
+    pos = 0x2500
+    rows = []
+    space = render_cell()[0]
+    space_row = join_cells(width, height, *repeat(space, 32))
+
+    for r in range(5):
+        row = []
+        for i in range(16):
+            row.append(render_cell(chr(pos))[0]), row.append(space)
+            pos += 1
+        rows.append(join_cells(width, height, *row))
+        rows.append(space_row)
+    width *= 32
+    im = join_rows(width, height, rows)
+    display_bitmap(im, width, height * len(rows))

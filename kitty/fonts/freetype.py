@@ -234,7 +234,7 @@ def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, sr
     return dest
 
 
-def join_cells(*cells):
+def join_cells(cell_width, cell_height, *cells):
     dstride = len(cells) * cell_width
     ans = (ctypes.c_ubyte * (cell_height * dstride))()
     for r in range(cell_height):
@@ -261,5 +261,5 @@ def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kov
         cells.append(f)
         if s is not None:
             cells.append(s)
-    char_data = join_cells(*cells)
+    char_data = join_cells(cell_width, cell_height, *cells)
     display_bitmap(char_data, cell_width * len(cells), cell_height)
