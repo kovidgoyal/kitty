@@ -251,6 +251,12 @@ box_chars = {
     '': [p(triangle, left=False)],
     '═': [half_dhline, p(half_dhline, which='right')],
     '║': [half_dvline, p(half_dvline, which='bottom')],
+    '╞': [vline, p(half_dhline, which='right')],
+    '╡': [vline, half_dhline],
+    '╥': [hline, p(half_dvline, which='bottom')],
+    '╨': [hline, half_dvline],
+    '╪': [vline, half_dhline, p(half_dhline, which='right')],
+    '╫': [hline, half_dvline, p(half_dvline, which='bottom')],
 }
 
 t, f = 1, 3
