@@ -265,7 +265,7 @@ class TestDataTypes(BaseTest):
         self.assertContinued(lb2, False, False, True)
 
     def test_utils(self):
-        self.ae(tuple(map(wcwidth, 'a1\0コ')), (1, 1, 0, 2))
+        self.ae(tuple(map(wcwidth, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
     def test_color_profile(self):
