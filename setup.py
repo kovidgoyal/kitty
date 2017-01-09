@@ -146,6 +146,7 @@ def option_parser():
     p.add_argument('--asan', default=False, action='store_true',
                    help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
                    ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so')
+    p.add_argument('--prefix', default='./linux-package', help='Where to create the linux package')
     return p
 
 
@@ -165,26 +166,46 @@ def build(args):
     compile_c_extension('kitty/fast_data_types', *find_c_files())
 
 
+def safe_makedirs(path):
+    try:
+        os.makedirs(path)
+    except FileExistsError:
+        pass
+
+
 def package(args):
-    ddir = 'linux-package'
-    if os.path.exists(ddir):
-        shutil.rmtree(ddir)
-    os.makedirs(ddir + '/terminfo/x')
-    shutil.copy2('__main__.py', ddir)
-    shutil.copy2('terminfo/x/xterm-kitty', ddir + '/terminfo/x')
+    ddir = args.prefix
+    libdir = os.path.join(ddir, 'lib', 'kitty')
+    terminfo_dir = os.path.join(ddir, 'share/terminfo/x')
+    if os.path.exists(libdir):
+        shutil.rmtree(libdir)
+    os.makedirs(os.path.join(libdir, 'terminfo/x'))
+    safe_makedirs(terminfo_dir)
+    shutil.copy2('__main__.py', libdir)
+    shutil.copy2('terminfo/x/xterm-kitty', terminfo_dir)
+    shutil.copy2('terminfo/x/xterm-kitty', os.path.join(libdir, 'terminfo/x'))
 
     def src_ignore(parent, entries):
         return [x for x in entries if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf')]
 
-    shutil.copytree('kitty', ddir + '/kitty', ignore=src_ignore)
+    shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     import compileall
     compileall.compile_dir(ddir, quiet=1, workers=4)
+    for root, dirs, files in os.walk(ddir):
+        for f in files:
+            path = os.path.join(root, f)
+            os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
+    launcher_dir = os.path.join(ddir, 'bin')
+    safe_makedirs(launcher_dir)
+    run_tool([cc, '-ggdb', 'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')])
 
 
 def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args()
+    args.prefix = os.path.abspath(args.prefix)
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'build':
         build(args)
     elif args.action == 'test':

@@ -261,22 +261,18 @@ Instead run,
 python3 setup.py linux-package
 ```
 
-This will create the directory `linux-package` containing all the files need to run kitty. kitty can be run using
+This will install kitty into the directory `linux-package`. You can run kitty
+with `linux-package/bin/kitty`.  All the files needed to run kitty will be in
+`linux-package/lib/kitty`. The terminfo file will be installed into
+`linux-package/share/terminfo`. Simply copy these files into `/usr` to install
+kitty. In other words, `linux-package` is the staging area into which kitty is
+installed. You can choose a different staging area, by passing the `--prefix`
+argument to `setup.py`.
 
-```
-python3 linux-package
-```
-
-The `linux-package` directory can be renamed and moved anywhere on the
-filesystem, it is self contained. So simply create a launcher script named
-`/usr/bin/kitty` that calls `python3 /path/to/the/installed/linux-package/directory`.
-
-You should also create a second package named kitty-terminfo that installs the
-file `linux-package/terminfo/x/xterm-kitty` into `/usr/share/terminfo` (or
-whatever location your distribution uses for terminfo files). Make the main
-kitty package depend on `kitty-terminfo`. This allows users to install the
-terminfo file on servers into which they ssh, without needing to install all of
-kitty.
+You should probably split kitty into two packages, `kitty-terminfo` that
+installs the terminfo file and `kitty` that installs the main program.
+This allows users to install the terminfo file on servers into which they ssh,
+without needing to install all of kitty.
 
 == Resources on terminal behavior
 
