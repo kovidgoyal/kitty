@@ -35,3 +35,4 @@ before_script:
     - python setup.py build --debug $ASAN_ARG
 script: 
     - LD_PRELOAD=$ASANLIB python setup.py test
+    - flake8 .
