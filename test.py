@@ -91,8 +91,10 @@ def run_cli(suite, verbosity=4):
     if not result.wasSuccessful():
         raise SystemExit(1)
 
+
 def main():
     run_tests()
+
 
 if __name__ == '__main__':
     main()

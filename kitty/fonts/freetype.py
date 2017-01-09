@@ -253,10 +253,6 @@ def display_bitmap(data, w, h):
     img.show()
 
 
-def cell_size():
-    return cell_width, cell_height
-
-
 def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kovid'):
     set_font_family(family, sz)
     cells = []
