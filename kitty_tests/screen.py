@@ -2,8 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from . import BaseTest
+import os
+from unittest import skipIf
 
+from . import BaseTest
 from kitty.fast_data_types import DECAWM, IRM, Cursor, DECCOLM, DECOM
 
 
@@ -53,6 +55,7 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
         self.assertChanges(s, ignore='cursor', cells={4: ((0, 4),)})
 
+    @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_draw_char(self):
         # Test in line-wrap, non-insert mode
         s = self.create_screen()
@@ -102,6 +105,7 @@ class TestScreen(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
         self.assertChanges(s, ignore='cursor', cells={4: ((0, 4),)})
 
+    @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_char_manipulation(self):
         s = self.create_screen()
 

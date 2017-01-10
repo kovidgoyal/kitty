@@ -2,8 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
+import os
+from unittest import skipIf
 
+from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
 from kitty.config import build_ansi_color_table, defaults
 from kitty.utils import wcwidth, sanitize_title
 from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf, Cursor
@@ -264,6 +266,7 @@ class TestDataTypes(BaseTest):
         lb2 = self.line_comparison_rewrap(lb, '123', 'abc', 'de ')
         self.assertContinued(lb2, False, False, True)
 
+    @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_utils(self):
         self.ae(tuple(map(wcwidth, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
