@@ -54,6 +54,7 @@ def get_python_flags(cflags):
                 libs.append('-F' + val[:val.index('/Python.framework')])
         libs += ['-framework', sysconfig.get_config_var('PYTHONFRAMEWORK')]
     else:
+        libs += [sysconfig.get_config_var('LIBDIR')]
         libs += ['-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags]
         libs += sysconfig.get_config_var('LINKFORSHARED').split()
     return libs
