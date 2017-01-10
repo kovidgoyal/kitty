@@ -74,6 +74,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Face* self) {
     if (self->font) CFRelease(self->font);
+    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
