@@ -38,8 +38,12 @@ matrix:
                 - libxcursor-dev
                 - clang
         - os: osx
+          language: python
+          python: "3.5"
           before_install:
               - brew update
+              - brew outdated fontconfig || brew upgrade fontconfig 
+              - brew outdated freetype || brew upgrade freetype 
               - brew outdated glew || brew upgrade glew 
 
 install:
