@@ -1,4 +1,5 @@
 matrix:
+    fast_finish: true
     include:
         - os: linux
           dist: trusty
@@ -41,21 +42,23 @@ matrix:
           language: generic
           before_install:
               - brew update
-              - brew install python3 fontconfig freetype glew
+                # We dont install fontconfig as installing it is very slow and we dont need it to run the test suite anyway
+              - brew install python3 freetype glew glfw
 
 install: |
+    if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
     if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
         python3 -m venv venv;
         source venv/bin/activate;
+    else
+        wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
+        unzip glfw-3.2.1.zip
+        cd glfw-3.2.1
+        cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
+        make
+        make install
+        cd ..
     fi
-    if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
-    wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
-    unzip glfw-3.2.1.zip
-    cd glfw-3.2.1
-    cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
-    make
-    make install
-    cd ..
     pkg-config --cflags glfw3
 
 env:
@@ -64,7 +67,11 @@ env:
         - LD_LIBRARY_PATH=$HOME/glfw/lib 
         - ASAN_OPTIONS=leak_check_at_exit=0 
 before_script:
-    - python setup.py build --debug $ASAN_ARG
+    - if [[ $TRAVIS_OS_NAME == 'osx' ]]; then 
+        python setup.py build; 
+      else
+        python setup.py build --debug $ASAN_ARG;
+      fi
 script: 
     - LD_PRELOAD=$ASANLIB python setup.py test
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
