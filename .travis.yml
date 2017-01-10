@@ -7,8 +7,6 @@ matrix:
           env:
             - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
           language: python
-          python:
-            - "3.5"
           addons:
             apt:
               packages:
@@ -27,8 +25,6 @@ matrix:
             - CC=clang
             - RUN_FLAKE=1
           language: python
-          python:
-            - "3.5"
           addons:
             apt:
               packages:
