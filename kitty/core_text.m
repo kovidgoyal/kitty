@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include <structmember.h>
+#include <stdint.h>
 #import <CoreText/CTFont.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
@@ -78,6 +79,28 @@ dealloc(Face* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static void
+encode_utf16_pair(uint32_t character, unichar *units) {
+    unsigned int code;
+    assert(0x10000 <= character && character <= 0x10FFFF);
+    code = (character - 0x10000);
+    units[0] = 0xD800 | (code >> 10);
+    units[1] = 0xDC00 | (code & 0x3FF);
+}
+
+static PyObject*
+has_char(Face *self, PyObject *args) {
+#define has_char_doc "True iff this font has glyphs for the specified character"
+    int ch, count = 1;
+    unichar chars[2] = {0};
+    CGGlyph glyphs[2] = {0};
+    if (!PyArg_ParseTuple(args, "C", &ch)) return NULL;
+    if (ch <= 0xffff) chars[0] = (unichar)ch;
+    else { encode_utf16_pair(ch, chars); count = 2; }
+    PyObject *ret = (CTFontGetGlyphsForCharacters(self->font, chars, glyphs, count)) ? Py_True : Py_False;
+    Py_INCREF(ret);
+    return ret;
+}
 
 // Boilerplate {{{
 
@@ -95,6 +118,7 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
+    METHOD(has_char, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 
