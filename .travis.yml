@@ -37,6 +37,10 @@ matrix:
                 - libxinerama-dev 
                 - libxcursor-dev
                 - clang
+        - os: osx
+          before_install:
+              - brew update
+              - brew outdated glew || brew upgrade glew 
 
 install:
     - if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
