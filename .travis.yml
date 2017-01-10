@@ -39,7 +39,7 @@ matrix:
                 - clang
         - os: osx
           language: generic
-          env: SW=/sw PYTHON=$SW/sw/bin/python3
+          env: SWBASE=/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH 
 
 install: |
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
@@ -62,6 +62,7 @@ env:
         - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig 
         - LD_LIBRARY_PATH=$HOME/glfw/lib 
         - ASAN_OPTIONS=leak_check_at_exit=0 
+        - PYTHON=python3
 before_script:
     - $PYTHON setup.py build --debug $ASAN_ARG;
 script: 
