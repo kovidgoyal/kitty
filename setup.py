@@ -169,9 +169,9 @@ def option_parser():
 def find_c_files():
     ans = []
     d = os.path.join(base, 'kitty')
-    exclude = {'freetype.c'} if isosx else {'core_text.c'}
+    exclude = {'freetype.c'} if isosx else {'core_text.m'}
     for x in os.listdir(d):
-        if x.endswith('.c') and os.path.basename(x) not in exclude:
+        if (x.endswith('.c') or x.endswith('.m')) and os.path.basename(x) not in exclude:
             ans.append(os.path.join('kitty', x))
     ans.sort(key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True)
     ans.append('kitty/parser_dump.c')
