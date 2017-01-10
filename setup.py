@@ -55,7 +55,7 @@ def get_python_flags(cflags):
                 fdir = val[:val.index('/{}.framework'.format(fw))]
                 if os.path.isdir(os.path.join(fdir, '{}.framework'.format(fw))):
                     libs.append('-F' + fdir)
-                break
+                    break
         libs.extend(['-framework', fw])
     else:
         libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
