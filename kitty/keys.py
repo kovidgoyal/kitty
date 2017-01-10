@@ -24,6 +24,7 @@ del f
 
 key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
 key_map[defines.GLFW_KEY_ENTER] = b'\r'
+key_map[defines.GLFW_KEY_KP_ENTER] = b'\r'
 key_map[defines.GLFW_KEY_BACKSPACE] = key_as_bytes('kbs')
 key_map[defines.GLFW_KEY_TAB] = b'\t'
 
