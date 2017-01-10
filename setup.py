@@ -89,6 +89,7 @@ def init_env(debug=False, asan=False):
             fd = sysconfig.get_config_var('LIBDEST')
             fd = fd[:fd.index('/Python.framework')]
         pylib = ['-F' + fd, '-framework', 'Python']
+        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3')
     else:
         lib = sysconfig.get_config_var('LDLIBRARY')
         if lib.startswith('lib'):
@@ -96,8 +97,9 @@ def init_env(debug=False, asan=False):
         if lib.endswith('.so'):
             lib = lib[:-3]
         pylib = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib]
+        glfw_ldflags = pkg_config('glfw3', '--libs')
     ldpaths = pylib + \
-        pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + pkg_config('glfw3', '--libs')
+        pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + glfw_ldflags
 
     try:
         os.mkdir(build_dir)
