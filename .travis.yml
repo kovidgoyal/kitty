@@ -57,4 +57,4 @@ before_script:
     - python setup.py build --debug $ASAN_ARG
 script: 
     - LD_PRELOAD=$ASANLIB python setup.py test
-    - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 .; fi
+    - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
