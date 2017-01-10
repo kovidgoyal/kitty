@@ -24,10 +24,11 @@ is_travis = os.environ.get('TRAVIS') == 'true'
 
 
 cflags = ldflags = cc = ldpaths = None
+PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
 def pkg_config(pkg, *args):
-    return list(filter(None, shlex.split(subprocess.check_output(['pkg-config', pkg] + list(args)).decode('utf-8'))))
+    return list(filter(None, shlex.split(subprocess.check_output([PKGCONFIG, pkg] + list(args)).decode('utf-8'))))
 
 
 def cc_version():
@@ -39,6 +40,23 @@ def cc_version():
     except Exception:
         ver = (0, 0)
     return ver
+
+
+def get_python_flags(cflags):
+    cflags.extend('-I' + sysconfig.get_path(x) for x in 'include platinclude'.split())
+    libs = []
+    libs += sysconfig.get_config_var('LIBS').split()
+    libs += sysconfig.get_config_var('SYSLIBS').split()
+    if sysconfig.get_config_var('PYTHONFRAMEWORK'):
+        for var in 'data include scripts'.split():
+            val = sysconfig.get_path(var)
+            if val and '/Python.framework' in val:
+                libs.append('-F' + val[:val.index('/Python.framework')])
+        libs += ['-framework', sysconfig.get_config_var('PYTHONFRAMEWORK')]
+    else:
+        libs += ['-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags]
+        libs += sysconfig.get_config_var('LINKFORSHARED').split()
+    return libs
 
 
 def init_env(debug=False, asan=False):
@@ -67,9 +85,9 @@ def init_env(debug=False, asan=False):
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
-    if not is_travis and subprocess.Popen('pkg-config --atleast-version=2 glew'.split()).wait() != 0:
+    if not is_travis and subprocess.Popen([PKGCONFIG, 'glew', '--atleast-version=2']).wait() != 0:
         try:
-            ver = subprocess.check_output('pkg-config --modversion glew'.split()).decode('utf-8').strip()
+            ver = subprocess.check_output([PKGCONFIG, 'glew', '--modversion']).decode('utf-8').strip()
             major = int(re.match(r'\d+', ver).group())
         except Exception:
             ver = 'not found'
@@ -80,23 +98,10 @@ def init_env(debug=False, asan=False):
     cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     ldflags.append('-shared')
-    cflags.append('-I' + sysconfig.get_config_var('CONFINCLUDEPY'))
+    pylib = get_python_flags(cflags)
     if isosx:
-        fd = sysconfig.get_config_var('LIBDIR')
-        try:
-            fd = fd[:fd.index('/Python.framework')]
-        except ValueError:
-            fd = sysconfig.get_config_var('LIBDEST')
-            fd = fd[:fd.index('/Python.framework')]
-        pylib = ['-F' + fd, '-framework', 'Python']
-        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3')
+        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3') + ['-framework', 'OpenGL']
     else:
-        lib = sysconfig.get_config_var('LDLIBRARY')
-        if lib.startswith('lib'):
-            lib = lib[3:]
-        if lib.endswith('.so'):
-            lib = lib[:-3]
-        pylib = ['-L' + sysconfig.get_config_var('LIBDIR'), '-l' + lib]
         glfw_ldflags = pkg_config('glfw3', '--libs')
     ldpaths = pylib + \
         pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + glfw_ldflags
