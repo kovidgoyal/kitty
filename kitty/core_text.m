@@ -17,7 +17,18 @@ typedef struct {
     unsigned int units_per_em;
     float ascent, descent, leading, underline_position, underline_thickness;
     CTFontRef font;
+    PyObject *family_name, *full_name;
 } Face;
+
+
+static PyObject*
+convert_cfstring(CFStringRef src) {
+#define SZ 2048
+    static char buf[SZ+2] = {0};
+    if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) { PyErr_SetString(PyExc_ValueError, "Failed to convert CFString"); return NULL; }
+    return PyUnicode_FromString(buf);
+#undef SZ
+}
 
 
 static PyObject*
@@ -46,6 +57,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
                 self->leading = CTFontGetLeading(self->font);
                 self->underline_position = CTFontGetUnderlinePosition(self->font);
                 self->underline_thickness = CTFontGetUnderlineThickness(self->font);
+                self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font));
+                self->full_name = convert_cfstring(CTFontCopyFullName(self->font));
+                if (self->family_name == NULL || self->full_name == NULL) { Py_CLEAR(self); }
             }
         } else {
             Py_CLEAR(self);
@@ -74,6 +88,8 @@ static PyMemberDef members[] = {
     MEM(leading, T_FLOAT),
     MEM(underline_position, T_FLOAT),
     MEM(underline_thickness, T_FLOAT),
+    MEM(family_name, T_OBJECT),
+    MEM(full_name, T_OBJECT),
     {NULL}  /* Sentinel */
 };
 
