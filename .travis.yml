@@ -6,7 +6,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
+            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan PYTHON=python3
           language: python
           python: "3.5"
           addons:
@@ -24,8 +24,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=clang
-            - RUN_FLAKE=1
+            - CC=clang RUN_FLAKE=1 PYTHON=python3
           language: python
           python: "3.5"
           addons:
@@ -40,17 +39,13 @@ matrix:
                 - clang
         - os: osx
           language: generic
-          before_install:
-              - brew update
-                # We dont install fontconfig as installing it is very slow and we dont need it to run the test suite anyway
-              - brew install python3 freetype glew glfw
+          env: SW=/sw PYTHON=$SW/sw/bin/python3
 
 install: |
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
     if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
-        python3 -m venv venv;
-        source venv/bin/activate;
-        python3 -m sysconfig
+        sudo mkdir -p $SW && sudo chown -R $USER $SWBASE;
+        curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW; 
     else
         wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
         unzip glfw-3.2.1.zip
@@ -68,7 +63,7 @@ env:
         - LD_LIBRARY_PATH=$HOME/glfw/lib 
         - ASAN_OPTIONS=leak_check_at_exit=0 
 before_script:
-    - python setup.py build --debug $ASAN_ARG;
+    - $PYTHON setup.py build --debug $ASAN_ARG;
 script: 
-    - LD_PRELOAD=$ASANLIB python setup.py test
+    - LD_PRELOAD=$ASANLIB $PYTHON setup.py test
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
