@@ -36,9 +36,7 @@ matrix:
                 - libxinerama-dev 
                 - libxcursor-dev
                 - clang
-    allow_failures:
         - os: osx
-          language: python
           python: "3.5"
           before_install:
               - brew update
