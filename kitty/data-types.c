@@ -63,11 +63,15 @@ PyInit_fast_data_types(void) {
         if (!init_SpriteMap(m)) return NULL;
         if (!init_ChangeTracker(m)) return NULL;
         if (!init_Screen(m)) return NULL;
-        if (!init_freetype_library(m)) return NULL;
-        if (!init_Face(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;
         if (!init_Window(m)) return NULL;
+#ifdef __APPLE__
+        if (!init_CoreText(m)) return NULL;
+#else
+        if (!init_Face(m)) return NULL;
+        if (!init_freetype_library(m)) return NULL;
+#endif
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);

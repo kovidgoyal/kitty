@@ -100,7 +100,11 @@ def init_env(debug=False, asan=False):
         if major < 2:
             raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
     cflags.extend(pkg_config('glew', '--cflags-only-I'))
-    cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
+    if isosx:
+        font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
+    else:
+        cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
+        font_libs = pkg_config('freetype2', '--libs')
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     ldflags.append('-shared')
     pylib = get_python_flags(cflags)
@@ -109,7 +113,7 @@ def init_env(debug=False, asan=False):
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
     ldpaths = pylib + \
-        pkg_config('glew', '--libs') + pkg_config('freetype2', '--libs') + glfw_ldflags
+        pkg_config('glew', '--libs') + font_libs + glfw_ldflags
 
     try:
         os.mkdir(build_dir)
@@ -165,8 +169,9 @@ def option_parser():
 def find_c_files():
     ans = []
     d = os.path.join(base, 'kitty')
+    exclude = {'freetype.c'} if isosx else {'core_text.c'}
     for x in os.listdir(d):
-        if x.endswith('.c'):
+        if x.endswith('.c') and os.path.basename(x) not in exclude:
             ans.append(os.path.join('kitty', x))
     ans.sort(key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True)
     ans.append('kitty/parser_dump.c')
