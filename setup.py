@@ -140,9 +140,21 @@ SPECIAL_SOURCES = {
 }
 
 
-def compile_c_extension(module, *sources):
+def newer(dest, *sources):
+    try:
+        dtime = os.path.getmtime(dest)
+    except EnvironmentError:
+        return True
+    for s in sources:
+        if os.path.getmtime(s) >= dtime:
+            return True
+    return False
+
+
+def compile_c_extension(module, incremental, sources, headers):
     prefix = os.path.basename(module)
     objects = [os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o') for src in sources]
+
     for src, dest in zip(sources, objects):
         cflgs = cflags[:]
         if src in SPECIAL_SOURCES:
@@ -150,8 +162,11 @@ def compile_c_extension(module, *sources):
             cflgs.extend(map(define, defines))
 
         src = os.path.join(base, src)
-        run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
-    run_tool([cc] + ldflags + objects + ldpaths + ['-o', os.path.join(base, module + '.so')])
+        if not incremental or newer(dest, src, *headers):
+            run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
+    dest = os.path.join(base, module + '.so')
+    if not incremental or newer(dest, *objects):
+        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
 
 
 def option_parser():
@@ -163,24 +178,28 @@ def option_parser():
                    help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
                    ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so')
     p.add_argument('--prefix', default='./linux-package', help='Where to create the linux package')
+    p.add_argument('--incremental', default=False, action='store_true', help='Only build changed files')
     return p
 
 
 def find_c_files():
-    ans = []
+    ans, headers = [], []
     d = os.path.join(base, 'kitty')
     exclude = {'freetype.c'} if isosx else {'core_text.m'}
     for x in os.listdir(d):
-        if (x.endswith('.c') or x.endswith('.m')) and os.path.basename(x) not in exclude:
+        ext = os.path.splitext(x)[1]
+        if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
             ans.append(os.path.join('kitty', x))
+        elif ext == '.h':
+            headers.append(os.path.join('kitty', x))
     ans.sort(key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True)
     ans.append('kitty/parser_dump.c')
-    return tuple(ans)
+    return tuple(ans), tuple(headers)
 
 
 def build(args):
     init_env(args.debug, args.asan)
-    compile_c_extension('kitty/fast_data_types', *find_c_files())
+    compile_c_extension('kitty/fast_data_types', args.incremental, *find_c_files())
 
 
 def safe_makedirs(path):
