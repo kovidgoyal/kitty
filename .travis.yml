@@ -1,6 +1,3 @@
-language: python
-python:
-  - "3.5"
 matrix:
     include:
         - os: linux
@@ -9,6 +6,9 @@ matrix:
           sudo: false
           env:
             - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
+          language: python
+          python:
+            - "3.5"
           addons:
             apt:
               packages:
@@ -18,7 +18,6 @@ matrix:
                 - libxrandr-dev 
                 - libxinerama-dev 
                 - libxcursor-dev
-                - clang
 
         - os: linux
           dist: trusty
@@ -27,6 +26,9 @@ matrix:
           env:
             - CC=clang
             - RUN_FLAKE=1
+          language: python
+          python:
+            - "3.5"
           addons:
             apt:
               packages:
@@ -37,9 +39,6 @@ matrix:
                 - libxinerama-dev 
                 - libxcursor-dev
                 - clang
-    exclude:
-        - os: linux
-          env:
 
 install:
     - pip install flake8
