@@ -101,7 +101,7 @@ You can run kitty, as:
 python3 /path/to/kitty/folder
 ....
 
-= ArchLinux
+=== ArchLinux
 
 You can install kitty from the AUR via kitty-git
 
