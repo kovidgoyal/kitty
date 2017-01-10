@@ -47,11 +47,12 @@ def get_python_flags(cflags):
     libs = []
     libs += sysconfig.get_config_var('LIBS').split()
     libs += sysconfig.get_config_var('SYSLIBS').split()
-    if sysconfig.get_config_var('PYTHONFRAMEWORK'):
+    fw = sysconfig.get_config_var('PYTHONFRAMEWORK')
+    if fw:
         for var in 'data include scripts'.split():
             val = sysconfig.get_path(var)
-            if val and '/Python.framework' in val:
-                libs.append('-F' + val[:val.index('/Python.framework')])
+            if val and '/{}.framework'.format(fw) in val:
+                libs.append('-F' + val[:val.index('/{}.framework'.format(fw))])
         libs += ['-framework', sysconfig.get_config_var('PYTHONFRAMEWORK')]
     else:
         libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
