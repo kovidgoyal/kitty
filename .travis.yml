@@ -1,4 +1,3 @@
-language: python
 matrix:
     include:
         - os: linux
@@ -7,6 +6,7 @@ matrix:
           sudo: false
           env:
             - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
+          language: python
           python: "3.5"
           addons:
             apt:
@@ -25,6 +25,7 @@ matrix:
           env:
             - CC=clang
             - RUN_FLAKE=1
+          language: python
           python: "3.5"
           addons:
             apt:
@@ -37,23 +38,26 @@ matrix:
                 - libxcursor-dev
                 - clang
         - os: osx
-          python: "3.5"
+          language: generic
           before_install:
               - brew update
-              - brew outdated fontconfig || brew upgrade fontconfig 
-              - brew outdated freetype || brew upgrade freetype 
-              - brew outdated glew || brew upgrade glew 
+              - brew install python3 fontconfig freetype glew
 
-install:
-    - if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
-    - wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
-    - unzip glfw-3.2.1.zip
-    - cd glfw-3.2.1
-    - cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
-    - make
-    - make install
-    - cd ..
-    - pkg-config --cflags glfw3
+install: |
+    if [[ $TRAVIS_OS_NAME == 'osx' ]]; then
+        python3 -m venv venv;
+        source venv/bin/activate;
+    fi
+    if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
+    wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
+    unzip glfw-3.2.1.zip
+    cd glfw-3.2.1
+    cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
+    make
+    make install
+    cd ..
+    pkg-config --cflags glfw3
+
 env:
     global:
         - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig 
