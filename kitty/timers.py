@@ -6,6 +6,7 @@ from collections import namedtuple
 from operator import itemgetter
 from time import monotonic
 
+from .utils import safe_print
 
 Event = namedtuple('Event', 'at callback args')
 get_at = itemgetter(0)
@@ -54,4 +55,4 @@ class Timers:
                         ev.callback(*ev.args)
                     except Exception:
                         import traceback
-                        traceback.print_exc()
+                        safe_print(traceback.format_exc())

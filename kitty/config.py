@@ -14,7 +14,7 @@ from .fast_data_types import (
     CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
 )
 import kitty.fast_data_types as defines
-from .utils import to_color
+from .utils import to_color, safe_print
 from .layout import all_layouts
 from .constants import config_dir
 
@@ -53,7 +53,7 @@ def parse_mods(parts):
         try:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
-            print('Shortcut: {} has an unknown modifier, ignoring'.format(parts.join('+')), file=sys.stderr)
+            safe_print('Shortcut: {} has an unknown modifier, ignoring'.format(parts.join('+')), file=sys.stderr)
             return
 
     return mods
@@ -75,7 +75,7 @@ def parse_key(val, keymap):
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     if key is None:
-        print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
+        safe_print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
         return
     keymap[(mods, key)] = action
 
@@ -194,7 +194,7 @@ def load_cached_values():
     except FileNotFoundError:
         pass
     except Exception as err:
-        print('Failed to load cached values with error: {}'.format(err), file=sys.stderr)
+        safe_print('Failed to load cached values with error: {}'.format(err), file=sys.stderr)
 
 
 def save_cached_values():
@@ -204,11 +204,11 @@ def save_cached_values():
             f.write(json.dumps(cached_values).encode('utf-8'))
         os.rename(p, cached_path)
     except Exception as err:
-        print('Failed to save cached values with error: {}'.format(err), file=sys.stderr)
+        safe_print('Failed to save cached values with error: {}'.format(err), file=sys.stderr)
     finally:
         try:
             os.remove(p)
         except FileNotFoundError:
             pass
         except Exception as err:
-            print('Failed to delete temp file for saved cached values with error: {}'.format(err), file=sys.stderr)
+            safe_print('Failed to delete temp file for saved cached values with error: {}'.format(err), file=sys.stderr)

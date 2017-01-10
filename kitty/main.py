@@ -23,6 +23,7 @@ from .fast_data_types import (
     glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
     glfw_swap_interval, glfw_wait_events, Window
 )
+from .utils import safe_print
 
 
 def option_parser():
@@ -78,7 +79,7 @@ def dispatch_pending_calls(boss):
             func(*args)
         except Exception:
             import traceback
-            traceback.print_exc()
+            safe_print(traceback.format_exc())
     boss.ui_timers()
 
 
@@ -90,7 +91,7 @@ def run_app(opts, args):
         try:
             viewport_size.width, viewport_size.height = map(int, ws)
         except Exception:
-            print('Invalid cached window size, ignoring', file=sys.stderr)
+            safe_print('Invalid cached window size, ignoring', file=sys.stderr)
         viewport_size.width = max(100, viewport_size.width)
         viewport_size.height = max(80, viewport_size.height)
     window = Window(
@@ -120,7 +121,7 @@ def on_glfw_error(code, msg):
             msg = msg.decode('utf-8')
         except Exception:
             msg = repr(msg)
-    print('[glfw error] ', msg, file=sys.stderr)
+    safe_print('[glfw error] ', msg, file=sys.stderr)
 
 
 def main():

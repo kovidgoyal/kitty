@@ -23,6 +23,13 @@ wcwidth_native.argtypes = [ctypes.c_wchar]
 wcwidth_native.restype = ctypes.c_int
 
 
+def safe_print(*a, **k):
+    try:
+        print(*a, **k)
+    except Exception:
+        pass
+
+
 @lru_cache(maxsize=2**13)
 def wcwidth(c: str) -> int:
     ans = min(2, wcwidth_native(c))
@@ -37,7 +44,7 @@ def timeit(name, do_timing=False):
         st = monotonic()
     yield
     if do_timing:
-        print('Time for {}: {}'.format(name, monotonic() - st))
+        safe_print('Time for {}: {}'.format(name, monotonic() - st))
 
 
 def sanitize_title(x):

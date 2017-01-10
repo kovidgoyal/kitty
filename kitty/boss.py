@@ -32,7 +32,7 @@ from .session import create_session
 from .shaders import Sprites, ShaderProgram
 from .tabs import TabManager, SpecialWindow
 from .timers import Timers
-from .utils import handle_unix_signals
+from .utils import handle_unix_signals, safe_print
 
 
 def conditional_run(w, i):
@@ -145,7 +145,7 @@ class Boss(Thread):
                     func(*args)
                 except Exception:
                     import traceback
-                    traceback.print_exc()
+                    safe_print(traceback.format_exc())
 
     def add_child_fd(self, child_fd, read_ready, write_ready):
         self.read_dispatch_map[child_fd] = read_ready

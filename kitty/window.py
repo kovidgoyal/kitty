@@ -20,7 +20,7 @@ from .fast_data_types import (
 from .keys import key_map
 from .mouse import encode_mouse_event, PRESS, RELEASE, MOVE, DRAG
 from .terminfo import get_capabilities
-from .utils import sanitize_title, get_primary_selection, parse_color_set
+from .utils import sanitize_title, get_primary_selection, parse_color_set, safe_print
 
 
 class Window:
@@ -322,13 +322,13 @@ class Window:
             if a[0] == 'draw':
                 if a[1] is None:
                     if self.draw_dump_buf:
-                        print('draw', ''.join(self.draw_dump_buf))
+                        safe_print('draw', ''.join(self.draw_dump_buf))
                         self.draw_dump_buf = []
                 else:
                     self.draw_dump_buf.append(a[1])
             else:
                 if self.draw_dump_buf:
-                    print('draw', ''.join(self.draw_dump_buf))
+                    safe_print('draw', ''.join(self.draw_dump_buf))
                     self.draw_dump_buf = []
-                print(*a)
+                safe_print(*a)
     # }}}

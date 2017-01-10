@@ -5,6 +5,14 @@
 import re
 from binascii import unhexlify, hexlify
 
+
+def safe_print(*a, **k):
+    try:
+        print(*a, **k)
+    except Exception:
+        pass
+
+
 names = 'xterm-kitty', 'KovIdTTY'
 
 termcap_aliases = {
@@ -432,7 +440,7 @@ def get_capabilities(query_string):
                     try:
                         val = queryable_capabilities[termcap_aliases[name]]
                     except Exception as e:
-                        print(ERROR_PREFIX, 'Unknown terminfo property:', name)
+                        safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
             ans.append(q + '=' + hexlify(str(val)))
         return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
