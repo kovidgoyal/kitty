@@ -101,6 +101,11 @@ You can run kitty, as:
 python3 /path/to/kitty/folder
 ....
 
+=== Linux packages
+
+* Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+
+
 == Design philosophy
 
 kitty is designed for power keyboard users. To that end all its controls
