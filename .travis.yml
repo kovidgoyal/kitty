@@ -1,30 +1,45 @@
-addons:
-  apt:
-    packages:
-        - libfreetype6-dev
-        - libglew-dev
-        - libxi-dev 
-        - libxrandr-dev 
-        - libxinerama-dev 
-        - libxcursor-dev
-        - clang
 language: python
 python:
   - "3.5"
 matrix:
-    - os: linux
-        dist: trusty
-        group: beta
-        sudo: false
-        env:
-        - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
-    - os: linux
-        dist: trusty
-        group: beta
-        sudo: false
-        env:
-        - CC=clang
-        - RUN_FLAKE=1
+    include:
+        - os: linux
+          dist: trusty
+          group: beta
+          sudo: false
+          env:
+            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
+          addons:
+            apt:
+              packages:
+                - libfreetype6-dev
+                - libglew-dev
+                - libxi-dev 
+                - libxrandr-dev 
+                - libxinerama-dev 
+                - libxcursor-dev
+                - clang
+
+        - os: linux
+          dist: trusty
+          group: beta
+          sudo: false
+          env:
+            - CC=clang
+            - RUN_FLAKE=1
+          addons:
+            apt:
+              packages:
+                - libfreetype6-dev
+                - libglew-dev
+                - libxi-dev 
+                - libxrandr-dev 
+                - libxinerama-dev 
+                - libxcursor-dev
+                - clang
+    exclude:
+        - os: linux
+          env:
 
 install:
     - pip install flake8
