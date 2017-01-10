@@ -40,7 +40,6 @@ matrix:
 
 install:
     - if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
-    - pip install flake8
     - wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
     - unzip glfw-3.2.1.zip
     - cd glfw-3.2.1
