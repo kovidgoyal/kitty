@@ -128,7 +128,7 @@ cell_size(Face *self) {
     unsigned int width = 0, w;
     for (int i = 0; i < count; i++) {
         if (glyphs[i]) {
-            CTFontGetAdvancesForGlyphs(self->font, kCTFontHorizontalOrientation, glyphs+1, advances, 1);
+            CTFontGetAdvancesForGlyphs(self->font, kCTFontOrientationHorizontal, glyphs+1, advances, 1);
             w = (unsigned int)(ceilf(advances[0].width));
             if (w > width) width = w; 
         }
@@ -168,7 +168,7 @@ render_char(Face *self, PyObject *args) {
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
     CGGlyph glyph = glyphs[0];
     if (glyph) {
-        CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontHorizontalOrientation, glyphs, 0, 1);
+        CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1);
         // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
         CGContextSetTextMatrix(ctx, transform);
         CGFloat pos_x = -rect.origin.x + 1, pos_y = height - rect.origin.y - rect.size.height;
