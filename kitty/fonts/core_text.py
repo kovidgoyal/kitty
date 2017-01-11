@@ -10,9 +10,14 @@ main_font = {}
 cell_width = cell_height = baseline = CellTexture = WideCellTexture = underline_thickness = underline_position = None
 
 
-def set_font_family(family, size_in_pts):
+def set_font_family(family, size_in_pts, ignore_dpi_failure=False):
     global cell_width, cell_height, baseline, CellTexture, WideCellTexture, underline_thickness, underline_position
-    dpi = get_logical_dpi()
+    try:
+        dpi = get_logical_dpi()
+    except Exception:
+        if not ignore_dpi_failure:
+            raise
+        dpi = (72, 72)  # Happens when running via develop() in an ssh session
     dpi = sum(dpi) / 2.0
     if family.lower() == 'monospace':
         family = 'Menlo'
@@ -63,13 +68,18 @@ def develop(sz=288):
     import pickle
     from kitty.fast_data_types import glfw_init
     from .render import render_string
+    import os
+    try:
+        os.remove('/tmp/cell.data')
+    except EnvironmentError:
+        pass
     glfw_init()
-    set_font_family('monospace', sz)
+    set_font_family('monospace', sz, ignore_dpi_failure=True)
     for (bold, italic), face in main_font.items():
         print('bold: {} italic: {} family:{} full name: {}'.format(bold, italic, face.family_name, face.full_name))
     f = main_font[(False, False)]
     for attr in 'units_per_em ascent descent leading underline_position underline_thickness scaled_point_sz'.split():
         print(attr, getattr(f, attr))
     print('cell_width: {}, cell_height: {}, baseline: {}'.format(cell_width, cell_height, baseline))
-    buf, w, h = render_string(sz=200)
+    buf, w, h = render_string()
     open('/tmp/cell.data', 'wb').write(pickle.dumps((bytearray(buf), w, h)))

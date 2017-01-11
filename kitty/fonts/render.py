@@ -76,8 +76,7 @@ def display_bitmap(data, w, h):
     img.show()
 
 
-def render_string(text='\'Qing👁a⧽', sz=144, family='monospace'):
-    set_font_family(family, sz)
+def render_string(text='\'Qing👁a⧽'):
     cells = []
     for c in text:
         f, s = render_cell(c, underline=2, strikethrough=True)
@@ -90,4 +89,5 @@ def render_string(text='\'Qing👁a⧽', sz=144, family='monospace'):
 
 
 def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
-    display_bitmap(*render_string(text, sz, family))
+    set_font_family(family, sz)
+    display_bitmap(*render_string(text))
