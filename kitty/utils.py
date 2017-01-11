@@ -8,6 +8,7 @@ import signal
 import shlex
 import subprocess
 import ctypes
+import math
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache
@@ -28,6 +29,10 @@ def safe_print(*a, **k):
         print(*a, **k)
     except Exception:
         pass
+
+
+def ceil_int(x):
+    return int(math.ceil(x))
 
 
 @lru_cache(maxsize=2**13)

@@ -4,14 +4,13 @@
 
 import unicodedata
 import ctypes
-import math
 from collections import namedtuple
 from functools import lru_cache
 from threading import Lock
 
 from kitty.fast_data_types import Face, FT_PIXEL_MODE_GRAY
+from kitty.utils import ceil_int
 from .fontconfig import find_font_for_character, get_font_files
-from .box_drawing import is_renderable_box_char, render_box_char
 
 from kitty.utils import get_logical_dpi, wcwidth
 
@@ -27,10 +26,6 @@ def set_char_size(face, width=0, height=0, hres=0, vres=0):
 
 def load_char(font, face, text):
     face.load_char(text, font.hinting, font.hintstyle)
-
-
-def ceil_int(x):
-    return int(math.ceil(x))
 
 
 def calc_cell_width(font, face):
@@ -169,33 +164,14 @@ def split_char_bitmap(bitmap_char):
     return first, second
 
 
-def add_line(buf, position, thickness):
-    y = position - thickness // 2
-    while thickness:
-        thickness -= 1
-        offset = cell_width * y
-        for x in range(cell_width):
-            buf[offset + x] = 255
-        y += 1
+def current_cell():
+    return CharTexture, cell_width, cell_height, baseline, underline_thickness, underline_position
 
 
-def add_curl(buf, position, thickness):
-    for y in range(position - thickness, position):
-        for x in range(0, cell_width // 2):
-            offset = cell_width * y
-            buf[offset + x] = 255
-    for y in range(position, position + thickness):
-        for x in range(cell_width // 2, cell_width):
-            offset = cell_width * y
-            buf[offset + x] = 255
-
-
-def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=False):
+def render_cell(text=' ', bold=False, italic=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]
-    if is_renderable_box_char(text):
-        return render_box_char(text, CharTexture(), cell_width, cell_height), None
     width = wcwidth(text)
     bitmap_char = render_char(text, bold, italic, width)
     second = None
@@ -208,19 +184,6 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
 
     first = place_char_in_cell(bitmap_char)
 
-    def dl(f, *a):
-        f(first, *a)
-        if second is not None:
-            f(second, pos, underline_thickness)
-
-    if underline:
-        t = underline_thickness
-        if underline == 2:
-            t = max(1, min(cell_height - underline_position - 1, t))
-        dl(add_curl if underline == 2 else add_line, underline_position, t)
-    if strikethrough:
-        pos = int(0.65 * baseline)
-        dl(add_line, pos, underline_thickness)
     return first, second
 
 
@@ -232,34 +195,3 @@ def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, sr
         sr, dr = src_start_column + (src_start_row + r) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
         dest[dr:dr + column_count] = src[sr:sr + column_count]
     return dest
-
-
-def join_cells(cell_width, cell_height, *cells):
-    dstride = len(cells) * cell_width
-    ans = (ctypes.c_ubyte * (cell_height * dstride))()
-    for r in range(cell_height):
-        soff = r * cell_width
-        doff = r * dstride
-        for cnum, cell in enumerate(cells):
-            doff2 = doff + (cnum * cell_width)
-            ans[doff2:doff2 + cell_width] = cell[soff:soff + cell_width]
-    return ans
-
-
-def display_bitmap(data, w, h):
-    from PIL import Image
-    img = Image.new('L', (w, h))
-    img.putdata(data)
-    img.show()
-
-
-def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kovid'):
-    set_font_family(family, sz)
-    cells = []
-    for c in text:
-        f, s = render_cell(c, underline=2, strikethrough=True)
-        cells.append(f)
-        if s is not None:
-            cells.append(s)
-    char_data = join_cells(cell_width, cell_height, *cells)
-    display_bitmap(char_data, cell_width * len(cells), cell_height)

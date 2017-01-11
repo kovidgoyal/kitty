@@ -8,6 +8,8 @@
 #include "data-types.h"
 #include <structmember.h>
 #include <stdint.h>
+#include <math.h>
+#import <CoreGraphics/CGBitmapContext.h>
 #import <CoreText/CTFont.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
@@ -62,6 +64,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
                 self->underline_thickness = CTFontGetUnderlineThickness(self->font);
                 self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font));
                 self->full_name = convert_cfstring(CTFontCopyFullName(self->font));
+                self->scaled_point_sz = CTFontGetSize(self->font);
                 if (self->family_name == NULL || self->full_name == NULL) { Py_CLEAR(self); }
             }
         } else {
@@ -104,6 +107,84 @@ has_char(Face *self, PyObject *args) {
     return ret;
 }
 
+static PyObject*
+font_units_to_pixels(Face *self, PyObject *args) {
+#define font_units_to_pixels_doc "Convert the specified value from font units to pixels at the current font size"
+    double x;
+    if (!PyArg_ParseTuple(args, "d", &x)) return NULL;
+    x *= self->scaled_point_sz / self->units_per_em;
+    return Py_BuildValue("i", (int)ceil(x));
+}
+
+static PyObject*
+cell_size(Face *self) {
+#define cell_size_doc "Return the best cell size for this font based on the advances for the ASCII chars from 32 to 127"
+#define count (128 - 32)
+    unichar chars[count+1] = {0};
+    CGGlyph glyphs[count+1] = {0};
+    for (int i = 0; i < count; i++) chars[i] = 32 + i;
+    CTFontGetGlyphsForCharacters(self->font, chars, glyphs, count);
+    CGSize advances[1] = {0};
+    unsigned int width = 0, w;
+    for (int i = 0; i < count; i++) {
+        if (glyphs[i]) {
+            CTFontGetAdvancesForGlyphs(self->font, kCTFontHorizontalOrientation, glyphs+1, advances, 1);
+            w = (unsigned int)(ceilf(advances[0].width));
+            if (w > width) width = w; 
+        }
+    }
+    return Py_BuildValue("I", width + 2);  // + 2 for antialiasing which needs pixels on either side
+#undef count
+}
+
+static PyObject*
+render_char(Face *self, PyObject *args) {
+#define render_char_doc ""
+    char *s;
+    unsigned int width, height;
+    PyObject *pbuf;
+    CGColorSpaceRef color_space = NULL;
+    CGContextRef ctx = NULL;
+    CTFontRef font = NULL;
+    if (!PyArg_ParseTuple(args, "esIIO!", "UTF-8", &s, &width, &height, &PyLong_Type, &pbuf)) return NULL;
+    uint8_t *buf = (uint8_t*)PyLong_AsVoidPtr(pbuf);
+    CFStringRef str = CFStringCreateWithCString(NULL, s, kCFStringEncodingUTF8);
+    if (!str) return PyErr_NoMemory();
+    CGGlyph glyphs[10] = {0};
+    unichar chars[10] = {0};
+    CFRange range = CFRangeMake(0, CFStringGetLength(str));
+    CFStringGetCharacters(str, range, chars);
+    font = CTFontCreateForString(self->font, str, range);
+    if (font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback font"); goto end; }
+    CTFontGetGlyphsForCharacters(font, chars, glyphs, range.length);
+    color_space = CGColorSpaceCreateDeviceGray();
+    if (color_space == NULL) { PyErr_NoMemory(); goto end; }
+    ctx = CGBitmapContextCreate(buf, width, height, 8, width, color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
+    if (ctx == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create bitmap context"); goto end; }
+    CGContextSetShouldAntialias(ctx, true);
+    CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
+    CGContextSetRGBFillColor(ctx, 1, 1, 1, 1); // white glyphs
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    CGContextSetTextDrawingMode(ctx, kCGTextFill);
+    CGGlyph glyph = glyphs[0];
+    if (glyph) {
+        CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontHorizontalOrientation, glyphs, 0, 1);
+        // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
+        CGContextSetTextMatrix(ctx, transform);
+        CGFloat pos_x = -rect.origin.x + 1, pos_y = height - rect.origin.y - rect.size.height;
+        CGContextSetTextPosition(ctx, pos_x, pos_y);
+        CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
+    }
+
+end:
+    CFRelease(str);
+    if (ctx) CGContextRelease(ctx);
+    if (color_space) CGColorSpaceRelease(color_space);
+    if (font && font != self->font) CFRelease(font);
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
@@ -123,6 +204,9 @@ static PyMemberDef members[] = {
 
 static PyMethodDef methods[] = {
     METHOD(has_char, METH_VARARGS)
+    METHOD(cell_size, METH_NOARGS)
+    METHOD(font_units_to_pixels, METH_VARARGS)
+    METHOD(render_char, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

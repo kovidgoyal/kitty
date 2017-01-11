@@ -350,7 +350,7 @@ def join_rows(width, height, rows):
 
 
 def test_drawing(sz=32, family='monospace'):
-    from .freetype import join_cells, display_bitmap, render_cell, set_font_family
+    from .render import join_cells, display_bitmap, render_cell, set_font_family
     width, height = set_font_family(family, sz)
     pos = 0x2500
     rows = []
