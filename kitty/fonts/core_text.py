@@ -66,14 +66,12 @@ def render_cell(text=' ', bold=False, italic=False):
 
 def develop(sz=288):
     import pickle
-    from kitty.fast_data_types import glfw_init
     from .render import render_string
     import os
     try:
         os.remove('/tmp/cell.data')
     except EnvironmentError:
         pass
-    glfw_init()
     set_font_family('monospace', sz, ignore_dpi_failure=True)
     for (bold, italic), face in main_font.items():
         print('bold: {} italic: {} family:{} full name: {}'.format(bold, italic, face.family_name, face.full_name))
