@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import sys
 from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
@@ -23,8 +24,9 @@ from .fast_data_types import (
     GL_TEXTURE_BUFFER, GL_RGB32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
     glPixelStorei, glTexBuffer, glActiveTexture, glTexStorage3D,
     glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap,
-    glEnableVertexAttribArray, glVertexAttribPointer
+    glEnableVertexAttribArray, glVertexAttribPointer, copy_image_sub_data
 )
+from .utils import safe_print
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
@@ -120,8 +122,18 @@ class Sprites:
             ynum = self.backend.ynum
             if self.backend.z == 0:
                 ynum -= 1  # Only copy the previous rows
-            glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
-                               width, ynum * self.cell_height, self.last_num_of_layers)
+            try:
+                glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
+                                   width, ynum * self.cell_height, self.last_num_of_layers)
+            except RuntimeError:
+                # OpenGL does not have ARB_copy_image
+                if not hasattr(self, 'realloc_warned'):
+                    safe_print(
+                        'WARNING: Your system\'s OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation',
+                        file=sys.stderr)
+                    self.realloc_warned = True
+                copy_image_sub_data(self.texture_id, tex, width, ynum * self.cell_height, self.last_num_of_layers)
+                glBindTexture(tgt, tex)
             glDeleteTexture(self.texture_id)
         self.last_num_of_layers = znum
         self.last_ynum = self.backend.ynum

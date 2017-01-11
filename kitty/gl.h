@@ -127,10 +127,6 @@ _glewInit(PyObject UNUSED *self) {
         PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
         return NULL;
     }
-    if(!GLEW_ARB_copy_image) {
-        PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_copy_image extension");
-        return NULL;
-    }
     if(!GLEW_ARB_texture_storage) {
         PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_storage extension");
         return NULL;
@@ -439,6 +435,10 @@ static PyObject*
 CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
     int src_target, src_level, srcX, srcY, srcZ, dest_target, dest_level, destX, destY, destZ;
     unsigned int src, dest, width, height, depth;
+    if(!GLEW_ARB_copy_image) {
+        PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_copy_image extension");
+        return NULL;
+    }
     if (!PyArg_ParseTuple(args, "IiiiiiIiiiiiIII",
         &src, &src_target, &src_level, &srcX, &srcY, &srcZ,
         &dest, &dest_target, &dest_level, &destX, &destY, &destZ,
@@ -448,6 +448,26 @@ CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
     glCopyImageSubData(src, src_target, src_level, srcX, srcY, srcZ, dest, dest_target, dest_level, destX, destY, destZ, width, height, depth);
     Py_END_ALLOW_THREADS;
     CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+copy_image_sub_data(PyObject UNUSED *self, PyObject *args) {
+    int src_target, dest_target;
+    unsigned int width, height, num_levels;
+    if (!PyArg_ParseTuple(args, "iiIII", &src_target, &dest_target, &width, &height, &num_levels)) return NULL;
+    uint8_t *src = (uint8_t*)PyMem_Malloc(5 * width * height * num_levels);
+    if (src == NULL) return PyErr_NoMemory();
+    uint8_t *dest = src + (4 * width * height * num_levels);
+    Py_BEGIN_ALLOW_THREADS;
+    glBindTexture(GL_TEXTURE_2D_ARRAY, src_target);
+    glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, dest_target);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    for(unsigned int i = 0; i < width * height * num_levels; i++) dest[i] = src[4*i];
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RED, GL_UNSIGNED_BYTE, dest);
+    Py_END_ALLOW_THREADS;
+    PyMem_Free(src);
     Py_RETURN_NONE;
 }
 
@@ -461,6 +481,21 @@ TexSubImage3D(PyObject UNUSED *self, PyObject *args) {
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
     Py_BEGIN_ALLOW_THREADS;
     glTexSubImage3D(target, level, x, y, z, width, height, depth, fmt, type, data);
+    Py_END_ALLOW_THREADS;
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
+GetTexImage(PyObject UNUSED *self, PyObject *args) {
+    int target, level, fmt, type;
+    PyObject *pixels;
+    if (!PyArg_ParseTuple(args, "iiiiO!", &target, &level, &fmt, &type, &PyLong_Type, &pixels)) return NULL;
+    void *data = PyLong_AsVoidPtr(pixels);
+    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    Py_BEGIN_ALLOW_THREADS;
+    glGetTexImage(target, level, fmt, type, data);
     Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
@@ -609,7 +644,7 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_TEXTURE_MIN_FILTER); GLC(GL_TEXTURE_MAG_FILTER);
     GLC(GL_TEXTURE_WRAP_S); GLC(GL_TEXTURE_WRAP_T);
     GLC(GL_UNPACK_ALIGNMENT);
-    GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_RGB32UI);
+    GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_RGB32UI); GLC(GL_RGBA);
     GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
     GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_ARRAY_BUFFER);
@@ -619,6 +654,7 @@ int add_module_gl_constants(PyObject *module) {
 
 #define GL_METHODS \
     {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, \
+    {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, \
     {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, \
     METH(Viewport, METH_VARARGS) \
     METH(CheckError, METH_NOARGS) \
@@ -668,6 +704,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(TexStorage3D, METH_VARARGS) \
     METH(CopyImageSubData, METH_VARARGS) \
     METH(TexSubImage3D, METH_VARARGS) \
+    METH(GetTexImage, METH_VARARGS) \
     METH(NamedBufferData, METH_VARARGS) \
     METH(BlendFunc, METH_VARARGS) \
 
