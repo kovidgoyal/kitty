@@ -271,8 +271,22 @@ def parse_color_set(raw):
             continue
 
 
+def pipe2():
+    try:
+        read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    except AttributeError:
+        import fcntl
+        read_fd, write_fd = os.pipe()
+        for fd in (read_fd, write_fd):
+            flag = fcntl.fcntl(fd, fcntl.F_GETFD)
+            fcntl.fcntl(fd, fcntl.F_SETFD, flag | fcntl.FD_CLOEXEC)
+            flag = fcntl.fcntl(fd, fcntl.F_GETFL)
+            fcntl.fcntl(fd, fcntl.F_SETFL, flag | os.O_NONBLOCK)
+    return read_fd, write_fd
+
+
 def handle_unix_signals():
-    read_fd, write_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+    read_fd, write_fd = pipe2()
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda x, y: None)
         signal.siginterrupt(sig, False)

@@ -32,7 +32,7 @@ from .session import create_session
 from .shaders import Sprites, ShaderProgram
 from .tabs import TabManager, SpecialWindow
 from .timers import Timers
-from .utils import handle_unix_signals, safe_print
+from .utils import handle_unix_signals, safe_print, pipe2
 
 
 def conditional_run(w, i):
@@ -77,7 +77,7 @@ class Boss(Thread):
         self.shutting_down = False
         self.screen_update_delay = opts.repaint_delay / 1000.0
         self.signal_fd = handle_unix_signals()
-        self.read_wakeup_fd, self.write_wakeup_fd = os.pipe2(os.O_NONBLOCK | os.O_CLOEXEC)
+        self.read_wakeup_fd, self.write_wakeup_fd = pipe2()
         self.read_dispatch_map = {self.signal_fd: self.signal_received, self.read_wakeup_fd: self.on_wakeup}
         self.all_writers = []
         self.timers = Timers()
