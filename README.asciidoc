@@ -75,10 +75,9 @@ the following dependencies are installed first.
 
 .Dependencies
 * python >= 3.5
-* glew >= 2.0
-* glfw-dev >= 3.2
-* freetype
-* fontconfig
+* glew   >= 2.0 (not needed on OS X)
+* glfw   >= 3.2
+* freetype, fontconfig (not needed on OSX)
 * xdpyinfo and xsel (on X11 based systems)
 * gcc or clang (required for building)
 * pkg-config (required for building)
