@@ -11,7 +11,7 @@ from gettext import gettext as _
 
 
 from .config import load_config, load_cached_values, cached_values, save_cached_values
-from .constants import appname, str_version, config_dir, viewport_size, isosx
+from .constants import appname, str_version, config_dir, viewport_size
 from .layout import all_layouts
 from .boss import Boss
 from .shaders import GL_VERSION
@@ -159,5 +159,3 @@ def main():
             run_app(opts, args)
     finally:
         glfw_terminate()
-        if not isosx:
-            os.closerange(3, 100)
