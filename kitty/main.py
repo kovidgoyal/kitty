@@ -11,13 +11,13 @@ from gettext import gettext as _
 
 
 from .config import load_config, load_cached_values, cached_values, save_cached_values
-from .constants import appname, str_version, config_dir, viewport_size
+from .constants import appname, str_version, config_dir, viewport_size, isosx
 from .layout import all_layouts
 from .boss import Boss
 from .shaders import GL_VERSION
 from .fast_data_types import (
     glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor,
-    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
+    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR, GLFW_STENCIL_BITS,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES,
     glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
@@ -55,6 +55,9 @@ def setup_opengl():
     glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
     glfw_window_hint(GLFW_OPENGL_FORWARD_COMPAT, True)
     glfw_window_hint(GLFW_SAMPLES, 0)
+    if isosx:
+        # OS X cannot handle 16bit stencil buffers
+        glfw_window_hint(GLFW_STENCIL_BITS, 8)
 
 
 def clear_buffers(window, opts):
