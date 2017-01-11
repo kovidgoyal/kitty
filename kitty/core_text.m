@@ -16,7 +16,7 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int units_per_em;
-    float ascent, descent, leading, underline_position, underline_thickness;
+    float ascent, descent, leading, underline_position, underline_thickness, point_sz, scaled_point_sz;
     CTFontRef font;
     PyObject *family_name, *full_name;
 } Face;
@@ -35,20 +35,22 @@ convert_cfstring(CFStringRef src) {
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
-    int bold, italic;
+    int bold, italic, monospace;
     char *cfamily;
-    float point_sz;
-    if(!PyArg_ParseTuple(args, "sppf", &cfamily, &bold, &italic, &point_sz)) return NULL;
+    float point_sz, dpi;
+    if(!PyArg_ParseTuple(args, "spppff", &cfamily, &bold, &italic, &monospace, &point_sz, &dpi)) return NULL;
     NSString *family = [[NSString alloc] initWithCString:cfamily encoding:NSUTF8StringEncoding];
     if (family == NULL) return PyErr_NoMemory();
     self = (Face *)type->tp_alloc(type, 0);
     if (self) {
-        CTFontSymbolicTraits symbolic_traits = (bold ? kCTFontBoldTrait : 0) | (italic ? kCTFontItalicTrait : 0);
+        CTFontSymbolicTraits symbolic_traits = (bold ? kCTFontBoldTrait : 0) | (italic ? kCTFontItalicTrait : 0) | (monospace ? kCTFontMonoSpaceTrait : 0);
         NSDictionary *font_traits = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:symbolic_traits] forKey:(NSString *)kCTFontSymbolicTrait];
         NSDictionary *font_attributes = [NSDictionary dictionaryWithObjectsAndKeys:family, kCTFontFamilyNameAttribute, font_traits, kCTFontTraitsAttribute, nil];
         CTFontDescriptorRef descriptor = CTFontDescriptorCreateWithAttributes((CFDictionaryRef)font_attributes);
         if (descriptor) {
-            self->font = CTFontCreateWithFontDescriptor(descriptor, point_sz, NULL);
+            self->point_sz = point_sz;
+            self->scaled_point_sz = (dpi / 72.0) * point_sz;
+            self->font = CTFontCreateWithFontDescriptor(descriptor, self->scaled_point_sz, NULL);
             CFRelease(descriptor);
             if (!self->font) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); }
             else {
@@ -107,6 +109,8 @@ has_char(Face *self, PyObject *args) {
 static PyMemberDef members[] = {
 #define MEM(name, type) {#name, type, offsetof(Face, name), READONLY, #name}
     MEM(units_per_em, T_UINT),
+    MEM(point_sz, T_FLOAT),
+    MEM(scaled_point_sz, T_FLOAT),
     MEM(ascent, T_FLOAT),
     MEM(descent, T_FLOAT),
     MEM(leading, T_FLOAT),
