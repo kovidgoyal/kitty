@@ -9,7 +9,7 @@ import fcntl
 import signal
 from threading import Thread
 
-from .constants import terminfo_dir, isosx
+from .constants import terminfo_dir
 
 
 def remove_cloexec(fd):
@@ -52,8 +52,7 @@ class Child:
                 else:
                     os.dup2(slave, i)
             os.close(slave), os.close(master)
-            if not isosx:  # Apparently some OS X systemlibraries open file descriptors that cause EXC_GUARD crashes when closed
-                os.closerange(3, 200)
+            os.closerange(3, 200)
             # Establish the controlling terminal (see man 7 credentials)
             os.close(os.open(os.ttyname(1), os.O_RDWR))
             os.environ['TERM'] = self.opts.term
