@@ -76,7 +76,7 @@ def display_bitmap(data, w, h):
     img.show()
 
 
-def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kovid'):
+def render_string(text='\'Qing👁a⧽', sz=144, family='monospace'):
     set_font_family(family, sz)
     cells = []
     for c in text:
@@ -86,4 +86,8 @@ def test_rendering(text='\'Ping👁a⧽', sz=144, family='Ubuntu Mono for Kov
             cells.append(s)
     cell_width, cell_height = current_cell()[1:3]
     char_data = join_cells(cell_width, cell_height, *cells)
-    display_bitmap(char_data, cell_width * len(cells), cell_height)
+    return char_data, cell_width * len(cells), cell_height
+
+
+def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
+    display_bitmap(*render_string(text, sz, family))

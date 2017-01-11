@@ -133,13 +133,13 @@ cell_size(Face *self) {
             if (w > width) width = w; 
         }
     }
-    return Py_BuildValue("I", width + 2);  // + 2 for antialiasing which needs pixels on either side
+    return Py_BuildValue("I", width);  
 #undef count
 }
 
 static PyObject*
 render_char(Face *self, PyObject *args) {
-#define render_char_doc ""
+#define render_char_doc "Render the specified character into the specified buffer. Combining unicode chars should be handled automatically (I hope)"
     char *s;
     unsigned int width, height;
     PyObject *pbuf;
@@ -168,10 +168,11 @@ render_char(Face *self, PyObject *args) {
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
     CGGlyph glyph = glyphs[0];
     if (glyph) {
-        CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1);
         // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
+        /* CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1); */
         CGContextSetTextMatrix(ctx, transform);
-        CGFloat pos_x = -rect.origin.x + 1, pos_y = height - rect.origin.y - rect.size.height;
+        CGFloat leading = self->leading > 0 ? self->leading : 1;  // Ensure at least one pixel of leading so that antialiasing works at the left edge
+        CGFloat pos_x = leading, pos_y = height - self->ascent;  
         CGContextSetTextPosition(ctx, pos_x, pos_y);
         CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
     }
