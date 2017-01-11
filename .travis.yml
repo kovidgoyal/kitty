@@ -39,12 +39,12 @@ matrix:
                 - clang
         - os: osx
           language: generic
-          env: SWBASE=/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH 
+          env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH 
 
 install: |
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
     if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
-        sudo mkdir -p $SW && sudo chown -R $USER $SWBASE;
+        mkdir -p $SW; 
         curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW; 
     else
         wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
