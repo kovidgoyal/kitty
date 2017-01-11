@@ -6,12 +6,25 @@
  */
 
 #include "data-types.h"
+#ifdef __APPLE__
+#include <OpenGL/gl3.h>
+#include <OpenGL/gl3ext.h>
+#else
 #include <GL/glew.h>
+#endif
 
 #define STRINGIFY(x) #x
 #define METH(name, argtype) {STRINGIFY(gl##name), (PyCFunction)name, argtype, NULL},
 
 static int _enable_error_checking = 1;
+
+#ifndef GL_STACK_UNDERFLOW
+#define GL_STACK_UNDERFLOW 0x0504
+#endif
+
+#ifndef GL_STACK_OVERFLOW
+#define GL_STACK_OVERFLOW 0x0503
+#endif
 
 #define SET_GL_ERR \
     switch(glGetError()) { \
@@ -122,6 +135,7 @@ CheckError(PyObject UNUSED *self) {
 
 static PyObject* 
 _glewInit(PyObject UNUSED *self) {
+#ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK) {
         PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
@@ -131,6 +145,7 @@ _glewInit(PyObject UNUSED *self) {
         PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_storage extension");
         return NULL;
     }
+#endif
     Py_RETURN_NONE;
 }
 
@@ -432,13 +447,19 @@ TexStorage3D(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+#if defined(__APPLE__) && !defined(glCopyImageSubData)
+CopyImageSubData(PyObject UNUSED *self, UNUSED PyObject *args) {
+    PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_copy_image extension");
+    return NULL;
+}
+#else
 CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
-    int src_target, src_level, srcX, srcY, srcZ, dest_target, dest_level, destX, destY, destZ;
-    unsigned int src, dest, width, height, depth;
     if(!GLEW_ARB_copy_image) {
         PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_copy_image extension");
         return NULL;
     }
+    int src_target, src_level, srcX, srcY, srcZ, dest_target, dest_level, destX, destY, destZ;
+    unsigned int src, dest, width, height, depth;
     if (!PyArg_ParseTuple(args, "IiiiiiIiiiiiIII",
         &src, &src_target, &src_level, &srcX, &srcY, &srcZ,
         &dest, &dest_target, &dest_level, &destX, &destY, &destZ,
@@ -450,6 +471,7 @@ CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
+#endif
 
 static PyObject*
 copy_image_sub_data(PyObject UNUSED *self, PyObject *args) {
@@ -511,7 +533,11 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
     Py_BEGIN_ALLOW_THREADS;
 #ifdef glNamedBufferData
+#ifdef __APPLE__
+    if(false) {
+#else
     if(GLEW_VERSION_4_5) {
+#endif
         glNamedBufferData(target, size, data, usage);
     } else {
         glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);

@@ -90,7 +90,7 @@ def init_env(debug=False, asan=False):
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
-    if not is_travis and subprocess.Popen([PKGCONFIG, 'glew', '--atleast-version=2']).wait() != 0:
+    if not is_travis and not isosx and subprocess.Popen([PKGCONFIG, 'glew', '--atleast-version=2']).wait() != 0:
         try:
             ver = subprocess.check_output([PKGCONFIG, 'glew', '--modversion']).decode('utf-8').strip()
             major = int(re.match(r'\d+', ver).group())
@@ -99,7 +99,8 @@ def init_env(debug=False, asan=False):
             major = 0
         if major < 2:
             raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
-    cflags.extend(pkg_config('glew', '--cflags-only-I'))
+    if not isosx:
+        cflags.extend(pkg_config('glew', '--cflags-only-I'))
     if isosx:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
     else:
@@ -110,10 +111,12 @@ def init_env(debug=False, asan=False):
     pylib = get_python_flags(cflags)
     if isosx:
         glfw_ldflags = pkg_config('--libs', '--static', 'glfw3') + ['-framework', 'OpenGL']
+        glew_libs = []
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
+        glew_libs = pkg_config('glew', '--libs')
     ldpaths = pylib + \
-        pkg_config('glew', '--libs') + font_libs + glfw_ldflags
+        glew_libs + font_libs + glfw_ldflags
 
     try:
         os.mkdir(build_dir)
