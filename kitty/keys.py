@@ -53,6 +53,11 @@ valid_localized_key_names = {
     k: getattr(defines, 'GLFW_KEY_' + k) for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 }
 
+for name, ch in {
+        'APOSTROPHE': "'", 'COMMA': ',', 'PERIOD': '.', 'SLASH': '/', 'MINUS': '-', 'SEMICOLON': ';', 'EQUAL': '=',
+        'LEFT_BRACKET': '[', 'RIGHT_BRACKET': ']', 'GRAVE_ACCENT': '`', 'BACKSLASH': '\\'}.items():
+    valid_localized_key_names[ch] = getattr(defines, 'GLFW_KEY_' + name)
+
 
 def get_localized_key(key, scancode):
     name = defines.glfw_get_key_name(key, scancode)
