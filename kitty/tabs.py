@@ -50,7 +50,7 @@ class Tab:
     def startup(self, session_tab):
         for cmd in session_tab.windows:
             self.new_window(cmd=cmd)
-        self.active_window_idx = session_tab.active_window_idx
+        self.set_active_window_idx(session_tab.active_window_idx)
 
     @property
     def is_visible(self):
