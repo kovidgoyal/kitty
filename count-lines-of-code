@@ -1,0 +1,5 @@
+#!/bin/sh
+E=/tmp/exclude-from-cloc
+echo -e 'kitty/wcwidth9.h\nkitty/unicode-data.h\nkitty/gl.h\nkitty/glfw.c\nkitty/glfw.h' > $E
+cloc --exclude-list-file=$E kitty
+rm $E
