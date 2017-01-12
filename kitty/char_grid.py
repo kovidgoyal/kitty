@@ -73,7 +73,7 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
 
-    int sprite_id = int(instance_id) * STRIDE;
+    int sprite_id = gl_InstanceID * STRIDE;
     uvec4 spos = texelFetch(sprite_map, sprite_id);
     uvec4 colors = texelFetch(sprite_map, sprite_id + 1);
     sprite_pos = to_sprite_pos(pos, spos[0], spos[1], spos[2]);
