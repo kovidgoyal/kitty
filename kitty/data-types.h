@@ -355,6 +355,8 @@ void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 
+unsigned int safe_wcwidth(uint32_t ch);
+void change_wcwidth(bool use9);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

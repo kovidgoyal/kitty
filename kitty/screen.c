@@ -10,6 +10,7 @@
 #include "unicode-data.h"
 #include "tracker.h"
 #include "modes.h"
+#include "wcwidth9.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
@@ -195,12 +196,20 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     }
 }
 
-static inline unsigned int 
+static int (*wcwidth_impl)(wchar_t) = wcwidth;
+
+unsigned int 
 safe_wcwidth(uint32_t ch) {
-    int ans = wcwidth(ch);
+    int ans = wcwidth_impl(ch);
     if (ans < 0) ans = 1;
     return MIN(2, ans);
 }
+
+void
+change_wcwidth(bool use9) {
+    wcwidth_impl = (use9) ? wcwidth9 : wcwidth;
+}
+
 
 void
 screen_draw(Screen *self, uint32_t och) {

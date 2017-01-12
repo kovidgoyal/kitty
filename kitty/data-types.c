@@ -20,6 +20,17 @@ drain_read(PyObject UNUSED *self, PyObject *fd) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
+    return PyLong_FromUnsignedLong(safe_wcwidth(PyLong_AsLong(chr)));
+}
+
+static PyObject*
+change_wcwidth_wrap(PyObject UNUSED *self, PyObject *use9) {
+    change_wcwidth(PyObject_IsTrue(use9));
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     GL_METHODS
     {"drain_read", (PyCFunction)drain_read, METH_O, ""},
@@ -27,6 +38,8 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
     {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
+    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
     GLFW_FUNC_WRAPPERS
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

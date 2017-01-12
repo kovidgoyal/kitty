@@ -21,7 +21,7 @@ from .fast_data_types import (
     GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES,
     glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
-    glfw_swap_interval, glfw_wait_events, Window
+    glfw_swap_interval, glfw_wait_events, Window, change_wcwidth
 )
 from .utils import safe_print
 
@@ -137,6 +137,7 @@ def main():
         main(args.replay_commands)
         return
     opts = load_config(args.config)
+    change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
     if not glfw_init():

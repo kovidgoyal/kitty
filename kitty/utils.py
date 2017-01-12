@@ -7,7 +7,6 @@ import os
 import signal
 import shlex
 import subprocess
-import ctypes
 import math
 from collections import namedtuple
 from contextlib import contextmanager
@@ -15,13 +14,7 @@ from functools import lru_cache
 from time import monotonic
 
 from .constants import isosx
-from .fast_data_types import glfw_get_physical_dpi
-
-libc = ctypes.CDLL(None)
-wcwidth_native = libc.wcwidth
-del libc
-wcwidth_native.argtypes = [ctypes.c_wchar]
-wcwidth_native.restype = ctypes.c_int
+from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl
 
 
 def safe_print(*a, **k):
@@ -37,10 +30,10 @@ def ceil_int(x):
 
 @lru_cache(maxsize=2**13)
 def wcwidth(c: str) -> int:
-    ans = min(2, wcwidth_native(c))
-    if ans == -1:
-        ans = 1
-    return ans
+    try:
+        return wcwidth_impl(ord(c))
+    except TypeError:
+        return wcwidth_impl(ord(c[0]))
 
 
 @contextmanager

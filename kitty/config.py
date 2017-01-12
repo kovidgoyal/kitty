@@ -109,6 +109,7 @@ type_map = {
     'cursor_blink_interval': float,
     'cursor_stop_blinking_after': float,
     'enabled_layouts': to_layout_names,
+    'use_system_wcwidth': to_bool,
 }
 
 for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():
