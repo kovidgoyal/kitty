@@ -59,9 +59,9 @@ speed). Less than ten thousand lines of code.
 * Uses OpenGL+FreeType for rendering, does not depend on any GUI
 toolkits, offloads rendering work to the GPU for lower system load.
 
-* Cross-platform support: kitty currently works only on linux, but because it
+* Cross-platform support: kitty currently works on linux and OS X, but because it
 uses only OpenGL+FreeType for rendering, it should be trivial to port to
-other platforms. See link:../../issues/5[5] for porting to OS X.
+other platforms. See link:../../issues/5[5] for the status of the OS X port.
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
@@ -75,14 +75,14 @@ the following dependencies are installed first.
 
 .Dependencies
 * python >= 3.5
-* glew   >= 2.0 (not needed on OS X)
 * glfw   >= 3.2
+* glew   >= 2.0 (not needed on OS X)
 * freetype, fontconfig (not needed on OSX)
-* xdpyinfo and xsel (on X11 based systems)
-* gcc or clang (required for building)
-* pkg-config (required for building)
+* xdpyinfo and xsel (only on X11 based systems)
+* gcc or clang (required only for building)
+* pkg-config (required only for building)
 
-Install kitty with:
+=== Install and run from source
 
 ....
 git clone https://github.com/kovidgoyal/kitty && cd kitty
@@ -103,6 +103,13 @@ python3 /path/to/kitty/folder
 === Linux packages
 
 * Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+
+
+=== OS X packages
+
+Currently, no one has made OS X packages for kitty, but you can use the above
+install from source instructions to run kitty on OS X, after installing its two
+dependencies (python >= 3.5 and glfw >= 3.2)
 
 
 == Design philosophy
@@ -256,7 +263,7 @@ focus
 launch emacs
 ....
 
-== Note for linux packagers
+== Note for linux/OS X packagers
 
 While kitty does use python, it is not a traditional python package, so please do not install it in site-packages.
 Instead run,
@@ -277,6 +284,9 @@ You should probably split kitty into two packages, `kitty-terminfo` that
 installs the terminfo file and `kitty` that installs the main program.
 This allows users to install the terminfo file on servers into which they ssh,
 without needing to install all of kitty.
+
+This applies to creating packages for kitty for OS X package managers such as
+brew or MacPorts as well.
 
 == Resources on terminal behavior
 
