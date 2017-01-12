@@ -16,7 +16,7 @@ PyObject* glfw_swap_interval(PyObject UNUSED *self, PyObject *args);
 PyObject* glfw_wait_events(PyObject UNUSED *self, PyObject*);
 PyObject* glfw_post_empty_event(PyObject UNUSED *self);
 PyObject* glfw_get_physical_dpi(PyObject UNUSED *self);
-PyObject* glfw_get_key_name(PyObject UNUSED *self);
+PyObject* glfw_get_key_name(PyObject UNUSED *self, PyObject *args);
 
 #define GLFW_FUNC_WRAPPERS \
     {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
