@@ -49,8 +49,19 @@ control_codes[defines.GLFW_KEY_DELETE] = bytearray(key_as_bytes('kdch1').replace
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
 
 
+valid_localized_key_names = {
+    k: getattr(defines, 'GLFW_KEY_' + k) for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+}
+
+
+def get_localized_key(key, scancode):
+    name = defines.glfw_get_key_name(key, scancode)
+    return valid_localized_key_names.get((name or '').upper(), key)
+
+
 def interpret_key_event(key, scancode, mods):
     data = bytearray()
+    key = get_localized_key(key, scancode)
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
         # Map Ctrl-key to ascii control code
         data.extend(control_codes[key])

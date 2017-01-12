@@ -192,6 +192,13 @@ glfw_get_physical_dpi(PyObject UNUSED *self) {
     return Py_BuildValue("ff", dpix, dpiy);
 }
 
+PyObject*
+glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
+    int key, scancode;
+    if (!PyArg_ParseTuple(args, "ii", &key, &scancode)) return NULL;
+    return Py_BuildValue("s", glfwGetKeyName(key, scancode));
+}
+
 // }}}
 
 static void
