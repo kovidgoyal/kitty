@@ -259,7 +259,7 @@ class Boss(Thread):
         self.start_cursor_blink()
         self.cursor_blink_zero_time = monotonic()
         if action == GLFW_PRESS or action == GLFW_REPEAT:
-            func = get_shortcut(self.opts.keymap, mods, key)
+            func = get_shortcut(self.opts.keymap, mods, key, scancode)
             if func is not None:
                 f = getattr(self, func, None)
                 if f is not None:

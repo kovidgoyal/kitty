@@ -84,5 +84,6 @@ def interpret_text_event(codepoint, mods):
     return data
 
 
-def get_shortcut(keymap, mods, key):
+def get_shortcut(keymap, mods, key, scancode):
+    key = get_localized_key(key, scancode)
     return keymap.get((mods & 0b1111, key))
