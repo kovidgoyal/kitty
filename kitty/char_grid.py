@@ -3,13 +3,14 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+import sys
 from collections import namedtuple
 from ctypes import addressof, memmove, sizeof
 from threading import Lock
 
-from .config import build_ansi_color_table
+from .config import build_ansi_color_table, defaults
 from .constants import get_boss, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int
+from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int, safe_print
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
@@ -252,6 +253,15 @@ class CharGrid:
         self.selection_foreground, self.selection_background = map(color_as_int, (opts.selection_foreground, opts.selection_background))
         self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
+        def escape(chars):
+            return ''.join(frozenset(chars)).replace('\\', r'\\').replace(']', r'\]').replace('-', r'\-')
+
+        try:
+            self.word_pat = re.compile(r'[\w{}]'.format(escape(self.opts.select_by_word_characters)), re.UNICODE)
+        except Exception:
+            safe_print('Invalid characters in select_by_word_characters, ignoring', file=sys.stderr)
+            self.word_pat = re.compile(r'[\w{}]'.format(escape(defaults.select_by_word_characters)), re.UNICODE)
+
     def update_position(self, window_geometry):
         self.screen_geometry = calculate_gl_geometry(window_geometry)
 
@@ -400,15 +410,11 @@ class CharGrid:
                         s.end_x = self.screen.columns - 1
                 elif count == 2:
                     i = x
-                    alphanumeric = r'\w'
-                    optionalchars = re.escape(self.opts.select_by_word_characters)
-                    pattern = alphanumeric + optionalchars
-                    pat = re.compile(r'['+pattern+']+', re.UNICODE)
-                    while i >= 0 and pat.match(line[i]) is not None:
+                    while i >= 0 and self.word_pat.match(line[i]) is not None:
                         i -= 1
                     s.start_x = i if i == x else i + 1
                     i = x
-                    while i < self.screen.columns and pat.match(line[i]) is not None:
+                    while i < self.screen.columns and self.word_pat.match(line[i]) is not None:
                         i += 1
                     s.end_x = i if i == x else i - 1
             ps = self.text_for_selection()
