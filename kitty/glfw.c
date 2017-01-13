@@ -294,6 +294,22 @@ _set_title(Window *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+
+static PyObject*
+get_framebuffer_size(Window *self) {
+    int w, h;
+    glfwGetFramebufferSize(self->window, &w, &h);
+    return Py_BuildValue("ii", w, h);
+}
+
+static PyObject*
+get_window_size(Window *self) {
+    int w, h;
+    glfwGetWindowSize(self->window, &w, &h);
+    return Py_BuildValue("ii", w, h);
+}
+
+
 // Boilerplate {{{
 #define MND(name, args) {#name, (PyCFunction)name, args, ""}
 
@@ -302,6 +318,8 @@ static PyMethodDef methods[] = {
     MND(get_clipboard_string, METH_NOARGS),
     MND(get_cursor_pos, METH_NOARGS),
     MND(should_close, METH_NOARGS),
+    MND(get_framebuffer_size, METH_NOARGS),
+    MND(get_window_size, METH_NOARGS),
     MND(set_should_close, METH_VARARGS),
     MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),

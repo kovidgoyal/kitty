@@ -101,6 +101,7 @@ def run_app(opts, args):
         viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
+    viewport_size.width, viewport_size.height = window.get_framebuffer_size()
     glewInit()
     boss = Boss(window, opts, args)
     boss.start()
