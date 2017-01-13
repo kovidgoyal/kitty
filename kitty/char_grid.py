@@ -400,10 +400,10 @@ class CharGrid:
                         s.end_x = self.screen.columns - 1
                 elif count == 2:
                     i = x
-                    alphanumeric = 'A-Za-z0-9'
+                    alphanumeric = r'\w'
                     optionalchars = re.escape(self.opts.select_by_word_characters)
                     pattern = alphanumeric + optionalchars
-                    pat = re.compile(r'['+pattern+']+')
+                    pat = re.compile(r'['+pattern+']+', re.UNICODE)
                     while i >= 0 and pat.match(line[i]) is not None:
                         i -= 1
                     s.start_x = i if i == x else i + 1
