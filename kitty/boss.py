@@ -70,6 +70,7 @@ class Boss(Thread):
         startup_session = create_session(opts, args)
         self.cursor_blink_zero_time = monotonic()
         self.cursor_blinking = True
+        self.window_is_focused = True
         self.glfw_window_title = None
         self.action_queue = Queue()
         self.pending_resize = False
@@ -287,10 +288,15 @@ class Boss(Thread):
 
     @callback
     def on_focus(self, window, focused):
+        self.window_is_focused = focused
         w = self.active_window
         if w is not None:
             yield w
             w.focus_changed(focused)
+        if focused:
+            self.start_cursor_blink()
+        else:
+            self.stop_cursor_blinking()
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:
@@ -408,7 +414,7 @@ class Boss(Thread):
                         self.ui_timers.add_if_missing(((n + 1) * d / 1000) - now, glfw_post_empty_event)
                     if draw_cursor:
                         with self.cursor_program:
-                            active.char_grid.render_cursor(rd, self.cursor_program)
+                            active.char_grid.render_cursor(rd, self.cursor_program, self.window_is_focused)
 
     def gui_close_window(self, window):
         if window.char_grid.buffer_id is not None:
