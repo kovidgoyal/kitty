@@ -76,10 +76,7 @@ def develop(family='monospace', sz=288):
         pass
     set_font_family(family, sz, ignore_dpi_failure=True)
     for (bold, italic), face in main_font.items():
-        print('bold: {} italic: {} family:{} full name: {} postscript_name: {}'.format(bold, italic, face.family_name, face.full_name, face.postscript_name))
-    f = main_font[(False, False)]
-    for attr in 'units_per_em ascent descent leading underline_position underline_thickness scaled_point_sz'.split():
-        print(attr, getattr(f, attr))
+        print('bold: {} italic: {} {}'.format(bold, italic, face))
     print('cell_width: {}, cell_height: {}, baseline: {}'.format(cell_width, cell_height, baseline))
     buf, w, h = render_string()
     open('/tmp/cell.data', 'wb').write(pickle.dumps((bytearray(buf), w, h)))

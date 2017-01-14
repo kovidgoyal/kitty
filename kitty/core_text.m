@@ -187,6 +187,18 @@ end:
     Py_RETURN_NONE;
 }
 
+static PyObject *
+repr(Face *self) {
+    char buf[400] = {0};
+    snprintf(buf, sizeof(buf)/sizeof(buf[0]), "ascent=%.1f, descent=%.1f, leading=%.1f, point_sz=%.1f, scaled_point_sz=%.1f, underline_position=%.1f underline_thickness=%.1f", 
+        (self->ascent), (self->descent), (self->leading), (self->point_sz), (self->scaled_point_sz), (self->underline_position), (self->underline_thickness));
+    return PyUnicode_FromFormat(
+        "Face(family=%U, full_name=%U, postscript_name=%U, units_per_em=%u, %s)",
+        self->family_name, self->full_name, self->postscript_name, self->units_per_em, buf
+    );
+}
+
+
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
@@ -224,6 +236,7 @@ PyTypeObject Face_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_new = new,                
+    .tp_repr = (reprfunc)repr,
 };
 
 
