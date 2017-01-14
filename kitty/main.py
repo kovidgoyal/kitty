@@ -34,7 +34,7 @@ def option_parser():
     a('--config', default=defconf, help=_('Specify a path to the config file to use. Default: {}').format(defconf))
     a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
     a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
-    a('--version', action='version', version='{} {} by Kovid Goyal'.format(appname, '.'.join(str_version)))
+    a('--version', '-v', action='version', version='{} {} by Kovid Goyal'.format(appname, str_version))
     a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
     a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
     a('--replay-commands', default=None, help=_('Replay previously dumped commands'))
