@@ -14,7 +14,7 @@ from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, c
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
-    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_LINE_LOOP
 )
 
 Cursor = namedtuple('Cursor', 'x y shape color blink')
@@ -454,7 +454,7 @@ class CharGrid:
     def render_cells(self, sg, cell_program, sprites):
         render_cells(self.buffer_id, sg, cell_program, sprites)
 
-    def render_cursor(self, sg, cursor_program):
+    def render_cursor(self, sg, cursor_program, is_focused):
         cursor = self.current_cursor
         if not self.screen.cursor_visible or self.scrolled_by:
             return
@@ -481,5 +481,8 @@ class CharGrid:
         glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
         glUniform2f(ul('xpos'), left, right)
         glUniform2f(ul('ypos'), top, bottom)
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+        if is_focused:
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+        else:
+            glDrawArrays(GL_LINE_LOOP, 0, 4)
         glDisable(GL_BLEND)
