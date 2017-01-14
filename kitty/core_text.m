@@ -20,7 +20,7 @@ typedef struct {
     unsigned int units_per_em;
     float ascent, descent, leading, underline_position, underline_thickness, point_sz, scaled_point_sz;
     CTFontRef font;
-    PyObject *family_name, *full_name;
+    PyObject *family_name, *full_name, *postscript_name;
 } Face;
 
 
@@ -62,10 +62,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
                 self->leading = CTFontGetLeading(self->font);
                 self->underline_position = CTFontGetUnderlinePosition(self->font);
                 self->underline_thickness = CTFontGetUnderlineThickness(self->font);
+                self->scaled_point_sz = CTFontGetSize(self->font);
                 self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font));
                 self->full_name = convert_cfstring(CTFontCopyFullName(self->font));
-                self->scaled_point_sz = CTFontGetSize(self->font);
-                if (self->family_name == NULL || self->full_name == NULL) { Py_CLEAR(self); }
+                self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font));
+                if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL) { Py_CLEAR(self); }
             }
         } else {
             Py_CLEAR(self);
@@ -80,7 +81,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Face* self) {
     if (self->font) CFRelease(self->font);
-    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name);
+    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -200,6 +201,7 @@ static PyMemberDef members[] = {
     MEM(underline_thickness, T_FLOAT),
     MEM(family_name, T_OBJECT),
     MEM(full_name, T_OBJECT),
+    MEM(postscript_name, T_OBJECT),
     {NULL}  /* Sentinel */
 };
 
