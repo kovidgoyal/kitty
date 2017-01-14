@@ -293,10 +293,6 @@ class Boss(Thread):
         if w is not None:
             yield w
             w.focus_changed(focused)
-        if focused:
-            self.start_cursor_blink()
-        else:
-            self.stop_cursor_blinking()
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:
@@ -405,7 +401,7 @@ class Boss(Thread):
                 rd = render_data.get(active)
                 if rd is not None:
                     draw_cursor = True
-                    if self.cursor_blinking and self.opts.cursor_blink_interval > 0:
+                    if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
                         now = monotonic() - self.cursor_blink_zero_time
                         t = int(now * 1000)
                         d = int(self.opts.cursor_blink_interval * 1000)

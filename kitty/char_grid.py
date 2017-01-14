@@ -481,8 +481,5 @@ class CharGrid:
         glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
         glUniform2f(ul('xpos'), left, right)
         glUniform2f(ul('ypos'), top, bottom)
-        if is_focused:
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
-        else:
-            glDrawArrays(GL_LINE_LOOP, 0, 4)
+        glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)
         glDisable(GL_BLEND)
