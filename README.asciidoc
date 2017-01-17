@@ -263,6 +263,11 @@ focus
 launch emacs
 ....
 
+== Protocol Extensions
+
+kitty has a few extensions to the xterm protocol, to enable advanced features,
+see link:protocol-extensions.asciidoc[Protocol Extensions].
+
 == Note for linux/OS X packagers
 
 While kitty does use python, it is not a traditional python package, so please do not install it in site-packages.

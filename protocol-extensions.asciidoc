@@ -1,0 +1,37 @@
+= Extensions to the xterm protocol
+
+kitty has a few extensions to the xterm protocol, to enable advanced features.
+These are typically in the form of new or re-purposed escape codes. While these
+extensions are currently kitty specific, it would be nice to get some of them
+adopted more broadly.
+
+toc::[]
+
+== Colored and styled underlines
+
+kitty supports colored and styled (wavy) underlines. This is of particular use
+in terminal editors such as vim and emacs to display red, wavy underlines under
+mis-spelled words and/or syntax errors. This is done by re-purposing some SGR escape codes
+that are not used in modern terminals (https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes)
+
+To change the underline style from straight line to curl (this used to be the
+code for rapid blinking text, only support in MS-DOS ANSI.sys):
+
+```
+<ESC>[6m
+```
+
+To set the underline color (this is reserved and as far as I can tell not actually used for anything):
+
+```
+<ESC>[58...m
+```
+
+This works exactly like the codes `38, 48` that are used to set foreground and
+background color respectively.
+
+To reset the underline color (also previously reserved and unused):
+
+```
+<ESC>[59m
+```
