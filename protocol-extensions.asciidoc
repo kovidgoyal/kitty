@@ -15,7 +15,7 @@ mis-spelled words and/or syntax errors. This is done by re-purposing some SGR es
 that are not used in modern terminals (https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes)
 
 To change the underline style from straight line to curl (this used to be the
-code for rapid blinking text, only support in MS-DOS ANSI.sys):
+code for rapid blinking text, only previous use I know of was in MS-DOS ANSI.sys):
 
 ```
 <ESC>[6m
