@@ -1,4 +1,6 @@
 = Extensions to the xterm protocol
+:toc:
+:toc-placement!:
 
 kitty has a few extensions to the xterm protocol, to enable advanced features.
 These are typically in the form of new or re-purposed escape codes. While these
