@@ -110,6 +110,9 @@ type_map = {
     'cursor_blink_interval': float,
     'cursor_stop_blinking_after': float,
     'enabled_layouts': to_layout_names,
+    'remember_window_size': to_bool,
+    'initial_window_width': int,
+    'initial_window_height': int,
     'use_system_wcwidth': to_bool,
 }
 

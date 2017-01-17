@@ -89,7 +89,7 @@ def dispatch_pending_calls(boss):
 def run_app(opts, args):
     setup_opengl()
     load_cached_values()
-    if 'window-size' in cached_values:
+    if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
         try:
             viewport_size.width, viewport_size.height = map(int, ws)
@@ -97,6 +97,9 @@ def run_app(opts, args):
             safe_print('Invalid cached window size, ignoring', file=sys.stderr)
         viewport_size.width = max(100, viewport_size.width)
         viewport_size.height = max(80, viewport_size.height)
+    else:
+        viewport_size.width = opts.initial_window_width
+        viewport_size.height = opts.initial_window_height
     window = Window(
         viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
