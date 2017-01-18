@@ -38,6 +38,7 @@
 :sc_third_window: pass:quotes[`ctrl+shift+3`]
 // END_SHORTCUT_BLOCK
 
+image::logo/kitty.svg["Logo",float="left"]
 image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, link=https://travis-ci.org/kovidgoyal/kitty]
 
 .Major features
