@@ -657,6 +657,7 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
                     if (prev != UTF8_ACCEPT) i--;
                     break;
             }
+            prev = screen->utf8_state;
         }
     }
 FLUSH_DRAW;
