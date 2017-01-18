@@ -43,7 +43,8 @@
 ++++
 image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, link=https://travis-ci.org/kovidgoyal/kitty]
 
-.Major features
+== Major Features
+
 * Supports tiling multiple terminal windows side by side in different
 layouts without needing to use an extra program like tmux
 
@@ -76,7 +77,8 @@ toc::[]
 kitty is designed to run from source, for easy hackability. Make sure
 the following dependencies are installed first.
 
-.Dependencies
+=== Dependencies
+
 * python >= 3.5
 * glfw   >= 3.2
 * glew   >= 2.0 (not needed on OS X)
@@ -146,7 +148,9 @@ windows are:
 
 [[scrolling-shortcuts]]
 [options="header"]
-.Scrolling
+
+=== Scrolling
+
 |===
 |Action |Shortcut
 
@@ -160,7 +164,9 @@ windows are:
 |===
 
 [options="header"]
-.Tabs
+
+=== Tabs
+
 |===
 |Action |Shortcut
 
@@ -176,7 +182,9 @@ windows are:
 
 
 [options="header"]
-.Windows
+
+=== Windows
+
 |===
 |Action |Shortcut
 
