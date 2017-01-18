@@ -239,8 +239,9 @@ kitty is highly customizable, everything from keyboard shortcuts, to
 painting frames-per-second. See the heavily commented
 link:kitty/kitty.conf[default config file]. By default kitty looks for a
 config file in the OS config directory (usually
-`~/.config/kitty/kitty.conf` on Linux) but you can pass a specific path
-via the `--config` option.
+`~/.config/kitty/kitty.conf` on Linux and
+`~/Library/Preferences/kitty/kitty.conf` on macOS) but you can pass a specific
+path via the `--config` option.
 
 == Startup Sessions
 
