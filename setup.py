@@ -212,7 +212,7 @@ def safe_makedirs(path):
         pass
 
 
-def package(args):
+def package(args):  # {{{
     ddir = args.prefix
     libdir = os.path.join(ddir, 'lib', 'kitty')
     terminfo_dir = os.path.join(ddir, 'share/terminfo/x')
@@ -237,6 +237,26 @@ def package(args):
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
     run_tool([cc, '-O3', 'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')])
+    if not isosx:
+        icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256')
+        safe_makedirs(icdir)
+        shutil.copy2('logo/kitty.png', icdir)
+        deskdir = os.path.join(ddir, 'share', 'applications')
+        safe_makedirs(deskdir)
+        with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
+            f.write('''\
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=kitty
+GenericName=Terminal emulator
+Comment=A modern, hackable, featureful, OpenGL based terminal emulator
+TryExec=kitty
+Exec=kitty
+Icon=kitty
+Categories=System;
+''')
+# }}}
 
 
 def main():
