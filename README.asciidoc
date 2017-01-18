@@ -63,9 +63,9 @@ speed). Less than ten thousand lines of code.
 * Uses OpenGL+FreeType for rendering, does not depend on any GUI
 toolkits, offloads rendering work to the GPU for lower system load.
 
-* Cross-platform support: kitty currently works on linux and OS X, but because it
+* Cross-platform support: kitty currently works on Linux and macOS, but because it
 uses only OpenGL+FreeType for rendering, it should be trivial to port to
-other platforms. See link:../../issues/5[5] for the status of the OS X port.
+other platforms. See link:../../issues/5[5] for the status of the macOS port.
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
@@ -240,7 +240,7 @@ kitty is highly customizable, everything from keyboard shortcuts, to
 painting frames-per-second. See the heavily commented
 link:kitty/kitty.conf[default config file]. By default kitty looks for a
 config file in the OS config directory (usually
-`~/.config/kitty/kitty.conf` on linux) but you can pass a specific path
+`~/.config/kitty/kitty.conf` on Linux) but you can pass a specific path
 via the `--config` option.
 
 == Startup Sessions
@@ -279,7 +279,7 @@ launch emacs
 kitty has a few extensions to the xterm protocol, to enable advanced features,
 see link:protocol-extensions.asciidoc[Protocol Extensions].
 
-== Note for linux/OS X packagers
+== Note for Linux/macOS packagers
 
 While kitty does use python, it is not a traditional python package, so please do not install it in site-packages.
 Instead run,
