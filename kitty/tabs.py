@@ -79,7 +79,7 @@ class Tab:
         self.relayout_borders()
 
     def relayout_borders(self):
-        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+        self.borders(self.windows, self.active_window, self.current_layout, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
@@ -110,7 +110,7 @@ class Tab:
             window.title = window.override_title = override_title
         get_boss().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
-        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+        self.relayout_borders()
         glfw_post_empty_event()
         return window
 
@@ -123,14 +123,14 @@ class Tab:
 
     def remove_window(self, window):
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
-        self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+        self.relayout_borders()
         glfw_post_empty_event()
 
     def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
             self.current_layout.set_active_window(self.windows, idx)
             self.active_window_idx = idx
-            self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+            self.relayout_borders()
             glfw_post_empty_event()
 
     def set_active_window(self, window):
@@ -147,7 +147,7 @@ class Tab:
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
-            self.borders(self.windows, self.active_window, self.current_layout.needs_window_borders and len(self.windows) > 1)
+            self.relayout_borders()
             glfw_post_empty_event()
 
     def next_window(self):

@@ -7,7 +7,6 @@ from threading import Lock
 
 from .constants import viewport_size, GLfloat, GLint, GLuint
 from .fast_data_types import glUniform3fv, GL_TRIANGLE_FAN, glMultiDrawArrays
-from .layout import available_height
 from .utils import get_dpi
 from .shaders import ShaderProgram
 
@@ -72,26 +71,10 @@ class Borders:
             *as_color(opts.inactive_border_color)
         )
 
-    def __call__(self, windows, active_window, draw_window_borders=True):
-        vw, vh = viewport_size.width, available_height()
-        if windows:
-            left_edge = min(w.geometry.left for w in windows)
-            right_edge = max(w.geometry.right for w in windows)
-            top_edge = min(w.geometry.top for w in windows)
-            bottom_edge = max(w.geometry.bottom for w in windows)
-        else:
-            left_edge = top_edge = 0
-            right_edge = vw
-            bottom_edge = vh
+    def __call__(self, windows, active_window, current_layout, draw_window_borders=True):
         rects = []
-        if left_edge > 0:
-            rects.extend(as_rect(0, 0, left_edge, vh))
-        if top_edge > 0:
-            rects.extend(as_rect(0, 0, vw, top_edge))
-        if right_edge < vw:
-            rects.extend(as_rect(right_edge, 0, vw, vh))
-        if bottom_edge < vh:
-            rects.extend(as_rect(0, bottom_edge, vw, vh))
+        for br in current_layout.blank_rects:
+            rects.extend(as_rect(*br))
         if draw_window_borders and self.border_width > 0:
             bw = self.border_width
             for w in windows:

@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from collections import namedtuple
 from itertools import islice
 
 from .constants import WindowGeometry, viewport_size, cell_size, get_boss
@@ -31,6 +32,9 @@ def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, 
         pos += window_length
 
 
+Rect = namedtuple('Rect', 'left top right bottom')
+
+
 class Layout:
 
     name = None
@@ -39,6 +43,9 @@ class Layout:
     def __init__(self, opts, border_width, windows):
         self.opts = opts
         self.border_width = border_width
+        # A set of rectangles corresponding to the blank spaces at the edges of
+        # this layout, i.e. spaces that are not covered by any window
+        self.blank_rects = ()
 
     def next_window(self, windows, active_window_idx, delta=1):
         active_window_idx = (active_window_idx + len(windows) + delta) % len(windows)
@@ -75,6 +82,33 @@ def layout_single_window():
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
+def left_blank_rect(w, rects, vh):
+    if w.geometry.left > 0:
+        rects.append(Rect(0, 0, w.geometry.left, vh))
+
+
+def right_blank_rect(w, rects, vh):
+    if w.geometry.right < viewport_size.width:
+        rects.append(Rect(w.geometry.right, 0, viewport_size.width, vh))
+
+
+def top_blank_rect(w, rects, vh):
+    if w.geometry.top > 0:
+        rects.append(Rect(0, 0, viewport_size.width, w.geometry.top))
+
+
+def bottom_blank_rect(w, rects, vh):
+    if w.geometry.bottom < available_height():
+        rects.append(Rect(0, w.geometry.bottom, viewport_size.width, vh))
+
+
+def blank_rects_for_window(w):
+    ans = []
+    vh = available_height()
+    left_blank_rect(w, ans, vh), top_blank_rect(w, ans, vh), right_blank_rect(w, ans, vh), bottom_blank_rect(w, ans, vh)
+    return ans
+
+
 class Stack(Layout):
 
     name = 'stack'
@@ -85,10 +119,13 @@ class Stack(Layout):
             w.is_visible_in_layout = i == active_window_idx
 
     def __call__(self, windows, active_window_idx):
+        self.blank_rects = []
         wg = layout_single_window()
         for i, w in enumerate(windows):
             w.is_visible_in_layout = i == active_window_idx
             w.set_geometry(wg)
+            if w.is_visible_in_layout:
+                self.blank_rects = blank_rects_for_window(w)
 
 
 class Tall(Layout):
@@ -96,18 +133,25 @@ class Tall(Layout):
     name = 'tall'
 
     def __call__(self, windows, active_window_idx):
+        self.blank_rects = br = []
         if len(windows) == 1:
             wg = layout_single_window()
             windows[0].set_geometry(wg)
+            self.blank_rects = blank_rects_for_window(windows[0])
             return
         xlayout = layout_dimension(viewport_size.width, cell_size.width, 2, self.border_width)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(layout_dimension(available_height(), cell_size.height, 1, self.border_width, left_align=True))
         windows[0].set_geometry(window_geometry(xstart, xnum, ystart, ynum))
+        vh = available_height()
         xstart, xnum = next(xlayout)
         ylayout = layout_dimension(available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True)
         for w, (ystart, ynum) in zip(islice(windows, 1, None), ylayout):
             w.set_geometry(window_geometry(xstart, xnum, ystart, ynum))
+        left_blank_rect(windows[0], br, vh), top_blank_rect(windows[0], br, vh), right_blank_rect(windows[-1], br, vh)
+        br.append(Rect(windows[0].geometry.right, 0, windows[1].geometry.left, vh))
+        br.append(Rect(0, windows[0].geometry.bottom, windows[0].geometry.right, vh))
+        br.append(Rect(windows[-1].geometry.left, windows[-1].geometry.bottom, viewport_size.width, vh))
 
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
