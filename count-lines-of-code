@@ -1,2 +1,2 @@
 #!/bin/bash
-cloc --exclude-list-file <(echo -e 'kitty/wcwidth9.h\nkitty/unicode-data.h\nkitty/gl.h\nkitty/glfw.c\nkitty/glfw.h') kitty
+cloc --exclude-list-file <(echo -e 'kitty/wcwidth9.h\nkitty/unicode-data.h\nkitty/gl.h\nkitty/glfw.c\nkitty/glfw.h\nkitty/charsets.c') kitty
