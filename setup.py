@@ -219,10 +219,12 @@ def package(args):  # {{{
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
     os.makedirs(os.path.join(libdir, 'terminfo/x'))
+    os.makedirs(os.path.join(libdir, 'logo'))
     safe_makedirs(terminfo_dir)
     shutil.copy2('__main__.py', libdir)
     shutil.copy2('terminfo/x/xterm-kitty', terminfo_dir)
     shutil.copy2('terminfo/x/xterm-kitty', os.path.join(libdir, 'terminfo/x'))
+    shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
 
     def src_ignore(parent, entries):
         return [x for x in entries if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf')]

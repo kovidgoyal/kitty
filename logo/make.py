@@ -17,6 +17,7 @@ def render(output, sz=256):
 
 
 render('kitty.png')
+subprocess.check_call(['convert', 'kitty.png', 'kitty.rgba'])
 iconset = 'kitty.iconset'
 if os.path.exists(iconset):
     shutil.rmtree(iconset)

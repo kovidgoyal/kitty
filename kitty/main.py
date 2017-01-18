@@ -11,7 +11,7 @@ from gettext import gettext as _
 
 
 from .config import load_config, load_cached_values, cached_values, save_cached_values
-from .constants import appname, str_version, config_dir, viewport_size, isosx
+from .constants import appname, str_version, config_dir, viewport_size, isosx, logo_data_file
 from .layout import all_layouts
 from .boss import Boss
 from .shaders import GL_VERSION
@@ -104,6 +104,9 @@ def run_app(opts, args):
         viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
+    if not isosx:
+        with open(logo_data_file, 'rb') as f:
+            window.set_icon(f.read(), 256, 256)
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
     glewInit()
     boss = Boss(window, opts, args)

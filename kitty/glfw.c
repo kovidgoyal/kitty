@@ -285,6 +285,15 @@ set_clipboard_string(Window *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_window_icon(Window *self, PyObject *args) {
+    GLFWimage logo;
+    Py_ssize_t sz;
+    if(!PyArg_ParseTuple(args, "s#ii", &(logo.pixels), &sz, &(logo.width), &(logo.height))) return NULL;
+    glfwSetWindowIcon(self->window, 1, &logo);
+    Py_RETURN_NONE;
+}
+
 
 static PyObject*
 _set_title(Window *self, PyObject *args) {
@@ -327,6 +336,7 @@ static PyMethodDef methods[] = {
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
+    {"set_icon", (PyCFunction)set_window_icon, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 

@@ -75,7 +75,9 @@ mouse_button_pressed = defaultdict(lambda: False)
 mouse_cursor_pos = [0, 0]
 viewport_size = ViewportSize()
 cell_size = ViewportSize()
-terminfo_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'terminfo')
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+terminfo_dir = os.path.join(base_dir, 'terminfo')
+logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
 main_thread = threading.current_thread()
 shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 
