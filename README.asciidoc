@@ -81,7 +81,7 @@ the following dependencies are installed first.
 
 * python >= 3.5
 * glfw   >= 3.2
-* glew   >= 2.0 (not needed on OS X)
+* glew   >= 2.0 (not needed on macOS)
 * freetype, fontconfig (not needed on OSX)
 * xdpyinfo and xsel (only on X11 based systems)
 * gcc or clang (required only for building)
@@ -110,10 +110,10 @@ python3 /path/to/kitty/folder
 * Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
 
 
-=== OS X packages
+=== macOS packages
 
-Currently, no one has made OS X packages for kitty, but you can use the above
-install from source instructions to run kitty on OS X, after installing its two
+Currently, no one has made macOS packages for kitty, but you can use the above
+install from source instructions to run kitty on macOS, after installing its two
 dependencies (python >= 3.5 and glfw >= 3.2)
 
 
@@ -301,7 +301,7 @@ installs the terminfo file and `kitty` that installs the main program.
 This allows users to install the terminfo file on servers into which they ssh,
 without needing to install all of kitty.
 
-This applies to creating packages for kitty for OS X package managers such as
+This applies to creating packages for kitty for macOS package managers such as
 brew or MacPorts as well.
 
 == Resources on terminal behavior
