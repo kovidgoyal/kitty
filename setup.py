@@ -169,6 +169,9 @@ def compile_c_extension(module, incremental, sources, headers):
             run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
+        fw = sysconfig.get_config_var('PYTHONFRAMEWORK')
+        if isosx and fw:
+            objects.append(sysconfig.get_config_var('prefix') + '/Python')
         run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
 
 
