@@ -178,6 +178,10 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     SET_STATE(OSC); break;
                 case ESC_CSI:
                     SET_STATE(CSI); break;
+                case ESC_APC:
+                    SET_STATE(APC); break;
+                case ESC_PM:
+                    SET_STATE(PM); break;
                 case ESC_RIS:
                     CALL_ED(screen_reset); break;
                 case ESC_IND:
@@ -554,6 +558,29 @@ END_ALLOW_CASE_RANGE
     return false;
 }
 
+
+static inline bool
+accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
+    switch(ch) {
+        case ST:
+            return true;
+        case ESC_ST:
+            if (screen->parser_buf_pos > 0 && screen->parser_buf[screen->parser_buf_pos - 1] == ESC) {
+                screen->parser_buf_pos--;
+                return true;
+            }
+        default:
+            if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
+                REPORT_ERROR("OTH sequence too long, truncating.");
+                return true;
+            }
+            screen->parser_buf[screen->parser_buf_pos++] = ch;
+            break;
+    }
+    return false;
+}
+
+
 static inline bool
 accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
 #define ENSURE_SPACE \
@@ -631,6 +658,12 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
             break;
         case OSC:
             if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
+            break;
+        case APC:
+            if (accumulate_oth(screen, codepoint, dump_callback)) { SET_STATE(0); }
+            break;
+        case PM:
+            if (accumulate_oth(screen, codepoint, dump_callback)) { SET_STATE(0); }
             break;
         case DCS:
             if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }

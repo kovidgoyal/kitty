@@ -63,6 +63,8 @@
 #define CSI 0x9b
 #define ST 0x9c
 #define OSC 0x9d
+#define PM 0x9e
+#define APC 0x9f
 
 // Sharp control codes
 // -------------------
@@ -77,6 +79,8 @@
 #define ESC_OSC ']'
 #define ESC_CSI '['
 #define ESC_ST '\\'
+#define ESC_PM '^'
+#define ESC_APC '_'
 
 // *Reset*.
 #define ESC_RIS 'c'

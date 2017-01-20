@@ -163,3 +163,10 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
+
+    def test_oth_codes(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        for prefix in '\033_', '\033^':
+            for suffix in '\u009c', '\033\\':
+                pb('a{}+++{}bcde'.format(prefix, suffix), 'abcde')
