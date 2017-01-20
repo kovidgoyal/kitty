@@ -151,6 +151,8 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
         case CSI:
         case OSC:
         case DCS:
+        case APC:
+        case PM:
             SET_STATE(ch); break;
         case NUL:
         case DEL:
