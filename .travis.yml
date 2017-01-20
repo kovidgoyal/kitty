@@ -14,9 +14,9 @@ matrix:
               packages:
                 - libfreetype6-dev
                 - libglew-dev
-                - libxi-dev 
-                - libxrandr-dev 
-                - libxinerama-dev 
+                - libxi-dev
+                - libxrandr-dev
+                - libxinerama-dev
                 - libxcursor-dev
 
         - os: linux
@@ -32,20 +32,44 @@ matrix:
               packages:
                 - libfreetype6-dev
                 - libglew-dev
-                - libxi-dev 
-                - libxrandr-dev 
-                - libxinerama-dev 
+                - libxi-dev
+                - libxrandr-dev
+                - libxinerama-dev
                 - libxcursor-dev
                 - clang
+
         - os: osx
           language: generic
-          env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH 
+          env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH
+
+        # Not supported: https://github.com/travis-ci/travis-ci/issues/2312
+        # - os: osx
+        #   env: CC=clang PYTHON=python3
+        #   language: python
+        #   python: "3.5"
+
+        - os: osx
+          env: CC=clang PYTHON=python3 BREW_PYTHON=true
+          language: generic
+
+before_install: |
+    set -e
+    rvm get stable --auto-dotfiles
+    if [[ "$TRAVIS_OS_NAME" == 'osx' ]] && [ -n "$BREW_PYTHON" ]; then
+        brew update
+        brew install python3
+        brew install glfw
+    fi
+    set +e
 
 install: |
+    set -e
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
     if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
-        mkdir -p $SW; 
-        curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW; 
+        if [ -n "$SW" ]; then
+            mkdir -p $SW;
+            curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
+        fi
     else
         wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
         unzip glfw-3.2.1.zip
@@ -56,15 +80,26 @@ install: |
         cd ..
     fi
     pkg-config --cflags glfw3
+    set +e
 
 env:
     global:
-        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig 
-        - LD_LIBRARY_PATH=$HOME/glfw/lib 
-        - ASAN_OPTIONS=leak_check_at_exit=0 
+        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig
+        - LD_LIBRARY_PATH=$HOME/glfw/lib
+        - ASAN_OPTIONS=leak_check_at_exit=0
         - PYTHON=python3
-before_script:
-    - $PYTHON setup.py build --debug $ASAN_ARG;
-script: 
-    - LD_PRELOAD=$ASANLIB $PYTHON setup.py test
-    - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
+
+before_script: |
+    set -e
+    $PYTHON setup.py build --debug $ASAN_ARG;
+    set +e
+
+script: |
+    set -e
+    export LD_PRELOAD=$ASANLIB
+    $PYTHON setup.py test
+    if [[ "$RUN_FLAKE" == "1" ]]; then
+        flake8 --count .
+    fi
+    # Workaround for https://github.com/travis-ci/travis-ci/issues/6522
+    set +e
