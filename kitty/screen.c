@@ -521,7 +521,8 @@ screen_set_tab_stop(Screen *self) {
         self->tabstops[self->cursor->x] = true;
 }
 
-void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
+void 
+screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
     unsigned int x = self->cursor->x;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
@@ -851,7 +852,8 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 
 // Device control {{{
 
-void screen_bell(Screen UNUSED *self) {  
+void 
+screen_bell(Screen UNUSED *self) {  
     FILE *f = fopen("/dev/tty", "w");
     static const char *bell = "\007";
     if (f != NULL) {
@@ -860,19 +862,22 @@ void screen_bell(Screen UNUSED *self) {
     }
 } 
 
-static inline void callback(const char *name, Screen *self, const char *data, unsigned int sz) {
+static inline void 
+callback(const char *name, Screen *self, const char *data, unsigned int sz) {
     if (sz) PyObject_CallMethod(self->callbacks, name, "y#", data, sz);
     else PyObject_CallMethod(self->callbacks, name, "y", data);
     if (PyErr_Occurred()) PyErr_Print();
     PyErr_Clear(); 
 }
 
-void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
+void 
+report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
     callback("write_to_child", self, "\x1b[>1;4600;0c", 0);  // same as libvte
 }
 
-void report_device_status(Screen *self, unsigned int which, bool UNUSED private) {
-    // We dont implement the private device status codes, since I haven;t come
+void 
+report_device_status(Screen *self, unsigned int which, bool private) {
+    // We dont implement the private device status codes, since I haven't come
     // across any programs that use them
     unsigned int x, y;
     char buf[50] = {0};
@@ -888,7 +893,7 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED private)
             }
             if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
             x++; y++;  // 1-based indexing
-            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%u;%uR", y, x) > 0) callback("write_to_child", self, buf, 0);
+            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%uR", (private ? "?": ""), y, x) > 0) callback("write_to_child", self, buf, 0);
             break;
     }
 }
