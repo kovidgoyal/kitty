@@ -41,11 +41,22 @@ matrix:
           language: generic
           env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH
 
+        - os: osx
+          language: generic
+          env: USE_BREW=1
+
 install: |
+    set -e
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
     if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
-        mkdir -p $SW;
-        curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
+        if [[ "$USE_BREW" == "1" ]]; then
+            brew update;
+            brew install python3;
+            brew install glfw;
+        else
+            mkdir -p $SW;
+            curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
+        fi
     else
         wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
         unzip glfw-3.2.1.zip
@@ -56,6 +67,7 @@ install: |
         cd ..
     fi
     pkg-config --cflags glfw3
+    set +e
 
 env:
     global:
