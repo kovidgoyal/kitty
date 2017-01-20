@@ -54,9 +54,11 @@ def get_python_flags(cflags):
             if val and '/{}.framework'.format(fw) in val:
                 fdir = val[:val.index('/{}.framework'.format(fw))]
                 if os.path.isdir(os.path.join(fdir, '{}.framework'.format(fw))):
-                    libs.append('-F' + fdir)
+                    framework_dir = fdir
                     break
-        libs.extend(['-framework', fw])
+        else:
+            raise SystemExit('Failed to find Python framework')
+        libs.append(os.path.join(framework_dir, sysconfig.get_config_var('LDLIBRARY')))
     else:
         libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
         libs += ['-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags]
