@@ -20,6 +20,8 @@ appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
 version = tuple(map(int, re.search(r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE).group(1, 2, 3)))
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
+framework = sysconfig.get_config_var('PYTHONFRAMEWORK')
+sw = os.environ.get('SW')
 is_travis = os.environ.get('TRAVIS') == 'true'
 
 
@@ -47,16 +49,15 @@ def get_python_flags(cflags):
     libs = []
     libs += sysconfig.get_config_var('LIBS').split()
     libs += sysconfig.get_config_var('SYSLIBS').split()
-    fw = sysconfig.get_config_var('PYTHONFRAMEWORK')
-    if fw:
+    if framework:
         for var in 'data include stdlib'.split():
             val = sysconfig.get_path(var)
-            if val and '/{}.framework'.format(fw) in val:
-                fdir = val[:val.index('/{}.framework'.format(fw))]
-                if os.path.isdir(os.path.join(fdir, '{}.framework'.format(fw))):
+            if val and '/{}.framework'.format(framework) in val:
+                fdir = val[:val.index('/{}.framework'.format(framework))]
+                if os.path.isdir(os.path.join(fdir, '{}.framework'.format(framework))):
                     libs.append('-F' + fdir)
                     break
-        libs.extend(['-framework', fw])
+        libs.extend(['-framework', framework])
     else:
         libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
         libs += ['-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags]
@@ -168,7 +169,10 @@ def compile_c_extension(module, incremental, sources, headers):
         if not incremental or newer(dest, src, *headers):
             run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
+
     if not incremental or newer(dest, *objects):
+        if isosx and framework and (not sw):
+            objects.append(sysconfig.get_config_var('prefix') + '/Python')
         run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
 
 
