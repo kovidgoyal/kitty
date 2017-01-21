@@ -112,8 +112,9 @@ python3 /path/to/kitty/folder
 === macOS packages
 
 Currently, no one has made macOS packages for kitty, but you can use the above
-install from source instructions to run kitty on macOS, after installing its two
-dependencies (python >= 3.5 and glfw >= 3.2)
+install from source instructions to run kitty on macOS, after installing its
+two dependencies (python >= 3.5 and glfw >= 3.2 using http://brew.sh/[brew] or
+a similar package manager)
 
 
 == Design philosophy
