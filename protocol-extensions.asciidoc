@@ -255,7 +255,7 @@ Saved images can be deleted, to free up resources, by using the code:
 The special value of 'i=*' will cause the terminal emulator to delete all
 stored images.  Well behaved clients should send this code before terminating.
 
-Terminal emulators may limit the maximum amount of saved data to avoid DoS
+Terminal emulators may limit the maximum amount of saved data to avoid denial-of-service
 attacks.  Terminal emulators should make the limit fairly generous, at least a
 few hundred, full screen RGBA images worth of data should be allowed. 
 
