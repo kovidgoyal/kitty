@@ -112,8 +112,8 @@ The control data's keys are split up into categories for easier reference.
 |===
 | Key | Default     | Meaning 
 
-| w   | full width  | width -- number of columns to draw 
-| h   | full height | height -- number of columns to draw 
+| w   | full width  | width -- number of columns of the pixel data to draw 
+| h   | full height | height -- number of rows of the pixel data to draw 
 | x   | zero        | x-offset -- the column in the pixel data to start from (0-based)
 | y   | zero        | y-offset -- the row in the pixel data to start from (0-based)
 |===
@@ -274,3 +274,25 @@ The terminal emulator will respond with:
 
 If `OK` is sent the image was successfully loaded from the persistent storage, if not,
 then it must be resent.
+
+Note that when using the local filesystem to send data (`t=f`) mode, there is
+no need to use this persistence mechanism, as the client can directly refer to
+the file repeatedly with no overhead.
+
+=== A summary of the control keys used
+
+|===
+|Key | Description
+
+| f  | The _format_ of the transmitted pixel data
+| h  | _height_ -- number of rows of the pixel data to draw 
+| i  | _id_ to save transmitted data in persistent storage
+| m  | indicates whether there is _more_ data to come during a chunked transfer
+| q  | _query_ the terminal emulator to see if transmission succeeded
+| s  | The _stride_ of the transmitted pixel data
+| t  | The _type_ of transmission medium used
+| w  | _width_ -- number of columns of the pixel data to draw 
+| x  | _x-offset_ -- the column in the pixel data to start from (0-based)
+| y  | _y-offset_ -- the row in the pixel data to start from (0-based)
+
+|===
