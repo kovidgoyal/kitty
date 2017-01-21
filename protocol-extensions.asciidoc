@@ -37,3 +37,88 @@ To reset the underline color (also previously reserved and unused):
 ```
 <ESC>[59m
 ```
+
+
+== Graphics rendering
+
+The goal of this specification is to create a flexible and performant protocol
+that allows the program running in the terminal, hereafter called the _client_,
+to render arbitrary pixel (raster) graphics to the screen of the terminal
+emulator. The major design goals are
+
+ * Should not require terminal emulators to understand image formats.
+ * Should allow specifying graphics to be drawn per individual character cell. This allows graphics to mix with text using
+   the existing cursor based protocols.
+ * Should use optimizations when the client is running on the same computer as the terminal emulator.
+
+To achieve these goals the first extended escape code is to allow the client to
+query the current character cell size in pixels:
+
+```
+<ESC>[?7n
+```
+
+To which the terminal emulator replies with:
+
+```
+<ESC>[?7;<width>;<height>n
+```
+
+where `width` and `height` are in pixels and refer to the current size of a single character cell.
+
+=== Transferring pixel data
+
+```
+<ESC>_G<control data>;<payload><ESC>\
+```
+
+Before describing this escape code in detail, lets see some quick examples to get a flavor of it in action.
+
+```
+<ESC>_Gw=10,h=20,s=100;<pixel data>             # Draw 10x20 pixels starting at the top-left corner of the current cell.
+<ESC>_Gw=10,h=20,t=f,s=100;/tmp/pixel_data      # Ditto, getting the pixel data from /tmp/pixel_data
+<ESC>_Gw=10,h=20,t=m,s=100;/dev/shm/pixel_data  # Ditto, getting the pixel data from /dev/shm/pixel_data, deleting the file after reading data
+<ESC>_Gw=10,h=20,x=3,y=4,s=100;<pixel data>     # Draw 10x20 pixels starting at the top-left corner of the current cell, ignoring the first 4 rows and 3 columns of the pixel data
+```
+
+This control code is an _Application-Programming Command (APC)_, indicated by
+the leading `<ESC>_`. No modern terminals that I know of use APC codes, and
+well-behaved terminals are supposed to ignore APC codes they do not understand.
+
+The next character `G` indicates this APC code is for graphics data. In the future, we might
+have different first letters for different needs. 
+
+The control data is a comma-separated list of key-value pairs with the restriction that
+keys and values must contain only the characters `0-9a-zA-Z_-`. The payload is arbitrary binary
+data interpreted based on the control codes. The binary data must be base-64 encoded so as to minimize
+the probability of problems with legacy systems that might interpret control
+codes in the binary data incorrectly.
+
+The key to the operation of this escape code is understanding the way the control data works.
+The control data's keys are split up into categories for easier reference.
+
+==== Controlling drawing
+
+|===
+| Key | Default     | Meaning 
+| w   | full width  | width -- number of columns to draw 
+| h   | full height | height -- number of columns to draw 
+| x   | zero        | x-offset -- the column in the pixel data to start from (0-based)
+| y   | zero        | y-offset -- the row in the pixel data to start from (0-based)
+|===
+
+The origin for `(x, y)` is the top left corner of the pixel data, with `x`
+increasing from left-to-right and `y` increasing downwards. The terminal
+emulator will draw the specified region starting at the top-left corner of the
+current cell. If the width is greater than a single cell, the cursor will be
+moved one cell to the right and drawing will continue.  If the cursor reaches
+the end of the line, it moves to the next line and starts drawing the next row
+of data.  This means that the displayed image will be truncated at the right
+edge of the screen. If the cursor needs to move past the bottom of the screen,
+the screen is scrolled. After the entire region is drawn, the cursor will be
+positioned at the first cell after the image.
+
+
+==== Transmitting data
+
+
