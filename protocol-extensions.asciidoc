@@ -75,10 +75,14 @@ where `width` and `height` are in pixels and refer to the current size of a sing
 Before describing this escape code in detail, lets see some quick examples to get a flavor of it in action.
 
 ```
-<ESC>_Gw=10,h=20,s=100;<pixel data>             # Draw 10x20 pixels starting at the top-left corner of the current cell.
-<ESC>_Gw=10,h=20,t=f,s=100;/tmp/pixel_data      # Ditto, getting the pixel data from /tmp/pixel_data
-<ESC>_Gw=10,h=20,t=m,s=100;/dev/shm/pixel_data  # Ditto, getting the pixel data from /dev/shm/pixel_data, deleting the file after reading data
-<ESC>_Gw=10,h=20,x=3,y=4,s=100;<pixel data>     # Draw 10x20 pixels starting at the top-left corner of the current cell, ignoring the first 4 rows and 3 columns of the pixel data
+# Draw 10x20 pixels starting at the top-left corner of the current cell.
+<ESC>_Gw=10,h=20,s=100;<pixel data><ESC>\                  
+# Ditto, getting the pixel data from /tmp/pixel_data
+<ESC>_Gw=10,h=20,t=f,s=100;<encoded /tmp/pixel_data><ESC>\      
+# Ditto, getting the pixel data from /dev/shm/pixel_data, deleting the file after reading data
+<ESC>_Gw=10,h=20,t=t,s=100;<encoded /dev/shm/pixel_data><ESC>\  
+# Draw 10x20 pixels starting at the top-left corner of the current cell, ignoring the first 4 rows and 3 columns of the pixel data
+<ESC>_Gw=10,h=20,x=3,y=4,s=100;<pixel data><ESC>\     
 ```
 
 This control code is an _Application-Programming Command (APC)_, indicated by
@@ -121,4 +125,59 @@ positioned at the first cell after the image.
 
 ==== Transmitting data
 
+The first consideration when transferring data between the client and the
+terminal emulator is the format in which to do so. Since there is a vast and
+growing number of image formats in existence, it does not make sense to have
+every terminal emulator implement support for them. Instead, the client should
+send simple pixel data to the terminal emulator. The obvious downside to this
+is performance, especially when the client is running on a remote machine.
+Techniques for remedying this limitation are discussed later. The terminal
+emulator must understand pixel data in two formats, 24-bit RGB and 32-bit RGBA.
+This is specified using the `f` key in the control data. `f=32` (which is the
+default) indicates 32-bit RGBA data and `f=24` indicates 24-bit RGB data.
 
+One additional parameter is needed to describe the pixel data, the _stride_,
+that is the number of pixels per row. This is encoded using the `s` key, which
+is **required**. For example, `s=100` means there are one hundred pixels per
+row in the pixel data.
+
+Now let us turn to considering how the data is actually transmitted. 
+
+
+===== Local client
+
+When the client and the terminal emulator are on the same computer and share a
+filesystem or shared memory, transfer can happen efficiently using files or
+shared memory objects to pass the data around. The type of transfer is
+controlled by the `t` key. When sending data via files/shared memory, `t` can
+take three values, described below:
+
+|===
+| Value of `t` | Meaning 
+| f | A simple file
+| t | A temporary file, the terminal emulator will delete the file after reading the pixel data
+| s | A http://man7.org/linux/man-pages/man7/shm_overview.7.html[POSIX shared memory object]. The terminal emulator will delete it after reading the pixel data from it
+|===
+
+In all these cases, the payload data must be the base-64 encoded absolute file path.
+
+An important consideration is how the client can tell if the terminal emulator
+and it share a filesystem. This can be done by using the _response mode_, specifying
+the `q` key, with some unique id as the value. For example,
+
+```
+<ESC>_Gt=f,s=100,q=33;<encoded /tmp/pixel_data><ESC>\      
+```
+
+When the terminal emulator receives this escape code, it will read and display
+the pixel data as normal, and also send an escape code back to the client
+indicating whether the reading of the data was successful or not. The returned
+escape code will look like:
+
+```
+<ESC>_Gq=33;<encoded error message or OK><ESC>\
+```
+
+Here the q value will be the same as was sent by the client in the original
+request.  The payload data will be a base-64 encoded UTF-8 string. The string
+will be `OK` if reading the pixel data succeeded or an error message.
