@@ -6,7 +6,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan PYTHON=python3
+            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
           language: python
           python: "3.5"
           addons:
@@ -24,7 +24,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=clang RUN_FLAKE=1 PYTHON=python3
+            - CC=clang RUN_FLAKE=1 BUILD_PKG=1
           language: python
           python: "3.5"
           addons:
@@ -43,7 +43,7 @@ matrix:
 
         - os: osx
           language: generic
-          env: USE_BREW=1
+          env: USE_BREW=1 BUILD_PKG=1
 
 install: |
     set -e
@@ -80,3 +80,4 @@ before_script:
 script:
     - LD_PRELOAD=$ASANLIB $PYTHON setup.py test
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
+    - if [[ "$BUILD_PKG" == "1" ]]; then $PYTHON linux-package; fi
