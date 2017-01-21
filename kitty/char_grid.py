@@ -372,6 +372,11 @@ class CharGrid:
                 for m in self.url_pat.finditer(text):
                     if m.start() <= x < m.end():
                         url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
+                        if m.start() > 0:
+                            before = l[m.start() - 1]
+                            closing = {'(': ')', '[': ']', '{': '}', '<': '>', '"': '"', "'": "'", '`': '`', '|': '|', ':': ':'}.get(before)
+                            if closing is not None and url.endswith(closing):
+                                url = url[:-1]
                         if url:
                             open_url(url, self.opts.open_url_with)
 
