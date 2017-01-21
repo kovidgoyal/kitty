@@ -260,7 +260,7 @@ attacks.  Terminal emulators should make the limit fairly generous, at least a
 few hundred, full screen RGBA images worth of data should be allowed. 
 
 Client applications can check if an image is still stored by sending the `q`
-key, as described anchor:query[above]. For example,
+key, as described <<query,above>>. For example,
 
 ```
 <ESC>_Gt=i,i=some-id,q=some-id;<ESC>\
