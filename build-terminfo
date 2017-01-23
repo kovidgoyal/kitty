@@ -2,6 +2,8 @@
 
 import os
 import sys
+import shutil
+import subprocess
 
 base = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base)
@@ -13,4 +15,10 @@ with open('terminfo/kitty.terminfo', 'w') as f:
     f.write(generate_terminfo())
 
 os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
-os.execvp('tic', 'tic terminfo/kitty.terminfo'.split())
+subprocess.check_call(['tic', 'terminfo/kitty.terminfo'])
+# On OS X tic puts the compiled database into a different directory
+try:
+    os.mkdir('terminfo/78')
+except FileExistsError:
+    pass
+shutil.copy2('terminfo/x/xterm-kitty', 'terminfo/78')
