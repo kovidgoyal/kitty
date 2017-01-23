@@ -75,9 +75,9 @@ class Child:
                 t.start()
             return pid
 
-    def resize_pty(self, w, h):
+    def resize_pty(self, w, h, ww, wh):
         if self.child_fd is not None:
-            fcntl.ioctl(self.child_fd, termios.TIOCSWINSZ, struct.pack('4H', h, w, 0, 0))
+            fcntl.ioctl(self.child_fd, termios.TIOCSWINSZ, struct.pack('4H', h, w, ww, wh))
 
     def hangup(self):
         if self.pid is not None:

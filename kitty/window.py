@@ -65,7 +65,8 @@ class Window:
     def set_geometry(self, new_geometry):
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
-            self.child.resize_pty(self.screen.columns, self.screen.lines)
+            self.child.resize_pty(self.screen.columns, self.screen.lines,
+                                  max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             self.char_grid.resize(new_geometry)
             self.needs_layout = False
         else:
