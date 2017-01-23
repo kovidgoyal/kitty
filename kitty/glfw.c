@@ -74,7 +74,14 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 
 static void 
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
+    int framebufferWidth, framebufferHeight;
+    int windowWidth, windowHeight;
+    float ratioX, ratioY;
+    glfwGetFramebufferSize(w, &framebufferWidth, &framebufferHeight);
+    glfwGetWindowSize(w, &windowWidth, &windowHeight);
+    ratioX = (float)framebufferWidth / (float)windowWidth;
+    ratioY = (float)framebufferHeight / (float)windowHeight;
+    WINDOW_CALLBACK(cursor_pos_callback, "dd", x*ratioX, y*ratioY);
 }
 
 static void 
