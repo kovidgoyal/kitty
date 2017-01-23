@@ -242,7 +242,7 @@ a code with the keys `t=i,i=some-id`, and no payload, like this:
 <ESC>_Gt=i,i=some-id;<ESC>\
 ```
 
-The client can use the `w, h, x, y` keys to draw differnt parts of the image
+The client can use the `w, h, x, y` keys to draw different parts of the image
 and draw it at different locations by positioning the cursor before sending the
 code.
 
@@ -252,12 +252,12 @@ Saved images can be deleted, to free up resources, by using the code:
 <ESC>_Gt=d,i=some-id;<ESC>\
 ```
 
-The special value of 'i=*' will cause the terminal emulator to delete all
+The special value of `i=*` will cause the terminal emulator to delete all
 stored images.  Well behaved clients should send this code before terminating.
 
 Terminal emulators may limit the maximum amount of saved data to avoid denial-of-service
 attacks.  Terminal emulators should make the limit fairly generous, at least a
-few hundred, full screen RGBA images worth of data should be allowed. 
+few hundred, full screen, RGBA images worth of data should be allowed. 
 
 Client applications can check if an image is still stored by sending the `q`
 key, as described <<query,above>>. For example,
