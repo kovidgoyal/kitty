@@ -217,16 +217,14 @@ def safe_makedirs(path):
 def package(args):  # {{{
     ddir = args.prefix
     libdir = os.path.join(ddir, 'lib', 'kitty')
-    terminfo_sdir = ('78' if isosx else 'x')
-    terminfo_dir = os.path.join(ddir, 'share/terminfo/' + terminfo_sdir)
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
-    os.makedirs(os.path.join(libdir, 'terminfo/' + terminfo_sdir))
     os.makedirs(os.path.join(libdir, 'logo'))
-    safe_makedirs(terminfo_dir)
+    for x in (libdir, os.path.join(ddir, 'share')):
+        odir = os.path.join(x, 'terminfo')
+        safe_makedirs(odir)
+        subprocess.check_call(['tic', '-o' + odir, 'terminfo/kitty.terminfo'])
     shutil.copy2('__main__.py', libdir)
-    shutil.copy2('terminfo/x/xterm-kitty', terminfo_dir)
-    shutil.copy2('terminfo/x/xterm-kitty', os.path.join(libdir, 'terminfo/' + terminfo_sdir))
     shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
 
     def src_ignore(parent, entries):
