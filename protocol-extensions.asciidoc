@@ -54,20 +54,20 @@ emulator. The major design goals are
    the existing cursor based protocols.
  * Should use optimizations when the client is running on the same computer as the terminal emulator.
 
-To achieve these goals the first extended escape code is to allow the client to
-query the current character cell size in pixels:
+=== Getting the window size
 
-```
-<ESC>[?7n
+In order to know what size of images to display and how to position them, the client must be able to get the
+window size in pixels and the number of cells per row and column. This can be done by using the `TIOCGWINSZ` ioctl.
+Some C code to demonstrate its use
+
+```C
+struct ttysize ts; 
+ioctl(0, TIOCGWINSZ, &ts);
+printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
 ```
 
-To which the terminal emulator replies with:
-
-```
-<ESC>[?7;<width>;<height>n
-```
-
-where `width` and `height` are in pixels and refer to the current size of a single character cell.
+Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
+Examples of terminals that return correct values: `kitty, xterm`
 
 === Transferring pixel data
 
