@@ -45,13 +45,14 @@ del _get_config_dir
 
 class ViewportSize:
 
-    __slots__ = ('width', 'height')
+    __slots__ = ('width', 'height', 'x_ratio', 'y_ratio')
 
     def __init__(self):
         self.width = self.height = 1024
+        self.x_ratio = self.y_ratio = 1.0
 
     def __repr__(self):
-        return '(width={}, height={})'.format(self.width, self.height)
+        return '(width={}, height={}, x_ratio={}, y_ratio={})'.format(self.width, self.height, self.x_ratio, self.y_ratio)
 
 
 def get_boss():

@@ -339,7 +339,7 @@ class Boss(Thread):
 
     @callback
     def on_mouse_move(self, window, xpos, ypos):
-        mouse_cursor_pos[:2] = xpos, ypos
+        mouse_cursor_pos[:2] = int(xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
         self.show_mouse_cursor()
         w = self.window_for_pos(xpos, ypos)
         if w is not None:

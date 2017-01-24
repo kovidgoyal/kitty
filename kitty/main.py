@@ -108,6 +108,9 @@ def run_app(opts, args):
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
+    w, h = window.get_window_size()
+    viewport_size.x_ratio = viewport_size.width / float(w)
+    viewport_size.y_ratio = viewport_size.height / float(h)
     glewInit()
     boss = Boss(window, opts, args)
     boss.start()
