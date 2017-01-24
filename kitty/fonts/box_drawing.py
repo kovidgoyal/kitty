@@ -154,6 +154,13 @@ def triangle(buf, width, height, left=True):
         offset = y * width
         for x, (upper, lower) in zip(range(width), xlimits):
             buf[x + offset] = 255 if upper <= y <= lower else 0
+    # Anti-alias the diagonals, simple y-axis anti-aliasing
+    for x in range(width):
+        for y in xlimits[x]:
+            for ypx in range(int(math.floor(y)), int(math.ceil(y)) + 1):
+                if 0 <= ypx < height:
+                    off = ypx * width + x
+                    buf[off] = min(255, buf[off] + int((1 - abs(y - ypx)) * 255))
 
 
 def half_dhline(buf, width, height, level=1, which='left', only=None):
