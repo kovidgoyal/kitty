@@ -25,8 +25,7 @@ def set_font_family(family, size_in_pts, ignore_dpi_failure=False):
         for italic in (False, True):
             main_font[(bold, italic)] = Face(family, bold, italic, True, size_in_pts, dpi)
     mf = main_font[(False, False)]
-    cell_width = mf.cell_size()
-    cell_height = ceil_int(mf.ascent + mf.descent)
+    cell_width, cell_height = mf.cell_size()
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)
     WideCellTexture = ctypes.c_ubyte * (2 * cell_width * cell_height)
     baseline = int(round(mf.ascent))

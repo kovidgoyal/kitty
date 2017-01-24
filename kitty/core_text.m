@@ -134,7 +134,12 @@ cell_size(Face *self) {
             if (w > width) width = w; 
         }
     }
-    return Py_BuildValue("I", width);  
+    // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
+    CGFloat leading = MAX(0, self->leading);
+    leading = floor(leading + 0.5);
+    CGFloat line_height = floor(self->ascent + 0.5) + floor(self->descent + 0.5) + leading;
+    CGFloat ascender_delta = (leading > 0) ? 0 : floor(0.2 * line_height + 0.5);
+    return Py_BuildValue("II", width, (unsigned int)(line_height + ascender_delta));  
 #undef count
 }
 
