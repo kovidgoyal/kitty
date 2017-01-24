@@ -19,12 +19,19 @@ def set_font_family(opts, ignore_dpi_failure=False):
             raise
         dpi = (72, 72)  # Happens when running via develop() in an ssh session
     dpi = sum(dpi) / 2.0
-    family = opts.font_family
-    if family.lower() == 'monospace':
-        family = 'Menlo'
+    attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
+
+    def get_family(bold, italic):
+        ans = getattr(opts, attr_map[(bold, italic)])
+        if ans.lower() == 'monospace':
+            ans = 'Menlo'
+        if ans == 'auto' and (bold or italic):
+            ans = get_family(False, False)
+        return ans
+
     for bold in (False, True):
         for italic in (False, True):
-            main_font[(bold, italic)] = Face(family, bold, italic, True, opts.font_size, dpi)
+            main_font[(bold, italic)] = Face(get_family(bold, italic), bold, italic, True, opts.font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)

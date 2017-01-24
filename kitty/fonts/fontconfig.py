@@ -50,13 +50,21 @@ def get_font_information(q, bold=False, italic=False):
     return get_font(q, bold, italic)
 
 
-def get_font_files(family):
+def get_font_files(opts):
     ans = {}
-    n = get_font_information(family)
+    attr_map = {'bold': 'bold_font', 'italic': 'italic_font', 'bi': 'bold_italic_font'}
+
+    def get_family(key=None):
+        ans = getattr(opts, attr_map.get(key, 'font_family'))
+        if ans == 'auto' and key:
+            ans = get_family()
+        return ans
+
+    n = get_font_information(get_family())
     ans['regular'] = Font(Face(n.face), n.hinting, n.hintstyle, n.bold, n.italic)
 
     def do(key):
-        b = get_font_information(family, bold=key in ('bold', 'bi'), italic=key in ('italic', 'bi'))
+        b = get_font_information(get_family(key), bold=key in ('bold', 'bi'), italic=key in ('italic', 'bi'))
         if b.face != n.face:
             ans[key] = Font(Face(b.face), b.hinting, b.hintstyle, b.bold, b.italic)
     do('bold'), do('italic'), do('bi')

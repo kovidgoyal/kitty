@@ -105,7 +105,6 @@ type_map = {
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
     'click_interval': float,
-    'select_by_word_characters': str,
     'mouse_hide_wait': float,
     'cursor_blink_interval': float,
     'cursor_stop_blinking_after': float,

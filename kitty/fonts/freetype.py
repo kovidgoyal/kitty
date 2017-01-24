@@ -51,24 +51,23 @@ def set_font_family(opts):
     global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
     global underline_position, underline_thickness
     size_in_pts = opts.font_size
-    if current_font_family_name != opts.font_family or cff_size != size_in_pts:
-        find_font_for_character.cache_clear()
-        current_font_family = get_font_files(opts.font_family)
-        current_font_family_name = opts.font_family
-        dpi = get_logical_dpi()
-        cff_size = ceil_int(64 * size_in_pts)
-        cff_size = {'width': cff_size, 'height': cff_size, 'hres': int(dpi[0]), 'vres': int(dpi[1])}
-        for fobj in current_font_family.values():
-            set_char_size(fobj.face, **cff_size)
-        face = current_font_family['regular'].face
-        cell_width = calc_cell_width(current_font_family['regular'], face)
-        cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
-        baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
-        underline_position = min(baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1]), cell_height - 1)
-        underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
-        CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-        font_for_char.cache_clear()
-        alt_face_cache.clear()
+    find_font_for_character.cache_clear()
+    current_font_family = get_font_files(opts)
+    current_font_family_name = opts.font_family
+    dpi = get_logical_dpi()
+    cff_size = ceil_int(64 * size_in_pts)
+    cff_size = {'width': cff_size, 'height': cff_size, 'hres': int(dpi[0]), 'vres': int(dpi[1])}
+    for fobj in current_font_family.values():
+        set_char_size(fobj.face, **cff_size)
+    face = current_font_family['regular'].face
+    cell_width = calc_cell_width(current_font_family['regular'], face)
+    cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
+    baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
+    underline_position = min(baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1]), cell_height - 1)
+    underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
+    CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
+    font_for_char.cache_clear()
+    alt_face_cache.clear()
     return cell_width, cell_height
 
 
