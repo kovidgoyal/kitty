@@ -86,7 +86,7 @@ class Boss(Thread):
         self.pending_ui_thread_calls = Queue()
         self.write_dispatch_map = {}
         set_boss(self)
-        cell_size.width, cell_size.height = set_font_family(opts.font_family, opts.font_size)
+        cell_size.width, cell_size.height = set_font_family(opts)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
         glfw_window.framebuffer_size_callback = self.on_window_resize

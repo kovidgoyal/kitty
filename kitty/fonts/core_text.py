@@ -10,7 +10,7 @@ main_font = {}
 cell_width = cell_height = baseline = CellTexture = WideCellTexture = underline_thickness = underline_position = None
 
 
-def set_font_family(family, size_in_pts, ignore_dpi_failure=False):
+def set_font_family(opts, ignore_dpi_failure=False):
     global cell_width, cell_height, baseline, CellTexture, WideCellTexture, underline_thickness, underline_position
     try:
         dpi = get_logical_dpi()
@@ -19,11 +19,12 @@ def set_font_family(family, size_in_pts, ignore_dpi_failure=False):
             raise
         dpi = (72, 72)  # Happens when running via develop() in an ssh session
     dpi = sum(dpi) / 2.0
+    family = opts.font_family
     if family.lower() == 'monospace':
         family = 'Menlo'
     for bold in (False, True):
         for italic in (False, True):
-            main_font[(bold, italic)] = Face(family, bold, italic, True, size_in_pts, dpi)
+            main_font[(bold, italic)] = Face(family, bold, italic, True, opts.font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)
@@ -67,13 +68,15 @@ def develop(family='monospace', sz=288):
     import pickle
     from .render import render_string
     from kitty.fast_data_types import glfw_init
+    from kitty.config import defaults
     import os
     glfw_init()
     try:
         os.remove('/tmp/cell.data')
     except EnvironmentError:
         pass
-    set_font_family(family, sz, ignore_dpi_failure=True)
+    opts = defaults._replace(font_family=family, font_size=sz)
+    set_font_family(opts, ignore_dpi_failure=True)
     for (bold, italic), face in main_font.items():
         print('bold: {} italic: {} {}'.format(bold, italic, face))
     print('cell_width: {}, cell_height: {}, baseline: {}'.format(cell_width, cell_height, baseline))

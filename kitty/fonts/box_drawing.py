@@ -351,7 +351,9 @@ def join_rows(width, height, rows):
 
 def test_drawing(sz=32, family='monospace'):
     from .render import join_cells, display_bitmap, render_cell, set_font_family
-    width, height = set_font_family(family, sz)
+    from kitty.config import defaults
+    opts = defaults._replace(font_family=family, font_size=sz)
+    width, height = set_font_family(opts)
     pos = 0x2500
     rows = []
     space = render_cell()[0]

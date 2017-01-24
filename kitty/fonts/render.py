@@ -89,5 +89,7 @@ def render_string(text='\'Qing👁a⧽'):
 
 
 def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
-    set_font_family(family, sz)
+    from kitty.config import defaults
+    opts = defaults._replace(font_family=family, font_size=sz)
+    set_font_family(opts)
     display_bitmap(*render_string(text))

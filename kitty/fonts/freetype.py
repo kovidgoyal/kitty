@@ -47,13 +47,14 @@ def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
     return ceil_int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
 
 
-def set_font_family(family, size_in_pts):
+def set_font_family(opts):
     global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
     global underline_position, underline_thickness
-    if current_font_family_name != family or cff_size != size_in_pts:
+    size_in_pts = opts.font_size
+    if current_font_family_name != opts.font_family or cff_size != size_in_pts:
         find_font_for_character.cache_clear()
-        current_font_family = get_font_files(family)
-        current_font_family_name = family
+        current_font_family = get_font_files(opts.font_family)
+        current_font_family_name = opts.font_family
         dpi = get_logical_dpi()
         cff_size = ceil_int(64 * size_in_pts)
         cff_size = {'width': cff_size, 'height': cff_size, 'hres': int(dpi[0]), 'vres': int(dpi[1])}
