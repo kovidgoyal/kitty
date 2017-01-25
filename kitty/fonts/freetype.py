@@ -100,25 +100,25 @@ def render_char(text, bold=False, italic=False, width=1):
                 face = alt_face_cache[font] = Face(font.face)
                 set_char_size(face, **cff_size)
         bitmap = render_to_bitmap(font, face, text)
-        if width == 1 and bitmap.width > cell_width * 1.1:
-            # rescale the font size so that the glyph is visible in a single
-            # cell and hope somebody updates libc's wcwidth
-            sz = cff_size.copy()
-            sz['width'] = int(sz['width'] * cell_width / bitmap.width)
-            # Preserve aspect ratio
-            sz['height'] = int(sz['height'] * cell_width / bitmap.width)
-            try:
-                set_char_size(face, **sz)
-                bitmap = render_to_bitmap(font, face, text)
-            finally:
-                set_char_size(face, **cff_size)
+        if width == 1 and bitmap.width > cell_width:
+            extra = bitmap.width - cell_width
+            if italic and extra < cell_width // 2:
+                bitmap = face.trim_to_width(bitmap, cell_width)
+            elif extra > max(2, 0.1 * cell_width):
+                # rescale the font size so that the glyph is visible in a single
+                # cell and hope somebody updates libc's wcwidth
+                sz = cff_size.copy()
+                sz['width'] = int(sz['width'] * cell_width / bitmap.width)
+                # Preserve aspect ratio
+                sz['height'] = int(sz['height'] * cell_width / bitmap.width)
+                try:
+                    set_char_size(face, **sz)
+                    bitmap = render_to_bitmap(font, face, text)
+                finally:
+                    set_char_size(face, **cff_size)
         m = face.glyph_metrics()
         return CharBitmap(bitmap.buffer, ceil_int(abs(m.horiBearingX) / 64),
                           ceil_int(abs(m.horiBearingY) / 64), ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
-
-
-def is_wide_char(bitmap_char):
-    return min(bitmap_char.advance, bitmap_char.columns) > cell_width * 1.1
 
 
 def place_char_in_cell(bitmap_char):

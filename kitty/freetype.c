@@ -184,6 +184,46 @@ bitmap(Face *self) {
     return ans;
 }
  
+static PyObject*
+trim_to_width(Face UNUSED *self, PyObject *args) {
+#define trim_to_width_doc "Trim edges from the supplied bitmap to make it fit in the specified cell-width"
+    PyObject *bitmap, *t;
+    unsigned long cell_width, rows, width, rtrim = 0, extra, ltrim;
+    unsigned char *src, *dest;
+    bool column_has_text = false;
+    if (!PyArg_ParseTuple(args, "O!k", &BitmapType, &bitmap, &cell_width)) return NULL;
+    rows = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 0));
+    width = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 1));
+    extra = width - cell_width;
+    if (extra >= cell_width) { PyErr_SetString(PyExc_ValueError, "Too large for trimming"); return NULL; }
+    PyObject *ans = PyStructSequence_New(&BitmapType);
+    if (ans == NULL) return PyErr_NoMemory();
+    src = (unsigned char*)PyByteArray_AS_STRING(PyStructSequence_GET_ITEM(bitmap, 3));
+    PyObject *abuf = PyByteArray_FromStringAndSize(NULL, cell_width * rows);
+    if (abuf == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
+    dest = (unsigned char*)PyByteArray_AS_STRING(abuf);
+    PyStructSequence_SET_ITEM(ans, 1, PyLong_FromUnsignedLong(cell_width));
+    PyStructSequence_SET_ITEM(ans, 2, PyLong_FromUnsignedLong(cell_width));
+    PyStructSequence_SET_ITEM(ans, 3, abuf);
+#define COPY(which) t = PyStructSequence_GET_ITEM(bitmap, which); Py_INCREF(t); PyStructSequence_SET_ITEM(ans, which, t);
+    COPY(0); COPY(4); COPY(5); COPY(6);
+#undef COPY
+
+    for (long x = width - 1; !column_has_text && x > -1 && rtrim < extra; x--) {
+        for (unsigned long y = 0; y < rows * width; y += width) {
+            if (src[x + y] > 200) { column_has_text = true; break; }
+        }
+        if (!column_has_text) rtrim++;
+    }
+    rtrim = MIN(extra, rtrim);
+    ltrim = extra - rtrim;
+    for (unsigned long y = 0; y < rows; y++) {
+        memcpy(dest + y*cell_width, src + ltrim + y*width, cell_width);
+    }
+
+    return ans;
+}
+
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
@@ -205,6 +245,7 @@ static PyMethodDef methods[] = {
     METHOD(get_char_index, METH_VARARGS)
     METHOD(glyph_metrics, METH_NOARGS)
     METHOD(bitmap, METH_NOARGS)
+    METHOD(trim_to_width, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 
@@ -234,6 +275,7 @@ init_freetype_library(PyObject *m) {
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;
     if (PyStructSequence_InitType2(&BitmapType, &bm_desc) != 0) return false;
     PyModule_AddObject(m, "GlyphMetrics", (PyObject*)&GlpyhMetricsType);
+    PyModule_AddObject(m, "Bitmap", (PyObject*)&BitmapType);
     PyModule_AddIntMacro(m, FT_LOAD_RENDER);
     PyModule_AddIntMacro(m, FT_LOAD_TARGET_NORMAL);
     PyModule_AddIntMacro(m, FT_LOAD_TARGET_LIGHT);
