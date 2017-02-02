@@ -138,6 +138,8 @@ def on_glfw_error(code, msg):
 
 
 def main():
+    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1' and getattr(sys, 'frozen', True):
+        os.chdir(os.path.expanduser('~'))
     args = option_parser().parse_args()
     if args.cmd:
         exec(args.cmd)

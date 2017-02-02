@@ -46,6 +46,7 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     Py_Initialize();
     PySys_SetArgvEx(argc - 1, argv + 1, 0);
+    PySys_SetObject("frozen", Py_True);   // dont care if this fails 
     PyObject *kitty = PyUnicode_FromWideChar(stdlib, -1);
     if (kitty == NULL) { fprintf(stderr, "Failed to allocate python kitty lib object\n"); goto end; }
     PyObject *runpy = PyImport_ImportModule("runpy");
