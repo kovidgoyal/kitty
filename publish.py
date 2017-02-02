@@ -202,7 +202,7 @@ class GitHub(Base):  # {{{
     def fail(self, r, msg):
         print(msg, ' Status Code: %s' % r.status_code, file=sys.stderr)
         print("JSON from response:", file=sys.stderr)
-        pprint(dict(r.json()), stream=sys.stderr)
+        pprint.pprint(dict(r.json()), stream=sys.stderr)
         raise SystemExit(1)
 
     def already_exists(self, r):
@@ -263,14 +263,13 @@ def run_upload(args):
         os.path.join(build_path, 'build', f.format(version)): desc
         for f, desc in {
             'osx/dist/kitty-{}.dmg': 'macOS dmg',
-        }
+        }.items()
     }
     for f in files:
         if not os.path.exists(f):
             raise SystemExit('The installer {} does not exist'.format(f))
     gd = get_github_data()
-    gh = GitHub(files, appname, version, 'kovidgoyal', gd['username'],
-                gd['password'])
+    gh = GitHub(files, appname, version, gd['username'], gd['password'])
     gh()
 
 
