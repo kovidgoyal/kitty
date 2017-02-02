@@ -176,7 +176,7 @@ def compile_c_extension(module, incremental, sources, headers):
 
 def option_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('action', nargs='?', default='build', choices='build test linux-package'.split(), help='Action to perform (default is build)')
+    p.add_argument('action', nargs='?', default='build', choices='build test linux-package osx-bundle'.split(), help='Action to perform (default is build)')
     p.add_argument('--debug', default=False, action='store_true',
                    help='Build extension modules with debugging symbols')
     p.add_argument('--asan', default=False, action='store_true',
@@ -214,7 +214,7 @@ def safe_makedirs(path):
         pass
 
 
-def package(args):  # {{{
+def package(args, for_bundle=False):  # {{{
     ddir = args.prefix
     libdir = os.path.join(ddir, 'lib', 'kitty')
     if os.path.exists(libdir):
@@ -239,8 +239,13 @@ def package(args):  # {{{
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    run_tool([cc, '-O3', 'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')])
-    if not isosx:
+    cflags = '-O3'.split()
+    if for_bundle:
+        cflags.append('-DFOR_BUNDLE')
+    pylib = get_python_flags(cflags)
+    cmd = [cc] + cflags + ['linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')] + pylib
+    run_tool(cmd)
+    if not isosx:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256')
         safe_makedirs(icdir)
         shutil.copy2('logo/kitty.png', icdir)
@@ -259,6 +264,16 @@ Exec=kitty
 Icon=kitty
 Categories=System;
 ''')
+    # }}}
+
+    if for_bundle:  # OS X bundle gunk {{{
+        os.chdir(ddir)
+        os.mkdir('Contents')
+        os.chdir('Contents')
+        os.rename('../share', 'Resources')
+        os.rename('../bin', 'MacOS')
+        os.rename('../lib', 'Frameworks')
+    # }}}
 # }}}
 
 
@@ -275,6 +290,9 @@ def main():
     elif args.action == 'linux-package':
         build(args)
         package(args)
+    elif args.action == 'osx-bundle':
+        build(args)
+        package(args, for_bundle=True)
 
 
 if __name__ == '__main__':
