@@ -239,9 +239,10 @@ def package(args, for_bundle=False):  # {{{
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    cflags = '-O3'.split()
+    cflags = '-O3 -Wall -Werror'.split()
     if for_bundle:
         cflags.append('-DFOR_BUNDLE')
+        cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     pylib = get_python_flags(cflags)
     cmd = [cc] + cflags + ['linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')] + pylib
     run_tool(cmd)
