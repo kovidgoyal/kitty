@@ -64,7 +64,7 @@ speed). Less than ten thousand lines of code.
 
 * Cross-platform support: kitty currently works on Linux and macOS, but because it
 uses only OpenGL for rendering, it should be trivial to port to
-other platforms. See link:../../issues/5[5] for the status of the macOS port.
+other platforms. 
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
@@ -111,10 +111,11 @@ python3 /path/to/kitty/folder
 
 === macOS packages
 
-Currently, no one has made macOS packages for kitty, but you can use the above
-install from source instructions to run kitty on macOS, after installing its
-two dependencies (python >= 3.5 and glfw >= 3.2 using http://brew.sh/[brew] or
-a similar package manager)
+kitty is available as a macOS `dmg` file for easy installation from the
+link:../../releases[releases page].  You can also run kitty directly from
+source using the above install from source instructions, after installing its
+two dependencies (`python >= 3.5` and `glfw >= 3.2` using http://brew.sh/[brew]
+or a similar package manager)
 
 
 == Design philosophy
