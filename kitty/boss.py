@@ -282,7 +282,7 @@ class Boss(Thread):
                 if window.screen.auto_repeat_enabled or action == GLFW_PRESS:
                     if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
                         window.scroll_end()
-                    data = interpret_key_event(key, scancode, mods)
+                    data = interpret_key_event(key, scancode, mods, window)
                     if data:
                         window.write_to_child(data)
 

@@ -244,7 +244,7 @@ PyTypeObject ChangeTracker_Type;
 
 
 typedef struct {
-    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, 
+    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
          mBRACKETED_PASTE, mFOCUS_TRACKING;
     unsigned long mouse_tracking_mode, mouse_tracking_protocol;
 } ScreenModes;

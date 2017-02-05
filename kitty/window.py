@@ -17,7 +17,7 @@ from .fast_data_types import (
     GLFW_MOUSE_BUTTON_5, ANY_MODE, MOTION_MODE, GLFW_KEY_LEFT_SHIFT,
     GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_MOUSE_BUTTON_4
 )
-from .keys import key_map
+from .keys import get_key_map
 from .mouse import encode_mouse_event, PRESS, RELEASE, MOVE, DRAG
 from .terminfo import get_capabilities
 from .utils import sanitize_title, get_primary_selection, parse_color_set, safe_print
@@ -254,7 +254,7 @@ class Window:
                     if ev:
                         self.write_to_child(ev)
             else:
-                k = key_map[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
+                k = get_key_map(self.screen)[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
                 self.write_to_child(k * abs(s))
 
     def buf_toggled(self, is_main_linebuf):

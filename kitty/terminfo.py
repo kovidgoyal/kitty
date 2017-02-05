@@ -92,15 +92,15 @@ string_capabilities = {
     # Make cursor appear normal
     'cnorm': r'\E[?12l\E[?25h',
     # Carriage return
-    'cr': r'^M',
+    'cr': r'^M',  # CR (carriage return \r)
     # Change scroll region
     'csr': r'\E[%i%p1%d;%p2%dr',
     # Move cursor to the left by the specified amount
     'cub': r'\E[%p1%dD',
-    'cub1': r'^H',
+    'cub1': r'^H',  # BS (backspace)
     # Move cursor down specified number of lines
     'cud': r'\E[%p1%dB',
-    'cud1': r'^J',
+    'cud1': r'^J',  # LF (line-feed \n)
     # Move cursor to the right by the specified amount
     'cuf': r'\E[%p1%dC',
     'cuf1': r'\E[C',
@@ -203,6 +203,8 @@ string_capabilities = {
     'rmcup': r'\E[?1049l',
     # Exit insert mode
     'rmir': r'\E[4l',
+    # Exit application keypad mode
+    'rmkx': r'\E[?1l',
     # Exit standout mode
     'rmso': r'\E[27m',
     # Exit underline mode
@@ -227,6 +229,8 @@ string_capabilities = {
     'smcup': r'\E[?1049h',
     # Enster insert mode
     'smir': r'\E[4h',
+    # Enter application keymap mode
+    'smkx': r'\E[?1h',
     # Enter standout mode
     'smso': r'\E[7m',
     # Enter underline mode
@@ -373,6 +377,8 @@ termcap_aliases.update({
     'ZR': 'ritm',
     'as': 'smacs',
     'ae': 'rmacs',
+    'ks': 'smkx',
+    'ke': 'rmkx',
     '#2': 'kHOM',
     '#4': 'kLFT',
     '*7': 'kEND',

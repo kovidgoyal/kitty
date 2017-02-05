@@ -12,7 +12,7 @@
 #include "modes.h"
 #include "wcwidth9.h"
 
-static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
+static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true, .mDECCKM=true};
 
 // Constructor/destructor {{{
 
@@ -404,10 +404,12 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         MOUSE_MODE(MOUSE_SGR_MODE, mouse_tracking_protocol, SGR_PROTOCOL)
         MOUSE_MODE(MOUSE_URXVT_MODE, mouse_tracking_protocol, URXVT_PROTOCOL)
 
-        case DECCKM:
         case DECSCLM:
         case DECNRCM:
             break;  // we ignore these modes
+        case DECCKM:
+            self->modes.mDECCKM = val; 
+            break;
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
             tracker_cursor_changed(self->change_tracker);
@@ -1047,6 +1049,7 @@ MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
 MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
+MODE_GETSET(cursor_key_mode, DECCKM)
 
 static PyObject*
 mouse_tracking_mode(Screen *self) {
@@ -1250,6 +1253,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
     GETSET(cursor_visible)
+    GETSET(cursor_key_mode)
     {NULL}  /* Sentinel */
 };
 

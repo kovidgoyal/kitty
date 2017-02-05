@@ -5,7 +5,7 @@
 import kitty.fast_data_types as defines
 from .terminfo import key_as_bytes
 
-key_map = {
+smkx_key_map = {
     defines.GLFW_KEY_UP: 'kcuu1',
     defines.GLFW_KEY_DOWN: 'kcud1',
     defines.GLFW_KEY_LEFT: 'kcub1',
@@ -17,16 +17,16 @@ key_map = {
     defines.GLFW_KEY_PAGE_UP: 'kpp',
     defines.GLFW_KEY_PAGE_DOWN: 'knp',
 }
-key_map = {k: key_as_bytes(v) for k, v in key_map.items()}
+smkx_key_map = {k: key_as_bytes(v) for k, v in smkx_key_map.items()}
 for f in range(1, 13):
-    key_map[getattr(defines, 'GLFW_KEY_F{}'.format(f))] = key_as_bytes('kf{}'.format(f))
+    smkx_key_map[getattr(defines, 'GLFW_KEY_F{}'.format(f))] = key_as_bytes('kf{}'.format(f))
 del f
 
-key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
-key_map[defines.GLFW_KEY_ENTER] = b'\r'
-key_map[defines.GLFW_KEY_KP_ENTER] = b'\r'
-key_map[defines.GLFW_KEY_BACKSPACE] = key_as_bytes('kbs')
-key_map[defines.GLFW_KEY_TAB] = b'\t'
+smkx_key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
+smkx_key_map[defines.GLFW_KEY_ENTER] = b'\r'
+smkx_key_map[defines.GLFW_KEY_KP_ENTER] = b'\r'
+smkx_key_map[defines.GLFW_KEY_BACKSPACE] = key_as_bytes('kbs')
+smkx_key_map[defines.GLFW_KEY_TAB] = b'\t'
 
 SHIFTED_KEYS = {
     defines.GLFW_KEY_TAB: key_as_bytes('kcbt'),
@@ -49,6 +49,22 @@ control_codes[defines.GLFW_KEY_DELETE] = bytearray(key_as_bytes('kdch1').replace
 alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
 
 
+rmkx_key_map = smkx_key_map.copy()
+rmkx_key_map.update({
+    defines.GLFW_KEY_UP: b'\033[A',
+    defines.GLFW_KEY_DOWN: b'\033[B',
+    defines.GLFW_KEY_LEFT: b'\033[D',
+    defines.GLFW_KEY_RIGHT: b'\033[C',
+    defines.GLFW_KEY_HOME: b'\033[H',
+    defines.GLFW_KEY_END: b'\033[F',
+})
+cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
+
+
+def get_key_map(screen):
+    return cursor_key_mode_map[screen.cursor_key_mode]
+
+
 valid_localized_key_names = {
     k: getattr(defines, 'GLFW_KEY_' + k) for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 }
@@ -64,7 +80,7 @@ def get_localized_key(key, scancode):
     return valid_localized_key_names.get((name or '').upper(), key)
 
 
-def interpret_key_event(key, scancode, mods):
+def interpret_key_event(key, scancode, mods, window):
     data = bytearray()
     key = get_localized_key(key, scancode)
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
@@ -74,6 +90,7 @@ def interpret_key_event(key, scancode, mods):
         # Map Alt+key to Esc-key
         data.extend(alt_codes[key])
     else:
+        key_map = get_key_map(window.screen)
         x = key_map.get(key)
         if x is not None:
             if mods == defines.GLFW_MOD_SHIFT:
