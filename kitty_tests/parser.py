@@ -133,9 +133,11 @@ class TestParser(BaseTest):
         pb('\033[6n', ('report_device_status', 6, 0))
         self.ae(c.wtcbuf, b'\033[2;1R')
         c.clear()
+        s.cursor_key_mode = True
         pb('\033[?1$p', ('report_mode_status', 1, 1))
         self.ae(c.wtcbuf, b'\033[?1;1$y')
         pb('\033[?1l', ('screen_reset_mode', 1, 1))
+        self.assertFalse(s.cursor_key_mode)
         c.clear()
         pb('\033[?1$p', ('report_mode_status', 1, 1))
         self.ae(c.wtcbuf, b'\033[?1;2$y')

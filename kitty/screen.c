@@ -12,7 +12,7 @@
 #include "modes.h"
 #include "wcwidth9.h"
 
-static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true, .mDECCKM=true};
+static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
 // Constructor/destructor {{{
 
