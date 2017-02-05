@@ -314,7 +314,8 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case '"': \
         case '*': \
         case '\'': \
-        case ' ':
+        case ' ': \
+        case '$':
 
 
 static inline void 
@@ -472,6 +473,14 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CALL_CSI_HANDLER1(screen_indexn, 1); 
         case SD:
             CALL_CSI_HANDLER1(screen_reverse_indexn, 1); 
+        case DECSTR:
+            if (end_modifier == '$') {
+                // DECRQM
+                CALL_CSI_HANDLER1P(report_mode_status, 0, '?'); 
+            } else {
+                REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: 0x%x 0x%x", start_modifier, end_modifier);
+            }
+            break;
         default:
             REPORT_ERROR("Unknown CSI code: 0x%x", code);
     }

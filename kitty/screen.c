@@ -901,6 +901,31 @@ report_device_status(Screen *self, unsigned int which, bool private) {
 }
 
 void 
+report_mode_status(Screen *self, unsigned int which, bool private) {
+    unsigned int q = private ? which << 5 : which;
+    unsigned int ans = 0;
+    char buf[50] = {0};
+    switch(q) {
+#define KNOWN_MODE(x) \
+        case x: \
+            ans = self->modes.m##x ? 1 : 2; break;
+        KNOWN_MODE(LNM);
+        KNOWN_MODE(IRM);
+        KNOWN_MODE(DECTCEM);
+        KNOWN_MODE(DECSCNM);
+        KNOWN_MODE(DECOM);
+        KNOWN_MODE(DECAWM);
+        KNOWN_MODE(DECCOLM);
+        KNOWN_MODE(DECARM);
+        KNOWN_MODE(DECCKM);
+        KNOWN_MODE(BRACKETED_PASTE);
+        KNOWN_MODE(FOCUS_TRACKING);
+#undef KNOWN_MODE
+    }
+    if (snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%u$y", (private ? "?" : ""), which, ans)) callback("write_to_child", self, buf, 0);
+}
+
+void 
 screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
     if (!top) top = 1;
     if (!bottom) bottom = self->lines;

@@ -406,6 +406,7 @@ void screen_request_capabilities(Screen *, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
+void report_mode_status(Screen *self, unsigned int which, bool);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
