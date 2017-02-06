@@ -254,7 +254,7 @@ class GitHub(Base):  # {{{
 
 
 def get_github_data():
-    with open(os.path.expanduser('~/work/env/private/github')) as f:
+    with open(os.environ['PENV'] + '/github') as f:
         un, pw = f.read().strip().split(':')
     return {'username': un, 'password': pw}
 
