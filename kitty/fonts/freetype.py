@@ -39,8 +39,20 @@ def calc_cell_width(font, face):
 
 
 @lru_cache(maxsize=2**10)
-def font_for_char(char, bold=False, italic=False):
-    return find_font_for_character(current_font_family_name, char, bold, italic)
+def font_for_char(char, bold=False, italic=False, allow_bitmaped_fonts=False):
+    if allow_bitmaped_fonts:
+        return find_font_for_character(
+            current_font_family_name,
+            char,
+            bold,
+            italic,
+            allow_bitmaped_fonts=True,
+            size_in_pts=cff_size['width'] / 64,
+            dpi=(cff_size['hres'] + cff_size['vres']) / 2
+        )
+    return find_font_for_character(
+        current_font_family_name, char, bold, italic
+    )
 
 
 def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
@@ -51,27 +63,43 @@ def set_font_family(opts):
     global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
     global underline_position, underline_thickness
     size_in_pts = opts.font_size
-    find_font_for_character.cache_clear()
     current_font_family = get_font_files(opts)
     current_font_family_name = opts.font_family
     dpi = get_logical_dpi()
     cff_size = ceil_int(64 * size_in_pts)
-    cff_size = {'width': cff_size, 'height': cff_size, 'hres': int(dpi[0]), 'vres': int(dpi[1])}
+    cff_size = {
+        'width': cff_size,
+        'height': cff_size,
+        'hres': int(dpi[0]),
+        'vres': int(dpi[1])
+    }
     for fobj in current_font_family.values():
         set_char_size(fobj.face, **cff_size)
     face = current_font_family['regular'].face
     cell_width = calc_cell_width(current_font_family['regular'], face)
-    cell_height = font_units_to_pixels(face.height, face.units_per_EM, size_in_pts, dpi[1])
-    baseline = font_units_to_pixels(face.ascender, face.units_per_EM, size_in_pts, dpi[1])
-    underline_position = min(baseline - font_units_to_pixels(face.underline_position, face.units_per_EM, size_in_pts, dpi[1]), cell_height - 1)
-    underline_thickness = font_units_to_pixels(face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1])
+    cell_height = font_units_to_pixels(
+        face.height, face.units_per_EM, size_in_pts, dpi[1]
+    )
+    baseline = font_units_to_pixels(
+        face.ascender, face.units_per_EM, size_in_pts, dpi[1]
+    )
+    underline_position = min(
+        baseline - font_units_to_pixels(
+            face.underline_position, face.units_per_EM, size_in_pts, dpi[1]
+        ), cell_height - 1
+    )
+    underline_thickness = font_units_to_pixels(
+        face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1]
+    )
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     font_for_char.cache_clear()
     alt_face_cache.clear()
     return cell_width, cell_height
 
 
-CharBitmap = namedtuple('CharBitmap', 'data bearingX bearingY advance rows columns')
+CharBitmap = namedtuple(
+    'CharBitmap', 'data bearingX bearingY advance rows columns'
+)
 freetype_lock = Lock()
 
 
@@ -80,7 +108,9 @@ def render_to_bitmap(font, face, text):
     bitmap = face.bitmap()
     if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
         raise ValueError(
-            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.format(text, bitmap.pixel_mode))
+            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.
+            format(text, bitmap.pixel_mode)
+        )
     return bitmap
 
 
@@ -94,17 +124,23 @@ def render_char(text, bold=False, italic=False, width=1):
         font = current_font_family.get(key) or current_font_family['regular']
         face = font.face
         if not face.get_char_index(text[0]):
-            font = font_for_char(text[0], bold, italic)
+            try:
+                font = font_for_char(text[0], bold, italic)
+            except FontNotFound:
+                font = font_for_char(
+                    text[0], bold, italic, allow_bitmaped_fonts=True
+                )
             face = alt_face_cache.get(font)
             if face is None:
                 face = alt_face_cache[font] = Face(font.face)
-                set_char_size(face, **cff_size)
+                if face.is_scalable:
+                    set_char_size(face, **cff_size)
         bitmap = render_to_bitmap(font, face, text)
         if width == 1 and bitmap.width > cell_width:
             extra = bitmap.width - cell_width
             if italic and extra < cell_width // 2:
                 bitmap = face.trim_to_width(bitmap, cell_width)
-            elif extra > max(2, 0.1 * cell_width):
+            elif extra > max(2, 0.1 * cell_width) and face.is_scalable:
                 # rescale the font size so that the glyph is visible in a single
                 # cell and hope somebody updates libc's wcwidth
                 sz = cff_size.copy()
@@ -117,8 +153,12 @@ def render_char(text, bold=False, italic=False, width=1):
                 finally:
                     set_char_size(face, **cff_size)
         m = face.glyph_metrics()
-        return CharBitmap(bitmap.buffer, ceil_int(abs(m.horiBearingX) / 64),
-                          ceil_int(abs(m.horiBearingY) / 64), ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width)
+        return CharBitmap(
+            bitmap.buffer,
+            ceil_int(abs(m.horiBearingX) / 64),
+            ceil_int(abs(m.horiBearingY) / 64),
+            ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width
+        )
 
 
 def place_char_in_cell(bitmap_char):
@@ -133,7 +173,9 @@ def place_char_in_cell(bitmap_char):
         extra = dest_start_column + bitmap_char.columns - cell_width
         if extra > 0:
             dest_start_column -= extra
-    column_count = min(bitmap_char.columns - src_start_column, cell_width - dest_start_column)
+    column_count = min(
+        bitmap_char.columns - src_start_column, cell_width - dest_start_column
+    )
 
     # Calculate row bounds, making sure the baseline is aligned with the cell
     # baseline
@@ -141,9 +183,13 @@ def place_char_in_cell(bitmap_char):
         src_start_row, dest_start_row = bitmap_char.bearingY - baseline, 0
     else:
         src_start_row, dest_start_row = 0, baseline - bitmap_char.bearingY
-    row_count = min(bitmap_char.rows - src_start_row, cell_height - dest_start_row)
-    return create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count,
-                              src_start_column, dest_start_column, column_count)
+    row_count = min(
+        bitmap_char.rows - src_start_row, cell_height - dest_start_row
+    )
+    return create_cell_buffer(
+        bitmap_char, src_start_row, dest_start_row, row_count,
+        src_start_column, dest_start_column, column_count
+    )
 
 
 def split_char_bitmap(bitmap_char):
@@ -176,7 +222,9 @@ def missing_glyph(width):
     first, second = CharBitmap(ans, 0, 0, 0, cell_height, w), None
     if width == 2:
         first, second = split_char_bitmap(first)
-        second = create_cell_buffer(second, 0, 0, second.rows, 0, 0, second.columns)
+        second = create_cell_buffer(
+            second, 0, 0, second.rows, 0, 0, second.columns
+        )
     first = create_cell_buffer(first, 0, 0, first.rows, 0, 0, first.columns)
     return first, second
 
@@ -204,11 +252,16 @@ def render_cell(text=' ', bold=False, italic=False):
     return first, second
 
 
-def create_cell_buffer(bitmap_char, src_start_row, dest_start_row, row_count, src_start_column, dest_start_column, column_count):
+def create_cell_buffer(
+    bitmap_char, src_start_row, dest_start_row, row_count, src_start_column,
+    dest_start_column, column_count
+):
     src = bitmap_char.data
     src_stride = bitmap_char.columns
     dest = CharTexture()
     for r in range(row_count):
-        sr, dr = src_start_column + (src_start_row + r) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
+        sr, dr = src_start_column + (
+            src_start_row + r
+        ) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
         dest[dr:dr + column_count] = src[sr:sr + column_count]
     return dest

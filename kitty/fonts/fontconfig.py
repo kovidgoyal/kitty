@@ -6,7 +6,6 @@ import os
 import re
 import subprocess
 from collections import namedtuple
-from functools import lru_cache
 
 from kitty.fast_data_types import Face
 
@@ -29,7 +28,13 @@ def to_bool(x):
 
 
 def get_font(
-    family, bold, italic, allow_bitmaped_fonts=False, size_in_pts=None, character=None
+    family,
+    bold,
+    italic,
+    allow_bitmaped_fonts=False,
+    size_in_pts=None,
+    character=None,
+    dpi=None
 ):
     query = escape_family_name(family)
     if character is not None:
@@ -38,6 +43,8 @@ def get_font(
         query += ':scalable=true:outline=true'
     if size_in_pts is not None:
         query += ':size={:.1f}'.format(size_in_pts)
+    if dpi is not None:
+        query += ':dpi={:.1f}'.format(dpi)
     if bold:
         query += ':weight=200'
     if italic:
@@ -60,10 +67,25 @@ def get_font(
     )
 
 
-@lru_cache(maxsize=4096)
-def find_font_for_character(family, char, bold=False, italic=False):
+def find_font_for_character(
+    family,
+    char,
+    bold=False,
+    italic=False,
+    allow_bitmaped_fonts=False,
+    size_in_pts=None,
+    dpi=None
+):
     try:
-        ans = get_font(family, bold, italic, character=char)
+        ans = get_font(
+            family,
+            bold,
+            italic,
+            character=char,
+            allow_bitmaped_fonts=allow_bitmaped_fonts,
+            size_in_pts=size_in_pts,
+            dpi=dpi
+        )
     except subprocess.CalledProcessError as err:
         raise FontNotFound(
             'Failed to find font for character U+{:X}, error from fontconfig: {}'.
@@ -76,7 +98,6 @@ def find_font_for_character(family, char, bold=False, italic=False):
     return ans
 
 
-@lru_cache(maxsize=64)
 def get_font_information(family, bold=False, italic=False):
     return get_font(family, bold, italic)
 

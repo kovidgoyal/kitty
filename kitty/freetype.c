@@ -15,6 +15,7 @@ typedef struct {
     FT_Face face;
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
+    bool is_scalable;
 } Face;
 
 
@@ -68,6 +69,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 #define CPY(n) self->n = self->face->n;
         CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
+        self->is_scalable = FT_IS_SCALABLE(self->face);
     }
     return (PyObject*)self;
 }
@@ -236,6 +238,7 @@ static PyMemberDef members[] = {
     MEM(max_advance_height, T_INT),
     MEM(underline_position, T_INT),
     MEM(underline_thickness, T_INT),
+    MEM(is_scalable, T_BOOL),
     {NULL}  /* Sentinel */
 };
 
