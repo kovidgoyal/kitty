@@ -111,7 +111,7 @@ def find_font_for_character(
             size_in_pts=size_in_pts,
             dpi=dpi
         )
-    except subprocess.CalledProcessError as err:
+    except (KeyError, subprocess.CalledProcessError) as err:
         raise FontNotFound(
             'Failed to find font for character U+{:X}, error from fontconfig: {}'.
             format(ord(char[0]), err)
