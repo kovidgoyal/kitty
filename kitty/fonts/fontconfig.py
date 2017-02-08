@@ -28,6 +28,13 @@ def to_bool(x):
     return x.lower() == 'true'
 
 
+def font_not_found(err, char):
+    msg = 'Failed to find font'
+    if char is not None:
+        msg = 'Failed to find font for character U+{:X}, error from fontconfig: {}'.  format(ord(char[0]), err)
+    return FontNotFound(msg)
+
+
 def get_font_subprocess(
     family='monospace',
     bold=False,
@@ -50,10 +57,13 @@ def get_font_subprocess(
         query += ':weight=200'
     if italic:
         query += ':slant=100'
-    raw = subprocess.check_output([
-        'fc-match', query, '-f',
-        '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}\x1e%{index}'
-    ]).decode('utf-8')
+    try:
+        raw = subprocess.check_output([
+            'fc-match', query, '-f',
+            '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}\x1e%{index}'
+        ]).decode('utf-8')
+    except subprocess.CalledProcessError as err:
+        raise font_not_found(err, character)
     parts = raw.split('\x1e')
     try:
         path, hinting, hintstyle, scalable, outline, weight, slant, index = parts
@@ -78,10 +88,13 @@ def get_font_lib(
     character=None,
     dpi=None
 ):
-    path, index, hintstyle, hinting, scalable, outline, weight, slant = get_fontconfig_font(
-        family, bold, italic, allow_bitmaped_fonts, size_in_pts or 0,
-        0 if character is None else ord(character[0]), dpi or 0
-    )
+    try:
+        path, index, hintstyle, hinting, scalable, outline, weight, slant = get_fontconfig_font(
+            family, bold, italic, allow_bitmaped_fonts, size_in_pts or 0,
+            0 if character is None else ord(character[0]), dpi or 0
+        )
+    except KeyError as err:
+        raise font_not_found(err, character)
 
     return Font(
         path, hinting, hintstyle, bold, italic, scalable, outline, weight,
@@ -101,21 +114,15 @@ def find_font_for_character(
     size_in_pts=None,
     dpi=None
 ):
-    try:
-        ans = get_font(
-            family,
-            bold,
-            italic,
-            character=char,
-            allow_bitmaped_fonts=allow_bitmaped_fonts,
-            size_in_pts=size_in_pts,
-            dpi=dpi
-        )
-    except (KeyError, subprocess.CalledProcessError) as err:
-        raise FontNotFound(
-            'Failed to find font for character U+{:X}, error from fontconfig: {}'.
-            format(ord(char[0]), err)
-        )
+    ans = get_font(
+        family,
+        bold,
+        italic,
+        character=char,
+        allow_bitmaped_fonts=allow_bitmaped_fonts,
+        size_in_pts=size_in_pts,
+        dpi=dpi
+    )
     if not ans.face or not os.path.exists(ans.face):
         raise FontNotFound(
             'Failed to find font for character U+{:X}'.format(ord(char[0]))
