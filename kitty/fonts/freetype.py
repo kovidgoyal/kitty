@@ -2,18 +2,18 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import unicodedata
 import ctypes
+import sys
+import unicodedata
 from collections import namedtuple
 from functools import lru_cache
 from threading import Lock
 
-from kitty.fast_data_types import Face, FT_PIXEL_MODE_GRAY
-from kitty.utils import ceil_int
-from .fontconfig import find_font_for_character, get_font_files
+from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face
+from kitty.fonts.box_drawing import render_missing_glyph
+from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth
 
-from kitty.utils import get_logical_dpi, wcwidth
-
+from .fontconfig import find_font_for_character, get_font_files, FontNotFound
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
 CharTexture = underline_position = underline_thickness = None
@@ -168,12 +168,29 @@ def current_cell():
     return CharTexture, cell_width, cell_height, baseline, underline_thickness, underline_position
 
 
+@lru_cache(maxsize=8)
+def missing_glyph(width):
+    w = cell_width * width
+    ans = bytearray(w * cell_height)
+    render_missing_glyph(ans, w, cell_height)
+    first, second = CharBitmap(ans, 0, 0, 0, cell_height, w), None
+    if width == 2:
+        first, second = split_char_bitmap(first)
+        second = create_cell_buffer(second, 0, 0, second.rows, 0, 0, second.columns)
+    first = create_cell_buffer(first, 0, 0, first.rows, 0, 0, first.columns)
+    return first, second
+
+
 def render_cell(text=' ', bold=False, italic=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
     text = unicodedata.normalize('NFC', text)[0]
     width = wcwidth(text)
-    bitmap_char = render_char(text, bold, italic, width)
+    try:
+        bitmap_char = render_char(text, bold, italic, width)
+    except FontNotFound as err:
+        safe_print('ERROR:', err, file=sys.stderr)
+        return missing_glyph(width)
     second = None
     if width == 2:
         if bitmap_char.columns > cell_width:

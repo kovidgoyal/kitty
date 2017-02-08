@@ -26,7 +26,7 @@ def draw_hline(buf, width, x1, x2, y, level):
 
 
 def draw_vline(buf, width, y1, y2, x, level):
-    ' Draw a horizontal line between [y1, y2) centered at x with the thickness given by level '
+    ' Draw a vertical line between [y1, y2) centered at x with the thickness given by level '
     sz = thickness(level=level, horizontal=True)
     start = x - sz // 2
     for x in range(start, start + sz):
@@ -343,6 +343,15 @@ def render_box_char(ch, buf, width, height):
     for func in box_chars[ch]:
         func(buf, width, height)
     return buf
+
+
+def render_missing_glyph(buf, width, height):
+    hgap = thickness(level=0, horizontal=True) + 1
+    vgap = thickness(level=0, horizontal=False) + 1
+    draw_hline(buf, width, hgap, width - hgap + 1, vgap, 0)
+    draw_hline(buf, width, hgap, width - hgap + 1, height - vgap, 0)
+    draw_vline(buf, width, vgap, height - vgap + 1, hgap, 0)
+    draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
 
 
 def join_rows(width, height, rows):
