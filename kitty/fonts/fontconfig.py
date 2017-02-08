@@ -40,8 +40,7 @@ def get_font(query, bold, italic):
 
 @lru_cache(maxsize=4096)
 def find_font_for_character(family, char, bold=False, italic=False):
-    q = escape_family_name(family) + ':charset={}'.format(
-        hex(ord(char[0]))[2:])
+    q = escape_family_name(family) + ':charset={:x}'.format(ord(char[0]))
     if bold:
         q += ':weight=200'
     if italic:
