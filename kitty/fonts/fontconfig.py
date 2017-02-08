@@ -15,55 +15,70 @@ def escape_family_name(name):
     return re.sub(r'([-:,\\])', lambda m: '\\' + m.group(1), name)
 
 
-Font = namedtuple('Font', 'face hinting hintstyle bold italic')
+Font = namedtuple(
+    'Font', 'face hinting hintstyle bold italic scalable outline weight slant'
+)
 
 
 class FontNotFound(ValueError):
     pass
 
 
-def get_font(query, bold, italic):
-    query += ':scalable=true:outline=true'
-    raw = subprocess.check_output(
-        ['fc-match', query, '-f', '%{file}\x1e%{hinting}\x1e%{hintstyle}'
-         ]).decode('utf-8')
+def to_bool(x):
+    return x.lower() == 'true'
+
+
+def get_font(
+    family, bold, italic, allow_bitmaped_fonts=False, size_in_pts=None, character=None
+):
+    query = escape_family_name(family)
+    if character is not None:
+        query += ':charset={:x}'.format(ord(character[0]))
+    if not allow_bitmaped_fonts:
+        query += ':scalable=true:outline=true'
+    if size_in_pts is not None:
+        query += ':size={:.1f}'.format(size_in_pts)
+    if bold:
+        query += ':weight=200'
+    if italic:
+        query += ':slant=100'
+    raw = subprocess.check_output([
+        'fc-match', query, '-f',
+        '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}'
+    ]).decode('utf-8')
     parts = raw.split('\x1e')
-    hintstyle, hinting = 1, 'True'
-    if len(parts) == 3:
-        path, hinting, hintstyle = parts
-    else:
+    try:
+        path, hinting, hintstyle, scalable, outline, weight, slant = parts
+    except ValueError:
         path = parts[0]
-    hinting = hinting.lower() == 'true'
-    hintstyle = int(hintstyle)
-    return Font(path, hinting, hintstyle, bold, italic)
+        hintstyle, hinting, scalable, outline, weight, slant = 1, 'True', 'True', 'True', 100, 0
+    return Font(
+        path,
+        to_bool(hinting),
+        int(hintstyle), bold, italic,
+        to_bool(scalable), to_bool(outline), int(weight), int(slant)
+    )
 
 
 @lru_cache(maxsize=4096)
 def find_font_for_character(family, char, bold=False, italic=False):
-    q = escape_family_name(family) + ':charset={:x}'.format(ord(char[0]))
-    if bold:
-        q += ':weight=200'
-    if italic:
-        q += ':slant=100'
     try:
-        ans = get_font(q, bold, italic)
+        ans = get_font(family, bold, italic, character=char)
     except subprocess.CalledProcessError as err:
         raise FontNotFound(
             'Failed to find font for character U+{:X}, error from fontconfig: {}'.
-            format(ord(char[0]), err))
+            format(ord(char[0]), err)
+        )
     if not ans.face or not os.path.exists(ans.face):
-        raise FontNotFound('Failed to find font for character U+{:X}'.format(ord(char[0])))
+        raise FontNotFound(
+            'Failed to find font for character U+{:X}'.format(ord(char[0]))
+        )
     return ans
 
 
 @lru_cache(maxsize=64)
-def get_font_information(q, bold=False, italic=False):
-    q = escape_family_name(q)
-    if bold:
-        q += ':weight=200'
-    if italic:
-        q += ':slant=100'
-    return get_font(q, bold, italic)
+def get_font_information(family, bold=False, italic=False):
+    return get_font(family, bold, italic)
 
 
 def get_font_files(opts):
@@ -81,17 +96,16 @@ def get_font_files(opts):
         return ans
 
     n = get_font_information(get_family())
-    ans['regular'] = Font(
-        Face(n.face), n.hinting, n.hintstyle, n.bold, n.italic)
+    ans['regular'] = n._replace(face=Face(n.face))
 
     def do(key):
         b = get_font_information(
             get_family(key),
             bold=key in ('bold', 'bi'),
-            italic=key in ('italic', 'bi'))
+            italic=key in ('italic', 'bi')
+        )
         if b.face != n.face:
-            ans[key] = Font(
-                Face(b.face), b.hinting, b.hintstyle, b.bold, b.italic)
+            ans[key] = b._replace(face=Face(b.face))
 
     do('bold'), do('italic'), do('bi')
     return ans
