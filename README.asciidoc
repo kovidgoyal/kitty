@@ -81,7 +81,7 @@ the following dependencies are installed first.
 * python >= 3.5
 * glfw   >= 3.2
 * glew   >= 2.0 (not needed on macOS)
-* freetype, fontconfig (not needed on macOS)
+* fontconfig (not needed on macOS)
 * xdpyinfo and xsel (only on X11 based systems)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
@@ -128,7 +128,7 @@ easy reproducability (I like to store config files in source control).
 The code in kitty is designed to be simple, modular and hackable. It is
 written in a mix of C (for performance sensitive parts) and Python (for
 easy hackability of the UI). It does not depend on any large and complex
-UI toolkit, using only OpenGL+FreeType for rendering everything.
+UI toolkit, using only OpenGL for rendering everything.
 
 Finally, kitty is designed from the ground up to support all modern
 terminal features, such as unicode, true color, bold/italic fonts, text
