@@ -132,7 +132,7 @@ def render_char(text, bold=False, italic=False, width=1):
                 )
             face = alt_face_cache.get(font)
             if face is None:
-                face = alt_face_cache[font] = Face(font.face)
+                face = alt_face_cache[font] = Face(font.face, font.index)
                 if face.is_scalable:
                     set_char_size(face, **cff_size)
         bitmap = render_to_bitmap(font, face, text)

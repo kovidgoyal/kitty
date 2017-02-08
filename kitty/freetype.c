@@ -57,13 +57,14 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
     char *path;
     int error;
+    long index;
     /* unsigned int columns=80, lines=24, scrollback=0; */
-    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    if (!PyArg_ParseTuple(args, "sl", &path, &index)) return NULL;
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
         Py_BEGIN_ALLOW_THREADS;
-        error = FT_New_Face(library, path, 0, &(self->face));
+        error = FT_New_Face(library, path, index, &(self->face));
         Py_END_ALLOW_THREADS;
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;

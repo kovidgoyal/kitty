@@ -15,7 +15,7 @@ def escape_family_name(name):
 
 
 Font = namedtuple(
-    'Font', 'face hinting hintstyle bold italic scalable outline weight slant'
+    'Font', 'face hinting hintstyle bold italic scalable outline weight slant index'
 )
 
 
@@ -51,19 +51,19 @@ def get_font(
         query += ':slant=100'
     raw = subprocess.check_output([
         'fc-match', query, '-f',
-        '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}'
+        '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}\x1e%{index}'
     ]).decode('utf-8')
     parts = raw.split('\x1e')
     try:
-        path, hinting, hintstyle, scalable, outline, weight, slant = parts
+        path, hinting, hintstyle, scalable, outline, weight, slant, index = parts
     except ValueError:
         path = parts[0]
-        hintstyle, hinting, scalable, outline, weight, slant = 1, 'True', 'True', 'True', 100, 0
+        hintstyle, hinting, scalable, outline, weight, slant, index = 1, 'True', 'True', 'True', 100, 0, 0
     return Font(
         path,
         to_bool(hinting),
         int(hintstyle), bold, italic,
-        to_bool(scalable), to_bool(outline), int(weight), int(slant)
+        to_bool(scalable), to_bool(outline), int(weight), int(slant), int(index)
     )
 
 
@@ -117,7 +117,7 @@ def get_font_files(opts):
         return ans
 
     n = get_font_information(get_family())
-    ans['regular'] = n._replace(face=Face(n.face))
+    ans['regular'] = n._replace(face=Face(n.face, n.index))
 
     def do(key):
         b = get_font_information(
@@ -126,7 +126,7 @@ def get_font_files(opts):
             italic=key in ('italic', 'bi')
         )
         if b.face != n.face:
-            ans[key] = b._replace(face=Face(b.face))
+            ans[key] = b._replace(face=Face(b.face, b.index))
 
     do('bold'), do('italic'), do('bi')
     return ans
