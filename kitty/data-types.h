@@ -415,3 +415,5 @@ DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
 
 bool init_freetype_library(PyObject*);
+bool init_fontconfig_library(PyObject*);
+PyObject *get_fontconfig_font(PyObject *self, PyObject *args);

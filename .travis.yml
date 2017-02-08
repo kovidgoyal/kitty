@@ -12,7 +12,7 @@ matrix:
           addons:
             apt:
               packages:
-                - libfreetype6-dev
+                - libfontconfig1-dev
                 - libglew-dev
                 - libxi-dev
                 - libxrandr-dev
@@ -30,7 +30,7 @@ matrix:
           addons:
             apt:
               packages:
-                - libfreetype6-dev
+                - libfontconfig1-dev
                 - libglew-dev
                 - libxi-dev
                 - libxrandr-dev

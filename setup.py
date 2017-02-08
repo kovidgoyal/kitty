@@ -106,8 +106,8 @@ def init_env(debug=False, asan=False):
     if isosx:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
     else:
-        cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
-        font_libs = pkg_config('freetype2', '--libs')
+        cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
+        font_libs = pkg_config('fontconfig', '--libs')
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     ldflags.append('-shared')
     pylib = get_python_flags(cflags)
@@ -190,7 +190,7 @@ def option_parser():
 def find_c_files():
     ans, headers = [], []
     d = os.path.join(base, 'kitty')
-    exclude = {'freetype.c'} if isosx else {'core_text.m'}
+    exclude = {'freetype.c', 'fontconfig.c'} if isosx else {'core_text.m'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:

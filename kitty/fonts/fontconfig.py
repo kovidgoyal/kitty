@@ -7,7 +7,7 @@ import re
 import subprocess
 from collections import namedtuple
 
-from kitty.fast_data_types import Face
+from kitty.fast_data_types import Face, get_fontconfig_font
 
 
 def escape_family_name(name):
@@ -15,7 +15,8 @@ def escape_family_name(name):
 
 
 Font = namedtuple(
-    'Font', 'face hinting hintstyle bold italic scalable outline weight slant index'
+    'Font',
+    'face hinting hintstyle bold italic scalable outline weight slant index'
 )
 
 
@@ -27,10 +28,10 @@ def to_bool(x):
     return x.lower() == 'true'
 
 
-def get_font(
-    family,
-    bold,
-    italic,
+def get_font_subprocess(
+    family='monospace',
+    bold=False,
+    italic=False,
     allow_bitmaped_fonts=False,
     size_in_pts=None,
     character=None,
@@ -63,8 +64,32 @@ def get_font(
         path,
         to_bool(hinting),
         int(hintstyle), bold, italic,
-        to_bool(scalable), to_bool(outline), int(weight), int(slant), int(index)
+        to_bool(scalable),
+        to_bool(outline), int(weight), int(slant), int(index)
     )
+
+
+def get_font_lib(
+    family='monospace',
+    bold=False,
+    italic=False,
+    allow_bitmaped_fonts=False,
+    size_in_pts=None,
+    character=None,
+    dpi=None
+):
+    path, index, hintstyle, hinting, scalable, outline, weight, slant = get_fontconfig_font(
+        family, bold, italic, allow_bitmaped_fonts, size_in_pts or 0,
+        0 if character is None else ord(character[0]), dpi or 0
+    )
+
+    return Font(
+        path, hinting, hintstyle, bold, italic, scalable, outline, weight,
+        slant, index
+    )
+
+
+get_font = get_font_lib
 
 
 def find_font_for_character(

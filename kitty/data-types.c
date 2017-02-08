@@ -40,6 +40,7 @@ static PyMethodDef module_methods[] = {
     {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
+    {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
     GLFW_FUNC_WRAPPERS
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -77,6 +78,7 @@ PyInit_fast_data_types(void) {
 #else
         if (!init_Face(m)) return NULL;
         if (!init_freetype_library(m)) return NULL;
+        if (!init_fontconfig_library(m)) return NULL;
 #endif
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
