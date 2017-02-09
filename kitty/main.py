@@ -3,49 +3,109 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
-import tempfile
 import os
 import sys
-from queue import Empty
+import tempfile
 from gettext import gettext as _
 
+from queue import Empty
 
-from .config import load_config, load_cached_values, cached_values, save_cached_values
-from .constants import appname, str_version, config_dir, viewport_size, isosx, logo_data_file
-from .layout import all_layouts
 from .boss import Boss
-from .shaders import GL_VERSION
-from .fast_data_types import (
-    glewInit, enable_automatic_opengl_error_checking, glClear, glClearColor,
-    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR, GLFW_STENCIL_BITS,
-    GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_PROFILE,
-    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_CORE_PROFILE, GLFW_SAMPLES,
-    glfw_set_error_callback, glfw_init, glfw_terminate, glfw_window_hint,
-    glfw_swap_interval, glfw_wait_events, Window, change_wcwidth
+from .config import (
+    cached_values, load_cached_values, load_config, save_cached_values
 )
+from .constants import (
+    appname, config_dir, isosx, logo_data_file, str_version, viewport_size
+)
+from .fast_data_types import (
+    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
+    GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_CORE_PROFILE,
+    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
+    GLFW_STENCIL_BITS, Window, change_wcwidth,
+    enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
+    glfw_init, glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
+    glfw_wait_events, glfw_window_hint
+)
+from .layout import all_layouts
+from .shaders import GL_VERSION
 from .utils import safe_print
 
 
 def option_parser():
-    parser = argparse.ArgumentParser(prog=appname, description=_('The {} terminal emulator').format(appname))
+    parser = argparse.ArgumentParser(
+        prog=appname,
+        description=_('The {} terminal emulator').format(appname)
+    )
     defconf = os.path.join(config_dir, 'kitty.conf')
     a = parser.add_argument
-    a('--class', default=appname, dest='cls', help=_('Set the WM_CLASS property'))
-    a('--config', default=defconf, help=_('Specify a path to the config file to use. Default: {}').format(defconf))
-    a('--cmd', '-c', default=None, help=_('Run python code in the kitty context'))
-    a('-d', '--directory', default='.', help=_('Change to the specified directory when launching'))
-    a('--version', '-v', action='version', version='{} {} by Kovid Goyal'.format(appname, str_version))
-    a('--profile', action='store_true', default=False, help=_('Show profiling data after exit'))
-    a('--dump-commands', action='store_true', default=False, help=_('Output commands received from child process to stdout'))
-    a('--replay-commands', default=None, help=_('Replay previously dumped commands'))
-    a('--window-layout', default=None, choices=frozenset(all_layouts.keys()), help=_(
-        'The window layout to use on startup'))
-    a('--session', default=None, help=_(
-        'Path to a file containing the startup session (tabs, windows, layout, programs)'))
-    a('args', nargs=argparse.REMAINDER, help=_(
-        'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
-        ' directly to the program being invoked.'
-    ))
+    a(
+        '--class',
+        default=appname,
+        dest='cls',
+        help=_('Set the WM_CLASS property')
+    )
+    a(
+        '--config',
+        default=defconf,
+        help=_('Specify a path to the config file to use. Default: {}')
+        .format(defconf)
+    )
+    a(
+        '--cmd',
+        '-c',
+        default=None,
+        help=_('Run python code in the kitty context')
+    )
+    a(
+        '-d',
+        '--directory',
+        default='.',
+        help=_('Change to the specified directory when launching')
+    )
+    a(
+        '--version',
+        '-v',
+        action='version',
+        version='{} {} by Kovid Goyal'.format(appname, str_version)
+    )
+    a(
+        '--profile',
+        action='store_true',
+        default=False,
+        help=_('Show profiling data after exit')
+    )
+    a(
+        '--dump-commands',
+        action='store_true',
+        default=False,
+        help=_('Output commands received from child process to stdout')
+    )
+    a(
+        '--replay-commands',
+        default=None,
+        help=_('Replay previously dumped commands')
+    )
+    a(
+        '--window-layout',
+        default=None,
+        choices=frozenset(all_layouts.keys()),
+        help=_('The window layout to use on startup')
+    )
+    a(
+        '--session',
+        default=None,
+        help=_(
+            'Path to a file containing the startup session (tabs, windows, layout, programs)'
+        )
+    )
+    a(
+        'args',
+        nargs=argparse.REMAINDER,
+        help=_(
+            'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
+            ' directly to the program being invoked.'
+        )
+    )
     return parser
 
 
@@ -100,8 +160,7 @@ def run_app(opts, args):
     else:
         viewport_size.width = opts.initial_window_width
         viewport_size.height = opts.initial_window_height
-    window = Window(
-        viewport_size.width, viewport_size.height, args.cls)
+    window = Window(viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
     if not isosx:
@@ -138,7 +197,8 @@ def on_glfw_error(code, msg):
 
 
 def main():
-    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1' and getattr(sys, 'frozen', True):
+    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
+                      None) == '1' and getattr(sys, 'frozen', True):
         os.chdir(os.path.expanduser('~'))
     args = option_parser().parse_args()
     if args.cmd:
