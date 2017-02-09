@@ -3,12 +3,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from ctypes import addressof
+from itertools import chain
 from threading import Lock
 
-from .constants import viewport_size, GLfloat, GLint, GLuint
-from .fast_data_types import glUniform3fv, GL_TRIANGLE_FAN, glMultiDrawArrays
-from .utils import get_dpi
+from .constants import GLfloat, GLint, GLuint, viewport_size
+from .fast_data_types import GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
 from .shaders import ShaderProgram
+from .utils import get_dpi
 
 
 def as_color(c):
@@ -71,9 +72,9 @@ class Borders:
             *as_color(opts.inactive_border_color)
         )
 
-    def __call__(self, windows, active_window, current_layout, draw_window_borders=True):
+    def __call__(self, windows, active_window, current_layout, extra_blank_rects, draw_window_borders=True):
         rects = []
-        for br in current_layout.blank_rects:
+        for br in chain(current_layout.blank_rects, extra_blank_rects):
             rects.extend(as_rect(*br))
         if draw_window_borders and self.border_width > 0:
             bw = self.border_width

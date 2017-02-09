@@ -12,7 +12,7 @@ from .config import build_ansi_color_table
 from .constants import get_boss, appname, shell_path, cell_size, queue_action, viewport_size, WindowGeometry, GLuint
 from .fast_data_types import glfw_post_empty_event, Screen, DECAWM, DATA_CELL_SIZE, ColorProfile
 from .char_grid import calculate_gl_geometry, render_cells
-from .layout import all_layouts
+from .layout import all_layouts, Rect
 from .utils import color_as_int
 from .borders import Borders
 from .window import Window
@@ -79,7 +79,9 @@ class Tab:
         self.relayout_borders()
 
     def relayout_borders(self):
-        self.borders(self.windows, self.active_window, self.current_layout, self.current_layout.needs_window_borders and len(self.windows) > 1)
+        tm = get_boss().tab_manager
+        self.borders(self.windows, self.active_window, self.current_layout, tm.blank_rects,
+                     self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
@@ -209,6 +211,7 @@ class TabManager:
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.default_fg = color_as_int(opts.inactive_tab_foreground)
         self.default_bg = color_as_int(opts.inactive_tab_background)
+        self.tab_bar_blank_rects = ()
 
         def as_rgb(x):
             return (x << 8) | 2
@@ -220,10 +223,10 @@ class TabManager:
             self.layout_tab_bar()
 
     def resize(self, only_tabs=False):
-        for tab in self.tabs:
-            tab.relayout()
         if not only_tabs:
             self.layout_tab_bar()
+        for tab in self.tabs:
+            tab.relayout()
 
     def layout_tab_bar(self):
         self.can_render = False
@@ -236,9 +239,13 @@ class TabManager:
             self.tab_bar_screen = s
             self.tabbar_dirty = True
         margin = (viewport_size.width - ncells * cell_size.width) // 2
-        self.window_geometry = WindowGeometry(
+        self.window_geometry = g = WindowGeometry(
             margin, viewport_size.height - cell_size.height, viewport_size.width - margin, viewport_size.height, s.columns, s.lines)
-        self.screen_geometry = calculate_gl_geometry(self.window_geometry)
+        if margin > 0:
+            self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_size.width, g.bottom))
+        else:
+            self.tab_bar_blank_rects = ()
+        self.screen_geometry = calculate_gl_geometry(g)
         self.screen = s
         self.can_render = True
 
@@ -337,6 +344,12 @@ class TabManager:
             if a <= x <= b:
                 queue_action(self.set_active_tab, i)
                 return
+
+    @property
+    def blank_rects(self):
+        if len(self.tabs) < 2:
+            return ()
+        return self.tab_bar_blank_rects
 
     def render(self, cell_program, sprites):
         if not self.can_render or len(self.tabs) < 2:
