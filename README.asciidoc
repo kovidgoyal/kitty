@@ -281,6 +281,17 @@ launch emacs
 kitty has a few extensions to the xterm protocol, to enable advanced features,
 see link:protocol-extensions.asciidoc[Protocol Extensions].
 
+
+== Font control
+
+kitty has extremely flexible and powerful font selection features. You can
+specify individual families for the regular, bold, italic and bold+italic
+fonts. You can even specify specific font families for specific ranges of
+unicode characters. This allows precise control over text rendering. It can
+come in handy for applications like powerline, without the need to use patched
+fonts. See the various font related configuration directives in the
+link:kitty/kitty.conf[config file].
+
 == Note for Linux/macOS packagers
 
 While kitty does use python, it is not a traditional python package, so please do not install it in site-packages.
