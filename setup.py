@@ -17,18 +17,32 @@ constants = os.path.join(base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
-version = tuple(map(int, re.search(r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE).group(1, 2, 3)))
+version = tuple(
+    map(
+        int,
+        re.search(
+            r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
+        ).group(1, 2, 3)
+    )
+)
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
 is_travis = os.environ.get('TRAVIS') == 'true'
-
 
 cflags = ldflags = cc = ldpaths = None
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
 def pkg_config(pkg, *args):
-    return list(filter(None, shlex.split(subprocess.check_output([PKGCONFIG, pkg] + list(args)).decode('utf-8'))))
+    return list(
+        filter(
+            None,
+            shlex.split(
+                subprocess.check_output([PKGCONFIG, pkg] + list(args))
+                .decode('utf-8')
+            )
+        )
+    )
 
 
 def cc_version():
@@ -43,7 +57,9 @@ def cc_version():
 
 
 def get_python_flags(cflags):
-    cflags.extend('-I' + sysconfig.get_path(x) for x in 'include platinclude'.split())
+    cflags.extend(
+        '-I' + sysconfig.get_path(x) for x in 'include platinclude'.split()
+    )
     libs = []
     libs += sysconfig.get_config_var('LIBS').split()
     libs += sysconfig.get_config_var('SYSLIBS').split()
@@ -53,15 +69,21 @@ def get_python_flags(cflags):
             val = sysconfig.get_path(var)
             if val and '/{}.framework'.format(fw) in val:
                 fdir = val[:val.index('/{}.framework'.format(fw))]
-                if os.path.isdir(os.path.join(fdir, '{}.framework'.format(fw))):
+                if os.path.isdir(
+                    os.path.join(fdir, '{}.framework'.format(fw))
+                ):
                     framework_dir = fdir
                     break
         else:
             raise SystemExit('Failed to find Python framework')
-        libs.append(os.path.join(framework_dir, sysconfig.get_config_var('LDLIBRARY')))
+        libs.append(
+            os.path.join(framework_dir, sysconfig.get_config_var('LDLIBRARY'))
+        )
     else:
         libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
-        libs += ['-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags]
+        libs += [
+            '-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags
+        ]
         libs += sysconfig.get_config_var('LINKFORSHARED').split()
     return libs
 
@@ -81,26 +103,37 @@ def init_env(debug=False, asan=False):
         optimize = '-ggdb'
         if asan:
             optimize += ' -fsanitize=address -fno-omit-frame-pointer'
-    cflags = os.environ.get('OVERRIDE_CFLAGS', (
-        '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-        ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe').format(optimize, stack_protector, missing_braces))
-    cflags = shlex.split(cflags) + shlex.split(sysconfig.get_config_var('CCSHARED'))
-    ldflags = os.environ.get('OVERRIDE_LDFLAGS', '-Wall ' + (
-        '-fsanitize=address' if asan else ('' if debug else '-O3')))
+    cflags = os.environ.get(
+        'OVERRIDE_CFLAGS', (
+            '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
+            ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe'
+        ).format(optimize, stack_protector, missing_braces)
+    )
+    cflags = shlex.split(cflags
+                         ) + shlex.split(sysconfig.get_config_var('CCSHARED'))
+    ldflags = os.environ.get(
+        'OVERRIDE_LDFLAGS', '-Wall ' +
+        ('-fsanitize=address' if asan else ('' if debug else '-O3'))
+    )
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
-    if not is_travis and not isosx and subprocess.Popen([PKGCONFIG, 'glew', '--atleast-version=2']).wait() != 0:
+    if not is_travis and not isosx and subprocess.Popen(
+        [PKGCONFIG, 'glew', '--atleast-version=2']
+    ).wait() != 0:
         try:
-            ver = subprocess.check_output([PKGCONFIG, 'glew', '--modversion']).decode('utf-8').strip()
+            ver = subprocess.check_output([PKGCONFIG, 'glew', '--modversion']
+                                          ).decode('utf-8').strip()
             major = int(re.match(r'\d+', ver).group())
         except Exception:
             ver = 'not found'
             major = 0
         if major < 2:
-            raise SystemExit('glew >= 2.0.0 is required, found version: ' + ver)
+            raise SystemExit(
+                'glew >= 2.0.0 is required, found version: ' + ver
+            )
     if not isosx:
         cflags.extend(pkg_config('glew', '--cflags-only-I'))
     if isosx:
@@ -112,13 +145,13 @@ def init_env(debug=False, asan=False):
     ldflags.append('-shared')
     pylib = get_python_flags(cflags)
     if isosx:
-        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3') + ['-framework', 'OpenGL']
+        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3'
+                                  ) + ['-framework', 'OpenGL']
         glew_libs = []
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
         glew_libs = pkg_config('glew', '--libs')
-    ldpaths = pylib + \
-        glew_libs + font_libs + glfw_ldflags
+    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags
 
     try:
         os.mkdir(build_dir)
@@ -158,7 +191,10 @@ def newer(dest, *sources):
 
 def compile_c_extension(module, incremental, sources, headers):
     prefix = os.path.basename(module)
-    objects = [os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o') for src in sources]
+    objects = [
+        os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
+        for src in sources
+    ]
 
     for src, dest in zip(sources, objects):
         cflgs = cflags[:]
@@ -176,14 +212,37 @@ def compile_c_extension(module, incremental, sources, headers):
 
 def option_parser():
     p = argparse.ArgumentParser()
-    p.add_argument('action', nargs='?', default='build', choices='build test linux-package osx-bundle'.split(), help='Action to perform (default is build)')
-    p.add_argument('--debug', default=False, action='store_true',
-                   help='Build extension modules with debugging symbols')
-    p.add_argument('--asan', default=False, action='store_true',
-                   help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
-                   ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so')
-    p.add_argument('--prefix', default='./linux-package', help='Where to create the linux package')
-    p.add_argument('--incremental', default=False, action='store_true', help='Only build changed files')
+    p.add_argument(
+        'action',
+        nargs='?',
+        default='build',
+        choices='build test linux-package osx-bundle'.split(),
+        help='Action to perform (default is build)'
+    )
+    p.add_argument(
+        '--debug',
+        default=False,
+        action='store_true',
+        help='Build extension modules with debugging symbols'
+    )
+    p.add_argument(
+        '--asan',
+        default=False,
+        action='store_true',
+        help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
+        ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so'
+    )
+    p.add_argument(
+        '--prefix',
+        default='./linux-package',
+        help='Where to create the linux package'
+    )
+    p.add_argument(
+        '--incremental',
+        default=False,
+        action='store_true',
+        help='Only build changed files'
+    )
     return p
 
 
@@ -197,14 +256,18 @@ def find_c_files():
             ans.append(os.path.join('kitty', x))
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
-    ans.sort(key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True)
+    ans.sort(
+        key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True
+    )
     ans.append('kitty/parser_dump.c')
     return tuple(ans), tuple(headers)
 
 
 def build(args):
     init_env(args.debug, args.asan)
-    compile_c_extension('kitty/fast_data_types', args.incremental, *find_c_files())
+    compile_c_extension(
+        'kitty/fast_data_types', args.incremental, *find_c_files()
+    )
 
 
 def safe_makedirs(path):
@@ -228,7 +291,10 @@ def package(args, for_bundle=False):  # {{{
     shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
 
     def src_ignore(parent, entries):
-        return [x for x in entries if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf')]
+        return [
+            x for x in entries
+            if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf')
+        ]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     import compileall
@@ -244,7 +310,9 @@ def package(args, for_bundle=False):  # {{{
         cflags.append('-DFOR_BUNDLE')
         cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     pylib = get_python_flags(cflags)
-    cmd = [cc] + cflags + ['linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')] + pylib
+    cmd = [cc] + cflags + [
+        'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')
+    ] + pylib
     run_tool(cmd)
     if not isosx:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256')
@@ -253,7 +321,8 @@ def package(args, for_bundle=False):  # {{{
         deskdir = os.path.join(ddir, 'share', 'applications')
         safe_makedirs(deskdir)
         with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
-            f.write('''\
+            f.write(
+                '''\
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -264,7 +333,8 @@ TryExec=kitty
 Exec=kitty
 Icon=kitty
 Categories=System;
-''')
+'''
+            )
     # }}}
 
     if for_bundle:  # OS X bundle gunk {{{
@@ -275,7 +345,7 @@ Categories=System;
         os.rename('../bin', 'MacOS')
         os.rename('../lib', 'Frameworks')
     # }}}
-# }}}
+    # }}}
 
 
 def main():
@@ -287,7 +357,9 @@ def main():
     if args.action == 'build':
         build(args)
     elif args.action == 'test':
-        os.execlp(sys.executable, sys.executable, os.path.join(base, 'test.py'))
+        os.execlp(
+            sys.executable, sys.executable, os.path.join(base, 'test.py')
+        )
     elif args.action == 'linux-package':
         build(args)
         package(args)
