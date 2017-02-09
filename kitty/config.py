@@ -242,7 +242,7 @@ def merge_configs(ans, vals):
     return ans
 
 
-def load_config(*paths) -> Options:
+def load_config(*paths, overrides=None) -> Options:
     ans = defaults._asdict()
     for path in paths:
         if not path:
@@ -254,6 +254,9 @@ def load_config(*paths) -> Options:
         with f:
             vals = parse_config(f)
             ans = merge_configs(ans, vals)
+    if overrides is not None:
+        vals = parse_config(overrides)
+        ans = merge_configs(ans, vals)
     return Options(**ans)
 
 

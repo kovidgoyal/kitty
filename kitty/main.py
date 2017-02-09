@@ -55,6 +55,15 @@ def option_parser():
         ).format(defconf)
     )
     a(
+        '--override',
+        '-o',
+        action='append',
+        help=_(
+            'Override individual configuration options, can be specified'
+            ' multiple times. Syntax: name=value. For example: {}'
+        ).format('-o font_size=20')
+    )
+    a(
         '--cmd',
         '-c',
         default=None,
@@ -213,7 +222,8 @@ def main():
         main(args.replay_commands)
         return
     config = args.config or (defconf, )
-    opts = load_config(*config)
+    overrides = (a.replace('=', ' ', 1) for a in args.override)
+    opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)
