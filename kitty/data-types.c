@@ -40,7 +40,9 @@ static PyMethodDef module_methods[] = {
     {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
+#ifndef __APPLE__
     {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
+#endif
     GLFW_FUNC_WRAPPERS
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
