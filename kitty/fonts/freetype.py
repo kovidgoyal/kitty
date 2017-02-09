@@ -140,7 +140,7 @@ def render_char(text, bold=False, italic=False, width=1):
             extra = bitmap.width - cell_width
             if italic and extra < cell_width // 2:
                 bitmap = face.trim_to_width(bitmap, cell_width)
-            elif extra > max(2, 0.1 * cell_width) and face.is_scalable:
+            elif extra > max(2, 0.3 * cell_width) and face.is_scalable:
                 # rescale the font size so that the glyph is visible in a single
                 # cell and hope somebody updates libc's wcwidth
                 sz = cff_size.copy()
