@@ -7,17 +7,21 @@ import sys
 import unicodedata
 from collections import namedtuple
 from functools import lru_cache
+from itertools import chain
 from threading import Lock
 
 from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face
 from kitty.fonts.box_drawing import render_missing_glyph
 from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth
 
-from .fontconfig import find_font_for_character, get_font_files, FontNotFound
+from .fontconfig import (
+    FontNotFound, find_font_for_character, font_for_family, get_font_files
+)
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
 CharTexture = underline_position = underline_thickness = None
 alt_face_cache = {}
+symbol_map = {}
 
 
 def set_char_size(face, width=0, height=0, hres=0, vres=0):
@@ -55,6 +59,14 @@ def font_for_char(char, bold=False, italic=False, allow_bitmaped_fonts=False):
     )
 
 
+def install_symbol_map(val):
+    global symbol_map
+    symbol_map = {}
+    family_map = {f: font_for_family(f) for f in set(val.values())}
+    for ch, family in val.items():
+        symbol_map[ch] = family_map[family]
+
+
 def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
     return ceil_int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
 
@@ -73,7 +85,8 @@ def set_font_family(opts):
         'hres': int(dpi[0]),
         'vres': int(dpi[1])
     }
-    for fobj in current_font_family.values():
+    install_symbol_map(opts.symbol_map)
+    for fobj in chain(current_font_family.values(), symbol_map.values()):
         set_char_size(fobj.face, **cff_size)
     face = current_font_family['regular'].face
     cell_width = calc_cell_width(current_font_family['regular'], face)
@@ -114,51 +127,60 @@ def render_to_bitmap(font, face, text):
     return bitmap
 
 
+def render_using_face(font, face, text, width, italic, bold):
+    bitmap = render_to_bitmap(font, face, text)
+    if width == 1 and bitmap.width > cell_width:
+        extra = bitmap.width - cell_width
+        if italic and extra < cell_width // 2:
+            bitmap = face.trim_to_width(bitmap, cell_width)
+        elif extra > max(2, 0.3 * cell_width) and face.is_scalable:
+            # rescale the font size so that the glyph is visible in a single
+            # cell and hope somebody updates libc's wcwidth
+            sz = cff_size.copy()
+            sz['width'] = int(sz['width'] * cell_width / bitmap.width)
+            # Preserve aspect ratio
+            sz['height'] = int(sz['height'] * cell_width / bitmap.width)
+            try:
+                set_char_size(face, **sz)
+                bitmap = render_to_bitmap(font, face, text)
+            finally:
+                set_char_size(face, **cff_size)
+    m = face.glyph_metrics()
+    return CharBitmap(
+        bitmap.buffer,
+        ceil_int(abs(m.horiBearingX) / 64),
+        ceil_int(abs(m.horiBearingY) / 64),
+        ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width
+    )
+
+
 def render_char(text, bold=False, italic=False, width=1):
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
     elif italic:
         key = 'italic'
+    ch = text[0]
     with freetype_lock:
-        font = current_font_family.get(key) or current_font_family['regular']
-        face = font.face
-        if not face.get_char_index(text[0]):
-            try:
-                font = font_for_char(text[0], bold, italic)
-            except FontNotFound:
-                font = font_for_char(
-                    text[0], bold, italic, allow_bitmaped_fonts=True
-                )
-            face = alt_face_cache.get(font)
-            if face is None:
-                face = alt_face_cache[font] = Face(font.face, font.index)
-                if face.is_scalable:
-                    set_char_size(face, **cff_size)
-        bitmap = render_to_bitmap(font, face, text)
-        if width == 1 and bitmap.width > cell_width:
-            extra = bitmap.width - cell_width
-            if italic and extra < cell_width // 2:
-                bitmap = face.trim_to_width(bitmap, cell_width)
-            elif extra > max(2, 0.3 * cell_width) and face.is_scalable:
-                # rescale the font size so that the glyph is visible in a single
-                # cell and hope somebody updates libc's wcwidth
-                sz = cff_size.copy()
-                sz['width'] = int(sz['width'] * cell_width / bitmap.width)
-                # Preserve aspect ratio
-                sz['height'] = int(sz['height'] * cell_width / bitmap.width)
+        font = symbol_map.get(ch)
+        if font is None or not font.face.get_char_index(ch):
+            font = current_font_family.get(key) or current_font_family['regular']
+            face = font.face
+            if not face.get_char_index(ch):
                 try:
-                    set_char_size(face, **sz)
-                    bitmap = render_to_bitmap(font, face, text)
-                finally:
-                    set_char_size(face, **cff_size)
-        m = face.glyph_metrics()
-        return CharBitmap(
-            bitmap.buffer,
-            ceil_int(abs(m.horiBearingX) / 64),
-            ceil_int(abs(m.horiBearingY) / 64),
-            ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width
-        )
+                    font = font_for_char(ch, bold, italic)
+                except FontNotFound:
+                    font = font_for_char(
+                        ch, bold, italic, allow_bitmaped_fonts=True
+                    )
+                face = alt_face_cache.get(font)
+                if face is None:
+                    face = alt_face_cache[font] = Face(font.face, font.index)
+                    if face.is_scalable:
+                        set_char_size(face, **cff_size)
+        else:
+            face = font.face
+        return render_using_face(font, face, text, width, italic, bold)
 
 
 def place_char_in_cell(bitmap_char):

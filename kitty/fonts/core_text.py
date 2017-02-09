@@ -7,7 +7,16 @@ from kitty.fast_data_types import CTFace as Face
 from kitty.utils import get_logical_dpi, wcwidth, ceil_int
 
 main_font = {}
+symbol_map = {}
 cell_width = cell_height = baseline = CellTexture = WideCellTexture = underline_thickness = underline_position = None
+
+
+def install_symbol_map(val, font_size, dpi):
+    global symbol_map
+    symbol_map = {}
+    family_map = {f: Face(f, False, False, False, font_size, dpi) for f in set(val.values())}
+    for ch, family in val.items():
+        symbol_map[ch] = family_map[family]
 
 
 def set_font_family(opts, ignore_dpi_failure=False):
@@ -32,6 +41,7 @@ def set_font_family(opts, ignore_dpi_failure=False):
     for bold in (False, True):
         for italic in (False, True):
             main_font[(bold, italic)] = Face(get_family(bold, italic), bold, italic, True, opts.font_size, dpi)
+    install_symbol_map(opts.symbol_map, opts.font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)
@@ -57,8 +67,9 @@ def split(buf, cell_width, cell_height):
 
 
 def render_cell(text=' ', bold=False, italic=False):
-    width = wcwidth(text[0])
-    face = main_font[(bold, italic)]
+    ch = text[0]
+    width = wcwidth(ch)
+    face = symbol_map.get(ch) or main_font[(bold, italic)]
     if width == 2:
         buf, width = WideCellTexture(), cell_width * 2
     else:

@@ -80,6 +80,38 @@ def parse_key(val, keymap):
     keymap[(mods, key)] = action
 
 
+def parse_symbol_map(val):
+    parts = val.split(' ')
+    symbol_map = {}
+
+    def abort():
+        safe_print('Symbol map: {} is invalid, ignoring'.format(val), file=sys.stderr)
+        return {}
+
+    if len(parts) < 2:
+        return abort()
+    family = ' '.join(parts[1:])
+
+    def to_chr(x):
+        if not x.startswith('U+'):
+            raise ValueError()
+        x = int(x[2:], 16)
+        return x
+
+    for x in parts[0].split(','):
+        a, b = x.partition('-')[::2]
+        b = b or a
+        try:
+            a, b = map(to_chr, (a, b))
+        except Exception:
+            return abort()
+        if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
+            return abort()
+        for y in range(a, b+1):
+            symbol_map[chr(y)] = family
+    return symbol_map
+
+
 def to_open_url_modifiers(val):
     return parse_mods(val.split('+'))
 
@@ -125,7 +157,7 @@ for a in ('active', 'inactive'):
 
 
 def parse_config(lines):
-    ans = {'keymap': {}}
+    ans = {'keymap': {}, 'symbol_map': {}}
     for line in lines:
         line = line.strip()
         if not line or line.startswith('#'):
@@ -135,6 +167,9 @@ def parse_config(lines):
             key, val = m.groups()
             if key == 'map':
                 parse_key(val, ans['keymap'])
+                continue
+            if key == 'symbol_map':
+                ans['symbol_map'].update(parse_symbol_map(val))
                 continue
             tm = type_map.get(key)
             if tm is not None:

@@ -162,3 +162,8 @@ def get_font_files(opts):
 
     do('bold'), do('italic'), do('bi')
     return ans
+
+
+def font_for_family(family):
+    ans = get_font_information(family)
+    return ans._replace(face=Face(ans.face, ans.index))
