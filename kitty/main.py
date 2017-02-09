@@ -222,7 +222,7 @@ def main():
         main(args.replay_commands)
         return
     config = args.config or (defconf, )
-    overrides = (a.replace('=', ' ', 1) for a in args.override)
+    overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
