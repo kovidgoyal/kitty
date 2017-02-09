@@ -30,13 +30,14 @@ from .layout import all_layouts
 from .shaders import GL_VERSION
 from .utils import safe_print
 
+defconf = os.path.join(config_dir, 'kitty.conf')
+
 
 def option_parser():
     parser = argparse.ArgumentParser(
         prog=appname,
         description=_('The {} terminal emulator').format(appname)
     )
-    defconf = os.path.join(config_dir, 'kitty.conf')
     a = parser.add_argument
     a(
         '--class',
@@ -46,9 +47,12 @@ def option_parser():
     )
     a(
         '--config',
-        default=defconf,
-        help=_('Specify a path to the config file to use. Default: {}')
-        .format(defconf)
+        action='append',
+        help=_(
+            'Specify a path to the config file(s) to use.'
+            ' Can be specified multiple times to read multiple'
+            ' config files in sequence, which are merged. Default: {}'
+        ).format(defconf)
     )
     a(
         '--cmd',
@@ -208,7 +212,8 @@ def main():
         from kitty.client import main
         main(args.replay_commands)
         return
-    opts = load_config(args.config)
+    config = args.config or (defconf, )
+    opts = load_config(*config)
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
     enable_automatic_opengl_error_checking(False)

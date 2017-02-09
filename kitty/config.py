@@ -182,6 +182,7 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
     defaults = parse_config(f.readlines())
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
+actions = frozenset(defaults.keymap.values())
 
 
 def update_dict(a, b):
@@ -193,22 +194,27 @@ def merge_dicts(vals, defaults):
     return {k: update_dict(v, vals.get(k, {})) if isinstance(v, dict) else vals.get(k, v) for k, v in defaults.items()}
 
 
-def load_config(path: str) -> Options:
-    if not path:
-        return defaults
-    try:
-        f = open(path)
-    except FileNotFoundError:
-        return defaults
-    ans = defaults._asdict()
-    actions = frozenset(defaults.keymap.values())
-    with f:
-        vals = parse_config(f)
-    remove_keys = {k for k, v in vals.get('keymap', {}).items() if v in ('noop', 'no-op', 'no_op')}
+def merge_configs(ans, vals):
     vals['keymap'] = {k: v for k, v in vals.get('keymap', {}).items() if v in actions}
+    remove_keys = {k for k, v in vals.get('keymap', {}).items() if v in ('noop', 'no-op', 'no_op')}
     ans = merge_dicts(vals, ans)
     for k in remove_keys:
         ans['keymap'].pop(k, None)
+    return ans
+
+
+def load_config(*paths) -> Options:
+    ans = defaults._asdict()
+    for path in paths:
+        if not path:
+            continue
+        try:
+            f = open(path)
+        except FileNotFoundError:
+            continue
+        with f:
+            vals = parse_config(f)
+            ans = merge_configs(ans, vals)
     return Options(**ans)
 
 
