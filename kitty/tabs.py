@@ -200,10 +200,10 @@ class TabManager:
     def __init__(self, opts, args, startup_session):
         self.opts, self.args = opts, args
         self.buffer_id = None
+        self.tabbar_lock = Lock()
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
         self.cell_ranges = []
         self.active_tab_idx = startup_session.active_tab_idx
-        self.tabbar_lock = Lock()
         self.tabbar_dirty = True
         self.color_profile = ColorProfile()
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -216,12 +216,16 @@ class TabManager:
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
         self.can_render = False
+        if len(self.tabs) > 1:
+            self.layout_tab_bar()
 
     def resize(self, only_tabs=False):
         for tab in self.tabs:
             tab.relayout()
-        if only_tabs:
-            return
+        if not only_tabs:
+            self.layout_tab_bar()
+
+    def layout_tab_bar(self):
         self.can_render = False
         ncells = viewport_size.width // cell_size.width
         s = Screen(None, 1, ncells)
@@ -254,10 +258,6 @@ class TabManager:
     def __len__(self):
         return len(self.tabs)
 
-    def new_tab(self, special_window=None):
-        self.active_tab_idx = len(self.tabs)
-        self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
-
     @property
     def active_tab(self):
         return self.tabs[self.active_tab_idx] if self.tabs else None
@@ -277,6 +277,16 @@ class TabManager:
     def title_changed(self, new_title):
         with self.tabbar_lock:
             self.tabbar_dirty = True
+
+    def new_tab(self, special_window=None):
+        ' Must be called in the GUI thread '
+        needs_resize = len(self.tabs) == 1
+        self.active_tab_idx = len(self.tabs)
+        self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
+        if needs_resize:
+            if not self.can_render:
+                queue_action(self.layout_tab_bar)
+            queue_action(get_boss().tabbar_visibility_changed)
 
     def remove(self, tab):
         ' Must be called in the GUI thread '
