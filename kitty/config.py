@@ -2,21 +2,19 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import re
-import sys
-import os
-import shlex
 import json
+import os
+import re
+import shlex
+import sys
 import tempfile
 from collections import namedtuple
 
-from .fast_data_types import (
-    CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE
-)
-import kitty.fast_data_types as defines
-from .utils import to_color, safe_print
-from .layout import all_layouts
+from . import fast_data_types as defines
 from .constants import config_dir
+from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from .layout import all_layouts
+from .utils import safe_print, to_color
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 
@@ -25,14 +23,21 @@ def to_font_size(x):
     return max(6, float(x))
 
 
-cshapes = {'block': CURSOR_BLOCK, 'beam': CURSOR_BEAM, 'underline': CURSOR_UNDERLINE}
+cshapes = {
+    'block': CURSOR_BLOCK,
+    'beam': CURSOR_BEAM,
+    'underline': CURSOR_UNDERLINE
+}
 
 
 def to_cursor_shape(x):
     try:
         return cshapes[x.lower()]
     except KeyError:
-        raise ValueError('Invalid cursor shape: {} allowed values are {}'.format(x, ', '.join(cshapes)))
+        raise ValueError(
+            'Invalid cursor shape: {} allowed values are {}'.
+            format(x, ', '.join(cshapes))
+        )
 
 
 def to_bool(x):
@@ -53,15 +58,28 @@ def parse_mods(parts):
         try:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
-            safe_print('Shortcut: {} has an unknown modifier, ignoring'.format(parts.join('+')), file=sys.stderr)
+            safe_print(
+                'Shortcut: {} has an unknown modifier, ignoring'.
+                format(parts.join('+')),
+                file=sys.stderr
+            )
             return
 
     return mods
 
 
-named_keys = {"'": 'APOSTROPHE', ',': 'COMMA', '-': 'MINUS', '.': 'PERIOD',
-              '/': 'SLASH', ';': 'SEMICOLON', '=': 'EQUAL', '[': 'LEFT_BRACKET',
-              ']': 'RIGHT_BRACKET', '`': 'GRAVE_ACCENT'}
+named_keys = {
+    "'": 'APOSTROPHE',
+    ',': 'COMMA',
+    '-': 'MINUS',
+    '.': 'PERIOD',
+    '/': 'SLASH',
+    ';': 'SEMICOLON',
+    '=': 'EQUAL',
+    '[': 'LEFT_BRACKET',
+    ']': 'RIGHT_BRACKET',
+    '`': 'GRAVE_ACCENT'
+}
 
 
 def parse_key(val, keymap):
@@ -75,7 +93,10 @@ def parse_key(val, keymap):
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     if key is None:
-        safe_print('Shortcut: {} has an unknown key, ignoring'.format(val), file=sys.stderr)
+        safe_print(
+            'Shortcut: {} has an unknown key, ignoring'.format(val),
+            file=sys.stderr
+        )
         return
     keymap[(mods, key)] = action
 
@@ -85,7 +106,9 @@ def parse_symbol_map(val):
     symbol_map = {}
 
     def abort():
-        safe_print('Symbol map: {} is invalid, ignoring'.format(val), file=sys.stderr)
+        safe_print(
+            'Symbol map: {} is invalid, ignoring'.format(val), file=sys.stderr
+        )
         return {}
 
     if len(parts) < 2:
@@ -107,7 +130,7 @@ def parse_symbol_map(val):
             return abort()
         if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
             return abort()
-        for y in range(a, b+1):
+        for y in range(a, b + 1):
             symbol_map[chr(y)] = family
     return symbol_map
 
@@ -147,7 +170,10 @@ type_map = {
     'use_system_wcwidth': to_bool,
 }
 
-for name in 'foreground background cursor active_border_color inactive_border_color selection_foreground selection_background'.split():
+for name in (
+    'foreground background cursor active_border_color inactive_border_color'
+    ' selection_foreground selection_background'
+).split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):
     type_map['color%d' % i] = lambda x: to_color(x, validate=True)
@@ -178,7 +204,9 @@ def parse_config(lines):
     return ans
 
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')) as f:
+with open(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
+) as f:
     defaults = parse_config(f.readlines())
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
@@ -191,12 +219,23 @@ def update_dict(a, b):
 
 
 def merge_dicts(vals, defaults):
-    return {k: update_dict(v, vals.get(k, {})) if isinstance(v, dict) else vals.get(k, v) for k, v in defaults.items()}
+    return {
+        k: update_dict(v, vals.get(k, {}))
+        if isinstance(v, dict) else vals.get(k, v)
+        for k, v in defaults.items()
+    }
 
 
 def merge_configs(ans, vals):
-    vals['keymap'] = {k: v for k, v in vals.get('keymap', {}).items() if v in actions}
-    remove_keys = {k for k, v in vals.get('keymap', {}).items() if v in ('noop', 'no-op', 'no_op')}
+    vals['keymap'] = {
+        k: v
+        for k, v in vals.get('keymap', {}).items() if v in actions
+    }
+    remove_keys = {
+        k
+        for k, v in vals.get('keymap', {}).items()
+        if v in ('noop', 'no-op', 'no_op')
+    }
     ans = merge_dicts(vals, ans)
     for k in remove_keys:
         ans['keymap'].pop(k, None)
@@ -219,11 +258,13 @@ def load_config(*paths) -> Options:
 
 
 def build_ansi_color_table(opts: Options=defaults):
+
     def as_int(x):
         return (x[0] << 16) | (x[1] << 8) | x[2]
 
     def col(i):
         return as_int(getattr(opts, 'color{}'.format(i)))
+
     return list(map(col, range(16)))
 
 
@@ -239,21 +280,33 @@ def load_cached_values():
     except FileNotFoundError:
         pass
     except Exception as err:
-        safe_print('Failed to load cached values with error: {}'.format(err), file=sys.stderr)
+        safe_print(
+            'Failed to load cached values with error: {}'.format(err),
+            file=sys.stderr
+        )
 
 
 def save_cached_values():
-    fd, p = tempfile.mkstemp(dir=os.path.dirname(cached_path), suffix='cached.json.tmp')
+    fd, p = tempfile.mkstemp(
+        dir=os.path.dirname(cached_path), suffix='cached.json.tmp'
+    )
     try:
         with os.fdopen(fd, 'wb') as f:
             f.write(json.dumps(cached_values).encode('utf-8'))
         os.rename(p, cached_path)
     except Exception as err:
-        safe_print('Failed to save cached values with error: {}'.format(err), file=sys.stderr)
+        safe_print(
+            'Failed to save cached values with error: {}'.format(err),
+            file=sys.stderr
+        )
     finally:
         try:
             os.remove(p)
         except FileNotFoundError:
             pass
         except Exception as err:
-            safe_print('Failed to delete temp file for saved cached values with error: {}'.format(err), file=sys.stderr)
+            safe_print(
+                'Failed to delete temp file for saved cached values with error: {}'.
+                format(err),
+                file=sys.stderr
+            )
