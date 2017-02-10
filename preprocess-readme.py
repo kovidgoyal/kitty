@@ -40,9 +40,12 @@ raw = subprocess.check_output([
     'from kitty.keys import *; import json; print(json.dumps(key_integer_map()))'
 ]).decode('utf-8')
 key_map = json.loads(raw)
-lines = ['|===', '| Name | Number |', '']
+lines = [
+    'See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]',
+    '', '|===', '| Name | Number', ''
+]
 for k in sorted(key_map):
-    lines.append('| {:15s} | {:4d} |'.format(k, key_map[k]))
+    lines.append('| {:15s} | {}'.format(k.replace('_', ' '), key_map[k]))
 lines += ['', '|===']
 with open('key_encoding.asciidoc', 'w') as f:
     print('= Key encoding for extended keyboard protocol\n', file=f)
