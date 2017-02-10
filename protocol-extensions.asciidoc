@@ -377,3 +377,6 @@ For example:
 <ESC>_KpGp<ESC>\  is  <Ctrl>+<Alt>+x (press)
 <ESC>_KrP8<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
 ```
+
+This encoding means each key event is represented by 8 or 9 printable ascii
+only bytes, for maximum robustness.
