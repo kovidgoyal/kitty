@@ -5,7 +5,10 @@
 kitty has a few extensions to the xterm protocol, to enable advanced features.
 These are typically in the form of new or re-purposed escape codes. While these
 extensions are currently kitty specific, it would be nice to get some of them
-adopted more broadly.
+adopted more broadly, to push the state of terminal emulators forward.
+
+If you wish to discuss these extensions, propose additions/changes to them
+please do so by opening issues in the github bug tracker.
 
 toc::[]
 
@@ -53,6 +56,8 @@ emulator. The major design goals are
  * Should allow specifying graphics to be drawn per individual character cell. This allows graphics to mix with text using
    the existing cursor based protocols.
  * Should use optimizations when the client is running on the same computer as the terminal emulator.
+
+For some discussion regarding the design choices, see #33.
 
 === Getting the window size
 
