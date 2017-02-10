@@ -5,124 +5,124 @@ See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protoc
 |===
 | Name | Encoded representation (base64)
 
-| 0               | `BM`
-| 1               | `BN`
-| 2               | `BO`
-| 3               | `BP`
-| 4               | `BQ`
-| 5               | `BR`
-| 6               | `BS`
-| 7               | `BT`
-| 8               | `BU`
-| 9               | `BV`
-| A               | `Bd`
-| APOSTROPHE      | `BD`
-| B               | `Be`
-| BACKSLASH       | `CU`
-| BACKSPACE       | `HH`
-| C               | `Bf`
-| CAPS LOCK       | `Hc`
-| COMMA           | `BI`
-| D               | `Bg`
-| DELETE          | `HJ`
-| DOWN            | `HM`
-| E               | `Bh`
-| END             | `HR`
-| ENTER           | `HF`
-| EQUAL           | `BZ`
-| ESCAPE          | `HE`
-| F               | `Bi`
-| F1              | `IC`
-| F10             | `IL`
-| F11             | `IM`
-| F12             | `IN`
-| F13             | `IO`
-| F14             | `IP`
-| F15             | `IQ`
-| F16             | `IR`
-| F17             | `IS`
-| F18             | `IT`
-| F19             | `IU`
-| F2              | `ID`
-| F20             | `IV`
-| F21             | `IW`
-| F22             | `IX`
-| F23             | `IY`
-| F24             | `IZ`
-| F25             | `Ia`
-| F3              | `IE`
-| F4              | `IF`
-| F5              | `IG`
-| F6              | `IH`
-| F7              | `II`
-| F8              | `IJ`
-| F9              | `IK`
-| G               | `Bj`
-| GRAVE ACCENT    | `CY`
-| H               | `CA`
-| HOME            | `HQ`
-| I               | `CB`
-| INSERT          | `HI`
-| J               | `CC`
-| K               | `CD`
-| KP 0            | `Ig`
-| KP 1            | `Ih`
-| KP 2            | `Ii`
-| KP 3            | `Ij`
-| KP 4            | `JA`
-| KP 5            | `JB`
-| KP 6            | `JC`
-| KP 7            | `JD`
-| KP 8            | `JE`
-| KP 9            | `JF`
-| KP ADD          | `JK`
-| KP DECIMAL      | `JG`
-| KP DIVIDE       | `JH`
-| KP ENTER        | `JL`
-| KP EQUAL        | `JM`
-| KP MULTIPLY     | `JI`
-| KP SUBTRACT     | `JJ`
-| L               | `CE`
-| LEFT            | `HL`
-| LEFT ALT        | `JS`
-| LEFT BRACKET    | `CT`
-| LEFT CONTROL    | `JR`
-| LEFT SHIFT      | `JQ`
-| LEFT SUPER      | `JT`
-| M               | `CF`
-| MINUS           | `BJ`
-| N               | `CG`
-| NUM LOCK        | `He`
-| O               | `CH`
-| P               | `CI`
-| PAGE DOWN       | `HP`
-| PAGE UP         | `HO`
-| PAUSE           | `Hg`
-| PERIOD          | `BK`
-| PRINT SCREEN    | `Hf`
-| Q               | `CJ`
-| R               | `CK`
-| RIGHT           | `HK`
-| RIGHT ALT       | `JW`
-| RIGHT BRACKET   | `CV`
-| RIGHT CONTROL   | `JV`
-| RIGHT SHIFT     | `JU`
-| RIGHT SUPER     | `JX`
-| S               | `CL`
-| SCROLL LOCK     | `Hd`
-| SEMICOLON       | `BX`
-| SLASH           | `BL`
-| SPACE           | `g`
-| T               | `CM`
-| TAB             | `HG`
-| U               | `CN`
-| UP              | `HN`
-| V               | `CO`
-| W               | `CP`
-| WORLD 1         | `ER`
-| WORLD 2         | `ES`
-| X               | `CQ`
-| Y               | `CR`
-| Z               | `CS`
+| 0               | `G`
+| 1               | `H`
+| 2               | `I`
+| 3               | `J`
+| 4               | `K`
+| 5               | `L`
+| 6               | `M`
+| 7               | `N`
+| 8               | `O`
+| 9               | `P`
+| A               | `S`
+| APOSTROPHE      | `B`
+| B               | `T`
+| BACKSLASH       | `t`
+| BACKSPACE       | `1`
+| C               | `U`
+| CAPS LOCK       | `BA`
+| COMMA           | `C`
+| D               | `V`
+| DELETE          | `3`
+| DOWN            | `6`
+| E               | `W`
+| END             | `/`
+| ENTER           | `z`
+| EQUAL           | `R`
+| ESCAPE          | `y`
+| F               | `X`
+| F1              | `BF`
+| F10             | `BO`
+| F11             | `BP`
+| F12             | `BQ`
+| F13             | `BR`
+| F14             | `BS`
+| F15             | `BT`
+| F16             | `BU`
+| F17             | `BV`
+| F18             | `BW`
+| F19             | `BX`
+| F2              | `BG`
+| F20             | `BY`
+| F21             | `BZ`
+| F22             | `Ba`
+| F23             | `Bb`
+| F24             | `Bc`
+| F25             | `Bd`
+| F3              | `BH`
+| F4              | `BI`
+| F5              | `BJ`
+| F6              | `BK`
+| F7              | `BL`
+| F8              | `BM`
+| F9              | `BN`
+| G               | `Y`
+| GRAVE ACCENT    | `v`
+| H               | `Z`
+| HOME            | `+`
+| I               | `a`
+| INSERT          | `2`
+| J               | `b`
+| K               | `c`
+| KP 0            | `Be`
+| KP 1            | `Bf`
+| KP 2            | `Bg`
+| KP 3            | `Bh`
+| KP 4            | `Bi`
+| KP 5            | `Bj`
+| KP 6            | `Bk`
+| KP 7            | `Bl`
+| KP 8            | `Bm`
+| KP 9            | `Bn`
+| KP ADD          | `Bs`
+| KP DECIMAL      | `Bo`
+| KP DIVIDE       | `Bp`
+| KP ENTER        | `Bt`
+| KP EQUAL        | `Bu`
+| KP MULTIPLY     | `Bq`
+| KP SUBTRACT     | `Br`
+| L               | `d`
+| LEFT            | `5`
+| LEFT ALT        | `Bx`
+| LEFT BRACKET    | `s`
+| LEFT CONTROL    | `Bw`
+| LEFT SHIFT      | `Bv`
+| LEFT SUPER      | `By`
+| M               | `e`
+| MINUS           | `D`
+| N               | `f`
+| NUM LOCK        | `BC`
+| O               | `g`
+| P               | `h`
+| PAGE DOWN       | `9`
+| PAGE UP         | `8`
+| PAUSE           | `BE`
+| PERIOD          | `E`
+| PRINT SCREEN    | `BD`
+| Q               | `i`
+| R               | `j`
+| RIGHT           | `4`
+| RIGHT ALT       | `B1`
+| RIGHT BRACKET   | `u`
+| RIGHT CONTROL   | `B0`
+| RIGHT SHIFT     | `Bz`
+| RIGHT SUPER     | `B2`
+| S               | `k`
+| SCROLL LOCK     | `BB`
+| SEMICOLON       | `Q`
+| SLASH           | `F`
+| SPACE           | `A`
+| T               | `l`
+| TAB             | `0`
+| U               | `m`
+| UP              | `7`
+| V               | `n`
+| W               | `o`
+| WORLD 1         | `w`
+| WORLD 2         | `x`
+| X               | `p`
+| Y               | `q`
+| Z               | `r`
 
 |===

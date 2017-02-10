@@ -37,7 +37,7 @@ if raw != nraw:
 
 raw = subprocess.check_output([
     'kitty', '-c',
-    'from kitty.keys import *; import json; print(json.dumps(key_extended_map))'
+    'from kitty.keys import *; import json; print(json.dumps(generate_key_extended_map(True)))'
 ]).decode('utf-8')
 key_map = json.loads(raw)
 lines = [

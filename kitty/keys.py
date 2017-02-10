@@ -87,23 +87,29 @@ action_map = {defines.GLFW_PRESS: b'p', defines.GLFW_RELEASE: b'r', defines.GLFW
 
 def base64_encode(integer, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/'):
     ans = ''
-    while integer > 0:
-        integer, remainder = divmod(integer, 36)
+    while True:
+        integer, remainder = divmod(integer, 64)
         ans = chars[remainder] + ans
+        if integer == 0:
+            break
     return ans
 
 
-def key_extended_map():
+def generate_key_extended_map(symbolic=False):
     ans = {}
-    for k in dir(defines):
-        if k.startswith('GLFW_KEY_'):
-            val = getattr(defines, k)
-            if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
-                ans[k[9:]] = base64_encode(val)
+    i = 0
+    keys = {a for a in dir(defines) if a.startswith('GLFW_KEY_')}
+
+    for k in sorted(keys, key=lambda k: getattr(defines, k)):
+        val = getattr(defines, k)
+        if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
+            key = k[9:] if symbolic else val
+            ans[key] = base64_encode(i)
+            i += 1
     return ans
 
 
-key_extended_map = key_extended_map()
+key_extended_map = generate_key_extended_map()
 
 
 def extended_key_event(key, scancode, mods, action):
@@ -113,7 +119,7 @@ def extended_key_event(key, scancode, mods, action):
         return b''
     if mods == 0 and key in (defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER):
         return smkx_key_map[key]
-    return '\033_K{}{:x}:{}\033\\'.format(action_map[action], mods, key_extended_map[key]).encode('ascii')
+    return '\033_K{}{}{}\033\\'.format(action_map[action], base64_encode(mods), key_extended_map[key]).encode('ascii')
 
 
 def interpret_key_event(key, scancode, mods, window, action):

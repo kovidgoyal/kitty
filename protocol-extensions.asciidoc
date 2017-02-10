@@ -362,21 +362,18 @@ The escape sequence encodes the following properties:
   * The actual key being pressed 
 
 ```
-<ESC>_K<type><modifiers>:<key><ESC>\
+<ESC>_K<type><modifiers><key><ESC>\
 ```
 
 Where `<type>` is one of `p` -- press, `r` -- release and `t` -- repeat.
-Modifiers is a bitmask represented as a single hexadecimal digit in lower case.
-Shift -- `0x1`, Control -- `0x2`, Alt -- `0x4` and Super -- `0x8`.  `<key>` is
-a number (encoded in base64) corresponding to the key pressed. The key name to
-number mapping is defined in link:key_encoding.asciidoc[this table].
+Modifiers is a bitmask represented as a single base64 digit.  Shift -- `0x1`,
+Control -- `0x2`, Alt -- `0x4` and Super -- `0x8`.  `<key>` is a number
+(encoded in base64) corresponding to the key pressed. The key name to number
+mapping is defined in link:key_encoding.asciidoc[this table].
 
 For example:
 
 ```
-<ESC>_Kp6:CQ<ESC>\  is  <Ctrl>+<Alt>+x (press)
-<ESC>_Krf:HO<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
+<ESC>_KpGp<ESC>\  is  <Ctrl>+<Alt>+x (press)
+<ESC>_KrP8<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
 ```
-
-There is a `:` between the modifiers and the key-press so that in the future
-more modifiers can be added, if needed.
