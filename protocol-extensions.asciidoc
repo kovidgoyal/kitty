@@ -309,6 +309,7 @@ There are various problems with the current state of keyboard handling. They
 include:
 
   * No way to use modifiers other than `Ctrl` and `Alt`
+  * No way to handle different types of keyboard events, such as press, release or repeat
   * No reliable way to distinguish single `Esc` keypresses from the 
     start of a escape sequence. Currently, client programs use 
     fragile timing related hacks for this, leading to bugs, for example:
