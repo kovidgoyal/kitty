@@ -396,6 +396,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
+        SIMPLE_MODE(EXTENDED_KEYBOARD)
         SIMPLE_MODE(FOCUS_TRACKING)
         MOUSE_MODE(MOUSE_BUTTON_TRACKING, mouse_tracking_mode, BUTTON_MODE)
         MOUSE_MODE(MOUSE_MOTION_TRACKING, mouse_tracking_mode, MOTION_MODE)
@@ -919,6 +920,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(DECARM);
         KNOWN_MODE(DECCKM);
         KNOWN_MODE(BRACKETED_PASTE);
+        KNOWN_MODE(EXTENDED_KEYBOARD);
         KNOWN_MODE(FOCUS_TRACKING);
 #undef KNOWN_MODE
     }
@@ -1071,6 +1073,7 @@ WRAP1B(erase_in_display, 0)
     static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false); return 0; }
 
 MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
+MODE_GETSET(extended_keyboard, EXTENDED_KEYBOARD)
 MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
@@ -1275,6 +1278,7 @@ static PyMethodDef methods[] = {
 
 static PyGetSetDef getsetters[] = {
     GETSET(in_bracketed_paste_mode)
+    GETSET(extended_keyboard)
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
     GETSET(cursor_visible)
