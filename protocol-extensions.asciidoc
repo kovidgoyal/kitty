@@ -374,8 +374,8 @@ number mapping is defined in link:key_encoding.asciidoc[this table].
 For example:
 
 ```
-<ESC>_Kp6:58<ESC>\  is  <Ctrl>+<Alt>+x (press)
-<ESC>_Krf:10a<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
+<ESC>_Kp6:CQ<ESC>\  is  <Ctrl>+<Alt>+x (press)
+<ESC>_Krf:HO<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
 ```
 
 There is a `:` between the modifiers and the key-press so that in the future
