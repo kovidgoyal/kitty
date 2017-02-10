@@ -3,7 +3,7 @@
 See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]
 
 |===
-| Name | Encoded representation
+| Name | Encoded representation (base64)
 
 | 0               | `BM`
 | 1               | `BN`

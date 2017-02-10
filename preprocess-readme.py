@@ -42,7 +42,7 @@ raw = subprocess.check_output([
 key_map = json.loads(raw)
 lines = [
     'See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]',
-    '', '|===', '| Name | Encoded representation', ''
+    '', '|===', '| Name | Encoded representation (base64)', ''
 ]
 for k in sorted(key_map):
     lines.append('| {:15s} | `{}`'.format(k.replace('_', ' '), key_map[k]))
