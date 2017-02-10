@@ -57,7 +57,7 @@ emulator. The major design goals are
    the existing cursor based protocols.
  * Should use optimizations when the client is running on the same computer as the terminal emulator.
 
-For some discussion regarding the design choices, see #33.
+For some discussion regarding the design choices, see link:../../issues/33[#33].
 
 === Getting the window size
 
