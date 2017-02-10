@@ -923,6 +923,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(EXTENDED_KEYBOARD);
         KNOWN_MODE(FOCUS_TRACKING);
 #undef KNOWN_MODE
+        case STYLED_UNDERLINES:
+            ans = 3; break;
     }
     if (snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%u$y", (private ? "?" : ""), which, ans)) callback("write_to_child", self, buf, 0);
 }
