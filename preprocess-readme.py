@@ -37,15 +37,15 @@ if raw != nraw:
 
 raw = subprocess.check_output([
     'kitty', '-c',
-    'from kitty.keys import *; import json; print(json.dumps(key_integer_map()))'
+    'from kitty.keys import *; import json; print(json.dumps(key_extended_map))'
 ]).decode('utf-8')
 key_map = json.loads(raw)
 lines = [
     'See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]',
-    '', '|===', '| Name | Number', ''
+    '', '|===', '| Name | Encoded representation', ''
 ]
 for k in sorted(key_map):
-    lines.append('| {:15s} | {}'.format(k.replace('_', ' '), key_map[k]))
+    lines.append('| {:15s} | `{}`'.format(k.replace('_', ' '), key_map[k]))
 lines += ['', '|===']
 with open('key_encoding.asciidoc', 'w') as f:
     print('= Key encoding for extended keyboard protocol\n', file=f)

@@ -2,7 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import kitty.fast_data_types as defines
+import string
+
+from . import fast_data_types as defines
 from .terminfo import key_as_bytes
 
 smkx_key_map = {
@@ -80,22 +82,60 @@ def get_localized_key(key, scancode):
     return valid_localized_key_names.get((name or '').upper(), key)
 
 
-def interpret_key_event(key, scancode, mods, window):
+action_map = {defines.GLFW_PRESS: b'p', defines.GLFW_RELEASE: b'r', defines.GLFW_REPEAT: b't'}
+
+
+def base64_encode(integer, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/'):
+    ans = ''
+    while integer > 0:
+        integer, remainder = divmod(integer, 36)
+        ans = chars[remainder] + ans
+    return ans
+
+
+def key_extended_map():
+    ans = {}
+    for k in dir(defines):
+        if k.startswith('GLFW_KEY_'):
+            val = getattr(defines, k)
+            if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
+                ans[k[9:]] = base64_encode(val)
+    return ans
+
+
+key_extended_map = key_extended_map()
+
+
+def extended_key_event(key, scancode, mods, action):
+    if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
+            # Shifted printable key should be handled by interpret_text_event()
+            mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126):
+        return b''
+    if mods == 0 and key in (defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER):
+        return smkx_key_map[key]
+    return '\033_K{}{:x}:{}\033\\'.format(action_map[action], mods, key_extended_map[key]).encode('ascii')
+
+
+def interpret_key_event(key, scancode, mods, window, action):
+    screen = window.screen
+    if screen.extended_keyboard:
+        return extended_key_event(key, scancode, mods, action)
     data = bytearray()
-    key = get_localized_key(key, scancode)
-    if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
-        # Map Ctrl-key to ascii control code
-        data.extend(control_codes[key])
-    elif mods == defines.GLFW_MOD_ALT and key in alt_codes:
-        # Map Alt+key to Esc-key
-        data.extend(alt_codes[key])
-    else:
-        key_map = get_key_map(window.screen)
-        x = key_map.get(key)
-        if x is not None:
-            if mods == defines.GLFW_MOD_SHIFT:
-                x = SHIFTED_KEYS.get(key, x)
-            data.extend(x)
+    if action == defines.GLFW_PRESS or (action == defines.GLFW_REPEAT and screen.auto_repeat_enabled):
+        key = get_localized_key(key, scancode)
+        if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
+            # Map Ctrl-key to ascii control code
+            data.extend(control_codes[key])
+        elif mods == defines.GLFW_MOD_ALT and key in alt_codes:
+            # Map Alt+key to Esc-key
+            data.extend(alt_codes[key])
+        else:
+            key_map = get_key_map(screen)
+            x = key_map.get(key)
+            if x is not None:
+                if mods == defines.GLFW_MOD_SHIFT:
+                    x = SHIFTED_KEYS.get(key, x)
+                data.extend(x)
     return bytes(data)
 
 
@@ -109,13 +149,3 @@ def interpret_text_event(codepoint, mods):
 def get_shortcut(keymap, mods, key, scancode):
     key = get_localized_key(key, scancode)
     return keymap.get((mods & 0b1111, key))
-
-
-def key_integer_map():
-    ans = {}
-    for k in dir(defines):
-        if k.startswith('GLFW_KEY_'):
-            val = getattr(defines, k)
-            if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
-                ans[k[9:]] = val
-    return ans

@@ -365,15 +365,18 @@ The escape sequence encodes the following properties:
 <ESC>_K<type><modifiers>:<key><ESC>\
 ```
 
-Where `<type>` is one of `p` -- press, `r` -- release and `t` -- repeat. 
-Modifiers is zero or more of `c` -- Control, `a` -- Alt, `s` -- Shift and `m` -- Meta.
-`<key>` is a number corresponding to the key pressed. The key name to number mapping
-is defined in link:key_encoding.asciidoc[this table].
+Where `<type>` is one of `p` -- press, `r` -- release and `t` -- repeat.
+Modifiers is a bitmask represented as a single hexadecimal digit in lower case.
+Shift -- `0x1`, Control -- `0x2`, Alt -- `0x4` and Super -- `0x8`.  `<key>` is
+a number (in lowercase hexadecimal) corresponding to the key pressed. The key name to
+number mapping is defined in link:key_encoding.asciidoc[this table].
 
 For example:
 
 ```
-<ESC>_Kpca:88<ESC>\
+<ESC>_Kp6:58<ESC>\  is  <Ctrl>+<Alt>+x (press)
+<ESC>_Krf:10a<ESC>\  is  <Ctrl>+<Alt>+<Shift>+<Super>+PageUp (release)
 ```
 
-Is the key press event `<Ctrl>+<Alt>+x`. 
+There is a `:` between the modifiers and the key-press so that in the future
+more modifiers can be added, if needed.

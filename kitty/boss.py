@@ -259,6 +259,7 @@ class Boss(Thread):
         is_key_pressed[key] = action == GLFW_PRESS
         self.start_cursor_blink()
         self.cursor_blink_zero_time = monotonic()
+        func = None
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key, scancode)
             if func is not None:
@@ -267,24 +268,24 @@ class Boss(Thread):
                     passthrough = f()
                     if not passthrough:
                         return
-            tab = self.active_tab
-            if tab is None:
-                return
-            window = self.active_window
-            if window is not None:
-                yield window
-                if func is not None:
-                    f = getattr(tab, func, getattr(window, func, None))
-                    if f is not None:
-                        passthrough = f()
-                        if not passthrough:
-                            return
-                if window.screen.auto_repeat_enabled or action == GLFW_PRESS:
-                    if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
-                        window.scroll_end()
-                    data = interpret_key_event(key, scancode, mods, window)
-                    if data:
-                        window.write_to_child(data)
+        tab = self.active_tab
+        if tab is None:
+            return
+        window = self.active_window
+        if window is None:
+            return
+        yield window
+        if func is not None:
+            f = getattr(tab, func, getattr(window, func, None))
+            if f is not None:
+                passthrough = f()
+                if not passthrough:
+                    return
+        if window.char_grid.scrolled_by and key not in MODIFIER_KEYS:
+            window.scroll_end()
+        data = interpret_key_event(key, scancode, mods, window, action)
+        if data:
+            window.write_to_child(data)
 
     @callback
     def on_focus(self, window, focused):
