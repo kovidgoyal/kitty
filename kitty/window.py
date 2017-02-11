@@ -106,6 +106,10 @@ class Window:
         self.write_buf = memoryview(self.write_buf.tobytes() + data)
         wakeup()
 
+    def bell(self):
+        with open('/dev/tty', 'wb') as f:
+            f.write(b'\007')
+
     def update_screen(self):
         self.char_grid.update_cell_data()
         glfw_post_empty_event()

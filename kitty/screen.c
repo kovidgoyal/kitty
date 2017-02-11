@@ -857,12 +857,9 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 
 void 
 screen_bell(Screen UNUSED *self) {  
-    FILE *f = fopen("/dev/tty", "w");
-    static const char *bell = "\007";
-    if (f != NULL) {
-        fwrite(bell, 1, 1, f);
-        fclose(f);
-    }
+    PyObject_CallMethod(self->callbacks, "bell", NULL);
+    if (PyErr_Occurred()) PyErr_Print();
+    PyErr_Clear(); 
 } 
 
 static inline void 
