@@ -31,6 +31,7 @@ uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
+uniform uvec2 color_indices;  // which color to use as fg and which as bg
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -78,8 +79,8 @@ void main() {
     uvec4 spos = texelFetch(sprite_map, sprite_id);
     uvec4 colors = texelFetch(sprite_map, sprite_id + 1);
     sprite_pos = to_sprite_pos(pos, spos[0], spos[1], spos[2]);
-    foreground = to_color(colors[0]);
-    background = to_color(colors[1]);
+    foreground = to_color(colors[color_indices[0]]);
+    background = to_color(colors[color_indices[1]]);
     uint decoration = colors[2];
     decoration_fg = to_color(decoration);
     underline_pos = to_sprite_pos(pos, (decoration >> 24) & SMASK, ZERO, ZERO);
@@ -213,10 +214,11 @@ def calculate_gl_geometry(window_geometry):
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(buffer_id, sg, cell_program, sprites):
+def render_cells(buffer_id, sg, cell_program, sprites, invert_colors=False):
     sprites.bind_sprite_map(buffer_id)
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+    glUniform2ui(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
     glUniform1i(ul('sprites'), sprites.sampler_num)
     glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
@@ -456,8 +458,8 @@ class CharGrid:
                 self.last_rendered_selection = sel
         return sg
 
-    def render_cells(self, sg, cell_program, sprites):
-        render_cells(self.buffer_id, sg, cell_program, sprites)
+    def render_cells(self, sg, cell_program, sprites, invert_colors=False):
+        render_cells(self.buffer_id, sg, cell_program, sprites, invert_colors=invert_colors)
 
     def render_cursor(self, sg, cursor_program, is_focused):
         cursor = self.current_cursor
