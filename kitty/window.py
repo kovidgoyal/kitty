@@ -37,6 +37,7 @@ class Window:
         self._is_visible_in_layout = True
         self.child, self.opts = child, opts
         self.child_fd = child.child_fd
+        self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands else read_bytes
         self.draw_dump_buf = []
@@ -109,6 +110,9 @@ class Window:
     def bell(self):
         with open('/dev/tty', 'wb') as f:
             f.write(b'\007')
+        if self.opts.visual_bell_duration > 0:
+            self.start_visual_bell_at = monotonic()
+            glfw_post_empty_event()
 
     def update_screen(self):
         self.char_grid.update_cell_data()
@@ -263,6 +267,14 @@ class Window:
 
     def buf_toggled(self, is_main_linebuf):
         self.char_grid.scroll('full', False)
+
+    def render_cells(self, render_data, program, sprites):
+        invert_colors = False
+        if self.start_visual_bell_at is not None:
+            invert_colors = monotonic() - self.start_visual_bell_at <= self.opts.visual_bell_duration
+            if not invert_colors:
+                self.start_visual_bell_at = None
+        self.char_grid.render_cells(render_data, program, sprites, invert_colors)
 
     # actions {{{
 

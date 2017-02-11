@@ -397,7 +397,7 @@ class Boss(Thread):
                     self.tab_manager.render(self.cell_program, self.sprites)
                     for window, rd in render_data.items():
                         if rd is not None:
-                            window.char_grid.render_cells(rd, self.cell_program, self.sprites)
+                            window.render_cells(rd, self.cell_program, self.sprites)
                 active = self.active_window
                 rd = render_data.get(active)
                 if rd is not None:

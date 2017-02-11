@@ -159,6 +159,7 @@ type_map = {
     'repaint_delay': int,
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
+    'visual_bell_duration': float,
     'click_interval': float,
     'mouse_hide_wait': float,
     'cursor_blink_interval': float,
