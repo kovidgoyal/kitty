@@ -128,6 +128,127 @@ ENCODING = {
     'Y': 'q',
     'Z': 'r'
 }
+KEY_MAP = {
+    32: 'A',
+    39: 'B',
+    44: 'C',
+    45: 'D',
+    46: 'E',
+    47: 'F',
+    48: 'G',
+    49: 'H',
+    50: 'I',
+    51: 'J',
+    52: 'K',
+    53: 'L',
+    54: 'M',
+    55: 'N',
+    56: 'O',
+    57: 'P',
+    59: 'Q',
+    61: 'R',
+    65: 'S',
+    66: 'T',
+    67: 'U',
+    68: 'V',
+    69: 'W',
+    70: 'X',
+    71: 'Y',
+    72: 'Z',
+    73: 'a',
+    74: 'b',
+    75: 'c',
+    76: 'd',
+    77: 'e',
+    78: 'f',
+    79: 'g',
+    80: 'h',
+    81: 'i',
+    82: 'j',
+    83: 'k',
+    84: 'l',
+    85: 'm',
+    86: 'n',
+    87: 'o',
+    88: 'p',
+    89: 'q',
+    90: 'r',
+    91: 's',
+    92: 't',
+    93: 'u',
+    96: 'v',
+    161: 'w',
+    162: 'x',
+    256: 'y',
+    257: 'z',
+    258: '0',
+    259: '1',
+    260: '2',
+    261: '3',
+    262: '4',
+    263: '5',
+    264: '6',
+    265: '7',
+    266: '8',
+    267: '9',
+    268: '.',
+    269: '-',
+    280: ':',
+    281: '+',
+    282: '=',
+    283: '^',
+    284: '!',
+    290: '/',
+    291: '*',
+    292: '?',
+    293: '&',
+    294: '<',
+    295: '>',
+    296: '(',
+    297: ')',
+    298: '[',
+    299: ']',
+    300: '{',
+    301: '}',
+    302: '@',
+    303: '%',
+    304: '$',
+    305: '#',
+    306: 'BA',
+    307: 'BB',
+    308: 'BC',
+    309: 'BD',
+    310: 'BE',
+    311: 'BF',
+    312: 'BG',
+    313: 'BH',
+    314: 'BI',
+    320: 'BJ',
+    321: 'BK',
+    322: 'BL',
+    323: 'BM',
+    324: 'BN',
+    325: 'BO',
+    326: 'BP',
+    327: 'BQ',
+    328: 'BR',
+    329: 'BS',
+    330: 'BT',
+    331: 'BU',
+    332: 'BV',
+    333: 'BW',
+    334: 'BX',
+    335: 'BY',
+    336: 'BZ',
+    340: 'Ba',
+    341: 'Bb',
+    342: 'Bc',
+    343: 'Bd',
+    344: 'Be',
+    345: 'Bf',
+    346: 'Bg',
+    347: 'Bh'
+}
 
 # END_ENCODING }}}
 
@@ -151,35 +272,28 @@ def symbolic_name(glfw_name):
     return glfw_name[9:].replace('_', ' ')
 
 
-def generate_extended_key_map(symbolic=False):
-    keys = (a for a in dir(defines) if a.startswith('GLFW_KEY_'))
-    ans = {}
-    for k in keys:
-        name = symbolic_name(k)
-        enc = ENCODING.get(name)
-        if name is not None:
-            ans[getattr(defines, k)] = enc
-    return ans
-
-
 def update_encoding():
     import re
     import subprocess
-    from pprint import pformat
     keys = {a for a in dir(defines) if a.startswith('GLFW_KEY_')}
     ans = ENCODING
+    key_map = {}
     i = len(ans)
     for k in sorted(keys, key=lambda k: getattr(defines, k)):
         val = getattr(defines, k)
         name = symbolic_name(k)
-        if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN and name not in ans:
-            ans[name] = encode(i)
-            i += 1
+        if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
+            if name not in ans:
+                ans[name] = encode(i)
+                i += 1
+            key_map[val] = ans[name]
     with open(__file__, 'r+') as f:
         raw = f.read()
         nraw = re.sub(
             r'^ENCODING = {.+^# END_ENCODING',
-            'ENCODING = {}\n# END_ENCODING'.format(pformat(ans, indent=4)),
+            'ENCODING = {!r}\nKEY_MAP={!r}\n# END_ENCODING'.format(
+                ans, key_map
+            ),
             raw,
             flags=re.MULTILINE | re.DOTALL
         )

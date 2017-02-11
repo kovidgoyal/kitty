@@ -5,7 +5,7 @@
 from . import fast_data_types as defines
 from .terminfo import key_as_bytes
 from .utils import base64_encode
-from .key_encoding import generate_extended_key_map
+from .key_encoding import KEY_MAP
 
 smkx_key_map = {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -114,8 +114,6 @@ action_map = {
     defines.GLFW_REPEAT: b't'
 }
 
-extended_key_map = generate_extended_key_map()
-
 
 def extended_key_event(key, scancode, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
@@ -127,7 +125,7 @@ def extended_key_event(key, scancode, mods, action):
         defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER
     ):
         return smkx_key_map[key]
-    name = extended_key_map.get(key)
+    name = KEY_MAP.get(key)
     if name is None:
         return b''
     return '\033_K{}{}{}\033\\'.format(
