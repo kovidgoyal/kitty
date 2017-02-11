@@ -2,10 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import string
-
 from . import fast_data_types as defines
 from .terminfo import key_as_bytes
+from .utils import base64_encode
+from .key_encoding import generate_extended_key_map
 
 smkx_key_map = {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -114,36 +114,7 @@ action_map = {
     defines.GLFW_REPEAT: b't'
 }
 
-
-def base64_encode(
-    integer,
-    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
-    '+/'
-):
-    ans = ''
-    while True:
-        integer, remainder = divmod(integer, 64)
-        ans = chars[remainder] + ans
-        if integer == 0:
-            break
-    return ans
-
-
-def generate_key_extended_map(symbolic=False):
-    ans = {}
-    i = 0
-    keys = {a for a in dir(defines) if a.startswith('GLFW_KEY_')}
-
-    for k in sorted(keys, key=lambda k: getattr(defines, k)):
-        val = getattr(defines, k)
-        if val < defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
-            key = k[9:] if symbolic else val
-            ans[key] = base64_encode(i)
-            i += 1
-    return ans
-
-
-key_extended_map = generate_key_extended_map()
+extended_key_map = generate_extended_key_map()
 
 
 def extended_key_event(key, scancode, mods, action):
@@ -156,8 +127,11 @@ def extended_key_event(key, scancode, mods, action):
         defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER
     ):
         return smkx_key_map[key]
+    name = extended_key_map.get(key)
+    if name is None:
+        return b''
     return '\033_K{}{}{}\033\\'.format(
-        action_map[action], base64_encode(mods), key_extended_map[key]
+        action_map[action], base64_encode(mods), name
     ).encode('ascii')
 
 

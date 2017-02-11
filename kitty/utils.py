@@ -2,12 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import re
-import os
-import signal
-import shlex
-import subprocess
 import math
+import os
+import re
+import shlex
+import signal
+import string
+import subprocess
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache
@@ -56,7 +57,9 @@ def get_logical_dpi():
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
             raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
-            m = re.search(r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE)
+            m = re.search(
+                r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE
+            )
             get_logical_dpi.ans = int(m.group(1)), int(m.group(2))
     return get_logical_dpi.ans
 
@@ -67,11 +70,13 @@ def get_dpi():
         get_dpi.ans = {'physical': pdpi, 'logical': get_logical_dpi()}
     return get_dpi.ans
 
+
 # Color names  {{{
 
-
 color_pat = re.compile(r'^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$')
-color_pat2 = re.compile(r'rgb:([a-f0-9]{2})/([a-f0-9]{2})/([a-f0-9]{2})$', re.IGNORECASE)
+color_pat2 = re.compile(
+    r'rgb:([a-f0-9]{2})/([a-f0-9]{2})/([a-f0-9]{2})$', re.IGNORECASE
+)
 
 color_names = {
     'aliceblue': 'f0f8ff',
@@ -223,6 +228,7 @@ color_names = {
     'yellowgreen': '9acd32',
 }
 Color = namedtuple('Color', 'red green blue')
+
 # }}}
 
 
@@ -293,6 +299,20 @@ def get_primary_selection():
     # glfw has no way to get the primary selection
     # https://github.com/glfw/glfw/issues/894
     return subprocess.check_output(['xsel', '-p']).decode('utf-8')
+
+
+def base64_encode(
+    integer,
+    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    '+/'
+):
+    ans = ''
+    while True:
+        integer, remainder = divmod(integer, 64)
+        ans = chars[remainder] + ans
+        if integer == 0:
+            break
+    return ans
 
 
 def set_primary_selection(text):
