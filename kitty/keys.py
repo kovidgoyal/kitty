@@ -21,8 +21,9 @@ smkx_key_map = {
 }
 smkx_key_map = {k: key_as_bytes(v) for k, v in smkx_key_map.items()}
 for f in range(1, 13):
-    smkx_key_map[getattr(defines, 'GLFW_KEY_F{}'.format(f))] = key_as_bytes('kf{}'.format(f))
-del f
+    kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
+    smkx_key_map[kf] = key_as_bytes('kf{}'.format(f))
+del f, kf
 
 smkx_key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
 smkx_key_map[defines.GLFW_KEY_ENTER] = b'\r'
@@ -38,18 +39,32 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
 }
 
-control_codes = {k: (1 + i,) for i, k in enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
-control_codes[defines.GLFW_KEY_UP] = bytearray(key_as_bytes('cuu1').replace(b'[', b'[1;5'))
-control_codes[defines.GLFW_KEY_DOWN] = bytearray(key_as_bytes('cud1').replace(b'[', b'[1;5'))
-control_codes[defines.GLFW_KEY_LEFT] = bytearray(key_as_bytes('cub1').replace(b'[', b'[1;5'))
-control_codes[defines.GLFW_KEY_RIGHT] = bytearray(key_as_bytes('cuf1').replace(b'[', b'[1;5'))
-control_codes[defines.GLFW_KEY_HOME] = bytearray(key_as_bytes('khome').replace(b'O', b'[1;5'))
-control_codes[defines.GLFW_KEY_END] = bytearray(key_as_bytes('kend').replace(b'O', b'[1;5'))
-control_codes[defines.GLFW_KEY_PAGE_UP] = bytearray(key_as_bytes('kpp').replace(b'~', b';5~'))
-control_codes[defines.GLFW_KEY_PAGE_DOWN] = bytearray(key_as_bytes('knp').replace(b'~', b';5~'))
-control_codes[defines.GLFW_KEY_DELETE] = bytearray(key_as_bytes('kdch1').replace(b'~', b';5~'))
-alt_codes = {k: (0x1b, k) for i, k in enumerate(range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1))}
+control_codes = {
+    k: (1 + i, )
+    for i, k in
+    enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))
+}
 
+
+def rkey(name, a, b):
+    return bytearray(key_as_bytes(name).replace(a, b))
+
+
+control_codes[defines.GLFW_KEY_UP] = rkey('cuu1', b'[', b'[1;5')
+control_codes[defines.GLFW_KEY_DOWN] = rkey('cud1', b'[', b'[1;5')
+control_codes[defines.GLFW_KEY_LEFT] = rkey('cub1', b'[', b'[1;5')
+control_codes[defines.GLFW_KEY_RIGHT] = rkey('cuf1', b'[', b'[1;5')
+control_codes[defines.GLFW_KEY_HOME] = rkey('khome', b'O', b'[1;5')
+control_codes[defines.GLFW_KEY_END] = rkey('kend', b'O', b'[1;5')
+control_codes[defines.GLFW_KEY_PAGE_UP] = rkey('kpp', b'~', b';5~')
+control_codes[defines.GLFW_KEY_PAGE_DOWN] = rkey('knp', b'~', b';5~')
+control_codes[defines.GLFW_KEY_DELETE] = rkey('kdch1', b'~', b';5~')
+alt_codes = {
+    k: (0x1b, k)
+    for i, k in enumerate(
+        range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1)
+    )
+}
 
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
@@ -68,12 +83,23 @@ def get_key_map(screen):
 
 
 valid_localized_key_names = {
-    k: getattr(defines, 'GLFW_KEY_' + k) for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    k: getattr(defines, 'GLFW_KEY_' + k)
+    for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 }
 
 for name, ch in {
-        'APOSTROPHE': "'", 'COMMA': ',', 'PERIOD': '.', 'SLASH': '/', 'MINUS': '-', 'SEMICOLON': ';', 'EQUAL': '=',
-        'LEFT_BRACKET': '[', 'RIGHT_BRACKET': ']', 'GRAVE_ACCENT': '`', 'BACKSLASH': '\\'}.items():
+    'APOSTROPHE': "'",
+    'COMMA': ',',
+    'PERIOD': '.',
+    'SLASH': '/',
+    'MINUS': '-',
+    'SEMICOLON': ';',
+    'EQUAL': '=',
+    'LEFT_BRACKET': '[',
+    'RIGHT_BRACKET': ']',
+    'GRAVE_ACCENT': '`',
+    'BACKSLASH': '\\'
+}.items():
     valid_localized_key_names[ch] = getattr(defines, 'GLFW_KEY_' + name)
 
 
@@ -82,10 +108,18 @@ def get_localized_key(key, scancode):
     return valid_localized_key_names.get((name or '').upper(), key)
 
 
-action_map = {defines.GLFW_PRESS: b'p', defines.GLFW_RELEASE: b'r', defines.GLFW_REPEAT: b't'}
+action_map = {
+    defines.GLFW_PRESS: b'p',
+    defines.GLFW_RELEASE: b'r',
+    defines.GLFW_REPEAT: b't'
+}
 
 
-def base64_encode(integer, chars=string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/'):
+def base64_encode(
+    integer,
+    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    '+/'
+):
     ans = ''
     while True:
         integer, remainder = divmod(integer, 64)
@@ -114,12 +148,17 @@ key_extended_map = generate_key_extended_map()
 
 def extended_key_event(key, scancode, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
-            # Shifted printable key should be handled by interpret_text_event()
-            mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126):
+        # Shifted printable key should be handled by interpret_text_event()
+        mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126
+    ):
         return b''
-    if mods == 0 and key in (defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER):
+    if mods == 0 and key in (
+        defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER
+    ):
         return smkx_key_map[key]
-    return '\033_K{}{}{}\033\\'.format(action_map[action], base64_encode(mods), key_extended_map[key]).encode('ascii')
+    return '\033_K{}{}{}\033\\'.format(
+        action_map[action], base64_encode(mods), key_extended_map[key]
+    ).encode('ascii')
 
 
 def interpret_key_event(key, scancode, mods, window, action):
@@ -127,7 +166,9 @@ def interpret_key_event(key, scancode, mods, window, action):
     if screen.extended_keyboard:
         return extended_key_event(key, scancode, mods, action)
     data = bytearray()
-    if action == defines.GLFW_PRESS or (action == defines.GLFW_REPEAT and screen.auto_repeat_enabled):
+    if action == defines.GLFW_PRESS or (
+        action == defines.GLFW_REPEAT and screen.auto_repeat_enabled
+    ):
         key = get_localized_key(key, scancode)
         if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
             # Map Ctrl-key to ascii control code
