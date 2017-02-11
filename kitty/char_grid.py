@@ -374,6 +374,10 @@ class CharGrid:
                 for m in self.url_pat.finditer(text):
                     if m.start() <= x < m.end():
                         url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
+                        # Remove trailing "] and similar
+                        url = re.sub(r'''["'][)}\]]$''', '', url)
+                        # Remove closing trailing character if it is matched by it's
+                        # corresponding opening character before the url
                         if m.start() > 0:
                             before = l[m.start() - 1]
                             closing = {'(': ')', '[': ']', '{': '}', '<': '>', '"': '"', "'": "'", '`': '`', '|': '|', ':': ':'}.get(before)
