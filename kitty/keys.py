@@ -135,13 +135,13 @@ def extended_key_event(key, scancode, mods, action):
 
 def interpret_key_event(key, scancode, mods, window, action):
     screen = window.screen
+    key = get_localized_key(key, scancode)
     if screen.extended_keyboard:
         return extended_key_event(key, scancode, mods, action)
     data = bytearray()
     if action == defines.GLFW_PRESS or (
         action == defines.GLFW_REPEAT and screen.auto_repeat_enabled
     ):
-        key = get_localized_key(key, scancode)
         if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
             # Map Ctrl-key to ascii control code
             data.extend(control_codes[key])
