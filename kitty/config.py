@@ -160,6 +160,7 @@ type_map = {
     'window_border_width': float,
     'wheel_scroll_multiplier': float,
     'visual_bell_duration': float,
+    'enable_audio_bell': to_bool,
     'click_interval': float,
     'mouse_hide_wait': float,
     'cursor_blink_interval': float,

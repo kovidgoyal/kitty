@@ -108,11 +108,12 @@ class Window:
         wakeup()
 
     def bell(self):
-        try:
-            with open('/dev/tty', 'wb') as f:
-                f.write(b'\007')
-        except EnvironmentError:
-            pass  # failure to beep is not critical
+        if self.opts.enable_audio_bell:
+            try:
+                with open('/dev/tty', 'wb') as f:
+                    f.write(b'\007')
+            except EnvironmentError:
+                pass  # failure to beep is not critical
         if self.opts.visual_bell_duration > 0:
             self.start_visual_bell_at = monotonic()
             glfw_post_empty_event()
