@@ -88,8 +88,9 @@ def get_python_flags(cflags):
     return libs
 
 
-def init_env(debug=False, asan=False):
+def init_env(debug=False, asan=False, native_optimizations=True):
     global cflags, ldflags, cc, ldpaths
+    native_optimizations = native_optimizations and not asan and not debug
     ccver = cc_version()
     stack_protector = '-fstack-protector'
     if ccver >= (4, 9):
@@ -106,8 +107,11 @@ def init_env(debug=False, asan=False):
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-            ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe'
-        ).format(optimize, stack_protector, missing_braces)
+            ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe {}'
+        ).format(
+            optimize, stack_protector, missing_braces, '-march=native'
+            if native_optimizations else ''
+        )
     )
     cflags = shlex.split(cflags
                          ) + shlex.split(sysconfig.get_config_var('CCSHARED'))
@@ -263,8 +267,8 @@ def find_c_files():
     return tuple(ans), tuple(headers)
 
 
-def build(args):
-    init_env(args.debug, args.asan)
+def build(args, native_optimizations=True):
+    init_env(args.debug, args.asan, native_optimizations)
     compile_c_extension(
         'kitty/fast_data_types', args.incremental, *find_c_files()
     )
@@ -361,10 +365,10 @@ def main():
             sys.executable, sys.executable, os.path.join(base, 'test.py')
         )
     elif args.action == 'linux-package':
-        build(args)
+        build(args, native_optimizations=False)
         package(args)
     elif args.action == 'osx-bundle':
-        build(args)
+        build(args, native_optimizations=False)
         package(args, for_bundle=True)
 
 
