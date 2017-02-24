@@ -157,6 +157,7 @@ class Sprites:
         return glGenBuffers(1)
 
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
+        self.bind_sprite_map(buf_id)
         glNamedBufferData(buf_id, sizeof(data), addressof(data), usage)
 
     def bind_sprite_map(self, buf_id):
