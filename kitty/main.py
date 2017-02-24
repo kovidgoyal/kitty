@@ -99,6 +99,14 @@ def option_parser():
         help=_('Replay previously dumped commands')
     )
     a(
+        '--debug-gl',
+        action='store_true',
+        default=False,
+        help=_('Debug OpenGL commands. This will cause all OpenGL calls'
+               ' to check for errors instead of ignoring them. Useful'
+               ' when debugging rendering problems.')
+    )
+    a(
         '--window-layout',
         default=None,
         choices=frozenset(all_layouts.keys()),
@@ -226,7 +234,7 @@ def main():
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
-    enable_automatic_opengl_error_checking(False)
+    enable_automatic_opengl_error_checking(args.debug_gl)
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
