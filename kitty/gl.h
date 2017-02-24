@@ -145,6 +145,10 @@ _glewInit(PyObject UNUSED *self) {
         PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_storage extension");
         return NULL;
     }
+    if(!GLEW_ARB_texture_buffer_object_rgb32) {
+        PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_buffer_object_rgb32 extension");
+        return NULL;
+    }
 #endif
     Py_RETURN_NONE;
 }
