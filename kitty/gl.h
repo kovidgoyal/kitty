@@ -141,14 +141,14 @@ _glewInit(PyObject UNUSED *self) {
         PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
         return NULL;
     }
-    if(!GLEW_ARB_texture_storage) {
-        PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_storage extension");
-        return NULL;
+#define ARB_TEST(name) \
+    if (!GLEW_ARB_##name) { \
+        PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
+        return NULL; \
     }
-    if(!GLEW_ARB_texture_buffer_object_rgb32) {
-        PyErr_SetString(PyExc_RuntimeError, "OpenGL is missing the required ARB_texture_buffer_object_rgb32 extension");
-        return NULL;
-    }
+    ARB_TEST(texture_storage);
+    ARB_TEST(texture_buffer_object_rgb32);
+#undef ARB_TEST
 #endif
     Py_RETURN_NONE;
 }
