@@ -196,12 +196,15 @@ class Selection:  # {{{
             if y == b[0]:
                 endx = max(0, min(b[1], endx))
             l = line(y)
+            is_continued = l.is_continued()
             if endx - startx >= linebuf.xnum - 1:
                 l = str(l).rstrip(' ')
             else:
                 l = ''.join(l[x] for x in range(startx, endx + 1))
+            if not is_continued and startx == 0 and len(lines) > 0:
+                l = '\n' + l
             lines.append(l)
-        return '\n'.join(lines)
+        return ''.join(lines)
 # }}}
 
 

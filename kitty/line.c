@@ -201,6 +201,14 @@ as_ansi(Line* self) {
 }
 
 static PyObject*
+is_continued(Line* self) {
+#define is_continued_doc "Return the line's continued flag"
+    PyObject *ans = self->continued ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+static PyObject*
 __repr__(Line* self) {
     PyObject *s = as_unicode(self);
     if (s == NULL) return NULL;
@@ -305,7 +313,8 @@ cursor_from(Line* self, PyObject *args) {
     return (PyObject*)ans;
 }
 
-void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
+void 
+line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
     const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
         self->chars[i] = (self->chars[i] & ATTRS_MASK_WITHOUT_WIDTH) | repl;
@@ -323,7 +332,8 @@ clear_text(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
+void 
+line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
     decoration_type dfg = cursor->decoration_fg & COL_MASK;
@@ -390,7 +400,8 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
-void line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor) {
+void 
+line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor) {
     char_type attrs;
     if (cursor == NULL) {
         attrs = (((self->chars[at] >> ATTRS_SHIFT) & ~3) | (width & 3)) << ATTRS_SHIFT;
@@ -470,6 +481,7 @@ static PyMethodDef methods[] = {
     METHOD(set_attribute, METH_VARARGS)
     METHOD(as_base_text, METH_NOARGS)
     METHOD(as_ansi, METH_NOARGS)
+    METHOD(is_continued, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(basic_cell_data, METH_O)
         
