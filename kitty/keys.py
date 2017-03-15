@@ -51,8 +51,8 @@ def rkey(name, a, b):
 
 
 control_codes[defines.GLFW_KEY_UP] = rkey('cuu1', b'[', b'[1;5')
-control_codes[defines.GLFW_KEY_DOWN] = rkey('cud1', b'[', b'[1;5')
-control_codes[defines.GLFW_KEY_LEFT] = rkey('cub1', b'[', b'[1;5')
+control_codes[defines.GLFW_KEY_DOWN] = rkey('cud', b'[%p1%d', b'[1;5')
+control_codes[defines.GLFW_KEY_LEFT] = rkey('cub', b'[%p1%d', b'[1;5')
 control_codes[defines.GLFW_KEY_RIGHT] = rkey('cuf1', b'[', b'[1;5')
 control_codes[defines.GLFW_KEY_HOME] = rkey('khome', b'O', b'[1;5')
 control_codes[defines.GLFW_KEY_END] = rkey('kend', b'O', b'[1;5')
