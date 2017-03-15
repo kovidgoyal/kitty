@@ -50,12 +50,6 @@ def rkey(name, a, b):
     return bytearray(key_as_bytes(name).replace(a, b))
 
 
-control_codes[defines.GLFW_KEY_UP] = rkey('cuu1', b'[', b'[1;5')
-control_codes[defines.GLFW_KEY_DOWN] = rkey('cud', b'[%p1%d', b'[1;5')
-control_codes[defines.GLFW_KEY_LEFT] = rkey('cub', b'[%p1%d', b'[1;5')
-control_codes[defines.GLFW_KEY_RIGHT] = rkey('cuf1', b'[', b'[1;5')
-control_codes[defines.GLFW_KEY_HOME] = rkey('khome', b'O', b'[1;5')
-control_codes[defines.GLFW_KEY_END] = rkey('kend', b'O', b'[1;5')
 control_codes[defines.GLFW_KEY_PAGE_UP] = rkey('kpp', b'~', b';5~')
 control_codes[defines.GLFW_KEY_PAGE_DOWN] = rkey('knp', b'~', b';5~')
 control_codes[defines.GLFW_KEY_DELETE] = rkey('kdch1', b'~', b';5~')
@@ -75,6 +69,10 @@ rmkx_key_map.update({
     defines.GLFW_KEY_HOME: b'\033[H',
     defines.GLFW_KEY_END: b'\033[F',
 })
+for sk in 'UP DOWN LEFT RIGHT HOME END'.split():
+    sk = getattr(defines, 'GLFW_KEY_' + sk)
+    control_codes[sk] = rmkx_key_map[sk].replace(b'[', b'[1;5')
+
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
 
 
