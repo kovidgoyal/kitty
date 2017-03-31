@@ -19,7 +19,7 @@ def install_symbol_map(val, font_size, dpi):
         symbol_map[ch] = family_map[family]
 
 
-def set_font_family(opts, ignore_dpi_failure=False):
+def set_font_family(opts, override_font_size=None, ignore_dpi_failure=False):
     global cell_width, cell_height, baseline, CellTexture, WideCellTexture, underline_thickness, underline_position
     try:
         dpi = get_logical_dpi()
@@ -37,11 +37,12 @@ def set_font_family(opts, ignore_dpi_failure=False):
         if ans == 'auto' and (bold or italic):
             ans = get_family(False, False)
         return ans
+    font_size = override_font_size or opts.font_size
 
     for bold in (False, True):
         for italic in (False, True):
-            main_font[(bold, italic)] = Face(get_family(bold, italic), bold, italic, True, opts.font_size, dpi)
-    install_symbol_map(opts.symbol_map, opts.font_size, dpi)
+            main_font[(bold, italic)] = Face(get_family(bold, italic), bold, italic, True, font_size, dpi)
+    install_symbol_map(opts.symbol_map, font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)

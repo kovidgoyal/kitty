@@ -17,10 +17,11 @@ from .layout import all_layouts
 from .utils import safe_print, to_color
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+MINIMUM_FONT_SIZE = 6
 
 
 def to_font_size(x):
-    return max(6, float(x))
+    return max(MINIMUM_FONT_SIZE, float(x))
 
 
 cshapes = {
@@ -153,6 +154,7 @@ type_map = {
     'scrollback_pager': shlex.split,
     'scrollback_in_new_tab': to_bool,
     'font_size': to_font_size,
+    'font_size_delta': float,
     'cursor_shape': to_cursor_shape,
     'cursor_opacity': to_opacity,
     'open_url_modifiers': to_open_url_modifiers,

@@ -14,6 +14,7 @@ from time import monotonic
 from queue import Queue, Empty
 from gettext import gettext as _
 
+from .config import MINIMUM_FONT_SIZE
 from .constants import (
     viewport_size, set_boss, wakeup, cell_size, MODIFIER_KEYS,
     main_thread, mouse_button_pressed, mouse_cursor_pos
@@ -86,6 +87,7 @@ class Boss(Thread):
         self.pending_ui_thread_calls = Queue()
         self.write_dispatch_map = {}
         set_boss(self)
+        self.current_font_size = opts.font_size
         cell_size.width, cell_size.height = set_font_family(opts)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
@@ -226,6 +228,28 @@ class Boss(Thread):
         self.tab_manager.resize()
         self.resize_gl_viewport = True
         self.pending_resize = False
+        glfw_post_empty_event()
+
+    def increase_font_size(self):
+        self.change_font_size(min(self.opts.font_size * 5, self.current_font_size + self.opts.font_size_delta))
+
+    def decrease_font_size(self):
+        self.change_font_size(max(MINIMUM_FONT_SIZE, self.current_font_size - self.opts.font_size_delta))
+
+    def restore_font_size(self):
+        self.change_font_size(self.opts.font_size)
+
+    def change_font_size(self, new_size):
+        if new_size == self.current_font_size:
+            return
+        self.current_font_size = new_size
+        cell_size.width, cell_size.height = set_font_family(
+            self.opts, override_font_size=self.current_font_size)
+        self.sprites.do_layout(cell_size.width, cell_size.height)
+        self.queue_action(self.resize_windows_after_font_size_change)
+
+    def resize_windows_after_font_size_change(self):
+        self.tab_manager.resize()
         glfw_post_empty_event()
 
     def tabbar_visibility_changed(self):

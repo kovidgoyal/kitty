@@ -71,10 +71,10 @@ def font_units_to_pixels(x, units_per_em, size_in_pts, dpi):
     return ceil_int(x * ((size_in_pts * dpi) / (72 * units_per_em)))
 
 
-def set_font_family(opts):
+def set_font_family(opts, override_font_size=None):
     global current_font_family, current_font_family_name, cff_size, cell_width, cell_height, CharTexture, baseline
     global underline_position, underline_thickness
-    size_in_pts = opts.font_size
+    size_in_pts = override_font_size or opts.font_size
     current_font_family = get_font_files(opts)
     current_font_family_name = opts.font_family
     dpi = get_logical_dpi()
