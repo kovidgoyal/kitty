@@ -19,8 +19,28 @@ def write(x):
     sys.stdout.flush()
 
 
+def set_title(*args):
+    pass
+
+
+def set_icon(*args):
+    pass
+
+
+def screen_bell():
+    pass
+
+
 def screen_cursor_position(y, x):
     write(CSI + '%s;%sH' % (y, x))
+
+
+def screen_cursor_forward(amt):
+    write(CSI + '%sC' % amt)
+
+
+def screen_cursor_back1(amt):
+    write(CSI + '%sD' % amt)
 
 
 def screen_designate_charset(which, to):
@@ -57,12 +77,20 @@ def screen_erase_in_display(how, private):
     write(CSI + ('?' if private else '') + str(how) + 'J')
 
 
+def screen_erase_in_line(how, private):
+    write(CSI + ('?' if private else '') + str(how) + 'K')
+
+
 def screen_cursor_up2(count):
     write(CSI + '%dA' % count)
 
 
 def screen_carriage_return():
     write('\r')
+
+
+def screen_linefeed():
+    write('\n')
 
 
 def screen_backspace():
@@ -77,8 +105,8 @@ def replay(raw):
     for line in raw.splitlines():
         if line.strip():
             cmd, rest = line.partition(' ')[::2]
-            if cmd == 'draw':
-                draw(rest)
+            if cmd in {'draw', 'set_title', 'set_icon'}:
+                globals()[cmd](rest)
             else:
                 rest = map(int, rest.split()) if rest else ()
                 globals()[cmd](*rest)
