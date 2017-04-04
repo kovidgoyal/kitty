@@ -753,6 +753,11 @@ FNAME(read_bytes)(PyObject UNUSED *self, PyObject *args) {
         /* PyObject_Print(Py_BuildValue("y#", screen->read_buf, len), stderr, 0); */
         break;
     }
+#ifdef DUMP_COMMANDS
+    if (len > 0) {
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, len)); PyErr_Clear();
+    }
+#endif
     _parse_bytes(screen, screen->read_buf, len, dump_callback);
     if(len > 0) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;

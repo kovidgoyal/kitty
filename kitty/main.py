@@ -99,6 +99,11 @@ def option_parser():
         help=_('Replay previously dumped commands')
     )
     a(
+        '--dump-bytes',
+        help=_('Path to file in which to store the raw bytes received from the'
+               ' child process. Useful for debugging.')
+    )
+    a(
         '--debug-gl',
         action='store_true',
         default=False,

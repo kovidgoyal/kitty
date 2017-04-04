@@ -39,7 +39,9 @@ class Window:
         self.child_fd = child.child_fd
         self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
-        self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands else read_bytes
+        self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands or args.dump_bytes else read_bytes
+        if args.dump_bytes:
+            self.dump_bytes_to = open(args.dump_bytes, 'ab')
         self.draw_dump_buf = []
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
@@ -347,6 +349,9 @@ class Window:
                         self.draw_dump_buf = []
                 else:
                     self.draw_dump_buf.append(a[1])
+            elif a[0] == 'bytes':
+                self.dump_bytes_to.write(a[1])
+                self.dump_bytes_to.flush()
             else:
                 if self.draw_dump_buf:
                     safe_print('draw', ''.join(self.draw_dump_buf))
