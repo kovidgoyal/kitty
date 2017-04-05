@@ -181,4 +181,4 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         for prefix in '\033_', '\033^', '\u009e', '\u009f':
             for suffix in '\u009c', '\033\\':
-                pb('a{}+++{}bcde'.format(prefix, suffix), 'abcde')
+                pb('a{}+\\++{}bcde'.format(prefix, suffix), 'abcde')
