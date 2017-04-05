@@ -156,9 +156,9 @@ class TestParser(BaseTest):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
         c = s.callbacks
-        pb('a\033]2;xyz\x9cbcde', 'a', ('set_title', 'xyz'), 'bcde')
+        pb('a\033]2;x\\ryz\x9cbcde', 'a', ('set_title', 'x\\ryz'), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
-        self.ae(c.titlebuf, 'xyz')
+        self.ae(c.titlebuf, 'x\\ryz')
         c.clear()
         pb('\033]\x07', ('set_title', ''), ('set_icon', ''))
         self.ae(c.titlebuf, ''), self.ae(c.iconbuf, '')
