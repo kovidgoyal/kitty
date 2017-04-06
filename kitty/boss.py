@@ -342,12 +342,12 @@ class Boss(Thread):
     def on_mouse_move(self, window, xpos, ypos):
         mouse_cursor_pos[:2] = int(xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
         self.show_mouse_cursor()
-        w = self.window_for_pos(xpos, ypos)
+        w = self.window_for_pos(*mouse_cursor_pos)
         if w is not None:
             yield w
-            w.on_mouse_move(xpos, ypos)
+            w.on_mouse_move(*mouse_cursor_pos)
         else:
-            self.change_mouse_cursor(self.in_tab_bar(ypos))
+            self.change_mouse_cursor(self.in_tab_bar(int(ypos * viewport_size.y_ratio)))
 
     @callback
     def on_mouse_scroll(self, window, x, y):
