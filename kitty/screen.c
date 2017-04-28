@@ -857,6 +857,11 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 
 // Device control {{{
 
+void
+screen_use_latin1(Screen *self, bool on) {
+    self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0; 
+}
+
 void 
 screen_bell(Screen UNUSED *self) {  
     PyObject_CallMethod(self->callbacks, "bell", NULL);

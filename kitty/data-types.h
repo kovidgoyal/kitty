@@ -396,6 +396,7 @@ void screen_erase_characters(Screen *self, unsigned int count);
 void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
 void screen_change_charset(Screen *, uint32_t to);
 void screen_designate_charset(Screen *, uint32_t which, uint32_t as);
+void screen_use_latin1(Screen *, bool);
 void set_title(Screen *self, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);

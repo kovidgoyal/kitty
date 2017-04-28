@@ -225,10 +225,12 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     switch(ch) {
                         case '@':
                             REPORT_COMMAND(screen_use_latin1, 1);
-                            screen->use_latin1 = true; screen->utf8_state = 0; screen->utf8_codepoint = 0; break;
+                            screen_use_latin1(screen, true);
+                            break;
                         case 'G':
                             REPORT_COMMAND(screen_use_latin1, 0);
-                            screen->use_latin1 = false; screen->utf8_state = 0; screen->utf8_codepoint = 0; break;
+                            screen_use_latin1(screen, false);
+                            break;
                         default:
                             REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
                     }
