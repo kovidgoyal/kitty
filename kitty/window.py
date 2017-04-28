@@ -120,6 +120,9 @@ class Window:
             self.start_visual_bell_at = monotonic()
             glfw_post_empty_event()
 
+    def use_utf8(self, on):
+        self.child.set_iutf8(on)
+
     def update_screen(self):
         self.char_grid.update_cell_data()
         glfw_post_empty_event()

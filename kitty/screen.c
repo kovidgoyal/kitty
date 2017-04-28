@@ -860,6 +860,9 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 void
 screen_use_latin1(Screen *self, bool on) {
     self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0; 
+    PyObject_CallMethod(self->callbacks, "use_utf8", "O", on ? Py_False : Py_True);
+    if (PyErr_Occurred()) PyErr_Print();
+    PyErr_Clear(); 
 }
 
 void 

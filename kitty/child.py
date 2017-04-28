@@ -10,6 +10,7 @@ import signal
 from threading import Thread
 
 from .constants import terminfo_dir
+import kitty.fast_data_types as fast_data_types
 
 
 def remove_cloexec(fd):
@@ -33,6 +34,7 @@ class Child:
         self.forked = True
         master, slave = os.openpty()  # Note that master and slave are in blocking mode
         remove_cloexec(slave)
+        self.set_iutf8(fd=master)
         stdin, self.stdin = self.stdin, None
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
@@ -78,6 +80,16 @@ class Child:
     def resize_pty(self, w, h, ww, wh):
         if self.child_fd is not None:
             fcntl.ioctl(self.child_fd, termios.TIOCSWINSZ, struct.pack('4H', h, w, ww, wh))
+
+    def set_iutf8(self, on=True, fd=None):
+        fd = fd or self.child_fd
+        if fd is not None and hasattr(fast_data_types, 'IUTF8'):
+            attrs = termios.tcgetattr(fd)
+            if on:
+                attrs[0] |= fast_data_types.IUTF8
+            else:
+                attrs[0] &= ~fast_data_types.IUTF8
+            termios.tcsetattr(fd, termios.TCSANOW, attrs)
 
     def hangup(self):
         if self.pid is not None:

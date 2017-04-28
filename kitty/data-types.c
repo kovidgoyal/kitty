@@ -56,6 +56,8 @@ static struct PyModuleDef module = {
    .m_methods = module_methods
 };
 
+#include <termios.h>
+
 PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
@@ -105,6 +107,9 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, NORMAL_PROTOCOL);
         PyModule_AddIntMacro(m, URXVT_PROTOCOL);
         PyModule_AddIntMacro(m, UTF8_PROTOCOL);
+#ifdef IUTF8
+        PyModule_AddIntMacro(m, IUTF8);
+#endif
     }
 
     return m;
