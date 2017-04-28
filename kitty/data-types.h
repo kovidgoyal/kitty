@@ -253,7 +253,7 @@ PyTypeObject ScreenModes_Type;
 #define SAVEPOINTS_SZ 256
 
 typedef struct {
-    uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
+    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     bool use_latin1;
     Cursor cursor;
     bool mDECOM, mDECAWM, mDECSCNM;
@@ -274,7 +274,7 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset;
-    uint32_t utf8_state, *g0_charset, *g1_charset, *g_charset;
+    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     bool use_latin1;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;

@@ -29,6 +29,7 @@ init_tabstops(bool *tabstops, index_type count) {
         self->g1_charset = self->g0_charset; \
         self->g_charset = self->g0_charset; \
         self->utf8_state = 0; \
+        self->utf8_codepoint = 0; \
         self->use_latin1 = false; 
 
 static PyObject*
@@ -638,6 +639,7 @@ savepoints_pop(SavepointBuffer *self) {
 
 #define COPY_CHARSETS(self, sp) \
     sp->utf8_state = self->utf8_state; \
+    sp->utf8_codepoint = self->utf8_codepoint; \
     sp->g0_charset = self->g0_charset; \
     sp->g1_charset = self->g1_charset; \
     sp->g_charset = self->g_charset; \

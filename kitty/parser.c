@@ -225,10 +225,10 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     switch(ch) {
                         case '@':
                             REPORT_COMMAND(screen_use_latin1, 1);
-                            screen->use_latin1 = true; screen->utf8_state = 0; break;
+                            screen->use_latin1 = true; screen->utf8_state = 0; screen->utf8_codepoint = 0; break;
                         case 'G':
                             REPORT_COMMAND(screen_use_latin1, 0);
-                            screen->use_latin1 = false; screen->utf8_state = 0; break;
+                            screen->use_latin1 = false; screen->utf8_state = 0; screen->utf8_codepoint = 0; break;
                         default:
                             REPORT_ERROR("Unhandled Esc %% code: 0x%x", ch);  break;
                     }
@@ -688,17 +688,17 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
 
 static inline void 
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
-    uint32_t prev = screen->utf8_state, codepoint = 0;
+    uint32_t prev = screen->utf8_state;
     for (unsigned int i = 0; i < len; i++) {
         if (screen->use_latin1) dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
         else {
-            switch (decode_utf8(&screen->utf8_state, &codepoint, buf[i])) {
+            switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, buf[i])) {
                 case UTF8_ACCEPT:
-                    dispatch_unicode_char(screen, codepoint, dump_callback);
+                    dispatch_unicode_char(screen, screen->utf8_codepoint, dump_callback);
                     break;
                 case UTF8_REJECT:
                     screen->utf8_state = UTF8_ACCEPT;
-                    if (prev != UTF8_ACCEPT) i--;
+                    if (prev != UTF8_ACCEPT && i > 0) i--;
                     break;
             }
             prev = screen->utf8_state;
