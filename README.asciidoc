@@ -122,7 +122,7 @@ or a similar package manager)
 
 kitty is designed for power keyboard users. To that end all its controls
 work with the keyboard (although it fully supports mouse interactions as
-well). It's configuration is a simple, human editable, single file for
+well). Its configuration is a simple, human editable, single file for
 easy reproducability (I like to store config files in source control).
 
 The code in kitty is designed to be simple, modular and hackable. It is
