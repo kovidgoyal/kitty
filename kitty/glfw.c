@@ -318,6 +318,14 @@ get_window_size(Window *self) {
     return Py_BuildValue("ii", w, h);
 }
 
+#ifdef glfwRequestWindowAttention
+static PyObject*
+request_window_attention(Window *self) {
+    glfwRequestWindowAttention(self->window);
+    Py_RETURN_NONE;
+}
+#endif
+
 
 // Boilerplate {{{
 #define MND(name, args) {#name, (PyCFunction)name, args, ""}
@@ -329,6 +337,9 @@ static PyMethodDef methods[] = {
     MND(should_close, METH_NOARGS),
     MND(get_framebuffer_size, METH_NOARGS),
     MND(get_window_size, METH_NOARGS),
+#ifdef glfwRequestWindowAttention
+    MND(request_window_attention, METH_NOARGS),
+#endif
     MND(set_should_close, METH_VARARGS),
     MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),

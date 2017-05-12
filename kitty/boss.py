@@ -394,6 +394,12 @@ class Boss(Thread):
     def change_mouse_cursor(self, click=False):
         self.glfw_window.set_click_cursor(click)
 
+    def request_attention(self):
+        try:
+            self.glfw_window.request_window_attention()
+        except AttributeError:
+            pass   # needs glfw 3.3
+
     def start_cursor_blink(self):
         self.cursor_blinking = True
         if self.opts.cursor_stop_blinking_after > 0:

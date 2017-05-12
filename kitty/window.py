@@ -118,7 +118,9 @@ class Window:
                 pass  # failure to beep is not critical
         if self.opts.visual_bell_duration > 0:
             self.start_visual_bell_at = monotonic()
-            glfw_post_empty_event()
+        tm = get_boss()
+        tm.queue_ui_action(tm.request_attention)
+        glfw_post_empty_event()
 
     def use_utf8(self, on):
         self.child.set_iutf8(on)
@@ -227,7 +229,7 @@ class Window:
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
         self.last_mouse_cursor_pos = x, y
         tm = get_boss()
-        tm.queue_ui_action(get_boss().change_mouse_cursor, self.char_grid.has_url_at(x, y))
+        tm.queue_ui_action(tm.change_mouse_cursor, self.char_grid.has_url_at(x, y))
         if send_event:
             x, y = self.char_grid.cell_for_pos(x, y)
             if x is not None:
