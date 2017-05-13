@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import locale
 import os
 import sys
 import tempfile
@@ -29,6 +30,7 @@ from .fast_data_types import (
 from .layout import all_layouts
 from .shaders import GL_VERSION
 from .utils import safe_print
+
 
 defconf = os.path.join(config_dir, 'kitty.conf')
 
@@ -223,6 +225,7 @@ def on_glfw_error(code, msg):
 
 
 def main():
+    locale.setlocale(locale.LC_ALL, '')
     if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
                       None) == '1' and getattr(sys, 'frozen', True):
         os.chdir(os.path.expanduser('~'))
