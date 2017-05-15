@@ -103,7 +103,7 @@ def init_env(debug=False, asan=False, native_optimizations=True):
     if debug or asan:
         optimize = '-ggdb'
         if asan:
-            optimize += ' -fsanitize=address -fno-omit-frame-pointer'
+            optimize += ' -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer'
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
@@ -117,7 +117,7 @@ def init_env(debug=False, asan=False, native_optimizations=True):
                          ) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get(
         'OVERRIDE_LDFLAGS', '-Wall ' +
-        ('-fsanitize=address' if asan else ('' if debug else '-O3'))
+        ('-fsanitize=address -fsanitize=undefined' if asan else ('' if debug else '-O3'))
     )
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
