@@ -63,8 +63,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self);
         } else {
             self->chars = (char_type*)self->buf;
-            self->colors = (color_type*)(self->chars + self->block_size);
-            self->decoration_fg = (decoration_type*)(self->colors + self->block_size);
+            self->fg_colors = (color_type*)(self->chars + self->block_size);
+            self->bg_colors = (color_type*)(self->fg_colors + self->block_size);
+            self->decoration_fg = (color_type*)(self->bg_colors + self->block_size);
             self->combining_chars = (combining_type*)(self->decoration_fg + self->block_size);
             self->line->xnum = xnum;
             for(index_type i = 0; i < ynum; i++) {
@@ -89,7 +90,8 @@ dealloc(LineBuf* self) {
 
 #define INIT_LINE(lb, l, ynum) \
     (l)->chars           = (lb)->chars + (ynum) * (lb)->xnum; \
-    (l)->colors          = (lb)->colors + (ynum) * (lb)->xnum; \
+    (l)->fg_colors          = (lb)->fg_colors + (ynum) * (lb)->xnum; \
+    (l)->bg_colors          = (lb)->bg_colors + (ynum) * (lb)->xnum; \
     (l)->decoration_fg   = (lb)->decoration_fg + (ynum) * (lb)->xnum; \
     (l)->combining_chars = (lb)->combining_chars + (ynum) * (lb)->xnum;
 
@@ -150,19 +152,22 @@ static inline int
 allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->chars = PyMem_Calloc(line->xnum, sizeof(char_type));
-        line->colors = PyMem_Calloc(line->xnum, sizeof(color_type));
-        line->decoration_fg = PyMem_Calloc(line->xnum, sizeof(decoration_type));
+        line->fg_colors = PyMem_Calloc(line->xnum, sizeof(color_type));
+        line->bg_colors = PyMem_Calloc(line->xnum, sizeof(color_type));
+        line->decoration_fg = PyMem_Calloc(line->xnum, sizeof(color_type));
         line->combining_chars = PyMem_Calloc(line->xnum, sizeof(combining_type));
         for (index_type i = 0; i < line->xnum; i++) line->chars[i] = (1 << ATTRS_SHIFT) | 32;
     } else {
         line->chars = PyMem_Malloc(line->xnum * sizeof(char_type));
-        line->colors = PyMem_Malloc(line->xnum * sizeof(color_type));
-        line->decoration_fg = PyMem_Malloc(line->xnum * sizeof(decoration_type));
+        line->fg_colors = PyMem_Malloc(line->xnum * sizeof(color_type));
+        line->bg_colors = PyMem_Malloc(line->xnum * sizeof(color_type));
+        line->decoration_fg = PyMem_Malloc(line->xnum * sizeof(color_type));
         line->combining_chars = PyMem_Malloc(line->xnum * sizeof(combining_type));
     }
-    if (line->chars == NULL || line->colors == NULL || line->decoration_fg == NULL || line->combining_chars == NULL) {
+    if (line->chars == NULL || line->fg_colors == NULL || line->bg_colors == NULL || line->decoration_fg == NULL || line->combining_chars == NULL) {
         PyMem_Free(line->chars); line->chars = NULL;
-        PyMem_Free(line->colors); line->colors = NULL;
+        PyMem_Free(line->fg_colors); line->fg_colors = NULL;
+        PyMem_Free(line->bg_colors); line->bg_colors = NULL;
         PyMem_Free(line->decoration_fg); line->decoration_fg = NULL;
         PyMem_Free(line->combining_chars); line->combining_chars = NULL;
         PyErr_NoMemory();
@@ -210,7 +215,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
 void linebuf_clear_line(LineBuf *self, index_type y) {
     Line l;
     INIT_LINE(self, &l, self->line_map[y]);
-    CLEAR_LINE(&l, 0, self->xnum);
+    CLEAR_LINE(&l, self->xnum);
     self->continued_map[y] = 0;
 }
 
@@ -295,7 +300,7 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
         Line l;
         for (i = y; i < y + num; i++) {
             INIT_LINE(self, &l, self->line_map[i]);
-            CLEAR_LINE(&l, 0, self->xnum);
+            CLEAR_LINE(&l, self->xnum);
             self->continued_map[i] = 0;
         }
     }
@@ -330,7 +335,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     Line l;
     for (i = ylimit - num; i < ylimit; i++) {
         INIT_LINE(self, &l, self->line_map[i]);
-        CLEAR_LINE(&l, 0, self->xnum);
+        CLEAR_LINE(&l, self->xnum);
         self->continued_map[i] = 0;
     }
 }

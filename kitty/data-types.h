@@ -17,8 +17,7 @@
 #define MIN(x, y) (((x) > (y)) ? (y) : (x))
 
 typedef Py_UCS4 char_type;
-typedef uint64_t color_type;
-typedef uint32_t decoration_type;
+typedef uint32_t color_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
 
@@ -31,7 +30,8 @@ typedef unsigned int index_type;
 #define SGR_PROTOCOL 2
 #define URXVT_PROTOCOL 3
 
-#define CELL_SIZE (sizeof(char_type) + sizeof(color_type) + sizeof(decoration_type) + sizeof(combining_type))
+#define CELL_FIELD_COUNT 5
+#define CELL_SIZE (CELL_FIELD_COUNT * 4)
 // The data cell size must be a multiple of 3
 #define DATA_CELL_SIZE 2 * 3
 
@@ -46,8 +46,6 @@ typedef unsigned int index_type;
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
-#define COL_SHIFT  32
-#define HAS_BG_MASK (0xFF << COL_SHIFT)
 #define CC_MASK 0xFFFF
 #define CC_SHIFT 16
 #define UTF8_ACCEPT 0
@@ -77,7 +75,8 @@ typedef unsigned int index_type;
 
 #define COPY_CELL(src, s, dest, d) \
         (dest)->chars[d] = (src)->chars[s]; \
-        (dest)->colors[d] = (src)->colors[s]; \
+        (dest)->fg_colors[d] = (src)->fg_colors[s]; \
+        (dest)->bg_colors[d] = (src)->bg_colors[s]; \
         (dest)->decoration_fg[d] = (src)->decoration_fg[s]; \
         (dest)->combining_chars[d] = (src)->combining_chars[s];
 
@@ -85,18 +84,17 @@ typedef unsigned int index_type;
 
 #define COPY_LINE(src, dest) \
     memcpy((dest)->chars, (src)->chars, sizeof(char_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->colors, (src)->colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->decoration_fg, (src)->decoration_fg, sizeof(decoration_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->fg_colors, (src)->fg_colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->bg_colors, (src)->bg_colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
+    memcpy((dest)->decoration_fg, (src)->decoration_fg, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
     memcpy((dest)->combining_chars, (src)->combining_chars, sizeof(combining_type) * MIN((src)->xnum, (dest)->xnum)); 
 
-#define CLEAR_LINE(l, at, num) \
-    for (index_type i = (at); i < (num); i++) (l)->chars[i] = (1 << ATTRS_SHIFT) | 32; \
-    memset((l)->colors, (at), (num) * sizeof(color_type)); \
-    memset((l)->decoration_fg, (at), (num) * sizeof(decoration_type)); \
-    memset((l)->combining_chars, (at), (num) * sizeof(combining_type));
-
-#define COLORS_TO_CURSOR(col, c) \
-    c->fg = col & COL_MASK; c->bg = (col >> COL_SHIFT)
+#define CLEAR_LINE(l, num) \
+    for (index_type i = 0; i < (num); i++) (l)->chars[i] = (1 << ATTRS_SHIFT) | 32; \
+    memset((l)->fg_colors, 0, (num) * sizeof(color_type)); \
+    memset((l)->bg_colors, 0, (num) * sizeof(color_type)); \
+    memset((l)->decoration_fg, 0, (num) * sizeof(color_type)); \
+    memset((l)->combining_chars, 0, (num) * sizeof(combining_type));
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 
@@ -145,8 +143,9 @@ typedef struct {
     PyObject_HEAD
 
     char_type *chars;
-    color_type *colors;
-    decoration_type *decoration_fg;
+    color_type *fg_colors;
+    color_type *bg_colors;
+    color_type *decoration_fg;
     combining_type *combining_chars;
     index_type xnum, ynum;
     bool continued;
@@ -166,8 +165,9 @@ typedef struct {
 
     // Pointers into buf
     char_type *chars;
-    color_type *colors;
-    decoration_type *decoration_fg;
+    color_type *fg_colors;
+    color_type *bg_colors;
+    color_type *decoration_fg;
     combining_type *combining_chars;
 } LineBuf;
 PyTypeObject LineBuf_Type;

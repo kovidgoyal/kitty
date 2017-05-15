@@ -72,8 +72,9 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     uint8_t *start_ptr = start_of(self, num);
     l->continued = *start_ptr;
     l->chars = (char_type*)(start_ptr + 1);
-    l->colors = (color_type*)(l->chars + self->xnum);
-    l->decoration_fg = (decoration_type*)(l->colors + self->xnum);
+    l->fg_colors = (color_type*)(l->chars + self->xnum);
+    l->bg_colors = (color_type*)(l->fg_colors + self->xnum);
+    l->decoration_fg = (color_type*)(l->bg_colors + self->xnum);
     l->combining_chars = (combining_type*)(l->decoration_fg + self->xnum);
 }
 

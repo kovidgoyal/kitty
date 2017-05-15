@@ -43,8 +43,9 @@
 
 static inline void copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
     memcpy(dest->chars + dest_at, src->chars + src_at, num * sizeof(char_type));
-    memcpy(dest->colors + dest_at, src->colors + src_at, num * sizeof(color_type));
-    memcpy(dest->decoration_fg + dest_at, src->decoration_fg + src_at, num * sizeof(decoration_type));
+    memcpy(dest->fg_colors + dest_at, src->fg_colors + src_at, num * sizeof(color_type));
+    memcpy(dest->bg_colors + dest_at, src->bg_colors + src_at, num * sizeof(color_type));
+    memcpy(dest->decoration_fg + dest_at, src->decoration_fg + src_at, num * sizeof(color_type));
     memcpy(dest->combining_chars + dest_at, src->combining_chars + src_at, num * sizeof(combining_type));
 }
 

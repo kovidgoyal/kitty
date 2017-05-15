@@ -17,7 +17,8 @@ static void
 dealloc(Line* self) {
     if (self->needs_free) {
         PyMem_Free(self->chars);
-        PyMem_Free(self->colors);
+        PyMem_Free(self->fg_colors);
+        PyMem_Free(self->bg_colors);
         PyMem_Free(self->decoration_fg);
         PyMem_Free(self->combining_chars);
     }
@@ -170,9 +171,8 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
                     WRITE_SGR(0); break;
             }
         }
-        color_type col = self->colors[pos];
-        CHECK_COLOR(fg, col & COL_MASK, 38);
-        CHECK_COLOR(bg, col >> COL_SHIFT, 48);
+        CHECK_COLOR(fg, self->fg_colors[pos], 38);
+        CHECK_COLOR(bg, self->bg_colors[pos], 48);
         CHECK_COLOR(decoration_fg, self->decoration_fg[pos], DECORATION_FG_CODE);
         WRITE_CH(ch);
         char_type cc = self->combining_chars[pos];
@@ -226,15 +226,6 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
-static PyObject*
-basic_cell_data(Line *self, PyObject *val) {
-#define basic_cell_data_doc "basic_cell_data(x) -> ch, attrs, colors"
-    unsigned long x = PyLong_AsUnsignedLong(val);
-    if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    char_type ch = self->chars[x];
-    return Py_BuildValue("IBK", (unsigned int)(ch & CHAR_MASK), (unsigned char)(ch >> ATTRS_SHIFT), (unsigned long long)self->colors[x]);
-}
-
 void line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     combining_type c = self->combining_chars[x];
     if (c & CC_MASK) self->combining_chars[x] = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
@@ -279,12 +270,13 @@ set_text(Line* self, PyObject *args) {
         return NULL;
     }
     attrs = CURSOR_TO_ATTRS(cursor, 1);
-    color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
-    decoration_type dfg = cursor->decoration_fg & COL_MASK;
+    color_type fg = (cursor->fg & COL_MASK), bg = cursor->bg & COL_MASK;
+    color_type dfg = cursor->decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
         self->chars[i] = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
-        self->colors[i] = col;
+        self->fg_colors[i] = fg;
+        self->bg_colors[i] = bg;
         self->decoration_fg[i] = dfg;
         self->combining_chars[i] = 0;
     }
@@ -307,7 +299,7 @@ cursor_from(Line* self, PyObject *args) {
     ans->x = x; ans->y = y;
     char_type attrs = self->chars[x] >> ATTRS_SHIFT;
     ATTRS_TO_CURSOR(attrs, ans);
-    COLORS_TO_CURSOR(self->colors[x], ans);
+    ans->fg = self->fg_colors[x]; ans->bg = self->bg_colors[x];
     ans->decoration_fg = self->decoration_fg[x] & COL_MASK;
 
     return (PyObject*)ans;
@@ -335,8 +327,8 @@ clear_text(Line* self, PyObject *args) {
 void 
 line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
-    color_type col = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
-    decoration_type dfg = cursor->decoration_fg & COL_MASK;
+    color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
+    color_type dfg = cursor->decoration_fg & COL_MASK;
     if (!clear_char) attrs = ((attrs >> ATTRS_SHIFT) & ~WIDTH_MASK) << ATTRS_SHIFT;
     
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
@@ -347,7 +339,7 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
             char_type w = ((self->chars[i] >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
             self->chars[i] = (self->chars[i] & CHAR_MASK) | attrs | w;
         }
-        self->colors[i] = col;
+        self->fg_colors[i] = fg; self->bg_colors[i] = bg;
         self->decoration_fg[i] = dfg;
     }
 }
@@ -407,7 +399,8 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
         attrs = (((self->chars[at] >> ATTRS_SHIFT) & ~3) | (width & 3)) << ATTRS_SHIFT;
     } else {
         attrs = CURSOR_TO_ATTRS(cursor, width & 3);
-        self->colors[at] = (cursor->fg & COL_MASK) | ((color_type)(cursor->bg & COL_MASK) << COL_SHIFT);
+        self->fg_colors[at] = (cursor->fg & COL_MASK);
+        self->bg_colors[at] = (cursor->bg & COL_MASK);
         self->decoration_fg[at] = cursor->decoration_fg & COL_MASK;
     }
     self->chars[at] = (ch & CHAR_MASK) | attrs;
@@ -449,8 +442,9 @@ __len__(PyObject *self) {
 static int __eq__(Line *a, Line *b) {
     return a->xnum == b->xnum && \
                     memcmp(a->chars, b->chars, sizeof(char_type) * a->xnum) == 0 && \
-                    memcmp(a->colors, b->colors, sizeof(color_type) * a->xnum) == 0 && \
-                    memcmp(a->decoration_fg, b->decoration_fg, sizeof(decoration_type) * a->xnum) == 0 && \
+                    memcmp(a->fg_colors, b->fg_colors, sizeof(color_type) * a->xnum) == 0 && \
+                    memcmp(a->bg_colors, b->bg_colors, sizeof(color_type) * a->xnum) == 0 && \
+                    memcmp(a->decoration_fg, b->decoration_fg, sizeof(color_type) * a->xnum) == 0 && \
                     memcmp(a->combining_chars, b->combining_chars, sizeof(combining_type) * a->xnum) == 0;
 }
 
@@ -483,7 +477,6 @@ static PyMethodDef methods[] = {
     METHOD(as_ansi, METH_NOARGS)
     METHOD(is_continued, METH_NOARGS)
     METHOD(width, METH_O)
-    METHOD(basic_cell_data, METH_O)
         
     {NULL}  /* Sentinel */
 };
@@ -522,7 +515,8 @@ copy_char(Line* self, PyObject *args) {
         return NULL;
     }
     to->chars[dest] = self->chars[src];
-    to->colors[dest] = self->colors[src];
+    to->fg_colors[dest] = self->fg_colors[src];
+    to->bg_colors[dest] = self->bg_colors[src];
     to->decoration_fg[dest] = self->decoration_fg[src];
     to->combining_chars[dest] = self->combining_chars[src];
     Py_RETURN_NONE;
