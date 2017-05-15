@@ -423,7 +423,7 @@ copy_old(LineBuf *self, PyObject *y) {
     if (!PyObject_TypeCheck(y, &LineBuf_Type)) { PyErr_SetString(PyExc_TypeError, "Not a LineBuf object"); return NULL; }
     LineBuf *other = (LineBuf*)y;
     if (other->xnum != self->xnum) { PyErr_SetString(PyExc_ValueError, "LineBuf has a different number of columns"); return NULL; }
-    Line sl = {0}, ol = {0};
+    Line sl = {{0}}, ol = {{0}};
     sl.xnum = self->xnum; ol.xnum = other->xnum;
 
     for (index_type i = 0; i < MIN(self->ynum, other->ynum); i++) {

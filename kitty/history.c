@@ -95,7 +95,7 @@ index_type historybuf_push(HistoryBuf *self) {
 
 bool
 historybuf_resize(HistoryBuf *self, index_type lines) {
-    HistoryBuf t = {0};
+    HistoryBuf t = {{0}};
     t.xnum=self->xnum;
     t.ynum=lines;
     if (t.ynum > 0 && t.ynum != self->ynum) {

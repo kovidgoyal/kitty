@@ -6,7 +6,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=gcc ASANLIB=libasan.so.0 ASAN_ARG=--asan
+            - CC=gcc SANITIZE_ARG=--sanitize
           language: python
           python: "3.5"
           addons:
@@ -24,7 +24,25 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=clang RUN_FLAKE=1 BUILD_PKG=1
+            - CC=clang SANITIZE_ARG=--sanitize
+          language: python
+          python: "3.5"
+          addons:
+            apt:
+              packages:
+                - libfontconfig1-dev
+                - libglew-dev
+                - libxi-dev
+                - libxrandr-dev
+                - libxinerama-dev
+                - libxcursor-dev
+
+        - os: linux
+          dist: trusty
+          group: beta
+          sudo: false
+          env:
+            - RUN_FLAKE=1 BUILD_PKG=1
           language: python
           python: "3.5"
           addons:
@@ -45,6 +63,13 @@ matrix:
           language: generic
           env: USE_BREW=1 BUILD_PKG=1
 
+env:
+    global:
+        - PYTHON=python3
+        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig:$PKG_CONFIG_PATH
+        - LD_LIBRARY_PATH=$HOME/glfw/lib:$LD_LIBRARY_PATH
+        - ASAN_OPTIONS=leak_check_at_exit=0
+
 install: |
     set -e
     if [[ "$RUN_FLAKE" == "1" ]]; then pip install flake8; fi
@@ -59,7 +84,7 @@ install: |
         fi
     else
         wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
-        unzip glfw-3.2.1.zip
+        unzip -q glfw-3.2.1.zip
         cd glfw-3.2.1
         cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
         make
@@ -67,17 +92,18 @@ install: |
         cd ..
     fi
     pkg-config --cflags glfw3
+    if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then
+        PLIB=$(ldd `which python` | grep libpython | cut -d ' ' -f 3)
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`dirname $PLIB`
+    fi
     set +e
 
-env:
-    global:
-        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig
-        - LD_LIBRARY_PATH=$HOME/glfw/lib
-        - ASAN_OPTIONS=leak_check_at_exit=0
-        - PYTHON=python3
 before_script:
-    - $PYTHON setup.py build --debug $ASAN_ARG;
+    - echo $LD_LIBRARY_PATH
+    - $PYTHON setup.py build --debug $SANITIZE_ARG;
+    - if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then ldd ./test-launcher `which $PYTHON`; fi
+
 script:
-    - LD_PRELOAD=$ASANLIB $PYTHON setup.py test
+    - ./test-launcher
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
     - if [[ "$BUILD_PKG" == "1" ]]; then $PYTHON setup.py linux-package; fi

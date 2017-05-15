@@ -53,7 +53,7 @@ def cc_version():
         ver = tuple(map(int, ver))
     except Exception:
         ver = (0, 0)
-    return ver
+    return cc, ver
 
 
 def get_python_flags(cflags):
@@ -88,36 +88,43 @@ def get_python_flags(cflags):
     return libs
 
 
-def init_env(debug=False, asan=False, native_optimizations=True):
+def get_sanitize_args(cc, ccver):
+    sanitize_args = set()
+    sanitize_args.add('-fno-omit-frame-pointer')
+    sanitize_args.add('-fsanitize=address')
+    if (cc == 'gcc' and ccver >= (5, 0)) or cc == 'clang':
+        sanitize_args.add('-fsanitize=undefined')
+        # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
+        #     sanitize_args.add('-fno-sanitize-recover=all')
+    return sanitize_args
+
+
+def init_env(debug=False, sanitize=False, native_optimizations=True):
     global cflags, ldflags, cc, ldpaths
-    native_optimizations = native_optimizations and not asan and not debug
-    ccver = cc_version()
+    native_optimizations = native_optimizations and not sanitize and not debug
+    cc, ccver = cc_version()
+    print('CC:', cc, ccver)
     stack_protector = '-fstack-protector'
-    if ccver >= (4, 9):
+    if ccver >= (4, 9) and cc == 'gcc':
         stack_protector += '-strong'
     missing_braces = ''
-    if ccver < (5, 2):
+    if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
-    cc = os.environ.get('CC', 'gcc')
-    optimize = '-O3'
-    if debug or asan:
-        optimize = '-ggdb'
-        if asan:
-            optimize += ' -fsanitize=address -fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer'
+    optimize = '-ggdb' if debug or sanitize else '-O3'
+    sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-            ' -pedantic-errors -Werror {} -DNDEBUG -fwrapv {} {} -pipe {}'
+            ' -pedantic-errors -Werror {} {} -DNDEBUG -fwrapv {} {} -pipe {}'
         ).format(
-            optimize, stack_protector, missing_braces, '-march=native'
+            optimize, ' '.join(sanitize_args), stack_protector, missing_braces, '-march=native'
             if native_optimizations else ''
         )
     )
     cflags = shlex.split(cflags
                          ) + shlex.split(sysconfig.get_config_var('CCSHARED'))
     ldflags = os.environ.get(
-        'OVERRIDE_LDFLAGS', '-Wall ' +
-        ('-fsanitize=address -fsanitize=undefined' if asan else ('' if debug else '-O3'))
+        'OVERRIDE_LDFLAGS', '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
     )
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
@@ -230,11 +237,13 @@ def option_parser():
         help='Build extension modules with debugging symbols'
     )
     p.add_argument(
-        '--asan',
+        '--sanitize',
         default=False,
         action='store_true',
-        help='Turn on address sanitization to detect memory access errors. Note that if you do turn it on,'
-        ' you have to run kitty with the environment variable LD_PRELOAD=/usr/lib/libasan.so'
+        help='Turn on sanitization to detect memory access errors and undefined behavior. Note that if you do turn it on,'
+        ' a special executable will be built for running the test suite. If you want to run normal kitty'
+        ' with sanitization, use LD_PRELOAD=libasan.so (for gcc) and'
+        ' LD_PRELOAD=/usr/lib/clang/4.0.0/lib/linux/libclang_rt.asan-x86_64.so (for clang, changing path as appropriate).'
     )
     p.add_argument(
         '--prefix',
@@ -268,7 +277,7 @@ def find_c_files():
 
 
 def build(args, native_optimizations=True):
-    init_env(args.debug, args.asan, native_optimizations)
+    init_env(args.debug, args.sanitize, native_optimizations)
     compile_c_extension(
         'kitty/fast_data_types', args.incremental, *find_c_files()
     )
@@ -279,6 +288,18 @@ def safe_makedirs(path):
         os.makedirs(path)
     except FileExistsError:
         pass
+
+
+def build_test_launcher(args):
+    cc, ccver = cc_version()
+    cflags = '-g -Wall -Werror -fpie'.split()
+    pylib = get_python_flags(cflags)
+    sanitize_lib = (['-lasan'] if cc == 'gcc' else []) if args.sanitize else []
+    cflags.extend(get_sanitize_args(cc, ccver) if args.sanitize else [])
+    cmd = [cc] + cflags + [
+        'test-launcher.c', '-o', 'test-launcher',
+    ] + sanitize_lib + pylib
+    run_tool(cmd)
 
 
 def package(args, for_bundle=False):  # {{{
@@ -360,6 +381,7 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'build':
         build(args)
+        build_test_launcher(args)
     elif args.action == 'test':
         os.execlp(
             sys.executable, sys.executable, os.path.join(base, 'test.py')

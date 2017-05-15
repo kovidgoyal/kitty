@@ -140,7 +140,7 @@ static PyStructSequence_Field gm_fields[] = {
 };
 
 static PyStructSequence_Desc gm_desc = {"GlpyhMetrics", NULL, gm_fields, 8};
-static PyTypeObject GlpyhMetricsType = {0};
+static PyTypeObject GlpyhMetricsType = {{{0}}};
 
 static PyObject*
 glyph_metrics(Face *self) {
@@ -167,7 +167,7 @@ static PyStructSequence_Field bm_fields[] = {
     {NULL}
 };
 static PyStructSequence_Desc bm_desc = {"Bitmap", NULL, bm_fields, 7};
-static PyTypeObject BitmapType = {0};
+static PyTypeObject BitmapType = {{{0}}};
 
 static PyObject*
 bitmap(Face *self) {
