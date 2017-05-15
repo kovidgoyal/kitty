@@ -175,7 +175,7 @@ PyTypeObject LineBuf_Type;
 typedef struct {
     PyObject_HEAD
 
-    uint8_t *buf;
+    uint32_t *buf;
     index_type xnum, ynum;
     Line *line;
     index_type start_of_data, count;

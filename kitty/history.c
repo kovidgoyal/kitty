@@ -8,12 +8,13 @@
 #include "data-types.h"
 #include <structmember.h>
 
-#define CELL_SIZE_H (CELL_SIZE + 1)
+#define CELL_FIELD_COUNT_H (CELL_FIELD_COUNT + 1)
+#define CELL_SIZE_H (CELL_FIELD_COUNT_H * 4)
 
-static inline uint8_t* 
+static inline uint32_t* 
 start_of(HistoryBuf *self, index_type num) {
     // Pointer to the start of the line with index (buffer position) num
-    return self->buf + CELL_SIZE_H * num * self->xnum;
+    return self->buf + CELL_FIELD_COUNT_H * num * self->xnum;
 }
 
 static PyObject *
@@ -32,7 +33,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->buf = PyMem_Calloc(xnum * ynum, CELL_SIZE_H);
+        self->buf = (uint32_t*)PyMem_Calloc(xnum * ynum, CELL_SIZE_H);
         self->line = alloc_line();
         if (self->buf == NULL || self->line == NULL) {
             PyErr_NoMemory();
@@ -41,7 +42,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         } else {
             self->line->xnum = xnum;
             for(index_type y = 0; y < self->ynum; y++) {
-                self->line->chars = (char_type*)(start_of(self, y) + 1);
+                self->line->chars = start_of(self, y) + 1;
                 for (index_type i = 0; i < self->xnum; i++) self->line->chars[i] = (1 << ATTRS_SHIFT) | 32;
             }
         }
@@ -69,8 +70,8 @@ index_of(HistoryBuf *self, index_type lnum) {
 static inline void 
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
-    uint8_t *start_ptr = start_of(self, num);
-    l->continued = *start_ptr;
+    uint32_t *start_ptr = start_of(self, num);
+    l->continued = (bool)(*start_ptr);
     l->chars = (char_type*)(start_ptr + 1);
     l->fg_colors = (color_type*)(l->chars + self->xnum);
     l->bg_colors = (color_type*)(l->fg_colors + self->xnum);
@@ -98,12 +99,12 @@ historybuf_resize(HistoryBuf *self, index_type lines) {
     t.xnum=self->xnum;
     t.ynum=lines;
     if (t.ynum > 0 && t.ynum != self->ynum) {
-        t.buf = PyMem_Calloc(t.xnum * t.ynum, CELL_SIZE_H);
+        t.buf = (uint32_t*)PyMem_Calloc(t.xnum * t.ynum, CELL_SIZE_H);
         if (t.buf == NULL) { PyErr_NoMemory(); return false; }
         t.count = MIN(self->count, t.ynum);
         if (t.count > 0) {
             for (index_type s=0; s < t.count; s++) {
-                uint8_t *src = start_of(self, index_of(self, s)), *dest = start_of(&t, index_of(&t, s));
+                uint32_t *src = start_of(self, index_of(self, s)), *dest = start_of(&t, index_of(&t, s));
                 memcpy(dest, src, CELL_SIZE_H * t.xnum);
             }
         }
@@ -217,7 +218,7 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? *(start_of(src, map_src_index(src_y + 1))) : false)
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (bool)(*(start_of(src, map_src_index(src_y + 1)))) : false)
 
 #define next_dest_line(cont) *start_of(dest, historybuf_push(dest)) = cont; dest->line->continued = cont; 
 
