@@ -309,7 +309,7 @@ class CharGrid:
             elif which is DynamicColor.default_bg:
                 self.screen.default_bg = val
             elif which is DynamicColor.cursor_color:
-                self.screen.cursor.color = val
+                self.screen.cursor_color = val
             elif which is DynamicColor.highlight_fg:
                 self.screen.highlight_fg = val
             elif which is DynamicColor.highlight_bg:
@@ -511,7 +511,7 @@ class CharGrid:
         ul = cursor_program.uniform_location
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy
-        cc = self.screen.cursor.color
+        cc = self.screen.cursor_color
         col = color_from_int(cc >> 8) if cc & 1 else self.opts.cursor
         shape = cursor.shape or self.default_cursor.shape
         alpha = self.opts.cursor_opacity

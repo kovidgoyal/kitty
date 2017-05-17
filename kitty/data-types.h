@@ -188,7 +188,7 @@ typedef struct {
     bool bold, italic, reverse, strikethrough, blink;
     unsigned int x, y;
     uint8_t decoration, shape;
-    unsigned long fg, bg, decoration_fg, color;
+    unsigned long fg, bg, decoration_fg;
 
 } Cursor;
 PyTypeObject Cursor_Type;
@@ -289,7 +289,7 @@ typedef struct {
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ];
-    uint32_t default_fg, default_bg, highlight_fg, highlight_bg;
+    uint32_t default_fg, default_bg, highlight_fg, highlight_bg, cursor_color;
 
 } Screen;
 PyTypeObject Screen_Type;

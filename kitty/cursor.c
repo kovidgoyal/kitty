@@ -24,15 +24,15 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink) && EQ(color);
+    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink);
 }
 
 #define BOOL(x) ((x) ? Py_True : Py_False)
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%d, blink=%R, color=#%08x, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
-        self->x, self->y, self->shape, BOOL(self->blink), self->color, self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
+        "Cursor(x=%u, y=%u, shape=%d, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
+        self->x, self->y, self->shape, BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
     );
 }
 
@@ -52,23 +52,17 @@ void cursor_reset(Cursor *self) {
     cursor_reset_display_attrs(self);
     self->x = 0; self->y = 0;
     self->shape = 0; self->blink = false;
-    self->color = 0; 
 }
 
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
-    CCY(x); CCY(y); CCY(shape); CCY(blink); CCY(color); 
+    CCY(x); CCY(y); CCY(shape); CCY(blink); 
     CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
 }
 
 static PyObject*
 copy(Cursor *self);
 #define copy_doc "Create a clone of this cursor"
-
-static PyObject* color_get(Cursor *self, void UNUSED *closure) { 
-    if (!(self->color & 0xFF)) { Py_RETURN_NONE; }
-    return Py_BuildValue("BBB", (self->color >> 24) & 0xFF, (self->color >> 16) & 0xFF, (self->color >> 8) & 0xFF);
-}
 
 // Boilerplate {{{
 
@@ -82,7 +76,6 @@ static PyMemberDef members[] = {
     {"x", T_UINT, offsetof(Cursor, x), 0, "x"},
     {"y", T_UINT, offsetof(Cursor, y), 0, "y"},
     {"shape", T_UBYTE, offsetof(Cursor, shape), 0, "shape"},
-    {"color", T_ULONG, offsetof(Cursor, color), 0, "color"},
     {"decoration", T_UBYTE, offsetof(Cursor, decoration), 0, "decoration"},
     {"fg", T_ULONG, offsetof(Cursor, fg), 0, "fg"},
     {"bg", T_ULONG, offsetof(Cursor, bg), 0, "bg"},
@@ -96,7 +89,6 @@ static PyGetSetDef getseters[] = {
     GETSET(reverse)
     GETSET(strikethrough)
     GETSET(blink)
-    {"color", (getter) color_get, NULL, "color", NULL},
     {NULL}  /* Sentinel */
 };
 

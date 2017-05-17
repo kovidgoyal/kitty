@@ -46,6 +46,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->default_fg = 0; self->default_bg = 0;
         self->highlight_fg = 0; self->highlight_bg = 0;
+        self->cursor_color = 0;
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
@@ -72,6 +73,7 @@ screen_reset(Screen *self) {
     self->modes = empty_modes;
     self->default_fg = 0; self->default_bg = 0;
     self->highlight_fg = 0; self->highlight_bg = 0;
+    self->cursor_color = 0;
     RESET_CHARSETS;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
@@ -1312,6 +1314,7 @@ static PyMemberDef members[] = {
     {"default_bg", T_ULONG, offsetof(Screen, default_bg), 0, "default_bg"},
     {"highlight_fg", T_ULONG, offsetof(Screen, highlight_fg), 0, "highlight_fg"},
     {"highlight_bg", T_ULONG, offsetof(Screen, highlight_bg), 0, "highlight_bg"},
+    {"cursor_color", T_ULONG, offsetof(Screen, cursor_color), 0, "cursor_color"},
     {NULL}
 };
  
