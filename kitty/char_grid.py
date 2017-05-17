@@ -304,16 +304,7 @@ class CharGrid:
             if val is None:
                 continue
             dirtied = True
-            if which is DynamicColor.default_fg:
-                self.screen.default_fg = val
-            elif which is DynamicColor.default_bg:
-                self.screen.default_bg = val
-            elif which is DynamicColor.cursor_color:
-                self.screen.cursor_color = val
-            elif which is DynamicColor.highlight_fg:
-                self.screen.highlight_fg = val
-            elif which is DynamicColor.highlight_bg:
-                self.screen.highlight_bg = val
+            setattr(self.screen, which.name, val)
         if dirtied:
             self.screen.mark_as_dirty()
 
