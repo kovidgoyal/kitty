@@ -8,7 +8,7 @@ from collections import deque
 from functools import partial
 from time import monotonic
 
-from .char_grid import CharGrid
+from .char_grid import CharGrid, DynamicColor
 from .constants import wakeup, get_boss, appname, WindowGeometry, is_key_pressed, mouse_button_pressed, cell_size
 from .fast_data_types import (
     BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
@@ -21,6 +21,15 @@ from .keys import get_key_map
 from .mouse import encode_mouse_event, PRESS, RELEASE, MOVE, DRAG
 from .terminfo import get_capabilities
 from .utils import sanitize_title, get_primary_selection, parse_color_set, safe_print
+
+DYNAMIC_COLOR_CODES = {
+    10: DynamicColor.default_fg,
+    11: DynamicColor.default_bg,
+    12: DynamicColor.cursor_color,
+    17: DynamicColor.highlight_bg,
+    19: DynamicColor.highlight_fg,
+}
+DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
 
 
 class Window:
@@ -149,12 +158,11 @@ class Window:
         pass  # TODO: Implement this
 
     def set_dynamic_color(self, code, value):
-        wmap = {10: 'fg', 11: 'bg', 12: 'cc', 110: 'fg', 111: 'bg', 112: 'cc'}
         if isinstance(value, bytes):
             value = value.decode('utf-8')
         color_changes = {}
         for val in value.split(';'):
-            w = wmap.get(code)
+            w = DYNAMIC_COLOR_CODES.get(code)
             if w is not None:
                 if code >= 110:
                     val = None

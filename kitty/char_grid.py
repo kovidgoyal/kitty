@@ -4,6 +4,7 @@
 
 import re
 import sys
+from enum import Enum
 from collections import namedtuple
 from ctypes import addressof, memmove, sizeof
 from threading import Lock
@@ -25,6 +26,11 @@ from .utils import (
 )
 
 Cursor = namedtuple('Cursor', 'x y shape blink')
+
+
+class DynamicColor(Enum):
+    default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
+
 
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
@@ -252,17 +258,13 @@ class CharGrid:
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen = screen
         self.opts = opts
-        self.original_bg = opts.background
-        self.original_fg = opts.foreground
-        self.default_bg = color_as_int(self.original_bg)
-        self.default_fg = color_as_int(self.original_fg)
+        self.original_bg = self.default_bg = color_as_int(opts.background)
+        self.original_fg = self.default_fg = color_as_int(opts.foreground)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
-        self.original_bg = opts.background
-        self.original_fg = opts.foreground
-        self.selection_foreground, self.selection_background = map(color_as_int, (opts.selection_foreground, opts.selection_background))
+        self.highlight_fg, self.highlight_bg = map(color_as_int, (opts.selection_foreground, opts.selection_background))
         self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
         def escape(chars):
@@ -290,25 +292,30 @@ class CharGrid:
 
     def change_colors(self, changes):
         dirtied = False
+
+        def item(raw):
+            if raw is None:
+                return True, None
+            val = to_color(raw)
+            if val is None:
+                return False, None
+            return True, color_as_int(val)
+
         for which, val in changes.items():
-            if which in ('fg', 'bg'):
-                if not val:
-                    setattr(self, 'default_' + which, color_as_int(getattr(self, 'original_' + which)))
-                    dirtied = True
-                else:
-                    val = to_color(val)
-                    if val is not None:
-                        setattr(self, 'default_' + which, color_as_int(val))
-                        dirtied = True
-            elif which == 'cc':
-                if not val:
-                    self.screen.cursor.color = 0
-                    dirtied = True
-                else:
-                    val = to_color(val)
-                    if val is not None:
-                        self.screen.cursor.color = (color_as_int(val) << 8) | 1
-                        dirtied = True
+            valid, val = item(val)
+            if not valid:
+                continue
+            dirtied = True
+            if which is DynamicColor.default_fg:
+                self.default_fg = self.original_fg if val is None else val
+            elif which is DynamicColor.default_bg:
+                self.default_bg = self.original_bg if val is None else val
+            elif which is DynamicColor.cursor_color:
+                self.screen.cursor.color = 0 if val is None else (val << 8) | 1
+            elif which is DynamicColor.highlight_fg:
+                self.screen.highlight_fg = 0 if val is None else (val << 8) | 1
+            elif which is DynamicColor.highlight_bg:
+                self.screen.highlight_bg = 0 if val is None else (val << 8) | 1
         if dirtied:
             self.screen.mark_as_dirty()
 
@@ -474,7 +481,11 @@ class CharGrid:
                 buf = self.selection_buf
                 if self.render_buf_is_dirty or sel != self.last_rendered_selection:
                     memmove(buf, self.render_buf, sizeof(type(buf)))
-                    self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], self.selection_foreground, self.selection_background)
+                    fg = self.screen.highlight_fg
+                    fg = fg >> 8 if fg & 1 else self.highlight_fg
+                    bg = self.screen.highlight_bg
+                    bg = bg >> 8 if bg & 1 else self.highlight_bg
+                    self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
                 sprites.set_sprite_map(self.buffer_id, buf)
                 self.render_buf_is_dirty = False
