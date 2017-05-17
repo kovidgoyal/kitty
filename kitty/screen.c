@@ -887,8 +887,17 @@ callback(const char *name, Screen *self, const char *data, unsigned int sz) {
 }
 
 void 
-report_device_attributes(Screen *self, unsigned int UNUSED mode, bool UNUSED secondary) {
-    callback("write_to_child", self, "\x1b[>1;4600;0c", 0);  // same as libvte
+report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
+    if (mode == 0) {
+        switch(start_modifier) {
+            case 0:
+                callback("write_to_child", self, "\x1b[?62;c", 0);  // VT-220 with no extra info
+                break;
+            case '>':
+                callback("write_to_child", self, "\x1b[>1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c", 0);  // VT-220 + primary version + secondary version
+                break;
+        }
+    }
 }
 
 void 

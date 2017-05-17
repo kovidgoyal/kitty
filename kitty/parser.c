@@ -362,6 +362,12 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     name(screen, p1, private); \
     break;
 
+#define CALL_CSI_HANDLER1S(name, defval) \
+    p1 = num_params > 0 ? params[0] : defval; \
+    REPORT_COMMAND(name, p1, start_modifier); \
+    name(screen, p1, start_modifier); \
+    break;
+
 #define CALL_CSI_HANDLER1M(name, defval) \
     p1 = num_params > 0 ? params[0] : defval; \
     REPORT_COMMAND(name, p1, end_modifier); \
@@ -458,7 +464,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case ECH: 
             CALL_CSI_HANDLER1(screen_erase_characters, 1); 
         case DA: 
-            CALL_CSI_HANDLER1P(report_device_attributes, 0, '>'); 
+            CALL_CSI_HANDLER1S(report_device_attributes, 0); 
         case TBC: 
             CALL_CSI_HANDLER1(screen_clear_tab_stop, 0); 
         case SM: 
