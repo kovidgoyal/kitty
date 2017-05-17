@@ -10,7 +10,7 @@ from threading import Lock
 
 from .config import build_ansi_color_table, defaults
 from .constants import get_boss, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int, safe_print
+from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int, safe_print, color_from_int
 from .fast_data_types import (
     glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
     GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
@@ -251,7 +251,8 @@ class CharGrid:
         self.default_fg = color_as_int(self.original_fg)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
+        self.default_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
+        self.current_cursor = self.default_cursor._replace(color=None)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
@@ -293,6 +294,17 @@ class CharGrid:
                     if val is not None:
                         setattr(self, 'default_' + which, color_as_int(val))
                         dirtied = True
+            elif which == 'cc':
+                if not val:
+                    self.screen.cursor.color = 0
+                    self.current_cursor = self.current_cursor._replace(color=None)
+                    dirtied = True
+                else:
+                    val = to_color(val)
+                    if val is not None:
+                        self.current_cursor = self.current_cursor._replace(color=val)
+                        self.screen.cursor.color = color_as_int(val)
+                        dirtied = True
         if dirtied:
             self.screen.mark_as_dirty()
 
@@ -327,7 +339,7 @@ class CharGrid:
             self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
-            self.current_cursor = Cursor(c.x, c.y, c.shape, c.color, c.blink)
+            self.current_cursor = Cursor(c.x, c.y, c.shape, color_from_int(c.color) if c.color else None, c.blink)
 
     def cell_for_pos(self, x, y):
         x, y = int(x // cell_size.width), int(y // cell_size.height)
@@ -492,7 +504,7 @@ class CharGrid:
         bottom = top - sg.dy
         if shape == CURSOR_UNDERLINE:
             top = bottom + width(vert=False)
-        glUniform4f(ul('color'), col[0], col[1], col[2], alpha)
+        glUniform4f(ul('color'), col[0] / 255.0, col[1] / 255.0, col[2] / 255.0, alpha)
         glUniform2f(ul('xpos'), left, right)
         glUniform2f(ul('ypos'), top, bottom)
         glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)

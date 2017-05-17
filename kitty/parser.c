@@ -295,8 +295,10 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 break;
             case 10:
             case 11:
+            case 12:
             case 110:
             case 111:
+            case 112:
                 SET_COLOR(set_dynamic_color);
                 break;
             default:

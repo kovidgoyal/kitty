@@ -149,7 +149,7 @@ class Window:
         pass  # TODO: Implement this
 
     def set_dynamic_color(self, code, value):
-        wmap = {10: 'fg', 11: 'bg', 110: 'fg', 111: 'bg'}
+        wmap = {10: 'fg', 11: 'bg', 12: 'cc', 110: 'fg', 111: 'bg', 112: 'cc'}
         if isinstance(value, bytes):
             value = value.decode('utf-8')
         color_changes = {}

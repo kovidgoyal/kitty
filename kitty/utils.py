@@ -257,6 +257,10 @@ def color_as_int(val):
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
+def color_from_int(val):
+    return Color((val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)
+
+
 def parse_color_set(raw):
     parts = raw.split(';')
     for c, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
