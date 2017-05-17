@@ -289,7 +289,7 @@ typedef struct {
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ];
-    uint32_t highlight_fg, highlight_bg;
+    uint32_t default_fg, default_bg, highlight_fg, highlight_bg;
 
 } Screen;
 PyTypeObject Screen_Type;

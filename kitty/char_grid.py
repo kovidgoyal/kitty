@@ -258,8 +258,8 @@ class CharGrid:
         self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen = screen
         self.opts = opts
-        self.original_bg = self.default_bg = color_as_int(opts.background)
-        self.original_fg = self.default_fg = color_as_int(opts.foreground)
+        self.default_bg = color_as_int(opts.background)
+        self.default_fg = color_as_int(opts.foreground)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
@@ -295,27 +295,25 @@ class CharGrid:
 
         def item(raw):
             if raw is None:
-                return True, None
+                return 0
             val = to_color(raw)
-            if val is None:
-                return False, None
-            return True, color_as_int(val)
+            return None if val is None else (color_as_int(val) << 8) | 1
 
         for which, val in changes.items():
-            valid, val = item(val)
-            if not valid:
+            val = item(val)
+            if val is None:
                 continue
             dirtied = True
             if which is DynamicColor.default_fg:
-                self.default_fg = self.original_fg if val is None else val
+                self.screen.default_fg = val
             elif which is DynamicColor.default_bg:
-                self.default_bg = self.original_bg if val is None else val
+                self.screen.default_bg = val
             elif which is DynamicColor.cursor_color:
-                self.screen.cursor.color = 0 if val is None else (val << 8) | 1
+                self.screen.cursor.color = val
             elif which is DynamicColor.highlight_fg:
-                self.screen.highlight_fg = 0 if val is None else (val << 8) | 1
+                self.screen.highlight_fg = val
             elif which is DynamicColor.highlight_bg:
-                self.screen.highlight_bg = 0 if val is None else (val << 8) | 1
+                self.screen.highlight_bg = val
         if dirtied:
             self.screen.mark_as_dirty()
 
@@ -333,12 +331,16 @@ class CharGrid:
         sprites = get_boss().sprites
         is_dirty = self.screen.is_dirty()
         with sprites.lock:
+            fg = self.screen.default_fg
+            fg = fg >> 8 if fg & 1 else self.default_fg
+            bg = self.screen.default_bg
+            bg = bg >> 8 if bg & 1 else self.default_bg
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
-                sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg, force_full_refresh)
+                sprites.backend, self.color_profile, addressof(self.main_sprite_map), fg, bg, force_full_refresh)
             if self.scrolled_by:
                 self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
-                    sprites.backend, self.color_profile, addressof(self.main_sprite_map), self.default_fg, self.default_bg,
+                    sprites.backend, self.color_profile, addressof(self.main_sprite_map), fg, bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map

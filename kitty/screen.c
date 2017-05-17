@@ -44,6 +44,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->columns = columns; self->lines = lines;
         self->modes = empty_modes;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
+        self->default_fg = 0; self->default_bg = 0;
         self->highlight_fg = 0; self->highlight_bg = 0;
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
@@ -69,6 +70,7 @@ screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, ' ');
     self->modes = empty_modes;
+    self->default_fg = 0; self->default_bg = 0;
     self->highlight_fg = 0; self->highlight_bg = 0;
     RESET_CHARSETS;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -1306,6 +1308,8 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
+    {"default_fg", T_ULONG, offsetof(Screen, default_fg), 0, "default_fg"},
+    {"default_bg", T_ULONG, offsetof(Screen, default_bg), 0, "default_bg"},
     {"highlight_fg", T_ULONG, offsetof(Screen, highlight_fg), 0, "highlight_fg"},
     {"highlight_bg", T_ULONG, offsetof(Screen, highlight_bg), 0, "highlight_bg"},
     {NULL}
