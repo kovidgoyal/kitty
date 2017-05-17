@@ -9,12 +9,19 @@ from ctypes import addressof, memmove, sizeof
 from threading import Lock
 
 from .config import build_ansi_color_table, defaults
-from .constants import get_boss, viewport_size, cell_size, ScreenGeometry, GLuint
-from .utils import get_logical_dpi, to_color, set_primary_selection, open_url, color_as_int, safe_print, color_from_int
+from .constants import (
+    GLuint, ScreenGeometry, cell_size, get_boss, viewport_size
+)
 from .fast_data_types import (
-    glUniform2ui, glUniform4f, glUniform1i, glUniform2f, glDrawArraysInstanced,
-    GL_TRIANGLE_FAN, glEnable, glDisable, GL_BLEND, glDrawArrays, ColorProfile,
-    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_LINE_LOOP
+    CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
+    GL_LINE_LOOP, GL_TRIANGLE_FAN, ColorProfile, glDisable, glDrawArrays,
+    glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2ui,
+    glUniform4f
+)
+from .rgb import to_color
+from .utils import (
+    color_as_int, color_from_int, get_logical_dpi, open_url, safe_print,
+    set_primary_selection
 )
 
 Cursor = namedtuple('Cursor', 'x y shape color blink')

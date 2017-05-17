@@ -14,7 +14,8 @@ from . import fast_data_types as defines
 from .constants import config_dir
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .utils import safe_print, to_color
+from .rgb import to_color
+from .utils import safe_print
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 MINIMUM_FONT_SIZE = 6
