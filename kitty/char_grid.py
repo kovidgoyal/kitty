@@ -24,7 +24,7 @@ from .utils import (
     set_primary_selection
 )
 
-Cursor = namedtuple('Cursor', 'x y shape color blink')
+Cursor = namedtuple('Cursor', 'x y shape blink')
 
 if DATA_CELL_SIZE % 3:
     raise ValueError('Incorrect data cell size, must be a multiple of 3')
@@ -258,8 +258,7 @@ class CharGrid:
         self.default_fg = color_as_int(self.original_fg)
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor, opts.cursor_blink_interval > 0)
-        self.current_cursor = self.default_cursor._replace(color=None)
+        self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
         self.original_bg = opts.background
         self.original_fg = opts.foreground
@@ -304,13 +303,11 @@ class CharGrid:
             elif which == 'cc':
                 if not val:
                     self.screen.cursor.color = 0
-                    self.current_cursor = self.current_cursor._replace(color=None)
                     dirtied = True
                 else:
                     val = to_color(val)
                     if val is not None:
-                        self.current_cursor = self.current_cursor._replace(color=val)
-                        self.screen.cursor.color = color_as_int(val)
+                        self.screen.cursor.color = (color_as_int(val) << 8) | 1
                         dirtied = True
         if dirtied:
             self.screen.mark_as_dirty()
@@ -346,7 +343,7 @@ class CharGrid:
             self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
-            self.current_cursor = Cursor(c.x, c.y, c.shape, color_from_int(c.color) if c.color else None, c.blink)
+            self.current_cursor = Cursor(c.x, c.y, c.shape, c.blink)
 
     def cell_for_pos(self, x, y):
         x, y = int(x // cell_size.width), int(y // cell_size.height)
@@ -501,7 +498,8 @@ class CharGrid:
         ul = cursor_program.uniform_location
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy
-        col = cursor.color or self.default_cursor.color
+        cc = self.screen.cursor.color
+        col = color_from_int(cc >> 8) if cc & 1 else self.opts.cursor
         shape = cursor.shape or self.default_cursor.shape
         alpha = self.opts.cursor_opacity
         if alpha < 1.0 and shape == CURSOR_BLOCK:
