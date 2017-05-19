@@ -82,7 +82,7 @@ the following dependencies are installed first.
 * glfw   >= 3.2
 * glew   >= 2.0 (not needed on macOS)
 * fontconfig (not needed on macOS)
-* xdpyinfo and xsel (only on X11 based systems)
+* xrdb and xsel (only on X11 based systems)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
 

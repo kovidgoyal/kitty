@@ -50,17 +50,32 @@ def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
+def x11_dpi():
+    try:
+        raw = subprocess.check_output(['xrdb', '-query']).decode('utf-8')
+    except Exception:
+        return None
+    m = re.search(r'^Xft.dpi:\s+([0-9.]+)', raw, re.IGNORECASE | re.MULTILINE)
+    if m is not None:
+        try:
+            return float(m.group(1))
+        except Exception:
+            pass
+
+
 def get_logical_dpi():
     if not hasattr(get_logical_dpi, 'ans'):
         if isosx:
             # TODO: Investigate if this needs a different implementation on OS X
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
-            raw = subprocess.check_output(['xdpyinfo']).decode('utf-8')
-            m = re.search(
-                r'^\s*resolution:\s*(\d+)+x(\d+)', raw, flags=re.MULTILINE
-            )
-            get_logical_dpi.ans = int(m.group(1)), int(m.group(2))
+            # See https://github.com/glfw/glfw/issues/1019 for why we cant use
+            # glfw_get_physical_dpi()
+            dpi = x11_dpi()
+            if dpi is None:
+                get_logical_dpi.ans = glfw_get_physical_dpi()
+            else:
+                get_logical_dpi.ans = dpi, dpi
     return get_logical_dpi.ans
 
 
