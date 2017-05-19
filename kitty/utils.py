@@ -78,9 +78,10 @@ def x11_dpi_native():
         raise RuntimeError('Could not connect to the X server')
     try:
         db = XResourceManagerString(display).decode('utf-8')
+        q = 'Xft.dpi:\t'
         for line in db.splitlines():
-            if line.startswith('Xft.dpi:'):
-                return float(line.split()[1])
+            if line.startswith(q):
+                return float(line[len(q):])
     finally:
         XCloseDisplay(display)
     raise RuntimeError('Failed to get dpi resource')
