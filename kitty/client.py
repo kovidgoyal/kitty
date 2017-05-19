@@ -12,6 +12,7 @@ import sys
 
 
 CSI = '\033['
+OSC = '\033]'
 
 
 def write(x):
@@ -73,6 +74,10 @@ def screen_set_margins(t, b):
     write(CSI + '%d;%dr' % (t, b))
 
 
+def screen_indexn(n):
+    write(CSI + '%dS')
+
+
 def screen_erase_in_display(how, private):
     write(CSI + ('?' if private else '') + str(how) + 'J')
 
@@ -83,6 +88,10 @@ def screen_erase_in_line(how, private):
 
 def screen_cursor_up2(count):
     write(CSI + '%dA' % count)
+
+
+def screen_cursor_down(count):
+    write(CSI + '%dDB')
 
 
 def screen_carriage_return():
@@ -99,6 +108,24 @@ def screen_backspace():
 
 def draw(*a):
     write(' '.join(a))
+
+
+def report_device_attributes(mode, char):
+    x = CSI
+    if char:
+        x += ord(char)
+    if mode:
+        x += str(mode)
+    write(CSI + x + 'c')
+
+
+def write_osc(code, string=''):
+    if string:
+        string = ';' + string
+    write(OSC + str(code) + string + '\x07')
+
+
+set_dynamic_color = write_osc
 
 
 def replay(raw):

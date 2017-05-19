@@ -96,6 +96,9 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_OSC(name, string) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", #name, string)); PyErr_Clear();
 
+#define REPORT_OSC2(name, code, string) \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sIO", #name, code, string)); PyErr_Clear();
+
 #else
 
 #define DUMP_UNUSED UNUSED
@@ -107,6 +110,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_PARAMS(...)
 #define FLUSH_DRAW
 #define REPORT_OSC(name, string)
+#define REPORT_OSC2(name, code, string)
 
 #endif
 
@@ -266,7 +270,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
-#define SET_COLOR(name) REPORT_OSC(name, string); name(screen, code, string);
+#define SET_COLOR(name) REPORT_OSC2(name, code, string); name(screen, code, string);
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
     for (i = 0; i < MIN(limit, 5); i++) {
