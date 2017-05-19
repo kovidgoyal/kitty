@@ -75,7 +75,7 @@ def screen_set_margins(t, b):
 
 
 def screen_indexn(n):
-    write(CSI + '%dS')
+    write(CSI + '%dS' % n)
 
 
 def screen_erase_in_display(how, private):

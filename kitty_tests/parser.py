@@ -173,7 +173,7 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033]2;;;;\x07', ('set_title', ';;;'))
         self.ae(c.titlebuf, ';;;')
-        pb('\033]110\x07', ('set_dynamic_color', ''))
+        pb('\033]110\x07', ('set_dynamic_color', 110, ''))
         self.ae(c.colorbuf, '')
 
     def test_dcs_codes(self):
