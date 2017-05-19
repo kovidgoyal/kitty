@@ -50,7 +50,46 @@ def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
+@lru_cache()
+def load_libx11():
+    import ctypes
+    from ctypes.util import find_library
+    libx11 = ctypes.CDLL(find_library('X11'))
+    ans = []
+
+    def cdef(name, restype, *argtypes):
+        f = getattr(libx11, name)
+        if restype is not None:
+            f.restype = restype
+        if argtypes:
+            f.argtypes = argtypes
+        ans.append(f)
+
+    cdef('XOpenDisplay', ctypes.c_void_p, ctypes.c_char_p)
+    cdef('XCloseDisplay', ctypes.c_int, ctypes.c_void_p)
+    cdef('XResourceManagerString', ctypes.c_char_p, ctypes.c_void_p)
+    return ans
+
+
+def x11_dpi_native():
+    XOpenDisplay, XCloseDisplay, XResourceManagerString = load_libx11()
+    display = XOpenDisplay(None)
+    if display is None:
+        raise RuntimeError('Could not connect to the X server')
+    try:
+        db = XResourceManagerString(display).decode('utf-8')
+        for line in db.splitlines():
+            if line.startswith('Xft.dpi:'):
+                return float(line.split()[1])
+    finally:
+        XCloseDisplay(display)
+
+
 def x11_dpi():
+    try:
+        return x11_dpi_native()
+    except Exception:
+        pass
     try:
         raw = subprocess.check_output(['xrdb', '-query']).decode('utf-8')
     except Exception:
