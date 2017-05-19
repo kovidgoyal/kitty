@@ -83,6 +83,7 @@ def x11_dpi_native():
                 return float(line.split()[1])
     finally:
         XCloseDisplay(display)
+    raise RuntimeError('Failed to get dpi resource')
 
 
 def x11_dpi():
