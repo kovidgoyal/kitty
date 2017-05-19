@@ -131,7 +131,9 @@ def init_env(debug=False, sanitize=False, native_optimizations=True):
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
     cflags.append('-pthread')
-    cflags.append('-DPRIMARY_VERSION={}'.format(version[0]))
+    # We add 4000 to the primary version because vim turns on SGR mouse mode
+    # automatically if this version is high enough
+    cflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
     if not is_travis and not isosx and subprocess.Popen(
         [PKGCONFIG, 'glew', '--atleast-version=2']
