@@ -71,20 +71,23 @@ def load_libx11():
     return ans
 
 
+def parse_xrdb(raw):
+    q = 'Xft.dpi:\t'
+    for line in raw.decode('utf-8').splitlines():
+        if line.startswith(q):
+            return float(line[len(q):])
+
+
 def x11_dpi_native():
     XOpenDisplay, XCloseDisplay, XResourceManagerString = load_libx11()
     display = XOpenDisplay(None)
     if display is None:
         raise RuntimeError('Could not connect to the X server')
     try:
-        db = XResourceManagerString(display).decode('utf-8')
-        q = 'Xft.dpi:\t'
-        for line in db.splitlines():
-            if line.startswith(q):
-                return float(line[len(q):])
+        raw = XResourceManagerString(display)
+        return parse_xrdb(raw)
     finally:
         XCloseDisplay(display)
-    raise RuntimeError('Failed to get dpi resource')
 
 
 def x11_dpi():
@@ -93,15 +96,10 @@ def x11_dpi():
     except Exception:
         pass
     try:
-        raw = subprocess.check_output(['xrdb', '-query']).decode('utf-8')
+        raw = subprocess.check_output(['xrdb', '-query'])
+        return parse_xrdb(raw)
     except Exception:
-        return None
-    m = re.search(r'^Xft.dpi:\s+([0-9.]+)', raw, re.IGNORECASE | re.MULTILINE)
-    if m is not None:
-        try:
-            return float(m.group(1))
-        except Exception:
-            pass
+        pass
 
 
 def get_logical_dpi():
