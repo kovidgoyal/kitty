@@ -30,11 +30,13 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
+dump_bytes_opened = False
 
 
 class Window:
 
     def __init__(self, tab, child, opts, args):
+        global dump_bytes_opened
         self.tabref = weakref.ref(tab)
         self.override_title = None
         self.last_mouse_cursor_pos = 0, 0
@@ -50,7 +52,9 @@ class Window:
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands or args.dump_bytes else read_bytes
         if args.dump_bytes:
-            self.dump_bytes_to = open(args.dump_bytes, 'ab')
+            mode = 'ab' if dump_bytes_opened else 'wb'
+            self.dump_bytes_to = open(args.dump_bytes, mode)
+            dump_bytes_opened = True
         self.draw_dump_buf = []
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
