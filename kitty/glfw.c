@@ -93,7 +93,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (Window *)type->tp_alloc(type, 0);
     if (self != NULL) {
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
-        if (self->window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWWindow"); return NULL; }
+        if (self->window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
         for(i = 0; i < MAX_WINDOWS; i++) {
             if (window_weakrefs[i] == NULL) { window_weakrefs[i] = self; break; }
         }
@@ -178,10 +178,8 @@ glfw_post_empty_event(PyObject UNUSED *self) {
     Py_RETURN_NONE;
 }
 
-PyObject*
-glfw_get_physical_dpi(PyObject UNUSED *self) {
-    GLFWmonitor *m = glfwGetPrimaryMonitor();
-    if (m == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor"); return NULL; }
+static PyObject*
+get_physical_dpi(GLFWmonitor *m) {
     int width = 0, height = 0;
     glfwGetMonitorPhysicalSize(m, &width, &height);
     if (width == 0 || height == 0) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor size"); return NULL; }
@@ -190,6 +188,13 @@ glfw_get_physical_dpi(PyObject UNUSED *self) {
     float dpix = vm->width / (width / 25.4);
     float dpiy = vm->height / (height / 25.4);
     return Py_BuildValue("ff", dpix, dpiy);
+}
+
+PyObject*
+glfw_get_physical_dpi(PyObject UNUSED *self) {
+    GLFWmonitor *m = glfwGetPrimaryMonitor();
+    if (m == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor"); return NULL; }
+    return get_physical_dpi(m);
 }
 
 PyObject*
@@ -318,6 +323,48 @@ get_window_size(Window *self) {
     return Py_BuildValue("ii", w, h);
 }
 
+static GLFWmonitor*
+current_monitor(GLFWwindow *window) {
+    // Find the monitor that has the maximum overlap with this window
+    int nmonitors, i;
+    int wx, wy, ww, wh;
+    int mx, my, mw, mh;
+    int overlap = 0, bestoverlap = 0;
+    GLFWmonitor *bestmonitor = NULL;
+    GLFWmonitor **monitors = NULL;
+    const GLFWvidmode *mode;
+
+    glfwGetWindowPos(window, &wx, &wy);
+    glfwGetWindowSize(window, &ww, &wh);
+    monitors = glfwGetMonitors(&nmonitors);
+    if (monitors == NULL || nmonitors < 1) { PyErr_SetString(PyExc_ValueError, "No monitors connected"); return NULL; }
+
+    for (i = 0; i < nmonitors; i++) {
+        mode = glfwGetVideoMode(monitors[i]);
+        glfwGetMonitorPos(monitors[i], &mx, &my);
+        mw = mode->width;
+        mh = mode->height;
+
+        overlap =
+            MAX(0, MIN(wx + ww, mx + mw) - MAX(wx, mx)) *
+            MAX(0, MIN(wy + wh, my + mh) - MAX(wy, my));
+
+        if (bestoverlap < overlap || bestmonitor == NULL) {
+            bestoverlap = overlap;
+            bestmonitor = monitors[i];
+        }
+    }
+
+    return bestmonitor;
+}
+
+static PyObject*
+current_monitor_dpi(Window *self) {
+    GLFWmonitor *m = current_monitor(self->window);
+    if (m == NULL) return NULL;
+    return get_physical_dpi(m);
+}
+
 #ifdef glfwRequestWindowAttention
 static PyObject*
 request_window_attention(Window *self) {
@@ -337,6 +384,7 @@ static PyMethodDef methods[] = {
     MND(should_close, METH_NOARGS),
     MND(get_framebuffer_size, METH_NOARGS),
     MND(get_window_size, METH_NOARGS),
+    MND(current_monitor_dpi, METH_NOARGS),
 #ifdef glfwRequestWindowAttention
     MND(request_window_attention, METH_NOARGS),
 #endif
