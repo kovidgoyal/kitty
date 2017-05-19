@@ -335,11 +335,7 @@ screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, fa
 static inline void 
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
 static inline void 
-screen_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_index(s); }
-static inline void 
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
-static inline void 
-screen_reverse_indexn(Screen *s, unsigned int count) { for (index_type i=0; i < count; i++) screen_reverse_index(s); }
 static inline void
 save_cursor(Screen *s, unsigned int UNUSED param, bool private) {
     if (private) fprintf(stderr, "%s %s", ERROR_PREFIX, "CSI s in private mode not supported");
@@ -488,9 +484,9 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case DECSCUSR: 
             CALL_CSI_HANDLER1M(screen_set_cursor, 1); 
         case SU:
-            CALL_CSI_HANDLER1(screen_indexn, 1); 
+            CALL_CSI_HANDLER1(screen_scroll, 1); 
         case SD:
-            CALL_CSI_HANDLER1(screen_reverse_indexn, 1); 
+            CALL_CSI_HANDLER1(screen_reverse_scroll, 1); 
         case DECSTR:
             if (end_modifier == '$') {
                 // DECRQM

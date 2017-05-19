@@ -582,34 +582,62 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
+#define INDEX_UP \
+    linebuf_index(self->linebuf, top, bottom); \
+    if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
+        /* Only add to history when no page margins have been set */ \
+        linebuf_init_line(self->linebuf, bottom); \
+        historybuf_add_line(self->historybuf, self->linebuf->line); \
+        tracker_line_added_to_history(self->change_tracker); \
+    } \
+    linebuf_clear_line(self->linebuf, bottom); \
+    if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker); \
+    else tracker_update_line_range(self->change_tracker, top, bottom); 
+
 void 
 screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == bottom) {
-        linebuf_index(self->linebuf, top, bottom);
-        if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) {
-            // Only add to history when no page margins have been set
-            linebuf_init_line(self->linebuf, bottom);
-            historybuf_add_line(self->historybuf, self->linebuf->line);
-            tracker_line_added_to_history(self->change_tracker);
-        }
-        linebuf_clear_line(self->linebuf, bottom);
-        if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker);
-        else tracker_update_line_range(self->change_tracker, top, bottom);
+        INDEX_UP;
     } else screen_cursor_down(self, 1);
 }
+
+void 
+screen_scroll(Screen *self, unsigned int count) {
+    // Scroll the screen up by count lines, not moving the cursor
+    count = MIN(self->lines, count);
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    while (count > 0) {
+        count--;
+        INDEX_UP;
+    }
+}
+
+#define INDEX_DOWN \
+    linebuf_reverse_index(self->linebuf, top, bottom); \
+    linebuf_clear_line(self->linebuf, top); \
+    if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker); \
+    else tracker_update_line_range(self->change_tracker, top, bottom);
 
 void 
 screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (self->cursor->y == top) {
-        linebuf_reverse_index(self->linebuf, top, bottom);
-        linebuf_clear_line(self->linebuf, top);
-        if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker);
-        else tracker_update_line_range(self->change_tracker, top, bottom);
+        INDEX_DOWN;
     } else screen_cursor_up(self, 1, false, -1);
+}
+
+void 
+screen_reverse_scroll(Screen *self, unsigned int count) {
+    // Scroll the screen down by count lines, not moving the cursor
+    count = MIN(self->lines, count);
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    while (count > 0) {
+        count--;
+        INDEX_DOWN;
+    }
 }
 
 

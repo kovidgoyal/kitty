@@ -376,6 +376,8 @@ void screen_change_default_color(Screen *self, unsigned int which, uint32_t col)
 void screen_alignment_display(Screen *self);
 void screen_reverse_index(Screen *self);
 void screen_index(Screen *self);
+void screen_scroll(Screen *self, unsigned int count);
+void screen_reverse_scroll(Screen *self, unsigned int count);
 void screen_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
 void screen_tab(Screen *self);
