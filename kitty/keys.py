@@ -172,8 +172,7 @@ def interpret_text_event(codepoint, mods, window):
     if mods > defines.GLFW_MOD_SHIFT:
         if mods in alt_mods and not screen.extended_keyboard:
             data = chr(codepoint).encode('utf-8')
-            if len(data) == 1:
-                return b'\x1b' + data
+            return b'\x1b' + data
         return b''  # Handled by interpret_key_event above
     data = chr(codepoint).encode('utf-8')
     return data
