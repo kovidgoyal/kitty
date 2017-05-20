@@ -7,7 +7,28 @@ from .terminfo import key_as_bytes
 from .utils import base64_encode
 from .key_encoding import KEY_MAP
 
-smkx_key_map = {
+
+def modify_key_bytes(keybytes, amt):
+    ans = bytearray(keybytes)
+    amt = str(amt).encode('ascii')
+    if ans[-1] == ord('~'):
+        return bytes(ans[:-1] + bytearray(b';' + amt + b'~'))
+    if ans[1] == ord('O'):
+        return bytes(ans[:1] + bytearray(b'[1;' + amt) + ans[-1:])
+    raise ValueError('Unknown key type')
+
+
+def modify_complex_key(name, amt):
+    return modify_key_bytes(key_as_bytes(name), amt)
+
+
+control_codes = {}
+smkx_key_map = {}
+alt_codes = {defines.GLFW_KEY_TAB: b'\033\t'}
+shift_alt_codes = {defines.GLFW_KEY_TAB: key_as_bytes('kcbt')}
+alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
+
+for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
     defines.GLFW_KEY_DOWN: 'kcud1',
     defines.GLFW_KEY_LEFT: 'kcub1',
@@ -18,12 +39,19 @@ smkx_key_map = {
     defines.GLFW_KEY_DELETE: 'kdch1',
     defines.GLFW_KEY_PAGE_UP: 'kpp',
     defines.GLFW_KEY_PAGE_DOWN: 'knp',
-}
-smkx_key_map = {k: key_as_bytes(v) for k, v in smkx_key_map.items()}
+}.items():
+    smkx_key_map[kf] = key_as_bytes(kn)
+    alt_codes[kf] = modify_complex_key(kn, 3)
+    shift_alt_codes[kf] = modify_complex_key(kn, 4)
+    control_codes[kf] = modify_complex_key(kn, 5)
 for f in range(1, 13):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
-    smkx_key_map[kf] = key_as_bytes('kf{}'.format(f))
-del f, kf
+    kn = 'kf{}'.format(f)
+    smkx_key_map[kf] = key_as_bytes(kn)
+    alt_codes[kf] = modify_complex_key(kn, 3)
+    shift_alt_codes[kf] = modify_complex_key(kn, 4)
+    control_codes[kf] = modify_complex_key(kn, 5)
+del f, kf, kn
 
 smkx_key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
 smkx_key_map[defines.GLFW_KEY_ENTER] = b'\r'
@@ -39,27 +67,12 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
 }
 
-control_codes = {
+control_codes.update({
     k: (1 + i, )
     for i, k in
     enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))
-}
+})
 
-
-def rkey(name, a, b):
-    return bytearray(key_as_bytes(name).replace(a, b))
-
-
-control_codes[defines.GLFW_KEY_PAGE_UP] = rkey('kpp', b'~', b';5~')
-control_codes[defines.GLFW_KEY_PAGE_DOWN] = rkey('knp', b'~', b';5~')
-control_codes[defines.GLFW_KEY_DELETE] = rkey('kdch1', b'~', b';5~')
-alt_codes = {
-    k: (0x1b, k)
-    for i, k in enumerate(
-        range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1)
-    )
-}
-alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
@@ -70,9 +83,6 @@ rmkx_key_map.update({
     defines.GLFW_KEY_HOME: b'\033[H',
     defines.GLFW_KEY_END: b'\033[F',
 })
-for sk in 'UP DOWN LEFT RIGHT HOME END'.split():
-    sk = getattr(defines, 'GLFW_KEY_' + sk)
-    control_codes[sk] = rmkx_key_map[sk].replace(b'[', b'[1;5')
 
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
 
@@ -132,7 +142,7 @@ def extended_key_event(key, scancode, mods, action):
     ).encode('ascii')
 
 
-def interpret_key_event(key, scancode, mods, window, action):
+def interpret_key_event(key, scancode, mods, window, action, get_localized_key=get_localized_key):
     screen = window.screen
     key = get_localized_key(key, scancode)
     if screen.extended_keyboard:
@@ -145,8 +155,8 @@ def interpret_key_event(key, scancode, mods, window, action):
             # Map Ctrl-key to ascii control code
             data.extend(control_codes[key])
         elif mods in alt_mods and key in alt_codes:
-            # Handled by interpret text event
-            pass
+            # Printable keys handled by interpret_text_event()
+            data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
         else:
             key_map = get_key_map(screen)
             x = key_map.get(key)
