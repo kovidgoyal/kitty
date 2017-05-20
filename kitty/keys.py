@@ -59,6 +59,7 @@ alt_codes = {
         range(defines.GLFW_KEY_SPACE, defines.GLFW_KEY_RIGHT_BRACKET + 1)
     )
 }
+alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
@@ -143,9 +144,9 @@ def interpret_key_event(key, scancode, mods, window, action):
         if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
             # Map Ctrl-key to ascii control code
             data.extend(control_codes[key])
-        elif mods == defines.GLFW_MOD_ALT and key in alt_codes:
-            # Map Alt+key to Esc-key
-            data.extend(alt_codes[key])
+        elif mods in alt_mods and key in alt_codes:
+            # Handled by interpret text event
+            pass
         else:
             key_map = get_key_map(screen)
             x = key_map.get(key)
@@ -156,8 +157,13 @@ def interpret_key_event(key, scancode, mods, window, action):
     return bytes(data)
 
 
-def interpret_text_event(codepoint, mods):
+def interpret_text_event(codepoint, mods, window):
+    screen = window.screen
     if mods > defines.GLFW_MOD_SHIFT:
+        if mods in alt_mods and not screen.extended_keyboard:
+            data = chr(codepoint).encode('utf-8')
+            if len(data) == 1:
+                return b'\x1b' + data
         return b''  # Handled by interpret_key_event above
     data = chr(codepoint).encode('utf-8')
     return data

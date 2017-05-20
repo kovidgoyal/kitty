@@ -271,12 +271,13 @@ class Boss(Thread):
 
     @callback
     def on_text_input(self, window, codepoint, mods):
-        data = interpret_text_event(codepoint, mods)
-        if data:
-            w = self.active_window
+        w = self.active_window
+        if w is not None:
+            yield w
             if w is not None:
-                yield w
-                w.write_to_child(data)
+                data = interpret_text_event(codepoint, mods, w)
+                if data:
+                    w.write_to_child(data)
 
     @callback
     def on_key(self, window, key, scancode, action, mods):
