@@ -51,6 +51,17 @@ for f in range(1, 13):
     alt_codes[kf] = modify_complex_key(kn, 3)
     shift_alt_codes[kf] = modify_complex_key(kn, 4)
     control_codes[kf] = modify_complex_key(kn, 5)
+f = {k: k for k in '0123456789'}
+f.update({
+    'COMMA': ',',
+    'PERIOD': '.',
+    'SEMICOLON': ';',
+    'APOSTROPHE': "'",
+    'MINUS': '-',
+    'EQUAL': '=',
+})
+for kf, kn in f.items():
+    control_codes[getattr(defines, 'GLFW_KEY_' + kf)] = (ord(kn),)
 del f, kf, kn
 
 smkx_key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
