@@ -72,6 +72,8 @@ control_codes.update({
     for i, k in
     enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))
 })
+control_codes[defines.GLFW_KEY_6] = (30,)
+control_codes[defines.GLFW_KEY_SLASH] = (31,)
 
 
 rmkx_key_map = smkx_key_map.copy()
