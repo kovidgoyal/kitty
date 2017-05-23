@@ -317,6 +317,25 @@ without needing to install all of kitty.
 This applies to creating packages for kitty for macOS package managers such as
 brew or MacPorts as well.
 
+== A tribute
+
+While over the decades I am sure many people have contributed to the
+development of the terminal emulator space, there is one individual in
+particular I would like to thank. link:http://invisible-island.net[Thomas E.
+Dickey], the creator of xterm.  xterm is the most comprehensive and
+feature-rich terminal emulator I have had the pleasure of using. As I worked on
+kitty, I ran headlong into more and more gnarly corners of terminal behavior.
+On all those occasions, either the excellent documentation at
+link:http://invisible-island.net/xterm/ctlseqs/ctlseqs.html[xterm-ctlseqs] or
+investigating the behavior and code of xterm or vttest were invaluable tools to
+aid my understanding. 
+
+My achievements, if any, in developing kitty would not have been possible without
+his prior work and the generous sharing of knowledge accumulated over decades.
+
+Thanks you.
+
+
 == Resources on terminal behavior
 
 http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
