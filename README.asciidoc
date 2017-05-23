@@ -333,7 +333,7 @@ aid my understanding.
 My achievements, if any, in developing kitty would not have been possible without
 his prior work and the generous sharing of knowledge accumulated over decades.
 
-Thanks you.
+Thank you.
 
 
 == Resources on terminal behavior
