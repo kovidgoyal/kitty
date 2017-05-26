@@ -738,13 +738,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
 
 void 
 screen_cursor_to_line(Screen *self, unsigned int line) {
-    unsigned int y = MAX(line, 1) - 1;
-    y += self->margin_top; 
-    if (y != self->cursor->y) {
-        self->cursor->y = y;
-        screen_ensure_bounds(self, false); // TODO: should we also restrict the cursor to the scrolling region?
-        tracker_cursor_changed(self->change_tracker);
-    }
+    screen_cursor_position(self, line, self->cursor->x + 1);
 }
 
 // }}}
