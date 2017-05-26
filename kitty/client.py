@@ -91,7 +91,7 @@ def screen_cursor_up2(count):
 
 
 def screen_cursor_down(count):
-    write(CSI + '%dDB' % count)
+    write(CSI + '%dB' % count)
 
 
 def screen_carriage_return():
