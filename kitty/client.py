@@ -142,4 +142,7 @@ def replay(raw):
 def main(path):
     raw = open(path).read()
     replay(raw)
-    input()
+    try:
+        input()
+    except (EOFError, KeyboardInterrupt):
+        pass
