@@ -7,6 +7,10 @@
 #include "data-types.h"
 #include <structmember.h>
 #include <GLFW/glfw3.h>
+#if defined(__APPLE__)
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3native.h>
+#endif
 
 #if GLFW_VERSION_MAJOR < 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 2)
 #error "glfw >= 3.2 required"
@@ -373,6 +377,14 @@ request_window_attention(Window *self) {
 }
 #endif
 
+#ifdef glfwGetCocoaWindow
+static PyObject*
+cocoa_window_id(Window *self) {
+    void *wid = glfwGetCocoaWindow(self->window);
+    if (wid == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get native window handle"); return NULL; }
+    return PyLong_FromVoidPtr(wid);
+}
+#endif
 
 // Boilerplate {{{
 #define MND(name, args) {#name, (PyCFunction)name, args, ""}
@@ -387,6 +399,9 @@ static PyMethodDef methods[] = {
     MND(current_monitor_dpi, METH_NOARGS),
 #ifdef glfwRequestWindowAttention
     MND(request_window_attention, METH_NOARGS),
+#endif
+#ifdef cocoa_window_id
+    MND(cocoa_window_id, METH_NOARGS),
 #endif
     MND(set_should_close, METH_VARARGS),
     MND(set_input_mode, METH_VARARGS),

@@ -18,6 +18,13 @@ PyObject* glfw_post_empty_event(PyObject UNUSED *self);
 PyObject* glfw_get_physical_dpi(PyObject UNUSED *self);
 PyObject* glfw_get_key_name(PyObject UNUSED *self, PyObject *args);
 
+#ifdef __APPLE__
+PyObject* cocoa_hide_titlebar(PyObject UNUSED *self, PyObject *window_id);
+#define COCOA_HIDE_TITLEBAR {"cocoa_hide_titlebar", (PyCFunction)cocoa_hide_titlebar, METH_O, ""}, 
+#else
+#define COCOA_HIDE_TITLEBAR
+#endif
+
 #define GLFW_FUNC_WRAPPERS \
     {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, \
@@ -28,4 +35,5 @@ PyObject* glfw_get_key_name(PyObject UNUSED *self, PyObject *args);
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, \
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, \
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, \
+    COCOA_HIDE_TITLEBAR
 

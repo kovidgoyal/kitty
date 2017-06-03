@@ -266,7 +266,7 @@ def option_parser():
 def find_c_files():
     ans, headers = [], []
     d = os.path.join(base, 'kitty')
-    exclude = {'freetype.c', 'fontconfig.c'} if isosx else {'core_text.m'}
+    exclude = {'freetype.c', 'fontconfig.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
