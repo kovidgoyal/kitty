@@ -377,7 +377,7 @@ request_window_attention(Window *self) {
 }
 #endif
 
-#ifdef glfwGetCocoaWindow
+#ifdef __APPLE__
 static PyObject*
 cocoa_window_id(Window *self) {
     void *wid = glfwGetCocoaWindow(self->window);
@@ -400,7 +400,7 @@ static PyMethodDef methods[] = {
 #ifdef glfwRequestWindowAttention
     MND(request_window_attention, METH_NOARGS),
 #endif
-#ifdef cocoa_window_id
+#ifdef __APPLE__
     MND(cocoa_window_id, METH_NOARGS),
 #endif
     MND(set_should_close, METH_VARARGS),

@@ -191,7 +191,11 @@ def run_app(opts, args):
     window = Window(viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
-    if not isosx:
+    if isosx:
+        if opts.macos_hide_titlebar:
+            from .fast_data_types import cocoa_hide_titlebar
+            cocoa_hide_titlebar(window.cocoa_window_id())
+    else:
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
