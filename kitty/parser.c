@@ -543,6 +543,7 @@ accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
                 screen->parser_buf_pos--;
                 return true;
             }
+            /* fallthrough */
         default:
             if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 REPORT_ERROR("OSC sequence too long, truncating.");
@@ -594,6 +595,7 @@ accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
                 screen->parser_buf_pos--;
                 return true;
             }
+            /* fallthrough */
         default:
             if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
                 REPORT_ERROR("OTH sequence too long, truncating.");
