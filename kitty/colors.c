@@ -99,6 +99,7 @@ as_color(ColorProfile *self, PyObject *val) {
             break;
         case 2:
             col = entry >> 8;
+            break;
         default:
             ans = Py_None; Py_INCREF(Py_None);
     }
