@@ -119,8 +119,8 @@ class Borders:
                     border(
                         color, bw, g.left - fw, g.top - fw, g.right + fw,
                         g.bottom + fw)
-                # Now draw the blank rectangles over the padding region
                 if pw > 0:
+                    # Draw the background rectangles over the padding region
                     color = 0
                     border(
                         color, pw, g.left - pw, g.top - pw, g.right + pw,
