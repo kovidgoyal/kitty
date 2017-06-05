@@ -9,7 +9,7 @@ from threading import Lock
 from .constants import GLfloat, GLint, GLuint, viewport_size
 from .fast_data_types import GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
 from .shaders import ShaderProgram
-from .utils import get_dpi
+from .utils import pt_to_px
 
 
 def as_color(c):
@@ -63,9 +63,7 @@ class Borders:
         self.is_dirty = False
         self.lock = Lock()
         self.can_render = False
-        dpix, dpiy = get_dpi()['logical']
-        dpi = (dpix + dpiy) / 2
-        self.border_width = round(opts.window_border_width * dpi / 72)
+        self.border_width = pt_to_px(opts.window_border_width)
         self.color_buf = (GLfloat * 9)(
             *as_color(opts.background),
             *as_color(opts.active_border_color),

@@ -161,6 +161,7 @@ type_map = {
     'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': int,
     'window_border_width': float,
+    'window_margin_width': float,
     'wheel_scroll_multiplier': float,
     'visual_bell_duration': float,
     'enable_audio_bell': to_bool,

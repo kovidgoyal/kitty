@@ -37,6 +37,13 @@ def wcwidth(c: str) -> int:
         return wcwidth_impl(ord(c[0]))
 
 
+@lru_cache()
+def pt_to_px(pts):
+    dpix, dpiy = get_dpi()['logical']
+    dpi = (dpix + dpiy) / 2
+    return round(pts * dpi / 72)
+
+
 @contextmanager
 def timeit(name, do_timing=False):
     if do_timing:
