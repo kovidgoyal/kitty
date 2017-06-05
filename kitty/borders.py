@@ -5,6 +5,7 @@
 from ctypes import addressof
 from itertools import chain
 from threading import Lock
+from functools import partial
 
 from .constants import GLfloat, GLint, GLuint, viewport_size
 from .fast_data_types import GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
@@ -31,7 +32,8 @@ def as_rect(left, top, right, bottom, color=0):
 class BordersProgram(ShaderProgram):
 
     def __init__(self):
-        ShaderProgram.__init__(self, '''\
+        ShaderProgram.__init__(
+            self, '''\
 uniform vec3 colors[3];
 in vec3 rect;
 out vec3 color;
@@ -57,6 +59,30 @@ void main() {
         glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))
 
 
+def border_maker(rects):
+    ' Create a function that will add all the rectangles for drawing a border to rects '
+
+    def r(l, t, b, r, color):
+        rects.extend(as_rect(l, t, b, r, color))
+
+    def vertical_edge(color, width, top, bottom, left):
+        r(left, top, left + width, bottom, color)
+
+    def horizontal_edge(color, height, left, right, top):
+        r(left, top, right, top + height, color)
+
+    def edge(func, color, sz, a, b):
+        return partial(func, color, sz, a, b)
+
+    def border(color, sz, left, top, right, bottom):
+        horz = edge(horizontal_edge, color, sz, left, right)
+        horz(top), horz(bottom - sz)  # top, bottom edges
+        vert = edge(vertical_edge, color, sz, top, bottom)
+        vert(left), vert(right - sz)  # left, right edges
+
+    return border
+
+
 class Borders:
 
     def __init__(self, opts):
@@ -64,25 +90,42 @@ class Borders:
         self.lock = Lock()
         self.can_render = False
         self.border_width = pt_to_px(opts.window_border_width)
+        self.padding_width = pt_to_px(opts.window_padding_width)
         self.color_buf = (GLfloat * 9)(
-            *as_color(opts.background),
-            *as_color(opts.active_border_color),
-            *as_color(opts.inactive_border_color)
-        )
+            *as_color(opts.background), *as_color(opts.active_border_color),
+            *as_color(opts.inactive_border_color))
 
-    def __call__(self, windows, active_window, current_layout, extra_blank_rects, draw_window_borders=True):
+    def __call__(
+        self,
+        windows,
+        active_window,
+        current_layout,
+        extra_blank_rects,
+        draw_window_borders=True
+    ):
         rects = []
         for br in chain(current_layout.blank_rects, extra_blank_rects):
             rects.extend(as_rect(*br))
-        if draw_window_borders and self.border_width > 0:
-            bw = self.border_width
+        bw, pw = self.border_width, self.padding_width
+        fw = bw + pw
+        border = border_maker(rects)
+
+        if fw > 0:
             for w in windows:
                 g = w.geometry
-                color = 1 if w is active_window else 2
-                rects.extend(as_rect(g.left - bw, g.top - bw, g.left, g.bottom + bw, color))
-                rects.extend(as_rect(g.left - bw, g.top - bw, g.right + bw, g.top, color))
-                rects.extend(as_rect(g.right, g.top - bw, g.right + bw, g.bottom + bw, color))
-                rects.extend(as_rect(g.left - bw, g.bottom, g.right + bw, g.bottom + bw, color))
+                if bw > 0 and draw_window_borders:
+                    # Draw the border rectangles
+                    color = 1 if w is active_window else 2
+                    border(
+                        color, bw, g.left - fw, g.top - fw, g.right + fw,
+                        g.bottom + fw)
+                # Now draw the blank rectangles over the padding region
+                if pw > 0:
+                    color = 0
+                    border(
+                        color, pw, g.left - pw, g.top - pw, g.right + pw,
+                        g.bottom + pw)
+
         with self.lock:
             self.num_of_rects = len(rects) // 12
             self.rects = (GLfloat * len(rects))()
@@ -106,4 +149,7 @@ class Borders:
                     program.send_data(self.rects)
                     program.set_colors(self.color_buf)
                     self.is_dirty = False
-                glMultiDrawArrays(GL_TRIANGLE_FAN, addressof(self.starts), addressof(self.counts), self.num_of_rects)
+                glMultiDrawArrays(
+                    GL_TRIANGLE_FAN,
+                    addressof(self.starts),
+                    addressof(self.counts), self.num_of_rects)

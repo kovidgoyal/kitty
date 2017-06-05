@@ -13,8 +13,9 @@ def available_height():
     return viewport_size.height - get_boss().current_tab_bar_height
 
 
-def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, margin_length=0, left_align=False):
+def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
     number_of_cells = length // cell_length
+    border_length += padding_length
     space_needed_for_border = number_of_windows * 2 * border_length
     space_needed_for_padding = number_of_windows * 2 * margin_length
     space_needed = space_needed_for_padding + space_needed_for_border
@@ -47,6 +48,7 @@ class Layout:
         self.opts = opts
         self.border_width = border_width
         self.margin_width = pt_to_px(opts.window_margin_width)
+        self.padding_width = pt_to_px(opts.window_padding_width)
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects = ()
@@ -80,9 +82,9 @@ def window_geometry(xstart, xnum, ystart, ynum):
     return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_size.width * xnum, bottom=ystart + cell_size.height * ynum)
 
 
-def layout_single_window(margin_length):
-    xstart, xnum = next(layout_dimension(viewport_size.width, cell_size.width, margin_length=margin_length))
-    ystart, ynum = next(layout_dimension(available_height(), cell_size.height, margin_length=margin_length))
+def layout_single_window(margin_length, padding_length):
+    xstart, xnum = next(layout_dimension(viewport_size.width, cell_size.width, margin_length=margin_length, padding_length=padding_length))
+    ystart, ynum = next(layout_dimension(available_height(), cell_size.height, margin_length=margin_length, padding_length=padding_length))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
@@ -124,7 +126,7 @@ class Stack(Layout):
 
     def __call__(self, windows, active_window_idx):
         self.blank_rects = []
-        wg = layout_single_window(self.margin_width)
+        wg = layout_single_window(self.margin_width, self.padding_width)
         for i, w in enumerate(windows):
             w.is_visible_in_layout = i == active_window_idx
             w.set_geometry(wg)
@@ -139,17 +141,23 @@ class Tall(Layout):
     def __call__(self, windows, active_window_idx):
         self.blank_rects = br = []
         if len(windows) == 1:
-            wg = layout_single_window(self.margin_width)
+            wg = layout_single_window(self.margin_width, self.padding_width)
             windows[0].set_geometry(wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
-        xlayout = layout_dimension(viewport_size.width, cell_size.width, 2, self.border_width, margin_length=self.margin_width)
+        xlayout = layout_dimension(
+            viewport_size.width, cell_size.width, 2, self.border_width,
+            margin_length=self.margin_width, padding_length=self.padding_width)
         xstart, xnum = next(xlayout)
-        ystart, ynum = next(layout_dimension(available_height(), cell_size.height, 1, self.border_width, left_align=True, margin_length=self.margin_width))
+        ystart, ynum = next(layout_dimension(
+            available_height(), cell_size.height, 1, self.border_width, left_align=True,
+            margin_length=self.margin_width, padding_length=self.padding_width))
         windows[0].set_geometry(window_geometry(xstart, xnum, ystart, ynum))
         vh = available_height()
         xstart, xnum = next(xlayout)
-        ylayout = layout_dimension(available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True, margin_length=self.margin_width)
+        ylayout = layout_dimension(
+            available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True,
+            margin_length=self.margin_width, padding_length=self.padding_width)
         for w, (ystart, ynum) in zip(islice(windows, 1, None), ylayout):
             w.set_geometry(window_geometry(xstart, xnum, ystart, ynum))
         left_blank_rect(windows[0], br, vh), top_blank_rect(windows[0], br, vh), right_blank_rect(windows[-1], br, vh)

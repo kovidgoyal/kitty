@@ -150,6 +150,10 @@ def to_layout_names(raw):
             raise ValueError('The window layout {} is unknown'.format(p))
 
 
+def positive_float(x):
+    return max(0, float(x))
+
+
 type_map = {
     'scrollback_lines': int,
     'scrollback_pager': shlex.split,
@@ -160,8 +164,9 @@ type_map = {
     'cursor_opacity': to_opacity,
     'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': int,
-    'window_border_width': float,
-    'window_margin_width': float,
+    'window_border_width': positive_float,
+    'window_margin_width': positive_float,
+    'window_padding_width': positive_float,
     'wheel_scroll_multiplier': float,
     'visual_bell_duration': float,
     'enable_audio_bell': to_bool,
