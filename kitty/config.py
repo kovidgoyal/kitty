@@ -150,34 +150,38 @@ def to_layout_names(raw):
             raise ValueError('The window layout {} is unknown'.format(p))
 
 
+def positive_int(x):
+    return max(0, int(x))
+
+
 def positive_float(x):
     return max(0, float(x))
 
 
 type_map = {
-    'scrollback_lines': int,
+    'scrollback_lines': positive_int,
     'scrollback_pager': shlex.split,
     'scrollback_in_new_tab': to_bool,
     'font_size': to_font_size,
-    'font_size_delta': float,
+    'font_size_delta': positive_float,
     'cursor_shape': to_cursor_shape,
     'cursor_opacity': to_opacity,
     'open_url_modifiers': to_open_url_modifiers,
-    'repaint_delay': int,
+    'repaint_delay': positive_int,
     'window_border_width': positive_float,
     'window_margin_width': positive_float,
     'window_padding_width': positive_float,
     'wheel_scroll_multiplier': float,
-    'visual_bell_duration': float,
+    'visual_bell_duration': positive_float,
     'enable_audio_bell': to_bool,
-    'click_interval': float,
-    'mouse_hide_wait': float,
-    'cursor_blink_interval': float,
-    'cursor_stop_blinking_after': float,
+    'click_interval': positive_float,
+    'mouse_hide_wait': positive_float,
+    'cursor_blink_interval': positive_float,
+    'cursor_stop_blinking_after': positive_float,
     'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,
-    'initial_window_width': int,
-    'initial_window_height': int,
+    'initial_window_width': positive_int,
+    'initial_window_height': positive_int,
     'use_system_wcwidth': to_bool,
     'macos_hide_titlebar': to_bool,
 }
