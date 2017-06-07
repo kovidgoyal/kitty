@@ -115,7 +115,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True):
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-            ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {}'
+            ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
             optimize, ' '.join(sanitize_args), ('' if debug else 'N'), stack_protector, missing_braces, '-march=native'
             if native_optimizations else ''

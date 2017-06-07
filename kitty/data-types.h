@@ -13,6 +13,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
+#define EXPORTED __attribute__ ((visibility ("default")))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #define xstr(s) str(s)

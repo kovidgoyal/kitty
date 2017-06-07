@@ -58,7 +58,7 @@ static struct PyModuleDef module = {
 
 #include <termios.h>
 
-PyMODINIT_FUNC
+EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
 
