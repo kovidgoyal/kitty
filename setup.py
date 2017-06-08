@@ -288,10 +288,7 @@ def build(args, native_optimizations=True):
 
 
 def safe_makedirs(path):
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        pass
+    os.makedirs(path, exist_ok=True)
 
 
 def build_test_launcher(args):
