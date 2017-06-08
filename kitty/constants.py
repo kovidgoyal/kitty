@@ -32,10 +32,7 @@ def _get_config_dir():
 
     candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if isosx else '~/.config')))
     ans = os.path.join(candidate, appname)
-    try:
-        os.makedirs(ans)
-    except FileExistsError:
-        pass
+    os.makedirs(ans, exist_ok=True)
     return ans
 
 
