@@ -85,6 +85,7 @@ control_codes.update({
 })
 control_codes[defines.GLFW_KEY_6] = (30,)
 control_codes[defines.GLFW_KEY_SLASH] = (31,)
+control_codes[defines.GLFW_KEY_SPACE] = (0,)
 
 
 rmkx_key_map = smkx_key_map.copy()
