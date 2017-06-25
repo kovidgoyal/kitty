@@ -25,3 +25,18 @@ cocoa_hide_titlebar(PyObject UNUSED *self, PyObject *window_id) {
     }
     Py_RETURN_NONE;
 }
+
+
+PyObject*
+cocoa_get_lang(PyObject UNUSED *self) {
+    NSString* locale = nil;
+    NSString* lang_code = [[NSLocale currentLocale] objectForKey:NSLocaleLanguageCode];
+    NSString* country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
+    if (lang_code && country_code) {
+        locale = [NSString stringWithFormat:@"%@_%@", lang_code, country_code];
+    } else {
+        locale = [[NSLocale currentLocale] localeIdentifier];
+    }
+    if (!locale) { Py_RETURN_NONE; }
+    return Py_BuildValue("s", [locale UTF8String]);
+}

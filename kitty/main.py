@@ -228,7 +228,19 @@ def on_glfw_error(code, msg):
     safe_print('[glfw error] ', msg, file=sys.stderr)
 
 
+def ensure_osx_locale():
+    # Ensure the LANG env var is set. See
+    # https://github.com/kovidgoyal/kitty/issues/90
+    from .fast_data_types import cocoa_get_lang
+    if 'LANG' not in os.environ:
+        lang = cocoa_get_lang()
+        if lang is not None:
+            os.environ['LANG'] = lang + '.UTF-8'
+
+
 def main():
+    if isosx:
+        ensure_osx_locale()
     locale.setlocale(locale.LC_ALL, '')
     if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
                       None) == '1' and getattr(sys, 'frozen', True):
