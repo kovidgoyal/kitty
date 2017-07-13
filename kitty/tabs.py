@@ -328,9 +328,10 @@ class TabManager:
             s.cursor.bold = s.cursor.italic = False
             s.cursor.fg = s.cursor.bg = 0
             s.draw('┇')
-            if s.cursor.x > s.columns - max_title_length:
+            if s.cursor.x > s.columns - max_title_length and t is not self.tabs[-1]:
                 s.draw('…')
                 break
+        s.erase_characters(s.columns - 1)  # Ensure no long titles bleed after the last tab
         s.update_cell_data(
             sprites.backend, self.color_profile, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
         sprites.render_dirty_cells()
