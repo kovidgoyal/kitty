@@ -331,7 +331,7 @@ class TabManager:
             if s.cursor.x > s.columns - max_title_length and t is not self.tabs[-1]:
                 s.draw('…')
                 break
-        s.erase_characters(s.columns - 1)  # Ensure no long titles bleed after the last tab
+        s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         s.update_cell_data(
             sprites.backend, self.color_profile, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
         sprites.render_dirty_cells()
