@@ -8,8 +8,9 @@
 
 #include "data-types.h"
 #include <Cocoa/Cocoa.h>
+#include <AvailabilityMacros.h>
 
-#ifndef NSWindowStyleMaskTitled
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskTitled NSTitledWindowMask 
 #endif
 
