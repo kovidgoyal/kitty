@@ -241,7 +241,17 @@ def ensure_osx_locale():
 def main():
     if isosx:
         ensure_osx_locale()
-    locale.setlocale(locale.LC_ALL, '')
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except Exception:
+        if not isosx:
+            raise
+        print('Failed to set locale with LANG:', os.environ.get('LANG'), file=sys.stderr)
+        os.environ.pop('LANG')
+        try:
+            locale.setlocale(locale.LC_ALL, '')
+        except Exception:
+            print('Failed to set locale with no LANG, ignoring', file=sys.stderr)
     if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
                       None) == '1' and getattr(sys, 'frozen', True):
         os.chdir(os.path.expanduser('~'))
