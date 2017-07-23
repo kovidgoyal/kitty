@@ -274,32 +274,36 @@ defaults = Options(**defaults)
 actions = frozenset(defaults.keymap.values())
 
 
-def update_dict(a, b):
-    a.update(b)
-    return a
+def merge_keymaps(defaults, newvals):
+    ans = defaults.copy()
+    for k, v in newvals.items():
+        if v in {'noop', 'no-op', 'no_op'}:
+            ans.pop(k, None)
+            continue
+        if v in actions:
+            ans[k] = v
+    return ans
 
 
-def merge_dicts(vals, defaults):
-    return {
-        k: update_dict(v, vals.get(k, {}))
-        if isinstance(v, dict) else vals.get(k, v)
-        for k, v in defaults.items()
-    }
+def merge_dicts(defaults, newvals):
+    ans = defaults.copy()
+    ans.update(newvals)
+    return ans
 
 
-def merge_configs(ans, vals):
-    vals['keymap'] = {
-        k: v
-        for k, v in vals.get('keymap', {}).items() if v in actions
-    }
-    remove_keys = {
-        k
-        for k, v in vals.get('keymap', {}).items()
-        if v in ('noop', 'no-op', 'no_op')
-    }
-    ans = merge_dicts(vals, ans)
-    for k in remove_keys:
-        ans['keymap'].pop(k, None)
+def merge_configs(defaults, vals):
+    ans = {}
+    for k, v in defaults.items():
+        if isinstance(v, dict):
+            newvals = vals.get(k, {})
+            if k == 'keymap':
+                ans['keymap'] = merge_keymaps(v, newvals)
+            elif k == 'send_text_map':
+                ans[k] = {m: merge_dicts(mm, newvals.get(m, {})) for m, mm in v.items()}
+            else:
+                ans[k] = merge_dicts(v, newvals)
+        else:
+            ans[k] = vals.get(k, v)
     return ans
 
 
