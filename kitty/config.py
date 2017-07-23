@@ -281,7 +281,7 @@ def update_dict(a, b):
 
 def merge_dicts(vals, defaults):
     return {
-        k: merge_dicts(v, vals.get(k, {}))
+        k: update_dict(v, vals.get(k, {}))
         if isinstance(v, dict) else vals.get(k, v)
         for k, v in defaults.items()
     }
