@@ -238,8 +238,10 @@ for a in ('active', 'inactive'):
         type_map['%s_tab_%s' % (a, b)] = lambda x: to_color(x, validate=True)
 
 
-def parse_config(lines):
+def parse_config(lines, check_keys=True):
     ans = {'keymap': {}, 'symbol_map': {}, 'send_text_map': {'kitty': {}, 'normal': {}, 'application': {}}}
+    if check_keys:
+        all_keys = defaults._asdict()
     for line in lines:
         line = line.strip()
         if not line or line.startswith('#'):
@@ -258,6 +260,10 @@ def parse_config(lines):
                 for k, v in ans['send_text_map'].items():
                     v.update(stvals.get(k, {}))
                 continue
+            if check_keys:
+                if key not in all_keys:
+                    safe_print('Ignoring unknown config key: {}'.format(key), file=sys.stderr)
+                    continue
             tm = type_map.get(key)
             if tm is not None:
                 val = tm(val)
@@ -268,7 +274,7 @@ def parse_config(lines):
 with open(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
 ) as f:
-    defaults = parse_config(f.readlines())
+    defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
 actions = frozenset(defaults.keymap.values())
