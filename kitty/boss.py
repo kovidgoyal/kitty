@@ -28,7 +28,7 @@ from .fonts.render import set_font_family
 from .borders import BordersProgram
 from .char_grid import cursor_shader, cell_shader
 from .constants import is_key_pressed
-from .keys import interpret_text_event, interpret_key_event, get_shortcut
+from .keys import interpret_text_event, interpret_key_event, get_shortcut, get_sent_data
 from .session import create_session
 from .shaders import Sprites, ShaderProgram
 from .tabs import TabManager, SpecialWindow
@@ -308,7 +308,7 @@ class Boss(Thread):
                     return
         if window.char_grid.scrolled_by and key not in MODIFIER_KEYS and action == GLFW_PRESS:
             window.scroll_end()
-        data = interpret_key_event(key, scancode, mods, window, action)
+        data = get_sent_data(self.opts.send_text_map, key, scancode, mods, window, action) or interpret_key_event(key, scancode, mods, window, action)
         if data:
             window.write_to_child(data)
 

@@ -105,6 +105,12 @@ def get_key_map(screen):
     return cursor_key_mode_map[screen.cursor_key_mode]
 
 
+def keyboard_mode_name(screen):
+    if screen.extended_keyboard:
+        return 'kitty'
+    return 'application' if screen.cursor_key_mode else 'normal'
+
+
 valid_localized_key_names = {
     k: getattr(defines, 'GLFW_KEY_' + k)
     for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -195,3 +201,11 @@ def interpret_text_event(codepoint, mods, window):
 def get_shortcut(keymap, mods, key, scancode):
     key = get_localized_key(key, scancode)
     return keymap.get((mods & 0b1111, key))
+
+
+def get_sent_data(send_text_map, key, scancode, mods, window, action):
+    if action in (defines.GLFW_PRESS, defines.GLFW_REPEAT):
+        key = get_localized_key(key, scancode)
+        m = keyboard_mode_name(window.screen)
+        keymap = send_text_map[m]
+        return keymap.get((mods & 0b1111, key))

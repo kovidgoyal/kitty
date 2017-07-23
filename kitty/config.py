@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import ast
 import json
 import os
 import re
@@ -84,16 +85,22 @@ named_keys = {
 }
 
 
-def parse_key(val, keymap):
-    sc, action = val.partition(' ')[::2]
-    action = action.strip()
-    sc = sc.strip()
-    if not sc or not action:
-        return
+def parse_shortcut(sc):
     parts = sc.split('+')
     mods = parse_mods(parts[:-1])
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
+    if key is not None:
+        return mods, key
+    return None, None
+
+
+def parse_key(val, keymap):
+    sc, action = val.partition(' ')[::2]
+    sc, action = sc.strip(), action.strip()
+    if not sc or not action:
+        return
+    mods, key = parse_shortcut(sc)
     if key is None:
         safe_print(
             'Shortcut: {} has an unknown key, ignoring'.format(val),
@@ -135,6 +142,39 @@ def parse_symbol_map(val):
         for y in range(a, b + 1):
             symbol_map[chr(y)] = family
     return symbol_map
+
+
+def parse_send_text(val):
+    parts = val.split(' ')
+
+    def abort(msg):
+        safe_print(
+            'Send text: {} is invalid ({}), ignoring'.format(val, msg), file=sys.stderr
+        )
+        return {}
+
+    if len(parts) < 3:
+        return abort('Incomplete')
+
+    text = ' '.join(parts[2:])
+    mode, sc = parts[:2]
+    mods, key = parse_shortcut(sc.strip())
+    if key is None:
+        return abort('Invalid shortcut')
+    text = ast.literal_eval("'''" + text + "'''").encode('utf-8')
+    if not text:
+        return abort('Empty text')
+
+    if mode in ('all', '*'):
+        modes = parse_send_text.all_modes
+    else:
+        modes = frozenset(mode.split(',')).intersection(parse_send_text.all_modes)
+        if not modes:
+            return abort('Invalid keyboard modes')
+    return {mode: {(mods, key): text} for mode in modes}
+
+
+parse_send_text.all_modes = frozenset({'normal', 'application', 'kitty'})
 
 
 def to_open_url_modifiers(val):
@@ -199,7 +239,7 @@ for a in ('active', 'inactive'):
 
 
 def parse_config(lines):
-    ans = {'keymap': {}, 'symbol_map': {}}
+    ans = {'keymap': {}, 'symbol_map': {}, 'send_text_map': {'kitty': {}, 'normal': {}, 'application': {}}}
     for line in lines:
         line = line.strip()
         if not line or line.startswith('#'):
@@ -212,6 +252,11 @@ def parse_config(lines):
                 continue
             if key == 'symbol_map':
                 ans['symbol_map'].update(parse_symbol_map(val))
+                continue
+            if key == 'send_text':
+                stvals = parse_send_text(val)
+                for k, v in ans['send_text_map'].items():
+                    v.update(stvals.get(k, {}))
                 continue
             tm = type_map.get(key)
             if tm is not None:
@@ -236,7 +281,7 @@ def update_dict(a, b):
 
 def merge_dicts(vals, defaults):
     return {
-        k: update_dict(v, vals.get(k, {}))
+        k: merge_dicts(v, vals.get(k, {}))
         if isinstance(v, dict) else vals.get(k, v)
         for k, v in defaults.items()
     }
