@@ -208,6 +208,18 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     return Py_BuildValue("s", glfwGetKeyName(key, scancode));
 }
 
+PyObject*
+glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
+    int hint_id;
+    char *hint;
+    if (!PyArg_ParseTuple(args, "is", &hint_id, &hint)) return NULL;
+#ifdef glfwInitHintString
+    glfwInitHintString(hint_id, hint);
+#endif
+    Py_RETURN_NONE;
+}
+
+
 // }}}
 
 static void
@@ -448,6 +460,10 @@ init_glfw(PyObject *m) {
     PyEval_InitThreads();
     glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
+#ifdef GLFW_X11_WM_CLASS_NAME
+    ADDC(GLFW_X11_WM_CLASS_NAME)
+    ADDC(GLFW_X11_WM_CLASS_CLASS)
+#endif
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);

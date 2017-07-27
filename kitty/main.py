@@ -25,8 +25,12 @@ from .fast_data_types import (
     GLFW_STENCIL_BITS, Window, change_wcwidth,
     enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
     glfw_init, glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_wait_events, glfw_window_hint
+    glfw_wait_events, glfw_window_hint, glfw_init_hint_string
 )
+try:
+    from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
+except ImportError:
+    GLFW_X11_WM_CLASS_NAME = GLFW_X11_WM_CLASS_CLASS = None
 from .layout import all_layouts
 from .shaders import GL_VERSION
 from .utils import safe_print
@@ -269,6 +273,8 @@ def main():
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
     enable_automatic_opengl_error_checking(args.debug_gl)
+    if GLFW_X11_WM_CLASS_CLASS is not None:
+        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, opts.cls)
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
