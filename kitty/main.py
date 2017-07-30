@@ -192,7 +192,13 @@ def run_app(opts, args):
     else:
         viewport_size.width = opts.initial_window_width
         viewport_size.height = opts.initial_window_height
-    window = Window(viewport_size.width, viewport_size.height, args.cls)
+    try:
+        window = Window(viewport_size.width, viewport_size.height, args.cls)
+    except ValueError:
+        safe_print('Failed to create GLFW window with initial size:', viewport_size)
+        viewport_size.width = 640
+        viewport_size.height = 400
+        window = Window(viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
     if isosx:
