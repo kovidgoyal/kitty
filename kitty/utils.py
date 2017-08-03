@@ -181,7 +181,7 @@ def get_primary_selection():
         return ''  # There is no primary selection on OS X
     # glfw has no way to get the primary selection
     # https://github.com/glfw/glfw/issues/894
-    return subprocess.check_output(['xsel', '-p']).decode('utf-8')
+    return subprocess.check_output(['xsel', '-p'], stderr=open(os.devnull, 'wb'), stdin=open(os.devnull, 'rb')).decode('utf-8')
 
 
 def base64_encode(
@@ -203,7 +203,7 @@ def set_primary_selection(text):
         return  # There is no primary selection on OS X
     if isinstance(text, str):
         text = text.encode('utf-8')
-    p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE)
+    p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=open(os.devnull, 'wb'), stderr=subprocess.STDOUT)
     p.stdin.write(text), p.stdin.close()
     p.wait()
 
