@@ -31,6 +31,17 @@ change_wcwidth_wrap(PyObject UNUSED *self, PyObject *use9) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
+    char *devnull = NULL;
+    if (!PyArg_ParseTuple(args, "s", &devnull)) return NULL;
+    if (freopen(devnull, "r", stdin) == NULL) return PyErr_SetFromErrno(PyExc_EnvironmentError);
+    if (freopen(devnull, "w", stdout) == NULL) return PyErr_SetFromErrno(PyExc_EnvironmentError);
+    if (freopen(devnull, "w", stderr) == NULL)  return PyErr_SetFromErrno(PyExc_EnvironmentError);
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef module_methods[] = {
     GL_METHODS
     {"drain_read", (PyCFunction)drain_read, METH_O, ""},
@@ -38,6 +49,7 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
     {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
+    {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
 #ifndef __APPLE__

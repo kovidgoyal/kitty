@@ -33,7 +33,7 @@ except ImportError:
     GLFW_X11_WM_CLASS_NAME = GLFW_X11_WM_CLASS_CLASS = None
 from .layout import all_layouts
 from .shaders import GL_VERSION
-from .utils import safe_print
+from .utils import safe_print, detach
 
 
 defconf = os.path.join(config_dir, 'kitty.conf')
@@ -99,6 +99,13 @@ def option_parser():
         default=False,
         help=_('Output commands received from child process to stdout')
     )
+    if not isosx:
+        a(
+            '--detach',
+            action='store_true',
+            default=False,
+            help=_('Detach from the controlling terminal, if any')
+        )
     a(
         '--replay-commands',
         default=None,
@@ -265,7 +272,11 @@ def main():
     if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
                       None) == '1' and getattr(sys, 'frozen', True):
         os.chdir(os.path.expanduser('~'))
+    if not os.path.isdir(os.getcwd()):
+        os.chdir(os.path.expanduser('~'))
     args = option_parser().parse_args()
+    if getattr(args, 'detach', False):
+        detach()
     if args.cmd:
         exec(args.cmd)
         return

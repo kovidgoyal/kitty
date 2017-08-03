@@ -14,7 +14,7 @@ from functools import lru_cache
 from time import monotonic
 
 from .constants import isosx
-from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl
+from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl, redirect_std_streams
 from .rgb import Color, to_color
 
 
@@ -215,3 +215,14 @@ def open_url(url, program='default'):
         cmd = shlex.split(program)
     cmd.append(url)
     subprocess.Popen(cmd).wait()
+
+
+def detach(fork=True, setsid=True, redirect=True):
+    if fork:
+        # Detach from the controlling process.
+        if os.fork() != 0:
+            raise SystemExit(0)
+    if setsid:
+        os.setsid()
+    if redirect:
+        redirect_std_streams(os.devnull)
