@@ -58,5 +58,5 @@ def encode_mouse_event(tracking_mode, tracking_protocol, button, action, mods, x
         ans = bytes(ans)
     else:
         if x <= 223 and y <= 223:
-            ans = bytearray([0o33, ord('['), cb + 32, x + 32, y + 32])
+            ans = bytearray([0o33, ord('['), ord('M'), cb + 32, x + 32, y + 32])
     return ans
