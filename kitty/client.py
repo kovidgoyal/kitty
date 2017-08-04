@@ -125,14 +125,14 @@ def write_osc(code, string=''):
     write(OSC + str(code) + string + '\x07')
 
 
-set_dynamic_color = write_osc
+set_dynamic_color = set_color_table_color = write_osc
 
 
 def replay(raw):
     for line in raw.splitlines():
         if line.strip():
             cmd, rest = line.partition(' ')[::2]
-            if cmd in {'draw', 'set_title', 'set_icon'}:
+            if cmd in {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color'}:
                 globals()[cmd](rest)
             else:
                 rest = map(int, rest.split()) if rest else ()
