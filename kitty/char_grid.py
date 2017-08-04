@@ -297,7 +297,7 @@ class CharGrid:
             if raw is None:
                 return 0
             val = to_color(raw)
-            return None if val is None else (color_as_int(val) << 8) | 1
+            return None if val is None else (color_as_int(val) << 8) | 2
 
         for which, val in changes.items():
             val = item(val)
@@ -322,10 +322,9 @@ class CharGrid:
         sprites = get_boss().sprites
         is_dirty = self.screen.is_dirty()
         with sprites.lock:
-            fg = self.screen.default_fg
-            fg = fg >> 8 if fg & 1 else self.default_fg
-            bg = self.screen.default_bg
-            bg = bg >> 8 if bg & 1 else self.default_bg
+            fg, bg = self.screen.default_fg, self.screen.default_bg
+            fg = fg >> 8 if fg & 2 else self.default_fg
+            bg = bg >> 8 if bg & 2 else self.default_bg
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
                 sprites.backend, self.color_profile, addressof(self.main_sprite_map), fg, bg, force_full_refresh)
             if self.scrolled_by:
@@ -475,9 +474,9 @@ class CharGrid:
                 if self.render_buf_is_dirty or sel != self.last_rendered_selection:
                     memmove(buf, self.render_buf, sizeof(type(buf)))
                     fg = self.screen.highlight_fg
-                    fg = fg >> 8 if fg & 1 else self.highlight_fg
+                    fg = fg >> 8 if fg & 2 else self.highlight_fg
                     bg = self.screen.highlight_bg
-                    bg = bg >> 8 if bg & 1 else self.highlight_bg
+                    bg = bg >> 8 if bg & 2 else self.highlight_bg
                     self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
                 sprites.set_sprite_map(self.buffer_id, buf)
@@ -503,7 +502,7 @@ class CharGrid:
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy
         cc = self.screen.cursor_color
-        col = color_from_int(cc >> 8) if cc & 1 else self.opts.cursor
+        col = color_from_int(cc >> 8) if cc & 2 else self.opts.cursor
         shape = cursor.shape or self.default_cursor.shape
         alpha = self.opts.cursor_opacity
         if alpha < 1.0 and shape == CURSOR_BLOCK:

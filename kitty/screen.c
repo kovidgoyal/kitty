@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include <structmember.h>
+#include <limits.h>
 #include "unicode-data.h"
 #include "tracker.h"
 #include "modes.h"
@@ -1332,6 +1333,14 @@ static PyGetSetDef getsetters[] = {
     {NULL}  /* Sentinel */
 };
 
+#if UINT_MAX == UINT32_MAX
+#define T_COL T_UINT
+#elif ULONG_MAX == UINT32_MAX
+#define T_COL T_ULONG
+#else
+#error Neither int nor long is 4-bytes in size
+#endif
+
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
@@ -1341,11 +1350,11 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
-    {"default_fg", T_ULONG, offsetof(Screen, default_fg), 0, "default_fg"},
-    {"default_bg", T_ULONG, offsetof(Screen, default_bg), 0, "default_bg"},
-    {"highlight_fg", T_ULONG, offsetof(Screen, highlight_fg), 0, "highlight_fg"},
-    {"highlight_bg", T_ULONG, offsetof(Screen, highlight_bg), 0, "highlight_bg"},
-    {"cursor_color", T_ULONG, offsetof(Screen, cursor_color), 0, "cursor_color"},
+    {"default_fg", T_COL, offsetof(Screen, default_fg), 0, "default_fg"},
+    {"default_bg", T_COL, offsetof(Screen, default_bg), 0, "default_bg"},
+    {"highlight_fg", T_COL, offsetof(Screen, highlight_fg), 0, "highlight_fg"},
+    {"highlight_bg", T_COL, offsetof(Screen, highlight_bg), 0, "highlight_bg"},
+    {"cursor_color", T_COL, offsetof(Screen, cursor_color), 0, "cursor_color"},
     {NULL}
 };
  
