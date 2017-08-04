@@ -32,9 +32,12 @@ class Tab:
         self.borders = Borders(opts)
         self.windows = deque()
         self.active_window_idx = 0
+        for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
+            setattr(self, which + '_window', partial(self.nth_window, num=i))
         if session_tab is None:
             self.cwd = args.directory
             l = self.enabled_layouts[0]
+            self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
             if special_window is None:
                 queue_action(self.new_window)
             else:
@@ -42,10 +45,8 @@ class Tab:
         else:
             self.cwd = session_tab.cwd or args.directory
             l = session_tab.layout
+            self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
             queue_action(self.startup, session_tab)
-        self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
-        for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
-            setattr(self, which + '_window', partial(self.nth_window, num=i))
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
