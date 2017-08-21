@@ -20,7 +20,7 @@ from .fast_data_types import (
     glUniform4f, glUniform2i
 )
 from .rgb import to_color
-from .shaders import load_shaders
+from .shaders import load_shaders, ShaderProgram
 from .utils import (
     color_as_int, color_from_int, get_logical_dpi, open_url, safe_print,
     set_primary_selection
@@ -36,9 +36,9 @@ class DynamicColor(Enum):
 def load_shader_programs():
     vert, frag = load_shaders('cell')
     vert = vert.replace('STRIDE', str(DATA_CELL_SIZE))
-    cell = vert, frag
+    cell = ShaderProgram(vert, frag)
     cursor = load_shaders('cursor')
-    return cell, cursor
+    return cell, ShaderProgram(*cursor)
 
 
 class Selection:  # {{{

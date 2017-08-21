@@ -30,7 +30,7 @@ from .char_grid import load_shader_programs
 from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut, get_sent_data
 from .session import create_session
-from .shaders import Sprites, ShaderProgram
+from .shaders import Sprites
 from .tabs import TabManager, SpecialWindow
 from .timers import Timers
 from .utils import handle_unix_signals, safe_print, pipe2
@@ -100,9 +100,7 @@ class Boss(Thread):
         glfw_window.window_focus_callback = self.on_focus
         self.tab_manager = TabManager(opts, args, startup_session)
         self.sprites = Sprites()
-        cell_shader, cursor_shader = load_shader_programs()
-        self.cell_program = ShaderProgram(*cell_shader)
-        self.cursor_program = ShaderProgram(*cursor_shader)
+        self.cell_program, self.cursor_program = load_shader_programs()
         self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.sprites.do_layout(cell_size.width, cell_size.height)
