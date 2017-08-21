@@ -26,7 +26,7 @@ from .fast_data_types import (
 )
 from .fonts.render import set_font_family
 from .borders import BordersProgram
-from .char_grid import cursor_shader, cell_shader
+from .char_grid import load_shader_programs
 from .constants import is_key_pressed
 from .keys import interpret_text_event, interpret_key_event, get_shortcut, get_sent_data
 from .session import create_session
@@ -100,6 +100,7 @@ class Boss(Thread):
         glfw_window.window_focus_callback = self.on_focus
         self.tab_manager = TabManager(opts, args, startup_session)
         self.sprites = Sprites()
+        cell_shader, cursor_shader = load_shader_programs()
         self.cell_program = ShaderProgram(*cell_shader)
         self.cursor_program = ShaderProgram(*cursor_shader)
         self.borders_program = BordersProgram()

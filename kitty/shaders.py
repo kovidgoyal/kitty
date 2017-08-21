@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 from ctypes import addressof, sizeof
 from functools import lru_cache
@@ -33,6 +34,14 @@ GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 ITALIC_MASK = 1 << ITALIC
 BOLD_MASK = 1 << BOLD
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+@lru_cache()
+def load_shaders(name):
+    vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read()
+    frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read()
+    return vert, frag
 
 
 class Sprites:
