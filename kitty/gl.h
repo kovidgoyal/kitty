@@ -696,6 +696,15 @@ VertexAttribPointer(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+VertexAttribDivisor(PyObject UNUSED *self, PyObject *args) {
+    unsigned int index, divisor;
+    if (!PyArg_ParseTuple(args, "II", &index, &divisor)) return NULL;
+    glVertexAttribDivisor(index, divisor);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 Flush(PyObject UNUSED *self) {
     glFinish();
     Py_RETURN_NONE;
@@ -798,6 +807,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(Disable, METH_O) \
     METH(EnableVertexAttribArray, METH_O) \
     METH(VertexAttribPointer, METH_VARARGS) \
+    METH(VertexAttribDivisor, METH_VARARGS) \
     METH(GetProgramInfoLog, METH_O) \
     METH(GetShaderInfoLog, METH_O) \
     METH(ActiveTexture, METH_O) \

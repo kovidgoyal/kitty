@@ -4,6 +4,7 @@
 
 import os
 import sys
+from collections import namedtuple
 from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
@@ -24,8 +25,8 @@ from .fast_data_types import (
     glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
     glGetShaderiv, glGetUniformLocation, glLinkProgram, glNamedBufferData,
     glPixelStorei, glShaderSource, glTexBuffer, glTexParameteri,
-    glTexStorage3D, glTexSubImage3D, glUseProgram, glVertexAttribPointer,
-    replace_or_create_buffer
+    glTexStorage3D, glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
+    glVertexAttribPointer, replace_or_create_buffer
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -35,6 +36,7 @@ VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 ITALIC_MASK = 1 << ITALIC
 BOLD_MASK = 1 << BOLD
 BASE = os.path.dirname(os.path.abspath(__file__))
+VertexArray = namedtuple('VertexArray', 'name size dtype normalized stride offset divisor')
 
 
 @lru_cache()
@@ -267,13 +269,19 @@ class ShaderProgram:
         self.vao_id = glGenVertexArrays(1)
         self.buffers = {}
 
-    def add_vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0):
+    def vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0, divisor=0):
+        return VertexArray(name, size, dtype, normalized, stride, offset, divisor)
+
+    def add_vertex_arrays(self, *arrays):
         glBindVertexArray(self.vao_id)
-        self.buffers[name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
-        buffer_manager.bind(buf_id)
-        aid = self.attribute_location(name)
-        glEnableVertexAttribArray(aid)
-        glVertexAttribPointer(aid, size, dtype, normalized, stride, offset)
+        for x in arrays:
+            self.buffers[x.name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
+            buffer_manager.bind(buf_id)
+            aid = self.attribute_location(x.name)
+            glEnableVertexAttribArray(aid)
+            glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
+            if x.divisor > 0:
+                glVertexAttribDivisor(aid, x.divisor)
         buffer_manager.unbind(buf_id)
         glBindVertexArray(0)
 
