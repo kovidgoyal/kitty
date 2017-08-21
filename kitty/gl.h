@@ -652,6 +652,29 @@ VertexAttribPointer(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+
+static PyObject*
+check_for_extensions(PyObject UNUSED *self) {
+    GLint n = 0, i, left = 2;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+    bool texture_storage = false, texture_buffer_object_rgb32 = false;
+#define CHECK(name) if (!name) { \
+    if (strstr((const char*)ext, "GL_ARB_" #name) == (const char *)ext) { left--; name = true; } \
+}
+    for (i = 0; i < n; i++) {
+        const GLubyte *ext = glGetStringi(GL_EXTENSIONS, i);
+        CHECK(texture_storage); CHECK(texture_buffer_object_rgb32);
+        if (left < 1) break;
+    }
+#undef CHECK
+    if (left > 0) {
+#define CHECK(name) if (!name) { PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: GL_ARB_%s", #name); return NULL; }
+        CHECK(texture_storage); CHECK(texture_buffer_object_rgb32);
+#undef CHECK
+    }
+    Py_RETURN_NONE;
+}
+
 int add_module_gl_constants(PyObject *module) {
 #define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return 0; }
     GLC(GL_VERSION);
@@ -686,6 +709,7 @@ int add_module_gl_constants(PyObject *module) {
     {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, \
     {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, \
     {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, \
+    {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, \
     METH(Viewport, METH_VARARGS) \
     METH(CheckError, METH_NOARGS) \
     METH(ClearColor, METH_VARARGS) \

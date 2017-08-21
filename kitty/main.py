@@ -25,7 +25,7 @@ from .fast_data_types import (
     GLFW_STENCIL_BITS, Window, change_wcwidth,
     enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
     glfw_init, glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_wait_events, glfw_window_hint, glfw_init_hint_string
+    glfw_wait_events, glfw_window_hint, glfw_init_hint_string, check_for_extensions
 )
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
@@ -220,6 +220,8 @@ def run_app(opts, args):
     viewport_size.x_ratio = viewport_size.width / float(w)
     viewport_size.y_ratio = viewport_size.height / float(h)
     glewInit()
+    if isosx:
+        check_for_extensions()
     boss = Boss(window, opts, args)
     boss.start()
     clear_buffers(window, opts)
