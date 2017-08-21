@@ -20,13 +20,14 @@ from .fast_data_types import (
     copy_image_sub_data, glActiveTexture, glAttachShader, glBindBuffer,
     glBindTexture, glBindVertexArray, glCompileShader, glCopyImageSubData,
     glCreateProgram, glCreateShader, glDeleteBuffer, glDeleteProgram,
-    glDeleteShader, glDeleteTexture, glEnableVertexAttribArray, glGenBuffers,
-    glGenTextures, glGenVertexArrays, glGetAttribLocation, glGetBufferSubData,
-    glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
-    glGetShaderiv, glGetUniformLocation, glLinkProgram, glPixelStorei,
-    glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
-    glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
-    glVertexAttribPointer, replace_or_create_buffer
+    glDeleteShader, glDeleteTexture, glDeleteVertexArray,
+    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
+    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
+    glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
+    glGetUniformLocation, glLinkProgram, glPixelStorei, glShaderSource,
+    glTexBuffer, glTexParameteri, glTexStorage3D, glTexSubImage3D,
+    glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
+    replace_or_create_buffer
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -266,27 +267,40 @@ class ShaderProgram:
             raise ValueError('Error linking shader program: \n%s' % info.decode('utf-8'))
         glDeleteShader(vs_id)
         glDeleteShader(frag_id)
-        self.vao_id = glGenVertexArrays(1)
-        self.buffers = {}
+        self.vertex_arrays = {}
 
     def vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0, divisor=0):
         return VertexArray(name, size, dtype, normalized, stride, offset, divisor)
 
     def add_vertex_arrays(self, *arrays):
-        glBindVertexArray(self.vao_id)
+        vao_id = glGenVertexArrays(1)
+        self.vertex_arrays[vao_id] = buffers = {}
+        glBindVertexArray(vao_id)
         for x in arrays:
-            self.buffers[x.name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
+            buffers[x.name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
             buffer_manager.bind(buf_id)
             aid = self.attribute_location(x.name)
             glEnableVertexAttribArray(aid)
             glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
             if x.divisor > 0:
                 glVertexAttribDivisor(aid, x.divisor)
-        buffer_manager.unbind(buf_id)
+        if arrays:
+            buffer_manager.unbind(buf_id)
         glBindVertexArray(0)
+        return vao_id
 
-    def send_vertex_data(self, name, data, usage=GL_STATIC_DRAW):
-        bufid = self.buffers[name]
+    def bind_vertex_array(self, vao_id):
+        glBindVertexArray(vao_id)
+
+    def remove_vertex_array(self, vao_id):
+        buffers = self.vertex_arrays.pop(vao_id, None)
+        if buffers is not None:
+            glDeleteVertexArray(vao_id)
+            for buf_id in buffers.values():
+                buffer_manager.delete(buf_id)
+
+    def send_vertex_data(self, vao_id, name, data, usage=GL_STATIC_DRAW):
+        bufid = self.vertex_arrays[vao_id][name]
         buffer_manager.set_data(bufid, data, usage=usage)
 
     def __hash__(self) -> int:
@@ -325,7 +339,6 @@ class ShaderProgram:
 
     def __enter__(self):
         glUseProgram(self.program_id)
-        glBindVertexArray(self.vao_id)
 
     def __exit__(self, *args):
         glUseProgram(0)

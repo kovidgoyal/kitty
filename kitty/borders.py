@@ -50,10 +50,10 @@ void main() {
     final_color = vec4(color, 1);
 }
         ''')
-        self.add_vertex_arrays(self.vertex_array('rect'))
+        self.vao_id = self.add_vertex_arrays(self.vertex_array('rect'))
 
     def send_data(self, data):
-        self.send_vertex_data('rect', data)
+        self.send_vertex_data(self.vao_id, 'rect', data)
 
     def set_colors(self, color_buf):
         glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))
@@ -145,6 +145,7 @@ class Borders:
             if not self.can_render:
                 return
             with program:
+                program.bind_vertex_array(program.vao_id)
                 if self.is_dirty:
                     program.send_data(self.rects)
                     program.set_colors(self.color_buf)

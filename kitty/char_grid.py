@@ -37,8 +37,10 @@ def load_shader_programs():
     vert, frag = load_shaders('cell')
     vert = vert.replace('STRIDE', str(DATA_CELL_SIZE))
     cell = ShaderProgram(vert, frag)
-    cursor = load_shaders('cursor')
-    return cell, ShaderProgram(*cursor)
+    cursor = ShaderProgram(*load_shaders('cursor'))
+    cell.vao_id = cell.add_vertex_arrays()
+    cursor.vao_id = cursor.add_vertex_arrays()
+    return cell, cursor
 
 
 class Selection:  # {{{
@@ -119,6 +121,7 @@ def render_cells(buffer_id, sg, cell_program, sprites, invert_colors=False):
     glUniform1i(ul('sprites'), sprites.sampler_num)
     glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
     glUniform2f(ul('sprite_layout'), *(sprites.layout))
+    cell_program.bind_vertex_array(cell_program.vao_id)
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 
@@ -395,5 +398,6 @@ class CharGrid:
         glUniform4f(ul('color'), col[0] / 255.0, col[1] / 255.0, col[2] / 255.0, alpha)
         glUniform2f(ul('xpos'), left, right)
         glUniform2f(ul('ypos'), top, bottom)
+        cursor_program.bind_vertex_array(cursor_program.vao_id)
         glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)
         glDisable(GL_BLEND)
