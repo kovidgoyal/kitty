@@ -24,7 +24,8 @@ from .fast_data_types import (
     GL_TEXTURE_BUFFER, GL_R32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
     glPixelStorei, glTexBuffer, glActiveTexture, glTexStorage3D,
     glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap,
-    glEnableVertexAttribArray, glVertexAttribPointer, copy_image_sub_data
+    glEnableVertexAttribArray, glVertexAttribPointer, copy_image_sub_data,
+    replace_or_create_buffer
 )
 from .utils import safe_print
 
@@ -42,6 +43,7 @@ class Sprites:
     # extensions one they become available.
 
     def __init__(self):
+        self.prev_sprite_map_sz = 0
         self.xnum = self.ynum = 1
         self.sampler_num = 0
         self.buffer_sampler_num = 1
@@ -157,8 +159,9 @@ class Sprites:
         return glGenBuffers(1)
 
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
+        prev_sz, self.prev_sprite_map_sz = self.prev_sprite_map_sz, sizeof(data)
+        replace_or_create_buffer(buf_id, self.prev_sprite_map_sz, prev_sz, addressof(data), usage)
         self.bind_sprite_map(buf_id)
-        glNamedBufferData(buf_id, sizeof(data), addressof(data), usage)
 
     def bind_sprite_map(self, buf_id):
         glBindBuffer(GL_TEXTURE_BUFFER, buf_id)

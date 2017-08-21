@@ -564,6 +564,24 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
+    int usage;
+    unsigned long size, prev_sz, target;
+    PyObject *address;
+    if (!PyArg_ParseTuple(args, "kkkO!i", &target, &size, &prev_sz, &PyLong_Type, &address, &usage)) return NULL;
+    void *data = PyLong_AsVoidPtr(address);
+    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    glBindBuffer(GL_TEXTURE_BUFFER, target); 
+    Py_BEGIN_ALLOW_THREADS;
+    if (prev_sz == 0 || prev_sz != size) glBufferData(GL_TEXTURE_BUFFER, size, data, usage); 
+    else glBufferSubData(GL_TEXTURE_BUFFER, 0, size, data);
+    Py_END_ALLOW_THREADS;
+    CHECK_ERROR;
+    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 TexParameteri(PyObject UNUSED *self, PyObject *args) {
     int target, name, param;
     if (!PyArg_ParseTuple(args, "iii", &target, &name, &param)) return NULL;
@@ -717,6 +735,7 @@ int add_module_gl_constants(PyObject *module) {
 #define GL_METHODS \
     {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, \
     {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, \
+    {"replace_or_create_buffer", (PyCFunction)replace_or_create_buffer, METH_VARARGS, NULL}, \
     {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, \
     {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, \
     METH(Viewport, METH_VARARGS) \
