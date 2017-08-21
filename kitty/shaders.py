@@ -5,6 +5,7 @@
 import os
 import sys
 from ctypes import addressof, sizeof
+from collections import defaultdict
 from functools import lru_cache
 from threading import Lock
 
@@ -52,7 +53,7 @@ class Sprites:
     # extensions one they become available.
 
     def __init__(self):
-        self.prev_sprite_map_sz = 0
+        self.prev_sprite_map_sizes = defaultdict(lambda: 0)
         self.xnum = self.ynum = 1
         self.first_cell_cache = {}
         self.second_cell_cache = {}
@@ -170,11 +171,12 @@ class Sprites:
         return glGenBuffers(1)
 
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
-        prev_sz, self.prev_sprite_map_sz = self.prev_sprite_map_sz, sizeof(data)
-        replace_or_create_buffer(buf_id, self.prev_sprite_map_sz, prev_sz, addressof(data), usage)
+        prev_sz = self.prev_sprite_map_sizes[buf_id]
+        self.prev_sprite_map_sizes[buf_id] = new_sz = sizeof(data)
+        replace_or_create_buffer(buf_id, new_sz, prev_sz, addressof(data), usage)
         if False:
             verify_data = type(data)()
-            glGetBufferSubData(buf_id, self.prev_sprite_map_sz, 0, addressof(verify_data))
+            glGetBufferSubData(buf_id, new_sz, 0, addressof(verify_data))
             if list(data) != list(verify_data):
                 raise RuntimeError('OpenGL failed to upload to buffer')
 
