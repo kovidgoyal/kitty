@@ -12,15 +12,15 @@ from .fast_data_types import (
     BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
     GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
     GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_R32UI, GL_RED, GL_STATIC_DRAW,
-    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE_2D_ARRAY,
-    GL_TEXTURE_BUFFER, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER,
-    GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT,
-    GL_UNSIGNED_BYTE, GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data,
-    glActiveTexture, glAttachShader, glBindBuffer, glBindTexture,
-    glBindVertexArray, glCompileShader, glCopyImageSubData, glCreateProgram,
-    glCreateShader, glDeleteBuffer, glDeleteProgram, glDeleteShader,
-    glDeleteTexture, glEnableVertexAttribArray, glGenBuffers, glGenTextures,
-    glGenVertexArrays, glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
+    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BUFFER,
+    GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
+    GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
+    GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data, glActiveTexture,
+    glAttachShader, glBindBuffer, glBindTexture, glBindVertexArray,
+    glCompileShader, glCopyImageSubData, glCreateProgram, glCreateShader,
+    glDeleteBuffer, glDeleteProgram, glDeleteShader, glDeleteTexture,
+    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
+    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
     glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
     glGetUniformLocation, glLinkProgram, glNamedBufferData, glPixelStorei,
     glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
@@ -54,15 +54,16 @@ class Sprites:
     def __init__(self):
         self.prev_sprite_map_sz = 0
         self.xnum = self.ynum = 1
-        self.sampler_num = 0
-        self.buffer_sampler_num = 1
         self.first_cell_cache = {}
         self.second_cell_cache = {}
         self.x = self.y = self.z = 0
         self.texture_id = self.buffer_texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
-        self.texture_unit = GL_TEXTURE0
+        self.sampler_num = 0
+        self.buffer_sampler_num = 1
+        self.texture_unit = GL_TEXTURE0 + self.sampler_num
+        self.buffer_texture_unit = GL_TEXTURE0 + self.buffer_sampler_num
         self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
         self.lock = Lock()
 
@@ -157,12 +158,13 @@ class Sprites:
             self.texture_id = None
         if self.buffer_texture_id is not None:
             glDeleteTexture(self.buffer_texture_id)
+            self.buffer_texture_id = None
 
     def ensure_state(self):
         if self.texture_id is None:
             self.realloc_texture()
+        if self.buffer_texture_id is None:
             self.buffer_texture_id = glGenTextures(1)
-            self.buffer_texture_unit = GL_TEXTURE1
 
     def add_sprite_map(self):
         return glGenBuffers(1)
