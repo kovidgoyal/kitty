@@ -172,8 +172,9 @@ class Sprites:
 
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
         prev_sz = self.prev_sprite_map_sizes[buf_id]
-        self.prev_sprite_map_sizes[buf_id] = new_sz = sizeof(data)
+        new_sz = sizeof(data)
         replace_or_create_buffer(buf_id, new_sz, prev_sz, addressof(data), usage)
+        self.prev_sprite_map_sizes[buf_id] = new_sz
         if False:
             verify_data = type(data)()
             glGetBufferSubData(buf_id, new_sz, 0, addressof(verify_data))
@@ -186,6 +187,7 @@ class Sprites:
 
     def destroy_sprite_map(self, buf_id):
         glDeleteBuffer(buf_id)
+        self.prev_sprite_map_sizes.pop(buf_id, None)
 
     def __enter__(self):
         self.ensure_state()
