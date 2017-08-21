@@ -4,7 +4,6 @@
 
 import os
 import sys
-from collections import defaultdict
 from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
@@ -45,6 +44,50 @@ def load_shaders(name):
     return vert, frag
 
 
+class BufferManager:  # {{{
+
+    def __init__(self):
+        self.buffers = {}
+        self.sizes = {}
+        self.types = {}
+        self.name_count = 0
+
+    def create(self, name=None, for_use=GL_TEXTURE_BUFFER):
+        if name is None:
+            name = self.name_count
+            self.name_count += 1
+        self.buffers[name] = buf_id = glGenBuffers(1)
+        self.types[name] = for_use
+        self.sizes.pop(buf_id, None)
+        return name
+
+    def delete(self, name):
+        buf_id = self.buffers.get(name)
+        if name is not None:
+            glDeleteBuffer(buf_id)
+            self.sizes.pop(buf_id, None)
+
+    def set_data(self, name, data, usage=GL_STREAM_DRAW, verify=False):
+        prev_sz = self.sizes.get(name, 0)
+        new_sz = sizeof(data)
+        replace_or_create_buffer(self.buffers[name], new_sz, prev_sz, addressof(data), usage, self.types[name])
+        self.sizes[name] = new_sz
+        if verify:
+            verify_data = type(data)()
+            glGetBufferSubData(self.buffers[name], new_sz, 0, addressof(verify_data))
+            if list(data) != list(verify_data):
+                raise RuntimeError('OpenGL failed to upload to buffer')
+
+    def bind(self, name):
+        buf_id = self.buffers[name]
+        glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
+        return buf_id
+
+
+buffer_manager = BufferManager()
+# }}}
+
+
 class Sprites:
     ''' Maintain sprite sheets of all rendered characters on the GPU as a texture
     array with each texture being a sprite sheet. '''
@@ -53,7 +96,6 @@ class Sprites:
     # extensions one they become available.
 
     def __init__(self):
-        self.prev_sprite_map_sizes = defaultdict(lambda: 0)
         self.xnum = self.ynum = 1
         self.first_cell_cache = {}
         self.second_cell_cache = {}
@@ -169,29 +211,21 @@ class Sprites:
             self.buffer_texture_id = glGenTextures(1)
 
     def add_sprite_map(self):
-        return glGenBuffers(1)
+        return buffer_manager.create()
 
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
-        prev_sz = self.prev_sprite_map_sizes[buf_id]
         new_sz = sizeof(data)
         if new_sz // 4 > self.max_texture_buffer_size:
             raise RuntimeError(('The OpenGL implementation on your system has a max_texture_buffer_size of {} which'
                                ' is insufficient for the sprite_map').format(self.max_texture_buffer_size))
-        replace_or_create_buffer(buf_id, new_sz, prev_sz, addressof(data), usage)
-        self.prev_sprite_map_sizes[buf_id] = new_sz
-        if False:
-            verify_data = type(data)()
-            glGetBufferSubData(buf_id, new_sz, 0, addressof(verify_data))
-            if list(data) != list(verify_data):
-                raise RuntimeError('OpenGL failed to upload to buffer')
+        buffer_manager.set_data(buf_id, data, usage)
 
     def bind_sprite_map(self, buf_id):
-        glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
+        buf_id = buffer_manager.bind(buf_id)
         glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, buf_id)
 
     def destroy_sprite_map(self, buf_id):
-        glDeleteBuffer(buf_id)
-        self.prev_sprite_map_sizes.pop(buf_id, None)
+        buffer_manager.delete(buf_id)
 
     def __enter__(self):
         self.ensure_state()

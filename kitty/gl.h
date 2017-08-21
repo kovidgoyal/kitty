@@ -581,19 +581,19 @@ GetBufferSubData(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject* 
 replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
-    int usage;
+    int usage, buftype;
     unsigned long size, prev_sz, target;
     PyObject *address;
-    if (!PyArg_ParseTuple(args, "kkkO!i", &target, &size, &prev_sz, &PyLong_Type, &address, &usage)) return NULL;
+    if (!PyArg_ParseTuple(args, "kkkO!ii", &target, &size, &prev_sz, &PyLong_Type, &address, &usage, &buftype)) return NULL;
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    glBindBuffer(GL_TEXTURE_BUFFER, target); 
+    glBindBuffer(buftype, target); 
     Py_BEGIN_ALLOW_THREADS;
-    if (prev_sz == 0 || prev_sz != size) glBufferData(GL_TEXTURE_BUFFER, size, data, usage); 
-    else glBufferSubData(GL_TEXTURE_BUFFER, 0, size, data);
+    if (prev_sz == 0 || prev_sz != size) glBufferData(buftype, size, data, usage); 
+    else glBufferSubData(buftype, 0, size, data);
     Py_END_ALLOW_THREADS;
     CHECK_ERROR;
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    glBindBuffer(buftype, 0);
     Py_RETURN_NONE;
 }
 
