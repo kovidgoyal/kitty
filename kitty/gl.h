@@ -85,6 +85,16 @@ Uniform2ui(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+Uniform2i(PyObject UNUSED *self, PyObject *args) {
+    int location;
+    int x, y;
+    if (!PyArg_ParseTuple(args, "iii", &location, &x, &y)) return NULL;
+    glUniform2i(location, x, y);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 Uniform1i(PyObject UNUSED *self, PyObject *args) {
     int location;
     int x;
@@ -147,7 +157,6 @@ _glewInit(PyObject UNUSED *self) {
         return NULL; \
     }
     ARB_TEST(texture_storage);
-    ARB_TEST(texture_buffer_object_rgb32);
 #undef ARB_TEST
 #endif
     Py_RETURN_NONE;
@@ -657,19 +666,19 @@ static PyObject*
 check_for_extensions(PyObject UNUSED *self) {
     GLint n = 0, i, left = 2;
     glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-    bool texture_storage = false, texture_buffer_object_rgb32 = false;
+    bool texture_storage = false;
 #define CHECK(name) if (!name) { \
     if (strstr((const char*)ext, "GL_ARB_" #name) == (const char *)ext) { left--; name = true; } \
 }
     for (i = 0; i < n; i++) {
         const GLubyte *ext = glGetStringi(GL_EXTENSIONS, i);
-        CHECK(texture_storage); CHECK(texture_buffer_object_rgb32);
+        CHECK(texture_storage); 
         if (left < 1) break;
     }
 #undef CHECK
     if (left > 0) {
 #define CHECK(name) if (!name) { PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: GL_ARB_%s", #name); return NULL; }
-        CHECK(texture_storage); CHECK(texture_buffer_object_rgb32);
+        CHECK(texture_storage); 
 #undef CHECK
     }
     Py_RETURN_NONE;
@@ -697,7 +706,7 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_TEXTURE_MIN_FILTER); GLC(GL_TEXTURE_MAG_FILTER);
     GLC(GL_TEXTURE_WRAP_S); GLC(GL_TEXTURE_WRAP_T);
     GLC(GL_UNPACK_ALIGNMENT);
-    GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_RGB32UI); GLC(GL_RGBA);
+    GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_R32UI); GLC(GL_RGB32UI); GLC(GL_RGBA);
     GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
     GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_ARRAY_BUFFER);
@@ -716,6 +725,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(GetProgramiv, METH_VARARGS) \
     METH(GetShaderiv, METH_VARARGS) \
     METH(Uniform2ui, METH_VARARGS) \
+    METH(Uniform2i, METH_VARARGS) \
     METH(Uniform1i, METH_VARARGS) \
     METH(Uniform2f, METH_VARARGS) \
     METH(Uniform4f, METH_VARARGS) \

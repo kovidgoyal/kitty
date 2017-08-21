@@ -209,6 +209,7 @@ def run_app(opts, args):
     window.set_title(appname)
     window.make_context_current()
     if isosx:
+        check_for_extensions()
         if opts.macos_hide_titlebar:
             from .fast_data_types import cocoa_hide_titlebar
             cocoa_hide_titlebar(window.cocoa_window_id())
@@ -220,8 +221,6 @@ def run_app(opts, args):
     viewport_size.x_ratio = viewport_size.width / float(w)
     viewport_size.y_ratio = viewport_size.height / float(h)
     glewInit()
-    if isosx:
-        check_for_extensions()
     boss = Boss(window, opts, args)
     boss.start()
     clear_buffers(window, opts)

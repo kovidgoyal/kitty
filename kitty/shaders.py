@@ -21,7 +21,7 @@ from .fast_data_types import (
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
     GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
     GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_STREAM_DRAW,
-    GL_TEXTURE_BUFFER, GL_RGB32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
+    GL_TEXTURE_BUFFER, GL_R32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
     glPixelStorei, glTexBuffer, glActiveTexture, glTexStorage3D,
     glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap,
     glEnableVertexAttribArray, glVertexAttribPointer, copy_image_sub_data
@@ -162,7 +162,7 @@ class Sprites:
 
     def bind_sprite_map(self, buf_id):
         glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, buf_id)
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, buf_id)
 
     def destroy_sprite_map(self, buf_id):
         glDeleteBuffer(buf_id)
@@ -179,7 +179,7 @@ class Sprites:
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
         glBindTexture(GL_TEXTURE_BUFFER, 0)
         glBindBuffer(GL_TEXTURE_BUFFER, 0)
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGB32UI, 0)
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, 0)
 
 
 class ShaderProgram:

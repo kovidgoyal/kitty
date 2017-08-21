@@ -35,8 +35,7 @@ typedef unsigned int index_type;
 
 #define CELL_FIELD_COUNT 5
 #define CELL_SIZE (CELL_FIELD_COUNT * 4)
-// The data cell size must be a multiple of 3
-#define DATA_CELL_SIZE 2 * 3
+#define DATA_CELL_SIZE 6
 
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24

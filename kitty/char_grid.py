@@ -17,7 +17,7 @@ from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
     GL_LINE_LOOP, GL_TRIANGLE_FAN, ColorProfile, glDisable, glDrawArrays,
     glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2ui,
-    glUniform4f
+    glUniform4f, glUniform2i
 )
 from .rgb import to_color
 from .utils import (
@@ -44,7 +44,7 @@ uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
-uniform uvec2 color_indices;  // which color to use as fg and which as bg
+uniform ivec2 color_indices;  // which color to use as fg and which as bg
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -89,17 +89,21 @@ void main() {
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
 
     int sprite_id = gl_InstanceID * STRIDE;
-    uvec4 spos = texelFetch(sprite_map, sprite_id);
-    uvec4 colors = texelFetch(sprite_map, sprite_id + 1);
-    sprite_pos = to_sprite_pos(pos, spos[0], spos[1], spos[2]);
-    foreground = to_color(colors[color_indices[0]]);
-    background = to_color(colors[color_indices[1]]);
-    uint decoration = colors[2];
+    uint x = texelFetch(sprite_map, sprite_id).r;
+    uint y = texelFetch(sprite_map, sprite_id + 1).r;
+    uint z = texelFetch(sprite_map, sprite_id + 2).r;
+    sprite_pos = to_sprite_pos(pos, x, y, z);
+    sprite_id += 3;
+    uint fg = texelFetch(sprite_map, sprite_id + color_indices[0]).r;
+    uint bg = texelFetch(sprite_map, sprite_id + color_indices[1]).r;
+    uint decoration = texelFetch(sprite_map, sprite_id + 2).r;
+    foreground = to_color(fg);
+    background = to_color(bg);
     decoration_fg = to_color(decoration);
     underline_pos = to_sprite_pos(pos, (decoration >> 24) & SMASK, ZERO, ZERO);
     strike_pos = to_sprite_pos(pos, (decoration >> 26) & SMASK, ZERO, ZERO);
 }
-'''.replace('STRIDE', str(DATA_CELL_SIZE // 3)),
+'''.replace('STRIDE', str(DATA_CELL_SIZE)),
 
     '''\
 uniform sampler2DArray sprites;
@@ -234,7 +238,7 @@ def render_cells(buffer_id, sg, cell_program, sprites, invert_colors=False):
     sprites.bind_sprite_map(buffer_id)
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-    glUniform2ui(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
+    glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
     glUniform1i(ul('sprites'), sprites.sampler_num)
     glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
