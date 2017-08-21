@@ -564,6 +564,22 @@ NamedBufferData(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+GetBufferSubData(PyObject UNUSED *self, PyObject *args) {
+    unsigned long size, target, offset;
+    PyObject *address;
+    if (!PyArg_ParseTuple(args, "kkkO!", &target, &size, &offset, &PyLong_Type, &address)) return NULL;
+    void *data = PyLong_AsVoidPtr(address);
+    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    glBindBuffer(GL_TEXTURE_BUFFER, target); 
+    Py_BEGIN_ALLOW_THREADS;
+    glGetBufferSubData(GL_TEXTURE_BUFFER, offset, size, data);
+    Py_END_ALLOW_THREADS;
+    CHECK_ERROR;
+    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
     int usage;
     unsigned long size, prev_sz, target;
@@ -789,5 +805,6 @@ int add_module_gl_constants(PyObject *module) {
     METH(TexSubImage3D, METH_VARARGS) \
     METH(GetTexImage, METH_VARARGS) \
     METH(NamedBufferData, METH_VARARGS) \
+    METH(GetBufferSubData, METH_VARARGS) \
     METH(BlendFunc, METH_VARARGS) \
 
