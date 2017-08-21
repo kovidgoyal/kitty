@@ -8,7 +8,6 @@ import os
 import sys
 import tempfile
 from gettext import gettext as _
-
 from queue import Empty
 
 from .boss import Boss
@@ -20,20 +19,21 @@ from .constants import (
 )
 from .fast_data_types import (
     GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
-    GLFW_CONTEXT_VERSION_MINOR, GLFW_OPENGL_CORE_PROFILE,
+    GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, Window, change_wcwidth,
+    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
     enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
-    glfw_init, glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_wait_events, glfw_window_hint, glfw_init_hint_string, check_for_extensions
+    glfw_init, glfw_init_hint_string, glfw_set_error_callback,
+    glfw_swap_interval, glfw_terminate, glfw_wait_events, glfw_window_hint
 )
+from .layout import all_layouts
+from .shaders import GL_VERSION
+from .utils import detach, safe_print
+
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
 except ImportError:
     GLFW_X11_WM_CLASS_NAME = GLFW_X11_WM_CLASS_CLASS = None
-from .layout import all_layouts
-from .shaders import GL_VERSION
-from .utils import safe_print, detach
 
 
 defconf = os.path.join(config_dir, 'kitty.conf')
@@ -148,7 +148,9 @@ def option_parser():
     return parser
 
 
-def setup_opengl():
+def setup_opengl(opts):
+    if opts.macos_hide_titlebar:
+        glfw_window_hint(GLFW_DECORATED, False)
     glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
     glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
     glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
@@ -186,7 +188,7 @@ def dispatch_pending_calls(boss):
 
 
 def run_app(opts, args):
-    setup_opengl()
+    setup_opengl(opts)
     load_cached_values()
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
@@ -210,9 +212,6 @@ def run_app(opts, args):
     window.make_context_current()
     if isosx:
         check_for_extensions()
-        if opts.macos_hide_titlebar:
-            from .fast_data_types import cocoa_hide_titlebar
-            cocoa_hide_titlebar(window.cocoa_window_id())
     else:
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
