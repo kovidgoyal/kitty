@@ -7,26 +7,26 @@ from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
 
-from .fonts.render import render_cell
 from .fast_data_types import (
-    glCreateProgram, glAttachShader, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER,
-    glLinkProgram, GL_TRUE, GL_LINK_STATUS, glGetProgramiv,
-    glGetProgramInfoLog, glDeleteShader, glDeleteProgram, glGenVertexArrays,
-    glCreateShader, glShaderSource, glCompileShader, glGetShaderiv,
-    GL_COMPILE_STATUS, glGetShaderInfoLog, glGetUniformLocation,
-    glGetAttribLocation, glUseProgram, glBindVertexArray, GL_TEXTURE0,
-    GL_TEXTURE1, glGetIntegerv, GL_MAX_ARRAY_TEXTURE_LAYERS, glNamedBufferData,
-    GL_MAX_TEXTURE_SIZE, glDeleteTexture, GL_TEXTURE_2D_ARRAY, glGenTextures,
-    glBindTexture, glTexParameteri, GL_CLAMP_TO_EDGE, glDeleteBuffer,
-    GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
-    GL_NEAREST, GL_TEXTURE_WRAP_T, glGenBuffers, GL_R8, GL_RED,
-    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_STATIC_DRAW, GL_STREAM_DRAW,
-    GL_TEXTURE_BUFFER, GL_R32UI, GL_FLOAT, GL_ARRAY_BUFFER, glBindBuffer,
-    glPixelStorei, glTexBuffer, glActiveTexture, glTexStorage3D,
-    glCopyImageSubData, glTexSubImage3D, ITALIC, BOLD, SpriteMap,
-    glEnableVertexAttribArray, glVertexAttribPointer, copy_image_sub_data,
+    BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
+    GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
+    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_R32UI, GL_RED, GL_STATIC_DRAW,
+    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE1, GL_TEXTURE_2D_ARRAY,
+    GL_TEXTURE_BUFFER, GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER,
+    GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT,
+    GL_UNSIGNED_BYTE, GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data,
+    glActiveTexture, glAttachShader, glBindBuffer, glBindTexture,
+    glBindVertexArray, glCompileShader, glCopyImageSubData, glCreateProgram,
+    glCreateShader, glDeleteBuffer, glDeleteProgram, glDeleteShader,
+    glDeleteTexture, glEnableVertexAttribArray, glGenBuffers, glGenTextures,
+    glGenVertexArrays, glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
+    glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
+    glGetUniformLocation, glLinkProgram, glNamedBufferData, glPixelStorei,
+    glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
+    glTexSubImage3D, glUseProgram, glVertexAttribPointer,
     replace_or_create_buffer
 )
+from .fonts.render import render_cell
 from .utils import safe_print
 
 GL_VERSION = (3, 3)
@@ -162,6 +162,11 @@ class Sprites:
         prev_sz, self.prev_sprite_map_sz = self.prev_sprite_map_sz, sizeof(data)
         replace_or_create_buffer(buf_id, self.prev_sprite_map_sz, prev_sz, addressof(data), usage)
         self.bind_sprite_map(buf_id)
+        if False:
+            verify_data = type(data)()
+            glGetBufferSubData(buf_id, self.prev_sprite_map_sz, 0, addressof(verify_data))
+            if list(data) != list(verify_data):
+                raise RuntimeError('OpenGL failed to upload to buffer')
 
     def bind_sprite_map(self, buf_id):
         glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
