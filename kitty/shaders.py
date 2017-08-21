@@ -47,48 +47,45 @@ def load_shaders(name):
 class BufferManager:  # {{{
 
     def __init__(self):
-        self.buffers = {}
         self.sizes = {}
         self.types = {}
         self.name_count = 0
 
-    def create(self, name=None, for_use=GL_TEXTURE_BUFFER):
-        if name is None:
-            name = self.name_count
-            self.name_count += 1
-        self.buffers[name] = buf_id = glGenBuffers(1)
-        self.types[name] = for_use
+    def create(self, for_use=GL_TEXTURE_BUFFER):
+        buf_id = glGenBuffers(1)
+        self.types[buf_id] = for_use
         self.sizes.pop(buf_id, None)
-        return name
+        return buf_id
 
-    def delete(self, name):
-        buf_id = self.buffers.get(name)
-        if name is not None:
+    def delete(self, buf_id):
+        if buf_id in self.types:
             glDeleteBuffer(buf_id)
             self.sizes.pop(buf_id, None)
+            self.types.pop(buf_id)
 
-    def set_data(self, name, data, usage=GL_STREAM_DRAW, verify=False):
-        prev_sz = self.sizes.get(name, 0)
+    def set_data(self, buf_id, data, usage=GL_STREAM_DRAW, verify=False):
+        prev_sz = self.sizes.get(buf_id, 0)
         new_sz = sizeof(data)
-        replace_or_create_buffer(self.buffers[name], new_sz, prev_sz, addressof(data), usage, self.types[name])
-        self.sizes[name] = new_sz
+        replace_or_create_buffer(buf_id, new_sz, prev_sz, addressof(data), usage, self.types[buf_id])
+        self.sizes[buf_id] = new_sz
         if verify:
             verify_data = type(data)()
-            glGetBufferSubData(self.buffers[name], new_sz, 0, addressof(verify_data))
+            glGetBufferSubData(buf_id, new_sz, 0, addressof(verify_data))
             if list(data) != list(verify_data):
                 raise RuntimeError('OpenGL failed to upload to buffer')
 
-    def bind(self, name):
-        buf_id = self.buffers[name]
-        glBindBuffer(GL_TEXTURE_BUFFER, buf_id)
-        return buf_id
+    def bind(self, buf_id):
+        glBindBuffer(self.types[buf_id], buf_id)
+
+    def unbind(self, buf_id):
+        glBindBuffer(self.types[buf_id], 0)
 
 
 buffer_manager = BufferManager()
 # }}}
 
 
-class Sprites:
+class Sprites:  # {{{
     ''' Maintain sprite sheets of all rendered characters on the GPU as a texture
     array with each texture being a sprite sheet. '''
 
@@ -221,7 +218,7 @@ class Sprites:
         buffer_manager.set_data(buf_id, data, usage)
 
     def bind_sprite_map(self, buf_id):
-        buf_id = buffer_manager.bind(buf_id)
+        buffer_manager.bind(buf_id)
         glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, buf_id)
 
     def destroy_sprite_map(self, buf_id):
@@ -238,8 +235,9 @@ class Sprites:
     def __exit__(self, *a):
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
         glBindTexture(GL_TEXTURE_BUFFER, 0)
-        glBindBuffer(GL_TEXTURE_BUFFER, 0)
         glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, 0)
+
+# }}}
 
 
 class ShaderProgram:
@@ -271,13 +269,12 @@ class ShaderProgram:
 
     def add_vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0):
         glBindVertexArray(self.vao_id)
-        if name not in self.buffers:
-            self.buffers[name] = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, self.buffers[name])
+        self.buffers[name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
+        buffer_manager.bind(buf_id)
         aid = self.attribute_location(name)
         glEnableVertexAttribArray(aid)
         glVertexAttribPointer(aid, size, dtype, normalized, stride, offset)
-        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        buffer_manager.unbind(buf_id)
         glBindVertexArray(0)
 
     def send_vertex_data(self, name, data, usage=GL_STATIC_DRAW):
