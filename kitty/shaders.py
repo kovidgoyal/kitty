@@ -23,9 +23,9 @@ from .fast_data_types import (
     glDeleteShader, glDeleteTexture, glEnableVertexAttribArray, glGenBuffers,
     glGenTextures, glGenVertexArrays, glGetAttribLocation, glGetBufferSubData,
     glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
-    glGetShaderiv, glGetUniformLocation, glLinkProgram, glNamedBufferData,
-    glPixelStorei, glShaderSource, glTexBuffer, glTexParameteri,
-    glTexStorage3D, glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
+    glGetShaderiv, glGetUniformLocation, glLinkProgram, glPixelStorei,
+    glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
+    glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
     glVertexAttribPointer, replace_or_create_buffer
 )
 from .fonts.render import render_cell
@@ -287,7 +287,7 @@ class ShaderProgram:
 
     def send_vertex_data(self, name, data, usage=GL_STATIC_DRAW):
         bufid = self.buffers[name]
-        glNamedBufferData(bufid, sizeof(data), addressof(data), usage)
+        buffer_manager.set_data(bufid, data, usage=usage)
 
     def __hash__(self) -> int:
         return self.program_id

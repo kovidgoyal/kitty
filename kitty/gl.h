@@ -537,33 +537,6 @@ GetTexImage(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
-NamedBufferData(PyObject UNUSED *self, PyObject *args) {
-    int usage;
-    unsigned long size, target;
-    PyObject *address;
-    if (!PyArg_ParseTuple(args, "kkO!i", &target, &size, &PyLong_Type, &address, &usage)) return NULL;
-    void *data = PyLong_AsVoidPtr(address);
-    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    Py_BEGIN_ALLOW_THREADS;
-#ifdef glNamedBufferData
-#ifdef __APPLE__
-    if(false) {
-#else
-    if(GLEW_VERSION_4_5) {
-#endif
-        glNamedBufferData(target, size, data, usage);
-    } else {
-        glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
-    }
-#else
-        glBindBuffer(GL_TEXTURE_BUFFER, target); glBufferData(GL_TEXTURE_BUFFER, size, data, usage); glBindBuffer(GL_TEXTURE_BUFFER, 0);
-#endif
-    Py_END_ALLOW_THREADS;
-    CHECK_ERROR;
-    Py_RETURN_NONE;
-}
-
-static PyObject* 
 GetBufferSubData(PyObject UNUSED *self, PyObject *args) {
     unsigned long size, target, offset;
     PyObject *address;
@@ -825,7 +798,6 @@ int add_module_gl_constants(PyObject *module) {
     METH(CopyImageSubData, METH_VARARGS) \
     METH(TexSubImage3D, METH_VARARGS) \
     METH(GetTexImage, METH_VARARGS) \
-    METH(NamedBufferData, METH_VARARGS) \
     METH(GetBufferSubData, METH_VARARGS) \
     METH(BlendFunc, METH_VARARGS) \
     METH(Finish, METH_NOARGS) \
