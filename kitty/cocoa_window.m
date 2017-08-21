@@ -9,6 +9,25 @@
 #include "data-types.h"
 #include <Cocoa/Cocoa.h>
 
+#include <AvailabilityMacros.h>
+
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
+#define NSWindowStyleMaskResizable NSResizableWindowMask
+#endif
+
+PyObject*
+cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
+    NSWindow *window = (NSWindow*)PyLong_AsVoidPtr(window_id);
+    
+    @try {
+        [window setStyleMask:
+            [window styleMask] | NSWindowStyleMaskResizable];
+    } @catch (NSException *e) {
+        return PyErr_Format(PyExc_ValueError, "Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
+    }
+    Py_RETURN_NONE;
+}
+
 PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     NSString* locale = nil;

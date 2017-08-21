@@ -212,6 +212,9 @@ def run_app(opts, args):
     window.make_context_current()
     if isosx:
         check_for_extensions()
+        if opts.macos_hide_titlebar:
+            from .fast_data_types import cocoa_make_window_resizable
+            cocoa_make_window_resizable(window.cocoa_window_id())
     else:
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
