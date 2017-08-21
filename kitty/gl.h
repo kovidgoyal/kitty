@@ -695,6 +695,17 @@ VertexAttribPointer(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject* 
+Flush(PyObject UNUSED *self) {
+    glFinish();
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+Finish(PyObject UNUSED *self) {
+    glFinish();
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 check_for_extensions(PyObject UNUSED *self) {
@@ -807,4 +818,6 @@ int add_module_gl_constants(PyObject *module) {
     METH(NamedBufferData, METH_VARARGS) \
     METH(GetBufferSubData, METH_VARARGS) \
     METH(BlendFunc, METH_VARARGS) \
+    METH(Finish, METH_NOARGS) \
+    METH(Flush, METH_NOARGS) \
 
