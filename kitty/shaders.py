@@ -161,7 +161,6 @@ class Sprites:
     def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
         prev_sz, self.prev_sprite_map_sz = self.prev_sprite_map_sz, sizeof(data)
         replace_or_create_buffer(buf_id, self.prev_sprite_map_sz, prev_sz, addressof(data), usage)
-        self.bind_sprite_map(buf_id)
         if False:
             verify_data = type(data)()
             glGetBufferSubData(buf_id, self.prev_sprite_map_sz, 0, addressof(verify_data))
