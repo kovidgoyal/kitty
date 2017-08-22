@@ -169,7 +169,6 @@ class Sprites:  # {{{
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         x, y = x * self.cell_width, y * self.cell_height
         glTexSubImage3D(tgt, 0, x, y, z, self.cell_width, self.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, addressof(buf))
-        glBindTexture(tgt, 0)
 
     def realloc_texture(self):
         tgt = GL_TEXTURE_2D_ARRAY
@@ -204,7 +203,6 @@ class Sprites:  # {{{
         self.last_num_of_layers = znum
         self.last_ynum = self.backend.ynum
         self.texture_id = tex
-        glBindTexture(tgt, 0)
 
     def destroy(self):
         if self.texture_id is not None:
