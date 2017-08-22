@@ -3,12 +3,14 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from ctypes import addressof
+from functools import partial
 from itertools import chain
 from threading import Lock
-from functools import partial
 
 from .constants import GLfloat, GLint, GLuint, viewport_size
-from .fast_data_types import GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
+from .fast_data_types import (
+    GL_STATIC_DRAW, GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
+)
 from .shaders import ShaderProgram
 from .utils import pt_to_px
 
@@ -53,7 +55,7 @@ void main() {
         self.vao_id = self.add_vertex_arrays(self.vertex_array('rect'))
 
     def send_data(self, data):
-        self.send_vertex_data(self.vao_id, data)
+        self.send_vertex_data(self.vao_id, data, usage=GL_STATIC_DRAW)
 
     def set_colors(self, color_buf):
         glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))

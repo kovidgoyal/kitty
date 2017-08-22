@@ -13,21 +13,20 @@ from threading import Lock
 from .fast_data_types import (
     BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
     GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
-    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STATIC_DRAW,
-    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE_2D_ARRAY,
-    GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
-    GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
-    GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data, glActiveTexture,
-    glAttachShader, glBindBuffer, glBindTexture, glBindVertexArray,
-    glCompileShader, glCopyImageSubData, glCreateProgram, glCreateShader,
-    glDeleteBuffer, glDeleteProgram, glDeleteShader, glDeleteTexture,
-    glDeleteVertexArray, glEnableVertexAttribArray, glGenBuffers,
-    glGenTextures, glGenVertexArrays, glGetAttribLocation, glGetBufferSubData,
-    glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
-    glGetShaderiv, glGetUniformLocation, glLinkProgram, glPixelStorei,
-    glShaderSource, glTexParameteri, glTexStorage3D,
-    glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
-    glVertexAttribPointer, replace_or_create_buffer
+    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STREAM_DRAW,
+    GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
+    GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
+    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER, ITALIC, SpriteMap,
+    copy_image_sub_data, glActiveTexture, glAttachShader, glBindBuffer,
+    glBindTexture, glBindVertexArray, glCompileShader, glCopyImageSubData,
+    glCreateProgram, glCreateShader, glDeleteBuffer, glDeleteProgram,
+    glDeleteShader, glDeleteTexture, glDeleteVertexArray,
+    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
+    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
+    glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
+    glGetUniformLocation, glLinkProgram, glPixelStorei, glShaderSource,
+    glTexParameteri, glTexStorage3D, glTexSubImage3D, glUseProgram,
+    glVertexAttribDivisor, glVertexAttribPointer, replace_or_create_buffer
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -281,7 +280,7 @@ class ShaderProgram:  # {{{
             glDeleteVertexArray(vao_id)
             buffer_manager.delete(buf_id)
 
-    def send_vertex_data(self, vao_id, data, usage=GL_STATIC_DRAW):
+    def send_vertex_data(self, vao_id, data, usage=GL_STREAM_DRAW):
         bufid = self.vertex_arrays[vao_id]
         buffer_manager.set_data(bufid, data, usage=usage)
 

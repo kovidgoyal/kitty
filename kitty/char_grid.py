@@ -15,9 +15,9 @@ from .constants import (
 )
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
-    GL_LINE_LOOP, GL_STREAM_DRAW, GL_TRIANGLE_FAN, GL_UNSIGNED_INT,
-    ColorProfile, glDisable, glDrawArrays, glDrawArraysInstanced, glEnable,
-    glUniform1i, glUniform2f, glUniform2i, glUniform2ui, glUniform4f
+    GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, ColorProfile, glDisable,
+    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f,
+    glUniform2i, glUniform2ui, glUniform4f
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -373,7 +373,7 @@ class CharGrid:
                     bg = bg >> 8 if bg & 2 else self.highlight_bg
                     self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
-                cell_program.send_vertex_data(self.vao_id, buf, usage=GL_STREAM_DRAW)
+                cell_program.send_vertex_data(self.vao_id, buf)
                 self.render_buf_is_dirty = False
                 self.last_rendered_selection = sel
         return sg

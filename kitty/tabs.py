@@ -16,8 +16,7 @@ from .constants import (
     shell_path, viewport_size
 )
 from .fast_data_types import (
-    DATA_CELL_SIZE, DECAWM, GL_STREAM_DRAW, ColorProfile, Screen,
-    glfw_post_empty_event
+    DATA_CELL_SIZE, DECAWM, ColorProfile, Screen, glfw_post_empty_event
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -344,7 +343,7 @@ class TabManager:
         sprites.render_dirty_cells()
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
-        cell_program.send_vertex_data(self.vao_id, self.sprite_map, usage=GL_STREAM_DRAW)
+        cell_program.send_vertex_data(self.vao_id, self.sprite_map)
 
     def activate_tab_at(self, x):
         x = (x - self.window_geometry.left) // cell_size.width
