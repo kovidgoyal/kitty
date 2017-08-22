@@ -13,8 +13,8 @@ from threading import Lock
 from .fast_data_types import (
     BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
     GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
-    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_R32UI, GL_RED, GL_STATIC_DRAW,
-    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BUFFER,
+    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STATIC_DRAW,
+    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE_2D_ARRAY,
     GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
     GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
     GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data, glActiveTexture,
@@ -25,7 +25,7 @@ from .fast_data_types import (
     glGenTextures, glGenVertexArrays, glGetAttribLocation, glGetBufferSubData,
     glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
     glGetShaderiv, glGetUniformLocation, glLinkProgram, glPixelStorei,
-    glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
+    glShaderSource, glTexParameteri, glTexStorage3D,
     glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
     glVertexAttribPointer, replace_or_create_buffer
 )
@@ -55,7 +55,7 @@ class BufferManager:  # {{{
         self.ctypes_types = {}
         self.name_count = 0
 
-    def create(self, for_use=GL_TEXTURE_BUFFER):
+    def create(self, for_use=GL_ARRAY_BUFFER):
         buf_id = glGenBuffers(1)
         self.types[buf_id] = for_use
         self.sizes.pop(buf_id, None)
@@ -82,7 +82,7 @@ class BufferManager:  # {{{
 
     def get_data(self, buf_id):
         verify_data = self.ctypes_types[buf_id]()
-        glGetBufferSubData(buf_id, self.sizes[buf_id], 0, addressof(verify_data))
+        glGetBufferSubData(self.types[buf_id], buf_id, self.sizes[buf_id], 0, addressof(verify_data))
         return verify_data
 
     def bind(self, buf_id):
@@ -114,7 +114,7 @@ class Sprites:  # {{{
         self.first_cell_cache = {}
         self.second_cell_cache = {}
         self.x = self.y = self.z = 0
-        self.texture_id = self.buffer_texture_id = None
+        self.texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
         self.sampler_num = 0
@@ -211,15 +211,10 @@ class Sprites:  # {{{
         if self.texture_id is not None:
             glDeleteTexture(self.texture_id)
             self.texture_id = None
-        if self.buffer_texture_id is not None:
-            glDeleteTexture(self.buffer_texture_id)
-            self.buffer_texture_id = None
 
     def ensure_state(self):
         if self.texture_id is None:
             self.realloc_texture()
-        if self.buffer_texture_id is None:
-            self.buffer_texture_id = glGenTextures(1)
 
     def __enter__(self):
         self.ensure_state()
@@ -228,8 +223,6 @@ class Sprites:  # {{{
 
     def __exit__(self, *a):
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
-        glBindTexture(GL_TEXTURE_BUFFER, 0)
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, 0)
 
 # }}}
 
