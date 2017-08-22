@@ -45,9 +45,7 @@ class CellProgram(ShaderProgram):
 
 
 def load_shader_programs():
-    vert, frag = load_shaders('cell')
-    vert = vert.replace('STRIDE', str(DATA_CELL_SIZE))
-    cell = CellProgram(vert, frag)
+    cell = CellProgram(*load_shaders('cell'))
     cursor = ShaderProgram(*load_shaders('cursor'))
     cursor.vao_id = cursor.add_vertex_arrays()
     return cell, cursor
