@@ -2,38 +2,42 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
+import inspect
 import io
+import os
 import select
 import signal
 import struct
-import inspect
 from functools import wraps
+from gettext import gettext as _
+from queue import Empty, Queue
 from threading import Thread, current_thread
 from time import monotonic
-from queue import Queue, Empty
-from gettext import gettext as _
 
-from .config import MINIMUM_FONT_SIZE
-from .constants import (
-    viewport_size, set_boss, wakeup, cell_size, MODIFIER_KEYS,
-    main_thread, mouse_button_pressed, mouse_cursor_pos
-)
-from .fast_data_types import (
-    glViewport, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GLFW_PRESS,
-    GLFW_REPEAT, GLFW_MOUSE_BUTTON_1, glfw_post_empty_event,
-    GLFW_CURSOR_NORMAL, GLFW_CURSOR, GLFW_CURSOR_HIDDEN, drain_read
-)
-from .fonts.render import set_font_family
 from .borders import BordersProgram
 from .char_grid import load_shader_programs
-from .constants import is_key_pressed
-from .keys import interpret_text_event, interpret_key_event, get_shortcut, get_sent_data
+from .config import MINIMUM_FONT_SIZE
+from .constants import (
+    MODIFIER_KEYS, cell_size, is_key_pressed, isosx, main_thread,
+    mouse_button_pressed, mouse_cursor_pos, set_boss, viewport_size, wakeup
+)
+from .fast_data_types import (
+    GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
+    GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
+    drain_read, glBlendFunc, glfw_post_empty_event, glViewport
+)
+from .fonts.render import set_font_family
+from .keys import (
+    get_sent_data, get_shortcut, interpret_key_event, interpret_text_event
+)
 from .session import create_session
 from .shaders import Sprites
-from .tabs import TabManager, SpecialWindow
+from .tabs import SpecialWindow, TabManager
 from .timers import Timers
-from .utils import handle_unix_signals, safe_print, pipe2
+from .utils import handle_unix_signals, pipe2, safe_print
+
+if isosx:
+    from .fast_data_types import cocoa_update_title
 
 
 def conditional_run(w, i):
@@ -59,6 +63,7 @@ def callback(func):
             pass
         else:
             self.queue_action(conditional_run, w, i)
+
     return f
 
 
@@ -80,7 +85,9 @@ class Boss(Thread):
         self.screen_update_delay = opts.repaint_delay / 1000.0
         self.signal_fd = handle_unix_signals()
         self.read_wakeup_fd, self.write_wakeup_fd = pipe2()
-        self.read_dispatch_map = {self.signal_fd: self.signal_received, self.read_wakeup_fd: self.on_wakeup}
+        self.read_dispatch_map = {
+            self.signal_fd: self.signal_received,
+            self.read_wakeup_fd: self.on_wakeup}
         self.all_writers = []
         self.timers = Timers()
         self.ui_timers = Timers()
@@ -204,8 +211,10 @@ class Boss(Thread):
     def loop(self):
         while not self.shutting_down:
             all_readers = list(self.read_dispatch_map)
-            all_writers = [w.child_fd for w in self.iterwindows() if w.write_buf]
-            readers, writers, _ = select.select(all_readers, all_writers, [], self.timers.timeout())
+            all_writers = [
+                w.child_fd for w in self.iterwindows() if w.write_buf]
+            readers, writers, _ = select.select(
+                all_readers, all_writers, [], self.timers.timeout())
             for r in readers:
                 self.read_dispatch_map[r]()
             for w in writers:
@@ -213,7 +222,8 @@ class Boss(Thread):
             self.timers()
             for w in self.iterwindows():
                 if w.screen.is_dirty():
-                    self.timers.add_if_missing(self.screen_update_delay, w.update_screen)
+                    self.timers.add_if_missing(
+                        self.screen_update_delay, w.update_screen)
 
     @callback
     def on_window_resize(self, window, w, h):
@@ -230,10 +240,16 @@ class Boss(Thread):
         glfw_post_empty_event()
 
     def increase_font_size(self):
-        self.change_font_size(min(self.opts.font_size * 5, self.current_font_size + self.opts.font_size_delta))
+        self.change_font_size(
+            min(
+                self.opts.font_size * 5, self.current_font_size +
+                self.opts.font_size_delta))
 
     def decrease_font_size(self):
-        self.change_font_size(max(MINIMUM_FONT_SIZE, self.current_font_size - self.opts.font_size_delta))
+        self.change_font_size(
+            max(
+                MINIMUM_FONT_SIZE, self.current_font_size -
+                self.opts.font_size_delta))
 
     def restore_font_size(self):
         self.change_font_size(self.opts.font_size)
@@ -307,7 +323,9 @@ class Boss(Thread):
                     return
         if window.char_grid.scrolled_by and key not in MODIFIER_KEYS and action == GLFW_PRESS:
             window.scroll_end()
-        data = get_sent_data(self.opts.send_text_map, key, scancode, mods, window, action) or interpret_key_event(key, scancode, mods, window, action)
+        data = get_sent_data(
+            self.opts.send_text_map, key, scancode, mods, window, action
+        ) or interpret_key_event(key, scancode, mods, window, action)
         if data:
             window.write_to_child(data)
 
@@ -325,7 +343,9 @@ class Boss(Thread):
         else:
             tab = self.active_tab
             if tab is not None:
-                tab.new_special_window(SpecialWindow(self.opts.scrollback_pager, data, _('History')))
+                tab.new_special_window(
+                    SpecialWindow(
+                        self.opts.scrollback_pager, data, _('History')))
 
     def window_for_pos(self, x, y):
         tab = self.active_tab
@@ -364,7 +384,8 @@ class Boss(Thread):
 
     @callback
     def on_mouse_move(self, window, xpos, ypos):
-        mouse_cursor_pos[:2] = xpos, ypos = int(xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
+        mouse_cursor_pos[:2] = xpos, ypos = int(
+            xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
         self.show_mouse_cursor()
         w = self.window_for_pos(xpos, ypos)
         if w is not None:
@@ -386,7 +407,8 @@ class Boss(Thread):
     def show_mouse_cursor(self):
         self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL)
         if self.opts.mouse_hide_wait > 0:
-            self.ui_timers.add(self.opts.mouse_hide_wait, self.hide_mouse_cursor)
+            self.ui_timers.add(
+                self.opts.mouse_hide_wait, self.hide_mouse_cursor)
 
     def hide_mouse_cursor(self):
         self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_HIDDEN)
@@ -398,12 +420,14 @@ class Boss(Thread):
         try:
             self.glfw_window.request_window_attention()
         except AttributeError:
-            pass   # needs glfw 3.3
+            pass  # needs glfw 3.3
 
     def start_cursor_blink(self):
         self.cursor_blinking = True
         if self.opts.cursor_stop_blinking_after > 0:
-            self.ui_timers.add(self.opts.cursor_stop_blinking_after, self.stop_cursor_blinking)
+            self.ui_timers.add(
+                self.opts.cursor_stop_blinking_after,
+                self.stop_cursor_blinking)
 
     def stop_cursor_blinking(self):
         self.cursor_blinking = False
@@ -419,16 +443,22 @@ class Boss(Thread):
             if tab.title != self.glfw_window_title:
                 self.glfw_window_title = tab.title
                 self.glfw_window.set_title(self.glfw_window_title)
+                if isosx:
+                    cocoa_update_title(self.glfw_window_title)
             with self.sprites:
                 self.sprites.render_dirty_cells()
                 tab.render()
-                render_data = {window: window.char_grid.prepare_for_render(self.cell_program)
-                               for window in tab.visible_windows() if not window.needs_layout}
+                render_data = {
+                    window:
+                    window.char_grid.prepare_for_render(self.cell_program)
+                    for window in tab.visible_windows()
+                    if not window.needs_layout}
                 with self.cell_program:
                     self.tab_manager.render(self.cell_program, self.sprites)
                     for window, rd in render_data.items():
                         if rd is not None:
-                            window.render_cells(rd, self.cell_program, self.sprites)
+                            window.render_cells(
+                                rd, self.cell_program, self.sprites)
                 active = self.active_window
                 rd = render_data.get(active)
                 if rd is not None:
@@ -439,10 +469,13 @@ class Boss(Thread):
                         d = int(self.opts.cursor_blink_interval * 1000)
                         n = t // d
                         draw_cursor = n % 2 == 0
-                        self.ui_timers.add_if_missing(((n + 1) * d / 1000) - now, glfw_post_empty_event)
+                        self.ui_timers.add_if_missing(
+                            ((n + 1) * d / 1000) - now, glfw_post_empty_event)
                     if draw_cursor:
                         with self.cursor_program:
-                            active.char_grid.render_cursor(rd, self.cursor_program, self.window_is_focused)
+                            active.char_grid.render_cursor(
+                                rd, self.cursor_program,
+                                self.window_is_focused)
 
     def gui_close_window(self, window):
         window.char_grid.destroy(self.cell_program)
@@ -497,5 +530,8 @@ class Boss(Thread):
         self.queue_action(self.tab_manager.move_tab, -1)
 
     def display_scrollback_in_new_tab(self, data):
-        self.tab_manager.new_tab(special_window=SpecialWindow(self.opts.scrollback_pager, data, _('History')))
+        self.tab_manager.new_tab(
+            special_window=SpecialWindow(
+                self.opts.scrollback_pager, data, _('History')))
+
     # }}}

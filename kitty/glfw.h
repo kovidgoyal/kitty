@@ -23,13 +23,14 @@ PyObject* glfw_init_hint_string(PyObject UNUSED *self, PyObject *args);
 PyObject* cocoa_get_lang(PyObject UNUSED *self);
 PyObject* cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id);
 PyObject* cocoa_create_global_menu(PyObject UNUSED *self);
-#define COCOA_GET_LANG {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, 
-#define COCOA_MWR {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""},
-#define COCOA_CGM {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""},
+PyObject* cocoa_update_title(PyObject UNUSED *self, PyObject *title);
+#define COCOA_FUNCS \
+ {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
+ {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
+ {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
+ {"cocoa_update_title", (PyCFunction)cocoa_update_title, METH_O, ""},
 #else
-#define COCOA_GET_LANG
-#define COCOA_MWR
-#define COCOA_CGM
+#define COCOA_FUNCS
 #endif
 
 #define GLFW_FUNC_WRAPPERS \
@@ -43,6 +44,4 @@ PyObject* cocoa_create_global_menu(PyObject UNUSED *self);
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, \
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, \
     {"glfw_init_hint_string", (PyCFunction)glfw_init_hint_string, METH_VARARGS, ""}, \
-    COCOA_GET_LANG \
-    COCOA_MWR \
-    COCOA_CGM
+    COCOA_FUNCS 

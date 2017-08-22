@@ -23,7 +23,8 @@
 @implementation MenuDispatcher
 @end
 
-static NSObject* global_menu = NULL;
+static NSObject* menu_dispatcher = NULL;
+static NSMenuItem* title_menu = NULL;
 
 static NSString* 
 find_app_name(void) {
@@ -60,9 +61,9 @@ find_app_name(void) {
 
 PyObject*
 cocoa_create_global_menu(PyObject UNUSED *_self) {
-    if (global_menu != NULL) { Py_RETURN_NONE; }
+    if (menu_dispatcher != NULL) { Py_RETURN_NONE; }
     NSString* app_name = find_app_name();
-    global_menu = [[MenuDispatcher alloc] init];
+    menu_dispatcher = [[MenuDispatcher alloc] init];
     NSMenu* bar = [[NSMenu alloc] init];
     [NSApp setMainMenu:bar];
 
@@ -86,17 +87,20 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
                        action:@selector(unhideAllApplications:)
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
+
     NSMenu* servicesMenu = [[NSMenu alloc] init];
     [NSApp setServicesMenu:servicesMenu];
     [[appMenu addItemWithTitle:@"Services"
                        action:NULL
                 keyEquivalent:@""] setSubmenu:servicesMenu];
     [servicesMenu release];
+
     [appMenu addItem:[NSMenuItem separatorItem]];
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
                        action:@selector(terminate:)
                        keyEquivalent:@"q"];
+    [appMenu release];
 
     NSMenuItem* windowMenuItem =
         [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
@@ -120,12 +124,27 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
                            action:@selector(toggleFullScreen:)
                     keyEquivalent:@"f"]
      setKeyEquivalentModifierMask:NSControlKeyMask | NSCommandKeyMask];
+    [windowMenu release];
 
 
     [bar release];
     Py_RETURN_NONE;
 }
 
+PyObject*
+cocoa_update_title(PyObject UNUSED *self, PyObject *pytitle) {
+    NSString *title = [[NSString alloc] initWithUTF8String:PyUnicode_AsUTF8(pytitle)];
+    NSMenu *bar = [NSApp mainMenu];
+    if (title_menu != NULL) {
+        [bar removeItem:title_menu];
+    }
+    title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+    NSMenu *m = [[NSMenu alloc] initWithTitle:[NSString stringWithFormat:@" :: %@", title]];
+    [title_menu setSubmenu:m];
+    [m release];
+    [title release];
+    Py_RETURN_NONE;
+}
 
 PyObject*
 cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
