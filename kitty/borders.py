@@ -53,7 +53,7 @@ void main() {
         self.vao_id = self.add_vertex_arrays(self.vertex_array('rect'))
 
     def send_data(self, data):
-        self.send_vertex_data(self.vao_id, 'rect', data)
+        self.send_vertex_data(self.vao_id, data)
 
     def set_colors(self, color_buf):
         glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))

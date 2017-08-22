@@ -274,18 +274,16 @@ class ShaderProgram:
 
     def add_vertex_arrays(self, *arrays):
         vao_id = glGenVertexArrays(1)
-        self.vertex_arrays[vao_id] = buffers = {}
+        self.vertex_arrays[vao_id] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
         glBindVertexArray(vao_id)
+        buffer_manager.bind(buf_id)
         for x in arrays:
-            buffers[x.name] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
-            buffer_manager.bind(buf_id)
             aid = self.attribute_location(x.name)
             glEnableVertexAttribArray(aid)
             glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
             if x.divisor > 0:
                 glVertexAttribDivisor(aid, x.divisor)
-        if arrays:
-            buffer_manager.unbind(buf_id)
+        buffer_manager.unbind(buf_id)
         glBindVertexArray(0)
         return vao_id
 
@@ -293,14 +291,13 @@ class ShaderProgram:
         glBindVertexArray(vao_id)
 
     def remove_vertex_array(self, vao_id):
-        buffers = self.vertex_arrays.pop(vao_id, None)
-        if buffers is not None:
+        buf_id = self.vertex_arrays.pop(vao_id, None)
+        if buf_id is not None:
             glDeleteVertexArray(vao_id)
-            for buf_id in buffers.values():
-                buffer_manager.delete(buf_id)
+            buffer_manager.delete(buf_id)
 
-    def send_vertex_data(self, vao_id, name, data, usage=GL_STATIC_DRAW):
-        bufid = self.vertex_arrays[vao_id][name]
+    def send_vertex_data(self, vao_id, data, usage=GL_STATIC_DRAW):
+        bufid = self.vertex_arrays[vao_id]
         buffer_manager.set_data(bufid, data, usage=usage)
 
     def __hash__(self) -> int:
