@@ -10,10 +10,122 @@
 #include <Cocoa/Cocoa.h>
 
 #include <AvailabilityMacros.h>
+// Needed for _NSGetProgname
+#include <crt_externs.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
 #endif
+
+@interface MenuDispatcher : NSObject
+@end
+
+@implementation MenuDispatcher
+@end
+
+static NSObject* global_menu = NULL;
+
+static NSString* 
+find_app_name(void) {
+    size_t i;
+    NSDictionary* infoDictionary = [[NSBundle mainBundle] infoDictionary];
+
+    // Keys to search for as potential application names
+    NSString* name_keys[] =
+    {
+        @"CFBundleDisplayName",
+        @"CFBundleName",
+        @"CFBundleExecutable",
+    };
+
+    for (i = 0;  i < sizeof(name_keys) / sizeof(name_keys[0]);  i++)
+    {
+        id name = [infoDictionary objectForKey:name_keys[i]];
+        if (name &&
+            [name isKindOfClass:[NSString class]] &&
+            ![name isEqualToString:@""])
+        {
+            return name;
+        }
+    }
+
+    char** progname = _NSGetProgname();
+    if (progname && *progname)
+        return [NSString stringWithUTF8String:*progname];
+
+    // Really shouldn't get here
+    return @"kitty";
+}
+
+
+PyObject*
+cocoa_create_global_menu(PyObject UNUSED *_self) {
+    if (global_menu != NULL) { Py_RETURN_NONE; }
+    NSString* app_name = find_app_name();
+    global_menu = [[MenuDispatcher alloc] init];
+    NSMenu* bar = [[NSMenu alloc] init];
+    [NSApp setMainMenu:bar];
+
+    NSMenuItem* appMenuItem =
+        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+    NSMenu* appMenu = [[NSMenu alloc] init];
+    [appMenuItem setSubmenu:appMenu];
+
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"About %@", app_name]
+                       action:@selector(orderFrontStandardAboutPanel:)
+                       keyEquivalent:@""];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
+                       action:@selector(hide:)
+                keyEquivalent:@"h"];
+    [[appMenu addItemWithTitle:@"Hide Others"
+                       action:@selector(hideOtherApplications:)
+                keyEquivalent:@"h"]
+        setKeyEquivalentModifierMask:NSAlternateKeyMask | NSCommandKeyMask];
+    [appMenu addItemWithTitle:@"Show All"
+                       action:@selector(unhideAllApplications:)
+                keyEquivalent:@""];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+    NSMenu* servicesMenu = [[NSMenu alloc] init];
+    [NSApp setServicesMenu:servicesMenu];
+    [[appMenu addItemWithTitle:@"Services"
+                       action:NULL
+                keyEquivalent:@""] setSubmenu:servicesMenu];
+    [servicesMenu release];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
+                       action:@selector(terminate:)
+                       keyEquivalent:@"q"];
+
+    NSMenuItem* windowMenuItem =
+        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+    NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [NSApp setWindowsMenu:windowMenu];
+    [windowMenuItem setSubmenu:windowMenu];
+
+    [windowMenu addItemWithTitle:@"Minimize"
+                          action:@selector(performMiniaturize:)
+                   keyEquivalent:@"m"];
+    [windowMenu addItemWithTitle:@"Zoom"
+                          action:@selector(performZoom:)
+                   keyEquivalent:@""];
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    [windowMenu addItemWithTitle:@"Bring All to Front"
+                          action:@selector(arrangeInFront:)
+                   keyEquivalent:@""];
+
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    [[windowMenu addItemWithTitle:@"Enter Full Screen"
+                           action:@selector(toggleFullScreen:)
+                    keyEquivalent:@"f"]
+     setKeyEquivalentModifierMask:NSControlKeyMask | NSCommandKeyMask];
+
+
+    [bar release];
+    Py_RETURN_NONE;
+}
+
 
 PyObject*
 cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
@@ -28,6 +140,7 @@ cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
     Py_RETURN_NONE;
 }
 
+ 
 PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     NSString* locale = nil;
