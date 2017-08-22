@@ -52,12 +52,14 @@ class BufferManager:  # {{{
     def __init__(self):
         self.sizes = {}
         self.types = {}
+        self.ctypes_types = {}
         self.name_count = 0
 
     def create(self, for_use=GL_TEXTURE_BUFFER):
         buf_id = glGenBuffers(1)
         self.types[buf_id] = for_use
         self.sizes.pop(buf_id, None)
+        self.ctypes_types.pop(buf_id, None)
         return buf_id
 
     def delete(self, buf_id):
@@ -65,17 +67,23 @@ class BufferManager:  # {{{
             glDeleteBuffer(buf_id)
             self.sizes.pop(buf_id, None)
             self.types.pop(buf_id)
+            self.ctypes_types.pop(buf_id, None)
 
     def set_data(self, buf_id, data, usage=GL_STREAM_DRAW, verify=False):
         prev_sz = self.sizes.get(buf_id, 0)
         new_sz = sizeof(data)
         replace_or_create_buffer(buf_id, new_sz, prev_sz, addressof(data), usage, self.types[buf_id])
         self.sizes[buf_id] = new_sz
+        self.ctypes_types[buf_id] = type(data)
         if verify:
-            verify_data = type(data)()
-            glGetBufferSubData(buf_id, new_sz, 0, addressof(verify_data))
+            verify_data = self.get_data(buf_id)
             if list(data) != list(verify_data):
                 raise RuntimeError('OpenGL failed to upload to buffer')
+
+    def get_data(self, buf_id):
+        verify_data = self.ctypes_types[buf_id]()
+        glGetBufferSubData(buf_id, self.sizes[buf_id], 0, addressof(verify_data))
+        return verify_data
 
     def bind(self, buf_id):
         glBindBuffer(self.types[buf_id], buf_id)
@@ -283,6 +291,10 @@ class ShaderProgram:  # {{{
     def send_vertex_data(self, vao_id, data, usage=GL_STATIC_DRAW):
         bufid = self.vertex_arrays[vao_id]
         buffer_manager.set_data(bufid, data, usage=usage)
+
+    def get_vertex_data(self, vao_id):
+        bufid = self.vertex_arrays[vao_id]
+        return buffer_manager.get_data(bufid)
 
     def __hash__(self) -> int:
         return self.program_id
