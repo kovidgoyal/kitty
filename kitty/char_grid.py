@@ -4,9 +4,9 @@
 
 import re
 import sys
-from enum import Enum
 from collections import namedtuple
 from ctypes import addressof, memmove, sizeof
+from enum import Enum
 from threading import Lock
 
 from .config import build_ansi_color_table, defaults
@@ -15,12 +15,12 @@ from .constants import (
 )
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
-    GL_LINE_LOOP, GL_TRIANGLE_FAN, ColorProfile, glDisable, glDrawArrays,
-    glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2ui,
-    glUniform4f, glUniform2i
+    GL_LINE_LOOP, GL_STREAM_DRAW, GL_TRIANGLE_FAN, GL_UNSIGNED_INT,
+    ColorProfile, glDisable, glDrawArrays, glDrawArraysInstanced, glEnable,
+    glUniform1i, glUniform2f, glUniform2i, glUniform2ui, glUniform4f
 )
 from .rgb import to_color
-from .shaders import load_shaders, ShaderProgram
+from .shaders import ShaderProgram, load_shaders
 from .utils import (
     color_as_int, color_from_int, get_logical_dpi, open_url, safe_print,
     set_primary_selection
@@ -33,12 +33,22 @@ class DynamicColor(Enum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
 
 
+class CellProgram(ShaderProgram):
+
+    def create_sprite_map(self):
+        stride = DATA_CELL_SIZE * sizeof(GLuint)
+        size = DATA_CELL_SIZE // 2
+        return self.add_vertex_arrays(
+            self.vertex_array('sprite_coords', size=size, dtype=GL_UNSIGNED_INT, stride=stride, divisor=1),
+            self.vertex_array('colors', size=size, dtype=GL_UNSIGNED_INT, stride=stride, offset=stride // 2, divisor=1),
+        )
+
+
 def load_shader_programs():
     vert, frag = load_shaders('cell')
     vert = vert.replace('STRIDE', str(DATA_CELL_SIZE))
-    cell = ShaderProgram(vert, frag)
+    cell = CellProgram(vert, frag)
     cursor = ShaderProgram(*load_shaders('cursor'))
-    cell.vao_id = cell.add_vertex_arrays()
     cursor.vao_id = cursor.add_vertex_arrays()
     return cell, cursor
 
@@ -112,17 +122,15 @@ def calculate_gl_geometry(window_geometry):
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(buffer_id, sg, cell_program, sprites, invert_colors=False):
-    sprites.bind_sprite_map(buffer_id)
+def render_cells(vao_id, sg, cell_program, sprites, invert_colors=False):
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
     glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
     glUniform1i(ul('sprites'), sprites.sampler_num)
-    glUniform1i(ul('sprite_map'), sprites.buffer_sampler_num)
     glUniform2f(ul('sprite_layout'), *(sprites.layout))
-    cell_program.bind_vertex_array(cell_program.vao_id)
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+    with cell_program.bound_vertex_array(vao_id):
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 
 class CharGrid:
@@ -131,7 +139,7 @@ class CharGrid:
 
     def __init__(self, screen, opts):
         self.buffer_lock = Lock()
-        self.buffer_id = None
+        self.vao_id = None
         self.current_selection = Selection()
         self.last_rendered_selection = self.current_selection.limits(0, screen.lines, screen.columns)
         self.render_buf_is_dirty = True
@@ -158,6 +166,11 @@ class CharGrid:
         except Exception:
             safe_print('Invalid characters in select_by_word_characters, ignoring', file=sys.stderr)
             self.word_pat = re.compile(r'[\w{}]'.format(escape(defaults.select_by_word_characters)), re.UNICODE)
+
+    def destroy(self, cell_program):
+        if self.vao_id is not None:
+            cell_program.remove_vertex_array(self.vao_id)
+            self.vao_id = None
 
     def update_position(self, window_geometry):
         self.screen_geometry = calculate_gl_geometry(window_geometry)
@@ -343,13 +356,13 @@ class CharGrid:
         s = sel or self.current_selection
         return s.text(self.screen.linebuf, self.screen.historybuf)
 
-    def prepare_for_render(self, sprites):
+    def prepare_for_render(self, cell_program):
         with self.buffer_lock:
             sg = self.render_data
             if sg is None:
                 return
-            if self.buffer_id is None:
-                self.buffer_id = sprites.add_sprite_map()
+            if self.vao_id is None:
+                self.vao_id = cell_program.create_sprite_map()
             buf = self.render_buf
             start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
             if start != end:
@@ -362,13 +375,13 @@ class CharGrid:
                     bg = bg >> 8 if bg & 2 else self.highlight_bg
                     self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
-                sprites.set_sprite_map(self.buffer_id, buf)
+                cell_program.send_vertex_data(self.vao_id, buf, usage=GL_STREAM_DRAW)
                 self.render_buf_is_dirty = False
                 self.last_rendered_selection = sel
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):
-        render_cells(self.buffer_id, sg, cell_program, sprites, invert_colors=invert_colors)
+        render_cells(self.vao_id, sg, cell_program, sprites, invert_colors=invert_colors)
 
     def render_cursor(self, sg, cursor_program, is_focused):
         cursor = self.current_cursor
@@ -398,6 +411,6 @@ class CharGrid:
         glUniform4f(ul('color'), col[0] / 255.0, col[1] / 255.0, col[2] / 255.0, alpha)
         glUniform2f(ul('xpos'), left, right)
         glUniform2f(ul('ypos'), top, bottom)
-        cursor_program.bind_vertex_array(cursor_program.vao_id)
-        glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)
+        with cursor_program.bound_vertex_array(cursor_program.vao_id):
+            glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)
         glDisable(GL_BLEND)

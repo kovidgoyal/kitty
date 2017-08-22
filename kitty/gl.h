@@ -665,13 +665,23 @@ EnableVertexAttribArray(PyObject UNUSED *self, PyObject *val) {
 
 static PyObject* 
 VertexAttribPointer(PyObject UNUSED *self, PyObject *args) {
-    unsigned int index, stride;
-    int type=GL_FLOAT, normalized, size;
-    void *offset;
-    PyObject *l;
-    if (!PyArg_ParseTuple(args, "IiipIO!", &index, &size, &type, &normalized, &stride, &PyLong_Type, &l)) return NULL;
-    offset = PyLong_AsVoidPtr(l);
-    glVertexAttribPointer(index, size, type, normalized, stride, offset);
+    unsigned int index;
+    int type, normalized, size, stride;
+    unsigned long offset;
+    if (!PyArg_ParseTuple(args, "Iiipik", &index, &size, &type, &normalized, &stride, &offset)) return NULL;
+    switch(type) {
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            glVertexAttribIPointer(index, size, type, stride, (GLvoid*)offset);
+            break;
+        default:
+            glVertexAttribPointer(index, size, type, normalized ? GL_TRUE : GL_FALSE, stride, (GLvoid*)offset);
+            break;
+    }
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -744,7 +754,7 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_R32UI); GLC(GL_RGB32UI); GLC(GL_RGBA);
     GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
-    GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_ARRAY_BUFFER);
+    GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_UNSIGNED_INT); GLC(GL_ARRAY_BUFFER);
     return 1;
 }
 

@@ -145,12 +145,12 @@ class Borders:
             if not self.can_render:
                 return
             with program:
-                program.bind_vertex_array(program.vao_id)
                 if self.is_dirty:
                     program.send_data(self.rects)
                     program.set_colors(self.color_buf)
                     self.is_dirty = False
-                glMultiDrawArrays(
-                    GL_TRIANGLE_FAN,
-                    addressof(self.starts),
-                    addressof(self.counts), self.num_of_rects)
+                with program.bound_vertex_array(program.vao_id):
+                    glMultiDrawArrays(
+                        GL_TRIANGLE_FAN,
+                        addressof(self.starts),
+                        addressof(self.counts), self.num_of_rects)

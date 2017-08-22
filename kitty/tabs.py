@@ -3,18 +3,24 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque
+from ctypes import addressof
 from functools import partial
 from threading import Lock
-from ctypes import addressof
 
+from .borders import Borders
+from .char_grid import calculate_gl_geometry, render_cells
 from .child import Child
 from .config import build_ansi_color_table
-from .constants import get_boss, appname, shell_path, cell_size, queue_action, viewport_size, WindowGeometry, GLuint
-from .fast_data_types import glfw_post_empty_event, Screen, DECAWM, DATA_CELL_SIZE, ColorProfile
-from .char_grid import calculate_gl_geometry, render_cells
-from .layout import all_layouts, Rect
+from .constants import (
+    GLuint, WindowGeometry, appname, cell_size, get_boss, queue_action,
+    shell_path, viewport_size
+)
+from .fast_data_types import (
+    DATA_CELL_SIZE, DECAWM, GL_STREAM_DRAW, ColorProfile, Screen,
+    glfw_post_empty_event
+)
+from .layout import Rect, all_layouts
 from .utils import color_as_int
-from .borders import Borders
 from .window import Window
 
 
@@ -202,7 +208,7 @@ class TabManager:
 
     def __init__(self, opts, args, startup_session):
         self.opts, self.args = opts, args
-        self.buffer_id = None
+        self.vao_id = None
         self.tabbar_lock = Lock()
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
         self.cell_ranges = []
@@ -306,7 +312,7 @@ class TabManager:
         if needs_resize:
             queue_action(get_boss().tabbar_visibility_changed)
 
-    def update_tab_bar_data(self, sprites):
+    def update_tab_bar_data(self, sprites, cell_program):
         s = self.tab_bar_screen
         s.cursor.x = 0
         s.erase_in_line(2, False)
@@ -336,9 +342,9 @@ class TabManager:
         s.update_cell_data(
             sprites.backend, self.color_profile, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
         sprites.render_dirty_cells()
-        if self.buffer_id is None:
-            self.buffer_id = sprites.add_sprite_map()
-        sprites.set_sprite_map(self.buffer_id, self.sprite_map)
+        if self.vao_id is None:
+            self.vao_id = cell_program.create_sprite_map()
+        cell_program.send_vertex_data(self.vao_id, self.sprite_map, usage=GL_STREAM_DRAW)
 
     def activate_tab_at(self, x):
         x = (x - self.window_geometry.left) // cell_size.width
@@ -358,5 +364,5 @@ class TabManager:
             return
         with self.tabbar_lock:
             if self.tabbar_dirty:
-                self.update_tab_bar_data(sprites)
-        render_cells(self.buffer_id, self.screen_geometry, cell_program, sprites)
+                self.update_tab_bar_data(sprites, cell_program)
+        render_cells(self.vao_id, self.screen_geometry, cell_program, sprites)

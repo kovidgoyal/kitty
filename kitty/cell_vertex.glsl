@@ -1,8 +1,9 @@
 uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
-uniform usamplerBuffer sprite_map; // gl_InstanceID -> x, y, z
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
+in uvec3 sprite_coords;
+in uvec3 colors;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -46,15 +47,10 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
 
-    int sprite_id = gl_InstanceID * STRIDE;
-    uint x = texelFetch(sprite_map, sprite_id).r;
-    uint y = texelFetch(sprite_map, sprite_id + 1).r;
-    uint z = texelFetch(sprite_map, sprite_id + 2).r;
-    sprite_pos = to_sprite_pos(pos, x, y, z);
-    sprite_id += 3;
-    uint fg = texelFetch(sprite_map, sprite_id + color_indices[0]).r;
-    uint bg = texelFetch(sprite_map, sprite_id + color_indices[1]).r;
-    uint decoration = texelFetch(sprite_map, sprite_id + 2).r;
+    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z);
+    uint fg = colors[color_indices[0]];
+    uint bg = colors[color_indices[1]];
+    uint decoration = colors[2];
     foreground = to_color(fg);
     background = to_color(bg);
     decoration_fg = to_color(decoration);

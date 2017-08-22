@@ -422,7 +422,8 @@ class Boss(Thread):
             with self.sprites:
                 self.sprites.render_dirty_cells()
                 tab.render()
-                render_data = {window: window.char_grid.prepare_for_render(self.sprites) for window in tab.visible_windows() if not window.needs_layout}
+                render_data = {window: window.char_grid.prepare_for_render(self.cell_program)
+                               for window in tab.visible_windows() if not window.needs_layout}
                 with self.cell_program:
                     self.tab_manager.render(self.cell_program, self.sprites)
                     for window, rd in render_data.items():
@@ -444,9 +445,7 @@ class Boss(Thread):
                             active.char_grid.render_cursor(rd, self.cursor_program, self.window_is_focused)
 
     def gui_close_window(self, window):
-        if window.char_grid.buffer_id is not None:
-            self.sprites.destroy_sprite_map(window.char_grid.buffer_id)
-            window.char_grid.buffer_id = None
+        window.char_grid.destroy(self.cell_program)
         for tab in self.tab_manager:
             if window in tab:
                 break

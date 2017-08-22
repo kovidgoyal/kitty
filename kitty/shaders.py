@@ -5,6 +5,7 @@
 import os
 import sys
 from collections import namedtuple
+from contextlib import contextmanager
 from ctypes import addressof, sizeof
 from functools import lru_cache
 from threading import Lock
@@ -12,22 +13,21 @@ from threading import Lock
 from .fast_data_types import (
     BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
     GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
-    GL_MAX_TEXTURE_BUFFER_SIZE, GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8,
-    GL_R32UI, GL_RED, GL_STATIC_DRAW, GL_STREAM_DRAW, GL_TEXTURE0,
-    GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BUFFER, GL_TEXTURE_MAG_FILTER,
-    GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
-    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER, ITALIC, SpriteMap,
-    copy_image_sub_data, glActiveTexture, glAttachShader, glBindBuffer,
-    glBindTexture, glBindVertexArray, glCompileShader, glCopyImageSubData,
-    glCreateProgram, glCreateShader, glDeleteBuffer, glDeleteProgram,
-    glDeleteShader, glDeleteTexture, glDeleteVertexArray,
-    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
-    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
-    glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
-    glGetUniformLocation, glLinkProgram, glPixelStorei, glShaderSource,
-    glTexBuffer, glTexParameteri, glTexStorage3D, glTexSubImage3D,
-    glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
-    replace_or_create_buffer
+    GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_R32UI, GL_RED, GL_STATIC_DRAW,
+    GL_STREAM_DRAW, GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BUFFER,
+    GL_TEXTURE_MAG_FILTER, GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S,
+    GL_TEXTURE_WRAP_T, GL_TRUE, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE,
+    GL_VERTEX_SHADER, ITALIC, SpriteMap, copy_image_sub_data, glActiveTexture,
+    glAttachShader, glBindBuffer, glBindTexture, glBindVertexArray,
+    glCompileShader, glCopyImageSubData, glCreateProgram, glCreateShader,
+    glDeleteBuffer, glDeleteProgram, glDeleteShader, glDeleteTexture,
+    glDeleteVertexArray, glEnableVertexAttribArray, glGenBuffers,
+    glGenTextures, glGenVertexArrays, glGetAttribLocation, glGetBufferSubData,
+    glGetIntegerv, glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog,
+    glGetShaderiv, glGetUniformLocation, glLinkProgram, glPixelStorei,
+    glShaderSource, glTexBuffer, glTexParameteri, glTexStorage3D,
+    glTexSubImage3D, glUseProgram, glVertexAttribDivisor,
+    glVertexAttribPointer, replace_or_create_buffer
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -83,6 +83,12 @@ class BufferManager:  # {{{
     def unbind(self, buf_id):
         glBindBuffer(self.types[buf_id], 0)
 
+    @contextmanager
+    def bound_buffer(self, buf_id):
+        self.bind(buf_id)
+        yield
+        self.unbind(buf_id)
+
 
 buffer_manager = BufferManager()
 # }}}
@@ -104,11 +110,8 @@ class Sprites:  # {{{
         self.last_num_of_layers = 1
         self.last_ynum = -1
         self.sampler_num = 0
-        self.buffer_sampler_num = 1
         self.texture_unit = GL_TEXTURE0 + self.sampler_num
-        self.buffer_texture_unit = GL_TEXTURE0 + self.buffer_sampler_num
         self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
-        self.max_texture_buffer_size = glGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE)
         self.lock = Lock()
 
     def do_layout(self, cell_width=1, cell_height=1):
@@ -210,30 +213,10 @@ class Sprites:  # {{{
         if self.buffer_texture_id is None:
             self.buffer_texture_id = glGenTextures(1)
 
-    def add_sprite_map(self):
-        return buffer_manager.create()
-
-    def set_sprite_map(self, buf_id, data, usage=GL_STREAM_DRAW):
-        new_sz = sizeof(data)
-        if new_sz // 4 > self.max_texture_buffer_size:
-            raise RuntimeError(('The OpenGL implementation on your system has a max_texture_buffer_size of {} which'
-                               ' is insufficient for the sprite_map').format(self.max_texture_buffer_size))
-        buffer_manager.set_data(buf_id, data, usage)
-
-    def bind_sprite_map(self, buf_id):
-        buffer_manager.bind(buf_id)
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_R32UI, buf_id)
-
-    def destroy_sprite_map(self, buf_id):
-        buffer_manager.delete(buf_id)
-
     def __enter__(self):
         self.ensure_state()
         glActiveTexture(self.texture_unit)
         glBindTexture(GL_TEXTURE_2D_ARRAY, self.texture_id)
-
-        glActiveTexture(self.buffer_texture_unit)
-        glBindTexture(GL_TEXTURE_BUFFER, self.buffer_texture_id)
 
     def __exit__(self, *a):
         glBindTexture(GL_TEXTURE_2D_ARRAY, 0)
@@ -243,7 +226,7 @@ class Sprites:  # {{{
 # }}}
 
 
-class ShaderProgram:
+class ShaderProgram:  # {{{
     """ Helper class for using GLSL shader programs """
 
     def __init__(self, vertex, fragment):
@@ -275,20 +258,21 @@ class ShaderProgram:
     def add_vertex_arrays(self, *arrays):
         vao_id = glGenVertexArrays(1)
         self.vertex_arrays[vao_id] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
-        glBindVertexArray(vao_id)
-        buffer_manager.bind(buf_id)
-        for x in arrays:
-            aid = self.attribute_location(x.name)
-            glEnableVertexAttribArray(aid)
-            glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
-            if x.divisor > 0:
-                glVertexAttribDivisor(aid, x.divisor)
-        buffer_manager.unbind(buf_id)
-        glBindVertexArray(0)
-        return vao_id
+        with self.bound_vertex_array(vao_id), buffer_manager.bound_buffer(buf_id):
+            for x in arrays:
+                aid = self.attribute_location(x.name)
+                if aid > -1:
+                    glEnableVertexAttribArray(aid)
+                    glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
+                    if x.divisor > 0:
+                        glVertexAttribDivisor(aid, x.divisor)
+            return vao_id
 
-    def bind_vertex_array(self, vao_id):
+    @contextmanager
+    def bound_vertex_array(self, vao_id):
         glBindVertexArray(vao_id)
+        yield
+        glBindVertexArray(0)
 
     def remove_vertex_array(self, vao_id):
         buf_id = self.vertex_arrays.pop(vao_id, None)
@@ -339,4 +323,4 @@ class ShaderProgram:
 
     def __exit__(self, *args):
         glUseProgram(0)
-        glBindVertexArray(0)
+# }}}
