@@ -31,9 +31,9 @@ vec3 to_color(uint c) {
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
-    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_layout[0];
-    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_layout[1];
-    return vec3(s_xpos[pos[0]], s_ypos[pos[1]], z);
+    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_layout.x;
+    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_layout.y;
+    return vec3(s_xpos[pos.x], s_ypos[pos.y], z);
 }
 
 void main() {
@@ -45,7 +45,7 @@ void main() {
     vec2 xpos = vec2(left, left + steps[2]);
     vec2 ypos = vec2(top, top - steps[3]);
     uvec2 pos = pos_map[gl_VertexID];
-    gl_Position = vec4(xpos[pos[0]], ypos[pos[1]], 0, 1);
+    gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z);
     uint fg = colors[color_indices[0]];
