@@ -15,7 +15,7 @@ from .fast_data_types import (
     GLFW_KEY_LEFT_SUPER, GLFW_KEY_RIGHT_SUPER)
 
 appname = 'kitty'
-version = (0, 2, 8)
+version = (0, 3, 0)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
