@@ -52,7 +52,9 @@ void main() {
     final_color = vec4(color, 1);
 }
         ''')
-        self.vao_id = self.add_vertex_arrays(self.vertex_array('rect'))
+        with self.array_object_creator() as add_attribute:
+            self.vao_id = add_attribute.vao_id
+            add_attribute('rect')
 
     def send_data(self, data):
         self.send_vertex_data(self.vao_id, data, usage=GL_STATIC_DRAW)

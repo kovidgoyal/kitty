@@ -4,7 +4,6 @@
 
 import os
 import sys
-from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import addressof, sizeof
 from functools import lru_cache
@@ -36,7 +35,6 @@ VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 ITALIC_MASK = 1 << ITALIC
 BOLD_MASK = 1 << BOLD
 BASE = os.path.dirname(os.path.abspath(__file__))
-VertexArray = namedtuple('VertexArray', 'name size dtype normalized stride offset divisor')
 
 
 @lru_cache()
@@ -250,21 +248,34 @@ class ShaderProgram:  # {{{
         glDeleteShader(frag_id)
         self.vertex_arrays = {}
 
-    def vertex_array(self, name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0, divisor=0):
-        return VertexArray(name, size, dtype, normalized, stride, offset, divisor)
-
-    def add_vertex_arrays(self, *arrays):
+    @contextmanager
+    def array_object_creator(self):
         vao_id = glGenVertexArrays(1)
-        self.vertex_arrays[vao_id] = buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
-        with self.bound_vertex_array(vao_id), buffer_manager.bound_buffer(buf_id):
-            for x in arrays:
-                aid = self.attribute_location(x.name)
-                if aid > -1:
+        self.vertex_arrays[vao_id] = buffers = []
+        buf_id = None
+
+        def newbuf():
+            nonlocal buf_id
+            buf_id = buffer_manager.create(for_use=GL_ARRAY_BUFFER)
+            buffers.append(buf_id)
+            return buf_id
+
+        def add_attribute(name, size=3, dtype=GL_FLOAT, normalized=False, stride=0, offset=0, divisor=0):
+            nonlocal buf_id
+            aid = self.attribute_location(name)
+            if aid > -1:
+                if buf_id is None:
+                    buf_id = newbuf()
+                with buffer_manager.bound_buffer(buf_id):
                     glEnableVertexAttribArray(aid)
-                    glVertexAttribPointer(aid, x.size, x.dtype, x.normalized, x.stride, x.offset)
-                    if x.divisor > 0:
-                        glVertexAttribDivisor(aid, x.divisor)
-            return vao_id
+                    glVertexAttribPointer(aid, size, dtype, normalized, stride, offset)
+                    if divisor > 0:
+                        glVertexAttribDivisor(aid, divisor)
+
+        add_attribute.newbuf = newbuf
+        add_attribute.vao_id = vao_id
+        with self.bound_vertex_array(vao_id):
+            yield add_attribute
 
     @contextmanager
     def bound_vertex_array(self, vao_id):
@@ -273,17 +284,18 @@ class ShaderProgram:  # {{{
         glBindVertexArray(0)
 
     def remove_vertex_array(self, vao_id):
-        buf_id = self.vertex_arrays.pop(vao_id, None)
-        if buf_id is not None:
+        buffers = self.vertex_arrays.pop(vao_id, None)
+        if buffers is not None:
             glDeleteVertexArray(vao_id)
-            buffer_manager.delete(buf_id)
+            for buf_id in buffers:
+                buffer_manager.delete(buf_id)
 
-    def send_vertex_data(self, vao_id, data, usage=GL_STREAM_DRAW):
-        bufid = self.vertex_arrays[vao_id]
+    def send_vertex_data(self, vao_id, data, usage=GL_STREAM_DRAW, bufnum=0):
+        bufid = self.vertex_arrays[vao_id][bufnum]
         buffer_manager.set_data(bufid, data, usage=usage)
 
-    def get_vertex_data(self, vao_id):
-        bufid = self.vertex_arrays[vao_id]
+    def get_vertex_data(self, vao_id, bufnum=0):
+        bufid = self.vertex_arrays[vao_id][bufnum]
         return buffer_manager.get_data(bufid)
 
     def __hash__(self) -> int:

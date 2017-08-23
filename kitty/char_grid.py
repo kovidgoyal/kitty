@@ -38,16 +38,17 @@ class CellProgram(ShaderProgram):
     def create_sprite_map(self):
         stride = DATA_CELL_SIZE * sizeof(GLuint)
         size = DATA_CELL_SIZE // 2
-        return self.add_vertex_arrays(
-            self.vertex_array('sprite_coords', size=size, dtype=GL_UNSIGNED_INT, stride=stride, divisor=1),
-            self.vertex_array('colors', size=size, dtype=GL_UNSIGNED_INT, stride=stride, offset=stride // 2, divisor=1),
-        )
+        with self.array_object_creator() as add_attribute:
+            add_attribute('sprite_coords', size=size, dtype=GL_UNSIGNED_INT, stride=stride, divisor=1)
+            add_attribute('colors', size=size, dtype=GL_UNSIGNED_INT, stride=stride, offset=stride // 2, divisor=1)
+            return add_attribute.vao_id
 
 
 def load_shader_programs():
     cell = CellProgram(*load_shaders('cell'))
     cursor = ShaderProgram(*load_shaders('cursor'))
-    cursor.vao_id = cursor.add_vertex_arrays()
+    with cursor.array_object_creator() as add_attribute:
+        cursor.vao_id = add_attribute.vao_id
     return cell, cursor
 
 
