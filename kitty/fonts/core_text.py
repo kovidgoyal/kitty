@@ -100,6 +100,14 @@ def test_font_matching(name='Menlo', bold=False, italic=False, dpi=72.0, font_si
     return face
 
 
+def test_family_matching(name='Menlo', dpi=72.0, font_size=11.0):
+    all_fonts = create_font_map(coretext_all_fonts())
+    for bold in (False, True):
+        for italic in (False, True):
+            face = get_face(all_fonts, name, 'Menlo', font_size, dpi, bold, italic)
+            print(bold, italic, face)
+
+
 def current_cell():
     return CellTexture, cell_width, cell_height, baseline, underline_thickness, underline_position
 
