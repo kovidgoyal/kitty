@@ -83,14 +83,6 @@ def set_font_family(opts, override_font_size=None, ignore_dpi_failure=False):
     for (bold, italic), attr in attr_map.items():
         main_font[(bold, italic)] = get_face(all_fonts, getattr(opts, attr), opts.font_family, font_size, dpi, bold, italic)
 
-    def get_family(bold, italic):
-        ans = getattr(opts, attr_map[(bold, italic)])
-        if ans.lower() == 'monospace':
-            ans = 'Menlo'
-        if ans == 'auto' and (bold or italic):
-            ans = get_family(False, False)
-        return ans
-
     install_symbol_map(all_fonts, opts.symbol_map, font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
