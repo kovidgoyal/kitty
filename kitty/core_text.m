@@ -11,6 +11,8 @@
 #include <math.h>
 #import <CoreGraphics/CGBitmapContext.h>
 #import <CoreText/CTFont.h>
+#include <Foundation/Foundation.h>
+#include <CoreText/CoreText.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
 
@@ -28,9 +30,59 @@ static PyObject*
 convert_cfstring(CFStringRef src) {
 #define SZ 2048
     static char buf[SZ+2] = {0};
+    const char *p = CFStringGetCStringPtr(src, kCFStringEncodingUTF8);
+    if (p != NULL) return PyUnicode_FromString(buf);
     if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) { PyErr_SetString(PyExc_ValueError, "Failed to convert CFString"); return NULL; }
     return PyUnicode_FromString(buf);
 #undef SZ
+}
+
+static PyObject*
+font_descriptor_to_python(CTFontDescriptorRef descriptor) {
+    NSURL *url = (NSURL *) CTFontDescriptorCopyAttribute(descriptor, kCTFontURLAttribute);
+    NSString *psName = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute);  
+    NSString *family = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontFamilyNameAttribute);
+    NSString *style = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute);
+    NSDictionary *traits = (NSDictionary *) CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute);
+    unsigned int straits = [traits[(id)kCTFontSymbolicTrait] unsignedIntValue];
+    NSNumber *weightVal = traits[(id)kCTFontWeightTrait];
+    NSNumber *widthVal = traits[(id)kCTFontWidthTrait];
+
+    PyObject *ans = Py_BuildValue("{ssssssss sOsOsO sfsfsI}", 
+            "path", [[url path] UTF8String], 
+            "postscript_name", [psName UTF8String],
+            "family", [family UTF8String],
+            "style", [style UTF8String],
+
+            "bold", (straits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
+            "italic", (straits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
+            "monospace", (straits & kCTFontMonoSpaceTrait) != 0 ? Py_True : Py_False,
+
+            "weight", [weightVal floatValue],
+            "width", [widthVal floatValue],
+            "traits", straits
+    );
+    [url release];
+    [psName release];
+    [family release];
+    [style release];
+    [traits release];
+    return ans;
+}
+
+PyObject*
+coretext_all_fonts(PyObject UNUSED *_self) {
+    static CTFontCollectionRef collection = NULL;
+    if (collection == NULL) collection = CTFontCollectionCreateFromAvailableFonts(NULL);
+    NSArray *matches = (NSArray *) CTFontCollectionCreateMatchingFontDescriptors(collection);  
+    PyObject *ans = PyTuple_New([matches count]), *temp;
+    if (ans == NULL) return PyErr_NoMemory();
+    for (unsigned int i = 0; i < [matches count]; i++) {
+        temp = font_descriptor_to_python((CTFontDescriptorRef) matches[i]);
+        if (temp == NULL) { Py_DECREF(ans); return NULL; }
+        PyTuple_SET_ITEM(ans, i, temp); temp = NULL;
+    }
+    return ans;
 }
 
 

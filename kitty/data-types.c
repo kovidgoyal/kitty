@@ -41,6 +41,9 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#ifdef __APPLE__
+#include "core_text.h"
+#endif
 
 static PyMethodDef module_methods[] = {
     GL_METHODS
@@ -52,7 +55,9 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
-#ifndef __APPLE__
+#ifdef __APPLE__
+    CORE_TEXT_FUNC_WRAPPERS
+#else
     {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
 #endif
     GLFW_FUNC_WRAPPERS

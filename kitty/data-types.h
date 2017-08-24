@@ -319,7 +319,6 @@ int init_ChangeTracker(PyObject *);
 int init_Screen(PyObject *);
 int init_Face(PyObject *);
 int init_Window(PyObject *);
-int init_CoreText(PyObject *);
 PyObject* create_256_color_table();
 PyObject* read_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* read_bytes(PyObject UNUSED *, PyObject *);
