@@ -123,14 +123,13 @@ cell_size(Face *self) {
 #define count (128 - 32)
     unichar chars[count+1] = {0};
     CGGlyph glyphs[count+1] = {0};
-    for (int i = 0; i < count; i++) chars[i] = 32 + i;
+    unsigned int width = 0, w, i;
+    for (i = 0; i < count; i++) chars[i] = 32 + i;
     CTFontGetGlyphsForCharacters(self->font, chars, glyphs, count);
-    CGSize advances[1] = {0};
-    unsigned int width = 0, w;
-    for (int i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         if (glyphs[i]) {
-            CTFontGetAdvancesForGlyphs(self->font, kCTFontOrientationHorizontal, glyphs+1, advances, 1);
-            w = (unsigned int)(ceilf(advances[0].width));
+            w = (unsigned int)(ceilf(
+                        CTFontGetAdvancesForGlyphs(self->font, kCTFontOrientationHorizontal, glyphs+i, NULL, 1)));
             if (w > width) width = w; 
         }
     }
@@ -177,9 +176,8 @@ render_char(Face *self, PyObject *args) {
         // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
         /* CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1); */
         CGContextSetTextMatrix(ctx, transform);
-        CGFloat leading = self->leading > 0 ? self->leading : 1;  // Ensure at least one pixel of leading so that antialiasing works at the left edge
-        CGFloat pos_x = leading, pos_y = height - self->ascent;  
-        CGContextSetTextPosition(ctx, pos_x, pos_y);
+        CGFloat pos_y = height - self->ascent; 
+        CGContextSetTextPosition(ctx, 0, pos_y); 
         CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
     }
 
