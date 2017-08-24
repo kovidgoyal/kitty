@@ -22,18 +22,19 @@ typedef struct {
     unsigned int units_per_em;
     float ascent, descent, leading, underline_position, underline_thickness, point_sz, scaled_point_sz;
     CTFontRef font;
-    PyObject *family_name, *full_name, *postscript_name;
+    PyObject *family_name, *full_name, *postscript_name, *path;
 } Face;
 
 
-static PyObject*
-convert_cfstring(CFStringRef src) {
+static inline PyObject*
+convert_cfstring(CFStringRef src, int free_src) {
 #define SZ 2048
     static char buf[SZ+2] = {0};
-    const char *p = CFStringGetCStringPtr(src, kCFStringEncodingUTF8);
-    if (p != NULL) return PyUnicode_FromString(buf);
-    if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) { PyErr_SetString(PyExc_ValueError, "Failed to convert CFString"); return NULL; }
-    return PyUnicode_FromString(buf);
+    PyObject *ans = NULL;
+    if(!CFStringGetCString(src, buf, SZ, kCFStringEncodingUTF8)) PyErr_SetString(PyExc_ValueError, "Failed to convert CFString");
+    else ans = PyUnicode_FromString(buf);
+    if (free_src) CFRelease(src);
+    return ans;
 #undef SZ
 }
 
@@ -70,6 +71,34 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     return ans;
 }
 
+static CTFontDescriptorRef
+font_descriptor_from_python(PyObject *src) {
+    CTFontSymbolicTraits symbolic_traits = 0;
+    NSMutableDictionary *attrs = [NSMutableDictionary dictionary];
+    PyObject *t = PyDict_GetItemString(src, "traits");
+    if (t == NULL) {
+        symbolic_traits = (
+            (PyDict_GetItemString(src, "bold") == Py_True) ? kCTFontBoldTrait : 0 |
+            (PyDict_GetItemString(src, "italic") == Py_True) ? kCTFontItalicTrait : 0 |
+            (PyDict_GetItemString(src, "monospace") == Py_True) ? kCTFontMonoSpaceTrait : 0);
+    } else {
+        symbolic_traits = PyLong_AsUnsignedLong(t);
+    }
+    NSDictionary *traits = @{(id)kCTFontSymbolicTrait:[NSNumber numberWithUnsignedInt:symbolic_traits]};
+    attrs[(id)kCTFontTraitsAttribute] = traits;
+
+#define SET(x, attr) \
+    t = PyDict_GetItemString(src, #x); \
+    if (t) attrs[(id)attr] = [NSString stringWithUTF8String:PyUnicode_AsUTF8(t)];
+
+    SET(family, kCTFontFamilyNameAttribute);
+    SET(style, kCTFontStyleNameAttribute);
+    SET(postscript_name, kCTFontNameAttribute);
+#undef SET
+
+    return CTFontDescriptorCreateWithAttributes((CFDictionaryRef) attrs);
+}
+
 PyObject*
 coretext_all_fonts(PyObject UNUSED *_self) {
     static CTFontCollectionRef collection = NULL;
@@ -89,23 +118,17 @@ coretext_all_fonts(PyObject UNUSED *_self) {
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
-    int bold, italic, monospace;
-    char *cfamily;
+    PyObject *descriptor;
     float point_sz, dpi;
-    if(!PyArg_ParseTuple(args, "spppff", &cfamily, &bold, &italic, &monospace, &point_sz, &dpi)) return NULL;
-    NSString *family = [[NSString alloc] initWithCString:cfamily encoding:NSUTF8StringEncoding];
-    if (family == NULL) return PyErr_NoMemory();
+    if(!PyArg_ParseTuple(args, "Off", &descriptor, &point_sz, &dpi)) return NULL;
     self = (Face *)type->tp_alloc(type, 0);
     if (self) {
-        CTFontSymbolicTraits symbolic_traits = (bold ? kCTFontBoldTrait : 0) | (italic ? kCTFontItalicTrait : 0) | (monospace ? kCTFontMonoSpaceTrait : 0);
-        NSDictionary *font_traits = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:symbolic_traits] forKey:(NSString *)kCTFontSymbolicTrait];
-        NSDictionary *font_attributes = [NSDictionary dictionaryWithObjectsAndKeys:family, kCTFontFamilyNameAttribute, font_traits, kCTFontTraitsAttribute, nil];
-        CTFontDescriptorRef descriptor = CTFontDescriptorCreateWithAttributes((CFDictionaryRef)font_attributes);
-        if (descriptor) {
+        CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
+        if (desc) {
             self->point_sz = point_sz;
             self->scaled_point_sz = (dpi / 72.0) * point_sz;
-            self->font = CTFontCreateWithFontDescriptor(descriptor, self->scaled_point_sz, NULL);
-            CFRelease(descriptor);
+            self->font = CTFontCreateWithFontDescriptor(desc, self->scaled_point_sz, NULL);
+            CFRelease(desc);
             if (!self->font) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); }
             else {
                 self->units_per_em = CTFontGetUnitsPerEm(self->font);
@@ -115,17 +138,19 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
                 self->underline_position = CTFontGetUnderlinePosition(self->font);
                 self->underline_thickness = CTFontGetUnderlineThickness(self->font);
                 self->scaled_point_sz = CTFontGetSize(self->font);
-                self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font));
-                self->full_name = convert_cfstring(CTFontCopyFullName(self->font));
-                self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font));
-                if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL) { Py_CLEAR(self); }
+                self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font), 1);
+                self->full_name = convert_cfstring(CTFontCopyFullName(self->font), 1);
+                self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font), 1);
+                NSURL *url = (NSURL*)CTFontCopyAttribute(self->font, kCTFontURLAttribute);
+                self->path = PyUnicode_FromString([[url path] UTF8String]);
+                [url release];
+                if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) { Py_CLEAR(self); }
             }
         } else {
             Py_CLEAR(self);
             PyErr_NoMemory();
         }
     }
-    [ family release ];
     return (PyObject*)self;
 }
 
@@ -133,7 +158,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Face* self) {
     if (self->font) CFRelease(self->font);
-    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name);
+    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name); Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -248,8 +273,8 @@ repr(Face *self) {
     snprintf(buf, sizeof(buf)/sizeof(buf[0]), "ascent=%.1f, descent=%.1f, leading=%.1f, point_sz=%.1f, scaled_point_sz=%.1f, underline_position=%.1f underline_thickness=%.1f", 
         (self->ascent), (self->descent), (self->leading), (self->point_sz), (self->scaled_point_sz), (self->underline_position), (self->underline_thickness));
     return PyUnicode_FromFormat(
-        "Face(family=%U, full_name=%U, postscript_name=%U, units_per_em=%u, %s)",
-        self->family_name, self->full_name, self->postscript_name, self->units_per_em, buf
+        "Face(family=%U, full_name=%U, postscript_name=%U, path=%U, units_per_em=%u, %s)",
+        self->family_name, self->full_name, self->postscript_name, self->path, self->units_per_em, buf
     );
 }
 
@@ -267,6 +292,7 @@ static PyMemberDef members[] = {
     MEM(underline_position, T_FLOAT),
     MEM(underline_thickness, T_FLOAT),
     MEM(family_name, T_OBJECT),
+    MEM(path, T_OBJECT),
     MEM(full_name, T_OBJECT),
     MEM(postscript_name, T_OBJECT),
     {NULL}  /* Sentinel */
