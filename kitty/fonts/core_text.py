@@ -29,18 +29,27 @@ def create_font_map(all_fonts):
 def find_best_match(font_map, family, bold, italic):
     q = re.sub(r'\s+', ' ', family.lower())
 
-    def matches(candidate, monospace):
-        return candidate['bold'] == bold and candidate['italic'] == italic and candidate['monospace'] == monospace
+    def score(candidate):
+        style_match = 1 if candidate['bold'] == bold and candidate['italic'] == italic else 0
+        monospace_match = 1 if candidate['monospace'] else 0
+        return style_match, monospace_match
 
-    for monospace in (True, False):
-        for selector in 'ps_map full_map family_map'.split():
-            candidates = font_map[selector].get(q, ())
-            if candidates:
-                for candidate in candidates:
-                    if matches(candidate, monospace):
-                        return candidate
-                if selector != 'family_map':
-                    return candidates[0]
+    # First look for an exact match
+    for selector in ('ps_map', 'full_map'):
+        candidates = font_map[selector].get(q)
+        if candidates:
+            candidates.sort(key=score)
+            return candidates[-1]
+
+    # Let CoreText choose the font if the family exists, otherwise
+    # fallback to Menlo
+    family = family if q in font_map['family_map'] else 'Menlo'
+    return {
+        'monospace': True,
+        'bold': bold,
+        'italic': italic,
+        'family': family
+    }
 
 
 def get_face(font_map, family, main_family, font_size, dpi, bold=False, italic=False):
@@ -51,12 +60,7 @@ def get_face(font_map, family, main_family, font_size, dpi, bold=False, italic=F
             f = main_family
         return f
     family = resolve_family(family)
-    descriptor = find_best_match(font_map, family, bold, italic) or {
-        'monospace': True,
-        'bold': bold,
-        'italic': italic,
-        'family': family
-    }
+    descriptor = find_best_match(font_map, family, bold, italic)
     return Face(descriptor, font_size, dpi)
 
 
