@@ -4,9 +4,10 @@
 
 import ctypes
 import re
+import sys
 
 from kitty.fast_data_types import CTFace as Face, coretext_all_fonts
-from kitty.utils import ceil_int, get_logical_dpi, wcwidth
+from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth
 
 main_font = {}
 symbol_map = {}
@@ -43,7 +44,9 @@ def find_best_match(font_map, family, bold, italic):
 
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
-    family = family if q in font_map['family_map'] else 'Menlo'
+    if q not in font_map['family_map']:
+        safe_print('The font {} was not found, falling back to Menlo', file=sys.stderr)
+        family = 'Menlo'
     return {
         'monospace': True,
         'bold': bold,
