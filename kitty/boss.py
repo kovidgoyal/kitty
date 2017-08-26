@@ -196,19 +196,6 @@ class Boss(Thread):
                 self.queue_ui_action(self.gui_close_window, window)
 
     def run(self):
-        if self.args.profile:
-            import cProfile
-            import pstats
-            pr = cProfile.Profile()
-            pr.enable()
-        self.loop()
-        if self.args.profile:
-            pr.disable()
-            pr.create_stats()
-            s = pstats.Stats(pr)
-            s.dump_stats(self.args.profile)
-
-    def loop(self):
         while not self.shutting_down:
             all_readers = list(self.read_dispatch_map)
             all_writers = [
