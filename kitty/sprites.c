@@ -139,6 +139,20 @@ position_for(SpriteMap *self, PyObject *args) {
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
+static inline uint32_t 
+to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
+    unsigned int t = entry & 0xFF, r;
+    switch(t) {
+        case 1:
+            r = (entry >> 8) & 0xff;
+            return self->color_table[r];
+        case 2:
+            return entry >> 8;
+        default:
+            return defval;
+    }
+}
+
 bool
 update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
     SpritePosition *sp;

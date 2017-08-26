@@ -133,20 +133,6 @@ set_color(ColorProfile *self, PyObject *args) {
 }
 
 
-uint32_t 
-to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
-    unsigned int t = entry & 0xFF, r;
-    switch(t) {
-        case 1:
-            r = (entry >> 8) & 0xff;
-            return self->color_table[r];
-        case 2:
-            return entry >> 8;
-        default:
-            return defval;
-    }
-}
-
 // Boilerplate {{{
 
 

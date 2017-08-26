@@ -330,7 +330,6 @@ Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 bool update_cell_range_data(ScreenModes *modes, SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
-uint32_t to_color(ColorProfile *, uint32_t, uint32_t);
 
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
