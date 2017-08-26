@@ -88,7 +88,6 @@ class Boss(Thread):
         self.read_dispatch_map = {
             self.signal_fd: self.signal_received,
             self.read_wakeup_fd: self.on_wakeup}
-        self.all_writers = []
         self.timers = Timers()
         self.ui_timers = Timers()
         self.pending_ui_thread_calls = Queue()
@@ -163,10 +162,6 @@ class Boss(Thread):
     def remove_child_fd(self, child_fd):
         self.read_dispatch_map.pop(child_fd, None)
         self.write_dispatch_map.pop(child_fd, None)
-        try:
-            self.all_writers.remove(child_fd)
-        except Exception:
-            pass
 
     def queue_ui_action(self, func, *args):
         self.pending_ui_thread_calls.put((func, args))

@@ -51,8 +51,8 @@ class Timers:
                 (expired_timers if ev[0] <= now else waiting_timers).append(ev)
             self.timers = waiting_timers
             for ev in expired_timers:
-                    try:
-                        ev.callback(*ev.args)
-                    except Exception:
-                        import traceback
-                        safe_print(traceback.format_exc())
+                try:
+                    ev.callback(*ev.args)
+                except Exception:
+                    import traceback
+                    safe_print(traceback.format_exc())
