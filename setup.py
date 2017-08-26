@@ -111,8 +111,6 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
     optimize = '-ggdb' if debug or sanitize else '-O3'
-    if profile:
-        optimize = '-g'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
@@ -134,6 +132,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
 
     if profile:
         cflags.append('-DWITH_PROFILER')
+        cflags.append('-g')
         ldflags.append('-lprofiler')
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
