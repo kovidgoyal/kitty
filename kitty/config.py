@@ -200,7 +200,7 @@ def positive_float(x):
 
 def adjust_line_height(x):
     if x.endswith('%'):
-        return float(x[:-1]) / 100.0
+        return float(x[:-1].strip()) / 100.0
     return int(x)
 
 
