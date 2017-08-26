@@ -294,10 +294,10 @@ link:kitty/kitty.conf[config file].
 
 == Performance
 
-The main goals for kitty performance are user perceived latency and
-"smoothness" while scrolling. kitty tries hard to optimize these. To that end
-it keeps a cache of each rendered glyph in video RAM so that font rendering is
-not a bottleneck.  Interaction with child programs takes place in a separate
+The main goals for kitty performance are user perceived latency while typing
+and "smoothness" while scrolling. kitty tries hard to optimize these. To that
+end it keeps a cache of each rendered glyph in video RAM so that font rendering
+is not a bottleneck.  Interaction with child programs takes place in a separate
 thread from rendering, to improve smoothness.
 
 You can generate detailed per-function performance data using
