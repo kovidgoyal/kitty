@@ -24,7 +24,7 @@ from .constants import (
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    drain_read, glBlendFunc, glfw_post_empty_event, glViewport
+    drain_read, glBlendFunc, glfw_post_empty_event, glViewport, Timers
 )
 from .fonts.render import set_font_family
 from .keys import (
@@ -33,7 +33,6 @@ from .keys import (
 from .session import create_session
 from .shaders import Sprites
 from .tabs import SpecialWindow, TabManager
-from .timers import Timers
 from .utils import handle_unix_signals, pipe2, safe_print
 
 if isosx:
@@ -203,7 +202,7 @@ class Boss(Thread):
                 self.read_dispatch_map[r]()
             for w in writers:
                 self.write_dispatch_map[w]()
-            self.timers()
+            self.timers.call()
             for w in self.iterwindows():
                 if w.screen.is_dirty():
                     self.timers.add_if_missing(
@@ -214,7 +213,7 @@ class Boss(Thread):
         # debounce resize events
         self.pending_resize = True
         yield
-        self.timers.add(0.02, self.apply_pending_resize, w, h)
+        self.timers.add(0.02, self.apply_pending_resize, (w, h))
 
     def apply_pending_resize(self, w, h):
         if w > 100 and h > 100:

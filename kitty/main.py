@@ -178,7 +178,7 @@ def dispatch_pending_calls(boss):
         except Exception:
             import traceback
             safe_print(traceback.format_exc())
-    boss.ui_timers()
+    boss.ui_timers.call()
 
 
 def run_app(opts, args):

@@ -299,6 +299,21 @@ typedef struct {
 } Screen;
 PyTypeObject Screen_Type;
 
+typedef struct {
+    double at;
+    PyObject *callback;
+    PyObject *args;
+} TimerEvent;
+
+typedef struct {
+    PyObject_HEAD
+
+    TimerEvent *events, *buf1, *buf2;
+    size_t capacity;
+    size_t count;
+} Timers;
+PyTypeObject Timers_Type;
+
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
@@ -315,6 +330,7 @@ ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
 int init_LineBuf(PyObject *);
 int init_HistoryBuf(PyObject *);
 int init_Cursor(PyObject *);
+int init_Timers(PyObject *);
 int init_Line(PyObject *);
 int init_ColorProfile(PyObject *);
 int init_SpriteMap(PyObject *);
