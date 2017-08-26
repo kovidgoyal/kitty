@@ -77,12 +77,11 @@ do_increment(SpriteMap *self, int *error) {
 
 static SpritePosition*
 sprite_position_for(SpriteMap *self, char_type ch, combining_type cc, bool is_second, int *error) {
-    char_type attrs = ch >> ATTRS_SHIFT, pos_char;
-    uint8_t bold = (attrs >> BOLD_SHIFT) & 1, italic = (attrs >> ITALIC_SHIFT) & 1;
-    size_t idx = (ch & 0xff) | (bold << 8) | (italic << 9);
-    attrs = bold << BOLD_SHIFT | italic << ITALIC_SHIFT;
-    pos_char = (ch & CHAR_MASK) | (attrs << ATTRS_SHIFT);
+    char_type pos_char = ch & POSCHAR_MASK;  // Includes only the char and bold and italic bits
+    unsigned int idx = ((ch >> (ATTRS_SHIFT - 6)) & 0x300) | (ch & 0xFF); // Includes only italic, bold and lowest byte of ch
     SpritePosition *s = &(self->cache[idx]);
+    // Optimize for the common case of an ASCII char already in the cache
+    if (LIKELY(s->ch == pos_char && s->filled && s->cc == cc && s->is_second == is_second)) return s;  // Cache hit
     while(true) {
         if (s->filled) {
             if (s->ch == pos_char && s->cc == cc && s->is_second == is_second) return s;  // Cache hit

@@ -14,6 +14,8 @@
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
 #define EXPORTED __attribute__ ((visibility ("default")))
+#define LIKELY(x)    __builtin_expect (!!(x), 1)
+#define UNLIKELY(x)  __builtin_expect (!!(x), 0)
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #define xstr(s) str(s)
@@ -45,6 +47,7 @@ typedef unsigned int index_type;
 #define DECORATION_MASK 3
 #define BOLD_SHIFT 4
 #define ITALIC_SHIFT 5
+#define POSCHAR_MASK 0x30FFFFFF
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
