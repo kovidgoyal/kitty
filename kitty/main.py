@@ -6,7 +6,7 @@ import argparse
 import locale
 import os
 import sys
-import tempfile
+from contextlib import contextmanager
 from gettext import gettext as _
 from queue import Empty
 
@@ -86,12 +86,6 @@ def option_parser():
         '-v',
         action='version',
         version='{} {} by Kovid Goyal'.format(appname, str_version)
-    )
-    a(
-        '--profile',
-        action='store_true',
-        default=False,
-        help=_('Show profiling data after exit')
     )
     a(
         '--dump-commands',
@@ -259,6 +253,29 @@ def ensure_osx_locale():
             os.environ['LANG'] = lang + '.UTF-8'
 
 
+@contextmanager
+def setup_profiling(args):
+    try:
+        from .fast_data_types import start_profiler, stop_profiler
+    except ImportError:
+        start_profiler = stop_profiler = None
+    if start_profiler is not None:
+        start_profiler('/tmp/kitty-profile.log')
+    yield
+    if stop_profiler is not None:
+        import subprocess
+        stop_profiler()
+        exe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'kitty-profile')
+        cg = '/tmp/kitty-profile.callgrind'
+        print('Post processing profile data for', exe, '...')
+        subprocess.check_call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=open(cg, 'wb'))
+        try:
+            subprocess.Popen(['kcachegrind', cg])
+        except FileNotFoundError:
+            subprocess.check_call(['pprof', '--text', exe, '/tmp/kitty-profile.log'])
+            print('To view the graphical call data, use: kcachegrind', cg)
+
+
 def main():
     if isosx:
         ensure_osx_locale()
@@ -299,23 +316,7 @@ def main():
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
-        if args.profile:
-            tf = tempfile.NamedTemporaryFile(prefix='kitty-profiling-stats-')
-            args.profile = tf.name
-            import cProfile
-            import pstats
-            pr = cProfile.Profile()
-            pr.enable()
-            run_app(opts, args)
-            pr.disable()
-            pr.create_stats()
-            s = pstats.Stats(pr)
-            s.add(args.profile)
-            tf.close()
-            s.strip_dirs()
-            s.sort_stats('time', 'name')
-            s.print_stats(30)
-        else:
+        with setup_profiling(args):
             run_app(opts, args)
     finally:
         glfw_terminate()

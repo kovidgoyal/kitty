@@ -9,6 +9,9 @@
 #include "glfw.h"
 #include "gl.h"
 #include "modes.h"
+#ifdef WITH_PROFILER
+#include <gperftools/profiler.h>
+#endif
 
 static char drain_buf[1024] = {0};
 
@@ -41,6 +44,22 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#ifdef WITH_PROFILER
+static PyObject*
+start_profiler(PyObject UNUSED *self, PyObject *args) {
+    char *path;
+    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    ProfilerStart(path);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+stop_profiler(PyObject UNUSED *self) {
+    ProfilerStop();
+    Py_RETURN_NONE;
+}
+#endif
+
 #ifdef __APPLE__
 #include "core_text.h"
 #endif
@@ -61,6 +80,10 @@ static PyMethodDef module_methods[] = {
     {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
 #endif
     GLFW_FUNC_WRAPPERS
+#ifdef WITH_PROFILER
+    {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
+    {"stop_profiler", (PyCFunction)stop_profiler, METH_NOARGS, ""},
+#endif
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -84,9 +84,13 @@ int main(int argc, char *argv[]) {
     char lib[PATH_MAX+1] = {0};
     char *final_argv[MAX_ARGC + 1] = {0};
     wchar_t *argvw[MAX_ARGC + 1] = {0};
+#ifdef WITH_PROFILER
+    num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/");
+#else
     num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/../lib/kitty");
+#endif
 
-    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to /../lib/kitty\n"); return 1; }
+    if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     final_argv[0] = exe;
     final_argv[1] = lib;
     for (i = 1, num_args=2; i < argc && i + 1 <= MAX_ARGC; i++) {

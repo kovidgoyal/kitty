@@ -99,7 +99,7 @@ def get_sanitize_args(cc, ccver):
     return sanitize_args
 
 
-def init_env(debug=False, sanitize=False, native_optimizations=True):
+def init_env(debug=False, sanitize=False, native_optimizations=True, profile=False):
     global cflags, ldflags, cc, ldpaths
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
@@ -111,14 +111,16 @@ def init_env(debug=False, sanitize=False, native_optimizations=True):
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
     optimize = '-ggdb' if debug or sanitize else '-O3'
+    if profile:
+        optimize = '-g'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
             ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
-            optimize, ' '.join(sanitize_args), ('' if debug else 'N'), stack_protector, missing_braces, '-march=native'
-            if native_optimizations else ''
+            optimize, ' '.join(sanitize_args), ('' if debug else 'N'), stack_protector, missing_braces,
+            '-march=native' if native_optimizations else '',
         )
     )
     cflags = shlex.split(cflags
@@ -130,6 +132,9 @@ def init_env(debug=False, sanitize=False, native_optimizations=True):
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
 
+    if profile:
+        cflags.append('-DWITH_PROFILER')
+        ldflags.append('-lprofiler')
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
@@ -260,6 +265,12 @@ def option_parser():
         action='store_true',
         help='Only build changed files'
     )
+    p.add_argument(
+        '--profile',
+        default=False,
+        action='store_true',
+        help='Use the -pg compile flag to add profiling information'
+    )
     return p
 
 
@@ -281,7 +292,7 @@ def find_c_files():
 
 
 def build(args, native_optimizations=True):
-    init_env(args.debug, args.sanitize, native_optimizations)
+    init_env(args.debug, args.sanitize, native_optimizations, args.profile)
     compile_c_extension(
         'kitty/fast_data_types', args.incremental, *find_c_files()
     )
@@ -300,6 +311,25 @@ def build_test_launcher(args):
     cmd = [cc] + cflags + [
         'test-launcher.c', '-o', 'test-launcher',
     ] + sanitize_lib + pylib
+    run_tool(cmd)
+
+
+def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
+    cflags = '-Wall -Werror -fpie'.split()
+    libs = []
+    if args.profile:
+        cflags.append('-DWITH_PROFILER'), cflags.append('-g')
+        libs.append('-lprofiler')
+    else:
+        cflags.append('-O3')
+    if for_bundle:
+        cflags.append('-DFOR_BUNDLE')
+        cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
+    pylib = get_python_flags(cflags)
+    exe = 'kitty-profile' if args.profile else 'kitty'
+    cmd = [cc] + cflags + [
+        'linux-launcher.c', '-o', os.path.join(launcher_dir, exe)
+    ] + libs + pylib
     run_tool(cmd)
 
 
@@ -331,15 +361,7 @@ def package(args, for_bundle=False):  # {{{
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    cflags = '-O3 -Wall -Werror -fpie'.split()
-    if for_bundle:
-        cflags.append('-DFOR_BUNDLE')
-        cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
-    pylib = get_python_flags(cflags)
-    cmd = [cc] + cflags + [
-        'linux-launcher.c', '-o', os.path.join(launcher_dir, 'kitty')
-    ] + pylib
-    run_tool(cmd)
+    build_linux_launcher(args, launcher_dir, for_bundle)
     if not isosx:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256')
         safe_makedirs(icdir)
@@ -383,6 +405,9 @@ def main():
     if args.action == 'build':
         build(args)
         build_test_launcher(args)
+        if args.profile:
+            build_linux_launcher(args)
+            print('kitty profile executable is', 'kitty-profile')
     elif args.action == 'test':
         os.execlp(
             sys.executable, sys.executable, os.path.join(base, 'test.py')

@@ -292,6 +292,21 @@ come in handy for applications like powerline, without the need to use patched
 fonts. See the various font related configuration directives in the
 link:kitty/kitty.conf[config file].
 
+== Performance
+
+The main goals for kitty performance are user perceived latency and
+"smoothness" while scrolling. kitty tries hard to optimize these. To that end
+it keeps a cache of each rendered glyph in video RAM so that font rendering is
+not a bottleneck.  Interaction with child programs takes place in a separate
+thread from rendering, to improve smoothness.
+
+You can generate detailed per-function performance data using
+link:https://github.com/gperftools/gperftools[gperftools]. Build kitty with the
+`--profile` flag which will create an executable called `kitty-profile`.  Run
+that and perform the task you want to analyse, for example, scrolling a large 
+file with `less`. After you quit, function call statistics will be printed to
+`stdout` and you can use tools like *kcachegrind* for more detailed analysis.
+
 == Note for Linux/macOS packagers
 
 While kitty does use python, it is not a traditional python package, so please do not install it in site-packages.
