@@ -156,10 +156,12 @@ class Boss(Thread):
                     safe_print(traceback.format_exc())
 
     def add_child_fd(self, child_fd, read_ready, write_ready):
+        ' Must be called in child thread '
         self.read_dispatch_map[child_fd] = read_ready
         self.write_dispatch_map[child_fd] = write_ready
 
     def remove_child_fd(self, child_fd):
+        ' Must be called in child thread '
         self.read_dispatch_map.pop(child_fd, None)
         self.write_dispatch_map.pop(child_fd, None)
 
