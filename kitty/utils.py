@@ -226,3 +226,9 @@ def detach(fork=True, setsid=True, redirect=True):
         os.setsid()
     if redirect:
         redirect_std_streams(os.devnull)
+
+
+def adjust_line_height(cell_height, val):
+    if isinstance(val, int):
+        return cell_height + val
+    return int(cell_height * val)

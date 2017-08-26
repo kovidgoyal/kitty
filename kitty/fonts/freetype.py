@@ -12,7 +12,7 @@ from threading import Lock
 
 from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face
 from kitty.fonts.box_drawing import render_missing_glyph
-from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth
+from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth, adjust_line_height
 
 from .fontconfig import (
     FontNotFound, find_font_for_character, font_for_family, get_font_files
@@ -93,6 +93,7 @@ def set_font_family(opts, override_font_size=None):
     cell_height = font_units_to_pixels(
         face.height, face.units_per_EM, size_in_pts, dpi[1]
     )
+    cell_height = adjust_line_height(cell_height, opts.adjust_line_height)
     baseline = font_units_to_pixels(
         face.ascender, face.units_per_EM, size_in_pts, dpi[1]
     )

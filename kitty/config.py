@@ -198,7 +198,14 @@ def positive_float(x):
     return max(0, float(x))
 
 
+def adjust_line_height(x):
+    if x.endswith('%'):
+        return float(x[:-1]) / 100.0
+    return int(x)
+
+
 type_map = {
+    'adjust_line_height': adjust_line_height,
     'scrollback_lines': positive_int,
     'scrollback_pager': shlex.split,
     'scrollback_in_new_tab': to_bool,

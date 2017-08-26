@@ -7,7 +7,7 @@ import re
 import sys
 
 from kitty.fast_data_types import CTFace as Face, coretext_all_fonts
-from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth
+from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth, adjust_line_height
 
 main_font = {}
 symbol_map = {}
@@ -93,6 +93,7 @@ def set_font_family(opts, override_font_size=None, ignore_dpi_failure=False):
     install_symbol_map(all_fonts, opts.symbol_map, font_size, dpi)
     mf = main_font[(False, False)]
     cell_width, cell_height = mf.cell_size()
+    cell_height = adjust_line_height(cell_height, opts.adjust_line_height)
     CellTexture = ctypes.c_ubyte * (cell_width * cell_height)
     WideCellTexture = ctypes.c_ubyte * (2 * cell_width * cell_height)
     baseline = int(round(mf.ascent))
