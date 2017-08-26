@@ -110,11 +110,15 @@ typedef unsigned int index_type;
 #define GETSET(x) \
     {#x, (getter) x##_get, (setter) x##_set, #x, NULL},
 
+#ifndef EXTRA_INIT
+#define EXTRA_INIT
+#endif
 #define INIT_TYPE(type) \
     int init_##type(PyObject *module) {\
         if (PyType_Ready(&type##_Type) < 0) return 0; \
         if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0; \
         Py_INCREF(&type##_Type); \
+        EXTRA_INIT; \
         return 1; \
     }
 

@@ -5,10 +5,13 @@
 import os
 from unittest import skipIf
 
-from . import BaseTest, filled_line_buf, filled_cursor, filled_history_buf
 from kitty.config import build_ansi_color_table, defaults
-from kitty.utils import wcwidth, sanitize_title
-from kitty.fast_data_types import LineBuf, Cursor as C, REVERSE, ColorProfile, SpriteMap, HistoryBuf, Cursor
+from kitty.fast_data_types import (
+    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf, SpriteMap, Timers
+)
+from kitty.utils import sanitize_title, wcwidth
+
+from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
 
 def create_lbuf(*lines):
@@ -340,7 +343,7 @@ class TestDataTypes(BaseTest):
         lb.as_ansi(a.append)
         self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
         l = lb.line(0)
-        c = Cursor()
+        c = C()
         c.bold = c.italic = c.reverse = c.strikethrough = True
         c.fg = (4 << 8) | 1
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
@@ -358,3 +361,23 @@ class TestDataTypes(BaseTest):
         a = []
         hb.as_ansi(a.append)
         self.ae(a, ['\x1b[0m' + str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])
+
+    def test_timers(self):
+        t = Timers()
+        a = []
+        t.add(10, a.append, (1,))
+        t.add(0, a.append, (2,))
+        t.add_if_missing(20, a.append, (3,))
+        self.ae(t.timeout(), 0)
+        t.call(), t.call()
+        self.ae(a, [2])
+        del a[:]
+        t.add(200, a.append, (4,))
+        d = t.timeout()
+        self.assertGreater(d, 8)
+        self.assertLess(d, 10.1)
+        t.call()
+        self.ae(a, [])
+        t.add(0, a.append, (5,))
+        t.call()
+        self.ae(a, [5])

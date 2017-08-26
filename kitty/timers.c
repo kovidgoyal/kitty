@@ -5,9 +5,47 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#ifdef __APPLE__
+#define EXTRA_INIT mach_timebase_info(&timebase);
+#endif
 #include "data-types.h"
 #include <stdlib.h>
-#include <GLFW/glfw3.h>
+/* To millisecond (10^-3) */
+#define SEC_TO_MS 1000
+
+/* To microseconds (10^-6) */
+#define MS_TO_US 1000
+#define SEC_TO_US (SEC_TO_MS * MS_TO_US)
+
+/* To nanoseconds (10^-9) */
+#define US_TO_NS 1000
+#define MS_TO_NS (MS_TO_US * US_TO_NS)
+#define SEC_TO_NS (SEC_TO_MS * MS_TO_NS)
+
+/* Conversion from nanoseconds */
+#define NS_TO_MS (1000 * 1000)
+#define NS_TO_US (1000)
+
+#ifdef __APPLE__
+#include <mach/mach_time.h>
+static mach_timebase_info_data_t timebase = {0};
+static inline double monotonic() {
+	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
+}
+#else
+#include <time.h>
+static inline double monotonic() {
+    struct timespec ts = {0};
+#ifdef CLOCK_HIGHRES
+	clock_gettime(CLOCK_HIGHRES, &ts);
+#elif CLOCK_MONOTONIC_RAW
+	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+	return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
+}
+#endif
 
 static PyObject *
 new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
@@ -29,7 +67,7 @@ dealloc(Timers* self) {
         for (size_t i = 0; i < self->count; i++) {
             Py_CLEAR(self->events[i].callback); Py_CLEAR(self->events[i].args);
         }
-        PyMem_Free(self->events); self->events = NULL;
+        PyMem_Free(self->buf1); self->events = NULL;
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -65,7 +103,7 @@ add(Timers *self, PyObject *fargs) {
     PyObject *callback, *args = NULL;
     double delay, at;
     if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
-    at = glfwGetTime() + delay;
+    at = monotonic() + delay;
 
     for (i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
@@ -96,7 +134,7 @@ add_if_missing(Timers *self, PyObject *fargs) {
             Py_RETURN_NONE;
         }
     }
-    at = glfwGetTime() + delay;
+    at = monotonic() + delay;
 
     return _add(self, at, callback, args);
 }
@@ -123,7 +161,7 @@ static PyObject *
 timeout(Timers *self) {
 #define timeout_doc "timeout() -> The time in seconds until the next event"
     if (self->count < 1) { Py_RETURN_NONE; }
-    double ans = self->events[0].at - glfwGetTime();
+    double ans = self->events[0].at - monotonic();
     return PyFloat_FromDouble(MAX(0, ans));
 }
 
@@ -132,7 +170,7 @@ call(Timers *self) {
 #define call_doc "call() -> Dispatch all expired events"
     if (self->count < 1) { Py_RETURN_NONE; }
     TimerEvent *other = self->events == self->buf1 ? self->buf2 : self->buf1;
-    double now = glfwGetTime();
+    double now = monotonic();
     size_t i, j;
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
