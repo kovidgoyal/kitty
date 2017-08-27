@@ -43,8 +43,8 @@ layout(SpriteMap *self, PyObject *args) {
 #define layout_doc "layout(cell_width, cell_height) -> Invalidate the cache and prepare it for new cell size"
     unsigned long cell_width, cell_height;
     if (!PyArg_ParseTuple(args, "kk", &cell_width, &cell_height)) return NULL;
-    self->xnum = MAX(1, self->max_texture_size / cell_width);
-    self->max_y = MAX(1, self->max_texture_size / cell_height);
+    self->xnum = MIN(MAX(1, self->max_texture_size / cell_width), UINT16_MAX);
+    self->max_y = MIN(MAX(1, self->max_texture_size / cell_height), UINT16_MAX);
     self->ynum = 1;
     self->x = 0; self->y = 0; self->z = 0;
 
@@ -70,7 +70,7 @@ do_increment(SpriteMap *self, int *error) {
         self->ynum = MIN(MAX(self->ynum, self->y + 1), self->max_y);
         if (self->y >= self->max_y) {
             self->y = 0; self->z++;
-            if (self->z >= self->max_array_len) *error = 2;
+            if (self->z >= MIN(UINT16_MAX, self->max_array_len)) *error = 2;
         }
     }
 }
