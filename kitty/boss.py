@@ -24,7 +24,7 @@ from .constants import (
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    drain_read, glBlendFunc, glfw_post_empty_event, glViewport, Timers
+    drain_read, glBlendFunc, glfw_post_empty_event, glViewport, Timers as _Timers
 )
 from .fonts.render import set_font_family
 from .keys import (
@@ -37,6 +37,23 @@ from .utils import handle_unix_signals, pipe2, safe_print
 
 if isosx:
     from .fast_data_types import cocoa_update_title
+
+
+class Timers(_Timers):
+
+    def __init__(self):
+        _Timers.__init__(self)
+        self.timer_hash = {}
+
+    def add(self, delay, timer, *args):
+        # Needed because bound methods are recreated on every access
+        timer = self.timer_hash.setdefault(timer, timer)
+        return _Timers.add(self, delay, timer) if args else _Timers.add(self, delay, timer, args)
+
+    def remove(self, timer):
+        # Needed because bound methods are recreated on every access
+        timer = self.timer_hash.setdefault(timer, timer)
+        return _Timers.remove_event(self, timer)
 
 
 def conditional_run(w, i):
