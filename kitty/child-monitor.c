@@ -9,6 +9,8 @@
 
 #define EXTRA_FDS 2
 
+static bool (*read_func)(int, Screen*, PyObject*);
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
@@ -23,7 +25,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self->wakeup_func = wakeup_func; Py_INCREF(wakeup_func);
     self->signal_func = signal_func; Py_INCREF(signal_func);
     self->timers = timers; Py_INCREF(timers);
-    self->dump_callback = dump_callback; Py_INCREF(dump_callback);
+    if (dump_callback != Py_None) {
+        self->dump_callback = dump_callback; Py_INCREF(dump_callback);
+        read_func = read_bytes_dump;
+    } else read_func = read_bytes;
     self->count = 0; self->children = NULL;
     self->fds = (struct pollfd*)PyMem_Calloc(EXTRA_FDS, sizeof(struct pollfd));
     self->repaint_delay = delay;
@@ -144,8 +149,7 @@ loop(ChildMonitor *self) {
             if (self->fds[1].revents && POLLIN) { PYCALL(self->signal_func); }
             for (i = 0; i < self->count; i++) {
                 if (self->fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
-                    if (LIKELY(self->dump_callback == Py_None)) has_more = read_bytes(self->fds[EXTRA_FDS + i].fd, self->children[i].screen, NULL);
-                    else has_more = read_bytes(self->fds[EXTRA_FDS + i].fd, self->children[i].screen, self->dump_callback);
+                    has_more = read_func(self->fds[EXTRA_FDS + i].fd, self->children[i].screen, self->dump_callback);
                     if (!has_more) { PYCALL(self->children[i].on_exit); }
                 }
                 if (self->fds[EXTRA_FDS + i].revents & POLLOUT) {
