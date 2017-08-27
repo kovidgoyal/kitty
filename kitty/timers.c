@@ -99,7 +99,6 @@ static PyObject *
 add(Timers *self, PyObject *fargs) {
 #define add_doc "add(delay, callback, args) -> Add callback, replacing it if it already exists"
     size_t i;
-    bool added = false;
     PyObject *callback, *args = NULL;
     double delay, at;
     if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
@@ -107,18 +106,16 @@ add(Timers *self, PyObject *fargs) {
 
     for (i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
-            added = true;
             self->events[i].at = at;
             Py_CLEAR(self->events[i].args);
             self->events[i].args = args;
             Py_XINCREF(args);
-            break;
+            qsort(self->events, self->count, sizeof(TimerEvent), compare_events);
+            Py_RETURN_NONE;
         }
     }
 
-    if (!added) return _add(self, at, callback, args);
-
-    Py_RETURN_NONE;
+    return _add(self, at, callback, args);
 }
 
 static PyObject *
