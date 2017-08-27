@@ -1046,6 +1046,7 @@ void screen_request_capabilities(Screen *self, PyObject *q) {
 
 // Python interface {{{
 #define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
+#define WRAP0x(name) static PyObject* xxx_##name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
 #define WRAP1(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v); Py_RETURN_NONE; }
 #define WRAP1E(name, defval, ...) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v, __VA_ARGS__); Py_RETURN_NONE; }
 #define WRAP1B(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; int b=false; if(!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL; screen_##name(self, v, b); Py_RETURN_NONE; }
@@ -1145,7 +1146,7 @@ cursor_up(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-WRAP0(index)
+WRAP0x(index)
 WRAP0(reverse_index)
 WRAP0(reset)
 WRAP0(set_tab_stop)
@@ -1302,7 +1303,7 @@ static PyMethodDef methods[] = {
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
-    MND(index, METH_NOARGS)
+    {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)
