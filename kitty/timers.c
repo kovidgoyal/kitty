@@ -80,18 +80,18 @@ compare_events(const void *a, const void *b) {
 }
 
 
-static inline PyObject*
+static inline bool
 _add(Timers *self, double at, PyObject *callback, PyObject *args) {
     size_t i; 
     if (self->count >= self->capacity) {
         PyErr_SetString(PyExc_ValueError, "Too many timers");
-        return NULL;
+        return false;
     }
     i = self->count++;
     self->events[i].at = at; self->events[i].callback = callback; self->events[i].args = args;
     Py_INCREF(callback); Py_XINCREF(args);
     qsort(self->events, self->count, sizeof(TimerEvent), compare_events);
-    Py_RETURN_NONE;
+    return true;
 }
 
 
@@ -115,25 +115,31 @@ add(Timers *self, PyObject *fargs) {
         }
     }
 
-    return _add(self, at, callback, args);
+    if (!_add(self, at, callback, args)) return NULL;
+    Py_RETURN_NONE;
 }
+
+
+bool
+timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args) {
+    for (size_t i = 0; i < self->count; i++) {
+        if (self->events[i].callback == callback) {
+            return true;
+        }
+    }
+    return _add(self, monotonic() + delay, callback, args); 
+}
+
 
 static PyObject *
 add_if_missing(Timers *self, PyObject *fargs) {
 #define add_if_missing_doc "add_if_missing(delay, callback, args) -> Add callback, unless it already exists"
-    size_t i;
     PyObject *callback, *args = NULL;
-    double delay, at;
+    double delay;
     if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
 
-    for (i = 0; i < self->count; i++) {
-        if (self->events[i].callback == callback) {
-            Py_RETURN_NONE;
-        }
-    }
-    at = monotonic() + delay;
-
-    return _add(self, at, callback, args);
+    if (!timers_add_if_missing(self, delay, callback, args)) return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -154,6 +160,12 @@ remove_event(Timers *self, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
+double 
+timers_timeout(Timers *self) {
+    double ans = self->events[0].at - monotonic();
+    return MAX(0, ans);
+}
+
 static PyObject *
 timeout(Timers *self) {
 #define timeout_doc "timeout() -> The time in seconds until the next event"
@@ -162,10 +174,9 @@ timeout(Timers *self) {
     return PyFloat_FromDouble(MAX(0, ans));
 }
 
-static PyObject *
-call(Timers *self) {
-#define call_doc "call() -> Dispatch all expired events"
-    if (self->count < 1) { Py_RETURN_NONE; }
+void
+timers_call(Timers *self) {
+    if (self->count < 1) return;
     TimerEvent *other = self->events == self->buf1 ? self->buf2 : self->buf1;
     double now = monotonic();
     size_t i, j;
@@ -182,6 +193,12 @@ call(Timers *self) {
     }
     self->events = other;
     self->count = j;
+}
+
+static PyObject *
+call(Timers *self) {
+#define call_doc "call() -> Dispatch all expired events"
+    timers_call(self);
     Py_RETURN_NONE;
 }
 

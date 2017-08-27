@@ -5,22 +5,24 @@
 import os
 import weakref
 from collections import deque
-from functools import partial
 from time import monotonic
 
 from .char_grid import CharGrid, DynamicColor
-from .constants import wakeup, get_boss, appname, WindowGeometry, is_key_pressed, mouse_button_pressed, cell_size
+from .constants import (
+    WindowGeometry, appname, cell_size, get_boss, is_key_pressed,
+    mouse_button_pressed, wakeup
+)
 from .fast_data_types import (
-    BRACKETED_PASTE_START, BRACKETED_PASTE_END, Screen, read_bytes_dump,
-    read_bytes, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_PRESS,
-    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, glfw_post_empty_event,
-    GLFW_MOUSE_BUTTON_5, ANY_MODE, MOTION_MODE, GLFW_KEY_LEFT_SHIFT,
-    GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_MOUSE_BUTTON_4
+    ANY_MODE, BRACKETED_PASTE_END, BRACKETED_PASTE_START, GLFW_KEY_DOWN,
+    GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_MOD_SHIFT,
+    GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4, GLFW_MOUSE_BUTTON_5,
+    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, MOTION_MODE, Screen,
+    glfw_post_empty_event
 )
 from .keys import get_key_map
-from .mouse import encode_mouse_event, PRESS, RELEASE, MOVE, DRAG
+from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
 from .terminfo import get_capabilities
-from .utils import sanitize_title, get_primary_selection, parse_color_set, safe_print
+from .utils import get_primary_selection, parse_color_set, sanitize_title
 
 DYNAMIC_COLOR_CODES = {
     10: DynamicColor.default_fg,
@@ -30,13 +32,11 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
-dump_bytes_opened = False
 
 
 class Window:
 
     def __init__(self, tab, child, opts, args):
-        global dump_bytes_opened
         self.tabref = weakref.ref(tab)
         self.override_title = None
         self.last_mouse_cursor_pos = 0, 0
@@ -50,12 +50,6 @@ class Window:
         self.child_fd = child.child_fd
         self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
-        self.read_bytes = partial(read_bytes_dump, self.dump_commands) if args.dump_commands or args.dump_bytes else read_bytes
-        if args.dump_bytes:
-            mode = 'ab' if dump_bytes_opened else 'wb'
-            self.dump_bytes_to = open(args.dump_bytes, mode)
-            dump_bytes_opened = True
-        self.draw_dump_buf = []
         self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
 
@@ -104,10 +98,6 @@ class Window:
         # existing buffers in char_grid. The rest of the cleanup must be
         # performed in the GUI thread.
 
-    def read_ready(self):
-        if self.read_bytes(self.screen, self.child_fd) is False:
-            self.close()  # EOF
-
     def write_ready(self):
         while self.write_buf:
             try:
@@ -117,10 +107,14 @@ class Window:
             if not n:
                 return
             self.write_buf = self.write_buf[n:]
+        if not self.write_buf:
+            get_boss().child_monitor.needs_write(self.child_fd, False)
 
     def write_to_child(self, data):
-        self.write_buf = memoryview(self.write_buf.tobytes() + data)
-        wakeup()
+        if data:
+            self.write_buf = memoryview(self.write_buf.tobytes() + data)
+            get_boss().child_monitor.needs_write(self.child_fd, True)
+            wakeup()
 
     def bell(self):
         if self.opts.enable_audio_bell:
@@ -355,23 +349,4 @@ class Window:
         if self.screen.is_main_linebuf():
             self.char_grid.scroll('full', False)
             glfw_post_empty_event()
-    # }}}
-
-    def dump_commands(self, *a):  # {{{
-        if a:
-            if a[0] == 'draw':
-                if a[1] is None:
-                    if self.draw_dump_buf:
-                        safe_print('draw', ''.join(self.draw_dump_buf))
-                        self.draw_dump_buf = []
-                else:
-                    self.draw_dump_buf.append(a[1])
-            elif a[0] == 'bytes':
-                self.dump_bytes_to.write(a[1])
-                self.dump_bytes_to.flush()
-            else:
-                if self.draw_dump_buf:
-                    safe_print('draw', ''.join(self.draw_dump_buf))
-                    self.draw_dump_buf = []
-                safe_print(*a)
     # }}}

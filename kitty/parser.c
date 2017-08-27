@@ -745,17 +745,9 @@ FNAME(parse_bytes)(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject*
-FNAME(read_bytes)(PyObject UNUSED *self, PyObject *args) {
-    PyObject *dump_callback = NULL;
+bool
+FNAME(read_bytes)(int fd, Screen *screen, PyObject *dump_callback) {
     Py_ssize_t len;
-    Screen *screen;
-    int fd;
-#ifdef DUMP_COMMANDS
-    if (!PyArg_ParseTuple(args, "OOi", &dump_callback, &screen, &fd)) return NULL;
-#else
-    if (!PyArg_ParseTuple(args, "Oi", &screen, &fd)) return NULL;
-#endif
 
     while(true) {
         Py_BEGIN_ALLOW_THREADS;
@@ -763,20 +755,18 @@ FNAME(read_bytes)(PyObject UNUSED *self, PyObject *args) {
         Py_END_ALLOW_THREADS;
         if (len == -1) {
             if (errno == EINTR) continue;
-            if (errno == EIO) { Py_RETURN_FALSE; }
-            return PyErr_SetFromErrno(PyExc_OSError);
+            if (errno != EIO) perror("Call to read() from child fd failed");
+            return false;
         }
         /* PyObject_Print(Py_BuildValue("y#", screen->read_buf, len), stderr, 0); */
         break;
     }
+    if (UNLIKELY(len == 0)) return false;
 #ifdef DUMP_COMMANDS
-    if (len > 0) {
-        Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, len)); PyErr_Clear();
-    }
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, len)); PyErr_Clear();
 #endif
     _parse_bytes(screen, screen->read_buf, len, dump_callback);
-    if(len > 0) { Py_RETURN_TRUE; }
-    Py_RETURN_FALSE;
+    return true;
 }
 #undef FNAME
 // }}}

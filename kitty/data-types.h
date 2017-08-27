@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <poll.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
@@ -318,6 +319,26 @@ typedef struct {
 } Timers;
 PyTypeObject Timers_Type;
 
+typedef struct {
+    Screen *screen;
+    PyObject *on_exit, *write_func, *update_screen;
+    bool needs_write;
+} Child;
+
+typedef struct {
+    PyObject_HEAD
+
+    PyObject *wakeup_func, *signal_func, *dump_callback;
+    Timers *timers;
+    int wakeup_fd, singal_fd;
+    struct pollfd *fds;
+    Child *children;
+    size_t count;
+    bool shutting_down;
+    double repaint_delay;
+} ChildMonitor;
+PyTypeObject ChildMonitor_Type;
+
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
@@ -335,6 +356,7 @@ int init_LineBuf(PyObject *);
 int init_HistoryBuf(PyObject *);
 int init_Cursor(PyObject *);
 int init_Timers(PyObject *);
+int init_ChildMonitor(PyObject *);
 int init_Line(PyObject *);
 int init_ColorProfile(PyObject *);
 int init_SpriteMap(PyObject *);
@@ -343,8 +365,8 @@ int init_Screen(PyObject *);
 int init_Face(PyObject *);
 int init_Window(PyObject *);
 PyObject* create_256_color_table();
-PyObject* read_bytes_dump(PyObject UNUSED *, PyObject *);
-PyObject* read_bytes(PyObject UNUSED *, PyObject *);
+bool read_bytes(int fd, Screen *screen, PyObject *dump_callback);
+bool read_bytes_dump(int fd, Screen *screen, PyObject *dump_callback);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
@@ -378,6 +400,10 @@ bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+
+double timers_timeout(Timers*);
+void timers_call(Timers*);
+bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);

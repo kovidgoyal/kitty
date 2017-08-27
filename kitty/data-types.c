@@ -69,8 +69,6 @@ static PyMethodDef module_methods[] = {
     {"drain_read", (PyCFunction)drain_read, METH_O, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
-    {"read_bytes", (PyCFunction)read_bytes, METH_VARARGS, ""},
-    {"read_bytes_dump", (PyCFunction)read_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
@@ -111,6 +109,7 @@ PyInit_fast_data_types(void) {
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
         if (!init_Timers(m)) return NULL;
+        if (!init_ChildMonitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
         if (!init_SpriteMap(m)) return NULL;
         if (!init_ChangeTracker(m)) return NULL;

@@ -116,7 +116,7 @@ class Tab:
         window = Window(self, child, self.opts, self.args)
         if override_title is not None:
             window.title = window.override_title = override_title
-        get_boss().add_child_fd(child.child_fd, window.read_ready, window.write_ready)
+        get_boss().add_child_fd(child.child_fd, window)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()

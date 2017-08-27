@@ -5,7 +5,6 @@
 import inspect
 import io
 import os
-import select
 import signal
 import struct
 from functools import wraps
@@ -24,7 +23,8 @@ from .constants import (
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    drain_read, glBlendFunc, glfw_post_empty_event, glViewport, Timers as _Timers
+    ChildMonitor, Timers as _Timers, drain_read, glBlendFunc,
+    glfw_post_empty_event, glViewport
 )
 from .fonts.render import set_font_family
 from .keys import (
@@ -83,6 +83,33 @@ def callback(func):
     return f
 
 
+class DumpCommands:  # {{{
+
+    def __init__(self, args):
+        self.draw_dump_buf = []
+        if args.dump_bytes:
+            self.dump_bytes_to = open(args.dump_bytes, 'wb')
+
+    def __call__(self, *a):
+        if a:
+            if a[0] == 'draw':
+                if a[1] is None:
+                    if self.draw_dump_buf:
+                        safe_print('draw', ''.join(self.draw_dump_buf))
+                        self.draw_dump_buf = []
+                else:
+                    self.draw_dump_buf.append(a[1])
+            elif a[0] == 'bytes':
+                self.dump_bytes_to.write(a[1])
+                self.dump_bytes_to.flush()
+            else:
+                if self.draw_dump_buf:
+                    safe_print('draw', ''.join(self.draw_dump_buf))
+                    self.draw_dump_buf = []
+                safe_print(*a)
+# }}}
+
+
 class Boss(Thread):
 
     daemon = True
@@ -98,16 +125,15 @@ class Boss(Thread):
         self.pending_resize = False
         self.resize_gl_viewport = False
         self.shutting_down = False
-        self.screen_update_delay = opts.repaint_delay / 1000.0
         self.signal_fd = handle_unix_signals()
         self.read_wakeup_fd, self.write_wakeup_fd = pipe2()
-        self.read_dispatch_map = {
-            self.signal_fd: self.signal_received,
-            self.read_wakeup_fd: self.on_wakeup}
         self.timers = Timers()
         self.ui_timers = Timers()
+        self.child_monitor = ChildMonitor(
+            self.read_wakeup_fd, self.on_wakeup, self.signal_fd, self.signal_received, self.timers,
+            opts.repaint_delay / 1000.0,
+            DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         self.pending_ui_thread_calls = Queue()
-        self.write_dispatch_map = {}
         set_boss(self)
         self.current_font_size = opts.font_size
         cell_size.width, cell_size.height = set_font_family(opts)
@@ -171,15 +197,13 @@ class Boss(Thread):
                     import traceback
                     safe_print(traceback.format_exc())
 
-    def add_child_fd(self, child_fd, read_ready, write_ready):
+    def add_child_fd(self, child_fd, window):
         ' Must be called in child thread '
-        self.read_dispatch_map[child_fd] = read_ready
-        self.write_dispatch_map[child_fd] = write_ready
+        self.child_monitor.add_child(child_fd, window.screen, window.close, window.write_ready, window.update_screen)
 
     def remove_child_fd(self, child_fd):
         ' Must be called in child thread '
-        self.read_dispatch_map.pop(child_fd, None)
-        self.write_dispatch_map.pop(child_fd, None)
+        self.child_monitor.remove_child(child_fd)
 
     def queue_ui_action(self, func, *args):
         self.pending_ui_thread_calls.put((func, args))
@@ -209,21 +233,7 @@ class Boss(Thread):
                 self.queue_ui_action(self.gui_close_window, window)
 
     def run(self):
-        while not self.shutting_down:
-            all_readers = list(self.read_dispatch_map)
-            all_writers = [
-                w.child_fd for w in self.iterwindows() if w.write_buf]
-            readers, writers, _ = select.select(
-                all_readers, all_writers, [], self.timers.timeout())
-            for r in readers:
-                self.read_dispatch_map[r]()
-            for w in writers:
-                self.write_dispatch_map[w]()
-            self.timers.call()
-            for w in self.iterwindows():
-                if w.screen.is_dirty():
-                    self.timers.add_if_missing(
-                        self.screen_update_delay, w.update_screen)
+        self.child_monitor.loop()
 
     @callback
     def on_window_resize(self, window, w, h):
@@ -501,6 +511,7 @@ class Boss(Thread):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         self.shutting_down = True
+        self.child_monitor.shutdown()
         wakeup()
         self.join()
         for t in self.tab_manager:
