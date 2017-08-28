@@ -162,9 +162,9 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
 
     size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
     for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
-        ch = line->chars[i];
+        ch = line->cells[i].ch;
         if (previous_width == 2) sp = sprite_position_for(self, previous_ch, 0, true, &err);
-        else sp = sprite_position_for(self, ch, line->combining_chars[i], false, &err);
+        else sp = sprite_position_for(self, ch, line->cells[i].cc, false, &err);
         if (sp == NULL) { set_sprite_error(err); return false; }
         char_type attrs = ch >> ATTRS_SHIFT;
         unsigned int decoration = (attrs >> DECORATION_SHIFT) & DECORATION_MASK;
@@ -173,9 +173,9 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
-        data[offset+(reverse ? 4 : 3)] = to_color(color_profile, line->fg_colors[i] & COL_MASK, default_fg);
-        data[offset+(reverse ? 3 : 4)] = to_color(color_profile, line->bg_colors[i] & COL_MASK, default_bg);
-        unsigned int decoration_fg = to_color(color_profile, line->decoration_fg[i] & COL_MASK, data[offset+3]);
+        data[offset+(reverse ? 4 : 3)] = to_color(color_profile, line->cells[i].fg & COL_MASK, default_fg);
+        data[offset+(reverse ? 3 : 4)] = to_color(color_profile, line->cells[i].bg & COL_MASK, default_bg);
+        unsigned int decoration_fg = to_color(color_profile, line->cells[i].decoration_fg & COL_MASK, data[offset+3]);
         data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
         previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }
