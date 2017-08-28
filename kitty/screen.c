@@ -51,12 +51,13 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
+        self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->change_tracker = alloc_change_tracker(lines, columns);
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->main_tabstops == NULL || self->historybuf == NULL) {
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->color_profile == NULL) {
             Py_CLEAR(self); return NULL;
         }
         self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
@@ -170,6 +171,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->change_tracker);
     Py_CLEAR(self->historybuf);
+    Py_CLEAR(self->color_profile);
     PyMem_Free(self->main_tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
@@ -1169,28 +1171,26 @@ change_scrollback_size(Screen *self, PyObject *args) {
 static PyObject*
 screen_update_cell_data(Screen *self, PyObject *args) {
     SpriteMap *spm;
-    ColorProfile *color_profile;
     PyObject *dp;
     unsigned int *data;
     unsigned long default_bg, default_fg;
     int force_screen_refresh;
-    if (!PyArg_ParseTuple(args, "O!O!O!kkp", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!kkp", &SpriteMap_Type, &spm, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
     unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
 
-    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
+    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, self->color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
     return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
 static PyObject*
 set_scroll_cell_data(Screen *self, PyObject *args) {
     SpriteMap *spm;
-    ColorProfile *color_profile;
     PyObject *dp, *sp;
     unsigned int *data, *src, scrolled_by;
     unsigned long default_bg, default_fg;
-    if (!PyArg_ParseTuple(args, "O!O!O!kkIO", &SpriteMap_Type, &spm, &ColorProfile_Type, &color_profile, &PyLong_Type, &sp, &default_fg, &default_bg, &scrolled_by, &dp)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!kkIO", &SpriteMap_Type, &spm, &PyLong_Type, &sp, &default_fg, &default_bg, &scrolled_by, &dp)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     src = PyLong_AsVoidPtr(sp);
 
@@ -1199,7 +1199,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, color_profile, default_bg, default_fg, data)) return NULL;
+        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, self->color_profile, default_bg, default_fg, data)) return NULL;
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer
@@ -1345,6 +1345,7 @@ static PyGetSetDef getsetters[] = {
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
+    {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
     {"historybuf", T_OBJECT_EX, offsetof(Screen, historybuf), READONLY, "historybuf"},
     {"lines", T_UINT, offsetof(Screen, lines), READONLY, "lines"},

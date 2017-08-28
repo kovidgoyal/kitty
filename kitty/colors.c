@@ -68,6 +68,11 @@ dealloc(ColorProfile* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+ColorProfile*
+alloc_color_profile() {
+    return (ColorProfile*)new(&ColorProfile_Type, NULL, NULL);
+}
+
 
 static PyObject*
 update_ansi_color_table(ColorProfile *self, PyObject *val) {

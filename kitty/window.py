@@ -170,13 +170,14 @@ class Window:
         glfw_post_empty_event()
 
     def set_color_table_color(self, code, value):
+        cp = self.char_grid.screen.color_profile
         if code == 4:
             for c, val in parse_color_set(value):
-                self.char_grid.color_profile.set_color(c, val)
+                cp.set_color(c, val)
             self.refresh()
         elif code == 104:
             if not value.strip():
-                self.char_grid.color_profile.reset_color_table()
+                cp.reset_color_table()
             else:
                 for c in value.split(';'):
                     try:
@@ -184,7 +185,7 @@ class Window:
                     except Exception:
                         continue
                     if 0 <= c <= 255:
-                        self.char_grid.color_profile.reset_color(c)
+                        cp.reset_color(c)
             self.refresh()
 
     def request_capabilities(self, q):

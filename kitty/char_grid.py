@@ -15,9 +15,9 @@ from .constants import (
 )
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
-    GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, ColorProfile, glDisable,
-    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f,
-    glUniform2i, glUniform2ui, glUniform4f
+    GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, glDisable, glDrawArrays,
+    glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2i,
+    glUniform2ui, glUniform4f
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -144,9 +144,8 @@ class CharGrid:
         self.render_buf_is_dirty = True
         self.render_data = None
         self.scrolled_by = 0
-        self.color_profile = ColorProfile()
-        self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen = screen
+        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.opts = opts
         self.default_bg = color_as_int(opts.background)
         self.default_fg = color_as_int(opts.foreground)
@@ -221,11 +220,11 @@ class CharGrid:
             fg = fg >> 8 if fg & 2 else self.default_fg
             bg = bg >> 8 if bg & 2 else self.default_bg
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
-                sprites.backend, self.color_profile, addressof(self.main_sprite_map), fg, bg, force_full_refresh)
+                sprites.backend, addressof(self.main_sprite_map), fg, bg, force_full_refresh)
             if self.scrolled_by:
                 self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
-                    sprites.backend, self.color_profile, addressof(self.main_sprite_map), fg, bg,
+                    sprites.backend, addressof(self.main_sprite_map), fg, bg,
                     self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map

@@ -16,7 +16,7 @@ from .constants import (
     shell_path, viewport_size
 )
 from .fast_data_types import (
-    DATA_CELL_SIZE, DECAWM, ColorProfile, Screen, glfw_post_empty_event
+    DATA_CELL_SIZE, DECAWM, Screen, glfw_post_empty_event
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -210,11 +210,10 @@ class TabManager:
         self.vao_id = None
         self.tabbar_lock = Lock()
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
+        self.color_table = build_ansi_color_table(self.opts)
         self.cell_ranges = []
         self.active_tab_idx = startup_session.active_tab_idx
         self.tabbar_dirty = True
-        self.color_profile = ColorProfile()
-        self.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.default_fg = color_as_int(opts.inactive_tab_foreground)
         self.default_bg = color_as_int(opts.inactive_tab_background)
         self.tab_bar_blank_rects = ()
@@ -239,6 +238,7 @@ class TabManager:
         ncells = viewport_size.width // cell_size.width
         s = Screen(None, 1, ncells)
         s.reset_mode(DECAWM)
+        s.color_profile.update_ansi_color_table(self.color_table)
         self.sprite_map_type = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))
         with self.tabbar_lock:
             self.sprite_map = self.sprite_map_type()
@@ -339,7 +339,7 @@ class TabManager:
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         s.update_cell_data(
-            sprites.backend, self.color_profile, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
+            sprites.backend, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
         sprites.render_dirty_cells()
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()

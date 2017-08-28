@@ -265,6 +265,7 @@ typedef struct {
     bool *tabstops, *main_tabstops, *alt_tabstops;
     ChangeTracker *change_tracker;
     ScreenModes modes;
+    ColorProfile *color_profile;
 
     uint32_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
@@ -323,6 +324,7 @@ Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
 ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
+ColorProfile* alloc_color_profile();
 int init_LineBuf(PyObject *);
 int init_HistoryBuf(PyObject *);
 int init_Cursor(PyObject *);
