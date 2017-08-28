@@ -43,7 +43,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             self->line->xnum = xnum;
             for(index_type y = 0; y < self->ynum; y++) {
                 self->line->chars = start_of(self, y) + 1;
-                for (index_type i = 0; i < self->xnum; i++) self->line->chars[i] = (1 << ATTRS_SHIFT) | 32;
+                for (index_type i = 0; i < self->xnum; i++) self->line->chars[i] = (1 << ATTRS_SHIFT) | BLANK_CHAR;
             }
         }
     }

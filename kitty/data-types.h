@@ -38,6 +38,7 @@ typedef unsigned int index_type;
 
 #define DATA_CELL_SIZE 6
 
+#define BLANK_CHAR 32
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24
 #define ATTRS_MASK_WITHOUT_WIDTH 0xFC000000
@@ -312,7 +313,7 @@ PyTypeObject ChildMonitor_Type;
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
-    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | 32;
+    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
 
 
 // Global functions 

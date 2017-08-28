@@ -37,7 +37,7 @@ void linebuf_clear(LineBuf *self, char_type ch) {
 static PyObject*
 clear(LineBuf *self) {
 #define clear_doc "Clear all lines in this LineBuf"
-    linebuf_clear(self, ' ');
+    linebuf_clear(self, BLANK_CHAR);
     Py_RETURN_NONE;
 }
 
@@ -75,7 +75,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             self->line->xnum = xnum;
             for(index_type i = 0; i < ynum; i++) {
                 self->line_map[i] = i;
-                clear_chars_to(self, i, ' ');
+                clear_chars_to(self, i, BLANK_CHAR);
             }
         }
     }
@@ -157,7 +157,7 @@ allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->cells = PyMem_Calloc(line->xnum, sizeof(Cell));
         if (line->cells == NULL) { PyErr_NoMemory(); return false; }
-        clear_chars_in_line(line->cells, line->xnum, ' ');
+        clear_chars_in_line(line->cells, line->xnum, BLANK_CHAR);
     } else {
         line->cells = PyMem_Malloc(line->xnum * sizeof(Cell));
         if (line->cells == NULL) { PyErr_NoMemory(); return false; }
@@ -453,7 +453,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
     for (first = self->ynum - 1; true; first--) {
         Cell *cells = lineptr(self, first);
         for(i = 0; i < self->xnum; i++) {
-            if ((cells[i].ch & CHAR_MASK) != 32) { is_empty = false; break; }
+            if ((cells[i].ch & CHAR_MASK) != BLANK_CHAR) { is_empty = false; break; }
         }
         if (!is_empty || !first) break;
     }

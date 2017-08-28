@@ -26,7 +26,7 @@ unsigned int
 line_length(Line *self) {
     index_type last = self->xnum - 1;
     for (index_type i = 0; i < self->xnum; i++) {
-        if ((self->cells[last - i].ch & CHAR_MASK) != ' ') return self->xnum - i;
+        if ((self->cells[last - i].ch & CHAR_MASK) != BLANK_CHAR) return self->xnum - i;
     }
     return 0;
 }
@@ -138,7 +138,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     int r;
     if (!self->continued) {  // Trim trailing spaces
         for(r = self->xnum - 1; r >= 0; r--) {
-            if ((self->cells[r].ch & CHAR_MASK) != 32) break;
+            if ((self->cells[r].ch & CHAR_MASK) != BLANK_CHAR) break;
         }
         limit = r + 1;
     }
@@ -312,7 +312,7 @@ static PyObject*
 clear_text(Line* self, PyObject *args) {
 #define clear_text_doc "clear_text(at, num, ch=' ') -> Clear characters in the specified range, preserving formatting."
     unsigned int at, num;
-    int ch = 32;
+    int ch = BLANK_CHAR;
     if (!PyArg_ParseTuple(args, "II|C", &at, &num, &ch)) return NULL;
     line_clear_text(self, at, num, ch);
     Py_RETURN_NONE;
@@ -327,7 +327,7 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
     
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
-            self->cells[i].ch = 32 | attrs;
+            self->cells[i].ch = BLANK_CHAR | attrs;
             self->cells[i].cc = 0;
         } else {
             char_type w = ((self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
@@ -355,7 +355,7 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
     }
     // Check if a wide character was split at the right edge
     char_type w = (self->cells[self->xnum - 1].ch >> ATTRS_SHIFT) & WIDTH_MASK;
-    if (w != 1) self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | 32;
+    if (w != 1) self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
 }
 
 static PyObject*

@@ -70,7 +70,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 void 
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
-    linebuf_clear(self->linebuf, ' ');
+    linebuf_clear(self->linebuf, BLANK_CHAR);
     self->modes = empty_modes;
     self->default_fg = 0; self->default_bg = 0;
     self->highlight_fg = 0; self->highlight_bg = 0;
@@ -369,7 +369,7 @@ void
 screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
     if (to_alt) {
-        linebuf_clear(self->alt_linebuf, ' ');
+        linebuf_clear(self->alt_linebuf, BLANK_CHAR);
         screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
@@ -777,7 +777,7 @@ void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
     if (n > 0) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (private) {
-            line_clear_text(self->linebuf->line, s, n, ' ');
+            line_clear_text(self->linebuf->line, s, n, BLANK_CHAR);
         } else {
             line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
         }
@@ -813,7 +813,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         for (unsigned int i=a; i < b; i++) {
             linebuf_init_line(self->linebuf, i);
             if (private) {
-                line_clear_text(self->linebuf->line, 0, self->columns, ' ');
+                line_clear_text(self->linebuf->line, 0, self->columns, BLANK_CHAR);
             } else {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
