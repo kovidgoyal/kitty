@@ -503,7 +503,7 @@ copy_char(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
     }
-    copy_line(self, to);
+    COPY_CELL(self, src, to, dest);
     Py_RETURN_NONE;
 }
 

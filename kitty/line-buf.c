@@ -199,6 +199,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
 static inline void
 clear_line_(Line *l, index_type xnum) {
     memset(l->cells, 0, xnum * sizeof(Cell));
+    clear_chars_in_line(l->cells, xnum, BLANK_CHAR);
 }
 
 void linebuf_clear_line(LineBuf *self, index_type y) {
