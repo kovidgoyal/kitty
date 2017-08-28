@@ -217,11 +217,14 @@ class Boss(Thread):
         self.timers.add(0.02, self.apply_pending_resize, w, h)
 
     def apply_pending_resize(self, w, h):
-        viewport_size.width, viewport_size.height = w, h
-        self.tab_manager.resize()
-        self.resize_gl_viewport = True
-        self.pending_resize = False
-        glfw_post_empty_event()
+        if w > 100 and h > 100:
+            viewport_size.width, viewport_size.height = w, h
+            self.tab_manager.resize()
+            self.resize_gl_viewport = True
+            self.pending_resize = False
+            glfw_post_empty_event()
+        else:
+            safe_print('Ignoring resize request for sizes under 100x100')
 
     def increase_font_size(self):
         self.change_font_size(
