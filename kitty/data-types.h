@@ -72,11 +72,7 @@ typedef unsigned int index_type;
     c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
 #define COPY_CELL(src, s, dest, d) \
-        (dest)->chars[d] = (src)->chars[s]; \
-        (dest)->fg_colors[d] = (src)->fg_colors[s]; \
-        (dest)->bg_colors[d] = (src)->bg_colors[s]; \
-        (dest)->decoration_fg[d] = (src)->decoration_fg[s]; \
-        (dest)->combining_chars[d] = (src)->combining_chars[s];
+    (dest)->cells[d] = (src)->cells[s];
 
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
@@ -316,7 +312,7 @@ PyTypeObject ChildMonitor_Type;
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
-    if ((((line)->chars[(at)] >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->chars[(at)] = (1 << ATTRS_SHIFT) | 32;
+    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | 32;
 
 
 // Global functions 

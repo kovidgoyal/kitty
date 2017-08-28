@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "lineops.h"
 
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
@@ -16,19 +17,16 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Line* self) {
     if (self->needs_free) {
-        PyMem_Free(self->chars);
-        PyMem_Free(self->fg_colors);
-        PyMem_Free(self->bg_colors);
-        PyMem_Free(self->decoration_fg);
-        PyMem_Free(self->combining_chars);
+        PyMem_Free(self->cells);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 unsigned int
 line_length(Line *self) {
-    for (int i = self->xnum - 1; i >= 0; i++) {
-        if ((self->chars[i] & CHAR_MASK) != 32) return i + 1;
+    index_type last = self->xnum - 1;
+    for (index_type i = 0; i < self->xnum; i++) {
+        if ((self->cells[last - i].ch & CHAR_MASK) != ' ') return self->xnum - i;
     }
     return 0;
 }
@@ -56,13 +54,8 @@ line_text_at(char_type ch, combining_type cc) {
 static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
-    char_type ch;
-    combining_type cc;
-
     if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    ch = self->chars[xval] & CHAR_MASK;
-    cc = self->combining_chars[xval];
-    return line_text_at(ch, cc);
+    return line_text_at(self->cells[xval].ch & CHAR_MASK, self->cells[xval].cc);
 }
 
 static PyObject *
@@ -74,10 +67,10 @@ as_unicode(Line* self) {
         return NULL;
     }
     for(index_type i = 0; i < self->xnum; i++) {
-        char_type attrs = self->chars[i] >> ATTRS_SHIFT;
+        char_type attrs = self->cells[i].ch >> ATTRS_SHIFT;
         if ((attrs & WIDTH_MASK) < 1) continue;
-        buf[n++] = self->chars[i] & CHAR_MASK;
-        char_type cc = self->combining_chars[i];
+        buf[n++] = self->cells[i].ch & CHAR_MASK;
+        char_type cc = self->cells[i].cc;
         Py_UCS4 cc1 = cc & CC_MASK, cc2;
         if (cc1) {
             buf[n++] = cc1;
@@ -96,9 +89,9 @@ as_base_text(Line* self) {
     PyObject *ans = PyUnicode_New(self->xnum, 1114111);
     if (ans == NULL) return PyErr_NoMemory();
     for(index_type i = 0; i < self->xnum; i++) {
-        char_type attrs = self->chars[i] >> ATTRS_SHIFT;
+        char_type attrs = self->cells[i].ch >> ATTRS_SHIFT;
         if ((attrs & WIDTH_MASK) < 1) continue;
-        PyUnicode_WRITE(PyUnicode_4BYTE_KIND, PyUnicode_DATA(ans), i, self->chars[i] & CHAR_MASK);
+        PyUnicode_WRITE(PyUnicode_4BYTE_KIND, PyUnicode_DATA(ans), i, self->cells[i].ch & CHAR_MASK);
     }
     return ans;
 }
@@ -145,7 +138,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     int r;
     if (!self->continued) {  // Trim trailing spaces
         for(r = self->xnum - 1; r >= 0; r--) {
-            if ((self->chars[r] & CHAR_MASK) != 32) break;
+            if ((self->cells[r].ch & CHAR_MASK) != 32) break;
         }
         limit = r + 1;
     }
@@ -154,7 +147,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 
     WRITE_SGR(0);
     for (index_type pos=0; pos < limit; pos++) {
-        char_type attrs = self->chars[pos] >> ATTRS_SHIFT, ch = self->chars[pos] & CHAR_MASK;
+        char_type attrs = self->cells[pos].ch >> ATTRS_SHIFT, ch = self->cells[pos].ch & CHAR_MASK;
         if (ch == 0 || (attrs & WIDTH_MASK) < 1) continue;
         CHECK_BOOL(bold, BOLD_SHIFT, 1, 22);
         CHECK_BOOL(italic, ITALIC_SHIFT, 3, 23);
@@ -171,11 +164,11 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
                     WRITE_SGR(0); break;
             }
         }
-        CHECK_COLOR(fg, self->fg_colors[pos], 38);
-        CHECK_COLOR(bg, self->bg_colors[pos], 48);
-        CHECK_COLOR(decoration_fg, self->decoration_fg[pos], DECORATION_FG_CODE);
+        CHECK_COLOR(fg, self->cells[pos].fg, 38);
+        CHECK_COLOR(bg, self->cells[pos].bg, 48);
+        CHECK_COLOR(decoration_fg, self->cells[pos].decoration_fg, DECORATION_FG_CODE);
         WRITE_CH(ch);
-        char_type cc = self->combining_chars[pos];
+        char_type cc = self->cells[pos].cc;
         Py_UCS4 cc1 = cc & CC_MASK;
         if (cc1) {
             WRITE_CH(cc1);
@@ -222,14 +215,15 @@ width(Line *self, PyObject *val) {
 #define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
     if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    char_type attrs = self->chars[x] >> ATTRS_SHIFT;
+    char_type attrs = self->cells[x].ch >> ATTRS_SHIFT;
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
-void line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
-    combining_type c = self->combining_chars[x];
-    if (c & CC_MASK) self->combining_chars[x] = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
-    else self->combining_chars[x] = ch & CC_MASK;
+void 
+line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
+    combining_type c = self->cells[x].cc;
+    if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
+    else self->cells[x].cc = ch & CC_MASK;
 }
 
 static PyObject*
@@ -274,11 +268,11 @@ set_text(Line* self, PyObject *args) {
     color_type dfg = cursor->decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
-        self->chars[i] = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
-        self->fg_colors[i] = fg;
-        self->bg_colors[i] = bg;
-        self->decoration_fg[i] = dfg;
-        self->combining_chars[i] = 0;
+        self->cells[i].ch = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
+        self->cells[i].fg = fg;
+        self->cells[i].bg = bg;
+        self->cells[i].decoration_fg = dfg;
+        self->cells[i].cc = 0;
     }
 
     Py_RETURN_NONE;
@@ -297,10 +291,10 @@ cursor_from(Line* self, PyObject *args) {
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->x = x; ans->y = y;
-    char_type attrs = self->chars[x] >> ATTRS_SHIFT;
+    char_type attrs = self->cells[x].ch >> ATTRS_SHIFT;
     ATTRS_TO_CURSOR(attrs, ans);
-    ans->fg = self->fg_colors[x]; ans->bg = self->bg_colors[x];
-    ans->decoration_fg = self->decoration_fg[x] & COL_MASK;
+    ans->fg = self->cells[x].fg; ans->bg = self->cells[x].bg;
+    ans->decoration_fg = self->cells[x].decoration_fg & COL_MASK;
 
     return (PyObject*)ans;
 }
@@ -309,9 +303,9 @@ void
 line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
     const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
-        self->chars[i] = (self->chars[i] & ATTRS_MASK_WITHOUT_WIDTH) | repl;
+        self->cells[i].ch = (self->cells[i].ch  & ATTRS_MASK_WITHOUT_WIDTH) | repl;
+        self->cells[i].cc = 0;
     }
-    memset(self->combining_chars + at, 0, MIN(num, self->xnum - at) * sizeof(combining_type));
 }
 
 static PyObject*
@@ -333,14 +327,14 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
     
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
-            self->chars[i] = 32 | attrs;
-            self->combining_chars[i] = 0;
+            self->cells[i].ch = 32 | attrs;
+            self->cells[i].cc = 0;
         } else {
-            char_type w = ((self->chars[i] >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
-            self->chars[i] = (self->chars[i] & CHAR_MASK) | attrs | w;
+            char_type w = ((self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
+            self->cells[i].ch = (self->cells[i].ch & CHAR_MASK) | attrs | w;
         }
-        self->fg_colors[i] = fg; self->bg_colors[i] = bg;
-        self->decoration_fg[i] = dfg;
+        self->cells[i].fg = fg; self->cells[i].bg = bg;
+        self->cells[i].decoration_fg = dfg;
     }
 }
 
@@ -360,8 +354,8 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
         COPY_SELF_CELL(i - num, i)
     }
     // Check if a wide character was split at the right edge
-    char_type w = (self->chars[self->xnum - 1] >> ATTRS_SHIFT) & 3;
-    if (w != 1) self->chars[self->xnum - 1] = (1 << ATTRS_SHIFT) | 32;
+    char_type w = (self->cells[self->xnum - 1].ch >> ATTRS_SHIFT) & WIDTH_MASK;
+    if (w != 1) self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | 32;
 }
 
 static PyObject*
@@ -396,15 +390,15 @@ void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor) {
     char_type attrs;
     if (cursor == NULL) {
-        attrs = (((self->chars[at] >> ATTRS_SHIFT) & ~3) | (width & 3)) << ATTRS_SHIFT;
+        attrs = (((self->cells[at].ch >> ATTRS_SHIFT) & ~WIDTH_MASK) | (width & WIDTH_MASK)) << ATTRS_SHIFT;
     } else {
-        attrs = CURSOR_TO_ATTRS(cursor, width & 3);
-        self->fg_colors[at] = (cursor->fg & COL_MASK);
-        self->bg_colors[at] = (cursor->bg & COL_MASK);
-        self->decoration_fg[at] = cursor->decoration_fg & COL_MASK;
+        attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
+        self->cells[at].fg = (cursor->fg & COL_MASK);
+        self->cells[at].bg = (cursor->bg & COL_MASK);
+        self->cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
     }
-    self->chars[at] = (ch & CHAR_MASK) | attrs;
-    self->combining_chars[at] = 0;
+    self->cells[at].ch = (ch & CHAR_MASK) | attrs;
+    self->cells[at].cc = 0;
 }
 
 static PyObject*
@@ -427,25 +421,19 @@ static PyObject*
 set_attribute(Line *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
     unsigned int shift, val;
-    char_type mask;
     if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
     if (shift < DECORATION_SHIFT || shift > STRIKE_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
-    SET_ATTRIBUTE(self->chars, shift, val);
+    set_attribute_on_line(self->cells, shift, val, self->xnum);
     Py_RETURN_NONE;
 }
 
 static Py_ssize_t
 __len__(PyObject *self) {
-    return (Py_ssize_t)(((Line*)self)->ynum);
+    return (Py_ssize_t)(((Line*)self)->xnum);
 }
 
 static int __eq__(Line *a, Line *b) {
-    return a->xnum == b->xnum && \
-                    memcmp(a->chars, b->chars, sizeof(char_type) * a->xnum) == 0 && \
-                    memcmp(a->fg_colors, b->fg_colors, sizeof(color_type) * a->xnum) == 0 && \
-                    memcmp(a->bg_colors, b->bg_colors, sizeof(color_type) * a->xnum) == 0 && \
-                    memcmp(a->decoration_fg, b->decoration_fg, sizeof(color_type) * a->xnum) == 0 && \
-                    memcmp(a->combining_chars, b->combining_chars, sizeof(combining_type) * a->xnum) == 0;
+    return a->xnum == b->xnum && memcmp(a->cells, b->cells, sizeof(Cell) * a->xnum) == 0;
 }
 
 // Boilerplate {{{
@@ -503,7 +491,8 @@ Line *alloc_line() {
 }
 
 RICHCMP(Line)
-// }}
+INIT_TYPE(Line)
+// }}}
  
 static PyObject*
 copy_char(Line* self, PyObject *args) {
@@ -514,12 +503,7 @@ copy_char(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
     }
-    to->chars[dest] = self->chars[src];
-    to->fg_colors[dest] = self->fg_colors[src];
-    to->bg_colors[dest] = self->bg_colors[src];
-    to->decoration_fg[dest] = self->decoration_fg[src];
-    to->combining_chars[dest] = self->combining_chars[src];
+    copy_line(self, to);
     Py_RETURN_NONE;
 }
 
-INIT_TYPE(Line)
