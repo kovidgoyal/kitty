@@ -6,16 +6,27 @@
  */
 
 #include "data-types.h"
+#include "lineops.h"
 #include <structmember.h>
+
+static inline Cell*
+lineptr(LineBuf *linebuf, index_type y) {
+    return linebuf->buf + y * linebuf->xnum;
+}
+
+static inline void
+clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
+    char_type c = (1 << ATTRS_SHIFT) | ch;
+    for (index_type i = 0; i < xnum; i++) cells[i].ch = c;
+}
 
 static inline void
 clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
-    char_type *chars = linebuf->chars + linebuf->xnum * y;
-    for (index_type i = 0; i < linebuf->xnum; i++) chars[i] = (1 << ATTRS_SHIFT) | ch;
+    clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
 }
 
 void linebuf_clear(LineBuf *self, char_type ch) {
-    memset(self->buf, 0, self->block_size * CELL_SIZE);
+    memset(self->buf, 0, self->xnum * self->ynum * sizeof(Cell));
     memset(self->continued_map, 0, self->ynum * sizeof(bool));
     for (index_type i = 0; i < self->ynum; i++) {
         clear_chars_to(self, i, ch);
@@ -51,8 +62,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->block_size = xnum * ynum;
-        self->buf = PyMem_Calloc(xnum * ynum, CELL_SIZE);
+        self->buf = PyMem_Calloc(xnum * ynum, sizeof(Cell));
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
         self->continued_map = PyMem_Calloc(ynum, sizeof(bool));
@@ -62,11 +72,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_CLEAR(self->line);
             Py_CLEAR(self);
         } else {
-            self->chars = (char_type*)self->buf;
-            self->fg_colors = (color_type*)(self->chars + self->block_size);
-            self->bg_colors = (color_type*)(self->fg_colors + self->block_size);
-            self->decoration_fg = (color_type*)(self->bg_colors + self->block_size);
-            self->combining_chars = (combining_type*)(self->decoration_fg + self->block_size);
             self->line->xnum = xnum;
             for(index_type i = 0; i < ynum; i++) {
                 self->line_map[i] = i;
@@ -88,18 +93,17 @@ dealloc(LineBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-#define INIT_LINE(lb, l, ynum) \
-    (l)->chars           = (lb)->chars + (ynum) * (lb)->xnum; \
-    (l)->fg_colors          = (lb)->fg_colors + (ynum) * (lb)->xnum; \
-    (l)->bg_colors          = (lb)->bg_colors + (ynum) * (lb)->xnum; \
-    (l)->decoration_fg   = (lb)->decoration_fg + (ynum) * (lb)->xnum; \
-    (l)->combining_chars = (lb)->combining_chars + (ynum) * (lb)->xnum;
+static inline void
+init_line(LineBuf *lb, Line *l, index_type ynum) {
+    l->cells = lineptr(lb, ynum);
+}
 
-void linebuf_init_line(LineBuf *self, index_type idx) {
+void 
+linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
     self->line->continued = self->continued_map[idx];
-    INIT_LINE(self, self->line, self->line_map[idx]);
+    init_line(self, self->line, self->line_map[idx]);
 }
 
 static PyObject*
@@ -115,15 +119,15 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
-unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    char_type *chars = self->chars + self->line_map[y] * self->xnum;
-    return (chars[x] >> ATTRS_SHIFT) & WIDTH_MASK;
+unsigned int 
+linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
+    return (lineptr(self, y)[x].ch >> ATTRS_SHIFT) & WIDTH_MASK;
 }
 
-void linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
-    char_type mask;
+void 
+linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
     for (index_type y = 0; y < self->ynum; y++) {
-        SET_ATTRIBUTE(self->chars + y * self->xnum, shift, val);
+        set_attribute_on_line(lineptr(self, y), shift, val, self->xnum);
     }
 }
 
@@ -148,36 +152,22 @@ set_continued(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline int
+static inline bool
 allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
-        line->chars = PyMem_Calloc(line->xnum, sizeof(char_type));
-        line->fg_colors = PyMem_Calloc(line->xnum, sizeof(color_type));
-        line->bg_colors = PyMem_Calloc(line->xnum, sizeof(color_type));
-        line->decoration_fg = PyMem_Calloc(line->xnum, sizeof(color_type));
-        line->combining_chars = PyMem_Calloc(line->xnum, sizeof(combining_type));
-        for (index_type i = 0; i < line->xnum; i++) line->chars[i] = (1 << ATTRS_SHIFT) | 32;
+        line->cells = PyMem_Calloc(line->xnum, sizeof(Cell));
+        if (line->cells == NULL) { PyErr_NoMemory(); return false; }
+        clear_chars_in_line(line->cells, line->xnum, ' ');
     } else {
-        line->chars = PyMem_Malloc(line->xnum * sizeof(char_type));
-        line->fg_colors = PyMem_Malloc(line->xnum * sizeof(color_type));
-        line->bg_colors = PyMem_Malloc(line->xnum * sizeof(color_type));
-        line->decoration_fg = PyMem_Malloc(line->xnum * sizeof(color_type));
-        line->combining_chars = PyMem_Malloc(line->xnum * sizeof(combining_type));
-    }
-    if (line->chars == NULL || line->fg_colors == NULL || line->bg_colors == NULL || line->decoration_fg == NULL || line->combining_chars == NULL) {
-        PyMem_Free(line->chars); line->chars = NULL;
-        PyMem_Free(line->fg_colors); line->fg_colors = NULL;
-        PyMem_Free(line->bg_colors); line->bg_colors = NULL;
-        PyMem_Free(line->decoration_fg); line->decoration_fg = NULL;
-        PyMem_Free(line->combining_chars); line->combining_chars = NULL;
-        PyErr_NoMemory();
-        return 0;
+        line->cells = PyMem_Malloc(line->xnum * sizeof(Cell));
+        if (line->cells == NULL) { PyErr_NoMemory(); return false; }
     }
     line->needs_free = 1;
-    return 1;
+    return true;
 }
 
-static inline PyObject* create_line_copy_inner(LineBuf* self, index_type y) {
+static inline PyObject* 
+create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
     line = alloc_line();
     if (line == NULL) return PyErr_NoMemory();
@@ -185,8 +175,8 @@ static inline PyObject* create_line_copy_inner(LineBuf* self, index_type y) {
     if (!allocate_line_storage(line, 0)) { Py_CLEAR(line); return PyErr_NoMemory(); }
     line->ynum = y;
     line->continued = self->continued_map[y];
-    INIT_LINE(self, &src, self->line_map[y]);
-    COPY_LINE(&src, line);
+    init_line(self, &src, self->line_map[y]);
+    copy_line(&src, line);
     return (PyObject*)line;
 }
 
@@ -207,15 +197,20 @@ copy_line_to(LineBuf *self, PyObject *args) {
     src.xnum = self->xnum; dest->xnum = self->xnum;
     dest->ynum = y;
     dest->continued = self->continued_map[y];
-    INIT_LINE(self, &src, self->line_map[y]);
-    COPY_LINE(&src, dest);
+    init_line(self, &src, self->line_map[y]);
+    copy_line(&src, dest);
     Py_RETURN_NONE;
+}
+
+static inline void
+clear_line_(Line *l, index_type xnum) {
+    memset(l->cells, 0, xnum * sizeof(Cell));
 }
 
 void linebuf_clear_line(LineBuf *self, index_type y) {
     Line l;
-    INIT_LINE(self, &l, self->line_map[y]);
-    CLEAR_LINE(&l, self->xnum);
+    init_line(self, &l, self->line_map[y]);
+    clear_line_(&l, self->xnum);
     self->continued_map[y] = 0;
 }
 
@@ -299,8 +294,8 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
         }
         Line l;
         for (i = y; i < y + num; i++) {
-            INIT_LINE(self, &l, self->line_map[i]);
-            CLEAR_LINE(&l, self->xnum);
+            init_line(self, &l, self->line_map[i]);
+            clear_line_(&l, self->xnum);
             self->continued_map[i] = 0;
         }
     }
@@ -334,8 +329,8 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     }
     Line l;
     for (i = ylimit - num; i < ylimit; i++) {
-        INIT_LINE(self, &l, self->line_map[i]);
-        CLEAR_LINE(&l, self->xnum);
+        init_line(self, &l, self->line_map[i]);
+        clear_line_(&l, self->xnum);
         self->continued_map[i] = 0;
     }
 }
@@ -356,7 +351,7 @@ as_ansi(LineBuf *self, PyObject *callback) {
     Line l = {.xnum=self->xnum};
     for(index_type i = 0; i < self->ynum; i++) {
         l.continued = (i < self->ynum - 1) ? self->continued_map[i+1] : self->continued_map[i];
-        INIT_LINE(self, (&l), self->line_map[i]);
+        init_line(self, (&l), self->line_map[i]);
         index_type num = line_as_ansi(&l, t, 5120);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
         PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
@@ -430,8 +425,8 @@ copy_old(LineBuf *self, PyObject *y) {
         index_type s = self->ynum - 1 - i, o = other->ynum - 1 - i;
         self->continued_map[s] = other->continued_map[o];
         s = self->line_map[s]; o = other->line_map[o];
-        INIT_LINE(self, &sl, s); INIT_LINE(other, &ol, o);
-        COPY_LINE(&ol, &sl);
+        init_line(self, &sl, s); init_line(other, &ol, o);
+        copy_line(&ol, &sl);
     }
     Py_RETURN_NONE;
 }
@@ -448,7 +443,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
         Py_BEGIN_ALLOW_THREADS;
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
-        memcpy(other->buf, self->buf, self->xnum * self->ynum * CELL_SIZE);
+        memcpy(other->buf, self->buf, self->xnum * self->ynum * sizeof(Cell));
         Py_END_ALLOW_THREADS;
         return;
     }
@@ -456,9 +451,9 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
     // Find the first line that contains some content
     Py_BEGIN_ALLOW_THREADS;
     for (first = self->ynum - 1; true; first--) {
-        char_type *chars = self->chars + self->xnum * first;
+        Cell *cells = lineptr(self, first);
         for(i = 0; i < self->xnum; i++) {
-            if ((chars[i] & CHAR_MASK) != 32) { is_empty = false; break; }
+            if ((cells[i].ch & CHAR_MASK) != 32) { is_empty = false; break; }
         }
         if (!is_empty || !first) break;
     }

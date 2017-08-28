@@ -36,8 +36,6 @@ typedef unsigned int index_type;
 #define SGR_PROTOCOL 2
 #define URXVT_PROTOCOL 3
 
-#define CELL_FIELD_COUNT 5
-#define CELL_SIZE (CELL_FIELD_COUNT * 4)
 #define DATA_CELL_SIZE 6
 
 #define CHAR_MASK 0xFFFFFF
@@ -73,12 +71,6 @@ typedef unsigned int index_type;
     c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
     c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
-#define SET_ATTRIBUTE(chars, shift, val) \
-    mask = shift == DECORATION_SHIFT ? 3 : 1; \
-    val = (val & mask) << (ATTRS_SHIFT + shift); \
-    mask = ~(mask << (ATTRS_SHIFT + shift)); \
-    for (index_type i = 0; i < self->xnum; i++)  (chars)[i] = ((chars)[i] & mask) | val;
-
 #define COPY_CELL(src, s, dest, d) \
         (dest)->chars[d] = (src)->chars[s]; \
         (dest)->fg_colors[d] = (src)->fg_colors[s]; \
@@ -87,20 +79,6 @@ typedef unsigned int index_type;
         (dest)->combining_chars[d] = (src)->combining_chars[s];
 
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
-
-#define COPY_LINE(src, dest) \
-    memcpy((dest)->chars, (src)->chars, sizeof(char_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->fg_colors, (src)->fg_colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->bg_colors, (src)->bg_colors, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->decoration_fg, (src)->decoration_fg, sizeof(color_type) * MIN((src)->xnum, (dest)->xnum)); \
-    memcpy((dest)->combining_chars, (src)->combining_chars, sizeof(combining_type) * MIN((src)->xnum, (dest)->xnum)); 
-
-#define CLEAR_LINE(l, num) \
-    for (index_type i = 0; i < (num); i++) (l)->chars[i] = (1 << ATTRS_SHIFT) | 32; \
-    memset((l)->fg_colors, 0, (num) * sizeof(color_type)); \
-    memset((l)->bg_colors, 0, (num) * sizeof(color_type)); \
-    memset((l)->decoration_fg, 0, (num) * sizeof(color_type)); \
-    memset((l)->combining_chars, 0, (num) * sizeof(combining_type));
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 
@@ -150,13 +128,15 @@ typedef unsigned int index_type;
 #endif
 
 typedef struct {
+    char_type ch;
+    color_type fg, bg, decoration_fg;
+    combining_type cc;
+} Cell;
+
+typedef struct {
     PyObject_HEAD
 
-    char_type *chars;
-    color_type *fg_colors;
-    color_type *bg_colors;
-    color_type *decoration_fg;
-    combining_type *combining_chars;
+    Cell *cells;
     index_type xnum, ynum;
     bool continued;
     bool needs_free;
@@ -167,20 +147,13 @@ PyTypeObject Line_Type;
 typedef struct {
     PyObject_HEAD
 
-    uint8_t *buf;
+    Cell *buf;
     index_type xnum, ynum, *line_map, *scratch;
-    index_type block_size;
     bool *continued_map;
     Line *line;
-
-    // Pointers into buf
-    char_type *chars;
-    color_type *fg_colors;
-    color_type *bg_colors;
-    color_type *decoration_fg;
-    combining_type *combining_chars;
 } LineBuf;
 PyTypeObject LineBuf_Type;
+
 
 typedef struct {
     PyObject_HEAD

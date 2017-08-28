@@ -12,11 +12,11 @@
 #endif
 
 #ifndef init_src_line
-#define init_src_line(src_y) INIT_LINE(src, src->line, src->line_map[src_y]);
+#define init_src_line(src_y) init_line(src, src->line, src->line_map[src_y]);
 #endif
 
 #ifndef init_dest_line
-#define init_dest_line(dest_y) INIT_LINE(dest, dest->line, dest->line_map[dest_y]);
+#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]);
 #endif
 
 #ifndef first_dest_line
@@ -41,16 +41,14 @@
 #define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? src->continued_map[src_y + 1] : false)
 #endif
 
-static inline void copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
-    memcpy(dest->chars + dest_at, src->chars + src_at, num * sizeof(char_type));
-    memcpy(dest->fg_colors + dest_at, src->fg_colors + src_at, num * sizeof(color_type));
-    memcpy(dest->bg_colors + dest_at, src->bg_colors + src_at, num * sizeof(color_type));
-    memcpy(dest->decoration_fg + dest_at, src->decoration_fg + src_at, num * sizeof(color_type));
-    memcpy(dest->combining_chars + dest_at, src->combining_chars + src_at, num * sizeof(combining_type));
+static inline void 
+copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
+    memcpy(dest->cells + dest_at, src->cells + src_at, num * sizeof(Cell));
 }
 
 
-static void rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf) {
+static void 
+rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf) {
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
     Py_BEGIN_ALLOW_THREADS;
@@ -62,7 +60,7 @@ static void rewrap_inner(BufType *src, BufType *dest, const index_type src_limit
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
             // Trim trailing white-space since there is a hard line break at the end of this line
-            while(src_x_limit && (src->line->chars[src_x_limit - 1] & CHAR_MASK) == 32) src_x_limit--;
+            while(src_x_limit && (src->line->cells[src_x_limit - 1].ch & CHAR_MASK) == 32) src_x_limit--;
             
         }
         while (src_x < src_x_limit) {
