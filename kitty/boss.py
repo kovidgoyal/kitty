@@ -48,7 +48,7 @@ class Timers(_Timers):
     def add(self, delay, timer, *args):
         # Needed because bound methods are recreated on every access
         timer = self.timer_hash.setdefault(timer, timer)
-        return _Timers.add(self, delay, timer) if args else _Timers.add(self, delay, timer, args)
+        return _Timers.add(self, delay, timer, args) if args else _Timers.add(self, delay, timer)
 
     def remove(self, timer):
         # Needed because bound methods are recreated on every access
@@ -240,7 +240,7 @@ class Boss(Thread):
         # debounce resize events
         self.pending_resize = True
         yield
-        self.timers.add(0.02, self.apply_pending_resize, (w, h))
+        self.timers.add(0.02, self.apply_pending_resize, w, h)
 
     def apply_pending_resize(self, w, h):
         if w > 100 and h > 100:

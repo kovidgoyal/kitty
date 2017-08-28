@@ -165,7 +165,7 @@ loop(ChildMonitor *self) {
         timers_call(self->timers);
         for (i = 0; i < self->count; i++) {
             if (self->children[i].screen->change_tracker->dirty) {
-                if (!timers_add_if_missing(self->timers, self->repaint_delay, self->children->update_screen, NULL)) PyErr_Print();
+                if (!timers_add_if_missing(self->timers, self->repaint_delay, self->children[i].update_screen, NULL)) PyErr_Print();
             }
         }
     }
