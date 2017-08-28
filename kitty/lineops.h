@@ -17,6 +17,17 @@ set_attribute_on_line(Cell *cells, uint32_t shift, uint32_t val, index_type xnum
 }
 
 static inline void
-copy_line(Line *src, Line *dest) {
-    memcpy(dest->cells, src->cells, sizeof(Cell) * (MIN(src->xnum, dest->xnum)));
+copy_cells(const Cell *src, Cell *dest, index_type xnum) {
+    memcpy(dest, src, sizeof(Cell) * xnum);
+}
+
+static inline void
+copy_line(const Line *src, Line *dest) {
+    copy_cells(src->cells, dest->cells, MIN(src->xnum, dest->xnum));
+}
+
+static inline void
+clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
+    char_type c = (1 << ATTRS_SHIFT) | ch;
+    for (index_type i = 0; i < xnum; i++) cells[i].ch = c;
 }

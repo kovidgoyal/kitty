@@ -15,12 +15,6 @@ lineptr(LineBuf *linebuf, index_type y) {
 }
 
 static inline void
-clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
-    char_type c = (1 << ATTRS_SHIFT) | ch;
-    for (index_type i = 0; i < xnum; i++) cells[i].ch = c;
-}
-
-static inline void
 clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
 }

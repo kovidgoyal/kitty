@@ -6,15 +6,12 @@
  */
 
 #include "data-types.h"
+#include "lineops.h"
 #include <structmember.h>
 
-#define CELL_FIELD_COUNT_H (CELL_FIELD_COUNT + 1)
-#define CELL_SIZE_H (CELL_FIELD_COUNT_H * 4)
-
-static inline uint32_t* 
-start_of(HistoryBuf *self, index_type num) {
-    // Pointer to the start of the line with index (buffer position) num
-    return self->buf + CELL_FIELD_COUNT_H * num * self->xnum;
+static inline Cell*
+lineptr(HistoryBuf *linebuf, index_type y) {
+    return linebuf->buf + y * linebuf->xnum;
 }
 
 static PyObject *
@@ -33,17 +30,17 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->buf = (uint32_t*)PyMem_Calloc(xnum * ynum, CELL_SIZE_H);
+        self->buf = PyMem_Calloc(xnum * ynum, sizeof(Cell));
+        self->continued_map = PyMem_Calloc(ynum, sizeof(bool));
         self->line = alloc_line();
-        if (self->buf == NULL || self->line == NULL) {
+        if (self->buf == NULL || self->line == NULL || self->continued_map) {
             PyErr_NoMemory();
-            PyMem_Free(self->buf); Py_CLEAR(self->line);
+            PyMem_Free(self->buf); Py_CLEAR(self->line); PyMem_Free(self->continued_map);
             Py_CLEAR(self);
         } else {
             self->line->xnum = xnum;
             for(index_type y = 0; y < self->ynum; y++) {
-                self->line->chars = start_of(self, y) + 1;
-                for (index_type i = 0; i < self->xnum; i++) self->line->chars[i] = (1 << ATTRS_SHIFT) | BLANK_CHAR;
+                clear_chars_in_line(lineptr(self, y), self->xnum, BLANK_CHAR);
             }
         }
     }
@@ -55,6 +52,7 @@ static void
 dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
     PyMem_Free(self->buf);
+    PyMem_Free(self->continued_map);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -70,13 +68,8 @@ index_of(HistoryBuf *self, index_type lnum) {
 static inline void 
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
-    uint32_t *start_ptr = start_of(self, num);
-    l->continued = (bool)(*start_ptr);
-    l->chars = (char_type*)(start_ptr + 1);
-    l->fg_colors = (color_type*)(l->chars + self->xnum);
-    l->bg_colors = (color_type*)(l->fg_colors + self->xnum);
-    l->decoration_fg = (color_type*)(l->bg_colors + self->xnum);
-    l->combining_chars = (combining_type*)(l->decoration_fg + self->xnum);
+    l->cells = lineptr(self, num);
+    l->continued = self->continued_map[num];
 }
 
 void 
@@ -84,8 +77,8 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
 }
 
-static inline 
-index_type historybuf_push(HistoryBuf *self) {
+static inline index_type 
+historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);
     if (self->count == self->ynum) self->start_of_data = (self->start_of_data + 1) % self->ynum;
@@ -99,20 +92,21 @@ historybuf_resize(HistoryBuf *self, index_type lines) {
     t.xnum=self->xnum;
     t.ynum=lines;
     if (t.ynum > 0 && t.ynum != self->ynum) {
-        t.buf = (uint32_t*)PyMem_Calloc(t.xnum * t.ynum, CELL_SIZE_H);
+        t.buf = PyMem_Calloc(t.xnum * t.ynum, sizeof(Cell));
         if (t.buf == NULL) { PyErr_NoMemory(); return false; }
+        t.continued_map = PyMem_Calloc(t.ynum, sizeof(bool));
+        if (t.continued_map == NULL) { PyMem_Free(t.buf); PyErr_NoMemory(); return false; }
         t.count = MIN(self->count, t.ynum);
-        if (t.count > 0) {
-            for (index_type s=0; s < t.count; s++) {
-                uint32_t *src = start_of(self, index_of(self, s)), *dest = start_of(&t, index_of(&t, s));
-                memcpy(dest, src, CELL_SIZE_H * t.xnum);
-            }
+        for (index_type s=0; s < t.count; s++) {
+            index_type si = index_of(self, s), ti = index_of(&t, s);
+            copy_cells(lineptr(self, si), lineptr(&t, ti), t.xnum);
+            t.continued_map[ti] = self->continued_map[si];
         }
         self->count = t.count;
         self->start_of_data = t.start_of_data;
         self->ynum = t.ynum;
-        PyMem_Free(self->buf);
-        self->buf = t.buf;
+        PyMem_Free(self->buf); PyMem_Free(self->continued_map);
+        self->buf = t.buf; self->continued_map = t.continued_map;
     }
     return true;
 }
@@ -120,8 +114,8 @@ historybuf_resize(HistoryBuf *self, index_type lines) {
 void 
 historybuf_add_line(HistoryBuf *self, const Line *line) {
     index_type idx = historybuf_push(self);
-    COPY_LINE(line, self->line);
-    *(start_of(self, idx)) = line->continued;
+    copy_line(line, self->line);
+    self->continued_map[idx] = line->continued;
 }
 
 static PyObject*
@@ -159,7 +153,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
-            l.continued = *start_of(self, index_of(self, i + 1));
+            l.continued = self->continued_map[index_of(self, i + 1)];
         } else l.continued = false;
         index_type num = line_as_ansi(&l, t, 5120);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
@@ -218,9 +212,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (bool)(*(start_of(src, map_src_index(src_y + 1)))) : false)
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? src->continued_map[map_src_index(src_y + 1)] : false)
 
-#define next_dest_line(cont) *start_of(dest, historybuf_push(dest)) = cont; dest->line->continued = cont; 
+#define next_dest_line(cont) dest->continued_map[historybuf_push(dest)] = cont; dest->line->continued = cont; 
 
 #define first_dest_line next_dest_line(false); 
 
@@ -230,7 +224,8 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         Py_BEGIN_ALLOW_THREADS;
-        memcpy(other->buf, self->buf, CELL_SIZE_H * self->xnum * self->ynum);
+        memcpy(other->buf, self->buf, sizeof(Cell) * self->xnum * self->ynum);
+        memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         other->count = self->count; other->start_of_data = self->start_of_data;
         Py_END_ALLOW_THREADS;
         return;

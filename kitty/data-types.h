@@ -155,10 +155,11 @@ PyTypeObject LineBuf_Type;
 typedef struct {
     PyObject_HEAD
 
-    uint32_t *buf;
+    Cell *buf;
     index_type xnum, ynum;
     Line *line;
     index_type start_of_data, count;
+    bool *continued_map;
 } HistoryBuf;
 PyTypeObject HistoryBuf_Type;
 
