@@ -310,7 +310,7 @@ class ShaderProgram:  # {{{
     def add_shader(self, source: str, shader_type: int) -> int:
         ' Compile a shader and return its id, or raise an exception if compilation fails '
         shader_id = glCreateShader(shader_type)
-        source = '#version {}\n{}'.format(VERSION, source)
+        source = source.replace('GLSL_VERSION', str(VERSION), 1)
         try:
             glShaderSource(shader_id, source)
             glCompileShader(shader_id)

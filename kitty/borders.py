@@ -36,6 +36,7 @@ class BordersProgram(ShaderProgram):
     def __init__(self):
         ShaderProgram.__init__(
             self, '''\
+#version GLSL_VERSION
 uniform vec3 colors[3];
 in vec3 rect;
 out vec3 color;
@@ -45,6 +46,7 @@ void main() {
     color = colors[uint(rect[2])];
 }
 ''', '''\
+#version GLSL_VERSION
 in vec3 color;
 out vec4 final_color;
 

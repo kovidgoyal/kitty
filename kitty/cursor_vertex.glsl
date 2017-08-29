@@ -1,3 +1,4 @@
+#version GLSL_VERSION
 uniform vec2 xpos;
 uniform vec2 ypos;
 

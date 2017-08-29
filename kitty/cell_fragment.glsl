@@ -1,3 +1,4 @@
+#version GLSL_VERSION
 uniform sampler2DArray sprites;
 in vec3 sprite_pos;
 in vec3 underline_pos;
