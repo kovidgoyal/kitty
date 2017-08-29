@@ -9,6 +9,7 @@
 #include "glfw.h"
 #include "gl.h"
 #include "modes.h"
+#include <stddef.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -124,6 +125,11 @@ PyInit_fast_data_types(void) {
         if (!init_freetype_library(m)) return NULL;
         if (!init_fontconfig_library(m)) return NULL;
 #endif
+
+#define OOF(n) #n, offsetof(Cell, n)
+        if (PyModule_AddObject(m, "CELL", Py_BuildValue("{sI sI sI sI sI sI}",
+                    OOF(ch), OOF(fg), OOF(bg), OOF(decoration_fg), OOF(cc), "size", sizeof(Cell))) != 0) return NULL;
+#undef OOF
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
