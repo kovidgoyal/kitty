@@ -11,7 +11,7 @@ from .constants import GLfloat, GLint, GLuint, viewport_size
 from .fast_data_types import (
     GL_STATIC_DRAW, GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
 )
-from .shaders import ShaderProgram
+from .shaders import ShaderProgram, load_shaders
 from .utils import pt_to_px
 
 
@@ -34,26 +34,7 @@ def as_rect(left, top, right, bottom, color=0):
 class BordersProgram(ShaderProgram):
 
     def __init__(self):
-        ShaderProgram.__init__(
-            self, '''\
-#version GLSL_VERSION
-uniform vec3 colors[3];
-in vec3 rect;
-out vec3 color;
-
-void main() {
-    gl_Position = vec4(rect[0], rect[1], 0, 1);
-    color = colors[uint(rect[2])];
-}
-''', '''\
-#version GLSL_VERSION
-in vec3 color;
-out vec4 final_color;
-
-void main() {
-    final_color = vec4(color, 1);
-}
-        ''')
+        ShaderProgram.__init__(self, *load_shaders('border'))
         with self.array_object_creator() as add_attribute:
             self.vao_id = add_attribute.vao_id
             add_attribute('rect')
