@@ -1208,16 +1208,15 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
 
 static PyObject*
 apply_selection(Screen *self, PyObject *args) {
-    unsigned int fg, bg, startx, endx, starty, endy;
+    unsigned int size, startx, endx, starty, endy, i, end;
     PyObject *l;
-    if (!PyArg_ParseTuple(args, "O!IIIIII", &PyLong_Type, &l, &startx, &starty, &endx, &endy, &fg, &bg)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!IIIII", &PyLong_Type, &l, &startx, &starty, &endx, &endy, &size)) return NULL;
     if (startx >= self->columns || starty >= self->lines || endx >= self->columns || endy >= self->lines) { Py_RETURN_NONE; }
-    unsigned int *data = PyLong_AsVoidPtr(l), offset;
-    for(unsigned int i = starty * self->columns + startx; i <= endy * self->columns + endx; i++) {
-        offset = DATA_CELL_SIZE * i;
-        data[offset + 3] = fg;
-        data[offset + 4] = bg;
-    }
+    float *data = PyLong_AsVoidPtr(l);
+    memset(data, 0, size * sizeof(float));
+    end = endy * self->columns + endx;
+    i = starty * self->columns + startx;
+    if (i != end) { for(; i <= end; i++) data[i] = 1; }
     Py_RETURN_NONE;
 }
  

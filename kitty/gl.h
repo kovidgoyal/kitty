@@ -85,6 +85,16 @@ Uniform2ui(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+Uniform4ui(PyObject UNUSED *self, PyObject *args) {
+    int location;
+    unsigned int a, b, c, d;
+    if (!PyArg_ParseTuple(args, "iIIII", &location, &a, &b, &c, &d)) return NULL;
+    glUniform4ui(location, a, b, c, d);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 Uniform1uiv(PyObject UNUSED *self, PyObject *args) {
     int location;
     unsigned int count;
@@ -784,6 +794,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(GetProgramiv, METH_VARARGS) \
     METH(GetShaderiv, METH_VARARGS) \
     METH(Uniform2ui, METH_VARARGS) \
+    METH(Uniform4ui, METH_VARARGS) \
     METH(Uniform1uiv, METH_VARARGS) \
     METH(Uniform2i, METH_VARARGS) \
     METH(Uniform1i, METH_VARARGS) \

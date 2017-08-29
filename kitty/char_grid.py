@@ -11,13 +11,13 @@ from threading import Lock
 
 from .config import build_ansi_color_table, defaults
 from .constants import (
-    GLuint, ScreenGeometry, cell_size, get_boss, viewport_size
+    GLfloat, GLuint, ScreenGeometry, cell_size, get_boss, viewport_size
 )
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
-    GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, glDisable, glDrawArrays,
-    glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2i,
-    glUniform2ui, glUniform4f, glUniform1uiv
+    GL_FLOAT, GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, glDisable,
+    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform1uiv,
+    glUniform2f, glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -36,11 +36,13 @@ class DynamicColor(Enum):
 class CellProgram(ShaderProgram):
 
     def create_sprite_map(self):
-        stride = DATA_CELL_SIZE * sizeof(GLuint)
-        size = DATA_CELL_SIZE // 2
         with self.array_object_creator() as add_attribute:
+            stride = DATA_CELL_SIZE * sizeof(GLuint)
+            size = DATA_CELL_SIZE // 2
             add_attribute('sprite_coords', size=size, dtype=GL_UNSIGNED_INT, stride=stride, divisor=1)
             add_attribute('colors', size=size, dtype=GL_UNSIGNED_INT, stride=stride, offset=stride // 2, divisor=1)
+            add_attribute.newbuf()
+            add_attribute('is_selected', size=1, dtype=GL_FLOAT, stride=sizeof(GLfloat), divisor=1)
             return add_attribute.vao_id
 
 
@@ -124,7 +126,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False):
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-    glUniform2ui(ul('default_colors'), color_profile.default_fg, color_profile.default_bg)
+    glUniform4ui(ul('default_colors'), color_profile.default_fg, color_profile.default_bg, color_profile.highlight_fg, color_profile.highlight_bg)
     glUniform1uiv(ul('color_table'), 256, color_profile.color_table_address())
     glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
@@ -142,7 +144,7 @@ class CharGrid:
         self.buffer_lock = Lock()
         self.vao_id = None
         self.current_selection = Selection()
-        self.last_rendered_selection = self.current_selection.limits(0, screen.lines, screen.columns)
+        self.last_rendered_selection = None
         self.render_buf_is_dirty = True
         self.render_data = None
         self.scrolled_by = 0
@@ -156,7 +158,7 @@ class CharGrid:
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
-        self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
+        self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
         def escape(chars):
             return ''.join(frozenset(chars)).replace('\\', r'\\').replace(']', r'\]').replace('-', r'\-')
@@ -177,12 +179,12 @@ class CharGrid:
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)
-        self.sprite_map_type = (GLuint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
-        self.main_sprite_map = self.sprite_map_type()
-        self.scroll_sprite_map = self.sprite_map_type()
+        rt = (GLuint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
+        self.main_sprite_map = rt()
+        self.scroll_sprite_map = rt()
         with self.buffer_lock:
-            self.render_buf = self.sprite_map_type()
-            self.selection_buf = self.sprite_map_type()
+            self.render_buf = rt()
+            self.selection_buf = (GLfloat * (self.screen_geometry.ynum * self.screen_geometry.xnum))()
             self.render_buf_is_dirty = True
             self.current_selection.clear()
 
@@ -360,19 +362,15 @@ class CharGrid:
                 return
             if self.vao_id is None:
                 self.vao_id = cell_program.create_sprite_map()
-            buf = self.render_buf
             start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
-            if start != end:
-                buf = self.selection_buf
-                if self.render_buf_is_dirty or sel != self.last_rendered_selection:
-                    memmove(buf, self.render_buf, sizeof(type(buf)))
-                    fg = self.screen.color_profile.highlight_fg
-                    bg = self.screen.color_profile.highlight_bg
-                    self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
-            if self.render_buf_is_dirty or self.last_rendered_selection != sel:
-                cell_program.send_vertex_data(self.vao_id, buf)
-                self.render_buf_is_dirty = False
+            selection_changed = sel != self.last_rendered_selection
+            if selection_changed:
+                self.screen.apply_selection(addressof(self.selection_buf), start[0], start[1], end[0], end[1], len(self.selection_buf))
+                cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
                 self.last_rendered_selection = sel
+            if self.render_buf_is_dirty:
+                cell_program.send_vertex_data(self.vao_id, self.render_buf)
+                self.render_buf_is_dirty = False
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):

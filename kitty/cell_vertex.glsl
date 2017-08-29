@@ -3,10 +3,11 @@ uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
-uniform uvec2 default_colors; // The default foreground and background colors
+uniform uvec4 default_colors; // The default colors
 uniform uint color_table[256]; // The color table
 in uvec3 sprite_coords;
 in uvec3 colors;
+in float is_selected;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -56,6 +57,10 @@ vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
     return vec3(s_xpos[pos.x], s_ypos[pos.y], z);
 }
 
+vec3 apply_selection(vec3 color, uint which) {
+    return is_selected * color_to_vec(which) + (1.0 - is_selected) * color;
+}
+
 void main() {
     uint instance_id = uint(gl_InstanceID);
     uint r = instance_id / dimensions[0];
@@ -71,9 +76,9 @@ void main() {
     uint fg = colors[color_indices[0]];
     uint bg = colors[color_indices[1]];
     uint decoration = colors[2];
-    foreground = to_color(fg, default_colors[color_indices[0]]);
-    background = to_color(bg, default_colors[color_indices[1]]);
-    decoration_fg = to_color(decoration, default_colors[0]);
+    foreground = apply_selection(to_color(fg, default_colors[color_indices[0]]), default_colors[2]);
+    background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
+    decoration_fg = to_color(decoration, default_colors[color_indices[0]]);
     underline_pos = to_sprite_pos(pos, (sprite_coords.z >> 24) & SMASK, ZERO, ZERO);
     strike_pos = to_sprite_pos(pos, (sprite_coords.z >> 26) & SMASK, ZERO, ZERO);
 }
