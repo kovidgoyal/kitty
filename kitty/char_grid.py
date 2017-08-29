@@ -112,10 +112,10 @@ class Selection:  # {{{
 # }}}
 
 
-def calculate_gl_geometry(window_geometry):
-    dx, dy = 2 * cell_size.width / viewport_size.width, 2 * cell_size.height / viewport_size.height
-    xmargin = window_geometry.left / viewport_size.width
-    ymargin = window_geometry.top / viewport_size.height
+def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell_width, cell_height):
+    dx, dy = 2 * cell_width / viewport_width, 2 * cell_height / viewport_height
+    xmargin = window_geometry.left / viewport_width
+    ymargin = window_geometry.top / viewport_height
     xstart = -1 + 2 * xmargin
     ystart = 1 - 2 * ymargin
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
@@ -173,7 +173,7 @@ class CharGrid:
             self.vao_id = None
 
     def update_position(self, window_geometry):
-        self.screen_geometry = calculate_gl_geometry(window_geometry)
+        self.screen_geometry = calculate_gl_geometry(window_geometry, viewport_size.width, viewport_size.height, cell_size.width, cell_size.height)
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)

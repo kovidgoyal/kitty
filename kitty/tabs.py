@@ -2,10 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections import deque
+from collections import deque, namedtuple
 from ctypes import addressof
 from functools import partial
-from threading import Lock
+from queue import Queue, Empty
 
 from .borders import Borders
 from .char_grid import calculate_gl_geometry, render_cells
@@ -21,6 +21,9 @@ from .fast_data_types import (
 from .layout import Rect, all_layouts
 from .utils import color_as_int
 from .window import Window
+
+
+TabbarData = namedtuple('TabbarData', 'title is_active is_last')
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None):
@@ -203,65 +206,139 @@ class Tab:
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
 
 
-class TabManager:
+class TabBar:
 
-    def __init__(self, opts, args, startup_session):
-        self.opts, self.args = opts, args
+    def __init__(self, data, opts):
+        self.num_tabs = 1
+        self.cell_width = 1
+        self.queue = Queue()
         self.vao_id = None
-        self.tabbar_lock = Lock()
-        self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
-        self.color_table = build_ansi_color_table(self.opts)
-        self.cell_ranges = []
-        self.active_tab_idx = startup_session.active_tab_idx
-        self.tabbar_dirty = True
-        self.default_fg = color_as_int(opts.inactive_tab_foreground)
-        self.default_bg = color_as_int(opts.inactive_tab_background)
-        self.tab_bar_blank_rects = ()
+        self.render_buf = None
+        self.dirty = True
+        self.screen = s = Screen(None, 1, 10)
+        s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+        s.color_profile.set_configured_colors(
+            color_as_int(opts.inactive_tab_foreground),
+            color_as_int(opts.inactive_tab_background)
+        )
+        s.color_profile.dirty = True
+        self.blank_rects = ()
+        self.current_data = data
 
         def as_rgb(x):
             return (x << 8) | 2
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
-        self.can_render = False
+
+    def layout(self, viewport_width, viewport_height, cell_width, cell_height):
+        ' Must be called in the child thread '
+        self.cell_width = cell_width
+        s = self.screen
+        ncells = viewport_width // cell_width
+        s.resize(1, ncells)
+        s.reset_mode(DECAWM)
+        self.render_buf = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))()
+        margin = (viewport_width - ncells * cell_width) // 2
+        self.window_geometry = g = WindowGeometry(
+            margin, viewport_height - cell_size.height, viewport_width - margin, viewport_height, s.columns, s.lines)
+        if margin > 0:
+            self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_width, g.bottom))
+        else:
+            self.tab_bar_blank_rects = ()
+        self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
+        self.update()
+
+    def update(self):
+        ' Must be called in the child thread '
+        if self.render_buf is None:
+            return
+        s = self.screen
+        s.cursor.x = 0
+        s.erase_in_line(2, False)
+        while True:
+            try:
+                self.current_data = self.queue.get_nowait()
+            except Empty:
+                break
+        max_title_length = (self.screen_geometry.xnum // len(self.current_data)) - 1
+        cr = []
+
+        for t in self.current_data:
+            s.cursor.bg = self.active_bg if t.is_active else 0
+            s.cursor.fg = self.active_fg if t.is_active else 0
+            s.cursor.bold = s.cursor.italic = t.is_active
+            before = s.cursor.x
+            s.draw(t.title)
+            extra = s.cursor.x - before - max_title_length
+            if extra > 0:
+                s.cursor.x -= extra + 1
+                s.draw('…')
+            cr.append((before, s.cursor.x))
+            s.cursor.bold = s.cursor.italic = False
+            s.cursor.fg = s.cursor.bg = 0
+            s.draw('┇')
+            if s.cursor.x > s.columns - max_title_length and not t.is_last:
+                s.draw('…')
+                break
+        s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
+        sprites = get_boss().sprites
+        s.update_cell_data(sprites.backend, addressof(self.render_buf), True)
+        self.cell_ranges = cr
+        self.dirty = True
+        glfw_post_empty_event()
+
+    def schedule_layout(self, data):
+        ' Must be called in the GUI thread '
+        queue_action(self.layout, *data)
+
+    def schedule_update(self, data):
+        ' Must be called in the GUI thread '
+        self.queue.put(data)
+        queue_action(self.update)
+
+    def render(self, cell_program, sprites):
+        ' Must be called in the GUI thread '
+        if self.render_buf is not None:
+            sprites.render_dirty_cells()
+            if self.vao_id is None:
+                self.vao_id = cell_program.create_sprite_map()
+            if self.dirty:
+                cell_program.send_vertex_data(self.vao_id, self.render_buf)
+                self.dirty = False
+            render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.screen.color_profile)
+
+    def tab_at(self, x):
+        ' Must be called in the GUI thread '
+        x = (x - self.window_geometry.left) // self.cell_width
+        for i, (a, b) in enumerate(self.cell_ranges):
+            if a <= x <= b:
+                return i
+
+
+class TabManager:
+
+    def __init__(self, opts, args, startup_session):
+        self.opts, self.args = opts, args
+        self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
+        self.active_tab_idx = startup_session.active_tab_idx
+        self.tab_bar = TabBar(self.tab_bar_data, opts)
+        self.tab_bar.schedule_layout(self.tab_bar_layout_data)
+
+    def update_tab_bar(self):
         if len(self.tabs) > 1:
-            self.layout_tab_bar()
+            self.tab_bar.schedule_update(self.tab_bar_data)
 
     def resize(self, only_tabs=False):
         if not only_tabs:
-            self.layout_tab_bar()
+            self.tab_bar.schedule_layout(self.tab_bar_layout_data)
         for tab in self.tabs:
             tab.relayout()
 
-    def layout_tab_bar(self):
-        self.can_render = False
-        ncells = viewport_size.width // cell_size.width
-        s = Screen(None, 1, ncells)
-        s.reset_mode(DECAWM)
-        s.color_profile.update_ansi_color_table(self.color_table)
-        s.color_profile.set_configured_colors(self.default_fg, self.default_bg)
-        s.color_profile.dirty = True
-        self.sprite_map_type = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))
-        with self.tabbar_lock:
-            self.sprite_map = self.sprite_map_type()
-            self.tab_bar_screen = s
-            self.tabbar_dirty = True
-        margin = (viewport_size.width - ncells * cell_size.width) // 2
-        self.window_geometry = g = WindowGeometry(
-            margin, viewport_size.height - cell_size.height, viewport_size.width - margin, viewport_size.height, s.columns, s.lines)
-        if margin > 0:
-            self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_size.width, g.bottom))
-        else:
-            self.tab_bar_blank_rects = ()
-        self.screen_geometry = calculate_gl_geometry(g)
-        self.screen = s
-        self.can_render = True
-
     def set_active_tab(self, idx):
         self.active_tab_idx = idx
-        self.tabbar_dirty = True
         self.active_tab.relayout_borders()
-        glfw_post_empty_event()
+        self.update_tab_bar()
 
     def next_tab(self, delta=1):
         if len(self.tabs) > 1:
@@ -287,20 +364,18 @@ class TabManager:
             nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
             self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
             self.active_tab_idx = nidx
-            glfw_post_empty_event()
+            self.update_tab_bar()
 
     def title_changed(self, new_title):
-        with self.tabbar_lock:
-            self.tabbar_dirty = True
+        self.update_tab_bar()
 
     def new_tab(self, special_window=None):
         ' Must be called in the GUI thread '
         needs_resize = len(self.tabs) == 1
         self.active_tab_idx = len(self.tabs)
         self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
+        self.update_tab_bar()
         if needs_resize:
-            if not self.can_render:
-                queue_action(self.layout_tab_bar)
             queue_action(get_boss().tabbar_visibility_changed)
 
     def remove(self, tab):
@@ -308,62 +383,36 @@ class TabManager:
         needs_resize = len(self.tabs) == 2
         self.tabs.remove(tab)
         self.active_tab_idx = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
-        self.tabbar_dirty = True
+        self.update_tab_bar()
         tab.destroy()
         if needs_resize:
             queue_action(get_boss().tabbar_visibility_changed)
 
-    def update_tab_bar_data(self, sprites, cell_program):
-        s = self.tab_bar_screen
-        s.cursor.x = 0
-        s.erase_in_line(2, False)
-        at = self.active_tab
-        max_title_length = (self.screen_geometry.xnum // len(self.tabs)) - 1
-        self.cell_ranges = []
+    @property
+    def tab_bar_layout_data(self):
+        ' Must be called in the GUI thread '
+        return viewport_size.width, viewport_size.height, cell_size.width, cell_size.height
 
+    @property
+    def tab_bar_data(self):
+        at = self.active_tab
+        ans = []
         for t in self.tabs:
             title = (t.name or t.title or appname) + ' '
-            s.cursor.bg = self.active_bg if t is at else 0
-            s.cursor.fg = self.active_fg if t is at else 0
-            s.cursor.bold = s.cursor.italic = t is at
-            before = s.cursor.x
-            s.draw(title)
-            extra = s.cursor.x - before - max_title_length
-            if extra > 0:
-                s.cursor.x -= extra + 1
-                s.draw('…')
-            self.cell_ranges.append((before, s.cursor.x))
-            s.cursor.bold = s.cursor.italic = False
-            s.cursor.fg = s.cursor.bg = 0
-            s.draw('┇')
-            if s.cursor.x > s.columns - max_title_length and t is not self.tabs[-1]:
-                s.draw('…')
-                break
-        s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
-        s.update_cell_data(
-            sprites.backend, addressof(self.sprite_map), True)
-        sprites.render_dirty_cells()
-        if self.vao_id is None:
-            self.vao_id = cell_program.create_sprite_map()
-        cell_program.send_vertex_data(self.vao_id, self.sprite_map)
+            ans.append(TabbarData(title, t is at, t is self.tabs[-1]))
+        return ans
 
     def activate_tab_at(self, x):
-        x = (x - self.window_geometry.left) // cell_size.width
-        for i, (a, b) in enumerate(self.cell_ranges):
-            if a <= x <= b:
-                queue_action(self.set_active_tab, i)
-                return
+        i = self.tab_bar.tab_at(x)
+        if i is not None:
+            self.set_active_tab(i)
 
     @property
     def blank_rects(self):
-        if len(self.tabs) < 2:
-            return ()
-        return self.tab_bar_blank_rects
+        return self.tab_bar.blank_rects if len(self.tabs) < 2 else ()
 
     def render(self, cell_program, sprites):
-        if not self.can_render or len(self.tabs) < 2:
+        ' Must be called in the GUI thread '
+        if len(self.tabs) < 2:
             return
-        with self.tabbar_lock:
-            if self.tabbar_dirty:
-                self.update_tab_bar_data(sprites, cell_program)
-        render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.tab_bar_screen.color_profile)
+        self.tab_bar.render(cell_program, sprites)
