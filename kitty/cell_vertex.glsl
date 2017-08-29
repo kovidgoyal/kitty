@@ -2,6 +2,8 @@ uniform uvec2 dimensions;  // xnum, ynum
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
+uniform uvec2 default_colors; // The default foreground and background colors
+uniform uint color_table[256]; // The color table
 in uvec3 sprite_coords;
 in uvec3 colors;
 out vec3 sprite_pos;
@@ -18,16 +20,33 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(0, 0)   // left, top
 );
 
-const uint BYTE_MASK = uint(255);
+const uint BYTE_MASK = uint(0xFF);
+const uint SHORT_MASK = uint(0xFFFF);
 const uint ZERO = uint(0);
 const uint SMASK = uint(3);
 
-vec3 to_color(uint c) {
+vec3 color_to_vec(uint c) {
     uint r, g, b;
     r = (c >> 16) & BYTE_MASK;
     g = (c >> 8) & BYTE_MASK;
     b = c & BYTE_MASK;
     return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
+}
+
+vec3 to_color(uint c, uint defval) {
+    int t = int(c & BYTE_MASK);
+    uint r;
+    switch(t) {
+        case 1:
+            r = color_table[(c >> 8) & BYTE_MASK];
+            break;
+        case 2:
+            r = c >> 8;
+            break;
+        default:
+            r = defval;
+    }
+    return color_to_vec(r);
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
@@ -47,13 +66,13 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
-    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z);
+    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
     uint fg = colors[color_indices[0]];
     uint bg = colors[color_indices[1]];
     uint decoration = colors[2];
-    foreground = to_color(fg);
-    background = to_color(bg);
-    decoration_fg = to_color(decoration);
-    underline_pos = to_sprite_pos(pos, (decoration >> 24) & SMASK, ZERO, ZERO);
-    strike_pos = to_sprite_pos(pos, (decoration >> 26) & SMASK, ZERO, ZERO);
+    foreground = to_color(fg, default_colors[0]);
+    background = to_color(bg, default_colors[1]);
+    decoration_fg = to_color(decoration, default_colors[0]);
+    underline_pos = to_sprite_pos(pos, (sprite_coords.z >> 24) & SMASK, ZERO, ZERO);
+    strike_pos = to_sprite_pos(pos, (sprite_coords.z >> 26) & SMASK, ZERO, ZERO);
 }

@@ -17,7 +17,7 @@ from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
     GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, glDisable, glDrawArrays,
     glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f, glUniform2i,
-    glUniform2ui, glUniform4f
+    glUniform2ui, glUniform4f, glUniform1uiv
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -124,6 +124,8 @@ def calculate_gl_geometry(window_geometry):
 def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False):
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
+    glUniform2ui(ul('default_colors'), color_profile.default_fg, color_profile.default_bg)
+    glUniform1uiv(ul('color_table'), 256, color_profile.color_table_address())
     glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
     glUniform1i(ul('sprites'), sprites.sampler_num)
@@ -200,7 +202,6 @@ class CharGrid:
             dirtied = True
             setattr(self.screen.color_profile, which.name, val)
         if dirtied:
-            self.screen.color_profile.dirty = True
             self.screen.mark_as_dirty()
 
     def scroll(self, amt, upwards=True):

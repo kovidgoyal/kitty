@@ -1176,7 +1176,7 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
     unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
 
-    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, self->color_profile, data, (bool)force_screen_refresh)) return NULL;
+    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, data, (bool)force_screen_refresh)) return NULL;
     return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
@@ -1194,7 +1194,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, self->color_profile, data)) return NULL;
+        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, data)) return NULL;
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer

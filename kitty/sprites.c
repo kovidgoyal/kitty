@@ -139,14 +139,12 @@ position_for(SpriteMap *self, PyObject *args) {
 }
 
 bool
-update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, unsigned int *data) {
+update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, unsigned int *data) {
     SpritePosition *sp;
     char_type previous_ch=0, ch;
     uint8_t previous_width = 0;
     int err = 0;
     const bool screen_reversed = modes->mDECSCNM;
-    color_type fg = colorprofile_to_color(color_profile, color_profile->overridden.default_fg, color_profile->configured.default_fg);
-    color_type bg = colorprofile_to_color(color_profile, color_profile->overridden.default_bg, color_profile->configured.default_bg);
 
     size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
     for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
@@ -160,11 +158,10 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
         bool reverse = ((attrs >> REVERSE_SHIFT) & 1) ^ screen_reversed;
         data[offset] = sp->x;
         data[offset+1] = sp->y;
-        data[offset+2] = sp->z;
-        data[offset+(reverse ? 4 : 3)] = colorprofile_to_color(color_profile, line->cells[i].fg & COL_MASK, fg);
-        data[offset+(reverse ? 3 : 4)] = colorprofile_to_color(color_profile, line->cells[i].bg & COL_MASK, bg);
-        unsigned int decoration_fg = colorprofile_to_color(color_profile, line->cells[i].decoration_fg & COL_MASK, data[offset+3]);
-        data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
+        data[offset+2] = sp->z | (decoration << 24) | (strikethrough << 26);
+        data[offset+(reverse ? 4 : 3)] = line->cells[i].fg;
+        data[offset+(reverse ? 3 : 4)] = line->cells[i].bg;
+        data[offset+5] = line->cells[i].fg;
         previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }
     return true;
