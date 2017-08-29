@@ -97,15 +97,13 @@ update_cell_range(ChangeTracker *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-bool tracker_update_cell_data(ScreenModes *modes, ChangeTracker *self, LineBuf *lb, SpriteMap *spm, ColorProfile *color_profile, unsigned int *data, unsigned long default_fg, unsigned long default_bg, bool force_screen_refresh) {
+bool tracker_update_cell_data(ScreenModes *modes, ChangeTracker *self, LineBuf *lb, SpriteMap *spm, ColorProfile *color_profile, unsigned int *data, bool force_screen_refresh) {
     unsigned int y;
     Py_ssize_t start;
-    default_fg &= COL_MASK;
-    default_bg &= COL_MASK;
 
 #define UPDATE_RANGE(xstart, xmax) \
     linebuf_init_line(lb, y); \
-    if (!update_cell_range_data(modes, spm, lb->line, (xstart), (xmax), color_profile, default_bg, default_fg, data)) return false;
+    if (!update_cell_range_data(modes, spm, lb->line, (xstart), (xmax), color_profile, data)) return false;
 
     if (self->screen_changed || force_screen_refresh) {
         for (y = 0; y < self->ynum; y++) {

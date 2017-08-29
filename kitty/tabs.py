@@ -239,6 +239,8 @@ class TabManager:
         s = Screen(None, 1, ncells)
         s.reset_mode(DECAWM)
         s.color_profile.update_ansi_color_table(self.color_table)
+        s.color_profile.set_configured_colors(self.default_fg, self.default_bg)
+        s.color_profile.dirty = True
         self.sprite_map_type = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))
         with self.tabbar_lock:
             self.sprite_map = self.sprite_map_type()
@@ -339,7 +341,7 @@ class TabManager:
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         s.update_cell_data(
-            sprites.backend, addressof(self.sprite_map), self.default_fg, self.default_bg, True)
+            sprites.backend, addressof(self.sprite_map), True)
         sprites.render_dirty_cells()
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
@@ -364,4 +366,4 @@ class TabManager:
         with self.tabbar_lock:
             if self.tabbar_dirty:
                 self.update_tab_bar_data(sprites, cell_program)
-        render_cells(self.vao_id, self.screen_geometry, cell_program, sprites)
+        render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.tab_bar_screen.color_profile)

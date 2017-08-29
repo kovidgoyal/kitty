@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include <structmember.h>
 
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
@@ -59,12 +60,14 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
         if (FG_BG_256[255] == 0) create_256_color_table();
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
+        self->dirty = Py_True; Py_INCREF(Py_True);
     }
     return (PyObject*) self;
 }
 
 static void
 dealloc(ColorProfile* self) {
+    Py_DECREF(self->dirty);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -87,6 +90,21 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
     }
     Py_RETURN_NONE;
 }
+
+color_type 
+colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
+    color_type t = entry & 0xFF, r;
+    switch(t) {
+        case 1:
+            r = (entry >> 8) & 0xff;
+            return self->color_table[r];
+        case 2:
+            return entry >> 8;
+        default:
+            return defval;
+    }
+}
+
 
 static PyObject*
 as_color(ColorProfile *self, PyObject *val) {
@@ -137,16 +155,55 @@ set_color(ColorProfile *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_configured_colors(ColorProfile *self, PyObject *args) {
+#define set_configured_colors_doc "Set the configured colors"
+    if (!PyArg_ParseTuple(args, "II|III", &(self->configured.default_fg), &(self->configured.default_bg), &(self->configured.cursor_color), &(self->configured.highlight_fg), &(self->configured.highlight_bg))) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+color_table_address(ColorProfile *self) {
+#define color_table_address_doc "Pointer address to start of color table"
+    return PyLong_FromVoidPtr((void*)self->color_table);
+}
+ 
 
 // Boilerplate {{{
 
+#define CGETSET(name) \
+    static PyObject* name##_get(ColorProfile *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(colorprofile_to_color(self, self->overridden.name, self->configured.name));  } \
+    static int name##_set(ColorProfile *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->overridden.name = (color_type) PyLong_AsUnsignedLong(val); return 0; }
+
+CGETSET(default_fg)
+CGETSET(default_bg)
+CGETSET(cursor_color)
+CGETSET(highlight_fg)
+CGETSET(highlight_bg)
+
+static PyGetSetDef getsetters[] = {
+    GETSET(default_fg)
+    GETSET(default_bg)
+    GETSET(cursor_color)
+    GETSET(highlight_fg)
+    GETSET(highlight_bg)
+    {NULL}  /* Sentinel */
+};
+
+
+static PyMemberDef members[] = {
+    {"dirty", T_OBJECT_EX, offsetof(ColorProfile, dirty), 0, "dirty"},
+    {NULL}
+};
 
 static PyMethodDef methods[] = {
     METHOD(update_ansi_color_table, METH_O)
     METHOD(reset_color_table, METH_NOARGS)
+    METHOD(color_table_address, METH_NOARGS)
     METHOD(as_color, METH_O)
     METHOD(reset_color, METH_O)
     METHOD(set_color, METH_VARARGS)
+    METHOD(set_configured_colors, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 
@@ -158,7 +215,9 @@ PyTypeObject ColorProfile_Type = {
     .tp_dealloc = (destructor)dealloc, 
     .tp_flags = Py_TPFLAGS_DEFAULT,        
     .tp_doc = "ColorProfile",
+    .tp_members = members,
     .tp_methods = methods,
+    .tp_getset = getsetters,
     .tp_new = new,                
 };
 

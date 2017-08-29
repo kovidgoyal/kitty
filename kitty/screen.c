@@ -45,9 +45,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->columns = columns; self->lines = lines;
         self->modes = empty_modes;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
-        self->default_fg = 0; self->default_bg = 0;
-        self->highlight_fg = 0; self->highlight_bg = 0;
-        self->cursor_color = 0;
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
@@ -73,9 +70,9 @@ screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
     self->modes = empty_modes;
-    self->default_fg = 0; self->default_bg = 0;
-    self->highlight_fg = 0; self->highlight_bg = 0;
-    self->cursor_color = 0;
+#define RC(name) self->color_profile->overridden.name = 0
+    RC(default_fg); RC(default_bg); RC(cursor_color); RC(highlight_fg); RC(highlight_bg);
+#undef RC
     RESET_CHARSETS;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
@@ -1173,14 +1170,13 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     SpriteMap *spm;
     PyObject *dp;
     unsigned int *data;
-    unsigned long default_bg, default_fg;
     int force_screen_refresh;
-    if (!PyArg_ParseTuple(args, "O!O!kkp", &SpriteMap_Type, &spm, &PyLong_Type, &dp, &default_fg, &default_bg, &force_screen_refresh)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!p", &SpriteMap_Type, &spm, &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
     unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
 
-    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, self->color_profile, data, default_fg, default_bg, (bool)force_screen_refresh)) return NULL;
+    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, self->color_profile, data, (bool)force_screen_refresh)) return NULL;
     return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
@@ -1189,8 +1185,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     SpriteMap *spm;
     PyObject *dp, *sp;
     unsigned int *data, *src, scrolled_by;
-    unsigned long default_bg, default_fg;
-    if (!PyArg_ParseTuple(args, "O!O!kkIO", &SpriteMap_Type, &spm, &PyLong_Type, &sp, &default_fg, &default_bg, &scrolled_by, &dp)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!O!IO", &SpriteMap_Type, &spm, &PyLong_Type, &sp, &scrolled_by, &dp)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     src = PyLong_AsVoidPtr(sp);
 
@@ -1199,7 +1194,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, self->color_profile, default_bg, default_fg, data)) return NULL;
+        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, self->color_profile, data)) return NULL;
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer
@@ -1352,11 +1347,6 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
-    {"default_fg", T_COL, offsetof(Screen, default_fg), 0, "default_fg"},
-    {"default_bg", T_COL, offsetof(Screen, default_bg), 0, "default_bg"},
-    {"highlight_fg", T_COL, offsetof(Screen, highlight_fg), 0, "highlight_fg"},
-    {"highlight_bg", T_COL, offsetof(Screen, highlight_bg), 0, "highlight_bg"},
-    {"cursor_color", T_COL, offsetof(Screen, cursor_color), 0, "cursor_color"},
     {NULL}
 };
  

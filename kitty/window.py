@@ -174,6 +174,7 @@ class Window:
         if code == 4:
             for c, val in parse_color_set(value):
                 cp.set_color(c, val)
+            cp.dirty = True
             self.refresh()
         elif code == 104:
             if not value.strip():
@@ -186,6 +187,7 @@ class Window:
                         continue
                     if 0 <= c <= 255:
                         cp.reset_color(c)
+            cp.dirty = True
             self.refresh()
 
     def request_capabilities(self, q):

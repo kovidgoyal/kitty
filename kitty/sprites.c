@@ -138,27 +138,15 @@ position_for(SpriteMap *self, PyObject *args) {
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
-static inline uint32_t 
-to_color(ColorProfile *self, uint32_t entry, uint32_t defval) {
-    unsigned int t = entry & 0xFF, r;
-    switch(t) {
-        case 1:
-            r = (entry >> 8) & 0xff;
-            return self->color_table[r];
-        case 2:
-            return entry >> 8;
-        default:
-            return defval;
-    }
-}
-
 bool
-update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, const uint32_t default_bg, const uint32_t default_fg, unsigned int *data) {
+update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, ColorProfile *color_profile, unsigned int *data) {
     SpritePosition *sp;
     char_type previous_ch=0, ch;
     uint8_t previous_width = 0;
     int err = 0;
     const bool screen_reversed = modes->mDECSCNM;
+    color_type fg = colorprofile_to_color(color_profile, color_profile->overridden.default_fg, color_profile->configured.default_fg);
+    color_type bg = colorprofile_to_color(color_profile, color_profile->overridden.default_bg, color_profile->configured.default_bg);
 
     size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
     for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
@@ -173,9 +161,9 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
         data[offset] = sp->x;
         data[offset+1] = sp->y;
         data[offset+2] = sp->z;
-        data[offset+(reverse ? 4 : 3)] = to_color(color_profile, line->cells[i].fg & COL_MASK, default_fg);
-        data[offset+(reverse ? 3 : 4)] = to_color(color_profile, line->cells[i].bg & COL_MASK, default_bg);
-        unsigned int decoration_fg = to_color(color_profile, line->cells[i].decoration_fg & COL_MASK, data[offset+3]);
+        data[offset+(reverse ? 4 : 3)] = colorprofile_to_color(color_profile, line->cells[i].fg & COL_MASK, fg);
+        data[offset+(reverse ? 3 : 4)] = colorprofile_to_color(color_profile, line->cells[i].bg & COL_MASK, bg);
+        unsigned int decoration_fg = colorprofile_to_color(color_profile, line->cells[i].decoration_fg & COL_MASK, data[offset+3]);
         data[offset+5] = (decoration_fg & COL_MASK) | (decoration << 24) | (strikethrough << 26);
         previous_ch = ch; previous_width = (attrs) & WIDTH_MASK;
     }

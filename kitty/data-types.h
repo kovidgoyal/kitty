@@ -178,11 +178,16 @@ PyTypeObject Face_Type;
 PyTypeObject Window_Type;
 
 typedef struct {
+    color_type default_fg, default_bg, cursor_color, highlight_fg, highlight_bg;
+} DynamicColor;
+
+typedef struct {
     PyObject_HEAD
 
+    PyObject *dirty;
     uint32_t color_table[256];
     uint32_t orig_color_table[256];
-
+    DynamicColor configured, overridden;
 } ColorProfile;
 PyTypeObject ColorProfile_Type;
 
@@ -271,7 +276,6 @@ typedef struct {
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ];
-    uint32_t default_fg, default_bg, highlight_fg, highlight_bg, cursor_color;
 
 } Screen;
 PyTypeObject Screen_Type;
@@ -347,7 +351,7 @@ void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
-bool update_cell_range_data(ScreenModes *modes, SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, const uint32_t, const uint32_t, unsigned int *);
+bool update_cell_range_data(ScreenModes *modes, SpriteMap *, Line *, unsigned int, unsigned int, ColorProfile *, unsigned int *);
 
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
@@ -377,6 +381,8 @@ void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 double timers_timeout(Timers*);
 void timers_call(Timers*);
 bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);
+
+color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);

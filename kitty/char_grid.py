@@ -121,7 +121,7 @@ def calculate_gl_geometry(window_geometry):
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(vao_id, sg, cell_program, sprites, invert_colors=False):
+def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False):
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
     glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
@@ -145,15 +145,15 @@ class CharGrid:
         self.render_data = None
         self.scrolled_by = 0
         self.screen = screen
-        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.opts = opts
-        self.default_bg = color_as_int(opts.background)
-        self.default_fg = color_as_int(opts.foreground)
+        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+        self.screen.color_profile.set_configured_colors(*map(color_as_int, (
+            opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
+        self.screen.color_profile.dirty = True
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
-        self.highlight_fg, self.highlight_bg = map(color_as_int, (opts.selection_foreground, opts.selection_background))
         self.sprite_map_type = self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
         def escape(chars):
@@ -198,8 +198,9 @@ class CharGrid:
             if val is None:
                 continue
             dirtied = True
-            setattr(self.screen, which.name, val)
+            setattr(self.screen.color_profile, which.name, val)
         if dirtied:
+            self.screen.color_profile.dirty = True
             self.screen.mark_as_dirty()
 
     def scroll(self, amt, upwards=True):
@@ -216,15 +217,12 @@ class CharGrid:
         sprites = get_boss().sprites
         is_dirty = self.screen.is_dirty()
         with sprites.lock:
-            fg, bg = self.screen.default_fg, self.screen.default_bg
-            fg = fg >> 8 if fg & 2 else self.default_fg
-            bg = bg >> 8 if bg & 2 else self.default_bg
             cursor_changed, history_line_added_count = self.screen.update_cell_data(
-                sprites.backend, addressof(self.main_sprite_map), fg, bg, force_full_refresh)
+                sprites.backend, addressof(self.main_sprite_map), force_full_refresh)
             if self.scrolled_by:
                 self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
                 self.screen.set_scroll_cell_data(
-                    sprites.backend, addressof(self.main_sprite_map), fg, bg,
+                    sprites.backend, addressof(self.main_sprite_map),
                     self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
@@ -367,10 +365,8 @@ class CharGrid:
                 buf = self.selection_buf
                 if self.render_buf_is_dirty or sel != self.last_rendered_selection:
                     memmove(buf, self.render_buf, sizeof(type(buf)))
-                    fg = self.screen.highlight_fg
-                    fg = fg >> 8 if fg & 2 else self.highlight_fg
-                    bg = self.screen.highlight_bg
-                    bg = bg >> 8 if bg & 2 else self.highlight_bg
+                    fg = self.screen.color_profile.highlight_fg
+                    bg = self.screen.color_profile.highlight_bg
                     self.screen.apply_selection(addressof(buf), start[0], start[1], end[0], end[1], fg, bg)
             if self.render_buf_is_dirty or self.last_rendered_selection != sel:
                 cell_program.send_vertex_data(self.vao_id, buf)
@@ -379,7 +375,7 @@ class CharGrid:
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):
-        render_cells(self.vao_id, sg, cell_program, sprites, invert_colors=invert_colors)
+        render_cells(self.vao_id, sg, cell_program, sprites, self.screen.color_profile, invert_colors=invert_colors)
 
     def render_cursor(self, sg, cursor_program, is_focused):
         cursor = self.current_cursor
@@ -395,8 +391,7 @@ class CharGrid:
         ul = cursor_program.uniform_location
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy
-        cc = self.screen.cursor_color
-        col = color_from_int(cc >> 8) if cc & 2 else self.opts.cursor
+        col = color_from_int(self.screen.color_profile.cursor_color)
         shape = cursor.shape or self.default_cursor.shape
         alpha = self.opts.cursor_opacity
         if alpha < 1.0 and shape == CURSOR_BLOCK:
