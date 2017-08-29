@@ -241,7 +241,7 @@ class TabBar:
         self.render_buf = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))()
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
-            margin, viewport_height - cell_size.height, viewport_width - margin, viewport_height, s.columns, s.lines)
+            margin, viewport_height - cell_height, viewport_width - margin, viewport_height, s.columns, s.lines)
         if margin > 0:
             self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_width, g.bottom))
         else:
