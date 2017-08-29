@@ -71,8 +71,8 @@ void main() {
     uint fg = colors[color_indices[0]];
     uint bg = colors[color_indices[1]];
     uint decoration = colors[2];
-    foreground = to_color(fg, default_colors[0]);
-    background = to_color(bg, default_colors[1]);
+    foreground = to_color(fg, default_colors[color_indices[0]]);
+    background = to_color(bg, default_colors[color_indices[1]]);
     decoration_fg = to_color(decoration, default_colors[0]);
     underline_pos = to_sprite_pos(pos, (sprite_coords.z >> 24) & SMASK, ZERO, ZERO);
     strike_pos = to_sprite_pos(pos, (sprite_coords.z >> 26) & SMASK, ZERO, ZERO);
