@@ -22,7 +22,7 @@
 #define xstr(s) str(s)
 #define str(s) #s
 
-typedef Py_UCS4 char_type;
+typedef uint32_t char_type;
 typedef uint32_t color_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
