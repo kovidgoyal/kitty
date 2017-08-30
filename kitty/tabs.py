@@ -213,7 +213,8 @@ class TabBar:
         self.cell_width = 1
         self.queue = Queue()
         self.vao_id = None
-        self.render_buf = None
+        self.render_buf = self.selection_buf = None
+        self.selection_buf_changed = True
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -239,6 +240,8 @@ class TabBar:
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
         self.render_buf = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))()
+        self.selection_buf = (GLuint * (s.lines * s.columns))()
+        self.selection_buf_changed = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
             margin, viewport_height - cell_height, viewport_width - margin, viewport_height, s.columns, s.lines)
@@ -305,6 +308,9 @@ class TabBar:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
                 cell_program.send_vertex_data(self.vao_id, self.render_buf)
+                if self.selection_buf_changed:
+                    cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
+                    self.selection_buf_changed = False
                 self.dirty = False
             render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.screen.color_profile)
 
