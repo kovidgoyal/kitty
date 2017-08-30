@@ -24,6 +24,7 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(0, 0)   // left, top
 );
 
+const uint strike_map[] = uint[2](uint(0), uint(3));
 const uint BYTE_MASK = uint(0xFF);
 const uint SHORT_MASK = uint(0xFFFF);
 const uint ZERO = uint(0);
@@ -82,5 +83,5 @@ void main() {
     background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
     decoration_fg = to_color(decoration, default_colors[color_indices[0]]);
     underline_pos = to_sprite_pos(pos, (sprite_coords.z >> 24) & SMASK, ZERO, ZERO);
-    strike_pos = to_sprite_pos(pos, (sprite_coords.z >> 26) & SMASK, ZERO, ZERO);
+    strike_pos = to_sprite_pos(pos, strike_map[(sprite_coords.z >> 26)] & SMASK, ZERO, ZERO);
 }
