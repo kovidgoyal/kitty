@@ -4,7 +4,9 @@ uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
 uniform uvec4 default_colors; // The default colors
-uniform uint color_table[256]; // The color table
+uniform ColorTable {
+    uint color_table[256]; // The color table
+};
 in uvec3 sprite_coords;
 in uvec3 colors;
 in float is_selected;

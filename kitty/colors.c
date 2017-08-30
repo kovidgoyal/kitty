@@ -61,6 +61,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
         self->dirty = Py_True; Py_INCREF(Py_True);
+        self->ubo = Py_None; Py_INCREF(Py_None);
     }
     return (PyObject*) self;
 }
@@ -68,6 +69,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static void
 dealloc(ColorProfile* self) {
     Py_DECREF(self->dirty);
+    Py_DECREF(self->ubo);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -163,6 +165,20 @@ set_configured_colors(ColorProfile *self, PyObject *args) {
 }
 
 static PyObject*
+copy_color_table(ColorProfile *self, PyObject *args) {
+#define copy_color_table_doc "copy_color_table(address, offset, stride) -> copy the color table into the memory at address, using the specified offset and stride."
+    unsigned int offset, stride, i;
+    PyObject *ptr;
+    if (!PyArg_ParseTuple(args, "OII", &ptr, &offset, &stride)) return NULL;
+    color_type *buf = (color_type*)PyLong_AsVoidPtr(ptr);
+    stride = MAX(1, stride);
+    for (i = 0, buf = buf + offset; i < sizeof(self->color_table)/sizeof(self->color_table[0]); i++, buf += stride) {
+        *buf = self->color_table[i];
+    }
+    Py_RETURN_NONE;
+}
+ 
+static PyObject*
 color_table_address(ColorProfile *self) {
 #define color_table_address_doc "Pointer address to start of color table"
     return PyLong_FromVoidPtr((void*)self->color_table);
@@ -193,6 +209,7 @@ static PyGetSetDef getsetters[] = {
 
 static PyMemberDef members[] = {
     {"dirty", T_OBJECT_EX, offsetof(ColorProfile, dirty), 0, "dirty"},
+    {"ubo", T_OBJECT_EX, offsetof(ColorProfile, ubo), 0, "ubo"},
     {NULL}
 };
 
@@ -204,6 +221,7 @@ static PyMethodDef methods[] = {
     METHOD(reset_color, METH_O)
     METHOD(set_color, METH_VARARGS)
     METHOD(set_configured_colors, METH_VARARGS)
+    METHOD(copy_color_table, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

@@ -184,7 +184,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    PyObject *dirty;
+    PyObject *dirty, *ubo;
     uint32_t color_table[256];
     uint32_t orig_color_table[256];
     DynamicColor configured, overridden;

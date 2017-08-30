@@ -16,8 +16,8 @@ from .constants import (
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
     GL_FLOAT, GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, glDisable,
-    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform1uiv,
-    glUniform2f, glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
+    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f,
+    glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -34,6 +34,21 @@ class DynamicColor(Enum):
 
 
 class CellProgram(ShaderProgram):
+
+    def __init__(self, *args):
+        ShaderProgram.__init__(self, *args)
+        self.color_table_buf = None
+
+    def send_color_table(self, color_profile):
+        if color_profile.ubo is None:
+            color_profile.ubo = self.init_uniform_block('ColorTable', 'color_table')
+        ubo = color_profile.ubo
+        if self.color_table_buf is None:
+            self.color_table_buf = (GLuint * (ubo.size // sizeof(GLuint)))()
+        offset = ubo.offsets['color_table'] // sizeof(GLuint)
+        stride = ubo.size // (256 * sizeof(GLuint))
+        color_profile.copy_color_table(addressof(self.color_table_buf), offset, stride)
+        self.send_uniform_buffer_data(ubo, self.color_table_buf)
 
     def create_sprite_map(self):
         with self.array_object_creator() as add_attribute:
@@ -124,15 +139,17 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 
 def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False):
+    if color_profile.dirty:
+        cell_program.send_color_table(color_profile)
+        color_profile.dirty = False
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
     glUniform4ui(ul('default_colors'), color_profile.default_fg, color_profile.default_bg, color_profile.highlight_fg, color_profile.highlight_bg)
-    glUniform1uiv(ul('color_table'), 256, color_profile.color_table_address())
     glUniform2i(ul('color_indices'), 1 if invert_colors else 0, 0 if invert_colors else 1)
     glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
     glUniform1i(ul('sprites'), sprites.sampler_num)
     glUniform2f(ul('sprite_layout'), *(sprites.layout))
-    with cell_program.bound_vertex_array(vao_id):
+    with cell_program.bound_vertex_array(vao_id), cell_program.bound_uniform_buffer(color_profile.ubo):
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
 
 
