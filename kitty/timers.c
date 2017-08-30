@@ -162,6 +162,7 @@ remove_event(Timers *self, PyObject *callback) {
 
 double 
 timers_timeout(Timers *self) {
+    if (self->count < 1) return -1;
     double ans = self->events[0].at - monotonic();
     return MAX(0, ans);
 }

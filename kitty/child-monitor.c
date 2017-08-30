@@ -140,6 +140,8 @@ loop(ChildMonitor *self) {
         for (i = 0; i < self->count + EXTRA_FDS; i++) self->fds[i].revents = 0;
         for (i = EXTRA_FDS; i < EXTRA_FDS + self->count; i++) self->fds[i].events = self->children[i - EXTRA_FDS].needs_write ? POLLOUT  | POLLIN : POLLIN;
         timeout = (int)(timers_timeout(self->timers) * 1000);
+        // Sub-millisecond interval will become 0, so round up to 1ms as this is the resolution of poll()
+        if (timeout == 0) timeout = 1;
         Py_BEGIN_ALLOW_THREADS;
         ret = poll(self->fds, self->count + EXTRA_FDS, timeout);
         Py_END_ALLOW_THREADS;
@@ -166,6 +168,7 @@ loop(ChildMonitor *self) {
         for (i = 0; i < self->count; i++) {
             if (self->children[i].screen->change_tracker->dirty) {
                 if (!timers_add_if_missing(self->timers, self->repaint_delay, self->children[i].update_screen, NULL)) PyErr_Print();
+                // update_screen() is responsible for clearing the dirty indication
             }
         }
     }
