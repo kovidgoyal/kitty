@@ -133,16 +133,18 @@ static PyObject *
 loop(ChildMonitor *self) {
 #define loop_doc "loop() -> The monitor loop."
     size_t i;
+    double interval;
     int ret, timeout;
     bool has_more; 
     PyObject *t;
     while (LIKELY(!self->shutting_down)) {
         for (i = 0; i < self->count + EXTRA_FDS; i++) self->fds[i].revents = 0;
         for (i = EXTRA_FDS; i < EXTRA_FDS + self->count; i++) self->fds[i].events = self->children[i - EXTRA_FDS].needs_write ? POLLOUT  | POLLIN : POLLIN;
-        timeout = (int)(timers_timeout(self->timers) * 1000);
-        // Sub-millisecond interval will become 0, so round up to 1ms as this is the resolution of poll()
-        if (timeout == 0) timeout = 1;
+        interval = timers_timeout(self->timers);
         Py_BEGIN_ALLOW_THREADS;
+        if (interval < 0) timeout = -1;
+        else if (interval == 0) timeout = 0;
+        else timeout = MAX(1, (int)(interval * 1000)); // Sub-millisecond interval will become 0, so round up to 1ms as this is the resolution of poll()
         ret = poll(self->fds, self->count + EXTRA_FDS, timeout);
         Py_END_ALLOW_THREADS;
         if (ret > 0) {
