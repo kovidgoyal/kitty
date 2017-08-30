@@ -472,7 +472,7 @@ get_uniform_block_offsets(PyObject UNUSED *self, PyObject *args) {
         names[i] = PyUnicode_AsUTF8(t);
         Py_CLEAR(t);
     }
-    glGetUniformIndices(program_id, count, (const GLchar * const*)names, indices);
+    glGetUniformIndices(program_id, count, (void*)names, indices);
     glGetActiveUniformsiv(program_id, count, indices, GL_UNIFORM_OFFSET, offsets);
     for (GLsizei i = 0; i < count; i++) PyTuple_SET_ITEM(ans, i, PyLong_FromLong(offsets[i]));
     PyMem_Free(names); PyMem_Free(indices); PyMem_Free(offsets);
