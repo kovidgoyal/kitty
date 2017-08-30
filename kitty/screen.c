@@ -1167,25 +1167,23 @@ change_scrollback_size(Screen *self, PyObject *args) {
 
 static PyObject*
 screen_update_cell_data(Screen *self, PyObject *args) {
-    SpriteMap *spm;
     PyObject *dp;
     unsigned int *data;
     int force_screen_refresh;
-    if (!PyArg_ParseTuple(args, "O!O!p", &SpriteMap_Type, &spm, &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!p", &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
     unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
 
-    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, spm, data, (bool)force_screen_refresh)) return NULL;
+    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, data, (bool)force_screen_refresh)) return NULL;
     return Py_BuildValue("OI", cursor_changed, history_line_added_count);
 }
 
 static PyObject*
 set_scroll_cell_data(Screen *self, PyObject *args) {
-    SpriteMap *spm;
     PyObject *dp, *sp;
     unsigned int *data, *src, scrolled_by;
-    if (!PyArg_ParseTuple(args, "O!O!IO", &SpriteMap_Type, &spm, &PyLong_Type, &sp, &scrolled_by, &dp)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!IO", &PyLong_Type, &sp, &scrolled_by, &dp)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     src = PyLong_AsVoidPtr(sp);
 
@@ -1194,7 +1192,7 @@ set_scroll_cell_data(Screen *self, PyObject *args) {
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), spm, self->historybuf->line, 0, self->columns - 1, data)) return NULL;
+        if (!update_cell_range_data(&(self->modes), self->historybuf->line, 0, self->columns - 1, data)) return NULL;
     }
     if (scrolled_by < self->lines) {
         // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer

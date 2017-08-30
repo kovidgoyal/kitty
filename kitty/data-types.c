@@ -9,6 +9,7 @@
 #include "glfw.h"
 #include "gl.h"
 #include "modes.h"
+#include "sprites.h"
 #include <stddef.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
@@ -79,6 +80,7 @@ static PyMethodDef module_methods[] = {
     {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
 #endif
     GLFW_FUNC_WRAPPERS
+    SPRITE_FUNC_WRAPPERS
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
     {"stop_profiler", (PyCFunction)stop_profiler, METH_NOARGS, ""},
@@ -112,7 +114,6 @@ PyInit_fast_data_types(void) {
         if (!init_Timers(m)) return NULL;
         if (!init_ChildMonitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
-        if (!init_SpriteMap(m)) return NULL;
         if (!init_ChangeTracker(m)) return NULL;
         if (!init_Screen(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;

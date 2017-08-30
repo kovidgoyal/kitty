@@ -7,7 +7,8 @@ from unittest import skipIf
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf, SpriteMap, Timers
+    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf, Timers,
+    sprite_map_set_layout, sprite_map_set_limits, sprite_position_for
 )
 from kitty.utils import sanitize_title, wcwidth
 
@@ -283,17 +284,18 @@ class TestDataTypes(BaseTest):
         self.ae(c.as_color(255 << 8 | 1), (0xee, 0xee, 0xee))
 
     def test_sprite_map(self):
-        s = SpriteMap(10, 2)
-        s.layout(5, 5)
-        self.ae(s.position_for(0), (0, 0, 0))
-        self.ae(s.position_for(1), (1, 0, 0))
-        self.ae(s.position_for(2), (0, 1, 0))
-        self.ae(s.position_for(3), (1, 1, 0))
-        self.ae(s.position_for(4), (0, 0, 1))
-        self.ae(s.position_for(5), (1, 0, 1))
-        self.ae(s.position_for(0, 1), (0, 1, 1))
-        self.ae(s.position_for(0, 2), (1, 1, 1))
-        self.ae(s.position_for(0, 2), (1, 1, 1))
+        sprite_map_set_limits(10, 2)
+        sprite_map_set_layout(5, 5)
+        self.ae(sprite_position_for(0), (0, 0, 0))
+        self.ae(sprite_position_for(1), (1, 0, 0))
+        self.ae(sprite_position_for(2), (0, 1, 0))
+        self.ae(sprite_position_for(3), (1, 1, 0))
+        self.ae(sprite_position_for(4), (0, 0, 1))
+        self.ae(sprite_position_for(5), (1, 0, 1))
+        self.ae(sprite_position_for(0, 1), (0, 1, 1))
+        self.ae(sprite_position_for(0, 2), (1, 1, 1))
+        self.ae(sprite_position_for(0, 2), (1, 1, 1))
+        sprite_map_set_limits(1000, 1000)
 
     def test_historybuf(self):
         lb = filled_line_buf()

@@ -8,7 +8,6 @@ from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import addressof, sizeof
 from functools import lru_cache
-from threading import Lock
 
 from .fast_data_types import (
     BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
@@ -17,7 +16,7 @@ from .fast_data_types import (
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
     GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
-    ITALIC, SpriteMap, copy_image_sub_data, get_uniform_block_offsets,
+    ITALIC, copy_image_sub_data, get_uniform_block_offsets,
     get_uniform_block_size, glActiveTexture, glAttachShader, glBindBuffer,
     glBindBufferBase, glBindTexture, glBindVertexArray, glCompileShader,
     glCopyImageSubData, glCreateProgram, glCreateShader, glDeleteBuffer,
@@ -28,7 +27,8 @@ from .fast_data_types import (
     glGetUniformBlockIndex, glGetUniformLocation, glLinkProgram, glPixelStorei,
     glShaderSource, glTexParameteri, glTexStorage3D, glTexSubImage3D,
     glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
-    replace_or_create_buffer
+    render_dirty_sprites, replace_or_create_buffer, sprite_map_current_layout,
+    sprite_map_increment, sprite_map_set_layout, sprite_map_set_limits, sprite_map_free
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -120,24 +120,20 @@ class Sprites:  # {{{
         self.last_ynum = -1
         self.sampler_num = 0
         self.texture_unit = GL_TEXTURE0 + self.sampler_num
-        self.backend = SpriteMap(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
-        self.lock = Lock()
+        sprite_map_set_limits(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
 
     def do_layout(self, cell_width=1, cell_height=1):
         self.cell_width, self.cell_height = cell_width, cell_height
-        self.backend.layout(cell_width or 1, cell_height or 1)
+        sprite_map_set_layout(cell_width or 1, cell_height or 1)
         if self.texture_id is not None:
             glDeleteTexture(self.texture_id)
             self.texture_id = None
         self.ensure_state()
-        self.pre_render()
-
-    def pre_render(self):
         # Pre-render the basic cells to ensure they have known sprite numbers
 
         def send(*a, **kw):
             buf = render_cell(*a, **kw)[0]
-            x, y, z = self.backend.increment()
+            x, y, z = sprite_map_increment()
             self.send_to_gpu(x, y, z, buf)
             return x
 
@@ -149,7 +145,8 @@ class Sprites:  # {{{
 
     @property
     def layout(self):
-        return 1 / self.backend.xnum, 1 / self.backend.ynum
+        xnum, ynum, znum = sprite_map_current_layout()
+        return 1 / xnum, 1 / ynum
 
     def render_cell(self, text, bold, italic, is_second):
         first, second = render_cell(text, bold, italic)
@@ -157,14 +154,14 @@ class Sprites:  # {{{
         return ans or render_cell()[0]
 
     def render_dirty_cells(self):
-        with self.lock:
-            self.backend.render_dirty_cells(self.render_cell, self.send_to_gpu)
+        render_dirty_sprites(self.render_cell, self.send_to_gpu)
 
     def send_to_gpu(self, x, y, z, buf):
-        if self.backend.z >= self.last_num_of_layers:
+        xnum, ynum, znum = sprite_map_current_layout()
+        if znum >= self.last_num_of_layers:
             self.realloc_texture()
         else:
-            if self.backend.z == 0 and self.backend.ynum > self.last_ynum:
+            if znum == 0 and ynum > self.last_ynum:
                 self.realloc_texture()
         tgt = GL_TEXTURE_2D_ARRAY
         glBindTexture(tgt, self.texture_id)
@@ -182,12 +179,13 @@ class Sprites:  # {{{
         glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        znum = self.backend.z + 1
-        width, height = self.backend.xnum * self.cell_width, self.backend.ynum * self.cell_height
+        xnum, bynum, z = sprite_map_current_layout()
+        znum = z + 1
+        width, height = xnum * self.cell_width, bynum * self.cell_height
         glTexStorage3D(tgt, 1, GL_R8, width, height, znum)
         if self.texture_id is not None:
-            ynum = self.backend.ynum
-            if self.backend.z == 0:
+            ynum = bynum
+            if z == 0:
                 ynum -= 1  # Only copy the previous rows
             try:
                 glCopyImageSubData(self.texture_id, tgt, 0, 0, 0, 0, tex, tgt, 0, 0, 0, 0,
@@ -203,10 +201,11 @@ class Sprites:  # {{{
                 glBindTexture(tgt, tex)
             glDeleteTexture(self.texture_id)
         self.last_num_of_layers = znum
-        self.last_ynum = self.backend.ynum
+        self.last_ynum = bynum
         self.texture_id = tex
 
     def destroy(self):
+        sprite_map_free()
         if self.texture_id is not None:
             glDeleteTexture(self.texture_id)
             self.texture_id = None

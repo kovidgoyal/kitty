@@ -148,10 +148,10 @@ class Boss(Thread):
         glfw_window.window_focus_callback = self.on_focus
         self.tab_manager = TabManager(opts, args, startup_session)
         self.sprites = Sprites()
+        self.sprites.do_layout(cell_size.width, cell_size.height)
         self.cell_program, self.cursor_program = load_shader_programs()
         self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        self.sprites.do_layout(cell_size.width, cell_size.height)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
         self.start_cursor_blink()

@@ -26,6 +26,7 @@ typedef uint32_t char_type;
 typedef uint32_t color_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
+typedef uint16_t sprite_index;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
 #define ANY_MODE 3
@@ -191,29 +192,6 @@ typedef struct {
 } ColorProfile;
 PyTypeObject ColorProfile_Type;
 
-typedef struct SpritePosition SpritePosition;
-struct SpritePosition {
-    SpritePosition *next;
-    unsigned int x, y, z;
-    char_type ch;
-    combining_type cc;
-    bool is_second;
-    bool filled;
-    bool rendered;
-};
-PyTypeObject SpritePosition_Type;
-
-typedef struct {
-    PyObject_HEAD
-
-    size_t max_array_len, max_texture_size, max_y;
-    unsigned int x, y, z, xnum, ynum;
-    SpritePosition cache[1024];
-    bool dirty;
-
-} SpriteMap;
-PyTypeObject SpriteMap_Type;
-
 typedef struct {
     PyObject_HEAD
 
@@ -336,7 +314,6 @@ int init_Timers(PyObject *);
 int init_ChildMonitor(PyObject *);
 int init_Line(PyObject *);
 int init_ColorProfile(PyObject *);
-int init_SpriteMap(PyObject *);
 int init_ChangeTracker(PyObject *);
 int init_Screen(PyObject *);
 int init_Face(PyObject *);
@@ -351,7 +328,7 @@ void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
-bool update_cell_range_data(ScreenModes *modes, SpriteMap *, Line *, unsigned int, unsigned int, unsigned int *);
+bool update_cell_range_data(ScreenModes *modes, Line *, unsigned int, unsigned int, unsigned int *);
 
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);

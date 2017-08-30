@@ -285,8 +285,7 @@ class TabBar:
                 s.draw('…')
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
-        sprites = get_boss().sprites
-        s.update_cell_data(sprites.backend, addressof(self.render_buf), True)
+        s.update_cell_data(addressof(self.render_buf), True)
         self.cell_ranges = cr
         self.dirty = True
         glfw_post_empty_event()

@@ -11,7 +11,7 @@ from threading import Lock
 
 from .config import build_ansi_color_table, defaults
 from .constants import (
-    GLfloat, GLuint, ScreenGeometry, cell_size, get_boss, viewport_size
+    GLfloat, GLuint, ScreenGeometry, cell_size, viewport_size
 )
 from .fast_data_types import (
     CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, DATA_CELL_SIZE, GL_BLEND,
@@ -234,16 +234,13 @@ class CharGrid:
             self.update_cell_data()
 
     def update_cell_data(self, force_full_refresh=False):
-        sprites = get_boss().sprites
         is_dirty = self.screen.is_dirty()
-        with sprites.lock:
-            cursor_changed, history_line_added_count = self.screen.update_cell_data(
-                sprites.backend, addressof(self.main_sprite_map), force_full_refresh)
-            if self.scrolled_by:
-                self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
-                self.screen.set_scroll_cell_data(
-                    sprites.backend, addressof(self.main_sprite_map),
-                    self.scrolled_by, addressof(self.scroll_sprite_map))
+        cursor_changed, history_line_added_count = self.screen.update_cell_data(
+            addressof(self.main_sprite_map), force_full_refresh)
+        if self.scrolled_by:
+            self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
+            self.screen.set_scroll_cell_data(
+                addressof(self.main_sprite_map), self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         with self.buffer_lock:

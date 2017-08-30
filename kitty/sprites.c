@@ -6,28 +6,46 @@
  */
 
 #include "data-types.h"
+#include "sprites.h"
 #include <structmember.h>
 
-static PyObject*
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
-    SpriteMap *self;
-    unsigned long mlen, msz;
-    if (!PyArg_ParseTuple(args, "kk", &msz, &mlen)) return NULL;
+typedef struct {
+    size_t max_array_len, max_texture_size, max_y;
+    unsigned int x, y, z, xnum, ynum;
+    SpritePosition cache[1024];
+    bool dirty;
+} SpriteMap;
 
-    self = (SpriteMap *)type->tp_alloc(type, 0);
-    if (self != NULL) {
-        self->max_array_len = mlen;
-        self->max_texture_size = msz;
-        self->dirty = true;
+static SpriteMap sprite_map = {
+    .max_array_len = 1000,
+    .max_texture_size = 1000,
+    .max_y = 100,
+    .dirty = true
+};
+
+static inline void 
+sprite_map_set_error(int error) {
+    switch(error) {
+        case 1:
+            PyErr_NoMemory(); break;
+        case 2:
+            PyErr_SetString(PyExc_RuntimeError, "Out of texture space for sprites"); break;
+        default:
+            PyErr_SetString(PyExc_RuntimeError, "Unknown error occurred while allocating sprites"); break;
     }
-    return (PyObject*) self;
 }
 
-static void
-dealloc(SpriteMap* self) {
+PyObject*
+sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
+    if (!PyArg_ParseTuple(args, "kk", &(sprite_map.max_texture_size), &(sprite_map.max_array_len))) return NULL;
+    Py_RETURN_NONE;
+}
+
+PyObject*
+sprite_map_free() {
     SpritePosition *s, *t;
-    for (size_t i = 0; i < sizeof(self->cache)/sizeof(self->cache[0]); i++) {
-        s = &(self->cache[i]);
+    for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
+        s = &(sprite_map.cache[i]);
         s = s->next;
         while (s) {
             t = s;
@@ -35,51 +53,27 @@ dealloc(SpriteMap* self) {
             PyMem_Free(t);
         }
     }
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
-
-static PyObject*
-layout(SpriteMap *self, PyObject *args) {
-#define layout_doc "layout(cell_width, cell_height) -> Invalidate the cache and prepare it for new cell size"
-    unsigned long cell_width, cell_height;
-    if (!PyArg_ParseTuple(args, "kk", &cell_width, &cell_height)) return NULL;
-    self->xnum = MIN(MAX(1, self->max_texture_size / cell_width), UINT16_MAX);
-    self->max_y = MIN(MAX(1, self->max_texture_size / cell_height), UINT16_MAX);
-    self->ynum = 1;
-    self->x = 0; self->y = 0; self->z = 0;
-
-    for (size_t i = 0; i < sizeof(self->cache)/sizeof(self->cache[0]); i++) {
-        SpritePosition *s = &(self->cache[i]);
-        do {
-            s->filled = false;
-            s->is_second = false;
-            s->rendered = false;
-            s->ch = 0; s->cc = 0;
-            s->x = 0; s->y = 0; s->z = 0;
-            s = s->next;
-        } while (s != NULL);
-    }
     Py_RETURN_NONE;
 }
 
-static void
-do_increment(SpriteMap *self, int *error) {
-    self->x++;
-    if (self->x >= self->xnum) {
-        self->x = 0; self->y++;
-        self->ynum = MIN(MAX(self->ynum, self->y + 1), self->max_y);
-        if (self->y >= self->max_y) {
-            self->y = 0; self->z++;
-            if (self->z >= MIN(UINT16_MAX, self->max_array_len)) *error = 2;
+static inline void
+do_increment(int *error) {
+    sprite_map.x++;
+    if (sprite_map.x >= sprite_map.xnum) {
+        sprite_map.x = 0; sprite_map.y++;
+        sprite_map.ynum = MIN(MAX(sprite_map.ynum, sprite_map.y + 1), sprite_map.max_y);
+        if (sprite_map.y >= sprite_map.max_y) {
+            sprite_map.y = 0; sprite_map.z++;
+            if (sprite_map.z >= MIN(UINT16_MAX, sprite_map.max_array_len)) *error = 2;
         }
     }
 }
 
-static SpritePosition*
-sprite_position_for(SpriteMap *self, char_type ch, combining_type cc, bool is_second, int *error) {
+SpritePosition*
+sprite_map_position_for(char_type ch, combining_type cc, bool is_second, int *error) {
     char_type pos_char = ch & POSCHAR_MASK;  // Includes only the char and bold and italic bits
-    unsigned int idx = ((ch >> (ATTRS_SHIFT - 6)) & 0x300) | (ch & 0xFF); // Includes only italic, bold and lowest byte of ch
-    SpritePosition *s = &(self->cache[idx]);
+    unsigned int idx = ((ch >> (ATTRS_SHIFT - 4)) & 0x300) | (ch & 0xFF); // Includes only italic, bold and lowest byte of ch
+    SpritePosition *s = &(sprite_map.cache[idx]);
     // Optimize for the common case of an ASCII char already in the cache
     if (LIKELY(s->ch == pos_char && s->filled && s->cc == cc && s->is_second == is_second)) return s;  // Cache hit
     while(true) {
@@ -99,47 +93,67 @@ sprite_position_for(SpriteMap *self, char_type ch, combining_type cc, bool is_se
     s->is_second = is_second;
     s->filled = true;
     s->rendered = false;
-    s->x = self->x; s->y = self->y; s->z = self->z;
-    do_increment(self, error);
-    self->dirty = true;
+    s->x = sprite_map.x; s->y = sprite_map.y; s->z = sprite_map.z;
+    do_increment(error);
+    sprite_map.dirty = true;
     return s;
 }
 
-static void set_sprite_error(int error) {
-    switch(error) {
-        case 1:
-            PyErr_NoMemory(); break;
-        case 2:
-            PyErr_SetString(PyExc_RuntimeError, "Out of texture space for sprites"); break;
-        default:
-            PyErr_SetString(PyExc_RuntimeError, "Unknown error occurred while allocating sprites"); break;
-    }
-}
-
-static PyObject*
-increment(SpriteMap *self) {
+PyObject*
+sprite_map_increment() {
 #define increment_doc "Increment the current position and return the old (x, y, z) values"
-    unsigned int x = self->x, y = self->y, z = self->z;
+    unsigned int x = sprite_map.x, y = sprite_map.y, z = sprite_map.z;
     int error = 0;
-    do_increment(self, &error);
-    if (error) { set_sprite_error(error); return NULL; }
+    do_increment(&error);
+    if (error) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("III", x, y, z);
 }
 
-static PyObject*
-position_for(SpriteMap *self, PyObject *args) {
+PyObject*
+sprite_map_set_layout(PyObject UNUSED *s_, PyObject *args) {
+    // Invalidate cache since cell size has changed.
+    unsigned long cell_width, cell_height;
+    if (!PyArg_ParseTuple(args, "kk", &cell_width, &cell_height)) return NULL;
+    SpritePosition *s;
+    sprite_map.xnum = MIN(MAX(1, sprite_map.max_texture_size / cell_width), UINT16_MAX);
+    sprite_map.max_y = MIN(MAX(1, sprite_map.max_texture_size / cell_height), UINT16_MAX);
+    sprite_map.ynum = 1;
+    sprite_map.x = 0; sprite_map.y = 0; sprite_map.z = 0;
+
+    for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
+        s = &(sprite_map.cache[i]);
+        do {
+            s->filled = false;
+            s->is_second = false;
+            s->rendered = false;
+            s->ch = 0; s->cc = 0;
+            s->x = 0; s->y = 0; s->z = 0;
+            s = s->next;
+        } while (s != NULL);
+    }
+    sprite_map.dirty = true;
+    Py_RETURN_NONE;
+}
+
+PyObject*
+sprite_map_current_layout(PyObject UNUSED *s) {
+    return Py_BuildValue("III", sprite_map.xnum, sprite_map.ynum, sprite_map.z);
+}
+
+PyObject*
+sprite_position_for(PyObject UNUSED *self, PyObject *args) {
 #define position_for_doc "position_for(ch, cc, is_second) -> x, y, z the sprite position for the specified text"
     unsigned long ch = 0;
     unsigned long long cc = 0;
     int is_second = 0, error = 0;
     if (!PyArg_ParseTuple(args, "|kKp", &ch, &cc, &is_second)) return NULL;
-    SpritePosition *pos = sprite_position_for(self, ch, cc, is_second, &error);
-    if (pos == NULL) {set_sprite_error(error); return NULL; }
+    SpritePosition *pos = sprite_map_position_for(ch, cc, is_second, &error);
+    if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
 bool
-update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned int xstart, unsigned int xmax, unsigned int *data) {
+update_cell_range_data(ScreenModes *modes, Line *line, unsigned int xstart, unsigned int xmax, unsigned int *data) {
     SpritePosition *sp;
     char_type previous_ch=0, ch;
     uint8_t previous_width = 0;
@@ -149,9 +163,9 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
     size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
     for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
         ch = line->cells[i].ch;
-        if (previous_width == 2) sp = sprite_position_for(self, previous_ch, 0, true, &err);
-        else sp = sprite_position_for(self, ch, line->cells[i].cc, false, &err);
-        if (sp == NULL) { set_sprite_error(err); return false; }
+        if (previous_width == 2) sp = sprite_map_position_for(previous_ch, 0, true, &err);
+        else sp = sprite_map_position_for(ch, line->cells[i].cc, false, &err);
+        if (sp == NULL) { sprite_map_set_error(err); return false; }
         char_type attrs = ch >> ATTRS_SHIFT;
         unsigned int decoration = (attrs >> DECORATION_SHIFT) & DECORATION_MASK;
         unsigned int strikethrough = ((attrs >> STRIKE_SHIFT) & 1) ? 3 : 0;
@@ -167,17 +181,17 @@ update_cell_range_data(ScreenModes *modes, SpriteMap *self, Line *line, unsigned
     return true;
 }
 
-static PyObject*
-render_dirty_cells(SpriteMap *self, PyObject *args) {
+PyObject*
+render_dirty_sprites(PyObject UNUSED *s_, PyObject *args) {
 #define render_dirty_cells_doc "Render all cells that are marked as dirty"
     PyObject *render_cell, *send_to_gpu;
 
     if (!PyArg_ParseTuple(args, "OO", &render_cell, &send_to_gpu)) return NULL;
 
-    if (!self->dirty) { Py_RETURN_NONE; }
+    if (!sprite_map.dirty) { Py_RETURN_NONE; }
 
-    for (size_t i = 0; i < sizeof(self->cache)/sizeof(self->cache[0]); i++) {
-        SpritePosition *sp = &(self->cache[i]);
+    for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
+        SpritePosition *sp = &(sprite_map.cache[i]);
         while (sp) {
             if (sp->filled && !sp->rendered) {
                 PyObject *text = line_text_at(sp->ch & CHAR_MASK, sp->cc);
@@ -196,44 +210,6 @@ render_dirty_cells(SpriteMap *self, PyObject *args) {
             sp = sp->next;
         }
     }
-    self->dirty = false;
+    sprite_map.dirty = false;
     Py_RETURN_NONE;
 }
-
-// Boilerplate {{{
-
-static PyMemberDef members[] = {
-    {"xnum", T_UINT, offsetof(SpriteMap, xnum), 0, "xnum"},
-    {"ynum", T_UINT, offsetof(SpriteMap, ynum), 0, "ynum"},
-    {"x", T_UINT, offsetof(SpriteMap, x), 0, "x"},
-    {"y", T_UINT, offsetof(SpriteMap, y), 0, "y"},
-    {"z", T_UINT, offsetof(SpriteMap, z), 0, "z"},
-    {NULL}  /* Sentinel */
-};
-
-
-static PyMethodDef methods[] = {
-    METHOD(layout, METH_VARARGS)
-    METHOD(position_for, METH_VARARGS)
-    METHOD(render_dirty_cells, METH_VARARGS)
-    METHOD(increment, METH_NOARGS)
-    {NULL}  /* Sentinel */
-};
-
-
-PyTypeObject SpriteMap_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "fast_data_types.SpriteMap",
-    .tp_basicsize = sizeof(SpriteMap),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
-    .tp_doc = "SpriteMap",
-    .tp_methods = methods,
-    .tp_members = members,
-    .tp_new = new,                
-};
-
-INIT_TYPE(SpriteMap)
-// }}}
-
-
