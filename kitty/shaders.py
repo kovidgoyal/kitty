@@ -4,6 +4,7 @@
 
 import os
 import sys
+from collections import namedtuple
 from contextlib import contextmanager
 from ctypes import addressof, sizeof
 from functools import lru_cache
@@ -15,17 +16,19 @@ from .fast_data_types import (
     GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STREAM_DRAW,
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
-    GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER, ITALIC, SpriteMap,
-    copy_image_sub_data, glActiveTexture, glAttachShader, glBindBuffer,
-    glBindTexture, glBindVertexArray, glCompileShader, glCopyImageSubData,
-    glCreateProgram, glCreateShader, glDeleteBuffer, glDeleteProgram,
-    glDeleteShader, glDeleteTexture, glDeleteVertexArray,
+    GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
+    ITALIC, SpriteMap, copy_image_sub_data, get_uniform_block_offsets,
+    get_uniform_block_size, glActiveTexture, glAttachShader, glBindBuffer,
+    glBindBufferBase, glBindTexture, glBindVertexArray, glCompileShader,
+    glCopyImageSubData, glCreateProgram, glCreateShader, glDeleteBuffer,
+    glDeleteProgram, glDeleteShader, glDeleteTexture, glDeleteVertexArray,
     glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
     glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
     glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
-    glGetUniformLocation, glLinkProgram, glPixelStorei, glShaderSource,
-    glTexParameteri, glTexStorage3D, glTexSubImage3D, glUseProgram,
-    glVertexAttribDivisor, glVertexAttribPointer, replace_or_create_buffer
+    glGetUniformBlockIndex, glGetUniformLocation, glLinkProgram, glPixelStorei,
+    glShaderSource, glTexParameteri, glTexStorage3D, glTexSubImage3D,
+    glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
+    replace_or_create_buffer
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -34,6 +37,7 @@ GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 ITALIC_MASK = 1 << ITALIC
 BOLD_MASK = 1 << BOLD
+UBO = namedtuple('UBO', 'size index offsets buf_id')
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -326,6 +330,30 @@ class ShaderProgram:  # {{{
     def uniform_location(self, name: str) -> int:
         ' Return the id for the uniform variable `name` or -1 if not found. '
         return glGetUniformLocation(self.program_id, name)
+
+    @lru_cache(maxsize=2**6)
+    def uniform_block_index(self, name: str) -> int:
+        ' Return the block index for the specified uniform block raises ValueError if not found. '
+        return glGetUniformBlockIndex(self.program_id, name)
+
+    def uniform_block_size(self, block_index):
+        return get_uniform_block_size(self.program_id, block_index)
+
+    def init_uniform_block(self, name, *variables):
+        idx = self.uniform_block_index(name)
+        size = self.uniform_block_size(idx)
+        offsets = get_uniform_block_offsets(self.program_id, variables)
+        offsets = dict(zip(variables, offsets))
+        buf_id = buffer_manager.create(GL_UNIFORM_BUFFER)
+        return UBO(size=size, index=idx, offsets=offsets, buf_id=buf_id)
+
+    def send_uniform_buffer_data(self, ubo, data, usage=GL_STREAM_DRAW):
+        buffer_manager.set_data(ubo.buf_id, data, usage=usage)
+
+    @contextmanager
+    def bound_uniform_buffer(self, ubo):
+        glBindBufferBase(GL_UNIFORM_BUFFER, ubo.index, ubo.buf_id)
+        yield
 
     @lru_cache(maxsize=2**6)
     def attribute_location(self, name: str) -> int:

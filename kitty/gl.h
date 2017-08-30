@@ -426,6 +426,16 @@ GetUniformLocation(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+GetUniformBlockIndex(PyObject UNUSED *self, PyObject *args) {
+    char *name;
+    unsigned int program_id;
+    if(!PyArg_ParseTuple(args, "Is", &program_id, &name)) return NULL;
+    GLuint ans = glGetUniformBlockIndex(program_id, name);
+    if (ans == GL_INVALID_INDEX) { PyErr_SetString(PyExc_ValueError, "No such uniform block is active"); return NULL; }
+    return PyLong_FromUnsignedLong((unsigned long) ans);
+}
+
+static PyObject* 
 GetAttribLocation(PyObject UNUSED *self, PyObject *args) {
     char *name;
     unsigned int program_id;
@@ -435,6 +445,44 @@ GetAttribLocation(PyObject UNUSED *self, PyObject *args) {
     return PyLong_FromLong((long) ans);
 }
 
+static PyObject* 
+get_uniform_block_size(PyObject UNUSED *self, PyObject *args) {
+    unsigned int program_id, block_index;
+    if(!PyArg_ParseTuple(args, "II", &program_id, &block_index)) return NULL;
+    GLint ans;
+    glGetActiveUniformBlockiv(program_id, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &ans);
+    CHECK_ERROR;
+    return PyLong_FromLong((long) ans);
+}
+
+static PyObject* 
+get_uniform_block_offsets(PyObject UNUSED *self, PyObject *args) {
+    unsigned int program_id;
+    PyObject *pynames;
+    if(!PyArg_ParseTuple(args, "IO", &program_id, &pynames)) return NULL;
+    if (!PySequence_Check(pynames)) { PyErr_SetString(PyExc_TypeError, "names must be a sequence"); return NULL; }
+    GLsizei count = PySequence_Size(pynames);
+    char **names = PyMem_Calloc(count, sizeof(char*));
+    GLuint *indices = PyMem_Calloc(count, sizeof(GLuint));
+    GLint *offsets = PyMem_Calloc(count, sizeof(GLint));
+    PyObject *ans = PyTuple_New(count);
+    if (ans == NULL || indices == NULL || names == NULL) return PyErr_NoMemory();
+    for (GLsizei i = 0; i < count; i++) { 
+        PyObject *t = PySequence_ITEM(pynames, i);
+        names[i] = PyUnicode_AsUTF8(t);
+        Py_CLEAR(t);
+    }
+    glGetUniformIndices(program_id, count, (const GLchar * const*)names, indices);
+    glGetActiveUniformsiv(program_id, count, indices, GL_UNIFORM_OFFSET, offsets);
+    for (GLsizei i = 0; i < count; i++) PyTuple_SET_ITEM(ans, i, PyLong_FromLong(offsets[i]));
+    PyMem_Free(names); PyMem_Free(indices); PyMem_Free(offsets);
+    if (_enable_error_checking) { 
+        SET_GL_ERR; 
+        if (PyErr_Occurred()) { Py_CLEAR(ans); return NULL; }
+    }
+    return ans;
+}
+ 
 static PyObject* 
 UseProgram(PyObject UNUSED *self, PyObject *val) {
     unsigned long program_id = PyLong_AsUnsignedLong(val);
@@ -621,6 +669,15 @@ BindBuffer(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject* 
+BindBufferBase(PyObject UNUSED *self, PyObject *args) {
+    int tgt; unsigned int index, buf_id;
+    if (!PyArg_ParseTuple(args, "iII", &tgt, &index, &buf_id)) return NULL;
+    glBindBufferBase(tgt, index, buf_id);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
 TexBuffer(PyObject UNUSED *self, PyObject *args) {
     int tgt, fmt; unsigned int buf_id;
     if (!PyArg_ParseTuple(args, "iiI", &tgt, &fmt, &buf_id)) return NULL;
@@ -777,7 +834,7 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_R32UI); GLC(GL_RGB32UI); GLC(GL_RGBA);
     GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
-    GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_UNSIGNED_INT); GLC(GL_ARRAY_BUFFER);
+    GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_UNSIGNED_INT); GLC(GL_ARRAY_BUFFER); GLC(GL_UNIFORM_BUFFER);
     return 1;
 }
 
@@ -788,6 +845,8 @@ int add_module_gl_constants(PyObject *module) {
     {"replace_or_create_buffer", (PyCFunction)replace_or_create_buffer, METH_VARARGS, NULL}, \
     {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, \
     {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, \
+    {"get_uniform_block_size", (PyCFunction)get_uniform_block_size, METH_VARARGS, NULL}, \
+    {"get_uniform_block_offsets", (PyCFunction)get_uniform_block_offsets, METH_VARARGS, NULL}, \
     METH(Viewport, METH_VARARGS) \
     METH(CheckError, METH_NOARGS) \
     METH(ClearColor, METH_VARARGS) \
@@ -802,6 +861,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(Uniform4f, METH_VARARGS) \
     METH(Uniform3fv, METH_VARARGS) \
     METH(GetUniformLocation, METH_VARARGS) \
+    METH(GetUniformBlockIndex, METH_VARARGS) \
     METH(GetAttribLocation, METH_VARARGS) \
     METH(ShaderSource, METH_VARARGS) \
     METH(CompileShader, METH_O) \
@@ -837,6 +897,7 @@ int add_module_gl_constants(PyObject *module) {
     METH(TexParameteri, METH_VARARGS) \
     METH(PixelStorei, METH_VARARGS) \
     METH(BindBuffer, METH_VARARGS) \
+    METH(BindBufferBase, METH_VARARGS) \
     METH(TexBuffer, METH_VARARGS) \
     METH(TexStorage3D, METH_VARARGS) \
     METH(CopyImageSubData, METH_VARARGS) \
