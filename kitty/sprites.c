@@ -182,34 +182,30 @@ update_cell_range_data(ScreenModes *modes, Line *line, unsigned int xstart, unsi
 }
 
 PyObject*
-render_dirty_sprites(PyObject UNUSED *s_, PyObject *args) {
+render_dirty_sprites(PyObject UNUSED *s_) {
 #define render_dirty_cells_doc "Render all cells that are marked as dirty"
-    PyObject *render_cell, *send_to_gpu;
-
-    if (!PyArg_ParseTuple(args, "OO", &render_cell, &send_to_gpu)) return NULL;
-
     if (!sprite_map.dirty) { Py_RETURN_NONE; }
+    PyObject *ans = PyList_New(0);
+    if (ans == NULL) return NULL;
 
     for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
         SpritePosition *sp = &(sprite_map.cache[i]);
-        while (sp) {
+        do {
             if (sp->filled && !sp->rendered) {
                 PyObject *text = line_text_at(sp->ch & CHAR_MASK, sp->cc);
                 if (text == NULL) return NULL;
                 char_type attrs = sp->ch >> ATTRS_SHIFT;
                 bool bold = (attrs >> BOLD_SHIFT) & 1, italic = (attrs >> ITALIC_SHIFT) & 1;
-                PyObject *rcell = PyObject_CallFunctionObjArgs(render_cell, text, bold ? Py_True : Py_False, italic ? Py_True : Py_False, sp->is_second ? Py_True : Py_False, NULL);
+                PyObject *x = Py_BuildValue("OOOOHHH", text, bold ? Py_True : Py_False, italic ? Py_True : Py_False, sp->is_second ? Py_True : Py_False, sp->x, sp->y, sp->z);
                 Py_CLEAR(text);
-                if (rcell == NULL) return NULL;
-                PyObject *ret = PyObject_CallFunction(send_to_gpu, "IIIO", sp->x, sp->y, sp->z, rcell);
-                Py_CLEAR(rcell);
-                if (ret == NULL) return NULL;
-                Py_CLEAR(ret); 
+                if (x == NULL) { Py_CLEAR(ans); return NULL; }
+                if (PyList_Append(ans, x) != 0) { Py_CLEAR(ans); return NULL; }
+                Py_CLEAR(x);
                 sp->rendered = true; 
             }
             sp = sp->next;
-        }
+        } while(sp);
     }
     sprite_map.dirty = false;
-    Py_RETURN_NONE;
+    return ans;
 }

@@ -459,7 +459,7 @@ class Boss(Thread):
                 if isosx:
                     cocoa_update_title(self.glfw_window_title)
             with self.sprites:
-                self.sprites.render_dirty_cells()
+                self.sprites.render_dirty_sprites()
                 tab.render()
                 render_data = {
                     window:

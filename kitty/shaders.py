@@ -153,8 +153,12 @@ class Sprites:  # {{{
         ans = second if is_second else first
         return ans or render_cell()[0]
 
-    def render_dirty_cells(self):
-        render_dirty_sprites(self.render_cell, self.send_to_gpu)
+    def render_dirty_sprites(self):
+        ret = render_dirty_sprites()
+        if ret:
+            for text, bold, italic, is_second, x, y, z in ret:
+                cell = self.render_cell(text, bold, italic, is_second)
+                self.send_to_gpu(x, y, z, cell)
 
     def send_to_gpu(self, x, y, z, buf):
         xnum, ynum, znum = sprite_map_current_layout()

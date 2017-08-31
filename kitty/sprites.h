@@ -26,7 +26,7 @@ PyObject* sprite_map_increment();
 SpritePosition* sprite_map_position_for(char_type ch, combining_type cc, bool is_second, int *error);
 PyObject* sprite_position_for(PyObject UNUSED *self, PyObject *args);
 bool update_cell_range_data(ScreenModes *modes, Line *line, unsigned int xstart, unsigned int xmax, unsigned int *data);
-PyObject* render_dirty_sprites(PyObject UNUSED *self, PyObject *args);
+PyObject* render_dirty_sprites(PyObject UNUSED *self);
 
 #define SPRITE_FUNC_WRAPPERS \
     {"sprite_map_set_limits", (PyCFunction)sprite_map_set_limits, METH_VARARGS, ""}, \
@@ -35,5 +35,5 @@ PyObject* render_dirty_sprites(PyObject UNUSED *self, PyObject *args);
     {"sprite_map_free", (PyCFunction)sprite_map_free, METH_NOARGS, ""}, \
     {"sprite_map_increment", (PyCFunction)sprite_map_increment, METH_NOARGS, ""}, \
     {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""}, \
-    {"render_dirty_sprites", (PyCFunction)render_dirty_sprites, METH_VARARGS, ""}, \
+    {"render_dirty_sprites", (PyCFunction)render_dirty_sprites, METH_NOARGS, ""}, \
 

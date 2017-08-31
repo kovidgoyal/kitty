@@ -302,7 +302,7 @@ class TabBar:
     def render(self, cell_program, sprites):
         ' Must be called in the GUI thread '
         if self.render_buf is not None:
-            sprites.render_dirty_cells()
+            sprites.render_dirty_sprites()
             if self.vao_id is None:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
