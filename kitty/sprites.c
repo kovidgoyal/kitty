@@ -193,13 +193,13 @@ render_dirty_sprites(PyObject UNUSED *s_) {
         do {
             if (sp->filled && !sp->rendered) {
                 PyObject *text = line_text_at(sp->ch & CHAR_MASK, sp->cc);
-                if (text == NULL) return NULL;
+                if (text == NULL) { Py_CLEAR(ans); return NULL; }
                 char_type attrs = sp->ch >> ATTRS_SHIFT;
                 bool bold = (attrs >> BOLD_SHIFT) & 1, italic = (attrs >> ITALIC_SHIFT) & 1;
                 PyObject *x = Py_BuildValue("OOOOHHH", text, bold ? Py_True : Py_False, italic ? Py_True : Py_False, sp->is_second ? Py_True : Py_False, sp->x, sp->y, sp->z);
                 Py_CLEAR(text);
                 if (x == NULL) { Py_CLEAR(ans); return NULL; }
-                if (PyList_Append(ans, x) != 0) { Py_CLEAR(ans); return NULL; }
+                if (PyList_Append(ans, x) != 0) { Py_CLEAR(x); Py_CLEAR(ans); return NULL; }
                 Py_CLEAR(x);
                 sp->rendered = true; 
             }
