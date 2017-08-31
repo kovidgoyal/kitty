@@ -8,7 +8,6 @@ import unicodedata
 from collections import namedtuple
 from functools import lru_cache
 from itertools import chain
-from threading import Lock
 
 from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face
 from kitty.fonts.box_drawing import render_missing_glyph
@@ -114,7 +113,6 @@ def set_font_family(opts, override_font_size=None):
 CharBitmap = namedtuple(
     'CharBitmap', 'data bearingX bearingY advance rows columns'
 )
-freetype_lock = Lock()
 
 
 def render_to_bitmap(font, face, text):
@@ -162,26 +160,25 @@ def render_char(text, bold=False, italic=False, width=1):
     elif italic:
         key = 'italic'
     ch = text[0]
-    with freetype_lock:
-        font = symbol_map.get(ch)
-        if font is None or not font.face.get_char_index(ch):
-            font = current_font_family.get(key) or current_font_family['regular']
-            face = font.face
-            if not face.get_char_index(ch):
-                try:
-                    font = font_for_char(ch, bold, italic)
-                except FontNotFound:
-                    font = font_for_char(
-                        ch, bold, italic, allow_bitmaped_fonts=True
-                    )
-                face = alt_face_cache.get(font)
-                if face is None:
-                    face = alt_face_cache[font] = Face(font.face, font.index)
-                    if face.is_scalable:
-                        set_char_size(face, **cff_size)
-        else:
-            face = font.face
-        return render_using_face(font, face, text, width, italic, bold)
+    font = symbol_map.get(ch)
+    if font is None or not font.face.get_char_index(ch):
+        font = current_font_family.get(key) or current_font_family['regular']
+        face = font.face
+        if not face.get_char_index(ch):
+            try:
+                font = font_for_char(ch, bold, italic)
+            except FontNotFound:
+                font = font_for_char(
+                    ch, bold, italic, allow_bitmaped_fonts=True
+                )
+            face = alt_face_cache.get(font)
+            if face is None:
+                face = alt_face_cache[font] = Face(font.face, font.index)
+                if face.is_scalable:
+                    set_char_size(face, **cff_size)
+    else:
+        face = font.face
+    return render_using_face(font, face, text, width, italic, bold)
 
 
 def place_char_in_cell(bitmap_char):

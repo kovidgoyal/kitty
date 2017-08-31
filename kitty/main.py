@@ -8,7 +8,6 @@ import os
 import sys
 from contextlib import contextmanager
 from gettext import gettext as _
-from queue import Empty
 
 from .boss import Boss
 from .config import (
@@ -168,16 +167,6 @@ def clear_buffers(window, opts):
 
 
 def dispatch_pending_calls(boss):
-    while True:
-        try:
-            func, args = boss.pending_ui_thread_calls.get_nowait()
-        except Empty:
-            break
-        try:
-            func(*args)
-        except Exception:
-            import traceback
-            safe_print(traceback.format_exc())
     boss.ui_timers.call()
 
 

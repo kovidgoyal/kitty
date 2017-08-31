@@ -7,7 +7,6 @@ import sys
 from collections import namedtuple
 from ctypes import addressof, memmove, sizeof
 from enum import Enum
-from threading import Lock
 
 from .config import build_ansi_color_table, defaults
 from .constants import (
@@ -158,7 +157,6 @@ class CharGrid:
     url_pat = re.compile('(?:http|https|file|ftp)://\S+', re.IGNORECASE)
 
     def __init__(self, screen, opts):
-        self.buffer_lock = Lock()
         self.vao_id = None
         self.current_selection = Selection()
         self.last_rendered_selection = None
@@ -199,11 +197,10 @@ class CharGrid:
         rt = (GLuint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
         self.main_sprite_map = rt()
         self.scroll_sprite_map = rt()
-        with self.buffer_lock:
-            self.render_buf = rt()
-            self.selection_buf = (GLfloat * (self.screen_geometry.ynum * self.screen_geometry.xnum))()
-            self.render_buf_is_dirty = True
-            self.current_selection.clear()
+        self.render_buf = rt()
+        self.selection_buf = (GLfloat * (self.screen_geometry.ynum * self.screen_geometry.xnum))()
+        self.render_buf_is_dirty = True
+        self.current_selection.clear()
 
     def change_colors(self, changes):
         dirtied = False
@@ -243,12 +240,11 @@ class CharGrid:
                 addressof(self.main_sprite_map), self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
-        with self.buffer_lock:
-            if is_dirty:
-                self.current_selection.clear()
-            memmove(self.render_buf, data, sizeof(type(data)))
-            self.render_data = self.screen_geometry
-            self.render_buf_is_dirty = True
+        if is_dirty:
+            self.current_selection.clear()
+        memmove(self.render_buf, data, sizeof(type(data)))
+        self.render_data = self.screen_geometry
+        self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
             self.current_cursor = Cursor(c.x, c.y, c.shape, c.blink)
@@ -265,19 +261,18 @@ class CharGrid:
             x = 0 if mx <= cell_size.width else self.screen.columns - 1
             y = 0 if my <= cell_size.height else self.screen.lines - 1
         ps = None
-        with self.buffer_lock:
-            if is_press:
-                self.current_selection.start_x = self.current_selection.end_x = x
-                self.current_selection.start_y = self.current_selection.end_y = y
-                self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
-                self.current_selection.in_progress = True
-            elif self.current_selection.in_progress:
-                self.current_selection.end_x = x
-                self.current_selection.end_y = y
-                self.current_selection.end_scrolled_by = self.scrolled_by
-                if is_press is False:
-                    self.current_selection.in_progress = False
-                    ps = self.text_for_selection()
+        if is_press:
+            self.current_selection.start_x = self.current_selection.end_x = x
+            self.current_selection.start_y = self.current_selection.end_y = y
+            self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
+            self.current_selection.in_progress = True
+        elif self.current_selection.in_progress:
+            self.current_selection.end_x = x
+            self.current_selection.end_y = y
+            self.current_selection.end_scrolled_by = self.scrolled_by
+            if is_press is False:
+                self.current_selection.in_progress = False
+                ps = self.text_for_selection()
         if ps and ps.strip():
             set_primary_selection(ps)
 
@@ -370,21 +365,20 @@ class CharGrid:
         return s.text(self.screen.linebuf, self.screen.historybuf)
 
     def prepare_for_render(self, cell_program):
-        with self.buffer_lock:
-            sg = self.render_data
-            if sg is None:
-                return
-            if self.vao_id is None:
-                self.vao_id = cell_program.create_sprite_map()
-            start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
-            selection_changed = sel != self.last_rendered_selection
-            if selection_changed:
-                self.screen.apply_selection(addressof(self.selection_buf), start[0], start[1], end[0], end[1], len(self.selection_buf))
-                cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
-                self.last_rendered_selection = sel
-            if self.render_buf_is_dirty:
-                cell_program.send_vertex_data(self.vao_id, self.render_buf)
-                self.render_buf_is_dirty = False
+        sg = self.render_data
+        if sg is None:
+            return
+        if self.vao_id is None:
+            self.vao_id = cell_program.create_sprite_map()
+        start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
+        selection_changed = sel != self.last_rendered_selection
+        if selection_changed:
+            self.screen.apply_selection(addressof(self.selection_buf), start[0], start[1], end[0], end[1], len(self.selection_buf))
+            cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
+            self.last_rendered_selection = sel
+        if self.render_buf_is_dirty:
+            cell_program.send_vertex_data(self.vao_id, self.render_buf)
+            self.render_buf_is_dirty = False
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):

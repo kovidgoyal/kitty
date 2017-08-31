@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import threading
 import pwd
 import ctypes
 import sys
@@ -64,10 +63,6 @@ def wakeup():
     os.write(get_boss.boss.write_wakeup_fd, b'1')
 
 
-def queue_action(func, *args):
-    get_boss.boss.queue_action(func, *args)
-
-
 is_key_pressed = defaultdict(lambda: False)
 mouse_button_pressed = defaultdict(lambda: False)
 mouse_cursor_pos = [0, 0]
@@ -76,7 +71,6 @@ cell_size = ViewportSize()
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
-main_thread = threading.current_thread()
 shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 
 GLint = ctypes.c_int if ctypes.sizeof(ctypes.c_int) == 4 else ctypes.c_long

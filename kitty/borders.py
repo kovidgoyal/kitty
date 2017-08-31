@@ -5,7 +5,6 @@
 from ctypes import addressof
 from functools import partial
 from itertools import chain
-from threading import Lock
 
 from .constants import GLfloat, GLint, GLuint, viewport_size
 from .fast_data_types import (
@@ -74,7 +73,6 @@ class Borders:
 
     def __init__(self, opts):
         self.is_dirty = False
-        self.lock = Lock()
         self.can_render = False
         self.border_width = pt_to_px(opts.window_border_width)
         self.padding_width = pt_to_px(opts.window_padding_width)
@@ -113,31 +111,29 @@ class Borders:
                         color, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw)
 
-        with self.lock:
-            self.num_of_rects = len(rects) // 12
-            self.rects = (GLfloat * len(rects))()
-            self.starts = (GLint * self.num_of_rects)()
-            self.counts = (GLuint * self.num_of_rects)()
-            for i, x in enumerate(rects):
-                self.rects[i] = x
-                if i % 12 == 0:
-                    idx = i // 12
-                    self.starts[idx] = i // 3
-                    self.counts[idx] = 4
-            self.is_dirty = True
-            self.can_render = True
+        self.num_of_rects = len(rects) // 12
+        self.rects = (GLfloat * len(rects))()
+        self.starts = (GLint * self.num_of_rects)()
+        self.counts = (GLuint * self.num_of_rects)()
+        for i, x in enumerate(rects):
+            self.rects[i] = x
+            if i % 12 == 0:
+                idx = i // 12
+                self.starts[idx] = i // 3
+                self.counts[idx] = 4
+        self.is_dirty = True
+        self.can_render = True
 
     def render(self, program):
-        with self.lock:
-            if not self.can_render:
-                return
-            with program:
-                if self.is_dirty:
-                    program.send_data(self.rects)
-                    program.set_colors(self.color_buf)
-                    self.is_dirty = False
-                with program.bound_vertex_array(program.vao_id):
-                    glMultiDrawArrays(
-                        GL_TRIANGLE_FAN,
-                        addressof(self.starts),
-                        addressof(self.counts), self.num_of_rects)
+        if not self.can_render:
+            return
+        with program:
+            if self.is_dirty:
+                program.send_data(self.rects)
+                program.set_colors(self.color_buf)
+                self.is_dirty = False
+            with program.bound_vertex_array(program.vao_id):
+                glMultiDrawArrays(
+                    GL_TRIANGLE_FAN,
+                    addressof(self.starts),
+                    addressof(self.counts), self.num_of_rects)

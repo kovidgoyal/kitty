@@ -2,23 +2,20 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import inspect
 import io
 import os
 import signal
 import struct
-from functools import wraps
 from gettext import gettext as _
-from queue import Empty, Queue
-from threading import Thread, current_thread
+from threading import Thread
 from time import monotonic
 
 from .borders import BordersProgram
 from .char_grid import load_shader_programs
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
-    MODIFIER_KEYS, cell_size, is_key_pressed, isosx, main_thread,
-    mouse_button_pressed, mouse_cursor_pos, set_boss, viewport_size, wakeup
+    MODIFIER_KEYS, cell_size, is_key_pressed, isosx, mouse_button_pressed,
+    mouse_cursor_pos, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
@@ -61,28 +58,6 @@ def conditional_run(w, i):
         next(i, None)
 
 
-def callback(func):
-    ''' Wrapper for function that executes first half (up to a yield statement)
-    in the UI thread and the rest in the child thread. If the function yields
-    something, the destroyed attribute of that something is checked before
-    running the second half. If the function returns before the yield, the
-    second half is not run. '''
-
-    assert inspect.isgeneratorfunction(func)
-
-    @wraps(func)
-    def f(self, *a):
-        i = func(self, *a)
-        try:
-            w = next(i)
-        except StopIteration:
-            pass
-        else:
-            self.queue_action(conditional_run, w, i)
-
-    return f
-
-
 class DumpCommands:  # {{{
 
     def __init__(self, args):
@@ -121,8 +96,6 @@ class Boss(Thread):
         self.cursor_blinking = True
         self.window_is_focused = True
         self.glfw_window_title = None
-        self.action_queue = Queue()
-        self.pending_resize = False
         self.resize_gl_viewport = False
         self.shutting_down = False
         self.signal_fd = handle_unix_signals()
@@ -133,7 +106,6 @@ class Boss(Thread):
             self.read_wakeup_fd, self.on_wakeup, self.signal_fd, self.signal_received, self.timers,
             opts.repaint_delay / 1000.0,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
-        self.pending_ui_thread_calls = Queue()
         set_boss(self)
         self.current_font_size = opts.font_size
         cell_size.width, cell_size.height = set_font_family(opts)
@@ -179,23 +151,9 @@ class Boss(Thread):
         for t in self:
             yield from t
 
-    def queue_action(self, func, *args):
-        self.action_queue.put((func, args))
-        wakeup()
-
     def on_wakeup(self):
         if not self.shutting_down:
             drain_read(self.read_wakeup_fd)
-            while True:
-                try:
-                    func, args = self.action_queue.get_nowait()
-                except Empty:
-                    break
-                try:
-                    func(*args)
-                except Exception:
-                    import traceback
-                    safe_print(traceback.format_exc())
 
     def add_child_fd(self, child_fd, window):
         ' Must be called in child thread '
@@ -205,49 +163,27 @@ class Boss(Thread):
         ' Must be called in child thread '
         self.child_monitor.remove_child(child_fd)
 
-    def queue_ui_action(self, func, *args):
-        self.pending_ui_thread_calls.put((func, args))
-        glfw_post_empty_event()
-
     def close_window(self, window=None):
-        ' Can be called in either thread, will first kill the child, then remove the window from the gui '
         if window is None:
             window = self.active_window
-        if current_thread() is main_thread:
-            self.queue_action(self.close_window, window)
-        else:
-            self.remove_child_fd(window.child_fd)
-            window.destroy()
-            self.queue_ui_action(self.gui_close_window, window)
+        window.destroy()
+        self.gui_close_window(window)
 
     def close_tab(self, tab=None):
-        ' Can be called in either thread, will first kill all children, then remove the tab from the gui '
         if tab is None:
             tab = self.active_tab
-        if current_thread() is main_thread:
-            self.queue_action(self.close_tab, tab)
-        else:
-            for window in tab:
-                self.remove_child_fd(window.child_fd)
-                window.destroy()
-                self.queue_ui_action(self.gui_close_window, window)
+        for window in tab:
+            self.close_window(window)
 
     def run(self):
         self.child_monitor.loop()
 
-    @callback
     def on_window_resize(self, window, w, h):
         # debounce resize events
-        self.pending_resize = True
-        yield
-        self.timers.add(0.02, self.apply_pending_resize, w, h)
-
-    def apply_pending_resize(self, w, h):
         if w > 100 and h > 100:
             viewport_size.width, viewport_size.height = w, h
             self.tab_manager.resize()
             self.resize_gl_viewport = True
-            self.pending_resize = False
             glfw_post_empty_event()
         else:
             safe_print('Ignoring resize request for sizes under 100x100')
@@ -274,7 +210,7 @@ class Boss(Thread):
         cell_size.width, cell_size.height = set_font_family(
             self.opts, override_font_size=self.current_font_size)
         self.sprites.do_layout(cell_size.width, cell_size.height)
-        self.queue_action(self.resize_windows_after_font_size_change)
+        self.resize_windows_after_font_size_change()
 
     def resize_windows_after_font_size_change(self):
         self.tab_manager.resize()
@@ -297,17 +233,13 @@ class Boss(Thread):
         if t is not None:
             return t.active_window
 
-    @callback
     def on_text_input(self, window, codepoint, mods):
         w = self.active_window
         if w is not None:
-            yield w
-            if w is not None:
-                data = interpret_text_event(codepoint, mods, w)
-                if data:
-                    w.write_to_child(data)
+            data = interpret_text_event(codepoint, mods, w)
+            if data:
+                w.write_to_child(data)
 
-    @callback
     def on_key(self, window, key, scancode, action, mods):
         is_key_pressed[key] = action == GLFW_PRESS
         self.start_cursor_blink()
@@ -327,7 +259,6 @@ class Boss(Thread):
         window = self.active_window
         if window is None:
             return
-        yield window
         if func is not None:
             f = getattr(tab, func, getattr(window, func, None))
             if f is not None:
@@ -342,17 +273,15 @@ class Boss(Thread):
         if data:
             window.write_to_child(data)
 
-    @callback
     def on_focus(self, window, focused):
         self.window_is_focused = focused
         w = self.active_window
         if w is not None:
-            yield w
             w.focus_changed(focused)
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:
-            self.queue_ui_action(self.display_scrollback_in_new_tab, data)
+            self.display_scrollback_in_new_tab(data)
         else:
             tab = self.active_tab
             if tab is not None:
@@ -371,7 +300,6 @@ class Boss(Thread):
         th = self.current_tab_bar_height
         return th > 0 and y >= viewport_size.height - th
 
-    @callback
     def on_mouse_button(self, window, button, action, mods):
         mouse_button_pressed[button] = action == GLFW_PRESS
         self.show_mouse_cursor()
@@ -385,7 +313,6 @@ class Boss(Thread):
         focus_moved = False
         old_focus = self.active_window
         tab = self.active_tab
-        yield
         if button == GLFW_MOUSE_BUTTON_1 and w is not old_focus:
             tab.set_active_window(w)
             focus_moved = True
@@ -395,27 +322,21 @@ class Boss(Thread):
             w.focus_changed(True)
         w.on_mouse_button(button, action, mods)
 
-    @callback
     def on_mouse_move(self, window, xpos, ypos):
         mouse_cursor_pos[:2] = xpos, ypos = int(
             xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
         self.show_mouse_cursor()
         w = self.window_for_pos(xpos, ypos)
         if w is not None:
-            yield w
             w.on_mouse_move(xpos, ypos)
         else:
             self.change_mouse_cursor(self.in_tab_bar(ypos))
 
-    @callback
     def on_mouse_scroll(self, window, x, y):
         self.show_mouse_cursor()
         w = self.window_for_pos(*mouse_cursor_pos)
         if w is not None:
-            yield w
             w.on_mouse_scroll(x, y)
-
-    # GUI thread API {{{
 
     def show_mouse_cursor(self):
         self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL)
@@ -446,8 +367,6 @@ class Boss(Thread):
         self.cursor_blinking = False
 
     def render(self):
-        if self.pending_resize:
-            return
         if self.resize_gl_viewport:
             glViewport(0, 0, viewport_size.width, viewport_size.height)
             self.resize_gl_viewport = False
@@ -526,22 +445,22 @@ class Boss(Thread):
         if text:
             w = self.active_window
             if w is not None:
-                self.queue_action(w.paste, text)
+                w.paste(text)
 
     def next_tab(self):
-        self.queue_action(self.tab_manager.next_tab)
+        self.tab_manager.next_tab()
 
     def previous_tab(self):
-        self.queue_action(self.tab_manager.next_tab, -1)
+        self.tab_manager.next_tab(-1)
 
     def new_tab(self):
         self.tab_manager.new_tab()
 
     def move_tab_forward(self):
-        self.queue_action(self.tab_manager.move_tab, 1)
+        self.tab_manager.move_tab(1)
 
     def move_tab_backward(self):
-        self.queue_action(self.tab_manager.move_tab, -1)
+        self.tab_manager.move_tab(-1)
 
     def display_scrollback_in_new_tab(self, data):
         self.tab_manager.new_tab(

@@ -91,12 +91,10 @@ class Window:
         get_boss().close_window(self)
 
     def destroy(self):
-        self.destroyed = True
-        self.child.hangup()
-        self.child.get_child_status()  # Ensure child does not become zombie
-        # At this point this window can still render to screen using its
-        # existing buffers in char_grid. The rest of the cleanup must be
-        # performed in the GUI thread.
+        if not self.destroyed:
+            self.destroyed = True
+            self.child.hangup()
+            self.child.get_child_status()  # Ensure child does not become zombie
 
     def write_ready(self):
         while self.write_buf:
@@ -125,8 +123,7 @@ class Window:
                 pass  # failure to beep is not critical
         if self.opts.visual_bell_duration > 0:
             self.start_visual_bell_at = monotonic()
-        tm = get_boss()
-        tm.queue_ui_action(tm.request_attention)
+        get_boss().request_attention()
         glfw_post_empty_event()
 
     def use_utf8(self, on):
@@ -237,8 +234,7 @@ class Window:
             is_key_pressed[GLFW_KEY_LEFT_SHIFT] or is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
         self.last_mouse_cursor_pos = x, y
-        tm = get_boss()
-        tm.queue_ui_action(tm.change_mouse_cursor, self.char_grid.has_url_at(x, y))
+        get_boss().change_mouse_cursor(self.char_grid.has_url_at(x, y))
         if send_event:
             x, y = self.char_grid.cell_for_pos(x, y)
             if x is not None:
@@ -320,8 +316,7 @@ class Window:
     def copy_to_clipboard(self):
         text = self.char_grid.text_for_selection()
         if text:
-            tm = get_boss()
-            tm.queue_ui_action(tm.glfw_window.set_clipboard_string, text)
+            get_boss().glfw_window.set_clipboard_string(text)
 
     def scroll_line_up(self):
         if self.screen.is_main_linebuf():

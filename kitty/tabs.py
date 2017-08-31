@@ -5,14 +5,13 @@
 from collections import deque, namedtuple
 from ctypes import addressof
 from functools import partial
-from queue import Queue, Empty
 
 from .borders import Borders
 from .char_grid import calculate_gl_geometry, render_cells
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
-    GLuint, WindowGeometry, appname, cell_size, get_boss, queue_action,
+    GLuint, WindowGeometry, appname, cell_size, get_boss,
     shell_path, viewport_size
 )
 from .fast_data_types import (
@@ -47,14 +46,14 @@ class Tab:
             l = self.enabled_layouts[0]
             self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
             if special_window is None:
-                queue_action(self.new_window)
+                self.new_window()
             else:
-                queue_action(self.new_special_window, special_window)
+                self.new_special_window(special_window)
         else:
             self.cwd = session_tab.cwd or args.directory
             l = session_tab.layout
             self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
-            queue_action(self.startup, session_tab)
+            self.startup(session_tab)
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
@@ -211,7 +210,6 @@ class TabBar:
     def __init__(self, data, opts):
         self.num_tabs = 1
         self.cell_width = 1
-        self.queue = Queue()
         self.vao_id = None
         self.render_buf = self.selection_buf = None
         self.selection_buf_changed = True
@@ -233,7 +231,6 @@ class TabBar:
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
 
     def layout(self, viewport_width, viewport_height, cell_width, cell_height):
-        ' Must be called in the child thread '
         self.cell_width = cell_width
         s = self.screen
         ncells = viewport_width // cell_width
@@ -252,18 +249,12 @@ class TabBar:
         self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
         self.update()
 
-    def update(self):
-        ' Must be called in the child thread '
+    def update(self, data):
         if self.render_buf is None:
             return
         s = self.screen
         s.cursor.x = 0
         s.erase_in_line(2, False)
-        while True:
-            try:
-                self.current_data = self.queue.get_nowait()
-            except Empty:
-                break
         max_title_length = (self.screen_geometry.xnum // len(self.current_data)) - 1
         cr = []
 
@@ -290,17 +281,7 @@ class TabBar:
         self.dirty = True
         glfw_post_empty_event()
 
-    def schedule_layout(self, data):
-        ' Must be called in the GUI thread '
-        queue_action(self.layout, *data)
-
-    def schedule_update(self, data):
-        ' Must be called in the GUI thread '
-        self.queue.put(data)
-        queue_action(self.update)
-
     def render(self, cell_program, sprites):
-        ' Must be called in the GUI thread '
         if self.render_buf is not None:
             sprites.render_dirty_sprites()
             if self.vao_id is None:
@@ -314,7 +295,6 @@ class TabBar:
             render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.screen.color_profile)
 
     def tab_at(self, x):
-        ' Must be called in the GUI thread '
         x = (x - self.window_geometry.left) // self.cell_width
         for i, (a, b) in enumerate(self.cell_ranges):
             if a <= x <= b:
@@ -328,15 +308,15 @@ class TabManager:
         self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
         self.active_tab_idx = startup_session.active_tab_idx
         self.tab_bar = TabBar(self.tab_bar_data, opts)
-        self.tab_bar.schedule_layout(self.tab_bar_layout_data)
+        self.tab_bar.layout(*self.tab_bar_layout_data)
 
     def update_tab_bar(self):
         if len(self.tabs) > 1:
-            self.tab_bar.schedule_update(self.tab_bar_data)
+            self.tab_bar.update(self.tab_bar_data)
 
     def resize(self, only_tabs=False):
         if not only_tabs:
-            self.tab_bar.schedule_layout(self.tab_bar_layout_data)
+            self.tab_bar.layout(*self.tab_bar_layout_data)
         for tab in self.tabs:
             tab.relayout()
 
@@ -375,27 +355,24 @@ class TabManager:
         self.update_tab_bar()
 
     def new_tab(self, special_window=None):
-        ' Must be called in the GUI thread '
         needs_resize = len(self.tabs) == 1
         self.active_tab_idx = len(self.tabs)
         self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
         self.update_tab_bar()
         if needs_resize:
-            queue_action(get_boss().tabbar_visibility_changed)
+            get_boss().tabbar_visibility_changed()
 
     def remove(self, tab):
-        ' Must be called in the GUI thread '
         needs_resize = len(self.tabs) == 2
         self.tabs.remove(tab)
         self.active_tab_idx = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
         self.update_tab_bar()
         tab.destroy()
         if needs_resize:
-            queue_action(get_boss().tabbar_visibility_changed)
+            get_boss().tabbar_visibility_changed()
 
     @property
     def tab_bar_layout_data(self):
-        ' Must be called in the GUI thread '
         return viewport_size.width, viewport_size.height, cell_size.width, cell_size.height
 
     @property
@@ -417,7 +394,6 @@ class TabManager:
         return self.tab_bar.blank_rects if len(self.tabs) < 2 else ()
 
     def render(self, cell_program, sprites):
-        ' Must be called in the GUI thread '
         if len(self.tabs) < 2:
             return
         self.tab_bar.render(cell_program, sprites)
