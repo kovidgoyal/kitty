@@ -29,12 +29,12 @@
 #ifdef __APPLE__
 #include <mach/mach_time.h>
 static mach_timebase_info_data_t timebase = {0};
-static inline double monotonic() {
+static inline double monotonic_() {
 	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
 }
 #else
 #include <time.h>
-static inline double monotonic() {
+static inline double monotonic_() {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
 	clock_gettime(CLOCK_HIGHRES, &ts);
@@ -46,6 +46,8 @@ static inline double monotonic() {
 	return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
 }
 #endif
+
+double monotonic() { return monotonic_(); }
 
 static PyObject *
 new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
@@ -102,7 +104,7 @@ add(Timers *self, PyObject *fargs) {
     PyObject *callback, *args = NULL;
     double delay, at;
     if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
-    at = monotonic() + delay;
+    at = monotonic_() + delay;
 
     for (i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
@@ -127,7 +129,7 @@ timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *
             return true;
         }
     }
-    return _add(self, monotonic() + delay, callback, args); 
+    return _add(self, monotonic_() + delay, callback, args); 
 }
 
 
@@ -163,7 +165,7 @@ remove_event(Timers *self, PyObject *callback) {
 double 
 timers_timeout(Timers *self) {
     if (self->count < 1) return -1;
-    double ans = self->events[0].at - monotonic();
+    double ans = self->events[0].at - monotonic_();
     return MAX(0, ans);
 }
 
@@ -171,7 +173,7 @@ static PyObject *
 timeout(Timers *self) {
 #define timeout_doc "timeout() -> The time in seconds until the next event"
     if (self->count < 1) { Py_RETURN_NONE; }
-    double ans = self->events[0].at - monotonic();
+    double ans = self->events[0].at - monotonic_();
     return PyFloat_FromDouble(MAX(0, ans));
 }
 
@@ -179,7 +181,7 @@ void
 timers_call(Timers *self) {
     if (self->count < 1) return;
     TimerEvent *other = self->events == self->buf1 ? self->buf2 : self->buf1;
-    double now = monotonic();
+    double now = monotonic_();
     size_t i, j;
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
