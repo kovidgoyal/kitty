@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <poll.h>
+#include <pthread.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #define UNUSED __attribute__ ((unused))
@@ -253,7 +254,9 @@ typedef struct {
     uint32_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
-    uint8_t read_buf[READ_BUF_SZ];
+    uint8_t read_buf[READ_BUF_SZ], *write_buf;
+    size_t read_buf_sz, write_buf_sz;
+    pthread_mutex_t read_buf_lock, write_buf_lock;
 
 } Screen;
 PyTypeObject Screen_Type;
@@ -274,22 +277,11 @@ typedef struct {
 PyTypeObject Timers_Type;
 
 typedef struct {
-    Screen *screen;
-    PyObject *on_exit, *write_func, *update_screen;
-    bool needs_write;
-} Child;
-
-typedef struct {
     PyObject_HEAD
 
-    PyObject *wakeup_func, *signal_func, *dump_callback;
-    Timers *timers;
-    int wakeup_fd, singal_fd;
-    struct pollfd *fds;
-    Child *children;
-    size_t count;
+    PyObject *dump_callback, *update_screen, *death_notify;
+    unsigned int count;
     bool shutting_down;
-    double repaint_delay;
 } ChildMonitor;
 PyTypeObject ChildMonitor_Type;
 
@@ -319,8 +311,8 @@ int init_Screen(PyObject *);
 int init_Face(PyObject *);
 int init_Window(PyObject *);
 PyObject* create_256_color_table();
-bool read_bytes(int fd, Screen *screen, PyObject *dump_callback);
-bool read_bytes_dump(int fd, Screen *screen, PyObject *dump_callback);
+void parse_worker(Screen *screen, PyObject *dump_callback);
+void parse_worker_dump(Screen *screen, PyObject *dump_callback);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
@@ -355,6 +347,7 @@ void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 
+double monotonic();
 double timers_timeout(Timers*);
 void timers_call(Timers*);
 bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);

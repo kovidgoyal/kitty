@@ -6,6 +6,7 @@
 
 #include "data-types.h"
 #include "control-codes.h"
+#include <time.h>
 
 // utils {{{
 static unsigned int pow10[10] = {
@@ -724,7 +725,7 @@ FLUSH_DRAW;
 }
 // }}}
 
-// Boilerplate {{{
+// Entry points {{{
 #ifdef DUMP_COMMANDS
 #define FNAME(x) x##_dump
 #else
@@ -745,28 +746,13 @@ FNAME(parse_bytes)(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-bool
-FNAME(read_bytes)(int fd, Screen *screen, PyObject *dump_callback) {
-    Py_ssize_t len;
 
-    while(true) {
-        Py_BEGIN_ALLOW_THREADS;
-        len = read(fd, screen->read_buf, READ_BUF_SZ);
-        Py_END_ALLOW_THREADS;
-        if (len == -1) {
-            if (errno == EINTR) continue;
-            if (errno != EIO) perror("Call to read() from child fd failed");
-            return false;
-        }
-        /* PyObject_Print(Py_BuildValue("y#", screen->read_buf, len), stderr, 0); */
-        break;
-    }
-    if (UNLIKELY(len == 0)) return false;
+void
+FNAME(parse_worker)(Screen *screen, PyObject *dump_callback) {
 #ifdef DUMP_COMMANDS
-    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, len)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, screen->read_buf_sz)); PyErr_Clear();
 #endif
-    _parse_bytes(screen, screen->read_buf, len, dump_callback);
-    return true;
-}
+    _parse_bytes(screen, screen->read_buf, screen->read_buf_sz, dump_callback);
 #undef FNAME
+}
 // }}}

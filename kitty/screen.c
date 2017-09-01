@@ -36,13 +36,23 @@ init_tabstops(bool *tabstops, index_type count) {
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
+    int ret = 0;
     PyObject *callbacks = Py_None;
     unsigned int columns=80, lines=24, scrollback=0;
     if (!PyArg_ParseTuple(args, "|OIII", &callbacks, &lines, &columns, &scrollback)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
+        if ((ret = pthread_mutex_init(&self->read_buf_lock, NULL)) != 0) {
+            Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen read_buf_lock mutex: %s", strerror(ret));
+            return NULL;
+        }
+        if ((ret = pthread_mutex_init(&self->write_buf_lock, NULL)) != 0) {
+            Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen write_buf_lock mutex: %s", strerror(ret));
+            return NULL;
+        }
         self->columns = columns; self->lines = lines;
+        self->write_buf = NULL;
         self->modes = empty_modes;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         RESET_CHARSETS;
@@ -162,6 +172,9 @@ screen_change_scrollback_size(Screen *self, unsigned int size) {
 
 static void
 dealloc(Screen* self) {
+    pthread_mutex_destroy(&self->read_buf_lock);
+    pthread_mutex_destroy(&self->write_buf_lock);
+    PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->cursor); 
     Py_CLEAR(self->main_linebuf); 

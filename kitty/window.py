@@ -2,10 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import weakref
 from collections import deque
 from time import monotonic
+from itertools import count
 
 from .char_grid import CharGrid, DynamicColor
 from .constants import (
@@ -32,11 +32,14 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
+window_counter = count()
+next(window_counter)
 
 
 class Window:
 
     def __init__(self, tab, child, opts, args):
+        self.id = next(window_counter)
         self.tabref = weakref.ref(tab)
         self.override_title = None
         self.last_mouse_cursor_pos = 0, 0
@@ -50,7 +53,6 @@ class Window:
         self.child_fd = child.child_fd
         self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
-        self.write_buf = memoryview(b'')
         self.char_grid = CharGrid(self.screen, opts)
 
     def __repr__(self):
@@ -90,28 +92,19 @@ class Window:
     def close(self):
         get_boss().close_window(self)
 
+    def on_child_death(self):
+        self.destroy()
+        get_boss().gui_close_window(self)
+
     def destroy(self):
         if not self.destroyed:
             self.destroyed = True
             self.child.hangup()
             self.child.get_child_status()  # Ensure child does not become zombie
 
-    def write_ready(self):
-        while self.write_buf:
-            try:
-                n = os.write(self.child_fd, self.write_buf)
-            except BlockingIOError:
-                n = 0
-            if not n:
-                return
-            self.write_buf = self.write_buf[n:]
-        if not self.write_buf:
-            get_boss().child_monitor.needs_write(self.child_fd, False)
-
     def write_to_child(self, data):
         if data:
-            self.write_buf = memoryview(self.write_buf.tobytes() + data)
-            get_boss().child_monitor.needs_write(self.child_fd, True)
+            get_boss().child_monitor.needs_write(self.id, data)
             wakeup()
 
     def bell(self):
@@ -247,7 +240,7 @@ class Window:
                 self.char_grid.update_drag(None, x, y)
                 margin = cell_size.height // 2
                 if y <= margin or y >= self.geometry.bottom - margin:
-                    get_boss().timers.add(0.02, self.drag_scroll)
+                    get_boss().ui_timers.add(0.02, self.drag_scroll)
 
     def drag_scroll(self):
         x, y = self.last_mouse_cursor_pos
@@ -256,7 +249,7 @@ class Window:
         if y <= margin or y >= self.geometry.bottom - margin:
             self.scroll_line_up() if y < 50 else self.scroll_line_down()
             self.char_grid.update_drag(None, x, y)
-            tm.timers.add(0.02, self.drag_scroll)
+            tm.ui_timers.add(0.02, self.drag_scroll)
 
     def on_mouse_scroll(self, x, y):
         s = int(round(y * self.opts.wheel_scroll_multiplier))

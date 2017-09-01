@@ -99,7 +99,6 @@ class Child:
             except ProcessLookupError:
                 return
             os.killpg(pgrp, signal.SIGHUP)
-            os.close(self.child_fd)
             self.child_fd = None
 
     def __del__(self):

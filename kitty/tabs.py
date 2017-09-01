@@ -118,7 +118,7 @@ class Tab:
         window = Window(self, child, self.opts, self.args)
         if override_title is not None:
             window.title = window.override_title = override_title
-        get_boss().add_child_fd(child.child_fd, window)
+        get_boss().add_child(window)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
@@ -247,7 +247,6 @@ class TabBar:
         else:
             self.tab_bar_blank_rects = ()
         self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
-        self.update()
 
     def update(self, data):
         if self.render_buf is None:
@@ -303,12 +302,17 @@ class TabBar:
 
 class TabManager:
 
-    def __init__(self, opts, args, startup_session):
+    def __init__(self, opts, args):
         self.opts, self.args = opts, args
-        self.tabs = [Tab(opts, args, self.title_changed, t) for t in startup_session.tabs]
-        self.active_tab_idx = startup_session.active_tab_idx
+        self.tabs = []
         self.tab_bar = TabBar(self.tab_bar_data, opts)
         self.tab_bar.layout(*self.tab_bar_layout_data)
+        self.active_tab_idx = 0
+
+    def init(self, startup_session):
+        self.tabs = [Tab(self.opts, self.args, self.title_changed, t) for t in startup_session.tabs]
+        self.active_tab_idx = startup_session.active_tab_idx
+        self.update_tab_bar()
 
     def update_tab_bar(self):
         if len(self.tabs) > 1:
@@ -317,6 +321,7 @@ class TabManager:
     def resize(self, only_tabs=False):
         if not only_tabs:
             self.tab_bar.layout(*self.tab_bar_layout_data)
+            self.update_tab_bar()
         for tab in self.tabs:
             tab.relayout()
 

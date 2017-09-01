@@ -15,15 +15,6 @@
 #include <gperftools/profiler.h>
 #endif
 
-static char drain_buf[1024] = {0};
-
-static PyObject*
-drain_read(PyObject UNUSED *self, PyObject *fd) {
-    ALLOW_UNUSED_RESULT
-    read(PyLong_AsLong(fd), drain_buf, sizeof(drain_buf));
-    END_ALLOW_UNUSED_RESULT 
-    Py_RETURN_NONE;
-}
 
 static PyObject*
 wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
@@ -68,7 +59,6 @@ stop_profiler(PyObject UNUSED *self) {
 
 static PyMethodDef module_methods[] = {
     GL_METHODS
-    {"drain_read", (PyCFunction)drain_read, METH_O, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},

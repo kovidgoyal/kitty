@@ -9,6 +9,7 @@ import struct
 from gettext import gettext as _
 from threading import Thread
 from time import monotonic
+from weakref import WeakValueDictionary
 
 from .borders import BordersProgram
 from .char_grid import load_shader_programs
@@ -20,8 +21,8 @@ from .constants import (
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    ChildMonitor, Timers as _Timers, drain_read, glBlendFunc,
-    glfw_post_empty_event, glViewport
+    ChildMonitor, Timers as _Timers, glBlendFunc, glfw_post_empty_event,
+    glViewport
 )
 from .fonts.render import set_font_family
 from .keys import (
@@ -91,6 +92,7 @@ class Boss(Thread):
 
     def __init__(self, glfw_window, opts, args):
         Thread.__init__(self, name='ChildMonitor')
+        self.window_id_map = WeakValueDictionary()
         startup_session = create_session(opts, args)
         self.cursor_blink_zero_time = monotonic()
         self.cursor_blinking = True
@@ -100,11 +102,9 @@ class Boss(Thread):
         self.shutting_down = False
         self.signal_fd = handle_unix_signals()
         self.read_wakeup_fd, self.write_wakeup_fd = pipe2()
-        self.timers = Timers()
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
-            self.read_wakeup_fd, self.on_wakeup, self.signal_fd, self.signal_received, self.timers,
-            opts.repaint_delay / 1000.0,
+            self.read_wakeup_fd, self.signal_fd, self.on_child_death, self.update_screen,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size
@@ -118,7 +118,8 @@ class Boss(Thread):
         glfw_window.scroll_callback = self.on_mouse_scroll
         glfw_window.cursor_pos_callback = self.on_mouse_move
         glfw_window.window_focus_callback = self.on_focus
-        self.tab_manager = TabManager(opts, args, startup_session)
+        self.tab_manager = TabManager(opts, args)
+        self.tab_manager.init(startup_session)
         self.sprites = Sprites()
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.cell_program, self.cursor_program = load_shader_programs()
@@ -151,23 +152,28 @@ class Boss(Thread):
         for t in self:
             yield from t
 
-    def on_wakeup(self):
-        if not self.shutting_down:
-            drain_read(self.read_wakeup_fd)
+    def add_child(self, window):
+        self.child_monitor.add_child(window.id, window.child_fd, window.screen)
+        self.window_id_map[window.id] = window
+        wakeup()
 
-    def add_child_fd(self, child_fd, window):
-        ' Must be called in child thread '
-        self.child_monitor.add_child(child_fd, window.screen, window.close, window.write_ready, window.update_screen)
+    def on_child_death(self, window_id):
+        w = self.window_id_map.get(window_id)
+        if w is not None:
+            w.on_child_death()
 
-    def remove_child_fd(self, child_fd):
-        ' Must be called in child thread '
-        self.child_monitor.remove_child(child_fd)
+    def update_screen(self, window_id):
+        w = self.window_id_map.get(window_id)
+        if w is not None:
+            w.update_screen()
 
     def close_window(self, window=None):
         if window is None:
             window = self.active_window
+        self.child_monitor.mark_for_close(window.screen.child_fd)
+        self.gui_close_window()
         window.destroy()
-        self.gui_close_window(window)
+        wakeup()
 
     def close_tab(self, tab=None):
         if tab is None:
