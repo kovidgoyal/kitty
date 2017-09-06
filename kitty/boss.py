@@ -96,7 +96,7 @@ class Boss:
         self.shutting_down = False
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
-            opts.repaint_delay / 1000.0,
+            opts.repaint_delay / 1000.0, glfw_window.window_id(),
             self.on_child_death, self.update_screen, self.ui_timers,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
@@ -121,11 +121,6 @@ class Boss:
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
         self.start_cursor_blink()
-
-    def close_signal_received(self):
-        if not self.shutting_down:
-            self.glfw_window.set_should_close(True)
-            glfw_post_empty_event()
 
     @property
     def current_tab_bar_height(self):

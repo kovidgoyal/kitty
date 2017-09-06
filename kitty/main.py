@@ -168,8 +168,7 @@ def clear_buffers(window, opts):
 
 def dispatch_pending_calls(boss):
     boss.ui_timers.call()
-    if boss.child_monitor.parse_input():
-        boss.close_signal_received()
+    boss.child_monitor.parse_input()
 
 
 def run_app(opts, args):

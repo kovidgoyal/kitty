@@ -243,6 +243,11 @@ make_context_current(Window *self) {
 }
 
 static PyObject*
+window_id(Window *self) {
+    return PyLong_FromVoidPtr(self->window);
+}
+
+static PyObject*
 should_close(Window *self) {
     PyObject *ans = glfwWindowShouldClose(self->window) ? Py_True : Py_False;
     Py_INCREF(ans);
@@ -417,6 +422,7 @@ static PyMethodDef methods[] = {
     MND(set_click_cursor, METH_VARARGS),
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
+    MND(window_id, METH_NOARGS),
     {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
     {"set_icon", (PyCFunction)set_window_icon, METH_VARARGS, ""},
     {NULL}  /* Sentinel */

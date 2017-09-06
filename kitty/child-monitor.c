@@ -48,6 +48,7 @@ static pthread_mutex_t children_lock = {{0}};
 static bool created = false, signal_received = false;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
+static void *glfw_window_id = NULL;
 
 
 // Main thread functions {{{
@@ -88,12 +89,13 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *update_screen, *timers;
+    PyObject *dump_callback, *death_notify, *update_screen, *timers, *wid;
     int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOOO", &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOOOO", &repaint_delay, &wid, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
+    glfw_window_id = PyLong_AsVoidPtr(wid);
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
@@ -254,6 +256,7 @@ do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
 static PyObject *
 parse_input(ChildMonitor *self) {
 #define parse_input_doc "parse_input() -> Parse all available input that was read in the I/O thread."
+    size_t count = 0;
     children_mutex(lock);
     while (num_dead_children) {
         PyObject *t = PyObject_CallFunction(self->death_notify, "k", dead_children[--num_dead_children]);
@@ -265,12 +268,15 @@ parse_input(ChildMonitor *self) {
         FREE_CHILD(remove_queue[remove_queue_count]);
     }
 
-    size_t count = self->count;
-    bool sr = signal_received;
-    signal_received = false;
-    for (size_t i = 0; i < count; i++) {
-        scratch[i] = children[i];
-        INCREF_CHILD(scratch[i]);
+    if (UNLIKELY(signal_received)) {
+        glfwSetWindowShouldClose(glfw_window_id, true);
+        glfwPostEmptyEvent();
+    } else {
+        count = self->count;
+        for (size_t i = 0; i < count; i++) {
+            scratch[i] = children[i];
+            INCREF_CHILD(scratch[i]);
+        }
     }
     children_mutex(unlock);
 
@@ -291,8 +297,7 @@ parse_input(ChildMonitor *self) {
     if (wait_for < self->repaint_delay) {
         timers_add(self->timers, wait_for, false, Py_None, NULL);
     }
-    if (sr) { Py_RETURN_TRUE; }
-    Py_RETURN_FALSE;
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -314,6 +319,14 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
 #undef FREE_CHILD
 #undef INCREF_CHILD
 #undef DECREF_CHILD
+
+static PyObject*
+main_loop(ChildMonitor UNUSED *self) {
+#define main_loop_doc "The main thread loop"
+    while (!glfwWindowShouldClose(glfw_window_id)) {
+    }
+    Py_RETURN_NONE;
+}
 
 // }}}
 
@@ -498,6 +511,7 @@ static PyMethodDef methods[] = {
     METHOD(join, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
     METHOD(shutdown, METH_NOARGS)
+    METHOD(main_loop, METH_NOARGS)
     METHOD(parse_input, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     {NULL}  /* Sentinel */
