@@ -280,6 +280,7 @@ typedef struct {
     PyObject_HEAD
 
     PyObject *dump_callback, *update_screen, *death_notify;
+    int write_wakeup_fd;
     unsigned int count;
     bool shutting_down;
 } ChildMonitor;

@@ -60,7 +60,7 @@ def set_boss(m):
 
 
 def wakeup():
-    os.write(get_boss.boss.write_wakeup_fd, b'1')
+    get_boss.boss.child_monitor.wakeup()
 
 
 is_key_pressed = defaultdict(lambda: False)

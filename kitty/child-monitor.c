@@ -44,7 +44,7 @@ static size_t add_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock = {{0}};
 static bool created = false, signal_received = false;
-static uint8_t read_buf[READ_BUF_SZ];
+static uint8_t drain_buf[1024];
 
 
 // Main thread functions {{{
@@ -53,10 +53,10 @@ static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify, *update_screen;
-    int wakeup_fd, signal_fd, ret;
+    int wakeup_fd, write_wakeup_fd, signal_fd, ret;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "iiOOO", &wakeup_fd, &signal_fd, &death_notify, &update_screen, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "iiiOOO", &wakeup_fd, &write_wakeup_fd, &signal_fd, &death_notify, &update_screen, &dump_callback)) return NULL; 
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
@@ -73,6 +73,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self->count = 0; 
     fds[0].fd = wakeup_fd; fds[1].fd = signal_fd;
     fds[0].events = POLLIN; fds[1].events = POLLIN;
+    self->write_wakeup_fd = write_wakeup_fd;
 
     return (PyObject*) self;
 }
@@ -89,6 +90,24 @@ dealloc(ChildMonitor* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static void
+wakeup_(int fd) {
+    while(true) {
+        ssize_t ret = write(fd, "w", 1);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            perror("Failed to write to wakeup fd with error");
+        }
+        break;
+    }
+}
+
+static PyObject *
+wakeup(ChildMonitor *self) {
+#define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
+    wakeup_(self->write_wakeup_fd);
+    Py_RETURN_NONE;
+}
 
 static PyObject *
 add_child(ChildMonitor *self, PyObject *args) {
@@ -168,6 +187,7 @@ parse_input(ChildMonitor *self) {
             screen_mutex(lock, read);
             if (screen->read_buf_sz) {
                 parse_func(screen, self->dump_callback);
+                if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(self->write_wakeup_fd);  // Ensure the read fd has POLLIN set
                 screen->read_buf_sz = 0;
                 PyObject *t = PyObject_CallFunction(self->update_screen, "k", scratch[i].id);
                 if (t == NULL) PyErr_Print();
@@ -241,26 +261,18 @@ end:
 }
 
 
-static inline bool
-wait_for_read_buf(Screen *screen) {
-    int c = 1000;
-    do {
-        screen_mutex(lock, read);
-        if (screen->read_buf_sz == 0) return true;
-        screen_mutex(unlock, read);
-        struct timespec sleep_time = { .tv_sec = 0, .tv_nsec = 1000000 };
-        nanosleep(&sleep_time, NULL);
-    } while(--c > 0);
-    return false;
-}
-
-
 static bool
 read_bytes(int fd, Screen *screen) {
-    Py_ssize_t len;
+    ssize_t len;
+    size_t available_buffer_space, orig_sz;
 
+    screen_mutex(lock, read);
+    orig_sz = screen->read_buf_sz;
+    if (orig_sz >= READ_BUF_SZ) { screen_mutex(unlock, read); return true; }  // screen read buffer is full
+    available_buffer_space = READ_BUF_SZ - orig_sz;
+    screen_mutex(unlock, read);
     while(true) {
-        len = read(fd, read_buf, READ_BUF_SZ);
+        len = read(fd, screen->read_buf + orig_sz, available_buffer_space);
         if (len < 0) {
             if (errno == EINTR) continue;
             if (errno != EIO) perror("Call to read() from child fd failed");
@@ -269,12 +281,12 @@ read_bytes(int fd, Screen *screen) {
         break;
     }
     if (UNLIKELY(len == 0)) return false;
-    if (!wait_for_read_buf(screen)) {
-        fprintf(stderr, "Screen->read_buf was not emptied after waiting a long time, discarding input.");
-        return true;
+    screen_mutex(lock, read);
+    if (orig_sz != screen->read_buf_sz) {
+        // The other thread consumed some of the screen read buffer
+        memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
     }
-    memcpy(screen->read_buf, read_buf, len);
-    screen->read_buf_sz = len;
+    screen->read_buf_sz += len;
     screen_mutex(unlock, read);
     return true;
 }
@@ -283,7 +295,7 @@ read_bytes(int fd, Screen *screen) {
 static inline void
 drain_wakeup(int fd) {
     while(true) {
-        ssize_t len = read(fd, read_buf, READ_BUF_SZ);
+        ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
         if (len < 0) {
             if (errno == EINTR) continue;
             if (errno != EIO) perror("Call to read() from wakeup fd failed");
@@ -321,13 +333,20 @@ loop(ChildMonitor *self) {
     size_t i;
     int ret;
     bool has_more, data_received; 
+    Screen *screen;
+
     while (LIKELY(!self->shutting_down)) {
         data_received = false;
         remove_children(self);
         add_children(self);
         Py_BEGIN_ALLOW_THREADS;
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
-        for (i = 0; i < self->count; i++) fds[EXTRA_FDS + i].events = children[i].screen->write_buf_sz ? POLLOUT  | POLLIN : POLLIN;
+        for (i = 0; i < self->count; i++) {
+            screen = children[i].screen;
+            screen_mutex(lock, read); screen_mutex(lock, write);
+            fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_sz ? POLLOUT  : 0);
+            screen_mutex(unlock, read); screen_mutex(unlock, write);
+        }
         ret = poll(fds, self->count + EXTRA_FDS, -1);
         if (ret > 0) {
             if (fds[0].revents && POLLIN) drain_wakeup(fds[0].fd);
@@ -372,6 +391,7 @@ static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
     METHOD(needs_write, METH_VARARGS)
     METHOD(loop, METH_NOARGS)
+    METHOD(wakeup, METH_NOARGS)
     METHOD(shutdown, METH_NOARGS)
     METHOD(parse_input, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
