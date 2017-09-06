@@ -245,7 +245,6 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
 
 static inline void
 add_children(ChildMonitor *self) {
-    children_mutex(lock);
     for (; add_queue_count > 0 && self->count < MAX_CHILDREN;) {
         add_queue_count--;
         children[self->count] = add_queue[add_queue_count];
@@ -255,13 +254,11 @@ add_children(ChildMonitor *self) {
         self->count++;
         DECREF_CHILD(add_queue[add_queue_count]);
     }
-    children_mutex(unlock);
 }
 
 static inline bool
 remove_children(ChildMonitor *self) {
     size_t count = 0; 
-    children_mutex(lock);
     if (self->count == 0) goto end;
     for (ssize_t i = self->count - 1; i >= 0; i--) {
         if (children[i].needs_removal) {
@@ -276,7 +273,6 @@ remove_children(ChildMonitor *self) {
     }
     self->count -= count;
 end:
-    children_mutex(unlock);
     return count ? true : false;
 }
 
@@ -356,10 +352,12 @@ loop(ChildMonitor *self) {
     Screen *screen;
 
     while (LIKELY(!self->shutting_down)) {
-        data_received = false;
+        children_mutex(lock);
         remove_children(self);
         add_children(self);
+        children_mutex(unlock);
         Py_BEGIN_ALLOW_THREADS;
+        data_received = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
@@ -396,8 +394,8 @@ loop(ChildMonitor *self) {
                 perror("Call to poll() failed");
             }
         }
-        Py_END_ALLOW_THREADS;
         if (data_received) glfwPostEmptyEvent();
+        Py_END_ALLOW_THREADS;
     }
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
     remove_children(self);
