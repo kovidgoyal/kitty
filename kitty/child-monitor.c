@@ -429,10 +429,11 @@ io_loop(void *data) {
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
 
+#define THREAD_NAME "KittyChildMon"
 #ifdef __APPLE__
-    pthread_setname_np("ChildMonitor");
+    pthread_setname_np(THREAD_NAME);
 #else
-    pthread_setname_np(self->io_thread, "ChildMonitor");
+    pthread_setname_np(self->io_thread, THREAD_NAME);
 #endif
 
     while (LIKELY(!self->shutting_down)) {
