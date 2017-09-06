@@ -24,12 +24,6 @@ typedef struct {
 } Child;
 
 static const Child EMPTY_CHILD = {0};
-#define FREE_CHILD(x) \
-    Py_CLEAR((x).screen); x = EMPTY_CHILD;
-
-#define XREF_CHILD(x, OP) OP(x.screen); 
-#define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
-#define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 #define screen_mutex(op, which) \
     pthread_mutex_##op(&screen->which##_buf_lock);
 #define children_mutex(op) \
@@ -38,10 +32,10 @@ static const Child EMPTY_CHILD = {0};
 
 static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
-static Child add_queue[MAX_CHILDREN] = {{0}};
+static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}};
 static unsigned long dead_children[MAX_CHILDREN] = {0};
 static size_t num_dead_children = 0;
-static size_t add_queue_count = 0;
+static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock = {{0}};
 static bool created = false, signal_received = false;
@@ -49,6 +43,13 @@ static uint8_t drain_buf[1024];
 
 
 // Main thread functions {{{
+
+#define FREE_CHILD(x) \
+    Py_CLEAR((x).screen); x = EMPTY_CHILD;
+
+#define XREF_CHILD(x, OP) OP(x.screen); 
+#define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
+#define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -89,10 +90,16 @@ dealloc(ChildMonitor* self) {
     Py_CLEAR(self->death_notify);
     Py_CLEAR(self->update_screen);
     Py_CLEAR(self->timers);
-    for (size_t i = 0; i < self->count; i++) {
-        FREE_CHILD(children[i]);
-    }
     Py_TYPE(self)->tp_free((PyObject*)self);
+    while (remove_queue_count) {
+        remove_queue_count--;
+        FREE_CHILD(remove_queue[remove_queue_count]);
+    }
+    while (add_queue_count) {
+        add_queue_count--;
+        FREE_CHILD(add_queue[add_queue_count]);
+    }
+
 }
 
 static void
@@ -190,6 +197,10 @@ parse_input(ChildMonitor *self) {
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
     }
+    while (remove_queue_count) {
+        remove_queue_count--;
+        FREE_CHILD(remove_queue[remove_queue_count]);
+    }
 
     size_t count = self->count;
     bool sr = signal_received;
@@ -237,6 +248,9 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#undef FREE_CHILD
+#undef INCREF_CHILD
+#undef DECREF_CHILD
 
 // }}}
 
@@ -248,32 +262,32 @@ add_children(ChildMonitor *self) {
     for (; add_queue_count > 0 && self->count < MAX_CHILDREN;) {
         add_queue_count--;
         children[self->count] = add_queue[add_queue_count];
-        fds[EXTRA_FDS + self->count].fd = add_queue[add_queue_count].fd;
+        add_queue[add_queue_count] = EMPTY_CHILD;
+        fds[EXTRA_FDS + self->count].fd = children[self->count].fd;
         fds[EXTRA_FDS + self->count].events = POLLIN;
-        INCREF_CHILD(children[self->count]);
         self->count++;
-        DECREF_CHILD(add_queue[add_queue_count]);
     }
 }
 
-static inline bool
+static inline void
 remove_children(ChildMonitor *self) {
-    size_t count = 0; 
-    if (self->count == 0) goto end;
-    for (ssize_t i = self->count - 1; i >= 0; i--) {
-        if (children[i].needs_removal) {
-            count++;
-            close(fds[EXTRA_FDS + i].fd);
-            FREE_CHILD(children[i]);            
-            size_t num_to_right = self->count - 1 - i;
-            if (num_to_right > 0) {
-                memmove(children + i, children + i + 1, num_to_right * sizeof(Child));
+    if (self->count > 0) {
+        size_t count = 0; 
+        for (ssize_t i = self->count - 1; i >= 0; i--) {
+            if (children[i].needs_removal) {
+                count++;
+                close(fds[EXTRA_FDS + i].fd);
+                remove_queue[remove_queue_count] = children[i];
+                remove_queue_count++;
+                children[i] = EMPTY_CHILD;
+                size_t num_to_right = self->count - 1 - i;
+                if (num_to_right > 0) {
+                    memmove(children + i, children + i + 1, num_to_right * sizeof(Child));
+                }
             }
         }
+        self->count -= count;
     }
-    self->count -= count;
-end:
-    return count ? true : false;
 }
 
 
@@ -351,12 +365,12 @@ loop(ChildMonitor *self) {
     bool has_more, data_received; 
     Screen *screen;
 
+    Py_BEGIN_ALLOW_THREADS;
     while (LIKELY(!self->shutting_down)) {
         children_mutex(lock);
         remove_children(self);
         add_children(self);
         children_mutex(unlock);
-        Py_BEGIN_ALLOW_THREADS;
         data_received = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
@@ -395,11 +409,13 @@ loop(ChildMonitor *self) {
             }
         }
         if (data_received) glfwPostEmptyEvent();
-        Py_END_ALLOW_THREADS;
     }
+    children_mutex(lock);
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
     remove_children(self);
     for (i = 0; i < EXTRA_FDS; i++) close(fds[i].fd);
+    children_mutex(unlock);
+    Py_END_ALLOW_THREADS;
     Py_RETURN_NONE;
 }
 // }}}
