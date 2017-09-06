@@ -189,7 +189,7 @@ timers_call(Timers *self) {
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
             if (self->events[i].callback != Py_None) {
-                PyObject *ret = PyObject_CallObject(self->events[i].callback, self->events[i].args);
+                PyObject *ret = self->events[i].args ? PyObject_CallObject(self->events[i].callback, self->events[i].args) : PyObject_CallFunctionObjArgs(self->events[i].callback, NULL);
                 if (ret == NULL) PyErr_Print();
                 else Py_DECREF(ret);
             }
