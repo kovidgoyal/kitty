@@ -31,7 +31,7 @@ from .keys import (
 from .session import create_session
 from .shaders import Sprites
 from .tabs import SpecialWindow, TabManager
-from .utils import handle_unix_signals, pipe2, safe_print
+from .utils import handle_unix_signals, safe_print
 
 if isosx:
     from .fast_data_types import cocoa_update_title
@@ -101,10 +101,9 @@ class Boss(Thread):
         self.resize_gl_viewport = False
         self.shutting_down = False
         self.signal_fd = handle_unix_signals()
-        read_wakeup_fd, write_wakeup_fd = pipe2()
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
-            read_wakeup_fd, write_wakeup_fd, self.signal_fd, opts.repaint_delay / 1000.0,
+            self.signal_fd, opts.repaint_delay / 1000.0,
             self.on_child_death, self.update_screen, self.ui_timers,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)

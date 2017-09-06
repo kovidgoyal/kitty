@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include <unistd.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <GLFW/glfw3.h>
 
@@ -51,20 +52,35 @@ static uint8_t drain_buf[1024];
 #define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
 #define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 
+static inline bool
+self_pipe(int fds[2]) {
+    int flags;
+    flags = pipe(fds);
+    if (flags != 0) return false;
+    flags = fcntl(fds[0], F_GETFD);
+    if (flags == -1) {  return false; }
+    if (fcntl(fds[0], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
+    flags = fcntl(fds[0], F_GETFL);
+    if (flags == -1) { return false; }
+    if (fcntl(fds[0], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
+    return true;
+}
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify, *update_screen, *timers;
-    int wakeup_fd, write_wakeup_fd, signal_fd, ret;
+    int signal_fd, ret, wakeup_fds[2];
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "iiidOOOO", &wakeup_fd, &write_wakeup_fd, &signal_fd, &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "idOOOO", &signal_fd, &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
     }
+    if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
@@ -75,9 +91,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         parse_func = parse_worker_dump;
     } else parse_func = parse_worker;
     self->count = 0; 
-    fds[0].fd = wakeup_fd; fds[1].fd = signal_fd;
+    fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fd;
     fds[0].events = POLLIN; fds[1].events = POLLIN;
-    self->write_wakeup_fd = write_wakeup_fd;
+    self->write_wakeup_fd = wakeup_fds[1];
     self->repaint_delay = repaint_delay;
 
     return (PyObject*) self;
@@ -99,6 +115,8 @@ dealloc(ChildMonitor* self) {
         add_queue_count--;
         FREE_CHILD(add_queue[add_queue_count]);
     }
+    close(self->write_wakeup_fd);
+    close(fds[0].fd);
 
 }
 
