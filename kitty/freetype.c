@@ -63,9 +63,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        Py_BEGIN_ALLOW_THREADS;
         error = FT_New_Face(library, path, index, &(self->face));
-        Py_END_ALLOW_THREADS;
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;
         CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
@@ -88,9 +86,7 @@ set_char_size(Face *self, PyObject *args) {
     unsigned int xdpi, ydpi;
     int error;
     if (!PyArg_ParseTuple(args, "llII", &char_width, &char_height, &xdpi, &ydpi)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
-    Py_END_ALLOW_THREADS;
     if (error) { set_freetype_error("Failed to set char size, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
@@ -107,9 +103,7 @@ load_char(Face *self, PyObject *args) {
         if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
         else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
     } else flags |= FT_LOAD_NO_HINTING;
-    Py_BEGIN_ALLOW_THREADS;
     error = FT_Load_Glyph(self->face, glyph_index, flags);
-    Py_END_ALLOW_THREADS;
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
@@ -120,9 +114,7 @@ get_char_index(Face *self, PyObject *args) {
     int code;
     unsigned int ans;
     if (!PyArg_ParseTuple(args, "C", &code)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     ans = FT_Get_Char_Index(self->face, code);
-    Py_END_ALLOW_THREADS;
 
     return Py_BuildValue("I", ans);
 }

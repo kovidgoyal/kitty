@@ -51,7 +51,6 @@ static void
 rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf) {
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
-    Py_BEGIN_ALLOW_THREADS;
 
     first_dest_line;
     do {
@@ -73,5 +72,4 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         if (!src_line_is_continued && src_y < src_limit) { next_dest_line(false); dest_x = 0; }
     } while (src_y < src_limit);
     dest->line->ynum = dest_y;
-    Py_END_ALLOW_THREADS;
 }

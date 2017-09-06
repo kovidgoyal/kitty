@@ -194,9 +194,7 @@ GetString(PyObject UNUSED *self, PyObject *val) {
 static PyObject* 
 Clear(PyObject UNUSED *self, PyObject *val) {
     unsigned long m = PyLong_AsUnsignedLong(val);
-    Py_BEGIN_ALLOW_THREADS;
     glClear((GLbitfield)m);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -206,9 +204,7 @@ DrawArrays(PyObject UNUSED *self, PyObject *args) {
     int mode, first;
     unsigned int count;
     if (!PyArg_ParseTuple(args, "iiI", &mode, &first, &count)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     glDrawArrays(mode, first, count);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -219,9 +215,7 @@ MultiDrawArrays(PyObject UNUSED *self, PyObject *args) {
     unsigned int draw_count;
     PyObject *a, *b;
     if (!PyArg_ParseTuple(args, "iO!O!I", &mode, &PyLong_Type, &a, &PyLong_Type, &b, &draw_count)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     glMultiDrawArrays(mode, PyLong_AsVoidPtr(a), PyLong_AsVoidPtr(b), draw_count);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -231,9 +225,7 @@ DrawArraysInstanced(PyObject UNUSED *self, PyObject *args) {
     int mode, first;
     unsigned int count, primcount;
     if (!PyArg_ParseTuple(args, "iiII", &mode, &first, &count, &primcount)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     glDrawArraysInstanced(mode, first, count, primcount);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -522,9 +514,7 @@ TexStorage3D(PyObject UNUSED *self, PyObject *args) {
     int target, fmt;
     unsigned int levels, width, height, depth;
     if (!PyArg_ParseTuple(args, "iIiIII", &target, &levels, &fmt, &width, &height, &depth)) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     glTexStorage3D(target, levels, fmt, width, height, depth);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -548,9 +538,7 @@ CopyImageSubData(PyObject UNUSED *self, PyObject *args) {
         &dest, &dest_target, &dest_level, &destX, &destY, &destZ,
         &width, &height, &depth
     )) return NULL;
-    Py_BEGIN_ALLOW_THREADS;
     glCopyImageSubData(src, src_target, src_level, srcX, srcY, srcZ, dest, dest_target, dest_level, destX, destY, destZ, width, height, depth);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -564,14 +552,12 @@ copy_image_sub_data(PyObject UNUSED *self, PyObject *args) {
     uint8_t *src = (uint8_t*)PyMem_Malloc(5 * width * height * num_levels);
     if (src == NULL) return PyErr_NoMemory();
     uint8_t *dest = src + (4 * width * height * num_levels);
-    Py_BEGIN_ALLOW_THREADS;
     glBindTexture(GL_TEXTURE_2D_ARRAY, src_target);
     glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src);
     glBindTexture(GL_TEXTURE_2D_ARRAY, dest_target);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     for(unsigned int i = 0; i < width * height * num_levels; i++) dest[i] = src[4*i];
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RED, GL_UNSIGNED_BYTE, dest);
-    Py_END_ALLOW_THREADS;
     PyMem_Free(src);
     Py_RETURN_NONE;
 }
@@ -584,9 +570,7 @@ TexSubImage3D(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "iiiiiIIIiiO!", &target, &level, &x, &y, &z, &width, &height, &depth, &fmt, &type, &PyLong_Type, &pixels)) return NULL;
     void *data = PyLong_AsVoidPtr(pixels);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    Py_BEGIN_ALLOW_THREADS;
     glTexSubImage3D(target, level, x, y, z, width, height, depth, fmt, type, data);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -599,9 +583,7 @@ GetTexImage(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "iiiiO!", &target, &level, &fmt, &type, &PyLong_Type, &pixels)) return NULL;
     void *data = PyLong_AsVoidPtr(pixels);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    Py_BEGIN_ALLOW_THREADS;
     glGetTexImage(target, level, fmt, type, data);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     Py_RETURN_NONE;
 }
@@ -615,9 +597,7 @@ GetBufferSubData(PyObject UNUSED *self, PyObject *args) {
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
     glBindBuffer(buftype, target); 
-    Py_BEGIN_ALLOW_THREADS;
     glGetBufferSubData(buftype, offset, size, data);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     glBindBuffer(buftype, 0);
     Py_RETURN_NONE;
@@ -632,10 +612,8 @@ replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
     void *data = PyLong_AsVoidPtr(address);
     if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
     glBindBuffer(buftype, target); 
-    Py_BEGIN_ALLOW_THREADS;
     if (prev_sz == 0 || prev_sz != size) glBufferData(buftype, size, data, usage); 
     else glBufferSubData(buftype, 0, size, data);
-    Py_END_ALLOW_THREADS;
     CHECK_ERROR;
     glBindBuffer(buftype, 0);
     Py_RETURN_NONE;

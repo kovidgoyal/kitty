@@ -223,11 +223,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
-        Py_BEGIN_ALLOW_THREADS;
         memcpy(other->buf, self->buf, sizeof(Cell) * self->xnum * self->ynum);
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         other->count = self->count; other->start_of_data = self->start_of_data;
-        Py_END_ALLOW_THREADS;
         return;
     }
     other->count = 0; other->start_of_data = 0;

@@ -435,16 +435,13 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
 
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
-        Py_BEGIN_ALLOW_THREADS;
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * sizeof(Cell));
-        Py_END_ALLOW_THREADS;
         return;
     }
 
     // Find the first line that contains some content
-    Py_BEGIN_ALLOW_THREADS;
     for (first = self->ynum - 1; true; first--) {
         Cell *cells = lineptr(self, first);
         for(i = 0; i < self->xnum; i++) {
@@ -452,7 +449,6 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
         }
         if (!is_empty || !first) break;
     }
-    Py_END_ALLOW_THREADS;
 
     if (first == 0) { *cursor_y_out = 0; return; }  // All lines are empty
 

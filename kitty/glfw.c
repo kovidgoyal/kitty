@@ -169,10 +169,8 @@ glfw_wait_events(PyObject UNUSED *self, PyObject *args) {
         time = PyFloat_AsDouble(PyTuple_GET_ITEM(args, 0));
         if (PyErr_Occurred()) PyErr_Clear();
     }
-    Py_BEGIN_ALLOW_THREADS;
     if (time < 0) glfwWaitEvents();
     else glfwWaitEventsTimeout(time);
-    Py_END_ALLOW_THREADS;
     Py_RETURN_NONE;
 }
 
@@ -234,9 +232,7 @@ dealloc(Window* self) {
 
 static PyObject*
 swap_buffers(Window *self) {
-    Py_BEGIN_ALLOW_THREADS;
     glfwSwapBuffers(self->window);
-    Py_END_ALLOW_THREADS;
     Py_RETURN_NONE;
 }
 
