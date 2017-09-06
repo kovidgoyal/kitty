@@ -280,7 +280,9 @@ typedef struct {
     PyObject_HEAD
 
     PyObject *dump_callback, *update_screen, *death_notify;
+    Timers *timers;
     int write_wakeup_fd;
+    double repaint_delay;
     unsigned int count;
     bool shutting_down;
 } ChildMonitor;
@@ -351,6 +353,7 @@ void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 double monotonic();
 double timers_timeout(Timers*);
 void timers_call(Timers*);
+bool timers_add(Timers *self, double delay, bool, PyObject *callback, PyObject *args);
 bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);

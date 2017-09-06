@@ -104,7 +104,8 @@ class Boss(Thread):
         read_wakeup_fd, write_wakeup_fd = pipe2()
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
-            read_wakeup_fd, write_wakeup_fd, self.signal_fd, self.on_child_death, self.update_screen,
+            read_wakeup_fd, write_wakeup_fd, self.signal_fd, opts.repaint_delay / 1000.0,
+            self.on_child_death, self.update_screen, self.ui_timers,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size

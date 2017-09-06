@@ -96,28 +96,31 @@ _add(Timers *self, double at, PyObject *callback, PyObject *args) {
     return true;
 }
 
+bool
+timers_add(Timers *self, double delay, bool update, PyObject *callback, PyObject *args) {
+    double at = monotonic_() + delay;
 
-static PyObject *
-add(Timers *self, PyObject *fargs) {
-#define add_doc "add(delay, callback, args) -> Add callback, replacing it if it already exists"
-    size_t i;
-    PyObject *callback, *args = NULL;
-    double delay, at;
-    if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
-    at = monotonic_() + delay;
-
-    for (i = 0; i < self->count; i++) {
+    for (size_t i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
-            self->events[i].at = at;
+            self->events[i].at = update ? at : MIN(at, self->events[i].at);
             Py_CLEAR(self->events[i].args);
             self->events[i].args = args;
             Py_XINCREF(args);
             qsort(self->events, self->count, sizeof(TimerEvent), compare_events);
-            Py_RETURN_NONE;
+            return true;
         }
     }
+    return _add(self, at, callback, args);
+}
 
-    if (!_add(self, at, callback, args)) return NULL;
+
+static PyObject *
+add(Timers *self, PyObject *fargs) {
+#define add_doc "add(delay, callback, args) -> Add callback, replacing it if it already exists"
+    PyObject *callback, *args = NULL;
+    double delay;
+    if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
+    if (!timers_add(self, delay, true, callback, args)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -185,10 +188,12 @@ timers_call(Timers *self) {
     size_t i, j;
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
-            PyObject *ret = PyObject_CallObject(self->events[i].callback, self->events[i].args);
+            if (self->events[i].callback != Py_None) {
+                PyObject *ret = PyObject_CallObject(self->events[i].callback, self->events[i].args);
+                if (ret == NULL) PyErr_Print();
+                else Py_DECREF(ret);
+            }
             Py_CLEAR(self->events[i].callback); Py_CLEAR(self->events[i].args);
-            if (ret == NULL) PyErr_Print();
-            else Py_DECREF(ret);
         } else {
             other[j].callback = self->events[i].callback; other[j].at = self->events[i].at; other[j].args = self->events[i].args;
             j++;

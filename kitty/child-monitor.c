@@ -20,6 +20,7 @@ typedef struct {
     bool needs_removal;
     int fd;
     unsigned long id;
+    double last_paint_at;
 } Child;
 
 static const Child EMPTY_CHILD = {0};
@@ -52,11 +53,12 @@ static uint8_t drain_buf[1024];
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *update_screen;
+    PyObject *dump_callback, *death_notify, *update_screen, *timers;
     int wakeup_fd, write_wakeup_fd, signal_fd, ret;
+    double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "iiiOOO", &wakeup_fd, &write_wakeup_fd, &signal_fd, &death_notify, &update_screen, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "iiidOOOO", &wakeup_fd, &write_wakeup_fd, &signal_fd, &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
@@ -66,6 +68,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
     self->update_screen = update_screen; Py_INCREF(self->update_screen);
+    self->timers = (Timers*)timers; Py_INCREF(timers);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
         parse_func = parse_worker_dump;
@@ -74,6 +77,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     fds[0].fd = wakeup_fd; fds[1].fd = signal_fd;
     fds[0].events = POLLIN; fds[1].events = POLLIN;
     self->write_wakeup_fd = write_wakeup_fd;
+    self->repaint_delay = repaint_delay;
 
     return (PyObject*) self;
 }
@@ -84,6 +88,7 @@ dealloc(ChildMonitor* self) {
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
     Py_CLEAR(self->update_screen);
+    Py_CLEAR(self->timers);
     for (size_t i = 0; i < self->count; i++) {
         FREE_CHILD(children[i]);
     }
@@ -162,6 +167,20 @@ shutdown(ChildMonitor *self) {
     Py_RETURN_NONE;
 }
 
+static inline void
+do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
+    screen_mutex(lock, read);
+    if (screen->read_buf_sz) {
+        parse_func(screen, self->dump_callback);
+        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(self->write_wakeup_fd);  // Ensure the read fd has POLLIN set
+        screen->read_buf_sz = 0;
+        PyObject *t = PyObject_CallFunction(self->update_screen, "k", child_id);
+        if (t == NULL) PyErr_Print();
+        else Py_DECREF(t);
+    }
+    screen_mutex(unlock, read);
+}
+
 static PyObject *
 parse_input(ChildMonitor *self) {
 #define parse_input_doc "parse_input() -> Parse all available input that was read in the I/O thread."
@@ -179,23 +198,24 @@ parse_input(ChildMonitor *self) {
         scratch[i] = children[i];
         INCREF_CHILD(scratch[i]);
     }
-    // TODO: Implement repaint delay here.
     children_mutex(unlock);
+
+    double wait_for = self->repaint_delay;
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            Screen *screen = scratch[i].screen;
-            screen_mutex(lock, read);
-            if (screen->read_buf_sz) {
-                parse_func(screen, self->dump_callback);
-                if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(self->write_wakeup_fd);  // Ensure the read fd has POLLIN set
-                screen->read_buf_sz = 0;
-                PyObject *t = PyObject_CallFunction(self->update_screen, "k", scratch[i].id);
-                if (t == NULL) PyErr_Print();
-                else Py_DECREF(t);
+            double now = monotonic();
+            double time_since_last_repaint = now - scratch[i].last_paint_at; 
+            if (time_since_last_repaint >= self->repaint_delay) {
+                do_parse(self, scratch[i].screen, scratch[i].id);
+                children[i].last_paint_at = now;
+            } else {
+                wait_for = MIN(wait_for, self->repaint_delay - time_since_last_repaint);
             }
-            screen_mutex(unlock, read);
         }
         DECREF_CHILD(scratch[i]);
+    }
+    if (wait_for < self->repaint_delay) {
+        timers_add(self->timers, wait_for, false, Py_None, NULL);
     }
     if (sr) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
