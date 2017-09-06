@@ -13,6 +13,7 @@
 #undef _GNU_SOURCE
 #include "data-types.h"
 #include <unistd.h>
+#include <float.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <GLFW/glfw3.h>
@@ -321,18 +322,34 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
 #undef INCREF_CHILD
 #undef DECREF_CHILD
 
+static double last_render_at = -DBL_MAX;
+
+static inline bool
+render(ChildMonitor *self, double *timeout) {
+    PyObject *ret;
+    double now = monotonic();
+    double time_since_last_render = now - last_render_at;
+    if (time_since_last_render > self->repaint_delay) {
+        ret = PyObject_CallObject(self->render_func, NULL);
+        if (ret == NULL) return false; 
+        else Py_DECREF(ret);
+        glfwSwapBuffers(glfw_window_id);
+        last_render_at = now;
+    } else {
+        *timeout = self->repaint_delay - time_since_last_render;
+    }
+    return true;
+}
+
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
-    PyObject *ret;
-    double timeout;
+    double timeout = 0, t;
 
     while (!glfwWindowShouldClose(glfw_window_id)) {
-        ret = PyObject_CallObject(self->render_func, NULL);
-        if (ret == NULL) return NULL; 
-        else Py_DECREF(ret);
-        glfwSwapBuffers(glfw_window_id);
-        timeout = timers_timeout(self->timers);
+        if (!render(self, &timeout)) break;
+        t = timers_timeout(self->timers);
+        timeout = MIN(timeout, t);
         if (timeout < 0) glfwWaitEvents();
         else if (timeout > 0) glfwWaitEventsTimeout(timeout);
         timers_call(self->timers);
