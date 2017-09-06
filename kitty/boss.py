@@ -2,10 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import io
-import os
-import signal
-import struct
 from gettext import gettext as _
 from threading import Thread
 from time import monotonic
@@ -31,7 +27,7 @@ from .keys import (
 from .session import create_session
 from .shaders import Sprites
 from .tabs import SpecialWindow, TabManager
-from .utils import handle_unix_signals, safe_print
+from .utils import safe_print
 
 if isosx:
     from .fast_data_types import cocoa_update_title
@@ -100,10 +96,9 @@ class Boss(Thread):
         self.glfw_window_title = None
         self.resize_gl_viewport = False
         self.shutting_down = False
-        self.signal_fd = handle_unix_signals()
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
-            self.signal_fd, opts.repaint_delay / 1000.0,
+            opts.repaint_delay / 1000.0,
             self.on_child_death, self.update_screen, self.ui_timers,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
@@ -129,17 +124,10 @@ class Boss(Thread):
         self.show_mouse_cursor()
         self.start_cursor_blink()
 
-    def signal_received(self):
-        try:
-            data = os.read(self.signal_fd, io.DEFAULT_BUFFER_SIZE)
-        except BlockingIOError:
-            return
-        if data:
-            signals = struct.unpack('%uB' % len(data), data)
-            if signal.SIGINT in signals or signal.SIGTERM in signals:
-                if not self.shutting_down:
-                    self.glfw_window.set_should_close(True)
-                    glfw_post_empty_event()
+    def close_signal_received(self):
+        if not self.shutting_down:
+            self.glfw_window.set_should_close(True)
+            glfw_post_empty_event()
 
     @property
     def current_tab_bar_height(self):
@@ -432,9 +420,6 @@ class Boss(Thread):
                     glfw_post_empty_event()
 
     def destroy(self):
-        # Must be called in the main thread as it manipulates signal handlers
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         self.shutting_down = True
         self.child_monitor.shutdown()
         wakeup()

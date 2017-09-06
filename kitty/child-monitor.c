@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 #include <GLFW/glfw3.h>
 
 #define EXTRA_FDS 2
@@ -41,6 +42,7 @@ static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock = {{0}};
 static bool created = false, signal_received = false;
 static uint8_t drain_buf[1024];
+static int signal_fds[2], wakeup_fds[2];
 
 
 // Main thread functions {{{
@@ -51,6 +53,18 @@ static uint8_t drain_buf[1024];
 #define XREF_CHILD(x, OP) OP(x.screen); 
 #define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
 #define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
+
+static void
+handle_signal(int sig_num) {
+    int save_err = errno;
+    unsigned char byte = (unsigned char)sig_num;
+    while(true) {
+        ssize_t ret = write(signal_fds[1], &byte, 1);
+        if (ret < 0 && errno == EINTR) continue;
+        break;
+    }
+    errno = save_err;
+}
 
 static inline bool
 self_pipe(int fds[2]) {
@@ -70,17 +84,22 @@ static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify, *update_screen, *timers;
-    int signal_fd, ret, wakeup_fds[2];
+    int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "idOOOO", &signal_fd, &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOOO", &repaint_delay, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
     }
     if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!self_pipe(signal_fds)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (signal(SIGINT, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
+    if (signal(SIGTERM, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
+    if (siginterrupt(SIGINT, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    if (siginterrupt(SIGTERM, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
@@ -91,9 +110,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         parse_func = parse_worker_dump;
     } else parse_func = parse_worker;
     self->count = 0; 
-    fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fd;
+    fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fds[0];
     fds[0].events = POLLIN; fds[1].events = POLLIN;
-    self->write_wakeup_fd = wakeup_fds[1];
     self->repaint_delay = repaint_delay;
 
     return (PyObject*) self;
@@ -115,9 +133,10 @@ dealloc(ChildMonitor* self) {
         add_queue_count--;
         FREE_CHILD(add_queue[add_queue_count]);
     }
-    close(self->write_wakeup_fd);
-    close(fds[0].fd);
-
+    close(wakeup_fds[0]);
+    close(wakeup_fds[1]);
+    close(signal_fds[0]); 
+    close(signal_fds[1]);
 }
 
 static void
@@ -133,9 +152,9 @@ wakeup_(int fd) {
 }
 
 static PyObject *
-wakeup(ChildMonitor *self) {
+wakeup(ChildMonitor UNUSED *self) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_(self->write_wakeup_fd);
+    wakeup_(wakeup_fds[1]);
     Py_RETURN_NONE;
 }
 
@@ -188,6 +207,8 @@ needs_write(ChildMonitor *self, PyObject *args) {
 static PyObject *
 shutdown(ChildMonitor *self) {
 #define shutdown_doc "shutdown() -> Shutdown the monitor loop."
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
     self->shutting_down = true;
     Py_RETURN_NONE;
 }
@@ -197,7 +218,7 @@ do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
     screen_mutex(lock, read);
     if (screen->read_buf_sz) {
         parse_func(screen, self->dump_callback);
-        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(self->write_wakeup_fd);  // Ensure the read fd has POLLIN set
+        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(wakeup_fds[1]);  // Ensure the read fd has POLLIN set
         screen->read_buf_sz = 0;
         PyObject *t = PyObject_CallFunction(self->update_screen, "k", child_id);
         if (t == NULL) PyErr_Print();
@@ -341,12 +362,12 @@ read_bytes(int fd, Screen *screen) {
 
 
 static inline void
-drain_wakeup(int fd) {
+drain_fd(int fd) {
     while(true) {
         ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
         if (len < 0) {
             if (errno == EINTR) continue;
-            if (errno != EIO) perror("Call to read() from wakeup fd failed");
+            if (errno != EIO) perror("Call to read() from drain fd failed");
             break;
         }
         break;
@@ -399,9 +420,10 @@ loop(ChildMonitor *self) {
         }
         ret = poll(fds, self->count + EXTRA_FDS, -1);
         if (ret > 0) {
-            if (fds[0].revents && POLLIN) drain_wakeup(fds[0].fd);
+            if (fds[0].revents && POLLIN) drain_fd(fds[0].fd);
             if (fds[1].revents && POLLIN) { 
                 data_received = true;
+                drain_fd(fds[1].fd);
                 children_mutex(lock);
                 signal_received = true;
                 children_mutex(unlock);

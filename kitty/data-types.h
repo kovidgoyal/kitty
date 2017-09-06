@@ -281,7 +281,6 @@ typedef struct {
 
     PyObject *dump_callback, *update_screen, *death_notify;
     Timers *timers;
-    int write_wakeup_fd;
     double repaint_delay;
     unsigned int count;
     bool shutting_down;
