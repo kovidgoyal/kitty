@@ -23,7 +23,7 @@ from .fast_data_types import (
     GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
     enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
     glfw_init, glfw_init_hint_string, glfw_set_error_callback,
-    glfw_swap_interval, glfw_terminate, glfw_wait_events, glfw_window_hint
+    glfw_swap_interval, glfw_terminate, glfw_window_hint
 )
 from .layout import all_layouts
 from .shaders import GL_VERSION
@@ -166,11 +166,6 @@ def clear_buffers(window, opts):
     # glfw_swap_interval(1)
 
 
-def dispatch_pending_calls(boss):
-    boss.ui_timers.call()
-    boss.child_monitor.parse_input()
-
-
 def run_app(opts, args):
     setup_opengl(opts)
     load_cached_values()
@@ -212,11 +207,7 @@ def run_app(opts, args):
     boss.start()
     clear_buffers(window, opts)
     try:
-        while not window.should_close():
-            boss.render()
-            window.swap_buffers()
-            glfw_wait_events(boss.ui_timers.timeout())
-            dispatch_pending_calls(boss)
+        boss.child_monitor.main_loop()
     finally:
         boss.destroy()
     del window

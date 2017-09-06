@@ -97,7 +97,7 @@ class Boss:
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
             opts.repaint_delay / 1000.0, glfw_window.window_id(),
-            self.on_child_death, self.update_screen, self.ui_timers,
+            self.on_child_death, self.update_screen, self.ui_timers, self.render,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size

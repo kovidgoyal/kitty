@@ -89,12 +89,12 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *update_screen, *timers, *wid;
+    PyObject *dump_callback, *death_notify, *update_screen, *timers, *wid, *render_func;
     int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOOOO", &repaint_delay, &wid, &death_notify, &update_screen, &timers, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOOOOO", &repaint_delay, &wid, &death_notify, &update_screen, &timers, &render_func, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
@@ -111,6 +111,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
     self->update_screen = update_screen; Py_INCREF(self->update_screen);
+    self->render_func = render_func; Py_INCREF(self->render_func);
     self->timers = (Timers*)timers; Py_INCREF(timers);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
@@ -131,6 +132,7 @@ dealloc(ChildMonitor* self) {
     Py_CLEAR(self->death_notify);
     Py_CLEAR(self->update_screen);
     Py_CLEAR(self->timers);
+    Py_CLEAR(self->render_func);
     Py_TYPE(self)->tp_free((PyObject*)self);
     while (remove_queue_count) {
         remove_queue_count--;
@@ -253,9 +255,9 @@ do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
     screen_mutex(unlock, read);
 }
 
-static PyObject *
+static void
 parse_input(ChildMonitor *self) {
-#define parse_input_doc "parse_input() -> Parse all available input that was read in the I/O thread."
+    // Parse all available input that was read in the I/O thread.
     size_t count = 0;
     children_mutex(lock);
     while (num_dead_children) {
@@ -297,7 +299,6 @@ parse_input(ChildMonitor *self) {
     if (wait_for < self->repaint_delay) {
         timers_add(self->timers, wait_for, false, Py_None, NULL);
     }
-    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -321,9 +322,21 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
 #undef DECREF_CHILD
 
 static PyObject*
-main_loop(ChildMonitor UNUSED *self) {
+main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
+    PyObject *ret;
+    double timeout;
+
     while (!glfwWindowShouldClose(glfw_window_id)) {
+        ret = PyObject_CallObject(self->render_func, NULL);
+        if (ret == NULL) return NULL; 
+        else Py_DECREF(ret);
+        glfwSwapBuffers(glfw_window_id);
+        timeout = timers_timeout(self->timers);
+        if (timeout < 0) glfwWaitEvents();
+        else if (timeout > 0) glfwWaitEventsTimeout(timeout);
+        timers_call(self->timers);
+        parse_input(self);
     }
     Py_RETURN_NONE;
 }
@@ -512,7 +525,6 @@ static PyMethodDef methods[] = {
     METHOD(wakeup, METH_NOARGS)
     METHOD(shutdown, METH_NOARGS)
     METHOD(main_loop, METH_NOARGS)
-    METHOD(parse_input, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
