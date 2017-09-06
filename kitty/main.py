@@ -268,6 +268,7 @@ def setup_profiling(args):
 
 
 def main():
+    sys.setswitchinterval(1000.0)  # we have only a single python thread
     if isosx:
         ensure_osx_locale()
     try:
