@@ -5,10 +5,15 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#ifndef __APPLE__
+// Need _GNU_SOURCE for pthread_setname_np on linux
+#define _GNU_SOURCE
+#endif
+#include <pthread.h>
+#undef _GNU_SOURCE
 #include "data-types.h"
 #include <unistd.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <signal.h>
 #include <GLFW/glfw3.h>
 
@@ -150,6 +155,25 @@ wakeup_(int fd) {
         break;
     }
 }
+
+static void* io_loop(void *data);
+
+static PyObject *
+start(ChildMonitor *self) {
+#define start_doc "start() -> Start the I/O thread"
+    int ret = pthread_create(&self->io_thread, NULL, io_loop, self);
+    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+join(ChildMonitor *self) {
+#define join_doc "join() -> Wait for the I/O thread to finish"
+    int ret = pthread_join(self->io_thread, NULL);
+    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    Py_RETURN_NONE;
+}
+
 
 static PyObject *
 wakeup(ChildMonitor UNUSED *self) {
@@ -396,15 +420,21 @@ write_to_child(int fd, Screen *screen) {
     screen_mutex(unlock, write);
 }
 
-static PyObject *
-loop(ChildMonitor *self) {
-#define loop_doc "loop() -> The monitor loop."
+static void*
+io_loop(void *data) {
+    // The I/O thread loop
     size_t i;
     int ret;
     bool has_more, data_received; 
     Screen *screen;
+    ChildMonitor *self = (ChildMonitor*)data;
 
-    Py_BEGIN_ALLOW_THREADS;
+#ifdef __APPLE__
+    pthread_setname_np("ChildMonitor");
+#else
+    pthread_setname_np(self->io_thread, "ChildMonitor");
+#endif
+
     while (LIKELY(!self->shutting_down)) {
         children_mutex(lock);
         remove_children(self);
@@ -455,8 +485,7 @@ loop(ChildMonitor *self) {
     remove_children(self);
     for (i = 0; i < EXTRA_FDS; i++) close(fds[i].fd);
     children_mutex(unlock);
-    Py_END_ALLOW_THREADS;
-    Py_RETURN_NONE;
+    return 0;
 }
 // }}}
 
@@ -464,7 +493,8 @@ loop(ChildMonitor *self) {
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
     METHOD(needs_write, METH_VARARGS)
-    METHOD(loop, METH_NOARGS)
+    METHOD(start, METH_NOARGS)
+    METHOD(join, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
     METHOD(shutdown, METH_NOARGS)
     METHOD(parse_input, METH_NOARGS)

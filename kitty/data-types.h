@@ -284,6 +284,7 @@ typedef struct {
     double repaint_delay;
     unsigned int count;
     bool shutting_down;
+    pthread_t io_thread;
 } ChildMonitor;
 PyTypeObject ChildMonitor_Type;
 

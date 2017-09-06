@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from gettext import gettext as _
-from threading import Thread
 from time import monotonic
 from weakref import WeakValueDictionary
 
@@ -82,12 +81,11 @@ class DumpCommands:  # {{{
 # }}}
 
 
-class Boss(Thread):
+class Boss:
 
     daemon = True
 
     def __init__(self, glfw_window, opts, args):
-        Thread.__init__(self, name='ChildMonitor')
         self.window_id_map = WeakValueDictionary()
         startup_session = create_session(opts, args)
         self.cursor_blink_zero_time = monotonic()
@@ -169,8 +167,10 @@ class Boss(Thread):
         for window in tab:
             self.close_window(window)
 
-    def run(self):
-        self.child_monitor.loop()
+    def start(self):
+        if not getattr(self, 'io_thread_started', False):
+            self.child_monitor.start()
+            self.io_thread_started = True
 
     def on_window_resize(self, window, w, h):
         # debounce resize events
@@ -423,7 +423,7 @@ class Boss(Thread):
         self.shutting_down = True
         self.child_monitor.shutdown()
         wakeup()
-        self.join()
+        self.child_monitor.join()
         for t in self.tab_manager:
             t.destroy()
         del self.tab_manager
