@@ -36,7 +36,6 @@ typedef struct {
     bool needs_removal;
     int fd;
     unsigned long id;
-    double last_paint_at;
     pid_t pid;
 } Child;
 
@@ -256,7 +255,7 @@ shutdown(ChildMonitor *self) {
     Py_RETURN_NONE;
 }
 
-static inline void
+static inline bool
 do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
     bool updated = false;
     screen_mutex(lock, read);
@@ -272,12 +271,17 @@ do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
     }
+    return updated;
 }
+static double last_parse_at = -1000;
 
 static void
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
+    double now = monotonic();
+    double time_since_last_parse = now - last_parse_at; 
+    bool parse_needed = time_since_last_parse >= self->repaint_delay ? true : false;
     children_mutex(lock);
     while (remove_queue_count) {
         remove_queue_count--; 
@@ -290,10 +294,13 @@ parse_input(ChildMonitor *self) {
         glfwSetWindowShouldClose(glfw_window_id, true);
         glfwPostEmptyEvent();
     } else {
-        count = self->count;
-        for (size_t i = 0; i < count; i++) {
-            scratch[i] = children[i];
-            INCREF_CHILD(scratch[i]);
+        if (parse_needed) {
+            count = self->count;
+            for (size_t i = 0; i < count; i++) {
+                scratch[i] = children[i];
+                INCREF_CHILD(scratch[i]);
+            }
+            last_parse_at = now;
         }
     }
     children_mutex(unlock);
@@ -307,23 +314,15 @@ parse_input(ChildMonitor *self) {
         else Py_DECREF(t);
     }
 
-    double wait_for = self->repaint_delay;
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            double now = monotonic();
-            double time_since_last_repaint = now - scratch[i].last_paint_at; 
-            if (time_since_last_repaint >= self->repaint_delay) {
-                do_parse(self, scratch[i].screen, scratch[i].id);
-                children[i].last_paint_at = now;
-            } else {
-                wait_for = MIN(wait_for, self->repaint_delay - time_since_last_repaint);
-            }
+            do_parse(self, scratch[i].screen, scratch[i].id);
         }
         DECREF_CHILD(scratch[i]);
     }
-    if (wait_for < self->repaint_delay) {
-        timers_add(self->timers, wait_for, false, Py_None, NULL);
-    }
+    if (!parse_needed) {
+        timers_add(self->timers, self->repaint_delay - time_since_last_parse, false, Py_None, NULL);
+    } 
 }
 
 static PyObject *
