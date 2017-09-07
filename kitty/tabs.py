@@ -308,6 +308,8 @@ class TabManager:
     def init(self, startup_session):
         self.tabs = [Tab(self.opts, self.args, self.title_changed, t) for t in startup_session.tabs]
         self.active_tab_idx = startup_session.active_tab_idx
+        if len(self.tabs) > 1:
+            get_boss().tabbar_visibility_changed()
         self.update_tab_bar()
 
     def update_tab_bar(self):
