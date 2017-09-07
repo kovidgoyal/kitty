@@ -35,7 +35,7 @@ class Tab:
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
-        self.enabled_layouts = list((session_tab or opts).enabled_layouts)
+        self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or opts.enabled_layouts)
         self.borders = Borders(opts)
         self.windows = deque()
         self.active_window_idx = 0
