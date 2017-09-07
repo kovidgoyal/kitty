@@ -32,6 +32,11 @@ init_tabstops(bool *tabstops, index_type count) {
         self->utf8_state = 0; \
         self->utf8_codepoint = 0; \
         self->use_latin1 = false; 
+#define CALLBACK(...) \
+    if (self->callbacks != Py_None) { \
+        PyObject *callback_ret = PyObject_CallMethod(self->callbacks, __VA_ARGS__); \
+        if (callback_ret == NULL) PyErr_Print(); else Py_DECREF(callback_ret); \
+    }
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -169,6 +174,13 @@ screen_change_scrollback_size(Screen *self, unsigned int size) {
     return true;
 }
 
+static PyObject*
+reset_callbacks(Screen *self) {
+    Py_CLEAR(self->callbacks);
+    self->callbacks = Py_None;
+    Py_INCREF(self->callbacks);
+    Py_RETURN_NONE;
+}
 
 static void
 dealloc(Screen* self) {
@@ -392,8 +404,7 @@ screen_toggle_screen_buffer(Screen *self) {
         self->tabstops = self->main_tabstops;
         screen_restore_cursor(self);
     }
-    PyObject_CallMethod(self->callbacks, "buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    CALLBACK("buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
     tracker_update_screen(self->change_tracker);
 }
 
@@ -901,24 +912,18 @@ void screen_erase_characters(Screen *self, unsigned int count) {
 void
 screen_use_latin1(Screen *self, bool on) {
     self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0; 
-    PyObject_CallMethod(self->callbacks, "use_utf8", "O", on ? Py_False : Py_True);
-    if (PyErr_Occurred()) PyErr_Print();
-    PyErr_Clear(); 
+    CALLBACK("use_utf8", "O", on ? Py_False : Py_True);
 }
 
 void 
 screen_bell(Screen UNUSED *self) {  
-    PyObject_CallMethod(self->callbacks, "bell", NULL);
-    if (PyErr_Occurred()) PyErr_Print();
-    PyErr_Clear(); 
+    CALLBACK("bell", NULL);
 } 
 
 static inline void 
 callback(const char *name, Screen *self, const char *data, unsigned int sz) {
-    if (sz) PyObject_CallMethod(self->callbacks, name, "y#", data, sz);
-    else PyObject_CallMethod(self->callbacks, name, "y", data);
-    if (PyErr_Occurred()) PyErr_Print();
-    PyErr_Clear(); 
+    if (sz) { CALLBACK(name, "y#", data, sz); }
+    else { CALLBACK(name, "y", data); }
 }
 
 void 
@@ -1028,30 +1033,25 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
 
 void 
 set_title(Screen *self, PyObject *title) {
-    PyObject_CallMethod(self->callbacks, "title_changed", "O", title);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    CALLBACK("title_changed", "O", title);
 }
 
 void set_icon(Screen *self, PyObject *icon) {
-    PyObject_CallMethod(self->callbacks, "icon_changed", "O", icon);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    CALLBACK("icon_changed", "O", icon);
 }
 
 void set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
-    if (color == NULL) PyObject_CallMethod(self->callbacks, "set_dynamic_color", "Is", code, "");
-    else PyObject_CallMethod(self->callbacks, "set_dynamic_color", "IO", code, color);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    if (color == NULL) { CALLBACK("set_dynamic_color", "Is", code, ""); }
+    else { CALLBACK("set_dynamic_color", "IO", code, color); }
 }
 
 void set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
-    if (color == NULL) PyObject_CallMethod(self->callbacks, "set_color_table_color", "Is", code, "");
-    else PyObject_CallMethod(self->callbacks, "set_color_table_color", "IO", code, color);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
+    else { CALLBACK("set_color_table_color", "IO", code, color); }
 }
 
 void screen_request_capabilities(Screen *self, PyObject *q) {
-    PyObject_CallMethod(self->callbacks, "request_capabilities", "O", q);
-    if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); }
+    CALLBACK("request_capabilities", "O", q);
 }
 
 // }}}
@@ -1323,6 +1323,7 @@ static PyMethodDef methods[] = {
     MND(set_scroll_cell_data, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
+    MND(reset_callbacks, METH_NOARGS)
     {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 

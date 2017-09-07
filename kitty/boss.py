@@ -139,7 +139,7 @@ class Boss:
         wakeup()
 
     def on_child_death(self, window_id):
-        w = self.window_id_map.get(window_id)
+        w = self.window_id_map.pop(window_id, None)
         if w is not None:
             w.on_child_death()
 

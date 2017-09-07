@@ -95,6 +95,11 @@ class Window:
     def on_child_death(self):
         self.destroy()
         get_boss().gui_close_window(self)
+        # Remove cycles so that screen is de-allocated immediately
+        if self.screen is not None:
+            self.screen.reset_callbacks()
+            self.screen = self.char_grid.screen = None
+            self.char_grid = None
 
     def destroy(self):
         if not self.destroyed:
