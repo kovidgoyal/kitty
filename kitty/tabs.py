@@ -254,7 +254,7 @@ class TabBar:
         s = self.screen
         s.cursor.x = 0
         s.erase_in_line(2, False)
-        max_title_length = (self.screen_geometry.xnum // len(self.current_data)) - 1
+        max_title_length = (self.screen_geometry.xnum // max(1, len(self.current_data)) - 1)
         cr = []
 
         for t in self.current_data:
