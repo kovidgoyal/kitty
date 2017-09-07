@@ -135,7 +135,7 @@ class Boss:
             yield from t
 
     def add_child(self, window):
-        self.child_monitor.add_child(window.id, window.child.child_fd, window.screen)
+        self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
         wakeup()
 

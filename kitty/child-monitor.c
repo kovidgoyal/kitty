@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <stropts.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <GLFW/glfw3.h>
 
@@ -34,6 +35,7 @@ typedef struct {
     int fd;
     unsigned long id;
     double last_paint_at;
+    pid_t pid;
 } Child;
 
 static const Child EMPTY_CHILD = {0};
@@ -202,7 +204,7 @@ add_child(ChildMonitor *self, PyObject *args) {
     if (self->count + add_queue_count >= MAX_CHILDREN) { PyErr_SetString(PyExc_ValueError, "Too many children"); children_mutex(unlock); return NULL; }
     add_queue[add_queue_count] = EMPTY_CHILD;
 #define A(attr) &add_queue[add_queue_count].attr
-    if (!PyArg_ParseTuple(args, "kiO", A(id), A(fd), A(screen))) {
+    if (!PyArg_ParseTuple(args, "kiiO", A(id), A(pid), A(fd), A(screen))) {
         children_mutex(unlock);
         return NULL; 
     }
@@ -446,6 +448,70 @@ add_children(ChildMonitor *self) {
     }
 }
 
+
+static inline void
+hangup(pid_t pid) {
+    errno = 0;
+    pid_t pgid = getpgid(pid);
+    if (errno == ESRCH) return;
+    if (errno != 0) { perror("Failed to get process group id for child"); return; }
+    if (killpg(pgid, SIGHUP) != 0) {
+        if (errno != ESRCH) perror("Failed to kill child"); 
+    }
+}
+
+static pid_t pid_buf[MAX_CHILDREN] = {0};
+static size_t pid_buf_pos = 0;
+static pthread_t reap_thread;
+
+static inline void
+set_thread_name(pthread_t UNUSED thread, const char *name) {
+    int ret = 0;
+#ifdef __APPLE__
+    ret = pthread_setname_np(name);
+#else
+    ret = pthread_setname_np(thread, name);
+#endif
+    if (ret != 0) perror("Failed to set thread name");
+}
+
+
+static void*
+reap(void *pid_p) {
+#ifdef __APPLE__
+    set_thread_name(reap_thread, "KittyReapChild");
+#endif
+    pid_t pid = *((pid_t*)pid_p);
+    while(true) {
+        pid_t ret = waitpid(pid, NULL, 0);
+        if (ret != pid) {
+            if (errno == EINTR) continue;
+            fprintf(stderr, "Failed to reap child process with pid: %d with error: %s\n", pid, strerror(errno));
+        }
+        break;
+    }
+    return 0;
+}
+
+static inline void
+cleanup_child(ssize_t i) {
+    close(children[i].fd);
+    hangup(children[i].pid);
+    pid_buf[pid_buf_pos] = children[i].pid;
+    if (waitpid(pid_buf[pid_buf_pos], NULL, WNOHANG) != pid_buf[pid_buf_pos]) {
+        errno = 0;
+        int ret = pthread_create(&reap_thread, NULL, reap, pid_buf + pid_buf_pos);
+        if (ret != 0) perror("Failed to create thread to reap child");
+        else {
+#ifndef __APPLE__
+            set_thread_name(reap_thread, "KittyReapChild");
+#endif
+        }
+    }
+    pid_buf_pos = (pid_buf_pos + 1) % MAX_CHILDREN;
+}
+
+
 static inline void
 remove_children(ChildMonitor *self) {
     if (self->count > 0) {
@@ -453,7 +519,7 @@ remove_children(ChildMonitor *self) {
         for (ssize_t i = self->count - 1; i >= 0; i--) {
             if (children[i].needs_removal) {
                 count++;
-                close(fds[EXTRA_FDS + i].fd);
+                cleanup_child(i);
                 remove_queue[remove_queue_count] = children[i];
                 remove_queue_count++;
                 children[i] = EMPTY_CHILD;
@@ -542,13 +608,7 @@ io_loop(void *data) {
     bool has_more, data_received; 
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
-
-#define THREAD_NAME "KittyChildMon"
-#ifdef __APPLE__
-    pthread_setname_np(THREAD_NAME);
-#else
-    pthread_setname_np(self->io_thread, THREAD_NAME);
-#endif
+    set_thread_name(self->io_thread, "KittyChildMon");
 
     while (LIKELY(!self->shutting_down)) {
         children_mutex(lock);

@@ -4,7 +4,6 @@
 
 import os
 import fcntl
-import signal
 from threading import Thread
 
 from .constants import terminfo_dir
@@ -74,23 +73,3 @@ class Child:
                 t.daemon = True
                 t.start()
             return pid
-
-    def hangup(self):
-        if self.pid is not None:
-            pid, self.pid = self.pid, None
-            try:
-                pgrp = os.getpgid(pid)
-            except ProcessLookupError:
-                return
-            os.killpg(pgrp, signal.SIGHUP)
-            self.child_fd = None
-
-    def __del__(self):
-        self.hangup()
-
-    def get_child_status(self):
-        if self.pid is not None:
-            try:
-                return os.waitid(os.P_PID, self.pid, os.WEXITED | os.WNOHANG)
-            except ChildProcessError:
-                self.pid = None

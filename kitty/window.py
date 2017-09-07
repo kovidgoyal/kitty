@@ -103,8 +103,6 @@ class Window:
         if self.destroyed:
             return
         self.destroyed = True
-        self.child.hangup()
-        self.child.get_child_status()  # Ensure child does not become zombie
         # Remove cycles so that screen is de-allocated immediately
         boss = get_boss()
         self.screen.reset_callbacks()
