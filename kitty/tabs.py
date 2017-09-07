@@ -207,7 +207,7 @@ class Tab:
 
 class TabBar:
 
-    def __init__(self, data, opts):
+    def __init__(self, opts):
         self.num_tabs = 1
         self.cell_width = 1
         self.vao_id = None
@@ -222,7 +222,6 @@ class TabBar:
         )
         s.color_profile.dirty = True
         self.blank_rects = ()
-        self.current_data = data
 
         def as_rgb(x):
             return (x << 8) | 2
@@ -254,10 +253,10 @@ class TabBar:
         s = self.screen
         s.cursor.x = 0
         s.erase_in_line(2, False)
-        max_title_length = (self.screen_geometry.xnum // max(1, len(self.current_data)) - 1)
+        max_title_length = (self.screen_geometry.xnum // max(1, len(data))) - 1
         cr = []
 
-        for t in self.current_data:
+        for t in data:
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold = s.cursor.italic = t.is_active
@@ -305,7 +304,7 @@ class TabManager:
     def __init__(self, opts, args):
         self.opts, self.args = opts, args
         self.tabs = []
-        self.tab_bar = TabBar(self.tab_bar_data, opts)
+        self.tab_bar = TabBar(opts)
         self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
 
