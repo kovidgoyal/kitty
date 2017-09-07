@@ -50,9 +50,8 @@ class Timers(_Timers):
         return _Timers.remove_event(self, timer)
 
 
-def conditional_run(w, i):
-    if w is None or not w.destroyed:
-        next(i, None)
+def wakeup_for_cursor_blink_render():
+    pass
 
 
 class DumpCommands:  # {{{
@@ -400,7 +399,7 @@ class Boss:
                         n = t // d
                         draw_cursor = n % 2 == 0
                         self.ui_timers.add_if_missing(
-                            ((n + 1) * d / 1000) - now, glfw_post_empty_event)
+                            ((n + 1) * d / 1000) - now, wakeup_for_cursor_blink_render)
                     if draw_cursor:
                         with self.cursor_program:
                             active.char_grid.render_cursor(
