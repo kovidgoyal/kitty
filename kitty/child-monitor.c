@@ -221,10 +221,11 @@ needs_write(ChildMonitor *self, PyObject *args) {
     unsigned long id, sz;
     const char *data;
     if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL; 
-    if (!sz) { Py_RETURN_NONE; }
+    PyObject *found = Py_False;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == id) { 
+            found = Py_True;
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
             uint8_t *buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz + sz);
@@ -240,7 +241,8 @@ needs_write(ChildMonitor *self, PyObject *args) {
     }
     children_mutex(unlock);
     if (PyErr_Occurred()) return NULL;
-    Py_RETURN_NONE;
+    Py_INCREF(found);
+    return found;
 }
 
 static PyObject *

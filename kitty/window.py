@@ -2,10 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import sys
 import weakref
 from collections import deque
-from time import monotonic
 from itertools import count
+from time import monotonic
 
 from .char_grid import CharGrid, DynamicColor
 from .constants import (
@@ -112,8 +113,10 @@ class Window:
 
     def write_to_child(self, data):
         if data:
-            get_boss().child_monitor.needs_write(self.id, data)
-            wakeup()
+            if get_boss().child_monitor.needs_write(self.id, data) is True:
+                wakeup()
+            else:
+                print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
 
     def bell(self):
         if self.opts.enable_audio_bell:
