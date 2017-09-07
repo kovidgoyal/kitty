@@ -48,7 +48,11 @@ static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}
 static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
+#ifdef __APPLE__
+static pthread_mutex_t children_lock = {0};
+#else
 static pthread_mutex_t children_lock = {{0}};
+#endif
 static bool created = false, signal_received = false;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
