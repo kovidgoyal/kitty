@@ -343,7 +343,10 @@ pty_resize(int fd, struct winsize *dim) {
     while(true) {
         if (ioctl(fd, TIOCSWINSZ, dim) == -1) {
             if (errno == EINTR) continue;
-            if (errno != EBADF && errno != ENOTTY) return false;
+            if (errno != EBADF && errno != ENOTTY) {
+                fprintf(stderr, "Failed to resize tty associated with fd: %d with error: %s", fd, strerror(errno));
+                return false;
+            }
         }
         break;
     }
