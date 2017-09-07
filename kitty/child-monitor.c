@@ -338,6 +338,18 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static inline bool
+pty_resize(int fd, struct winsize *dim) {
+    while(true) {
+        if (ioctl(fd, TIOCSWINSZ, dim) == -1) {
+            if (errno == EINTR) continue;
+            if (errno != EBADF && errno != ENOTTY) return false;
+        }
+        break;
+    }
+    return true;
+}
+
 static PyObject *
 resize_pty(ChildMonitor *self, PyObject *args) {
 #define resize_pty_doc "Resize the pty associated with the specified child"
@@ -349,7 +361,7 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
             found = Py_True;
-            if (ioctl(fds[EXTRA_FDS + i].fd, TIOCSWINSZ, &dim) == -1) PyErr_SetFromErrno(PyExc_OSError);
+            if (!pty_resize(children[i].fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
             break;
         }
     }
