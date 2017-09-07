@@ -321,7 +321,7 @@ parse_input(ChildMonitor *self) {
         DECREF_CHILD(scratch[i]);
     }
     if (!parse_needed) {
-        timers_add(self->timers, self->repaint_delay - time_since_last_parse, false, Py_None, NULL);
+        timers_add_if_before(self->timers, self->repaint_delay - time_since_last_parse, Py_None, NULL);
     } 
 }
 

@@ -44,6 +44,16 @@ class Timers(_Timers):
         timer = self.timer_hash.setdefault(timer, timer)
         return _Timers.add(self, delay, timer, args) if args else _Timers.add(self, delay, timer)
 
+    def add_if_before(self, delay, timer, *args):
+        # Needed because bound methods are recreated on every access
+        timer = self.timer_hash.setdefault(timer, timer)
+        return _Timers.add_if_before(self, delay, timer, *args)
+
+    def add_if_missing(self, delay, timer, *args):
+        # Needed because bound methods are recreated on every access
+        timer = self.timer_hash.setdefault(timer, timer)
+        return _Timers.add_if_missing(self, delay, timer, *args)
+
     def remove(self, timer):
         # Needed because bound methods are recreated on every access
         timer = self.timer_hash.setdefault(timer, timer)
@@ -398,7 +408,7 @@ class Boss:
                         d = int(self.opts.cursor_blink_interval * 1000)
                         n = t // d
                         draw_cursor = n % 2 == 0
-                        self.ui_timers.add_if_missing(
+                        self.ui_timers.add_if_before(
                             ((n + 1) * d / 1000) - now, wakeup_for_cursor_blink_render)
                     if draw_cursor:
                         with self.cursor_program:

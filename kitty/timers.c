@@ -96,10 +96,8 @@ _add(Timers *self, double at, PyObject *callback, PyObject *args) {
     return true;
 }
 
-bool
-timers_add(Timers *self, double delay, bool update, PyObject *callback, PyObject *args) {
-    double at = monotonic_() + delay;
-
+static inline bool
+timers_add_(Timers *self, double at, bool update, PyObject *callback, PyObject *args) {
     for (size_t i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
             self->events[i].at = update ? at : MIN(at, self->events[i].at);
@@ -113,6 +111,11 @@ timers_add(Timers *self, double delay, bool update, PyObject *callback, PyObject
     return _add(self, at, callback, args);
 }
 
+bool
+timers_add(Timers *self, double delay, bool update, PyObject *callback, PyObject *args) {
+    return timers_add_(self, monotonic_() + delay, update, callback, args);
+}
+
 
 static PyObject *
 add(Timers *self, PyObject *fargs) {
@@ -121,6 +124,28 @@ add(Timers *self, PyObject *fargs) {
     double delay;
     if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
     if (!timers_add(self, delay, true, callback, args)) return NULL;
+    Py_RETURN_NONE;
+}
+
+bool
+timers_add_if_before(Timers *self, double delay, PyObject *callback, PyObject *args) {
+    double at = monotonic_() + delay;
+    for (size_t i = 0; i < self->count; i++) {
+        if (self->events[i].at < at) {
+            return true;
+        }
+    }
+    return timers_add_(self, at, true, callback, args);
+}
+
+static PyObject *
+add_if_before(Timers *self, PyObject *fargs) {
+#define add_if_before_doc "add_if_before(delay, callback, args) -> Add callback, unless another callback scheduled before this one already exists."
+    PyObject *callback, *args = NULL;
+    double delay;
+    if (!PyArg_ParseTuple(fargs, "dO|O", &delay, &callback, &args)) return NULL; 
+
+    if (!timers_add_if_before(self, delay, callback, args)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -188,6 +213,8 @@ timers_call(Timers *self) {
     size_t i, j;
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
+            /* PyObject_Print(self->events[i].callback, stdout, 1); */
+            /* printf("\n"); */
             if (self->events[i].callback != Py_None) {
                 PyObject *ret = self->events[i].args ? PyObject_CallObject(self->events[i].callback, self->events[i].args) : PyObject_CallFunctionObjArgs(self->events[i].callback, NULL);
                 if (ret == NULL) PyErr_Print();
@@ -214,6 +241,7 @@ call(Timers *self) {
 static PyMethodDef methods[] = {
     METHOD(add, METH_VARARGS)
     METHOD(add_if_missing, METH_VARARGS)
+    METHOD(add_if_before, METH_VARARGS)
     METHOD(remove_event, METH_O)
     METHOD(timeout, METH_NOARGS)
     METHOD(call, METH_NOARGS)
