@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from functools import partial
 from gettext import gettext as _
 from time import monotonic
 from weakref import WeakValueDictionary
@@ -134,9 +135,19 @@ class Boss:
             yield from t
 
     def add_child(self, window):
-        self.child_monitor.add_child(window.id, window.child_fd, window.screen)
+        self.child_monitor.add_child(window.id, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
         wakeup()
+
+    def retry_resize_pty(self, window_id, timers_call=False):
+        # In case the child has not yet been added in the child monitor
+        if timers_call:
+            w = self.window_id_map.get(window_id)
+            if w is not None:
+                if not self.child_monitor.resize_pty(window_id, *w.current_pty_size):
+                    self.retry_resize_pty(window_id)
+        else:
+            self.ui_timers.add(0, partial(self.retry_resize_pty, window_id, timers_call=True))
 
     def on_child_death(self, window_id):
         w = self.window_id_map.pop(window_id, None)
@@ -151,9 +162,7 @@ class Boss:
     def close_window(self, window=None):
         if window is None:
             window = self.active_window
-        self.child_monitor.mark_for_close(window.screen.child_fd)
-        self.gui_close_window()
-        window.destroy()
+        self.child_monitor.mark_for_close(window.id)
         wakeup()
 
     def close_tab(self, tab=None):

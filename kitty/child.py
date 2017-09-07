@@ -4,7 +4,6 @@
 
 import os
 import termios
-import struct
 import fcntl
 import signal
 from threading import Thread
@@ -76,10 +75,6 @@ class Child:
                 t.daemon = True
                 t.start()
             return pid
-
-    def resize_pty(self, w, h, ww, wh):
-        if self.child_fd is not None:
-            fcntl.ioctl(self.child_fd, termios.TIOCSWINSZ, struct.pack('4H', h, w, ww, wh))
 
     def set_iutf8(self, on=True, fd=None):
         fd = fd or self.child_fd

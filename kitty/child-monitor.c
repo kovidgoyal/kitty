@@ -10,11 +10,15 @@
 #define _GNU_SOURCE
 #endif
 #include <pthread.h>
+#ifndef __APPLE__
 #undef _GNU_SOURCE
+#endif
 #include "data-types.h"
 #include <unistd.h>
 #include <float.h>
 #include <fcntl.h>
+#include <stropts.h>
+#include <sys/ioctl.h>
 #include <signal.h>
 #include <GLFW/glfw3.h>
 
@@ -41,8 +45,7 @@ static const Child EMPTY_CHILD = {0};
 static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
 static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}};
-static unsigned long dead_children[MAX_CHILDREN] = {0};
-static size_t num_dead_children = 0;
+static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock = {{0}};
@@ -244,30 +247,31 @@ shutdown(ChildMonitor *self) {
 
 static inline void
 do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
+    bool updated = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz) {
         parse_func(screen, self->dump_callback);
         if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(wakeup_fds[1]);  // Ensure the read fd has POLLIN set
         screen->read_buf_sz = 0;
+        updated = true;
+    }
+    screen_mutex(unlock, read);
+    if (LIKELY(updated)) {
         PyObject *t = PyObject_CallFunction(self->update_screen, "k", child_id);
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
     }
-    screen_mutex(unlock, read);
 }
 
 static void
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
-    size_t count = 0;
+    size_t count = 0, remove_count = 0;
     children_mutex(lock);
-    while (num_dead_children) {
-        PyObject *t = PyObject_CallFunction(self->death_notify, "k", dead_children[--num_dead_children]);
-        if (t == NULL) PyErr_Print();
-        else Py_DECREF(t);
-    }
     while (remove_queue_count) {
-        remove_queue_count--;
+        remove_queue_count--; 
+        remove_notify[remove_count] = remove_queue[remove_queue_count].id;
+        remove_count++;
         FREE_CHILD(remove_queue[remove_queue_count]);
     }
 
@@ -282,6 +286,15 @@ parse_input(ChildMonitor *self) {
         }
     }
     children_mutex(unlock);
+
+    while(remove_count) {
+        // must be done while no locks are held, since the locks are non-recursive and
+        // the python function could call into other functions in this module
+        remove_count--;
+        PyObject *t = PyObject_CallFunction(self->death_notify, "k", remove_notify[remove_count]);
+        if (t == NULL) PyErr_Print();
+        else Py_DECREF(t);
+    }
 
     double wait_for = self->repaint_delay;
     for (size_t i = 0; i < count; i++) {
@@ -305,17 +318,38 @@ parse_input(ChildMonitor *self) {
 static PyObject *
 mark_for_close(ChildMonitor *self, PyObject *args) {
 #define mark_for_close_doc "Mark a child to be removed from the child monitor"
-    int fd;
-    if (!PyArg_ParseTuple(args, "i", &fd)) return NULL;
+    unsigned long window_id;
+    if (!PyArg_ParseTuple(args, "k", &window_id)) return NULL;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
-        if (children[i].fd == fd) {
+        if (children[i].id == window_id) {
             children[i].needs_removal = true;
             break;
         }
     }
     children_mutex(unlock);
     Py_RETURN_NONE;
+}
+
+static PyObject *
+resize_pty(ChildMonitor *self, PyObject *args) {
+#define resize_pty_doc "Resize the pty associated with the specified child"
+    unsigned long window_id;
+    struct winsize dim;
+    PyObject *found = Py_False;
+    if (!PyArg_ParseTuple(args, "kHHHH", &window_id, &dim.ws_row, &dim.ws_col, &dim.ws_xpixel, &dim.ws_ypixel)) return NULL;
+    children_mutex(lock);
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].id == window_id) {
+            found = Py_True;
+            if (ioctl(fds[EXTRA_FDS + i].fd, TIOCSWINSZ, &dim) == -1) PyErr_SetFromErrno(PyExc_OSError);
+            break;
+        }
+    }
+    children_mutex(unlock);
+    if (PyErr_Occurred()) return NULL;
+    Py_INCREF(found);
+    return found;
 }
 
 #undef FREE_CHILD
@@ -507,9 +541,9 @@ io_loop(void *data) {
                     data_received = true;
                     has_more = read_bytes(fds[EXTRA_FDS + i].fd, children[i].screen);
                     if (!has_more) { 
+                        // child is dead
                         children_mutex(lock);
                         children[i].needs_removal = true;
-                        dead_children[num_dead_children++] = children[i].id;
                         children_mutex(unlock);
                     }
                 }
@@ -527,7 +561,6 @@ io_loop(void *data) {
     children_mutex(lock);
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
     remove_children(self);
-    for (i = 0; i < EXTRA_FDS; i++) close(fds[i].fd);
     children_mutex(unlock);
     return 0;
 }
@@ -543,6 +576,7 @@ static PyMethodDef methods[] = {
     METHOD(shutdown, METH_NOARGS)
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
+    METHOD(resize_pty, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

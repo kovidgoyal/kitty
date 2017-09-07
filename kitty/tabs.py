@@ -193,10 +193,7 @@ class Tab:
         return window in self.windows
 
     def destroy(self):
-        if hasattr(self, 'windows'):
-            for w in self.windows:
-                w.destroy()
-            del self.windows
+        self.windows = deque()
 
     def render(self):
         self.borders.render(get_boss().borders_program)

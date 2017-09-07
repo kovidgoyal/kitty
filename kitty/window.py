@@ -50,13 +50,13 @@ class Window:
         self.title = appname
         self._is_visible_in_layout = True
         self.child, self.opts = child, opts
-        self.child_fd = child.child_fd
         self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.char_grid = CharGrid(self.screen, opts)
+        self.current_pty_size = None
 
     def __repr__(self):
-        return 'Window(title={}, id={})'.format(self.title, hex(id(self)))
+        return 'Window(title={}, id={})'.format(self.title, self.id)
 
     @property
     def is_visible_in_layout(self):
@@ -75,12 +75,19 @@ class Window:
         wakeup()
 
     def set_geometry(self, new_geometry):
+        if self.destroyed:
+            return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
+            boss = get_boss()
+            child_monitor = boss.child_monitor
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
-            self.child.resize_pty(self.screen.columns, self.screen.lines,
-                                  max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
+            self.current_pty_size = (
+                self.screen.lines, self.screen.columns,
+                max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             self.char_grid.resize(new_geometry)
             self.needs_layout = False
+            if not child_monitor.resize_pty(self.id, *self.current_pty_size):
+                boss.retry_resize_pty(self.id)
         else:
             self.char_grid.update_position(new_geometry)
         self.geometry = new_geometry
@@ -93,19 +100,17 @@ class Window:
         get_boss().close_window(self)
 
     def on_child_death(self):
-        self.destroy()
-        get_boss().gui_close_window(self)
+        if self.destroyed:
+            return
+        self.destroyed = True
+        self.child.hangup()
+        self.child.get_child_status()  # Ensure child does not become zombie
         # Remove cycles so that screen is de-allocated immediately
-        if self.screen is not None:
-            self.screen.reset_callbacks()
-            self.screen = self.char_grid.screen = None
-            self.char_grid = None
-
-    def destroy(self):
-        if not self.destroyed:
-            self.destroyed = True
-            self.child.hangup()
-            self.child.get_child_status()  # Ensure child does not become zombie
+        boss = get_boss()
+        self.screen.reset_callbacks()
+        boss.gui_close_window(self)
+        self.screen = self.char_grid.screen = None
+        self.char_grid = None
 
     def write_to_child(self, data):
         if data:
