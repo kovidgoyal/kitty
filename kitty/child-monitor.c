@@ -14,6 +14,7 @@
 #undef _GNU_SOURCE
 #endif
 #include "data-types.h"
+#include <termios.h>
 #include <unistd.h>
 #include <float.h>
 #include <fcntl.h>
@@ -356,6 +357,38 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     return found;
 }
 
+bool
+set_iutf8(int UNUSED fd, bool UNUSED on) {
+#ifdef IUTF8
+    struct termios attrs;
+    if (tcgetattr(fd, &attrs) != 0) return false;
+    if (on) attrs.c_iflag |= IUTF8;
+    else attrs.c_iflag &= ~IUTF8;
+    if (tcsetattr(fd, TCSANOW, &attrs) != 0) return false;
+#endif
+    return true;
+}
+
+static PyObject*
+pyset_iutf8(ChildMonitor *self, PyObject *args) {
+    unsigned long window_id;
+    int on;
+    PyObject *found = Py_False;
+    if (!PyArg_ParseTuple(args, "kp", &window_id, &on)) return NULL;
+    children_mutex(lock);
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].id == window_id) {
+            found = Py_True;
+            if (!set_iutf8(fds[EXTRA_FDS + i].fd, on & 1)) PyErr_SetFromErrno(PyExc_OSError);
+            break;
+        }
+    }
+    children_mutex(unlock);
+    if (PyErr_Occurred()) return NULL;
+    Py_INCREF(found);
+    return found;
+}
+
 #undef FREE_CHILD
 #undef INCREF_CHILD
 #undef DECREF_CHILD
@@ -581,6 +614,7 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
+    {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 

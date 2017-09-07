@@ -37,6 +37,14 @@ redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+pyset_iutf8(PyObject UNUSED *self, PyObject *args) {
+    int fd, on;
+    if (!PyArg_ParseTuple(args, "ip", &fd, &on)) return NULL;
+    if (!set_iutf8(fd, on & 1)) return PyErr_SetFromErrno(PyExc_OSError);
+    Py_RETURN_NONE;
+}
+
 #ifdef WITH_PROFILER
 static PyObject*
 start_profiler(PyObject UNUSED *self, PyObject *args) {
@@ -59,6 +67,7 @@ stop_profiler(PyObject UNUSED *self) {
 
 static PyMethodDef module_methods[] = {
     GL_METHODS
+    {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
@@ -144,9 +153,6 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, NORMAL_PROTOCOL);
         PyModule_AddIntMacro(m, URXVT_PROTOCOL);
         PyModule_AddIntMacro(m, UTF8_PROTOCOL);
-#ifdef IUTF8
-        PyModule_AddIntMacro(m, IUTF8);
-#endif
     }
 
     return m;
