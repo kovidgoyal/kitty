@@ -2,12 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import fcntl
+import os
+import sys
 from threading import Thread
 
-from .constants import terminfo_dir
 import kitty.fast_data_types as fast_data_types
+
+from .constants import terminfo_dir
 
 
 def remove_cloexec(fd):
@@ -61,9 +63,13 @@ class Child:
             try:
                 os.execvp(self.argv[0], self.argv)
             except Exception as err:
+                # Report he failure and exec a shell instead so that
+                # we are not left with a forked but not execed process
                 print('Could not launch:', self.argv[0])
                 print('\t', err)
-                input('\nPress Enter to exit:')
+                print('\nPress Enter to exit:', end=' ')
+                sys.stdout.flush()
+                os.execvp('/bin/sh', ['/bin/sh', '-c', 'read w'])
         else:  # master
             os.close(slave)
             self.pid = pid
