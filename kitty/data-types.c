@@ -114,7 +114,6 @@ PyInit_fast_data_types(void) {
         if (!init_Timers(m)) return NULL;
         if (!init_ChildMonitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
-        if (!init_ChangeTracker(m)) return NULL;
         if (!init_Screen(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;

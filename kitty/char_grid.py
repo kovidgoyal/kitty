@@ -357,7 +357,7 @@ class CharGrid:
     def prepare_for_render(self, cell_program):
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
-        if self.scroll_changed or self.screen.is_dirty():
+        if self.scroll_changed or self.screen.is_dirty:
             self.update_cell_data(cell_program)
             self.scroll_changed = False
         sg = self.render_data

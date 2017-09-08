@@ -196,21 +196,6 @@ typedef struct {
 PyTypeObject ColorProfile_Type;
 
 typedef struct {
-    PyObject_HEAD
-
-    index_type xnum, ynum;
-    bool screen_changed;
-    bool cursor_changed;
-    bool dirty;
-    bool *changed_lines;
-    bool *lines_with_changed_cells;
-    bool *changed_cells;
-    unsigned int history_line_added_count;
-} ChangeTracker;
-PyTypeObject ChangeTracker_Type;
-
-
-typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
          mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD;
     unsigned long mouse_tracking_mode, mouse_tracking_protocol;
@@ -245,11 +230,11 @@ typedef struct {
     bool use_latin1;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
-    PyObject *callbacks;
+    PyObject *callbacks, *is_dirty, *cursor_changed;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     HistoryBuf *historybuf;
+    unsigned int history_line_added_count;
     bool *tabstops, *main_tabstops, *alt_tabstops;
-    ChangeTracker *change_tracker;
     ScreenModes modes;
     ColorProfile *color_profile;
 
@@ -307,7 +292,6 @@ Line* alloc_line();
 Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
-ChangeTracker* alloc_change_tracker(unsigned int, unsigned int);
 ColorProfile* alloc_color_profile();
 int init_LineBuf(PyObject *);
 int init_HistoryBuf(PyObject *);
@@ -316,7 +300,6 @@ int init_Timers(PyObject *);
 int init_ChildMonitor(PyObject *);
 int init_Line(PyObject *);
 int init_ColorProfile(PyObject *);
-int init_ChangeTracker(PyObject *);
 int init_Screen(PyObject *);
 int init_Face(PyObject *);
 int init_Window(PyObject *);

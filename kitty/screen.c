@@ -9,7 +9,6 @@
 #include <structmember.h>
 #include <limits.h>
 #include "unicode-data.h"
-#include "tracker.h"
 #include "modes.h"
 #include "wcwidth9.h"
 
@@ -59,17 +58,18 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->columns = columns; self->lines = lines;
         self->write_buf = NULL;
         self->modes = empty_modes;
+        self->cursor_changed = Py_True; self->is_dirty = Py_True;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
+        self->history_line_added_count = 0;
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->cursor = alloc_cursor();
         self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
-        self->change_tracker = alloc_change_tracker(lines, columns);
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->change_tracker == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->color_profile == NULL) {
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->color_profile == NULL) {
             Py_CLEAR(self); return NULL;
         }
         self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
@@ -94,12 +94,12 @@ screen_reset(Screen *self) {
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
     cursor_reset(self->cursor);
-    tracker_cursor_changed(self->change_tracker);
+    self->cursor_changed = Py_True;
+    self->is_dirty = Py_True;
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
     set_color_table_color(self, 104, NULL);
-    tracker_update_screen(self->change_tracker);
 }
 
 static inline HistoryBuf* 
@@ -150,7 +150,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
     if (is_x_shrink && cursor_x >= columns) self->cursor->x = columns - 1;
 
-    if (!tracker_resize(self->change_tracker, lines, columns)) return false;
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
 
@@ -161,8 +160,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->tabstops = self->main_tabstops;
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
-    tracker_update_screen(self->change_tracker);
-    tracker_cursor_changed(self->change_tracker);
+    self->cursor_changed = Py_True; self->is_dirty = Py_True;
     if (index_after_resize) screen_index(self);
 
     return true;
@@ -200,7 +198,6 @@ dealloc(Screen* self) {
     Py_CLEAR(self->cursor); 
     Py_CLEAR(self->main_linebuf); 
     Py_CLEAR(self->alt_linebuf);
-    Py_CLEAR(self->change_tracker);
     Py_CLEAR(self->historybuf);
     Py_CLEAR(self->color_profile);
     PyMem_Free(self->main_tabstops);
@@ -268,7 +265,6 @@ screen_draw(Screen *self, uint32_t och) {
         }
     }
     if (char_width > 0) {
-        unsigned int cx = self->cursor->x;
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (self->modes.mIRM) {
             line_right_shift(self->linebuf->line, self->cursor->x, char_width);
@@ -279,20 +275,19 @@ screen_draw(Screen *self, uint32_t och) {
             line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor);
             self->cursor->x++;
         }
-        unsigned int right = self->modes.mIRM ? self->columns - 1 : MIN((MAX(self->cursor->x, 1) - 1), self->columns - 1);
-        tracker_update_cell_range(self->change_tracker, self->cursor->y, cx, right);
+        self->is_dirty = Py_True;
     } else if (is_combining_char(ch)) {
         if (self->cursor->x > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y);
             line_add_combining_char(self->linebuf->line, ch, self->cursor->x - 1);
-            tracker_update_cell_range(self->change_tracker, self->cursor->y, self->cursor->x - 1, self->cursor->x - 1);
+            self->is_dirty = Py_True;
         } else if (self->cursor->y > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y - 1);
             line_add_combining_char(self->linebuf->line, ch, self->columns - 1);
-            tracker_update_cell_range(self->change_tracker, self->cursor->y - 1, self->columns - 1, self->columns - 1);
+            self->is_dirty = Py_True;
         }
     }
-    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
+    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void
@@ -414,7 +409,7 @@ screen_toggle_screen_buffer(Screen *self) {
         screen_restore_cursor(self);
     }
     CALLBACK("buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
-    tracker_update_screen(self->change_tracker);
+    self->is_dirty = Py_True;
 }
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
@@ -453,13 +448,13 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
-            tracker_cursor_changed(self->change_tracker);
+            self->cursor_changed = Py_True;
             break;
         case DECSCNM: 
             // Render screen in reverse video
             if (self->modes.mDECSCNM != val) {
                 self->modes.mDECSCNM = val; 
-                tracker_update_screen(self->change_tracker);
+                self->is_dirty = Py_True;
             }
             break;
         case DECOM: 
@@ -479,7 +474,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case CONTROL_CURSOR_BLINK:
             self->cursor->blink = val; 
-            tracker_cursor_changed(self->change_tracker);
+            self->cursor_changed = Py_True;
             break;
         case ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
@@ -521,7 +516,7 @@ screen_tab(Screen *self) {
     if (!found) found = self->columns - 1;
     if (found != self->cursor->x) {
         self->cursor->x = found;
-        tracker_cursor_changed(self->change_tracker);
+        self->cursor_changed = Py_True;
     }
 }
 
@@ -538,7 +533,7 @@ screen_backtab(Screen *self, unsigned int count) {
         }
         if (i <= 0) self->cursor->x = 0;
     }
-    if (before != self->cursor->x) tracker_cursor_changed(self->change_tracker);
+    if (before != self->cursor->x) self->cursor_changed = Py_True;
 }
 
 void 
@@ -571,7 +566,7 @@ screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
     screen_ensure_bounds(self, false);
-    if (x != self->cursor->x) tracker_cursor_changed(self->change_tracker);
+    if (x != self->cursor->x) self->cursor_changed = Py_True;
 }
 
 void 
@@ -587,7 +582,7 @@ screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return
     else self->cursor->y += move_direction * count;
     screen_ensure_bounds(self, true);
     if (do_carriage_return) self->cursor->x = 0;
-    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
+    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void 
@@ -611,7 +606,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     if (x != self->cursor->x) {
         self->cursor->x = x;
         screen_ensure_bounds(self, false);
-        tracker_cursor_changed(self->change_tracker);
+        self->cursor_changed = Py_True;
     }
 }
 
@@ -621,11 +616,10 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         /* Only add to history when no page margins have been set */ \
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line); \
-        tracker_line_added_to_history(self->change_tracker); \
+        self->history_line_added_count++; \
     } \
     linebuf_clear_line(self->linebuf, bottom); \
-    if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker); \
-    else tracker_update_line_range(self->change_tracker, top, bottom); 
+    self->is_dirty = Py_True;
 
 void 
 screen_index(Screen *self) {
@@ -650,8 +644,7 @@ screen_scroll(Screen *self, unsigned int count) {
 #define INDEX_DOWN \
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top); \
-    if (bottom - top > self->lines - 1) tracker_update_screen(self->change_tracker); \
-    else tracker_update_line_range(self->change_tracker, top, bottom);
+    self->is_dirty = Py_True;
 
 void 
 screen_reverse_index(Screen *self) {
@@ -678,7 +671,7 @@ void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
-        tracker_cursor_changed(self->change_tracker);
+        self->cursor_changed = Py_True;
     }
 }
 
@@ -729,7 +722,7 @@ screen_restore_cursor(Screen *self) {
     Savepoint *sp = savepoints_pop(pts);
     if (sp == NULL) {
         screen_cursor_position(self, 1, 1);
-        tracker_cursor_changed(self->change_tracker);
+        self->cursor_changed = Py_True;
         screen_reset_mode(self, DECOM);
         RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
@@ -766,7 +759,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     self->cursor->x = column; self->cursor->y = line;
     screen_ensure_bounds(self, false);
-    if (x != self->cursor->x || y != self->cursor->y) tracker_cursor_changed(self->change_tracker);
+    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void 
@@ -813,7 +806,7 @@ void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         } else {
             line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
         }
-        tracker_update_cell_range(self->change_tracker, self->cursor->y, s, MIN(s+n, self->columns) - 1);
+        self->is_dirty = Py_True;
     }
 }
 
@@ -850,7 +843,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
         }
-        tracker_update_line_range(self->change_tracker, a, b-1);
+        self->is_dirty = Py_True;
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
@@ -862,7 +855,7 @@ void screen_insert_lines(Screen *self, unsigned int count) {
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
-        tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
+        self->is_dirty = Py_True;
         screen_carriage_return(self);
     }
 }
@@ -872,7 +865,7 @@ void screen_delete_lines(Screen *self, unsigned int count) {
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
-        tracker_update_line_range(self->change_tracker, self->cursor->y, bottom);
+        self->is_dirty = Py_True;
         screen_carriage_return(self);
     }
 }
@@ -886,7 +879,7 @@ void screen_insert_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         line_right_shift(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
-        tracker_update_cell_range(self->change_tracker, self->cursor->y, x, self->columns - 1);
+        self->is_dirty = Py_True;
     }
 }
 
@@ -900,7 +893,7 @@ void screen_delete_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         left_shift_line(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
-        tracker_update_cell_range(self->change_tracker, self->cursor->y, x, self->columns - 1);
+        self->is_dirty = Py_True;
     }
 }
 
@@ -911,7 +904,7 @@ void screen_erase_characters(Screen *self, unsigned int count) {
     unsigned int num = MIN(self->columns - x, count);
     linebuf_init_line(self->linebuf, self->cursor->y);
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
-    tracker_update_cell_range(self->change_tracker, self->cursor->y, x, MIN(x + num, self->columns) - 1);
+    self->is_dirty = Py_True;
 }
 
 // }}}
@@ -1034,7 +1027,7 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
             }
             if (shape != self->cursor->shape || blink != self->cursor->blink) {
                 self->cursor->shape = shape; self->cursor->blink = blink;
-                tracker_cursor_changed(self->change_tracker);
+                self->cursor_changed = Py_True;
             }
             break;
     }
@@ -1124,13 +1117,10 @@ set_mode(Screen *self, PyObject *args) {
 
 static PyObject*
 reset_dirty(Screen *self) {
-    tracker_reset(self->change_tracker);
+    self->is_dirty = Py_False;
+    self->cursor_changed = Py_False;
+    self->history_line_added_count = 0;
     Py_RETURN_NONE;
-}
-
-static PyObject*
-consolidate_changes(Screen *self) {
-    return tracker_consolidate_changes(self->change_tracker);
 }
 
 WRAP1E(cursor_back, 1, -1)
@@ -1194,12 +1184,12 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     unsigned int *data;
     int force_screen_refresh;
     unsigned int scrolled_by;
-    unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
+    unsigned int history_line_added_count = self->history_line_added_count;
     if (!PyArg_ParseTuple(args, "O!Ip", &PyLong_Type, &dp, &scrolled_by, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
-    PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
+    PyObject *cursor_changed = self->cursor_changed;
     if (scrolled_by) scrolled_by = MIN(scrolled_by + history_line_added_count, self->historybuf->count);
-    tracker_reset(self->change_tracker);
+    reset_dirty(self);
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
@@ -1227,14 +1217,9 @@ apply_selection(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
  
-static PyObject* is_dirty(Screen *self) {
-    PyObject *ans = self->change_tracker->dirty ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
-}
-
-static PyObject* mark_as_dirty(Screen *self) {
-    tracker_update_screen(self->change_tracker);
+static 
+PyObject* mark_as_dirty(Screen *self) {
+    self->is_dirty = Py_True;
     Py_RETURN_NONE;
 }
 
@@ -1286,7 +1271,6 @@ static PyMethodDef methods[] = {
     MND(reset, METH_NOARGS)
     MND(reset_dirty, METH_NOARGS)
     MND(is_main_linebuf, METH_NOARGS)
-    MND(consolidate_changes, METH_NOARGS)
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
@@ -1313,7 +1297,6 @@ static PyMethodDef methods[] = {
     MND(clear_tab_stop, METH_VARARGS)
     MND(reverse_index, METH_NOARGS)
     MND(refresh_sprite_positions, METH_NOARGS)
-    MND(is_dirty, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
@@ -1346,6 +1329,8 @@ static PyGetSetDef getsetters[] = {
 
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
+    {"cursor_changed", T_OBJECT_EX, offsetof(Screen, cursor_changed), 0, "cursor_changed"},
+    {"is_dirty", T_OBJECT_EX, offsetof(Screen, is_dirty), 0, "is_dirty"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
@@ -1354,6 +1339,7 @@ static PyMemberDef members[] = {
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},
     {"margin_bottom", T_UINT, offsetof(Screen, margin_bottom), READONLY, "margin_bottom"},
+    {"history_line_added_count", T_UINT, offsetof(Screen, history_line_added_count), 0, "history_line_added_count"},
     {NULL}
 };
  
