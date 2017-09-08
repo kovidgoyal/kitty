@@ -607,15 +607,35 @@ static PyObject*
 replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
     int usage, buftype;
     unsigned long size, prev_sz, target;
+    void *data = NULL;
     PyObject *address;
     if (!PyArg_ParseTuple(args, "kkkO!ii", &target, &size, &prev_sz, &PyLong_Type, &address, &usage, &buftype)) return NULL;
-    void *data = PyLong_AsVoidPtr(address);
-    if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    if (size) {
+        data = PyLong_AsVoidPtr(address);
+        if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
+    }
     glBindBuffer(buftype, target); 
     if (prev_sz == 0 || prev_sz != size) glBufferData(buftype, size, data, usage); 
     else glBufferSubData(buftype, 0, size, data);
     CHECK_ERROR;
     glBindBuffer(buftype, 0);
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+MapBuffer(PyObject UNUSED *self, PyObject *args) {
+    int target, access;
+    if (!PyArg_ParseTuple(args, "ii", &target, &access)) return NULL;
+    void *address = glMapBuffer(target, access);
+    if (address == NULL) { SET_GL_ERR; return NULL; }
+    return PyLong_FromVoidPtr(address);
+}
+
+static PyObject* 
+UnmapBuffer(PyObject UNUSED *self, PyObject *args) {
+    int target;
+    if (!PyArg_ParseTuple(args, "i", &target)) return NULL;
+    if (!glUnmapBuffer(target)) { SET_GL_ERR; return NULL; }
     Py_RETURN_NONE;
 }
 
@@ -810,8 +830,9 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_TEXTURE_WRAP_S); GLC(GL_TEXTURE_WRAP_T);
     GLC(GL_UNPACK_ALIGNMENT);
     GLC(GL_R8); GLC(GL_RED); GLC(GL_UNSIGNED_BYTE); GLC(GL_R32UI); GLC(GL_RGB32UI); GLC(GL_RGBA);
-    GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW);
-    GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA);
+    GLC(GL_TEXTURE_BUFFER); GLC(GL_STATIC_DRAW); GLC(GL_STREAM_DRAW); GLC(GL_DYNAMIC_DRAW);
+    GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA); 
+    GLC(GL_WRITE_ONLY); GLC(GL_READ_ONLY); GLC(GL_READ_WRITE);
     GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_UNSIGNED_INT); GLC(GL_ARRAY_BUFFER); GLC(GL_UNIFORM_BUFFER);
     return 1;
 }
@@ -873,6 +894,8 @@ int add_module_gl_constants(PyObject *module) {
     METH(AttachShader, METH_VARARGS) \
     METH(BindTexture, METH_VARARGS) \
     METH(TexParameteri, METH_VARARGS) \
+    METH(MapBuffer, METH_VARARGS) \
+    METH(UnmapBuffer, METH_VARARGS) \
     METH(PixelStorei, METH_VARARGS) \
     METH(BindBuffer, METH_VARARGS) \
     METH(BindBufferBase, METH_VARARGS) \

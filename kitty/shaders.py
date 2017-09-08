@@ -6,7 +6,7 @@ import os
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
-from ctypes import addressof, sizeof
+from ctypes import addressof, c_char, sizeof
 from functools import lru_cache
 
 from .fast_data_types import (
@@ -16,7 +16,7 @@ from .fast_data_types import (
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
     GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
-    ITALIC, copy_image_sub_data, get_uniform_block_offsets,
+    GL_WRITE_ONLY, ITALIC, copy_image_sub_data, get_uniform_block_offsets,
     get_uniform_block_size, glActiveTexture, glAttachShader, glBindBuffer,
     glBindBufferBase, glBindTexture, glBindVertexArray, glCompileShader,
     glCopyImageSubData, glCreateProgram, glCreateShader, glDeleteBuffer,
@@ -24,11 +24,12 @@ from .fast_data_types import (
     glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
     glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
     glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
-    glGetUniformBlockIndex, glGetUniformLocation, glLinkProgram, glPixelStorei,
-    glShaderSource, glTexParameteri, glTexStorage3D, glTexSubImage3D,
-    glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
-    render_dirty_sprites, replace_or_create_buffer, sprite_map_current_layout,
-    sprite_map_increment, sprite_map_set_layout, sprite_map_set_limits, sprite_map_free
+    glGetUniformBlockIndex, glGetUniformLocation, glLinkProgram, glMapBuffer,
+    glPixelStorei, glShaderSource, glTexParameteri, glTexStorage3D,
+    glTexSubImage3D, glUnmapBuffer, glUseProgram, glVertexAttribDivisor,
+    glVertexAttribPointer, render_dirty_sprites, replace_or_create_buffer,
+    sprite_map_current_layout, sprite_map_free, sprite_map_increment,
+    sprite_map_set_layout, sprite_map_set_limits
 )
 from .fonts.render import render_cell
 from .utils import safe_print
@@ -97,6 +98,19 @@ class BufferManager:  # {{{
         self.bind(buf_id)
         yield
         self.unbind(buf_id)
+
+    @contextmanager
+    def mapped_buffer(self, buf_sz, buf_id, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY):
+        prev_sz = self.sizes.get(buf_id, 0)
+        buf_type = self.types[buf_id]
+        if prev_sz != buf_sz:
+            replace_or_create_buffer(buf_id, buf_sz, 0, 0, usage, buf_type)
+            self.sizes[buf_id] = buf_sz
+            self.ctypes_types[buf_id] = c_char
+        with self.bound_buffer(buf_id):
+            address = glMapBuffer(buf_type, access)
+            yield address
+            glUnmapBuffer(buf_type)
 
 
 buffer_manager = BufferManager()
