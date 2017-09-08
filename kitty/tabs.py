@@ -278,7 +278,6 @@ class TabBar:
 
     def render(self, cell_program, sprites):
         if self.render_buf is not None:
-            sprites.render_dirty_sprites()
             if self.vao_id is None:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
@@ -302,6 +301,7 @@ class TabManager:
         self.opts, self.args = opts, args
         self.tabs = []
         self.tab_bar = TabBar(opts)
+        self.refresh_sprite_positions = self.tab_bar.screen.refresh_sprite_positions
         self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
 

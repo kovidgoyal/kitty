@@ -11,9 +11,11 @@
 static inline void
 update_sprites_in_line(Cell *cells, index_type xnum) {
     if (LIKELY(xnum > 0)) {
-        set_sprite_position(cells, NULL);
+        if (CHAR_IS_BLANK(cells->ch)) { clear_sprite_position(cells[0]); }
+        else set_sprite_position(cells, NULL);
         for (index_type i = 1; i < xnum; i++) {
-            set_sprite_position(cells + i, cells + i - 1);
+            if (CHAR_IS_BLANK(cells[i].ch)) { clear_sprite_position(cells[i]); }
+            else set_sprite_position(cells + i, cells + i - 1);
         }
     }
 }

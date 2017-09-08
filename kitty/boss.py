@@ -218,6 +218,10 @@ class Boss:
             self.opts, override_font_size=self.current_font_size)
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.resize_windows_after_font_size_change()
+        for window in self.window_id_map.values():
+            if window is not None:
+                window.screen.refresh_sprite_positions()
+        self.tab_manager.refresh_sprite_positions()
 
     def resize_windows_after_font_size_change(self):
         self.tab_manager.resize()

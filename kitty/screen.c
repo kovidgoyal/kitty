@@ -168,6 +168,15 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     return true;
 }
 
+
+static void
+screen_refresh_sprite_positions(Screen *self) {
+    linebuf_refresh_sprite_positions(self->main_linebuf);
+    linebuf_refresh_sprite_positions(self->alt_linebuf);
+    historybuf_refresh_sprite_positions(self->historybuf);
+}
+
+
 static bool 
 screen_change_scrollback_size(Screen *self, unsigned int size) {
     if (size != self->historybuf->ynum) return historybuf_resize(self->historybuf, size);
@@ -1160,6 +1169,7 @@ cursor_up(Screen *self, PyObject *args) {
 
 WRAP0x(index)
 WRAP0(reverse_index)
+WRAP0(refresh_sprite_positions)
 WRAP0(reset)
 WRAP0(set_tab_stop)
 WRAP1(clear_tab_stop, 0)
@@ -1316,6 +1326,7 @@ static PyMethodDef methods[] = {
     MND(set_tab_stop, METH_NOARGS)
     MND(clear_tab_stop, METH_VARARGS)
     MND(reverse_index, METH_NOARGS)
+    MND(refresh_sprite_positions, METH_NOARGS)
     MND(is_dirty, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)

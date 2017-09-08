@@ -353,10 +353,12 @@ void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_typ
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
+void linebuf_refresh_sprite_positions(LineBuf *self);
 bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+void historybuf_refresh_sprite_positions(HistoryBuf *self);
 
 double monotonic();
 double timers_timeout(Timers*);
