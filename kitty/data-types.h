@@ -38,8 +38,6 @@ typedef uint16_t sprite_index;
 #define SGR_PROTOCOL 2
 #define URXVT_PROTOCOL 3
 
-#define DATA_CELL_SIZE 6
-
 #define BLANK_CHAR 32
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24
@@ -313,7 +311,6 @@ void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
-bool update_cell_range_data(ScreenModes *modes, Line *, unsigned int, unsigned int, unsigned int *);
 void set_sprite_position(Cell *cell, Cell *previous_cell);
 
 PyObject* line_text_at(char_type, combining_type);

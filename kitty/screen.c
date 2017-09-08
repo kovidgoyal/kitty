@@ -1178,10 +1178,17 @@ change_scrollback_size(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static inline void
+update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
+    size_t base = dest_y * line->xnum * sizeof(Cell);
+    memcpy(data + base, line->cells, line->xnum * sizeof(Cell));
+}
+
+
 static PyObject*
-screen_update_cell_data(Screen *self, PyObject *args) {
+update_cell_data(Screen *self, PyObject *args) {
     PyObject *dp;
-    unsigned int *data;
+    uint8_t *data;
     int force_screen_refresh;
     unsigned int scrolled_by;
     unsigned int history_line_added_count = self->history_line_added_count;
@@ -1192,15 +1199,13 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     reset_dirty(self);
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
-        self->historybuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), self->historybuf->line, 0, self->columns - 1, data)) return NULL;
+        update_line_data(self->historybuf->line, y, data);
     }
     for (index_type y = scrolled_by; y < self->lines; y++) {
         linebuf_init_line(self->linebuf, y - scrolled_by);
-        self->linebuf->line->ynum = y;
-        if (!update_cell_range_data(&(self->modes), self->linebuf->line, 0, self->columns - 1, data)) return NULL;
+        update_line_data(self->linebuf->line, y, data);
     }
-    return Py_BuildValue("OI", cursor_changed, scrolled_by);
+    return Py_BuildValue("OIO", cursor_changed, scrolled_by, self->modes.mDECSCNM ? Py_True : Py_False);
 }
 
 static PyObject*
@@ -1303,7 +1308,7 @@ static PyMethodDef methods[] = {
     MND(apply_selection, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
-    {"update_cell_data", (PyCFunction)screen_update_cell_data, METH_VARARGS, ""},
+    {"update_cell_data", (PyCFunction)update_cell_data, METH_VARARGS, ""},
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

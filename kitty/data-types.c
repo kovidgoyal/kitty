@@ -145,7 +145,6 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, DECCOLM);
         PyModule_AddIntMacro(m, DECOM);
         PyModule_AddIntMacro(m, IRM);
-        PyModule_AddIntMacro(m, DATA_CELL_SIZE);
         PyModule_AddIntMacro(m, ANY_MODE);
         PyModule_AddIntMacro(m, MOTION_MODE);
         PyModule_AddIntMacro(m, BUTTON_MODE);

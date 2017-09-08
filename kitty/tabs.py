@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque, namedtuple
-from ctypes import sizeof
 from functools import partial
 
 from .borders import Borders
@@ -15,7 +14,7 @@ from .constants import (
     shell_path, viewport_size
 )
 from .fast_data_types import (
-    DATA_CELL_SIZE, DECAWM, Screen, glfw_post_empty_event
+    CELL, DECAWM, Screen, glfw_post_empty_event
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -234,7 +233,7 @@ class TabBar:
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
         self.selection_buf = (GLuint * (s.lines * s.columns))()
-        self.data_buffer_size = sizeof(GLuint) * s.lines * s.columns * DATA_CELL_SIZE
+        self.data_buffer_size = s.lines * s.columns * CELL['size']
         self.selection_buf_changed = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(

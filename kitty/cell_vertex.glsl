@@ -7,6 +7,7 @@ uniform uvec4 default_colors; // The default colors
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
+in uint text_attrs;
 in uvec3 sprite_coords;
 in uvec3 colors;
 in float is_selected;
@@ -24,11 +25,13 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(0, 0)   // left, top
 );
 
-const uint strike_map[] = uint[2](uint(0), uint(3));
 const uint BYTE_MASK = uint(0xFF);
 const uint SHORT_MASK = uint(0xFFFF);
 const uint ZERO = uint(0);
-const uint SMASK = uint(3);
+const uint ONE = uint(1);
+const uint THREE = uint(3);
+const uint DECORATION_MASK = uint(3);
+const uint STRIKE_MASK = uint(1);
 
 vec3 color_to_vec(uint c) {
     uint r, g, b;
@@ -76,12 +79,13 @@ void main() {
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
-    uint fg = colors[color_indices[0]];
-    uint bg = colors[color_indices[1]];
+    uint reverse = (text_attrs >> 30) & STRIKE_MASK;
+    uint fg = colors[color_indices[reverse]];
+    uint bg = colors[color_indices[ONE - reverse]];
     uint decoration = colors[2];
     foreground = apply_selection(to_color(fg, default_colors[color_indices[0]]), default_colors[2]);
     background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
     decoration_fg = to_color(decoration, default_colors[color_indices[0]]);
-    underline_pos = to_sprite_pos(pos, (sprite_coords.z >> 24) & SMASK, ZERO, ZERO);
-    strike_pos = to_sprite_pos(pos, strike_map[(sprite_coords.z >> 26)] & SMASK, ZERO, ZERO);
+    underline_pos = to_sprite_pos(pos, (text_attrs >> 26) & DECORATION_MASK, ZERO, ZERO);
+    strike_pos = to_sprite_pos(pos, ((text_attrs >> 31) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }

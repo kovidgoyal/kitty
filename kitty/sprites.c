@@ -167,28 +167,6 @@ sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
-bool
-update_cell_range_data(ScreenModes *modes, Line *line, unsigned int xstart, unsigned int xmax, unsigned int *data) {
-    char_type ch;
-    const bool screen_reversed = modes->mDECSCNM;
-
-    size_t base = line->ynum * line->xnum * DATA_CELL_SIZE;
-    for (size_t i = xstart, offset = base + xstart * DATA_CELL_SIZE; i <= xmax; i++, offset += DATA_CELL_SIZE) {
-        ch = line->cells[i].ch;
-        char_type attrs = ch >> ATTRS_SHIFT;
-        unsigned int decoration = (attrs >> DECORATION_SHIFT) & DECORATION_MASK;
-        unsigned int strikethrough = ((attrs >> STRIKE_SHIFT) & 1) ? 3 : 0;
-        bool reverse = ((attrs >> REVERSE_SHIFT) & 1) ^ screen_reversed;
-        data[offset] = line->cells[i].sprite_x;
-        data[offset+1] = line->cells[i].sprite_y;
-        data[offset+2] = line->cells[i].sprite_z | (decoration << 24) | (strikethrough << 26);
-        data[offset+(reverse ? 4 : 3)] = line->cells[i].fg;
-        data[offset+(reverse ? 3 : 4)] = line->cells[i].bg;
-        data[offset+5] = line->cells[i].fg;
-    }
-    return true;
-}
-
 PyObject*
 render_dirty_sprites(PyObject UNUSED *s_) {
 #define render_dirty_cells_doc "Render all cells that are marked as dirty"
