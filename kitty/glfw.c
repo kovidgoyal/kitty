@@ -21,13 +21,12 @@
 #define CALLBACK(name, fmt, ...) \
     if ((name) != NULL) { \
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
-        if (_pyret == NULL && PyErr_Occurred() != NULL) PyErr_Print(); \
-        Py_CLEAR(_pyret); \
+        if (_pyret == NULL) PyErr_Print(); \
+        Py_DECREF(_pyret); \
     } 
 
 #define WINDOW_CALLBACK(name, fmt, ...) \
-    Window *self = find_window(w); \
-    if (self) { CALLBACK(self->name, "O" fmt, self, __VA_ARGS__); }
+    CALLBACK(the_window->name, "O" fmt, the_window, __VA_ARGS__);
 
 typedef struct {
     PyObject_HEAD
@@ -38,49 +37,40 @@ typedef struct {
 } Window;
 
 // callbacks {{{
-static Window* window_weakrefs[MAX_WINDOWS] = {0};
-
-static inline Window*
-find_window(GLFWwindow *w) {
-    for(int i = 0; i < MAX_WINDOWS; i++) {
-        if (window_weakrefs[i] == NULL) break; 
-        if (window_weakrefs[i]->window == w) return window_weakrefs[i];
-    }
-    return NULL;
-}
+static Window* the_window = NULL;
 
 static void 
-framebuffer_size_callback(GLFWwindow *w, int width, int height) {
+framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
     WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
 }
 
 static void 
-char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
+char_mods_callback(GLFWwindow UNUSED *w, unsigned int codepoint, int mods) {
     WINDOW_CALLBACK(char_mods_callback, "Ii", codepoint, mods);
 }
 
 static void 
-key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
+key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) {
     WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
 }
 
 static void 
-mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
+mouse_button_callback(GLFWwindow UNUSED *w, int button, int action, int mods) {
     WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods);
 }
 
 static void 
-scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
+scroll_callback(GLFWwindow UNUSED *w, double xoffset, double yoffset) {
     WINDOW_CALLBACK(scroll_callback, "dd", xoffset, yoffset);
 }
 
 static void 
-cursor_pos_callback(GLFWwindow *w, double x, double y) {
+cursor_pos_callback(GLFWwindow UNUSED *w, double x, double y) {
     WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
 }
 
 static void 
-window_focus_callback(GLFWwindow *w, int focused) {
+window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
 // }}}
@@ -89,17 +79,15 @@ static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Window *self;
     char *title;
-    int width, height, i;
+    int width, height;
     if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
+    if (the_window != NULL) { PyErr_SetString(PyExc_ValueError, "Only one glfw window is supported");  return NULL; }
 
     self = (Window *)type->tp_alloc(type, 0);
     if (self != NULL) {
+        the_window = self;
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
-        if (self->window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-        for(i = 0; i < MAX_WINDOWS; i++) {
-            if (window_weakrefs[i] == NULL) { window_weakrefs[i] = self; break; }
-        }
-        if (i >= MAX_WINDOWS) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Too many windows created"); return NULL; }
+        if (self->window == NULL) { Py_CLEAR(self); the_window = NULL; PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         if (self->standard_cursor == NULL || self->click_cursor == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
@@ -220,9 +208,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
 
 static void
 dealloc(Window* self) {
-    for(unsigned int i = 0; i < MAX_WINDOWS; i++) {
-        if (window_weakrefs[i] == self) window_weakrefs[i] = NULL;
-    }
+    the_window = NULL;
     Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->mouse_button_callback); Py_CLEAR(self->scroll_callback); Py_CLEAR(self->cursor_pos_callback); Py_CLEAR(self->window_focus_callback);
     if (self->window != NULL) glfwDestroyWindow(self->window);
     Py_TYPE(self)->tp_free((PyObject*)self);
