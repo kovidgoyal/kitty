@@ -449,7 +449,6 @@ main_loop(ChildMonitor *self) {
 
 // }}}
 
-
 // I/O thread functions {{{
 
 static inline void
@@ -670,7 +669,7 @@ io_loop(void *data) {
             if (false) {
                 for (i = 0; i < self->count + EXTRA_FDS; i++) {
 #define P(w) if (fds[i].revents & w) printf("i:%lu %s\n", i, #w);
-                    P(POLLIN); P(POLLPRI); P(POLLOUT); P(POLLRDHUP); P(POLLERR); P(POLLHUP); P(POLLNVAL);
+                    P(POLLIN); P(POLLPRI); P(POLLOUT); P(POLLERR); P(POLLHUP); P(POLLNVAL);
 #undef P
                     
                 }
