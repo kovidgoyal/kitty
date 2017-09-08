@@ -59,6 +59,7 @@ typedef uint16_t sprite_index;
 #define UTF8_REJECT 1
 #define UNDERCURL_CODE 6
 #define DECORATION_FG_CODE 58
+#define CHAR_IS_BLANK(ch) ((ch & CHAR_MASK) == 32 || (ch & CHAR_MASK) == 0)
 
 #define CURSOR_BLOCK 1
 #define CURSOR_BEAM 2
@@ -130,6 +131,7 @@ typedef struct {
     char_type ch;
     color_type fg, bg, decoration_fg;
     combining_type cc;
+    sprite_index sprite_x, sprite_y, sprite_z;
 } Cell;
 
 typedef struct {
@@ -288,11 +290,16 @@ typedef struct {
 } ChildMonitor;
 PyTypeObject ChildMonitor_Type;
 
+#define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
+
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
-    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
+    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) { \
+        (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR; \
+        clear_sprite_position((line)->cells[(at)]); \
+    }
 
 
 // Global functions 
@@ -324,6 +331,7 @@ Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 bool update_cell_range_data(ScreenModes *modes, Line *, unsigned int, unsigned int, unsigned int *);
+void set_sprite_position(Cell *cell, Cell *previous_cell);
 
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);

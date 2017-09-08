@@ -219,11 +219,14 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
+#define set_sprite_position_at(x) set_sprite_position(self->cells + x, x == 0 ? NULL : self->cells + x - 1);
+
 void 
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     combining_type c = self->cells[x].cc;
     if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
     else self->cells[x].cc = ch & CC_MASK;
+    set_sprite_position_at(x);
 }
 
 static PyObject*
@@ -273,6 +276,7 @@ set_text(Line* self, PyObject *args) {
         self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
         self->cells[i].cc = 0;
+        set_sprite_position_at(i);
     }
 
     Py_RETURN_NONE;
@@ -302,9 +306,16 @@ cursor_from(Line* self, PyObject *args) {
 void 
 line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
     const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
-    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
-        self->cells[i].ch = (self->cells[i].ch  & ATTRS_MASK_WITHOUT_WIDTH) | repl;
-        self->cells[i].cc = 0;
+#define PREFIX \
+    for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
+        self->cells[i].ch = (self->cells[i].ch  & ATTRS_MASK_WITHOUT_WIDTH) | repl; \
+        self->cells[i].cc = 0; 
+    if (CHAR_IS_BLANK(ch)) {
+        PREFIX
+        clear_sprite_position(self->cells[i]); }
+    } else {
+        PREFIX
+        set_sprite_position_at(i)}
     }
 }
 
@@ -329,9 +340,11 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
         if (clear_char) {
             self->cells[i].ch = BLANK_CHAR | attrs;
             self->cells[i].cc = 0;
+            clear_sprite_position(self->cells[i]);
         } else {
             char_type w = ((self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
             self->cells[i].ch = (self->cells[i].ch & CHAR_MASK) | attrs | w;
+            set_sprite_position_at(i);
         }
         self->cells[i].fg = fg; self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
@@ -355,7 +368,10 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
     }
     // Check if a wide character was split at the right edge
     char_type w = (self->cells[self->xnum - 1].ch >> ATTRS_SHIFT) & WIDTH_MASK;
-    if (w != 1) self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
+    if (w != 1) {
+        self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
+        clear_sprite_position(self->cells[self->xnum - 1]);
+    }
 }
 
 static PyObject*
@@ -399,6 +415,8 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
     }
     self->cells[at].ch = (ch & CHAR_MASK) | attrs;
     self->cells[at].cc = 0;
+    if (CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
+    else set_sprite_position_at(at);
 }
 
 static PyObject*

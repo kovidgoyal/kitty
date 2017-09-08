@@ -99,6 +99,21 @@ sprite_map_position_for(char_type ch, combining_type cc, bool is_second, int *er
     return s;
 }
 
+
+void
+set_sprite_position(Cell *cell, Cell *previous_cell) {
+    SpritePosition *sp;
+    static int error;
+    if (UNLIKELY(previous_cell != NULL && ((previous_cell->ch >> ATTRS_SHIFT) & WIDTH_MASK) == 2)) {
+        sp = sprite_map_position_for(previous_cell->ch, 0, true, &error);
+    } else {
+        sp = sprite_map_position_for(cell->ch, cell->cc, false, &error);
+    }
+    cell->sprite_x = sp->x;
+    cell->sprite_y = sp->y;
+    cell->sprite_z = sp->z;
+}
+
 PyObject*
 sprite_map_increment() {
 #define increment_doc "Increment the current position and return the old (x, y, z) values"
