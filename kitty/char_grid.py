@@ -231,7 +231,6 @@ class CharGrid:
             self.update_cell_data()
 
     def update_cell_data(self, force_full_refresh=False):
-        is_dirty = self.screen.is_dirty()
         cursor_changed, history_line_added_count = self.screen.update_cell_data(
             addressof(self.main_sprite_map), force_full_refresh)
         if self.scrolled_by:
@@ -240,8 +239,7 @@ class CharGrid:
                 addressof(self.main_sprite_map), self.scrolled_by, addressof(self.scroll_sprite_map))
 
         data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
-        if is_dirty:
-            self.current_selection.clear()
+        self.current_selection.clear()
         memmove(self.render_buf, data, sizeof(type(data)))
         self.render_data = self.screen_geometry
         self.render_buf_is_dirty = True
@@ -365,9 +363,9 @@ class CharGrid:
         return s.text(self.screen.linebuf, self.screen.historybuf)
 
     def prepare_for_render(self, cell_program):
+        if self.screen.is_dirty():
+            self.update_cell_data()
         sg = self.render_data
-        if sg is None:
-            return
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
         start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)

@@ -133,10 +133,6 @@ class Window:
     def use_utf8(self, on):
         get_boss().child_monitor.set_iutf8(self.window_id, on)
 
-    def update_screen(self):
-        self.char_grid.update_cell_data()
-        glfw_post_empty_event()
-
     def focus_changed(self, focused):
         if focused:
             if self.screen.focus_tracking_enabled:

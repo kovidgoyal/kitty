@@ -107,7 +107,7 @@ class Boss:
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
             opts.repaint_delay / 1000.0, glfw_window.window_id(),
-            self.on_child_death, self.update_screen, self.ui_timers, self.render,
+            self.on_child_death, self.ui_timers, self.render,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size
@@ -162,11 +162,6 @@ class Boss:
         w = self.window_id_map.pop(window_id, None)
         if w is not None:
             w.on_child_death()
-
-    def update_screen(self, window_id):
-        w = self.window_id_map.get(window_id)
-        if w is not None:
-            w.update_screen()
 
     def close_window(self, window=None):
         if window is None:

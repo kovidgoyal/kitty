@@ -111,12 +111,12 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *update_screen, *timers, *wid, *render_func;
+    PyObject *dump_callback, *death_notify, *timers, *wid, *render_func;
     int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOOOOO", &repaint_delay, &wid, &death_notify, &update_screen, &timers, &render_func, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOOOO", &repaint_delay, &wid, &death_notify, &timers, &render_func, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
@@ -132,7 +132,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
-    self->update_screen = update_screen; Py_INCREF(self->update_screen);
     self->render_func = render_func; Py_INCREF(self->render_func);
     self->timers = (Timers*)timers; Py_INCREF(timers);
     if (dump_callback != Py_None) {
@@ -152,7 +151,6 @@ dealloc(ChildMonitor* self) {
     pthread_mutex_destroy(&children_lock);
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
-    Py_CLEAR(self->update_screen);
     Py_CLEAR(self->timers);
     Py_CLEAR(self->render_func);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -266,7 +264,7 @@ shutdown(ChildMonitor *self) {
 }
 
 static inline bool
-do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
+do_parse(ChildMonitor *self, Screen *screen) {
     bool updated = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz) {
@@ -277,9 +275,7 @@ do_parse(ChildMonitor *self, Screen *screen, unsigned long child_id) {
     }
     screen_mutex(unlock, read);
     if (LIKELY(updated)) {
-        PyObject *t = PyObject_CallFunction(self->update_screen, "k", child_id);
-        if (t == NULL) PyErr_Print();
-        else Py_DECREF(t);
+        glfwPostEmptyEvent();
     }
     return updated;
 }
@@ -326,7 +322,7 @@ parse_input(ChildMonitor *self) {
 
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            do_parse(self, scratch[i].screen, scratch[i].id);
+            do_parse(self, scratch[i].screen);
         }
         DECREF_CHILD(scratch[i]);
     }
