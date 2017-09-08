@@ -5,14 +5,10 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#ifndef __APPLE__
-// Need _GNU_SOURCE for pthread_setname_np on linux
+// Need _GNU_SOURCE for pthread_setname_np 
 #define _GNU_SOURCE
-#endif
 #include <pthread.h>
-#ifndef __APPLE__
 #undef _GNU_SOURCE
-#endif
 #include "data-types.h"
 #include <termios.h>
 #include <unistd.h>
