@@ -5,10 +5,16 @@
  * Distributed under terms of the GPL3 license.
  */
 
-// Need _GNU_SOURCE for pthread_setname_np 
+#ifdef __APPLE__
+#include <pthread.h>
+// I cant figure out how to get pthread.h to include this definition on macOS. MACOSX_DEPLOYMENT_TARGET does not work.
+extern int pthread_setname_np(const char *name);
+#else
+// Need _GNU_SOURCE for pthread_setname_np on linux
 #define _GNU_SOURCE
 #include <pthread.h>
 #undef _GNU_SOURCE
+#endif
 #include "data-types.h"
 #include <termios.h>
 #include <unistd.h>
@@ -48,11 +54,7 @@ static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}
 static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
-#ifdef __APPLE__
-static pthread_mutex_t children_lock = {0};
-#else
-static pthread_mutex_t children_lock = {{0}};
-#endif
+static pthread_mutex_t children_lock;
 static bool created = false, signal_received = false;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
@@ -479,12 +481,12 @@ static size_t pid_buf_pos = 0;
 static pthread_t reap_thread;
 
 static inline void
-set_thread_name(pthread_t UNUSED thread, const char *name) {
+set_thread_name(const char *name) {
     int ret = 0;
 #ifdef __APPLE__
     ret = pthread_setname_np(name);
 #else
-    ret = pthread_setname_np(thread, name);
+    ret = pthread_setname_np(pthread_self(), name);
 #endif
     if (ret != 0) perror("Failed to set thread name");
 }
@@ -492,9 +494,7 @@ set_thread_name(pthread_t UNUSED thread, const char *name) {
 
 static void*
 reap(void *pid_p) {
-#ifdef __APPLE__
-    set_thread_name(reap_thread, "KittyReapChild");
-#endif
+    set_thread_name("KittyReapChild");
     pid_t pid = *((pid_t*)pid_p);
     while(true) {
         pid_t ret = waitpid(pid, NULL, 0);
@@ -516,11 +516,6 @@ cleanup_child(ssize_t i) {
         errno = 0;
         int ret = pthread_create(&reap_thread, NULL, reap, pid_buf + pid_buf_pos);
         if (ret != 0) perror("Failed to create thread to reap child");
-        else {
-#ifndef __APPLE__
-            set_thread_name(reap_thread, "KittyReapChild");
-#endif
-        }
     }
     pid_buf_pos = (pid_buf_pos + 1) % MAX_CHILDREN;
 }
@@ -622,7 +617,7 @@ io_loop(void *data) {
     bool has_more, data_received; 
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
-    set_thread_name(self->io_thread, "KittyChildMon");
+    set_thread_name("KittyChildMon");
 
     while (LIKELY(!self->shutting_down)) {
         children_mutex(lock);
