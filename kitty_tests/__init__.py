@@ -83,17 +83,3 @@ class BaseTest(TestCase):
             self.assertEqual(c1, c2)
         finally:
             c1.x, c1.y, c2.x, c2.y = x1, y1, x2, y2
-
-    def assertChanges(self, s, ignore='', **expected_changes):
-        actual_changes = s.consolidate_changes()
-        ignore = frozenset(ignore.split())
-        for k, v in actual_changes.items():
-            if k not in ignore:
-                if isinstance(v, dict):
-                    v = {ky: tuple(vy) for ky, vy in v.items()}
-                if k == 'lines':
-                    v = set(v)
-                if k in expected_changes:
-                    self.ae(expected_changes[k], v)
-                else:
-                    self.assertFalse(v, 'The property {} was expected to be empty but is: {}'.format(k, v))
