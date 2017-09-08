@@ -532,9 +532,11 @@ remove_children(ChildMonitor *self) {
                 remove_queue[remove_queue_count] = children[i];
                 remove_queue_count++;
                 children[i] = EMPTY_CHILD;
+                fds[EXTRA_FDS + i].fd = -1;
                 size_t num_to_right = self->count - 1 - i;
                 if (num_to_right > 0) {
                     memmove(children + i, children + i + 1, num_to_right * sizeof(Child));
+                    memmove(fds + EXTRA_FDS + i, fds + EXTRA_FDS + i + 1, num_to_right * sizeof(struct pollfd));
                 }
             }
         }
