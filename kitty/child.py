@@ -5,7 +5,6 @@
 import fcntl
 import os
 import sys
-from threading import Thread
 
 import kitty.fast_data_types as fast_data_types
 
@@ -38,7 +37,6 @@ class Child:
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
-            stdin_file = os.fdopen(stdin_write_fd, 'wb')
         pid = os.fork()
         if pid == 0:  # child
             try:
@@ -75,7 +73,5 @@ class Child:
             self.pid = pid
             self.child_fd = master
             if stdin is not None:
-                t = Thread(name='WriteStdin', target=stdin_file.write, args=(stdin,))
-                t.daemon = True
-                t.start()
+                fast_data_types.thread_write(stdin_write_fd, stdin)
             return pid

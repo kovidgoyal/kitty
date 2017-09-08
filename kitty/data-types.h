@@ -356,6 +356,7 @@ void timers_call(Timers*);
 bool timers_add(Timers *self, double delay, bool, PyObject *callback, PyObject *args);
 bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);
 bool timers_add_if_before(Timers *self, double delay, PyObject *callback, PyObject *args);
+PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);

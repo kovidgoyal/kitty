@@ -61,6 +61,18 @@ static int signal_fds[2], wakeup_fds[2];
 static void *glfw_window_id = NULL;
 
 
+static inline void
+set_thread_name(const char *name) {
+    int ret = 0;
+#ifdef __APPLE__
+    ret = pthread_setname_np(name);
+#else
+    ret = pthread_setname_np(pthread_self(), name);
+#endif
+    if (ret != 0) perror("Failed to set thread name");
+}
+
+
 // Main thread functions {{{
 
 #define FREE_CHILD(x) \
@@ -430,6 +442,54 @@ render(ChildMonitor *self, double *timeout) {
     return true;
 }
 
+typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
+
+static inline ThreadWriteData*
+alloc_twd(size_t sz) {
+    ThreadWriteData *data = malloc(sizeof(ThreadWriteData));
+    if (data != NULL) {
+        data->sz = sz;
+        data->buf = malloc(sz);
+        if (data->buf == NULL) { free(data); data = NULL; }
+    }
+    return data;
+}
+
+static inline void
+free_twd(ThreadWriteData *x) {
+    if (x != NULL) free(x->buf);
+    free(x);
+}
+
+static void*
+thread_write(void *x) {
+    ThreadWriteData *data = (ThreadWriteData*)x;
+    set_thread_name("KittyWriteStdin");
+    FILE *f = fdopen(data->fd, "w");
+    if (fwrite(data->buf, 1, data->sz, f) != data->sz) {
+        fprintf(stderr, "Failed to write all data\n");
+    }
+    fclose(f);
+    free_twd(data);
+    return 0;
+}
+
+PyObject*
+cm_thread_write(PyObject UNUSED *self, PyObject *args) {
+    static pthread_t thread;
+    int fd;
+    Py_ssize_t sz;
+    const char *buf;
+    if (!PyArg_ParseTuple(args, "is#", &fd, &buf, &sz)) return NULL;
+    ThreadWriteData *data = alloc_twd(sz);
+    if (data == NULL) return PyErr_NoMemory();
+    data->fd = fd; 
+    memcpy(data->buf, buf, data->sz);
+    int ret = pthread_create(&thread, NULL, thread_write, data);
+    if (ret != 0) { free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
@@ -478,17 +538,6 @@ hangup(pid_t pid) {
 static pid_t pid_buf[MAX_CHILDREN] = {0};
 static size_t pid_buf_pos = 0;
 static pthread_t reap_thread;
-
-static inline void
-set_thread_name(const char *name) {
-    int ret = 0;
-#ifdef __APPLE__
-    ret = pthread_setname_np(name);
-#else
-    ret = pthread_setname_np(pthread_self(), name);
-#endif
-    if (ret != 0) perror("Failed to set thread name");
-}
 
 
 static void*

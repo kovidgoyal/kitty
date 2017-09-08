@@ -68,6 +68,7 @@ stop_profiler(PyObject UNUSED *self) {
 static PyMethodDef module_methods[] = {
     GL_METHODS
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
+    {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
