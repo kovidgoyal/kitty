@@ -628,13 +628,14 @@ io_loop(void *data) {
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
+            /* printf("i:%lu id:%lu fd: %d read_buf_sz: %lu write_buf_sz: %lu\n", i, children[i].id, children[i].fd, screen->read_buf_sz, screen->write_buf_sz); */
             screen_mutex(lock, read); screen_mutex(lock, write);
             fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_sz ? POLLOUT  : 0);
             screen_mutex(unlock, read); screen_mutex(unlock, write);
         }
         ret = poll(fds, self->count + EXTRA_FDS, -1);
         if (ret > 0) {
-            if (fds[0].revents && POLLIN) drain_fd(fds[0].fd);
+            if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
             if (fds[1].revents && POLLIN) { 
                 data_received = true;
                 drain_fd(fds[1].fd);
@@ -655,6 +656,21 @@ io_loop(void *data) {
                 }
                 if (fds[EXTRA_FDS + i].revents & POLLOUT) {
                     write_to_child(children[i].fd, children[i].screen);
+                }
+                if (fds[EXTRA_FDS + i].revents & POLLNVAL) {
+                    // fd was closed
+                    children_mutex(lock);
+                    children[i].needs_removal = true;
+                    children_mutex(unlock);
+                    fprintf(stderr, "The child %lu had its fd unexpectedly closed\n", children[i].id);
+                }
+            }
+            if (false) {
+                for (i = 0; i < self->count + EXTRA_FDS; i++) {
+#define P(w) if (fds[i].revents & w) printf("i:%lu %s\n", i, #w);
+                    P(POLLIN); P(POLLPRI); P(POLLOUT); P(POLLRDHUP); P(POLLERR); P(POLLHUP); P(POLLNVAL);
+#undef P
+                    
                 }
             }
         } else if (ret < 0) {
