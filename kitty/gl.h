@@ -610,10 +610,7 @@ replace_or_create_buffer(PyObject UNUSED *self, PyObject *args) {
     void *data = NULL;
     PyObject *address;
     if (!PyArg_ParseTuple(args, "kkkO!ii", &target, &size, &prev_sz, &PyLong_Type, &address, &usage, &buftype)) return NULL;
-    if (size) {
-        data = PyLong_AsVoidPtr(address);
-        if (data == NULL) { PyErr_SetString(PyExc_TypeError, "Not a valid data pointer"); return NULL; }
-    }
+    data = PyLong_AsVoidPtr(address);
     glBindBuffer(buftype, target); 
     if (prev_sz == 0 || prev_sz != size) glBufferData(buftype, size, data, usage); 
     else glBufferSubData(buftype, 0, size, data);

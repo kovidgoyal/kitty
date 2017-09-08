@@ -100,7 +100,7 @@ class BufferManager:  # {{{
         self.unbind(buf_id)
 
     @contextmanager
-    def mapped_buffer(self, buf_sz, buf_id, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY):
+    def mapped_buffer(self, buf_id, buf_sz, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY):
         prev_sz = self.sizes.get(buf_id, 0)
         buf_type = self.types[buf_id]
         if prev_sz != buf_sz:
@@ -314,6 +314,10 @@ class ShaderProgram:  # {{{
     def send_vertex_data(self, vao_id, data, usage=GL_STREAM_DRAW, bufnum=0):
         bufid = self.vertex_arrays[vao_id][bufnum]
         buffer_manager.set_data(bufid, data, usage=usage)
+
+    def mapped_vertex_data(self, vao_id, buf_sz, usage=GL_STREAM_DRAW, bufnum=0, access=GL_WRITE_ONLY):
+        bufid = self.vertex_arrays[vao_id][bufnum]
+        return buffer_manager.mapped_buffer(bufid, buf_sz, usage=usage, access=access)
 
     def get_vertex_data(self, vao_id, bufnum=0):
         bufid = self.vertex_arrays[vao_id][bufnum]
