@@ -41,7 +41,7 @@ vec3 color_to_vec(uint c) {
     return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
 }
 
-vec3 to_color(uint c, uint defval) {
+uint as_color(uint c, uint defval) {
     int t = int(c & BYTE_MASK);
     uint r;
     switch(t) {
@@ -54,7 +54,11 @@ vec3 to_color(uint c, uint defval) {
         default:
             r = defval;
     }
-    return color_to_vec(r);
+    return r;
+}
+
+vec3 to_color(uint c, uint defval) {
+    return color_to_vec(as_color(c, defval));
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
@@ -82,10 +86,11 @@ void main() {
     uint reverse = (text_attrs >> 30) & STRIKE_MASK;
     uint fg = colors[color_indices[reverse]];
     uint bg = colors[color_indices[ONE - reverse]];
+    uint resolved_fg = as_color(fg, default_colors[color_indices[0]]);
     uint decoration = colors[2];
-    foreground = apply_selection(to_color(fg, default_colors[color_indices[0]]), default_colors[2]);
+    foreground = apply_selection(color_to_vec(resolved_fg), default_colors[2]);
     background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
-    decoration_fg = to_color(decoration, default_colors[color_indices[0]]);
+    decoration_fg = to_color(decoration, resolved_fg);
     underline_pos = to_sprite_pos(pos, (text_attrs >> 26) & DECORATION_MASK, ZERO, ZERO);
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 31) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }
