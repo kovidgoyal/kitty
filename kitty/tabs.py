@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque, namedtuple
-from ctypes import addressof
+from ctypes import sizeof
 from functools import partial
 
 from .borders import Borders
@@ -207,8 +207,9 @@ class TabBar:
     def __init__(self, opts):
         self.num_tabs = 1
         self.cell_width = 1
+        self.data_buffer_size = 0
         self.vao_id = None
-        self.render_buf = self.selection_buf = None
+        self.selection_buf = None
         self.selection_buf_changed = True
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
@@ -232,8 +233,8 @@ class TabBar:
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
-        self.render_buf = (GLuint * (s.lines * s.columns * DATA_CELL_SIZE))()
         self.selection_buf = (GLuint * (s.lines * s.columns))()
+        self.data_buffer_size = sizeof(GLuint) * s.lines * s.columns * DATA_CELL_SIZE
         self.selection_buf_changed = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
@@ -245,7 +246,7 @@ class TabBar:
         self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
 
     def update(self, data):
-        if self.render_buf is None:
+        if self.selection_buf is None:
             return
         s = self.screen
         s.cursor.x = 0
@@ -271,17 +272,17 @@ class TabBar:
                 s.draw('…')
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
-        s.update_cell_data(addressof(self.render_buf), True)
         self.cell_ranges = cr
         self.dirty = True
         glfw_post_empty_event()
 
     def render(self, cell_program, sprites):
-        if self.render_buf is not None:
+        if self.selection_buf is not None:
             if self.vao_id is None:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
-                cell_program.send_vertex_data(self.vao_id, self.render_buf)
+                with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
+                    self.screen.update_cell_data(address, 0, True)
                 if self.selection_buf_changed:
                     cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
                     self.selection_buf_changed = False
