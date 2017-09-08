@@ -1193,38 +1193,24 @@ screen_update_cell_data(Screen *self, PyObject *args) {
     PyObject *dp;
     unsigned int *data;
     int force_screen_refresh;
-    if (!PyArg_ParseTuple(args, "O!p", &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
+    unsigned int scrolled_by;
+    unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
+    if (!PyArg_ParseTuple(args, "O!Ip", &PyLong_Type, &dp, &scrolled_by, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->change_tracker->cursor_changed ? Py_True : Py_False;
-    unsigned int history_line_added_count = self->change_tracker->history_line_added_count;
-
-    if (!tracker_update_cell_data(&(self->modes), self->change_tracker, self->linebuf, data, (bool)force_screen_refresh)) return NULL;
-    return Py_BuildValue("OI", cursor_changed, history_line_added_count);
-}
-
-static PyObject*
-set_scroll_cell_data(Screen *self, PyObject *args) {
-    PyObject *dp, *sp;
-    unsigned int *data, *src, scrolled_by;
-    if (!PyArg_ParseTuple(args, "O!IO", &PyLong_Type, &sp, &scrolled_by, &dp)) return NULL;
-    data = PyLong_AsVoidPtr(dp);
-    src = PyLong_AsVoidPtr(sp);
-
-    scrolled_by = MIN(self->historybuf->count, scrolled_by);
-
+    if (scrolled_by) scrolled_by = MIN(scrolled_by + history_line_added_count, self->historybuf->count);
+    tracker_reset(self->change_tracker);
     for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
         historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
         self->historybuf->line->ynum = y;
         if (!update_cell_range_data(&(self->modes), self->historybuf->line, 0, self->columns - 1, data)) return NULL;
     }
-    if (scrolled_by < self->lines) {
-        // Less than a full screen has been scrolled, copy some lines from the screen buffer to the scroll buffer
-        unsigned int line_size = DATA_CELL_SIZE * self->columns;
-        index_type num_to_copy = self->lines - scrolled_by;
-        index_type offset = line_size * scrolled_by;
-        memcpy(data + offset, src, line_size * num_to_copy * sizeof(unsigned int));
+    for (index_type y = scrolled_by; y < self->lines; y++) {
+        linebuf_init_line(self->linebuf, y - scrolled_by);
+        self->linebuf->line->ynum = y;
+        if (!update_cell_range_data(&(self->modes), self->linebuf->line, 0, self->columns - 1, data)) return NULL;
     }
-    Py_RETURN_NONE;
+    return Py_BuildValue("OI", cursor_changed, scrolled_by);
 }
 
 static PyObject*
@@ -1331,7 +1317,6 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
-    MND(set_scroll_cell_data, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)

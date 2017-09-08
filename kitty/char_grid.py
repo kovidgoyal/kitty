@@ -5,7 +5,7 @@
 import re
 import sys
 from collections import namedtuple
-from ctypes import addressof, memmove, sizeof
+from ctypes import addressof, sizeof
 from enum import Enum
 
 from .config import build_ansi_color_table, defaults
@@ -159,10 +159,11 @@ class CharGrid:
     def __init__(self, screen, opts):
         self.vao_id = None
         self.current_selection = Selection()
+        self.scroll_changed = False
         self.last_rendered_selection = None
-        self.render_buf_is_dirty = True
         self.render_data = None
         self.scrolled_by = 0
+        self.data_buffer_size = 0
         self.screen = screen
         self.opts = opts
         self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -173,7 +174,6 @@ class CharGrid:
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
-        self.main_sprite_map = self.scroll_sprite_map = self.render_buf = None
 
         def escape(chars):
             return ''.join(frozenset(chars)).replace('\\', r'\\').replace(']', r'\]').replace('-', r'\-')
@@ -194,12 +194,8 @@ class CharGrid:
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)
-        rt = (GLuint * (self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE))
-        self.main_sprite_map = rt()
-        self.scroll_sprite_map = rt()
-        self.render_buf = rt()
+        self.data_buffer_size = sizeof(GLuint) * self.screen_geometry.ynum * self.screen_geometry.xnum * DATA_CELL_SIZE
         self.selection_buf = (GLfloat * (self.screen_geometry.ynum * self.screen_geometry.xnum))()
-        self.render_buf_is_dirty = True
         self.current_selection.clear()
 
     def change_colors(self, changes):
@@ -228,21 +224,17 @@ class CharGrid:
         y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))
         if y != self.scrolled_by:
             self.scrolled_by = y
-            self.update_cell_data()
+            self.scroll_changed = True
 
-    def update_cell_data(self, force_full_refresh=False):
-        cursor_changed, history_line_added_count = self.screen.update_cell_data(
-            addressof(self.main_sprite_map), force_full_refresh)
-        if self.scrolled_by:
-            self.scrolled_by = min(self.scrolled_by + history_line_added_count, self.screen.historybuf.count)
-            self.screen.set_scroll_cell_data(
-                addressof(self.main_sprite_map), self.scrolled_by, addressof(self.scroll_sprite_map))
+    def update_cell_data(self, cell_program, force_full_refresh=False):
+        if self.data_buffer_size == 0:
+            return
+        with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
+            cursor_changed, self.scrolled_by = self.screen.update_cell_data(
+                address, self.scrolled_by, force_full_refresh)
 
-        data = self.scroll_sprite_map if self.scrolled_by else self.main_sprite_map
         self.current_selection.clear()
-        memmove(self.render_buf, data, sizeof(type(data)))
         self.render_data = self.screen_geometry
-        self.render_buf_is_dirty = True
         if cursor_changed:
             c = self.screen.cursor
             self.current_cursor = Cursor(c.x, c.y, c.shape, c.blink)
@@ -363,20 +355,18 @@ class CharGrid:
         return s.text(self.screen.linebuf, self.screen.historybuf)
 
     def prepare_for_render(self, cell_program):
-        if self.screen.is_dirty():
-            self.update_cell_data()
-        sg = self.render_data
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
+        if self.scroll_changed or self.screen.is_dirty():
+            self.update_cell_data(cell_program)
+            self.scroll_changed = False
+        sg = self.render_data
         start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
         selection_changed = sel != self.last_rendered_selection
         if selection_changed:
             self.screen.apply_selection(addressof(self.selection_buf), start[0], start[1], end[0], end[1], len(self.selection_buf))
             cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
             self.last_rendered_selection = sel
-        if self.render_buf_is_dirty:
-            cell_program.send_vertex_data(self.vao_id, self.render_buf)
-            self.render_buf_is_dirty = False
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):
