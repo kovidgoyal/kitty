@@ -66,8 +66,8 @@ vec3 apply_selection(vec3 color, uint which) {
 
 void main() {
     uint instance_id = uint(gl_InstanceID);
-    uint r = instance_id / dimensions[0];
-    uint c = instance_id - r * dimensions[0];
+    uint r = instance_id / dimensions.x;
+    uint c = instance_id - r * dimensions.x;
     float left = steps[0] + c * steps[2];
     float top = steps[1] - r * steps[3];
     vec2 xpos = vec2(left, left + steps[2]);
