@@ -73,5 +73,6 @@ class Child:
             self.pid = pid
             self.child_fd = master
             if stdin is not None:
+                os.close(stdin_read_fd)
                 fast_data_types.thread_write(stdin_write_fd, stdin)
             return pid
