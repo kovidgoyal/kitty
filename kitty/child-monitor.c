@@ -500,6 +500,7 @@ main_loop(ChildMonitor *self) {
         timers_call(self->timers);
         parse_input(self);
     }
+    if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
 
