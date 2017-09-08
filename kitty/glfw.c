@@ -20,11 +20,9 @@
 
 #define CALLBACK(name, fmt, ...) \
     if ((name) != NULL) { \
-        PyGILState_STATE _pystate = PyGILState_Ensure(); \
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
         if (_pyret == NULL && PyErr_Occurred() != NULL) PyErr_Print(); \
         Py_CLEAR(_pyret); \
-        PyGILState_Release(_pystate); \
     } 
 
 #define WINDOW_CALLBACK(name, fmt, ...) \
