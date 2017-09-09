@@ -217,15 +217,27 @@ timers_call(Timers *self) {
     double now = monotonic_();
     size_t i, j;
     self->in_call = true;
+    bool needs_sort = false;
     for (i = 0, j = 0; i < self->count; i++) {
+        bool remove = false;
         if (self->events[i].at <= now) {  // expired, call it
             /* PyObject_Print(self->events[i].callback, stdout, 1); */
             /* printf("\n"); */
+            remove = true;
             if (self->events[i].callback != Py_None) {
                 PyObject *ret = self->events[i].args ? PyObject_CallObject(self->events[i].callback, self->events[i].args) : PyObject_CallFunctionObjArgs(self->events[i].callback, NULL);
                 if (ret == NULL) PyErr_Print();
-                else Py_DECREF(ret);
+                else {
+                    if (ret != Py_None && PyFloat_Check(ret)) {
+                        self->events[i].at = monotonic_() + PyFloat_AS_DOUBLE(ret);
+                        remove = false;
+                        needs_sort = true;
+                    }
+                    Py_DECREF(ret);
+                }
             }
+        }
+        if (remove) {
             Py_CLEAR(self->events[i].callback); Py_CLEAR(self->events[i].args);
         } else {
             other[j].callback = self->events[i].callback; other[j].at = self->events[i].at; other[j].args = self->events[i].args;
@@ -235,6 +247,7 @@ timers_call(Timers *self) {
     self->events = other;
     self->count = j;
     self->in_call = false;
+    if (needs_sort) qsort(self->events, self->count, sizeof(TimerEvent), compare_events);
 }
 
 static PyObject *
