@@ -148,7 +148,7 @@ class Boss:
         w = self.window_id_map.get(window_id)
         if w is not None:
             if not self.child_monitor.resize_pty(window_id, *w.current_pty_size):
-                return 0.0  # re-add this timer
+                return 0.002  # re-add this timer
 
     def on_child_death(self, window_id):
         w = self.window_id_map.pop(window_id, None)

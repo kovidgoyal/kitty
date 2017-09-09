@@ -80,15 +80,15 @@ class Window:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
             boss = get_boss()
-            child_monitor = boss.child_monitor
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
             self.current_pty_size = (
                 self.screen.lines, self.screen.columns,
                 max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             self.char_grid.resize(new_geometry)
             self.needs_layout = False
-            if not child_monitor.resize_pty(self.id, *self.current_pty_size):
-                boss.ui_timers.add(0, boss.retry_resize_pty, self.id)
+            timeout = boss.retry_resize_pty(self.id)
+            if timeout is not None:
+                boss.ui_timers.add(timeout, boss.retry_resize_pty, self.id)
         else:
             self.char_grid.update_position(new_geometry)
         self.geometry = new_geometry
