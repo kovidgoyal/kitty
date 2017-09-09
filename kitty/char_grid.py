@@ -162,7 +162,7 @@ class CharGrid:
         self.last_rendered_selection = None
         self.render_data = None
         self.scrolled_by = 0
-        self.data_buffer_size = 0
+        self.data_buffer_size = None
         self.screen = screen
         self.opts = opts
         self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -225,12 +225,12 @@ class CharGrid:
             self.scrolled_by = y
             self.scroll_changed = True
 
-    def update_cell_data(self, cell_program, force_full_refresh=False):
-        if self.data_buffer_size == 0:
+    def update_cell_data(self, cell_program):
+        if self.data_buffer_size is None:
             return
         with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
             cursor_changed, self.scrolled_by, self.screen_reversed = self.screen.update_cell_data(
-                address, self.scrolled_by, force_full_refresh)
+                address, self.scrolled_by, False)
 
         self.current_selection.clear()
         self.render_data = self.screen_geometry
