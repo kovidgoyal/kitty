@@ -56,6 +56,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     self = (Timers *)type->tp_alloc(type, 0);
     self->capacity = 1024;
     self->count = 0;
+    self->in_call = false;
     self->buf1 = (TimerEvent*)PyMem_Calloc(2 * self->capacity, sizeof(TimerEvent));
     if (self->buf1 == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
     self->events = self->buf1;
@@ -98,6 +99,7 @@ _add(Timers *self, double at, PyObject *callback, PyObject *args) {
 
 static inline bool
 timers_add_(Timers *self, double at, bool update, PyObject *callback, PyObject *args) {
+    if (self->in_call) { PyErr_SetString(PyExc_ValueError, "Cannot add timers in a timer handler"); return false; }
     for (size_t i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
             self->events[i].at = update ? at : MIN(at, self->events[i].at);
@@ -130,6 +132,7 @@ add(Timers *self, PyObject *fargs) {
 bool
 timers_add_if_before(Timers *self, double delay, PyObject *callback, PyObject *args) {
     double at = monotonic_() + delay;
+    if (self->in_call) { PyErr_SetString(PyExc_ValueError, "Cannot add timers in a timer handler"); return false; }
     for (size_t i = 0; i < self->count; i++) {
         if (self->events[i].at < at) {
             return true;
@@ -152,6 +155,7 @@ add_if_before(Timers *self, PyObject *fargs) {
 
 bool
 timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args) {
+    if (self->in_call) { PyErr_SetString(PyExc_ValueError, "Cannot add timers in a timer handler"); return false; }
     for (size_t i = 0; i < self->count; i++) {
         if (self->events[i].callback == callback) {
             return true;
@@ -177,6 +181,7 @@ remove_event(Timers *self, PyObject *callback) {
 #define remove_event_doc "remove(callback) -> Remove the event with the specified callback, if present"
     TimerEvent *other = self->events == self->buf1 ? self->buf2 : self->buf1;
     size_t i, j;
+    if (self->in_call) { PyErr_SetString(PyExc_ValueError, "Cannot remove timers in a timer handler"); return false; }
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].callback != callback) {
             other[j].callback = self->events[i].callback; other[j].at = self->events[i].at; other[j].args = self->events[i].args;
@@ -211,6 +216,7 @@ timers_call(Timers *self) {
     TimerEvent *other = self->events == self->buf1 ? self->buf2 : self->buf1;
     double now = monotonic_();
     size_t i, j;
+    self->in_call = true;
     for (i = 0, j = 0; i < self->count; i++) {
         if (self->events[i].at <= now) {  // expired, call it
             /* PyObject_Print(self->events[i].callback, stdout, 1); */
@@ -228,6 +234,7 @@ timers_call(Timers *self) {
     }
     self->events = other;
     self->count = j;
+    self->in_call = false;
 }
 
 static PyObject *

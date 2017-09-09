@@ -258,6 +258,7 @@ typedef struct {
     TimerEvent *events, *buf1, *buf2;
     size_t capacity;
     size_t count;
+    bool in_call;
 } Timers;
 PyTypeObject Timers_Type;
 
