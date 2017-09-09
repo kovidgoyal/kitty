@@ -62,14 +62,22 @@ static PyObject *
 as_unicode(Line* self) {
     Py_ssize_t n = 0;
     Py_UCS4 *buf = PyMem_Malloc(3 * self->xnum * sizeof(Py_UCS4));
-    if (buf == NULL) {
-        PyErr_NoMemory();
-        return NULL;
+    if (buf == NULL) return PyErr_NoMemory();
+    index_type xlimit = self->xnum;
+    if (BLANK_CHAR == 0) {
+        while (xlimit != 0) {
+            if ((self->cells[xlimit - 1].ch & CHAR_MASK) != BLANK_CHAR) break;
+            xlimit--;
+        }
     }
-    for(index_type i = 0; i < self->xnum; i++) {
-        char_type attrs = self->cells[i].ch >> ATTRS_SHIFT;
-        if ((attrs & WIDTH_MASK) < 1) continue;
-        buf[n++] = self->cells[i].ch & CHAR_MASK;
+    char_type previous_width = 0;
+    for(index_type i = 0; i < xlimit; i++) {
+        char_type ch = self->cells[i].ch & CHAR_MASK;
+        if (ch == 0) {
+            if (previous_width == 2) { previous_width = 0; continue; };
+            ch = ' ';
+        }
+        buf[n++] = ch;
         char_type cc = self->cells[i].cc;
         Py_UCS4 cc1 = cc & CC_MASK, cc2;
         if (cc1) {
@@ -77,6 +85,7 @@ as_unicode(Line* self) {
             cc2 = cc >> 16;
             if (cc2) buf[n++] = cc2;
         }
+        previous_width = (self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK;
     }
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
     PyMem_Free(buf);
@@ -136,7 +145,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 
     index_type limit = self->xnum, i=0;
     int r;
-    if (!self->continued) {  // Trim trailing spaces
+    if (!self->continued) {  // Trim trailing blanks
         for(r = self->xnum - 1; r >= 0; r--) {
             if ((self->cells[r].ch & CHAR_MASK) != BLANK_CHAR) break;
         }
@@ -144,11 +153,15 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     }
     bool bold = false, italic = false, reverse = false, strike = false;
     uint32_t fg = 0, bg = 0, decoration_fg = 0, decoration = 0;
+    char_type previous_width = 0;
 
     WRITE_SGR(0);
     for (index_type pos=0; pos < limit; pos++) {
         char_type attrs = self->cells[pos].ch >> ATTRS_SHIFT, ch = self->cells[pos].ch & CHAR_MASK;
-        if (ch == 0 || (attrs & WIDTH_MASK) < 1) continue;
+        if (ch == 0) {
+            if (previous_width == 2) { previous_width = 0; continue; }
+            ch = ' ';
+        }
         CHECK_BOOL(bold, BOLD_SHIFT, 1, 22);
         CHECK_BOOL(italic, ITALIC_SHIFT, 3, 23);
         CHECK_BOOL(reverse, REVERSE_SHIFT, 7, 27);
@@ -175,6 +188,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
             cc1 = cc >> 16;
             if (cc1) { WRITE_CH(cc1); }
         }
+        previous_width = attrs & WIDTH_MASK;
     }
     return i;
 #undef CHECK_BOOL
@@ -305,7 +319,7 @@ cursor_from(Line* self, PyObject *args) {
 
 void 
 line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
-    const char_type repl = ((char_type)ch & CHAR_MASK) | (1 << ATTRS_SHIFT);
+    const char_type repl = ((char_type)ch & CHAR_MASK) | ( (ch ? 1 : 0) << ATTRS_SHIFT);
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
         self->cells[i].ch = (self->cells[i].ch  & ATTRS_MASK_WITHOUT_WIDTH) | repl; \
@@ -321,7 +335,7 @@ line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
 
 static PyObject*
 clear_text(Line* self, PyObject *args) {
-#define clear_text_doc "clear_text(at, num, ch=' ') -> Clear characters in the specified range, preserving formatting."
+#define clear_text_doc "clear_text(at, num, ch=BLANK_CHAR) -> Clear characters in the specified range, preserving formatting."
     unsigned int at, num;
     int ch = BLANK_CHAR;
     if (!PyArg_ParseTuple(args, "II|C", &at, &num, &ch)) return NULL;
@@ -369,7 +383,7 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
     // Check if a wide character was split at the right edge
     char_type w = (self->cells[self->xnum - 1].ch >> ATTRS_SHIFT) & WIDTH_MASK;
     if (w != 1) {
-        self->cells[self->xnum - 1].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR;
+        self->cells[self->xnum - 1].ch = ((BLANK_CHAR ? 1 : 0) << ATTRS_SHIFT) | BLANK_CHAR;
         clear_sprite_position(self->cells[self->xnum - 1]);
     }
 }

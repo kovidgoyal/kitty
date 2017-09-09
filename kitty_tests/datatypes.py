@@ -34,7 +34,7 @@ class TestDataTypes(BaseTest):
         new.copy_old(old)
         self.ae(new.line(0), old.line(1))
         new.clear()
-        self.ae(str(new.line(0)), ' ' * new.xnum)
+        self.ae(str(new.line(0)), '')
         old.set_attribute(REVERSE, False)
         for y in range(old.ynum):
             for x in range(old.xnum):
@@ -140,22 +140,23 @@ class TestDataTypes(BaseTest):
         lb = LineBuf(2, 3)
         for y in range(lb.ynum):
             line = lb.line(y)
-            self.ae(str(line), ' ' * lb.xnum)
+            self.ae(str(line), '')
             for x in range(lb.xnum):
-                self.ae(line[x], ' ')
+                self.ae(line[x], '\0')
         with self.assertRaises(IndexError):
             lb.line(lb.ynum)
         with self.assertRaises(IndexError):
             lb.line(0)[lb.xnum]
         l = lb.line(0)
+        l.set_text(' ', 0, len(' '), C())
         l.add_combining_char(0, '1')
         self.ae(l[0], ' 1')
         l.add_combining_char(0, '2')
         self.ae(l[0], ' 12')
         l.add_combining_char(0, '3')
         self.ae(l[0], ' 13')
-        self.ae(l[1], ' ')
-        self.ae(str(l), ' 13  ')
+        self.ae(l[1], '\0')
+        self.ae(str(l), ' 13')
         t = 'Testing with simple text'
         lb = LineBuf(2, len(t))
         l = lb.line(0)
@@ -257,18 +258,21 @@ class TestDataTypes(BaseTest):
     def test_rewrap_wider(self):
         ' New buffer wider '
         lb = create_lbuf('0123 ', '56789')
-        lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789  ', ' ' * 6)
+        lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789', '')
         self.assertContinued(lb2, False, True)
 
         lb = create_lbuf('12', 'abc')
-        lb2 = self.line_comparison_rewrap(lb, '12  ', 'abc ')
+        lb2 = self.line_comparison_rewrap(lb, '12', 'abc')
         self.assertContinued(lb2, False, False)
 
     def test_rewrap_narrower(self):
         ' New buffer narrower '
-        lb = create_lbuf('123 ', 'abcde')
-        lb2 = self.line_comparison_rewrap(lb, '123', 'abc', 'de ')
+        lb = create_lbuf('123', 'abcde')
+        lb2 = self.line_comparison_rewrap(lb, '123', 'abc', 'de')
         self.assertContinued(lb2, False, False, True)
+        lb = create_lbuf('123  ', 'abcde')
+        lb2 = self.line_comparison_rewrap(lb, '123', '  a', 'bcd', 'e')
+        self.assertContinued(lb2, False, True, True, True)
 
     @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_utils(self):

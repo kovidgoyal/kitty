@@ -58,7 +58,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         src_line_is_continued = is_src_line_continued(src_y);
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
-            // Trim trailing white-space since there is a hard line break at the end of this line
+            // Trim trailing blanks since there is a hard line break at the end of this line
             while(src_x_limit && (src->line->cells[src_x_limit - 1].ch & CHAR_MASK) == BLANK_CHAR) src_x_limit--;
             
         }

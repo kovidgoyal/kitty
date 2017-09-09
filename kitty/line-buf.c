@@ -19,12 +19,13 @@ clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
 }
 
-void linebuf_clear(LineBuf *self, char_type ch) {
+void 
+linebuf_clear(LineBuf *self, char_type ch) {
     memset(self->buf, 0, self->xnum * self->ynum * sizeof(Cell));
     memset(self->continued_map, 0, self->ynum * sizeof(bool));
-    for (index_type i = 0; i < self->ynum; i++) {
-        clear_chars_to(self, i, ch);
-        self->line_map[i] = i;
+    for (index_type i = 0; i < self->ynum; i++) self->line_map[i] = i;
+    if (ch != 0) {
+        for (index_type i = 0; i < self->ynum; i++) clear_chars_to(self, i, ch);
     }
 }
 
@@ -69,7 +70,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             self->line->xnum = xnum;
             for(index_type i = 0; i < ynum; i++) {
                 self->line_map[i] = i;
-                clear_chars_to(self, i, BLANK_CHAR);
+                if (BLANK_CHAR != 0) clear_chars_to(self, i, BLANK_CHAR);
             }
         }
     }
@@ -151,7 +152,7 @@ allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->cells = PyMem_Calloc(line->xnum, sizeof(Cell));
         if (line->cells == NULL) { PyErr_NoMemory(); return false; }
-        clear_chars_in_line(line->cells, line->xnum, BLANK_CHAR);
+        if (BLANK_CHAR != 0) clear_chars_in_line(line->cells, line->xnum, BLANK_CHAR);
     } else {
         line->cells = PyMem_Malloc(line->xnum * sizeof(Cell));
         if (line->cells == NULL) { PyErr_NoMemory(); return false; }
@@ -199,7 +200,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
 static inline void
 clear_line_(Line *l, index_type xnum) {
     memset(l->cells, 0, xnum * sizeof(Cell));
-    clear_chars_in_line(l->cells, xnum, BLANK_CHAR);
+    if (BLANK_CHAR != 0) clear_chars_in_line(l->cells, xnum, BLANK_CHAR);
 }
 
 void linebuf_clear_line(LineBuf *self, index_type y) {
