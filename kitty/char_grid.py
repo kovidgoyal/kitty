@@ -228,11 +228,13 @@ class CharGrid:
     def update_cell_data(self, cell_program):
         if self.data_buffer_size is None:
             return
+        clear_selection = self.screen.is_dirty
         with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
             cursor_changed, self.scrolled_by, self.screen_reversed = self.screen.update_cell_data(
                 address, self.scrolled_by, False)
 
-        self.current_selection.clear()
+        if clear_selection:
+            self.current_selection.clear()
         self.render_data = self.screen_geometry
         if cursor_changed:
             c = self.screen.cursor
