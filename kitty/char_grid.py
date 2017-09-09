@@ -14,9 +14,10 @@ from .constants import (
 )
 from .fast_data_types import (
     CELL, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, GL_BLEND, GL_FLOAT,
-    GL_LINE_LOOP, GL_TRIANGLE_FAN, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT,
-    glDisable, glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i,
-    glUniform2f, glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
+    GL_LINE_LOOP, GL_STATIC_DRAW, GL_TRIANGLE_FAN, GL_UNSIGNED_INT,
+    GL_UNSIGNED_SHORT, glDisable, glDrawArrays, glDrawArraysInstanced,
+    glEnable, glUniform1i, glUniform2f, glUniform2i, glUniform2ui, glUniform4f,
+    glUniform4ui
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -32,22 +33,19 @@ class DynamicColor(Enum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
 
 
-class CellProgram(ShaderProgram):
+class CellProgram(ShaderProgram):  # {{{
 
     def __init__(self, *args):
         ShaderProgram.__init__(self, *args)
-        self.color_table_buf = None
 
-    def send_color_table(self, color_profile):
+    def send_color_table(self, color_profile, cell_program):
         if color_profile.ubo is None:
             color_profile.ubo = self.init_uniform_block('ColorTable', 'color_table')
         ubo = color_profile.ubo
-        if self.color_table_buf is None:
-            self.color_table_buf = (GLuint * (ubo.size // sizeof(GLuint)))()
         offset = ubo.offsets['color_table'] // sizeof(GLuint)
         stride = ubo.size // (256 * sizeof(GLuint))
-        color_profile.copy_color_table(addressof(self.color_table_buf), offset, stride)
-        self.send_uniform_buffer_data(ubo, self.color_table_buf)
+        with cell_program.mapped_uniform_data(ubo, usage=GL_STATIC_DRAW) as address:
+            color_profile.copy_color_table(address, offset, stride)
 
     def create_sprite_map(self):
         with self.array_object_creator() as add_attribute:
@@ -66,6 +64,7 @@ def load_shader_programs():
     with cursor.array_object_creator() as add_attribute:
         cursor.vao_id = add_attribute.vao_id
     return cell, cursor
+# }}}
 
 
 class Selection:  # {{{
@@ -139,7 +138,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False, screen_reversed=False):
     if color_profile.dirty:
-        cell_program.send_color_table(color_profile)
+        cell_program.send_color_table(color_profile, cell_program)
         color_profile.dirty = False
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)

@@ -368,8 +368,8 @@ class ShaderProgram:  # {{{
         buf_id = buffer_manager.create(GL_UNIFORM_BUFFER)
         return UBO(size=size, index=idx, offsets=offsets, buf_id=buf_id)
 
-    def send_uniform_buffer_data(self, ubo, data, usage=GL_STREAM_DRAW):
-        buffer_manager.set_data(ubo.buf_id, data, usage=usage)
+    def mapped_uniform_data(self, ubo, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY):
+        return buffer_manager.mapped_buffer(ubo.buf_id, ubo.size, usage=usage, access=access)
 
     @contextmanager
     def bound_uniform_buffer(self, ubo):
