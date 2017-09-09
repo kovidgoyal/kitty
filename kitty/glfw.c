@@ -22,7 +22,7 @@
     if ((name) != NULL) { \
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
         if (_pyret == NULL) PyErr_Print(); \
-        Py_DECREF(_pyret); \
+        else Py_DECREF(_pyret); \
     } 
 
 #define WINDOW_CALLBACK(name, fmt, ...) \
