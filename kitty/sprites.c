@@ -6,8 +6,18 @@
  */
 
 #include "data-types.h"
-#include "sprites.h"
 #include <structmember.h>
+
+typedef struct SpritePosition SpritePosition;
+struct SpritePosition {
+    SpritePosition *next;
+    sprite_index x, y, z;
+    char_type ch;
+    combining_type cc;
+    bool is_second;
+    bool filled;
+    bool rendered;
+};
 
 typedef struct {
     size_t max_array_len, max_texture_size, max_y;
@@ -194,4 +204,24 @@ render_dirty_sprites(PyObject UNUSED *s_) {
     }
     sprite_map.dirty = false;
     return ans;
+}
+
+
+static PyMethodDef module_methods[] = {
+    {"sprite_map_set_limits", (PyCFunction)sprite_map_set_limits, METH_VARARGS, ""}, \
+    {"sprite_map_set_layout", (PyCFunction)sprite_map_set_layout, METH_VARARGS, ""}, \
+    {"sprite_map_current_layout", (PyCFunction)sprite_map_current_layout, METH_NOARGS, ""}, \
+    {"sprite_map_free", (PyCFunction)sprite_map_free, METH_NOARGS, ""}, \
+    {"sprite_map_increment", (PyCFunction)sprite_map_increment, METH_NOARGS, ""}, \
+    {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""}, \
+    {"render_dirty_sprites", (PyCFunction)render_dirty_sprites, METH_NOARGS, ""}, \
+
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+
+bool 
+init_sprites(PyObject *module) {
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
 }

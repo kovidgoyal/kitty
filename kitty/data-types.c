@@ -7,8 +7,8 @@
 
 #include "data-types.h"
 #include "modes.h"
-#include "sprites.h"
 #include <stddef.h>
+#include <termios.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -67,7 +67,6 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
-    SPRITE_FUNC_WRAPPERS
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
     {"stop_profiler", (PyCFunction)stop_profiler, METH_NOARGS, ""},
@@ -84,7 +83,6 @@ static struct PyModuleDef module = {
    .m_methods = module_methods
 };
 
-#include <termios.h>
 
 extern bool add_module_gl_constants(PyObject*);
 extern int init_LineBuf(PyObject *);
@@ -100,6 +98,7 @@ extern int init_Window(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
 extern bool init_glfw(PyObject *m);
+bool init_sprites(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -124,6 +123,7 @@ PyInit_fast_data_types(void) {
         if (!init_Screen(m)) return NULL;
         if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;
+        if (!init_sprites(m)) return NULL;
         if (!init_Window(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
