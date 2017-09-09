@@ -88,7 +88,7 @@ class Window:
             self.char_grid.resize(new_geometry)
             self.needs_layout = False
             if not child_monitor.resize_pty(self.id, *self.current_pty_size):
-                boss.retry_resize_pty(self.id)
+                boss.ui_timers.add(0, boss.retry_resize_pty, self.id)
         else:
             self.char_grid.update_position(new_geometry)
         self.geometry = new_geometry
@@ -251,12 +251,11 @@ class Window:
 
     def drag_scroll(self):
         x, y = self.last_mouse_cursor_pos
-        tm = get_boss()
         margin = cell_size.height // 2
         if y <= margin or y >= self.geometry.bottom - margin:
             self.scroll_line_up() if y < 50 else self.scroll_line_down()
             self.char_grid.update_drag(None, x, y)
-            tm.ui_timers.add(0.02, self.drag_scroll)
+            return 0.02  # causes the timer to be re-added
 
     def on_mouse_scroll(self, x, y):
         s = int(round(y * self.opts.wheel_scroll_multiplier))
