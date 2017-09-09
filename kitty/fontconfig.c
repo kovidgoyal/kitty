@@ -8,7 +8,7 @@
 #include "data-types.h"
 #include <fontconfig/fontconfig.h>
 
-PyObject*
+static PyObject*
 get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
     char *family;
     int bold, italic, allow_bitmapped_fonts, index = 0, hint_style=0, weight=0, slant=0;
@@ -74,11 +74,17 @@ end:
     return ans;
 }
 
+static PyMethodDef module_methods[] = {
+    {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
 bool 
-init_fontconfig_library(PyObject UNUSED *m) {
+init_fontconfig_library(PyObject *module) {
     if (!FcInit()) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize the fontconfig library");
         return false;
     }
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

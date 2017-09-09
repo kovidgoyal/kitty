@@ -402,5 +402,3 @@ DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
-
-PyObject *get_fontconfig_font(PyObject *self, PyObject *args);

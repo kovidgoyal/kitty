@@ -74,8 +74,6 @@ static PyMethodDef module_methods[] = {
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
 #ifdef __APPLE__
     CORE_TEXT_FUNC_WRAPPERS
-#else
-    {"get_fontconfig_font", (PyCFunction)get_fontconfig_font, METH_VARARGS, ""},
 #endif
     GLFW_FUNC_WRAPPERS
     SPRITE_FUNC_WRAPPERS
