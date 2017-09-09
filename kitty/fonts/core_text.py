@@ -45,7 +45,7 @@ def find_best_match(font_map, family, bold, italic):
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:
-        safe_print('The font {} was not found, falling back to Menlo', file=sys.stderr)
+        safe_print('The font {} was not found, falling back to Menlo'.format(family), file=sys.stderr)
         family = 'Menlo'
     return {
         'monospace': True,
@@ -57,13 +57,12 @@ def find_best_match(font_map, family, bold, italic):
 
 def get_face(font_map, family, main_family, font_size, dpi, bold=False, italic=False):
     def resolve_family(f):
-        if f.lower() == 'monospace':
-            f = 'Menlo'
         if (bold or italic) and f == 'auto':
             f = main_family
+        if f.lower() == 'monospace':
+            f = 'Menlo'
         return f
-    family = resolve_family(family)
-    descriptor = find_best_match(font_map, family, bold, italic)
+    descriptor = find_best_match(font_map, resolve_family(family), bold, italic)
     return Face(descriptor, font_size, dpi)
 
 
