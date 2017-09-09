@@ -98,6 +98,18 @@ static struct PyModuleDef module = {
 #include <termios.h>
 
 extern bool add_module_gl_constants(PyObject*);
+extern int init_LineBuf(PyObject *);
+extern int init_HistoryBuf(PyObject *);
+extern int init_Cursor(PyObject *);
+extern int init_Timers(PyObject *);
+extern int init_ChildMonitor(PyObject *);
+extern int init_Line(PyObject *);
+extern int init_ColorProfile(PyObject *);
+extern int init_Screen(PyObject *);
+extern int init_Face(PyObject *);
+extern int init_Window(PyObject *);
+extern bool init_freetype_library(PyObject*);
+extern bool init_fontconfig_library(PyObject*);
 
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {

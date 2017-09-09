@@ -291,16 +291,6 @@ Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
 ColorProfile* alloc_color_profile();
-int init_LineBuf(PyObject *);
-int init_HistoryBuf(PyObject *);
-int init_Cursor(PyObject *);
-int init_Timers(PyObject *);
-int init_ChildMonitor(PyObject *);
-int init_Line(PyObject *);
-int init_ColorProfile(PyObject *);
-int init_Screen(PyObject *);
-int init_Face(PyObject *);
-int init_Window(PyObject *);
 PyObject* create_256_color_table();
 void parse_worker(Screen *screen, PyObject *dump_callback);
 void parse_worker_dump(Screen *screen, PyObject *dump_callback);
@@ -413,6 +403,4 @@ DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
 
-bool init_freetype_library(PyObject*);
-bool init_fontconfig_library(PyObject*);
 PyObject *get_fontconfig_font(PyObject *self, PyObject *args);
