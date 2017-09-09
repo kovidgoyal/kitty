@@ -6,7 +6,6 @@
  */
 
 #include "data-types.h"
-#include "glfw.h"
 #include "modes.h"
 #include "sprites.h"
 #include <stddef.h>
@@ -68,7 +67,6 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
-    GLFW_FUNC_WRAPPERS
     SPRITE_FUNC_WRAPPERS
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
@@ -101,8 +99,10 @@ extern int init_Face(PyObject *);
 extern int init_Window(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
+extern bool init_glfw(PyObject *m);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
+extern bool init_cocoa(PyObject *module);
 #endif
 
 
@@ -127,6 +127,7 @@ PyInit_fast_data_types(void) {
         if (!init_Window(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
+        if (!init_cocoa(m)) return NULL;
 #else
         if (!init_Face(m)) return NULL;
         if (!init_freetype_library(m)) return NULL;

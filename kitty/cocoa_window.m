@@ -173,3 +173,17 @@ cocoa_get_lang(PyObject UNUSED *self) {
     if (!locale) { Py_RETURN_NONE; }
     return Py_BuildValue("s", [locale UTF8String]);
 }
+
+static PyMethodDef module_methods[] = {
+    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
+    {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
+    {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
+    {"cocoa_update_title", (PyCFunction)cocoa_update_title, METH_O, ""},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+bool
+init_cocoa(PyObject *module) {
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
+}

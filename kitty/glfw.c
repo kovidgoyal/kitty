@@ -439,11 +439,24 @@ PyTypeObject Window_Type = {
 
 INIT_TYPE(Window)
 
+static PyMethodDef module_methods[] = {
+    {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
+    {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, \
+    {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, \
+    {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""}, \
+    {"glfw_swap_interval", (PyCFunction)glfw_swap_interval, METH_VARARGS, ""}, \
+    {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, \
+    {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, \
+    {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, \
+    {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, \
+    {"glfw_init_hint_string", (PyCFunction)glfw_init_hint_string, METH_VARARGS, ""}, \
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
 
 // constants {{{
 bool
 init_glfw(PyObject *m) {
-    PyEval_InitThreads();
+    if (PyModule_AddFunctions(m, module_methods) != 0) return false;
     glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
 #ifdef GLFW_X11_WM_CLASS_NAME
