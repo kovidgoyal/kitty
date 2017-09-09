@@ -60,10 +60,6 @@ stop_profiler(PyObject UNUSED *self) {
 }
 #endif
 
-#ifdef __APPLE__
-#include "core_text.h"
-#endif
-
 static PyMethodDef module_methods[] = {
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
@@ -72,9 +68,6 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
-#ifdef __APPLE__
-    CORE_TEXT_FUNC_WRAPPERS
-#endif
     GLFW_FUNC_WRAPPERS
     SPRITE_FUNC_WRAPPERS
 #ifdef WITH_PROFILER
@@ -108,6 +101,10 @@ extern int init_Face(PyObject *);
 extern int init_Window(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
+#ifdef __APPLE__
+extern int init_CoreText(PyObject *);
+#endif
+
 
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {

@@ -320,11 +320,16 @@ PyTypeObject Face_Type = {
     .tp_repr = (reprfunc)repr,
 };
 
+static PyMethodDef module_methods[] = {
+    {"coretext_all_fonts", (PyCFunction)coretext_all_fonts, METH_NOARGS, ""},
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
 
 int 
 init_CoreText(PyObject *module) {
     if (PyType_Ready(&Face_Type) < 0) return 0;
     if (PyModule_AddObject(module, "CTFace", (PyObject *)&Face_Type) != 0) return 0;
+    if (PyModule_AddFunctions(module, module_methods) != 0) return 0;
     return 1;
 }
 
