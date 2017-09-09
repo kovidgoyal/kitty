@@ -16,7 +16,7 @@
 #define STRINGIFY(x) #x
 #define METH(name, argtype) {STRINGIFY(gl##name), (PyCFunction)name, argtype, NULL},
 
-static int _enable_error_checking = 1;
+static bool _enable_error_checking = 1;
 
 #ifndef GL_STACK_UNDERFLOW
 #define GL_STACK_UNDERFLOW 0x0504
@@ -51,7 +51,7 @@ static int _enable_error_checking = 1;
 
 static PyObject*
 enable_automatic_error_checking(PyObject UNUSED *self, PyObject *val) {
-    _enable_error_checking = PyObject_IsTrue(val) ? 1 : 0;
+    _enable_error_checking = PyObject_IsTrue(val) ? true : false;
     Py_RETURN_NONE;
 }
 
