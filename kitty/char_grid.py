@@ -35,16 +35,13 @@ class DynamicColor(Enum):
 
 class CellProgram(ShaderProgram):  # {{{
 
-    def __init__(self, *args):
-        ShaderProgram.__init__(self, *args)
-
-    def send_color_table(self, color_profile, cell_program):
+    def send_color_table(self, color_profile):
         if color_profile.ubo is None:
             color_profile.ubo = self.init_uniform_block('ColorTable', 'color_table')
         ubo = color_profile.ubo
         offset = ubo.offsets['color_table'] // sizeof(GLuint)
         stride = ubo.size // (256 * sizeof(GLuint))
-        with cell_program.mapped_uniform_data(ubo, usage=GL_STATIC_DRAW) as address:
+        with self.mapped_uniform_data(ubo, usage=GL_STATIC_DRAW) as address:
             color_profile.copy_color_table(address, offset, stride)
 
     def create_sprite_map(self):
@@ -138,7 +135,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False, screen_reversed=False):
     if color_profile.dirty:
-        cell_program.send_color_table(color_profile, cell_program)
+        cell_program.send_color_table(color_profile)
         color_profile.dirty = False
     ul = cell_program.uniform_location
     glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
