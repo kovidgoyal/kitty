@@ -804,8 +804,83 @@ check_for_extensions(PyObject UNUSED *self) {
     Py_RETURN_NONE;
 }
 
-int add_module_gl_constants(PyObject *module) {
-#define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return 0; }
+static PyMethodDef module_methods[] = {
+    {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, 
+    {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, 
+    {"replace_or_create_buffer", (PyCFunction)replace_or_create_buffer, METH_VARARGS, NULL}, 
+    {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, 
+    {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, 
+    {"get_uniform_block_size", (PyCFunction)get_uniform_block_size, METH_VARARGS, NULL}, 
+    {"get_uniform_block_offsets", (PyCFunction)get_uniform_block_offsets, METH_VARARGS, NULL}, 
+    METH(Viewport, METH_VARARGS) 
+    METH(CheckError, METH_NOARGS) 
+    METH(ClearColor, METH_VARARGS) 
+    METH(GetProgramiv, METH_VARARGS) 
+    METH(GetShaderiv, METH_VARARGS) 
+    METH(Uniform2ui, METH_VARARGS) 
+    METH(Uniform4ui, METH_VARARGS) 
+    METH(Uniform1uiv, METH_VARARGS) 
+    METH(Uniform2i, METH_VARARGS) 
+    METH(Uniform1i, METH_VARARGS) 
+    METH(Uniform2f, METH_VARARGS) 
+    METH(Uniform4f, METH_VARARGS) 
+    METH(Uniform3fv, METH_VARARGS) 
+    METH(GetUniformLocation, METH_VARARGS) 
+    METH(GetUniformBlockIndex, METH_VARARGS) 
+    METH(GetAttribLocation, METH_VARARGS) 
+    METH(ShaderSource, METH_VARARGS) 
+    METH(CompileShader, METH_O) 
+    METH(DeleteTexture, METH_O) 
+    METH(DeleteBuffer, METH_O) 
+    METH(DeleteVertexArray, METH_O) 
+    METH(GetString, METH_O) 
+    METH(GetIntegerv, METH_O) 
+    METH(Clear, METH_O) 
+    METH(CreateShader, METH_O) 
+    METH(GenVertexArrays, METH_O) 
+    METH(GenTextures, METH_O) 
+    METH(GenBuffers, METH_O) 
+    METH(LinkProgram, METH_O) 
+    METH(UseProgram, METH_O) 
+    METH(BindVertexArray, METH_O) 
+    METH(DeleteProgram, METH_O) 
+    METH(DeleteShader, METH_O) 
+    METH(Enable, METH_O) 
+    METH(Disable, METH_O) 
+    METH(EnableVertexAttribArray, METH_O) 
+    METH(VertexAttribPointer, METH_VARARGS) 
+    METH(VertexAttribDivisor, METH_VARARGS) 
+    METH(GetProgramInfoLog, METH_O) 
+    METH(GetShaderInfoLog, METH_O) 
+    METH(ActiveTexture, METH_O) 
+    METH(DrawArraysInstanced, METH_VARARGS) 
+    METH(DrawArrays, METH_VARARGS) 
+    METH(MultiDrawArrays, METH_VARARGS) 
+    METH(CreateProgram, METH_NOARGS) 
+    METH(AttachShader, METH_VARARGS) 
+    METH(BindTexture, METH_VARARGS) 
+    METH(TexParameteri, METH_VARARGS) 
+    METH(MapBuffer, METH_VARARGS) 
+    METH(UnmapBuffer, METH_VARARGS) 
+    METH(PixelStorei, METH_VARARGS) 
+    METH(BindBuffer, METH_VARARGS) 
+    METH(BindBufferBase, METH_VARARGS) 
+    METH(TexBuffer, METH_VARARGS) 
+    METH(TexStorage3D, METH_VARARGS) 
+    METH(CopyImageSubData, METH_VARARGS) 
+    METH(TexSubImage3D, METH_VARARGS) 
+    METH(GetTexImage, METH_VARARGS) 
+    METH(GetBufferSubData, METH_VARARGS) 
+    METH(BlendFunc, METH_VARARGS) 
+    METH(Finish, METH_NOARGS) 
+    METH(Flush, METH_NOARGS) 
+
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+bool
+add_module_gl_constants(PyObject *module) {
+#define GLC(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     GLC(GL_VERSION);
     GLC(GL_VENDOR);
     GLC(GL_SHADING_LANGUAGE_VERSION);
@@ -831,78 +906,9 @@ int add_module_gl_constants(PyObject *module) {
     GLC(GL_SRC_ALPHA); GLC(GL_ONE_MINUS_SRC_ALPHA); 
     GLC(GL_WRITE_ONLY); GLC(GL_READ_ONLY); GLC(GL_READ_WRITE);
     GLC(GL_BLEND); GLC(GL_FLOAT); GLC(GL_UNSIGNED_INT); GLC(GL_ARRAY_BUFFER); GLC(GL_UNIFORM_BUFFER);
-    return 1;
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
 }
 
 
-#define GL_METHODS \
-    {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, \
-    {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, \
-    {"replace_or_create_buffer", (PyCFunction)replace_or_create_buffer, METH_VARARGS, NULL}, \
-    {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, \
-    {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, \
-    {"get_uniform_block_size", (PyCFunction)get_uniform_block_size, METH_VARARGS, NULL}, \
-    {"get_uniform_block_offsets", (PyCFunction)get_uniform_block_offsets, METH_VARARGS, NULL}, \
-    METH(Viewport, METH_VARARGS) \
-    METH(CheckError, METH_NOARGS) \
-    METH(ClearColor, METH_VARARGS) \
-    METH(GetProgramiv, METH_VARARGS) \
-    METH(GetShaderiv, METH_VARARGS) \
-    METH(Uniform2ui, METH_VARARGS) \
-    METH(Uniform4ui, METH_VARARGS) \
-    METH(Uniform1uiv, METH_VARARGS) \
-    METH(Uniform2i, METH_VARARGS) \
-    METH(Uniform1i, METH_VARARGS) \
-    METH(Uniform2f, METH_VARARGS) \
-    METH(Uniform4f, METH_VARARGS) \
-    METH(Uniform3fv, METH_VARARGS) \
-    METH(GetUniformLocation, METH_VARARGS) \
-    METH(GetUniformBlockIndex, METH_VARARGS) \
-    METH(GetAttribLocation, METH_VARARGS) \
-    METH(ShaderSource, METH_VARARGS) \
-    METH(CompileShader, METH_O) \
-    METH(DeleteTexture, METH_O) \
-    METH(DeleteBuffer, METH_O) \
-    METH(DeleteVertexArray, METH_O) \
-    METH(GetString, METH_O) \
-    METH(GetIntegerv, METH_O) \
-    METH(Clear, METH_O) \
-    METH(CreateShader, METH_O) \
-    METH(GenVertexArrays, METH_O) \
-    METH(GenTextures, METH_O) \
-    METH(GenBuffers, METH_O) \
-    METH(LinkProgram, METH_O) \
-    METH(UseProgram, METH_O) \
-    METH(BindVertexArray, METH_O) \
-    METH(DeleteProgram, METH_O) \
-    METH(DeleteShader, METH_O) \
-    METH(Enable, METH_O) \
-    METH(Disable, METH_O) \
-    METH(EnableVertexAttribArray, METH_O) \
-    METH(VertexAttribPointer, METH_VARARGS) \
-    METH(VertexAttribDivisor, METH_VARARGS) \
-    METH(GetProgramInfoLog, METH_O) \
-    METH(GetShaderInfoLog, METH_O) \
-    METH(ActiveTexture, METH_O) \
-    METH(DrawArraysInstanced, METH_VARARGS) \
-    METH(DrawArrays, METH_VARARGS) \
-    METH(MultiDrawArrays, METH_VARARGS) \
-    METH(CreateProgram, METH_NOARGS) \
-    METH(AttachShader, METH_VARARGS) \
-    METH(BindTexture, METH_VARARGS) \
-    METH(TexParameteri, METH_VARARGS) \
-    METH(MapBuffer, METH_VARARGS) \
-    METH(UnmapBuffer, METH_VARARGS) \
-    METH(PixelStorei, METH_VARARGS) \
-    METH(BindBuffer, METH_VARARGS) \
-    METH(BindBufferBase, METH_VARARGS) \
-    METH(TexBuffer, METH_VARARGS) \
-    METH(TexStorage3D, METH_VARARGS) \
-    METH(CopyImageSubData, METH_VARARGS) \
-    METH(TexSubImage3D, METH_VARARGS) \
-    METH(GetTexImage, METH_VARARGS) \
-    METH(GetBufferSubData, METH_VARARGS) \
-    METH(BlendFunc, METH_VARARGS) \
-    METH(Finish, METH_NOARGS) \
-    METH(Flush, METH_NOARGS) \
 

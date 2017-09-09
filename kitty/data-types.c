@@ -7,7 +7,6 @@
 
 #include "data-types.h"
 #include "glfw.h"
-#include "gl.h"
 #include "modes.h"
 #include "sprites.h"
 #include <stddef.h>
@@ -66,7 +65,6 @@ stop_profiler(PyObject UNUSED *self) {
 #endif
 
 static PyMethodDef module_methods[] = {
-    GL_METHODS
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
@@ -98,6 +96,8 @@ static struct PyModuleDef module = {
 };
 
 #include <termios.h>
+
+extern bool add_module_gl_constants(PyObject*);
 
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
