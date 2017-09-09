@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque, namedtuple
+from ctypes import memset, sizeof
 from functools import partial
 
 from .borders import Borders
@@ -10,16 +11,13 @@ from .char_grid import calculate_gl_geometry, render_cells
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
-    GLuint, WindowGeometry, appname, cell_size, get_boss,
-    shell_path, viewport_size
+    GLfloat, WindowGeometry, appname, cell_size, get_boss, shell_path,
+    viewport_size
 )
-from .fast_data_types import (
-    CELL, DECAWM, Screen, glfw_post_empty_event
-)
+from .fast_data_types import CELL, DECAWM, Screen, glfw_post_empty_event
 from .layout import Rect, all_layouts
 from .utils import color_as_int
 from .window import Window
-
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
 
@@ -208,8 +206,7 @@ class TabBar:
         self.cell_width = 1
         self.data_buffer_size = 0
         self.vao_id = None
-        self.selection_buf = None
-        self.selection_buf_changed = True
+        self.layout_changed = None
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -232,9 +229,9 @@ class TabBar:
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
-        self.selection_buf = (GLuint * (s.lines * s.columns))()
+        self.selection_buf_size = sizeof(GLfloat) * s.lines * s.columns
         self.data_buffer_size = s.lines * s.columns * CELL['size']
-        self.selection_buf_changed = True
+        self.layout_changed = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
             margin, viewport_height - cell_height, viewport_width - margin, viewport_height, s.columns, s.lines)
@@ -245,7 +242,7 @@ class TabBar:
         self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
 
     def update(self, data):
-        if self.selection_buf is None:
+        if self.layout_changed is None:
             return
         s = self.screen
         s.cursor.x = 0
@@ -276,15 +273,16 @@ class TabBar:
         glfw_post_empty_event()
 
     def render(self, cell_program, sprites):
-        if self.selection_buf is not None:
+        if self.layout_changed is not None:
             if self.vao_id is None:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
                 with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
                     self.screen.update_cell_data(address, 0, True)
-                if self.selection_buf_changed:
-                    cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
-                    self.selection_buf_changed = False
+                if self.layout_changed:
+                    with cell_program.mapped_vertex_data(self.vao_id, self.selection_buf_size, bufnum=1) as address:
+                        memset(address, 0, self.selection_buf_size)
+                    self.layout_changed = False
                 self.dirty = False
             render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.screen.color_profile)
 
