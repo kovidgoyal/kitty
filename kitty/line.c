@@ -61,9 +61,8 @@ text_at(Line* self, Py_ssize_t xval) {
 static PyObject *
 as_unicode(Line* self) {
     Py_ssize_t n = 0;
-    Py_UCS4 *buf = PyMem_Malloc(3 * self->xnum * sizeof(Py_UCS4));
-    if (buf == NULL) return PyErr_NoMemory();
-    index_type xlimit = self->xnum;
+    static Py_UCS4 buf[4096];
+    index_type xlimit = MIN(sizeof(buf)/sizeof(buf[0]), self->xnum);
     if (BLANK_CHAR == 0) {
         while (xlimit != 0) {
             if ((self->cells[xlimit - 1].ch & CHAR_MASK) != BLANK_CHAR) break;
@@ -87,22 +86,7 @@ as_unicode(Line* self) {
         }
         previous_width = (self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK;
     }
-    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
-    PyMem_Free(buf);
-    return ans;
-}
-
-static PyObject *
-as_base_text(Line* self) {
-#define as_base_text_doc "Return the line as a string, discarding all combining characters"
-    PyObject *ans = PyUnicode_New(self->xnum, 1114111);
-    if (ans == NULL) return PyErr_NoMemory();
-    for(index_type i = 0; i < self->xnum; i++) {
-        char_type attrs = self->cells[i].ch >> ATTRS_SHIFT;
-        if ((attrs & WIDTH_MASK) < 1) continue;
-        PyUnicode_WRITE(PyUnicode_4BYTE_KIND, PyUnicode_DATA(ans), i, self->cells[i].ch & CHAR_MASK);
-    }
-    return ans;
+    return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
 
 static inline bool
@@ -493,7 +477,6 @@ static PyMethodDef methods[] = {
     METHOD(left_shift, METH_VARARGS)
     METHOD(set_char, METH_VARARGS)
     METHOD(set_attribute, METH_VARARGS)
-    METHOD(as_base_text, METH_NOARGS)
     METHOD(as_ansi, METH_NOARGS)
     METHOD(is_continued, METH_NOARGS)
     METHOD(width, METH_O)

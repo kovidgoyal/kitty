@@ -272,7 +272,7 @@ class CharGrid:
         if x is not None:
             l = self.screen_line(y)
             if l is not None:
-                text = l.as_base_text()
+                text = str(l)
                 for m in self.url_pat.finditer(text):
                     if m.start() <= x < m.end():
                         return True
@@ -283,7 +283,7 @@ class CharGrid:
         if x is not None:
             l = self.screen_line(y)
             if l is not None:
-                text = l.as_base_text()
+                text = str(l)
                 for m in self.url_pat.finditer(text):
                     if m.start() <= x < m.end():
                         url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
