@@ -301,13 +301,7 @@ class CharGrid:
 
     def screen_line(self, y):
         ' Return the Line object corresponding to the yth line on the rendered screen '
-        if y >= 0 and y < self.screen.lines:
-            if self.scrolled_by:
-                if y < self.scrolled_by:
-                    return self.screen.historybuf.line(self.scrolled_by - 1 - y)
-                return self.screen.line(y - self.scrolled_by)
-            else:
-                return self.screen.line(y)
+        return self.screen.visual_line(y, self.scrolled_by)
 
     def multi_click(self, count, x, y):
         x, y = self.cell_for_pos(x, y)

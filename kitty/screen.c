@@ -1079,6 +1079,25 @@ line(Screen *self, PyObject *val) {
 }
 
 static PyObject*
+visual_line(Screen *self, PyObject *args) {
+    // The line corresponding to the yth visual line, taking into account scrolling
+    unsigned int y, scrolled_by;
+    if (!PyArg_ParseTuple(args, "II", &y, &scrolled_by)) return NULL;
+    if (y >= self->lines) { Py_RETURN_NONE; }
+    if (scrolled_by) {
+        if (y < scrolled_by) {
+            historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
+            Py_INCREF(self->historybuf->line);
+            return (PyObject*) self->historybuf->line;
+        } 
+        y -= scrolled_by;
+    }
+    linebuf_init_line(self->linebuf, y);
+    Py_INCREF(self->linebuf->line);
+    return (PyObject*) self->linebuf->line;
+}
+ 
+static PyObject*
 draw(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
     if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
@@ -1271,6 +1290,7 @@ COUNT_WRAP(cursor_forward)
 
 static PyMethodDef methods[] = {
     MND(line, METH_O)
+    MND(visual_line, METH_VARARGS)
     MND(draw, METH_O)
     MND(cursor_position, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
