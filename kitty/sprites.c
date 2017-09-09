@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "lineops.h"
 #include <structmember.h>
 
 typedef struct SpritePosition SpritePosition;

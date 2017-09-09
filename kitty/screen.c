@@ -6,6 +6,8 @@
  */
 
 #include "data-types.h"
+#include "lineops.h"
+#include "screen.h"
 #include <structmember.h>
 #include <limits.h>
 #include "unicode-data.h"

@@ -303,33 +303,6 @@ void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 void set_sprite_position(Cell *cell, Cell *previous_cell);
 
-PyObject* line_text_at(char_type, combining_type);
-void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
-void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
-void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *);
-void line_right_shift(Line *, unsigned int , unsigned int );
-void line_add_combining_char(Line *, uint32_t , unsigned int );
-index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
-unsigned int line_length(Line *self);
-
-void linebuf_init_line(LineBuf *, index_type);
-void linebuf_clear(LineBuf *, char_type ch);
-void linebuf_init_line(LineBuf *, index_type);
-void linebuf_index(LineBuf* self, index_type top, index_type bottom);
-void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
-void linebuf_clear_line(LineBuf *self, index_type y);
-void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
-void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
-void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
-void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
-unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
-void linebuf_refresh_sprite_positions(LineBuf *self);
-bool historybuf_resize(HistoryBuf *self, index_type lines);
-void historybuf_add_line(HistoryBuf *self, const Line *line);
-void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
-void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
-void historybuf_refresh_sprite_positions(HistoryBuf *self);
-
 double monotonic();
 double timers_timeout(Timers*);
 void timers_call(Timers*);
@@ -343,62 +316,4 @@ color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_typ
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);
-void screen_align(Screen*);
-void screen_restore_cursor(Screen *);
-void screen_save_cursor(Screen *);
-void screen_cursor_position(Screen*, unsigned int, unsigned int);
-void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
-void screen_erase_in_line(Screen *, unsigned int, bool);
-void screen_erase_in_display(Screen *, unsigned int, bool);
-void screen_draw(Screen *screen, uint32_t codepoint);
-void screen_ensure_bounds(Screen *self, bool use_margins);
-void screen_toggle_screen_buffer(Screen *self);
-void screen_normal_keypad_mode(Screen *self); 
-void screen_alternate_keypad_mode(Screen *self);  
-void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
-void screen_alignment_display(Screen *self);
-void screen_reverse_index(Screen *self);
-void screen_index(Screen *self);
-void screen_scroll(Screen *self, unsigned int count);
-void screen_reverse_scroll(Screen *self, unsigned int count);
-void screen_reset(Screen *self);
-void screen_set_tab_stop(Screen *self);
-void screen_tab(Screen *self);
-void screen_backtab(Screen *self, unsigned int);
-void screen_clear_tab_stop(Screen *self, unsigned int how);
-void screen_set_mode(Screen *self, unsigned int mode);
-void screen_reset_mode(Screen *self, unsigned int mode);
-void screen_insert_characters(Screen *self, unsigned int count);
-void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/);
-void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);
-void screen_cursor_to_column(Screen *self, unsigned int column);
-void screen_cursor_down(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_forward(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_down1(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_to_line(Screen *screen, unsigned int line);
-void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
-void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
-void screen_delete_characters(Screen *self, unsigned int count);
-void screen_erase_characters(Screen *self, unsigned int count);
-void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);
-void screen_change_charset(Screen *, uint32_t to);
-void screen_designate_charset(Screen *, uint32_t which, uint32_t as);
-void screen_use_latin1(Screen *, bool);
-void set_title(Screen *self, PyObject*);
-void set_icon(Screen *self, PyObject*);
-void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
-void set_color_table_color(Screen *self, unsigned int code, PyObject*);
-uint32_t* translation_table(uint32_t which);
-uint32_t *latin1_charset;
-void screen_request_capabilities(Screen *, PyObject *);
-void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
-void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
-void report_device_status(Screen *self, unsigned int which, bool UNUSED);
-void report_mode_status(Screen *self, unsigned int which, bool);
-#define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
-DECLARE_CH_SCREEN_HANDLER(bell)
-DECLARE_CH_SCREEN_HANDLER(backspace)
-DECLARE_CH_SCREEN_HANDLER(tab)
-DECLARE_CH_SCREEN_HANDLER(linefeed)
-DECLARE_CH_SCREEN_HANDLER(carriage_return)
+

@@ -6,6 +6,7 @@
 
 #include "data-types.h"
 #include "control-codes.h"
+#include "screen.h"
 #include <time.h>
 
 // utils {{{

@@ -45,3 +45,30 @@ clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
     char_type c = (1 << ATTRS_SHIFT) | ch;
     for (index_type i = 0; i < xnum; i++) cells[i].ch = c;
 }
+
+PyObject* line_text_at(char_type, combining_type);
+void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
+void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
+void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *);
+void line_right_shift(Line *, unsigned int , unsigned int );
+void line_add_combining_char(Line *, uint32_t , unsigned int );
+index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
+unsigned int line_length(Line *self);
+
+void linebuf_init_line(LineBuf *, index_type);
+void linebuf_clear(LineBuf *, char_type ch);
+void linebuf_init_line(LineBuf *, index_type);
+void linebuf_index(LineBuf* self, index_type top, index_type bottom);
+void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
+void linebuf_clear_line(LineBuf *self, index_type y);
+void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
+void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
+void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
+void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
+unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
+void linebuf_refresh_sprite_positions(LineBuf *self);
+bool historybuf_resize(HistoryBuf *self, index_type lines);
+void historybuf_add_line(HistoryBuf *self, const Line *line);
+void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
+void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+void historybuf_refresh_sprite_positions(HistoryBuf *self);
