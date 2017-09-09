@@ -5,7 +5,7 @@
 import re
 import sys
 from collections import namedtuple
-from ctypes import addressof, sizeof
+from ctypes import sizeof
 from enum import Enum
 
 from .config import build_ansi_color_table, defaults
@@ -194,7 +194,7 @@ class CharGrid:
     def resize(self, window_geometry):
         self.update_position(window_geometry)
         self.data_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * CELL['size']
-        self.selection_buf = (GLfloat * (self.screen_geometry.ynum * self.screen_geometry.xnum))()
+        self.selection_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * sizeof(GLfloat)
         self.current_selection.clear()
 
     def change_colors(self, changes):
@@ -363,8 +363,8 @@ class CharGrid:
         start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
         selection_changed = sel != self.last_rendered_selection
         if selection_changed:
-            self.screen.apply_selection(addressof(self.selection_buf), start[0], start[1], end[0], end[1], len(self.selection_buf))
-            cell_program.send_vertex_data(self.vao_id, self.selection_buf, bufnum=1)
+            with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
+                self.screen.apply_selection(address, start[0], start[1], end[0], end[1], self.selection_buffer_size)
             self.last_rendered_selection = sel
         return sg
 

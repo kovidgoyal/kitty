@@ -1217,7 +1217,7 @@ apply_selection(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!IIIII", &PyLong_Type, &l, &startx, &starty, &endx, &endy, &size)) return NULL;
     if (startx >= self->columns || starty >= self->lines || endx >= self->columns || endy >= self->lines) { Py_RETURN_NONE; }
     float *data = PyLong_AsVoidPtr(l);
-    memset(data, 0, size * sizeof(float));
+    memset(data, 0, size);
     end = endy * self->columns + endx;
     i = starty * self->columns + startx;
     if (i != end) { for(; i <= end; i++) data[i] = 1; }
