@@ -98,7 +98,8 @@ extern int init_Window(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
 extern bool init_glfw(PyObject *m);
-bool init_sprites(PyObject *module);
+extern bool init_sprites(PyObject *module);
+extern bool init_shaders(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -124,6 +125,7 @@ PyInit_fast_data_types(void) {
         if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;
         if (!init_sprites(m)) return NULL;
+        if (!init_shaders(m)) return NULL;
         if (!init_Window(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;

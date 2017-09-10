@@ -16,26 +16,25 @@ from .fast_data_types import (
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
     GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
-    GL_WRITE_ONLY, copy_image_sub_data, get_uniform_block_offsets,
-    get_uniform_block_size, glActiveTexture, glAttachShader, glBindBuffer,
-    glBindBufferBase, glBindTexture, glBindVertexArray, glCompileShader,
-    glCopyImageSubData, glCreateProgram, glCreateShader, glDeleteBuffer,
-    glDeleteProgram, glDeleteShader, glDeleteTexture, glDeleteVertexArray,
-    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
-    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
-    glGetProgramInfoLog, glGetProgramiv, glGetShaderInfoLog, glGetShaderiv,
-    glGetUniformBlockIndex, glGetUniformLocation, glLinkProgram, glMapBuffer,
-    glPixelStorei, glShaderSource, glTexParameteri, glTexStorage3D,
-    glTexSubImage3D, glUnmapBuffer, glUseProgram, glVertexAttribDivisor,
-    glVertexAttribPointer, render_dirty_sprites, replace_or_create_buffer,
-    sprite_map_current_layout, sprite_map_free, sprite_map_increment,
-    sprite_map_set_layout, sprite_map_set_limits
+    GL_WRITE_ONLY, GLSL_VERSION, copy_image_sub_data,
+    get_uniform_block_offsets, get_uniform_block_size, glActiveTexture,
+    glAttachShader, glBindBuffer, glBindBufferBase, glBindTexture,
+    glBindVertexArray, glCompileShader, glCopyImageSubData, glCreateProgram,
+    glCreateShader, glDeleteBuffer, glDeleteProgram, glDeleteShader,
+    glDeleteTexture, glDeleteVertexArray, glEnableVertexAttribArray,
+    glGenBuffers, glGenTextures, glGenVertexArrays, glGetAttribLocation,
+    glGetBufferSubData, glGetIntegerv, glGetProgramInfoLog, glGetProgramiv,
+    glGetShaderInfoLog, glGetShaderiv, glGetUniformBlockIndex,
+    glGetUniformLocation, glLinkProgram, glMapBuffer, glPixelStorei,
+    glShaderSource, glTexParameteri, glTexStorage3D, glTexSubImage3D,
+    glUnmapBuffer, glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
+    render_dirty_sprites, replace_or_create_buffer, sprite_map_current_layout,
+    sprite_map_free, sprite_map_increment, sprite_map_set_layout,
+    sprite_map_set_limits
 )
 from .fonts.render import render_cell
 from .utils import safe_print
 
-GL_VERSION = (3, 3)
-VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
 UBO = namedtuple('UBO', 'size index offsets buf_id')
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -333,7 +332,7 @@ class ShaderProgram:  # {{{
     def add_shader(self, source: str, shader_type: int) -> int:
         ' Compile a shader and return its id, or raise an exception if compilation fails '
         shader_id = glCreateShader(shader_type)
-        source = source.replace('GLSL_VERSION', str(VERSION), 1)
+        source = source.replace('GLSL_VERSION', str(GLSL_VERSION), 1)
         try:
             glShaderSource(shader_id, source)
             glCompileShader(shader_id)

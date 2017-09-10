@@ -17,7 +17,7 @@ from .constants import (
     appname, config_dir, isosx, logo_data_file, str_version, viewport_size
 )
 from .fast_data_types import (
-    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR,
+    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_REQUIRED,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
     GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
@@ -26,7 +26,6 @@ from .fast_data_types import (
     glfw_swap_interval, glfw_terminate, glfw_window_hint
 )
 from .layout import all_layouts
-from .shaders import GL_VERSION
 from .utils import detach, safe_print
 
 try:
@@ -144,8 +143,8 @@ def option_parser():
 def setup_opengl(opts):
     if opts.macos_hide_titlebar:
         glfw_window_hint(GLFW_DECORATED, False)
-    glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION[0])
-    glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION[1])
+    glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_REQUIRED[0])
+    glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION_REQUIRED[1])
     glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
     glfw_window_hint(GLFW_OPENGL_FORWARD_COMPAT, True)
     glfw_window_hint(GLFW_SAMPLES, 0)
