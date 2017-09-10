@@ -62,13 +62,7 @@ static PyObject *
 as_unicode(Line* self) {
     Py_ssize_t n = 0;
     static Py_UCS4 buf[4096];
-    index_type xlimit = MIN(sizeof(buf)/sizeof(buf[0]), self->xnum);
-    if (BLANK_CHAR == 0) {
-        while (xlimit != 0) {
-            if ((self->cells[xlimit - 1].ch & CHAR_MASK) != BLANK_CHAR) break;
-            xlimit--;
-        }
-    }
+    index_type xlimit = MIN(sizeof(buf)/sizeof(buf[0]), xlimit_for_line(self));
     char_type previous_width = 0;
     for(index_type i = 0; i < xlimit; i++) {
         char_type ch = self->cells[i].ch & CHAR_MASK;
@@ -127,14 +121,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 #define CHECK_COLOR(name, val, off_code) if (name != (val)) { name = (val); WRITE_COLOR(name, off_code); }
 #define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val; 
 
-    index_type limit = self->xnum, i=0;
-    int r;
-    if (!self->continued) {  // Trim trailing blanks
-        for(r = self->xnum - 1; r >= 0; r--) {
-            if ((self->cells[r].ch & CHAR_MASK) != BLANK_CHAR) break;
-        }
-        limit = r + 1;
-    }
+    index_type limit = xlimit_for_line(self), i=0;
     bool bold = false, italic = false, reverse = false, strike = false;
     uint32_t fg = 0, bg = 0, decoration_fg = 0, decoration = 0;
     char_type previous_width = 0;

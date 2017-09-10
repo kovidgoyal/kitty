@@ -46,6 +46,18 @@ clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
     for (index_type i = 0; i < xnum; i++) cells[i].ch = c;
 }
 
+static inline index_type
+xlimit_for_line(Line *line) {
+    index_type xlimit = line->xnum;
+    if (BLANK_CHAR == 0) {
+        while (xlimit != 0) {
+            if ((line->cells[xlimit - 1].ch & CHAR_MASK) != BLANK_CHAR) break;
+            xlimit--;
+        }
+    }
+    return xlimit;
+}
+
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
