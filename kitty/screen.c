@@ -1474,9 +1474,9 @@ static PyGetSetDef getsetters[] = {
 
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
-    {"cursor_changed", T_OBJECT_EX, offsetof(Screen, cursor_changed), 0, "cursor_changed"},
+    {"cursor_changed", T_OBJECT, offsetof(Screen, cursor_changed), 0, "cursor_changed"},
     {"scroll_changed", T_OBJECT, offsetof(Screen, scroll_changed), 0, "scroll_changed"},
-    {"is_dirty", T_OBJECT_EX, offsetof(Screen, is_dirty), 0, "is_dirty"},
+    {"is_dirty", T_OBJECT, offsetof(Screen, is_dirty), 0, "is_dirty"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
