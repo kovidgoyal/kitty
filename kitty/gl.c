@@ -49,12 +49,6 @@ static bool _enable_error_checking = 1;
 
 #define CHECK_ERROR if (_enable_error_checking) { SET_GL_ERR; if (PyErr_Occurred()) return NULL; }
 
-static PyObject*
-enable_automatic_error_checking(PyObject UNUSED *self, PyObject *val) {
-    _enable_error_checking = PyObject_IsTrue(val) ? true : false;
-    Py_RETURN_NONE;
-}
-
 static PyObject* 
 Viewport(PyObject UNUSED *self, PyObject *args) {
     unsigned int x, y, w, h;
@@ -163,25 +157,6 @@ Uniform3fv(PyObject UNUSED *self, PyObject *args) {
 static PyObject* 
 CheckError(PyObject UNUSED *self) {
     CHECK_ERROR; Py_RETURN_NONE;
-}
-
-static PyObject* 
-_glewInit(PyObject UNUSED *self) {
-#ifndef __APPLE__
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
-        return NULL;
-    }
-#define ARB_TEST(name) \
-    if (!GLEW_ARB_##name) { \
-        PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
-        return NULL; \
-    }
-    ARB_TEST(texture_storage);
-#undef ARB_TEST
-#endif
-    Py_RETURN_NONE;
 }
 
 static PyObject* 
@@ -805,10 +780,8 @@ check_for_extensions(PyObject UNUSED *self) {
 }
 
 static PyMethodDef module_methods[] = {
-    {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, 
     {"copy_image_sub_data", (PyCFunction)copy_image_sub_data, METH_VARARGS, NULL}, 
     {"replace_or_create_buffer", (PyCFunction)replace_or_create_buffer, METH_VARARGS, NULL}, 
-    {"glewInit", (PyCFunction)_glewInit, METH_NOARGS, NULL}, 
     {"check_for_extensions", (PyCFunction)check_for_extensions, METH_NOARGS, NULL}, 
     {"get_uniform_block_size", (PyCFunction)get_uniform_block_size, METH_VARARGS, NULL}, 
     {"get_uniform_block_offsets", (PyCFunction)get_uniform_block_offsets, METH_VARARGS, NULL}, 
