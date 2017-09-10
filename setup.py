@@ -170,7 +170,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
         glew_libs = pkg_config('glew', '--libs')
-    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags
+    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + ['-lunistring']
 
     try:
         os.mkdir(build_dir)
