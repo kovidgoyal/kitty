@@ -8,7 +8,8 @@ from itertools import chain
 
 from .constants import GLfloat, GLint, GLuint, viewport_size
 from .fast_data_types import (
-    GL_STATIC_DRAW, GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv
+    GL_STATIC_DRAW, GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv,
+    BORDERS_PROGRAM
 )
 from .shaders import ShaderProgram, load_shaders
 from .utils import pt_to_px
@@ -33,7 +34,7 @@ def as_rect(left, top, right, bottom, color=0):
 class BordersProgram(ShaderProgram):
 
     def __init__(self):
-        ShaderProgram.__init__(self, *load_shaders('border'))
+        ShaderProgram.__init__(self, BORDERS_PROGRAM, *load_shaders('border'))
         with self.array_object_creator() as add_attribute:
             self.vao_id = add_attribute.vao_id
             add_attribute('rect')

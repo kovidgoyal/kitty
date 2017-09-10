@@ -10,24 +10,20 @@ from ctypes import addressof, c_char, sizeof
 from functools import lru_cache
 
 from .fast_data_types import (
-    GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
-    GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
+    GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_FLOAT, GL_MAX_ARRAY_TEXTURE_LAYERS,
     GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STREAM_DRAW,
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
-    GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
-    GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
-    GL_WRITE_ONLY, GLSL_VERSION, copy_image_sub_data,
+    GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T,
+    GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_WRITE_ONLY,
+    GLSL_VERSION, compile_program, copy_image_sub_data,
     get_uniform_block_offsets, get_uniform_block_size, glActiveTexture,
-    glAttachShader, glBindBuffer, glBindBufferBase, glBindTexture,
-    glBindVertexArray, glCompileShader, glCopyImageSubData, glCreateProgram,
-    glCreateShader, glDeleteBuffer, glDeleteProgram, glDeleteShader,
-    glDeleteTexture, glDeleteVertexArray, glEnableVertexAttribArray,
-    glGenBuffers, glGenTextures, glGenVertexArrays, glGetAttribLocation,
-    glGetBufferSubData, glGetIntegerv, glGetProgramInfoLog, glGetProgramiv,
-    glGetShaderInfoLog, glGetShaderiv, glGetUniformBlockIndex,
-    glGetUniformLocation, glLinkProgram, glMapBuffer, glPixelStorei,
-    glShaderSource, glTexParameteri, glTexStorage3D, glTexSubImage3D,
-    glUnmapBuffer, glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
+    glBindBuffer, glBindBufferBase, glBindTexture, glBindVertexArray,
+    glCopyImageSubData, glDeleteBuffer, glDeleteTexture, glDeleteVertexArray,
+    glEnableVertexAttribArray, glGenBuffers, glGenTextures, glGenVertexArrays,
+    glGetAttribLocation, glGetBufferSubData, glGetIntegerv,
+    glGetUniformBlockIndex, glGetUniformLocation, glMapBuffer, glPixelStorei,
+    glTexParameteri, glTexStorage3D, glTexSubImage3D, glUnmapBuffer,
+    glUseProgram, glVertexAttribDivisor, glVertexAttribPointer,
     render_dirty_sprites, replace_or_create_buffer, sprite_map_current_layout,
     sprite_map_free, sprite_map_increment, sprite_map_set_layout,
     sprite_map_set_limits
@@ -243,27 +239,16 @@ class Sprites:  # {{{
 class ShaderProgram:  # {{{
     """ Helper class for using GLSL shader programs """
 
-    def __init__(self, vertex, fragment):
+    def __init__(self, which, vertex, fragment):
         """
         Create a shader program.
 
         """
-        self.program_id = glCreateProgram()
-        vs_id = self.add_shader(vertex, GL_VERTEX_SHADER)
-        glAttachShader(self.program_id, vs_id)
-
-        frag_id = self.add_shader(fragment, GL_FRAGMENT_SHADER)
-        glAttachShader(self.program_id, frag_id)
-
-        glLinkProgram(self.program_id)
-        if glGetProgramiv(self.program_id, GL_LINK_STATUS) != GL_TRUE:
-            info = glGetProgramInfoLog(self.program_id)
-            glDeleteProgram(self.program_id)
-            glDeleteShader(vs_id)
-            glDeleteShader(frag_id)
-            raise ValueError('Error linking shader program: \n%s' % info.decode('utf-8'))
-        glDeleteShader(vs_id)
-        glDeleteShader(frag_id)
+        self.program_id = compile_program(
+            which,
+            vertex.replace('GLSL_VERSION', str(GLSL_VERSION), 1),
+            fragment.replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+        )
         self.vertex_arrays = {}
 
     @contextmanager
@@ -328,21 +313,6 @@ class ShaderProgram:  # {{{
 
     def __ne__(self, other) -> bool:
         return not self.__eq__(other)
-
-    def add_shader(self, source: str, shader_type: int) -> int:
-        ' Compile a shader and return its id, or raise an exception if compilation fails '
-        shader_id = glCreateShader(shader_type)
-        source = source.replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-        try:
-            glShaderSource(shader_id, source)
-            glCompileShader(shader_id)
-            if glGetShaderiv(shader_id, GL_COMPILE_STATUS) != GL_TRUE:
-                info = glGetShaderInfoLog(shader_id)
-                raise ValueError('GLSL {} compilation failed: \n{}'.format(shader_type, info.decode('utf-8')))
-            return shader_id
-        except Exception:
-            glDeleteShader(shader_id)
-            raise
 
     @lru_cache(maxsize=2**6)
     def uniform_location(self, name: str) -> int:

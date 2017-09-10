@@ -12,11 +12,11 @@ from .constants import (
     GLfloat, GLuint, ScreenGeometry, cell_size, viewport_size
 )
 from .fast_data_types import (
-    CELL, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, GL_BLEND, GL_FLOAT,
-    GL_LINE_LOOP, GL_STATIC_DRAW, GL_TRIANGLE_FAN, GL_UNSIGNED_INT,
-    GL_UNSIGNED_SHORT, glDisable, glDrawArrays, glDrawArraysInstanced,
-    glEnable, glUniform1i, glUniform2f, glUniform2i, glUniform2ui, glUniform4f,
-    glUniform4ui
+    CELL, CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM,
+    CURSOR_UNDERLINE, GL_BLEND, GL_FLOAT, GL_LINE_LOOP, GL_STATIC_DRAW,
+    GL_TRIANGLE_FAN, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, glDisable,
+    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f,
+    glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
@@ -55,8 +55,8 @@ class CellProgram(ShaderProgram):  # {{{
 
 
 def load_shader_programs():
-    cell = CellProgram(*load_shaders('cell'))
-    cursor = ShaderProgram(*load_shaders('cursor'))
+    cell = CellProgram(CELL_PROGRAM, *load_shaders('cell'))
+    cursor = ShaderProgram(CURSOR_PROGRAM, *load_shaders('cursor'))
     with cursor.array_object_creator() as add_attribute:
         cursor.vao_id = add_attribute.vao_id
     return cell, cursor

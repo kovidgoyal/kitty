@@ -71,19 +71,79 @@ glew_init(PyObject UNUSED *self) {
 
 enum Program { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
-/* static GLuint program_ids[NUM_PROGRAMS] = {0}; */
+static GLuint program_ids[NUM_PROGRAMS] = {0};
+static char glbuf[4096];
 
+static inline GLuint
+compile_shader(GLenum shader_type, const char *source) {
+    GLuint shader_id = glCreateShader(shader_type);
+    if (!shader_id) { set_error_from_gl(); return 0; }
+    glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
+    if (set_error_from_gl()) { glDeleteShader(shader_id); return 0; }
+    glCompileShader(shader_id);
+    if (set_error_from_gl()) { glDeleteShader(shader_id); return 0; }
+    GLint ret = GL_FALSE;
+    glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);
+    if (ret != GL_TRUE) {
+        GLsizei len;
+        glGetShaderInfoLog(shader_id, sizeof(glbuf), &len, glbuf);
+        fprintf(stderr, "Failed to compile GLSL shader!\n%s", glbuf);
+        glDeleteShader(shader_id);
+        PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
+        return 0;
+    }
+    return shader_id;
+}
 
 // Python API {{{
 static PyObject*
-enable_automatic_error_checking(PyObject UNUSED *self, PyObject *val) {
+enable_automatic_opengl_error_checking(PyObject UNUSED *self, PyObject *val) {
     _enable_error_checking = PyObject_IsTrue(val) ? true : false;
     Py_RETURN_NONE;
 }
 
+static PyObject*
+compile_program(PyObject UNUSED *self, PyObject *args) {
+    const char *vertex_shader, *fragment_shader;
+    int which;
+    GLuint vertex_shader_id = 0, fragment_shader_id = 0;
+    if (!PyArg_ParseTuple(args, "iss", &which, &vertex_shader, &fragment_shader)) return NULL;
+    if (which < CELL_PROGRAM || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
+    if (program_ids[which] != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
+    program_ids[which] = glCreateProgram();
+    if (program_ids[which] == 0) { set_error_from_gl(); return NULL; }
+    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
+    if (vertex_shader_id == 0) goto end;
+    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
+    if (vertex_shader_id == 0) goto end;
+    glAttachShader(program_ids[which], vertex_shader_id);
+    if (set_error_from_gl()) goto end;
+    glAttachShader(program_ids[which], fragment_shader_id);
+    glLinkProgram(program_ids[which]);
+    GLint ret = GL_FALSE;
+    glGetProgramiv(program_ids[which], GL_LINK_STATUS, &ret);
+    if (ret != GL_TRUE) {
+        GLsizei len;
+        glGetProgramInfoLog(program_ids[which], sizeof(glbuf), &len, glbuf);
+        fprintf(stderr, "Failed to compile GLSL shader!\n%s", glbuf);
+        PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
+        goto end;
+    }
+
+end:
+    if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
+    if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
+    if (PyErr_Occurred()) { glDeleteProgram(program_ids[which]); program_ids[which] = 0; return NULL;}
+    return Py_BuildValue("I", program_ids[which]);
+    Py_RETURN_NONE;
+}
+
+#define M(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
 static PyMethodDef module_methods[] = {
-    {"enable_automatic_opengl_error_checking", (PyCFunction)enable_automatic_error_checking, METH_O, NULL}, 
+    M(enable_automatic_opengl_error_checking, METH_O),
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
+    M(compile_program, METH_VARARGS),
+
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
