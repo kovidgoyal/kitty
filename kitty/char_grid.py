@@ -3,12 +3,11 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-import sys
 from collections import namedtuple
 from ctypes import sizeof
 from enum import Enum
 
-from .config import build_ansi_color_table, defaults
+from .config import build_ansi_color_table
 from .constants import (
     GLfloat, GLuint, ScreenGeometry, cell_size, viewport_size
 )
@@ -22,7 +21,7 @@ from .fast_data_types import (
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
 from .utils import (
-    color_as_int, color_from_int, get_logical_dpi, open_url, safe_print,
+    color_as_int, color_from_int, get_logical_dpi, open_url,
     set_primary_selection
 )
 
@@ -142,15 +141,6 @@ class CharGrid:
         self.opts = opts
         self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
-
-        def escape(chars):
-            return ''.join(frozenset(chars)).replace('\\', r'\\').replace(']', r'\]').replace('-', r'\-')
-
-        try:
-            self.word_pat = re.compile(r'[\w{}]'.format(escape(self.opts.select_by_word_characters)), re.UNICODE)
-        except Exception:
-            safe_print('Invalid characters in select_by_word_characters, ignoring', file=sys.stderr)
-            self.word_pat = re.compile(r'[\w{}]'.format(escape(defaults.select_by_word_characters)), re.UNICODE)
 
     def destroy(self, cell_program):
         if self.vao_id is not None:
@@ -282,14 +272,8 @@ class CharGrid:
                 s.start_y = s.end_y = y
                 s.in_progress = False
                 if count == 2:
-                    i = x
-                    while i >= 0 and self.word_pat.match(line[i]) is not None:
-                        i -= 1
-                    s.start_x = i if i == x else i + 1
-                    i = x
-                    while i < self.screen.columns and self.word_pat.match(line[i]) is not None:
-                        i += 1
-                    s.end_x = i if i == x else i - 1
+                    s.start_x, xlimit = self.screen.selection_range_for_word(x, y, self.scrolled_by, self.opts.select_by_word_characters)
+                    s.end_x = max(s.start_x, xlimit - 1)
                 elif count == 3:
                     s.start_x, xlimit = self.screen.selection_range_for_line(y, self.scrolled_by)
                     s.end_x = max(s.start_x, xlimit - 1)
