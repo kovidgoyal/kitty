@@ -1336,7 +1336,10 @@ scroll(Screen *self, PyObject *args) {
             amt = self->historybuf->count;
             break;
         default:
-            amt = MAX(0, amt);
+            if (amt < 0) {
+                PyErr_SetString(PyExc_ValueError, "scroll amounts must be positive numbers");
+                return NULL;
+            }
             break;
     }
     if (!upwards) {
