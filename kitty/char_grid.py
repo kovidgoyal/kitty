@@ -96,7 +96,6 @@ class CharGrid:
     def __init__(self, screen, opts):
         self.vao_id = None
         self.screen_reversed = False
-        self.render_data = None
         self.data_buffer_size = None
         self.screen = screen
         self.opts = opts
@@ -147,7 +146,6 @@ class CharGrid:
         with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
             cursor_changed, self.screen_reversed = self.screen.update_cell_data(
                 address, False)
-        self.render_data = self.screen_geometry
         if cursor_changed:
             c = self.screen.cursor
             self.current_cursor = Cursor(c.x, c.y, c.shape, c.blink)
@@ -232,21 +230,20 @@ class CharGrid:
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
 
-    def prepare_for_render(self, cell_program):
+    def render_cells(self, cell_program, sprites, invert_colors=False):
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
         if self.screen.scroll_changed or self.screen.is_dirty:
             self.update_cell_data(cell_program)
-        sg = self.render_data
         if self.screen.is_selection_dirty():
             with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
                 self.screen.apply_selection(address, self.selection_buffer_size)
-        return sg
+        render_cells(
+            self.vao_id, self.screen_geometry, cell_program, sprites,
+            self.screen.color_profile, invert_colors=invert_colors,
+            screen_reversed=self.screen_reversed)
 
-    def render_cells(self, sg, cell_program, sprites, invert_colors=False):
-        render_cells(self.vao_id, sg, cell_program, sprites, self.screen.color_profile, invert_colors=invert_colors, screen_reversed=self.screen_reversed)
-
-    def render_cursor(self, sg, cursor_program, is_focused):
+    def render_cursor(self, cursor_program, is_focused):
         cursor = self.current_cursor
         if not self.screen.cursor_visible or self.screen.scrolled_by:
             return
@@ -257,6 +254,7 @@ class CharGrid:
             factor = 2 / (viewport_size.width if vert else viewport_size.height)
             return w * factor
 
+        sg = self.screen_geometry
         ul = cursor_program.uniform_location
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy

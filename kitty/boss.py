@@ -378,20 +378,13 @@ class Boss:
             with self.sprites:
                 self.sprites.render_dirty_sprites()
                 tab.render()
-                render_data = {
-                    window:
-                    window.char_grid.prepare_for_render(self.cell_program)
-                    for window in tab.visible_windows()
-                    if not window.needs_layout}
                 with self.cell_program:
                     self.tab_manager.render(self.cell_program, self.sprites)
-                    for window, rd in render_data.items():
-                        if rd is not None:
-                            window.render_cells(
-                                rd, self.cell_program, self.sprites)
+                    for window in tab.visible_windows():
+                        if not window.needs_layout:
+                            window.render_cells(self.cell_program, self.sprites)
                 active = self.active_window
-                rd = render_data.get(active)
-                if rd is not None:
+                if active is not None:
                     draw_cursor = True
                     if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
                         now = monotonic() - self.cursor_blink_zero_time
@@ -404,7 +397,7 @@ class Boss:
                     if draw_cursor:
                         with self.cursor_program:
                             active.char_grid.render_cursor(
-                                rd, self.cursor_program,
+                                self.cursor_program,
                                 self.window_is_focused)
 
     def gui_close_window(self, window):
