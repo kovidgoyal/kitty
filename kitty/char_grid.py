@@ -63,35 +63,6 @@ def load_shader_programs():
 # }}}
 
 
-class Selection:  # {{{
-
-    __slots__ = tuple('in_progress start_x start_y start_scrolled_by end_x end_y end_scrolled_by'.split())
-
-    def __init__(self):
-        self.clear()
-
-    def clear(self):
-        self.in_progress = False
-        self.start_x = self.start_y = self.end_x = self.end_y = 0
-        self.start_scrolled_by = self.end_scrolled_by = 0
-
-    def limits(self, scrolled_by, lines, columns):
-
-        def coord(x, y, ydelta):
-            y = y - ydelta + scrolled_by
-            if y < 0:
-                x, y = 0, 0
-            elif y >= lines:
-                x, y = columns - 1, lines - 1
-            return x, y
-
-        a = coord(self.start_x, self.start_y, self.start_scrolled_by)
-        b = coord(self.end_x, self.end_y, self.end_scrolled_by)
-        return (a, b) if a[1] < b[1] or (a[1] == b[1] and a[0] <= b[0]) else (b, a)
-
-# }}}
-
-
 def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell_width, cell_height):
     dx, dy = 2 * cell_width / viewport_width, 2 * cell_height / viewport_height
     xmargin = window_geometry.left / viewport_width
@@ -124,7 +95,6 @@ class CharGrid:
 
     def __init__(self, screen, opts):
         self.vao_id = None
-        self.current_selection = Selection()
         self.screen_reversed = False
         self.last_rendered_selection = None
         self.render_data = None
@@ -152,7 +122,7 @@ class CharGrid:
         self.update_position(window_geometry)
         self.data_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * CELL['size']
         self.selection_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * sizeof(GLfloat)
-        self.current_selection.clear()
+        self.screen.clear_selection()
 
     def change_colors(self, changes):
         dirtied = False
@@ -175,13 +145,9 @@ class CharGrid:
     def update_cell_data(self, cell_program):
         if self.data_buffer_size is None:
             return
-        clear_selection = self.screen.is_dirty
         with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
             cursor_changed, self.screen_reversed = self.screen.update_cell_data(
                 address, False)
-
-        if clear_selection:
-            self.current_selection.clear()
         self.render_data = self.screen_geometry
         if cursor_changed:
             c = self.screen.cursor
@@ -200,16 +166,11 @@ class CharGrid:
             y = 0 if my <= cell_size.height else self.screen.lines - 1
         ps = None
         if is_press:
-            self.current_selection.start_x = self.current_selection.end_x = x
-            self.current_selection.start_y = self.current_selection.end_y = y
-            self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.screen.scrolled_by
-            self.current_selection.in_progress = True
-        elif self.current_selection.in_progress:
-            self.current_selection.end_x = x
-            self.current_selection.end_y = y
-            self.current_selection.end_scrolled_by = self.screen.scrolled_by
-            if is_press is False:
-                self.current_selection.in_progress = False
+            self.screen.start_selection(x, y)
+        elif self.screen.is_selection_in_progress():
+            ended = is_press is False
+            self.screen.update_selection(x, y, ended)
+            if ended:
                 ps = self.text_for_selection()
         if ps and ps.strip():
             set_primary_selection(ps)
@@ -251,16 +212,14 @@ class CharGrid:
         if x is not None:
             line = self.screen.visual_line(y)
             if line is not None and count in (2, 3):
-                s = self.current_selection
-                s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
-                s.start_y = s.end_y = y
-                s.in_progress = False
                 if count == 2:
-                    s.start_x, xlimit = self.screen.selection_range_for_word(x, y, self.opts.select_by_word_characters)
-                    s.end_x = max(s.start_x, xlimit - 1)
+                    start_x, xlimit = self.screen.selection_range_for_word(x, y, self.opts.select_by_word_characters)
+                    end_x = max(start_x, xlimit - 1)
                 elif count == 3:
-                    s.start_x, xlimit = self.screen.selection_range_for_line(y)
-                    s.end_x = max(s.start_x, xlimit - 1)
+                    start_x, xlimit = self.screen.selection_range_for_line(y)
+                    end_x = max(start_x, xlimit - 1)
+                self.screen.start_selection(start_x, y)
+                self.screen.update_selection(end_x, y, True)
             ps = self.text_for_selection()
             if ps:
                 set_primary_selection(ps)
@@ -271,10 +230,8 @@ class CharGrid:
         self.screen.linebuf.as_ansi(ans.append)
         return ''.join(ans).encode('utf-8')
 
-    def text_for_selection(self, sel=None):
-        s = sel or self.current_selection
-        start, end = s.limits(self.screen.scrolled_by, self.screen.lines, self.screen.columns)
-        return ''.join(self.screen.text_for_selection(*start, *end))
+    def text_for_selection(self):
+        return ''.join(self.screen.text_for_selection())
 
     def prepare_for_render(self, cell_program):
         if self.vao_id is None:
@@ -282,12 +239,11 @@ class CharGrid:
         if self.screen.scroll_changed or self.screen.is_dirty:
             self.update_cell_data(cell_program)
         sg = self.render_data
-        start, end = self.current_selection.limits(self.screen.scrolled_by, self.screen.lines, self.screen.columns)
-        sel = start, end, self.screen.scrolled_by
+        sel = self.screen.selection_limits()
         selection_changed = sel != self.last_rendered_selection
         if selection_changed:
             with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
-                self.screen.apply_selection(address, self.selection_buffer_size, *start, *end)
+                self.screen.apply_selection(address, self.selection_buffer_size)
             self.last_rendered_selection = sel
         return sg
 

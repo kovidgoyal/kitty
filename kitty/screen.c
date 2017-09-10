@@ -21,6 +21,7 @@
 #include "wcwidth9.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
+static Selection EMPTY_SELECTION = {0};
 
 // Constructor/destructor {{{
 
@@ -1225,6 +1226,7 @@ update_cell_data(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!p", &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->cursor_changed;
+    bool selection_must_be_cleared = self->is_dirty == Py_True ? true : false;
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     reset_dirty(self);
     self->scroll_changed = Py_False;
@@ -1236,6 +1238,7 @@ update_cell_data(Screen *self, PyObject *args) {
         linebuf_init_line(self->linebuf, y - self->scrolled_by);
         update_line_data(self->linebuf->line, y, data);
     }
+    if (selection_must_be_cleared) self->selection = EMPTY_SELECTION;
     return Py_BuildValue("OO", cursor_changed, self->modes.mDECSCNM ? Py_True : Py_False);
 }
 
@@ -1244,37 +1247,66 @@ is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, uns
     return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
 }
 
+typedef struct {
+    unsigned int x, y;
+} SelectionBoundary;
+
+static inline void
+selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
+    if (y + self->scrolled_by < ydelta) {
+        ans->x = 0; ans->y = 0;
+    } else {
+        y = y - ydelta + self->scrolled_by;
+        if (y >= self->lines) {
+            ans->x = self->columns - 1; ans->y = self->lines - 1;
+        } else {
+            ans->x = x; ans->y = y;
+        }
+    }
+}
+
+static inline void
+selection_limits_(Screen *self, SelectionBoundary *left, SelectionBoundary *right) {
+    SelectionBoundary a, b;
+    selection_coord(self, self->selection.start_x, self->selection.start_y, self->selection.start_scrolled_by, &a);
+    selection_coord(self, self->selection.end_x, self->selection.end_y, self->selection.end_scrolled_by, &b);
+    if (a.y < b.y || (a.y == b.y && a.x <= b.x)) { *left = a; *right = b; }
+    else { *left = b; *right = a; }
+}
+
 static PyObject*
 apply_selection(Screen *self, PyObject *args) {
-    unsigned int size, start_x, end_x, start_y, end_y;
+    unsigned int size;
     PyObject *l;
-    if (!PyArg_ParseTuple(args, "O!IIIII", &PyLong_Type, &l, &size, &start_x, &start_y, &end_x, &end_y)) return NULL;
+    SelectionBoundary start, end;
+    if (!PyArg_ParseTuple(args, "O!I", &PyLong_Type, &l, &size)) return NULL;
     float *data = PyLong_AsVoidPtr(l);
     memset(data, 0, size);
-    if (is_selection_empty(self, start_x, start_y, end_x, end_y)) { Py_RETURN_NONE; }
-    for (index_type y = start_y; y <= end_y; y++) {
+    selection_limits_(self, &start, &end);
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { Py_RETURN_NONE; }
+    for (index_type y = start.y; y <= end.y; y++) {
         Line *line = visual_line_(self, y);
         index_type xlimit = xlimit_for_line(line);
-        if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
+        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
         float *line_start = data + self->columns * y;
-        for (index_type x = (y == start_y ? start_x : 0); x < xlimit; x++) line_start[x] = 1.0;
+        for (index_type x = (y == start.y ? start.x : 0); x < xlimit; x++) line_start[x] = 1.0;
     }
     Py_RETURN_NONE;
 }
 
 static PyObject*
-text_for_selection(Screen *self, PyObject *args) {
-    unsigned int start_x, end_x, start_y, end_y;
-    if (!PyArg_ParseTuple(args, "IIII", &start_x, &start_y, &end_x, &end_y)) return NULL;
-    if (is_selection_empty(self, start_x, start_y, end_x, end_y)) return PyTuple_New(0);
-    Py_ssize_t i = 0, num_of_lines = end_y - start_y + 1;
+text_for_selection(Screen *self) {
+    SelectionBoundary start, end;
+    selection_limits_(self, &start, &end);
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return PyTuple_New(0);
+    Py_ssize_t i = 0, num_of_lines = end.y - start.y + 1;
     PyObject *ans = PyTuple_New(num_of_lines);
     if (ans == NULL) return PyErr_NoMemory();
-    for (index_type y = start_y; y <= end_y; y++, i++) {
+    for (index_type y = start.y; y <= end.y; y++, i++) {
         Line *line = visual_line_(self, y);
         index_type xlimit = xlimit_for_line(line);
-        if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
-        index_type xstart = (y == start_y ? start_x : 0);
+        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
+        index_type xstart = (y == start.y ? start.x : 0);
         char leading_char = i > 0 && !line->continued ? '\n' : 0;
         PyObject *text = unicode_in_range(line, xstart, xlimit, true, leading_char);
         if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
@@ -1357,8 +1389,48 @@ scroll(Screen *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
-static 
-PyObject* mark_as_dirty(Screen *self) {
+static PyObject*
+clear_selection(Screen *self) {
+    self->selection = EMPTY_SELECTION;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+is_selection_in_progress(Screen *self) {
+    PyObject *ans = self->selection.in_progress ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+static PyObject*
+selection_limits(Screen *self) {
+    SelectionBoundary start, end;
+    selection_limits_(self, &start, &end);
+    return Py_BuildValue("(II)(II)", start.x, start.y, end.x, end.y);
+}
+
+static PyObject*
+start_selection(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    if (!PyArg_ParseTuple(args, "II", &x, &y)) return NULL;
+#define A(attr, val) self->selection.attr = val;
+    A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); A(in_progress, true);
+#undef A
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+update_selection(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    int ended;
+    if (!PyArg_ParseTuple(args, "IIp", &x, &y, &ended)) return NULL;
+    self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
+    if (ended) self->selection.in_progress = false;
+    Py_RETURN_NONE;
+}
+
+static PyObject* 
+mark_as_dirty(Screen *self) {
     self->is_dirty = Py_True;
     Py_RETURN_NONE;
 }
@@ -1444,7 +1516,12 @@ static PyMethodDef methods[] = {
     MND(apply_selection, METH_VARARGS)
     MND(selection_range_for_line, METH_VARARGS)
     MND(selection_range_for_word, METH_VARARGS)
-    MND(text_for_selection, METH_VARARGS)
+    MND(text_for_selection, METH_NOARGS)
+    MND(clear_selection, METH_NOARGS)
+    MND(is_selection_in_progress, METH_NOARGS)
+    MND(selection_limits, METH_NOARGS)
+    MND(start_selection, METH_VARARGS)
+    MND(update_selection, METH_VARARGS)
     MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)

@@ -243,7 +243,7 @@ class Window:
                 if ev:
                     self.write_to_child(ev)
         else:
-            if self.char_grid.current_selection.in_progress:
+            if self.screen.is_selection_in_progress():
                 self.char_grid.update_drag(None, x, y)
                 margin = cell_size.height // 2
                 if y <= margin or y >= self.geometry.bottom - margin:
