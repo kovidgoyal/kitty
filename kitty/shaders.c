@@ -13,12 +13,21 @@
 #include <GL/glew.h>
 #endif
 
+static char glbuf[4096];
 
 // GL setup and error handling {{{
 // Required minimum OpenGL version
 #define REQUIRED_VERSION_MAJOR 3
 #define REQUIRED_VERSION_MINOR 3
 #define GLSL_VERSION (REQUIRED_VERSION_MAJOR * 100 + REQUIRED_VERSION_MINOR * 10)
+
+#ifndef GL_STACK_UNDERFLOW
+#define GL_STACK_UNDERFLOW 0x0504
+#endif
+
+#ifndef GL_STACK_OVERFLOW
+#define GL_STACK_OVERFLOW 0x0503
+#endif
 
 static inline bool
 set_error_from_gl() {
@@ -69,10 +78,10 @@ glew_init(PyObject UNUSED *self) {
 }
 // }}}
 
+// Programs {{{
 enum Program { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
 static GLuint program_ids[NUM_PROGRAMS] = {0};
-static char glbuf[4096];
 
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {
@@ -94,6 +103,8 @@ compile_shader(GLenum shader_type, const char *source) {
     }
     return shader_id;
 }
+// }}}
+
 
 // Python API {{{
 static PyObject*
@@ -138,7 +149,7 @@ end:
     Py_RETURN_NONE;
 }
 
-#define M(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
+#define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     M(enable_automatic_opengl_error_checking, METH_O),
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 

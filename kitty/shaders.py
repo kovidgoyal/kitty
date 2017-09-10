@@ -37,8 +37,8 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 
 @lru_cache()
 def load_shaders(name):
-    vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read()
-    frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read()
+    vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
     return vert, frag
 
 
@@ -244,11 +244,7 @@ class ShaderProgram:  # {{{
         Create a shader program.
 
         """
-        self.program_id = compile_program(
-            which,
-            vertex.replace('GLSL_VERSION', str(GLSL_VERSION), 1),
-            fragment.replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-        )
+        self.program_id = compile_program(which, vertex, fragment)
         self.vertex_arrays = {}
 
     @contextmanager
