@@ -18,7 +18,7 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring
+                - libunistring-dev
 
         - os: linux
           dist: trusty
@@ -37,7 +37,7 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring
+                - libunistring-dev
 
         - os: linux
           dist: trusty
@@ -56,7 +56,7 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring
+                - libunistring-dev
                 - clang
         - os: osx
           language: generic
