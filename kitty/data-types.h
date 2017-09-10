@@ -221,6 +221,10 @@ typedef struct {
 #define READ_BUF_SZ (1024*1024)
 
 typedef struct {
+    unsigned int x, y;
+} SelectionBoundary;
+
+typedef struct {
     unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
     bool in_progress;
 } Selection;
@@ -228,10 +232,11 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
+    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     Selection selection;
-    bool use_latin1;
+    SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
+    bool use_latin1, selection_updated_once;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     PyObject *callbacks, *is_dirty, *cursor_changed, *scroll_changed;

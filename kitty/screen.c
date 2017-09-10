@@ -1247,10 +1247,6 @@ is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, uns
     return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
 }
 
-typedef struct {
-    unsigned int x, y;
-} SelectionBoundary;
-
 static inline void
 selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
     if (y + self->scrolled_by < ydelta) {
@@ -1278,11 +1274,14 @@ static PyObject*
 apply_selection(Screen *self, PyObject *args) {
     unsigned int size;
     PyObject *l;
-    SelectionBoundary start, end;
+#define start (self->last_rendered_selection_start)
+#define end (self->last_rendered_selection_end)
     if (!PyArg_ParseTuple(args, "O!I", &PyLong_Type, &l, &size)) return NULL;
     float *data = PyLong_AsVoidPtr(l);
     memset(data, 0, size);
     selection_limits_(self, &start, &end);
+    self->last_selection_scrolled_by = self->scrolled_by;
+    self->selection_updated_once = true;
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { Py_RETURN_NONE; }
     for (index_type y = start.y; y <= end.y; y++) {
         Line *line = visual_line_(self, y);
@@ -1292,6 +1291,8 @@ apply_selection(Screen *self, PyObject *args) {
         for (index_type x = (y == start.y ? start.x : 0); x < xlimit; x++) line_start[x] = 1.0;
     }
     Py_RETURN_NONE;
+#undef start
+#undef end
 }
 
 static PyObject*
@@ -1403,10 +1404,11 @@ is_selection_in_progress(Screen *self) {
 }
 
 static PyObject*
-selection_limits(Screen *self) {
+is_selection_dirty(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(self, &start, &end);
-    return Py_BuildValue("(II)(II)", start.x, start.y, end.x, end.y);
+    if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered_selection_start.x || start.y != self->last_rendered_selection_start.y || end.x != self->last_rendered_selection_end.x || end.y != self->last_rendered_selection_end.y || !self->selection_updated_once) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -1519,7 +1521,7 @@ static PyMethodDef methods[] = {
     MND(text_for_selection, METH_NOARGS)
     MND(clear_selection, METH_NOARGS)
     MND(is_selection_in_progress, METH_NOARGS)
-    MND(selection_limits, METH_NOARGS)
+    MND(is_selection_dirty, METH_NOARGS)
     MND(start_selection, METH_VARARGS)
     MND(update_selection, METH_VARARGS)
     MND(scroll, METH_VARARGS)

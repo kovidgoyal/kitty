@@ -96,7 +96,6 @@ class CharGrid:
     def __init__(self, screen, opts):
         self.vao_id = None
         self.screen_reversed = False
-        self.last_rendered_selection = None
         self.render_data = None
         self.data_buffer_size = None
         self.screen = screen
@@ -239,12 +238,9 @@ class CharGrid:
         if self.screen.scroll_changed or self.screen.is_dirty:
             self.update_cell_data(cell_program)
         sg = self.render_data
-        sel = self.screen.selection_limits()
-        selection_changed = sel != self.last_rendered_selection
-        if selection_changed:
+        if self.screen.is_selection_dirty():
             with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
                 self.screen.apply_selection(address, self.selection_buffer_size)
-            self.last_rendered_selection = sel
         return sg
 
     def render_cells(self, sg, cell_program, sprites, invert_colors=False):
