@@ -90,37 +90,6 @@ class Selection:  # {{{
         b = coord(self.end_x, self.end_y, self.end_scrolled_by)
         return (a, b) if a[1] < b[1] or (a[1] == b[1] and a[0] <= b[0]) else (b, a)
 
-    def text(self, linebuf, historybuf):
-        sy = self.start_y - self.start_scrolled_by
-        ey = self.end_y - self.end_scrolled_by
-        if sy == ey and self.start_x == self.end_x:
-            return ''
-        a, b = (sy, self.start_x), (ey, self.end_x)
-        if a > b:
-            a, b = b, a
-
-        def line(y):
-            if y < 0:
-                return historybuf.line(-1 - y)
-            return linebuf.line(y)
-
-        lines = []
-        for y in range(a[0], b[0] + 1):
-            startx, endx = 0, linebuf.xnum - 1
-            if y == a[0]:
-                startx = max(0, min(a[1], endx))
-            if y == b[0]:
-                endx = max(0, min(b[1], endx))
-            l = line(y)
-            is_continued = l.is_continued()
-            if endx - startx >= linebuf.xnum - 1:
-                l = str(l).rstrip(' ')
-            else:
-                l = ''.join(l[x] for x in range(startx, endx + 1))
-            if not is_continued and startx == 0 and len(lines) > 0:
-                l = '\n' + l
-            lines.append(l)
-        return ''.join(lines)
 # }}}
 
 
@@ -312,21 +281,7 @@ class CharGrid:
                 s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
                 s.start_y = s.end_y = y
                 s.in_progress = False
-                if count == 3:
-                    for i in range(self.screen.columns):
-                        if line[i] != ' ':
-                            s.start_x = i
-                            break
-                    else:
-                        s.start_x = 0
-                    for i in range(self.screen.columns):
-                        c = self.screen.columns - 1 - i
-                        if line[c] != ' ':
-                            s.end_x = c
-                            break
-                    else:
-                        s.end_x = self.screen.columns - 1
-                elif count == 2:
+                if count == 2:
                     i = x
                     while i >= 0 and self.word_pat.match(line[i]) is not None:
                         i -= 1
@@ -335,6 +290,9 @@ class CharGrid:
                     while i < self.screen.columns and self.word_pat.match(line[i]) is not None:
                         i += 1
                     s.end_x = i if i == x else i - 1
+                elif count == 3:
+                    s.start_x, xlimit = self.screen.selection_range_for_line(y, self.scrolled_by)
+                    s.end_x = max(s.start_x, xlimit - 1)
             ps = self.text_for_selection()
             if ps:
                 set_primary_selection(ps)
@@ -347,7 +305,8 @@ class CharGrid:
 
     def text_for_selection(self, sel=None):
         s = sel or self.current_selection
-        return s.text(self.screen.linebuf, self.screen.historybuf)
+        start, end = s.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
+        return ''.join(self.screen.text_for_selection(self.scrolled_by, *start, *end))
 
     def prepare_for_render(self, cell_program):
         if self.vao_id is None:
@@ -356,11 +315,12 @@ class CharGrid:
             self.update_cell_data(cell_program)
             self.scroll_changed = False
         sg = self.render_data
-        start, end = sel = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
+        start, end = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
+        sel = start, end, self.scrolled_by
         selection_changed = sel != self.last_rendered_selection
         if selection_changed:
             with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
-                self.screen.apply_selection(address, start[0], start[1], end[0], end[1], self.selection_buffer_size)
+                self.screen.apply_selection(address, self.selection_buffer_size, self.scrolled_by, *start, *end)
             self.last_rendered_selection = sel
         return sg
 

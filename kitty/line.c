@@ -58,29 +58,36 @@ text_at(Line* self, Py_ssize_t xval) {
     return line_text_at(self->cells[xval].ch & CHAR_MASK, self->cells[xval].cc);
 }
 
-static PyObject *
-as_unicode(Line* self) {
-    Py_ssize_t n = 0;
+PyObject*
+unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
+    size_t n = 0;
     static Py_UCS4 buf[4096];
-    index_type xlimit = MIN(sizeof(buf)/sizeof(buf[0]), xlimit_for_line(self));
+    if (leading_char) buf[n++] = leading_char; 
     char_type previous_width = 0;
-    for(index_type i = 0; i < xlimit; i++) {
+    for(index_type i = start; i < limit && n < sizeof(buf)/sizeof(buf[0]) - 4; i++) {
         char_type ch = self->cells[i].ch & CHAR_MASK;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
             ch = ' ';
         }
         buf[n++] = ch;
-        char_type cc = self->cells[i].cc;
-        Py_UCS4 cc1 = cc & CC_MASK, cc2;
-        if (cc1) {
-            buf[n++] = cc1;
-            cc2 = cc >> 16;
-            if (cc2) buf[n++] = cc2;
+        if (include_cc) {
+            char_type cc = self->cells[i].cc;
+            Py_UCS4 cc1 = cc & CC_MASK, cc2;
+            if (cc1) {
+                buf[n++] = cc1;
+                cc2 = cc >> 16;
+                if (cc2) buf[n++] = cc2;
+            }
         }
         previous_width = (self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
+}
+
+static PyObject *
+as_unicode(Line* self) {
+    return unicode_in_range(self, 0, xlimit_for_line(self), true, 0);
 }
 
 static inline bool

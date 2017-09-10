@@ -1078,23 +1078,26 @@ line(Screen *self, PyObject *val) {
     return (PyObject*) self->linebuf->line;
 }
 
+static inline Line*
+visual_line_(Screen *self, index_type y, index_type scrolled_by) {
+    if (scrolled_by) {
+        if (y < scrolled_by) {
+            historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
+            return self->historybuf->line;
+        } 
+        y -= scrolled_by;
+    }
+    linebuf_init_line(self->linebuf, y);
+    return self->linebuf->line;
+}
+
 static PyObject*
 visual_line(Screen *self, PyObject *args) {
     // The line corresponding to the yth visual line, taking into account scrolling
     unsigned int y, scrolled_by;
     if (!PyArg_ParseTuple(args, "II", &y, &scrolled_by)) return NULL;
     if (y >= self->lines) { Py_RETURN_NONE; }
-    if (scrolled_by) {
-        if (y < scrolled_by) {
-            historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
-            Py_INCREF(self->historybuf->line);
-            return (PyObject*) self->historybuf->line;
-        } 
-        y -= scrolled_by;
-    }
-    linebuf_init_line(self->linebuf, y);
-    Py_INCREF(self->linebuf->line);
-    return (PyObject*) self->linebuf->line;
+    return Py_BuildValue("O", visual_line_(self, y, scrolled_by));
 }
  
 static PyObject*
@@ -1229,20 +1232,63 @@ update_cell_data(Screen *self, PyObject *args) {
     return Py_BuildValue("OIO", cursor_changed, scrolled_by, self->modes.mDECSCNM ? Py_True : Py_False);
 }
 
+static inline bool
+is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, unsigned int end_x, unsigned int end_y) {
+    return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
+}
+
 static PyObject*
 apply_selection(Screen *self, PyObject *args) {
-    unsigned int size, startx, endx, starty, endy, i, end;
+    unsigned int size, start_x, end_x, start_y, end_y, scrolled_by;
     PyObject *l;
-    if (!PyArg_ParseTuple(args, "O!IIIII", &PyLong_Type, &l, &startx, &starty, &endx, &endy, &size)) return NULL;
-    if (startx >= self->columns || starty >= self->lines || endx >= self->columns || endy >= self->lines) { Py_RETURN_NONE; }
+    if (!PyArg_ParseTuple(args, "O!IIIIII", &PyLong_Type, &l, &size, &scrolled_by, &start_x, &start_y, &end_x, &end_y)) return NULL;
     float *data = PyLong_AsVoidPtr(l);
     memset(data, 0, size);
-    end = endy * self->columns + endx;
-    i = starty * self->columns + startx;
-    if (i != end) { for(; i <= end; i++) data[i] = 1; }
+    if (is_selection_empty(self, start_x, start_y, end_x, end_y)) { Py_RETURN_NONE; }
+    for (index_type y = start_y; y <= end_y; y++) {
+        Line *line = visual_line_(self, y, scrolled_by);
+        index_type xlimit = xlimit_for_line(line);
+        if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
+        float *line_start = data + self->columns * y;
+        for (index_type x = (y == start_y ? start_x : 0); x < xlimit; x++) line_start[x] = 1.0;
+    }
     Py_RETURN_NONE;
 }
+
+static PyObject*
+text_for_selection(Screen *self, PyObject *args) {
+    unsigned int start_x, end_x, start_y, end_y, scrolled_by;
+    if (!PyArg_ParseTuple(args, "IIIII", &scrolled_by, &start_x, &start_y, &end_x, &end_y)) return NULL;
+    if (is_selection_empty(self, start_x, start_y, end_x, end_y)) return PyTuple_New(0);
+    Py_ssize_t i = 0, num_of_lines = end_y - start_y + 1;
+    PyObject *ans = PyTuple_New(num_of_lines);
+    if (ans == NULL) return PyErr_NoMemory();
+    for (index_type y = start_y; y <= end_y; y++, i++) {
+        Line *line = visual_line_(self, y, scrolled_by);
+        index_type xlimit = xlimit_for_line(line);
+        if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
+        index_type xstart = (y == start_y ? start_x : 0);
+        char leading_char = i > 0 && !line->continued ? '\n' : 0;
+        PyObject *text = unicode_in_range(line, xstart, xlimit, true, leading_char);
+        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+        PyTuple_SET_ITEM(ans, i, text);
+    }
+    return ans;
+}
  
+static PyObject*
+selection_range_for_line(Screen *self, PyObject *args) {
+    unsigned int y, scrolled_by;
+    if (!PyArg_ParseTuple(args, "II", &y, &scrolled_by)) return NULL;
+    if (y >= self->lines) { PyErr_SetString(PyExc_ValueError, "y larger than lines"); return NULL; }
+    Line *line = visual_line_(self, y, scrolled_by);
+    index_type xlimit = line->xnum, xstart = 0;
+    while (xlimit > 0 && CHAR_IS_BLANK(line->cells[xlimit - 1].ch)) xlimit--;
+    while (xstart < xlimit && CHAR_IS_BLANK(line->cells[xstart].ch)) xstart++;
+    return Py_BuildValue("II", (unsigned int)xstart, (unsigned int)xlimit);
+}
+
+
 static 
 PyObject* mark_as_dirty(Screen *self) {
     self->is_dirty = Py_True;
@@ -1328,6 +1374,8 @@ static PyMethodDef methods[] = {
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
     MND(apply_selection, METH_VARARGS)
+    MND(selection_range_for_line, METH_VARARGS)
+    MND(text_for_selection, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     {"update_cell_data", (PyCFunction)update_cell_data, METH_VARARGS, ""},

@@ -50,10 +50,7 @@ static inline index_type
 xlimit_for_line(Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
-        while (xlimit != 0) {
-            if ((line->cells[xlimit - 1].ch & CHAR_MASK) != BLANK_CHAR) break;
-            xlimit--;
-        }
+        while (xlimit > 0 && (line->cells[xlimit - 1].ch & CHAR_MASK) == BLANK_CHAR) xlimit--;
     }
     return xlimit;
 }
@@ -66,6 +63,7 @@ void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
 unsigned int line_length(Line *self);
+PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_clear(LineBuf *, char_type ch);
