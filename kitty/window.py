@@ -17,8 +17,8 @@ from .fast_data_types import (
     ANY_MODE, BRACKETED_PASTE_END, BRACKETED_PASTE_START, GLFW_KEY_DOWN,
     GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_MOD_SHIFT,
     GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4, GLFW_MOUSE_BUTTON_5,
-    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, MOTION_MODE, Screen,
-    glfw_post_empty_event
+    GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, MOTION_MODE,
+    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, glfw_post_empty_event
 )
 from .keys import get_key_map
 from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
@@ -263,7 +263,7 @@ class Window:
             return
         upwards = s > 0
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll(abs(s), upwards)
+            self.screen.scroll(abs(s), upwards)
             glfw_post_empty_event()
         else:
             mode = self.screen.mouse_tracking_mode()
@@ -281,7 +281,7 @@ class Window:
                 self.write_to_child(k * abs(s))
 
     def buf_toggled(self, is_main_linebuf):
-        self.char_grid.scroll('full', False)
+        self.screen.scroll(SCROLL_FULL, False)
 
     def render_cells(self, render_data, program, sprites):
         invert_colors = False
@@ -319,31 +319,31 @@ class Window:
 
     def scroll_line_up(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('line', True)
+            self.screen.scroll(SCROLL_LINE, True)
             glfw_post_empty_event()
 
     def scroll_line_down(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('line', False)
+            self.screen.scroll(SCROLL_LINE, False)
             glfw_post_empty_event()
 
     def scroll_page_up(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('page', True)
+            self.screen.scroll(SCROLL_PAGE, True)
             glfw_post_empty_event()
 
     def scroll_page_down(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('page', False)
+            self.screen.scroll(SCROLL_PAGE, False)
             glfw_post_empty_event()
 
     def scroll_home(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('full', True)
+            self.screen.scroll(SCROLL_FULL, True)
             glfw_post_empty_event()
 
     def scroll_end(self):
         if self.screen.is_main_linebuf():
-            self.char_grid.scroll('full', False)
+            self.screen.scroll(SCROLL_FULL, False)
             glfw_post_empty_event()
     # }}}

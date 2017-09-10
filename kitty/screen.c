@@ -5,6 +5,12 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define SCROLL_LINE -1
+#define SCROLL_PAGE -2
+#define SCROLL_FULL -3
+
+#define EXTRA_INIT PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL);
+
 #include "data-types.h"
 #include "lineops.h"
 #include "screen.h"
@@ -61,6 +67,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->write_buf = NULL;
         self->modes = empty_modes;
         self->cursor_changed = Py_True; self->is_dirty = Py_True;
+        self->scroll_changed = Py_False;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->history_line_added_count = 0;
         RESET_CHARSETS;
@@ -1079,13 +1086,13 @@ line(Screen *self, PyObject *val) {
 }
 
 static inline Line*
-visual_line_(Screen *self, index_type y, index_type scrolled_by) {
-    if (scrolled_by) {
-        if (y < scrolled_by) {
-            historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
+visual_line_(Screen *self, index_type y) {
+    if (self->scrolled_by) {
+        if (y < self->scrolled_by) {
+            historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
             return self->historybuf->line;
         } 
-        y -= scrolled_by;
+        y -= self->scrolled_by;
     }
     linebuf_init_line(self->linebuf, y);
     return self->linebuf->line;
@@ -1094,10 +1101,10 @@ visual_line_(Screen *self, index_type y, index_type scrolled_by) {
 static PyObject*
 visual_line(Screen *self, PyObject *args) {
     // The line corresponding to the yth visual line, taking into account scrolling
-    unsigned int y, scrolled_by;
-    if (!PyArg_ParseTuple(args, "II", &y, &scrolled_by)) return NULL;
+    unsigned int y;
+    if (!PyArg_ParseTuple(args, "I", &y)) return NULL;
     if (y >= self->lines) { Py_RETURN_NONE; }
-    return Py_BuildValue("O", visual_line_(self, y, scrolled_by));
+    return Py_BuildValue("O", visual_line_(self, y));
 }
  
 static PyObject*
@@ -1214,22 +1221,22 @@ update_cell_data(Screen *self, PyObject *args) {
     PyObject *dp;
     uint8_t *data;
     int force_screen_refresh;
-    unsigned int scrolled_by;
     unsigned int history_line_added_count = self->history_line_added_count;
-    if (!PyArg_ParseTuple(args, "O!Ip", &PyLong_Type, &dp, &scrolled_by, &force_screen_refresh)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!p", &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
     data = PyLong_AsVoidPtr(dp);
     PyObject *cursor_changed = self->cursor_changed;
-    if (scrolled_by) scrolled_by = MIN(scrolled_by + history_line_added_count, self->historybuf->count);
+    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     reset_dirty(self);
-    for (index_type y = 0; y < MIN(self->lines, scrolled_by); y++) {
-        historybuf_init_line(self->historybuf, scrolled_by - 1 - y, self->historybuf->line);
+    self->scroll_changed = Py_False;
+    for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
+        historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
         update_line_data(self->historybuf->line, y, data);
     }
-    for (index_type y = scrolled_by; y < self->lines; y++) {
-        linebuf_init_line(self->linebuf, y - scrolled_by);
+    for (index_type y = self->scrolled_by; y < self->lines; y++) {
+        linebuf_init_line(self->linebuf, y - self->scrolled_by);
         update_line_data(self->linebuf->line, y, data);
     }
-    return Py_BuildValue("OIO", cursor_changed, scrolled_by, self->modes.mDECSCNM ? Py_True : Py_False);
+    return Py_BuildValue("OO", cursor_changed, self->modes.mDECSCNM ? Py_True : Py_False);
 }
 
 static inline bool
@@ -1239,14 +1246,14 @@ is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, uns
 
 static PyObject*
 apply_selection(Screen *self, PyObject *args) {
-    unsigned int size, start_x, end_x, start_y, end_y, scrolled_by;
+    unsigned int size, start_x, end_x, start_y, end_y;
     PyObject *l;
-    if (!PyArg_ParseTuple(args, "O!IIIIII", &PyLong_Type, &l, &size, &scrolled_by, &start_x, &start_y, &end_x, &end_y)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!IIIII", &PyLong_Type, &l, &size, &start_x, &start_y, &end_x, &end_y)) return NULL;
     float *data = PyLong_AsVoidPtr(l);
     memset(data, 0, size);
     if (is_selection_empty(self, start_x, start_y, end_x, end_y)) { Py_RETURN_NONE; }
     for (index_type y = start_y; y <= end_y; y++) {
-        Line *line = visual_line_(self, y, scrolled_by);
+        Line *line = visual_line_(self, y);
         index_type xlimit = xlimit_for_line(line);
         if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
         float *line_start = data + self->columns * y;
@@ -1257,14 +1264,14 @@ apply_selection(Screen *self, PyObject *args) {
 
 static PyObject*
 text_for_selection(Screen *self, PyObject *args) {
-    unsigned int start_x, end_x, start_y, end_y, scrolled_by;
-    if (!PyArg_ParseTuple(args, "IIIII", &scrolled_by, &start_x, &start_y, &end_x, &end_y)) return NULL;
+    unsigned int start_x, end_x, start_y, end_y;
+    if (!PyArg_ParseTuple(args, "IIII", &start_x, &start_y, &end_x, &end_y)) return NULL;
     if (is_selection_empty(self, start_x, start_y, end_x, end_y)) return PyTuple_New(0);
     Py_ssize_t i = 0, num_of_lines = end_y - start_y + 1;
     PyObject *ans = PyTuple_New(num_of_lines);
     if (ans == NULL) return PyErr_NoMemory();
     for (index_type y = start_y; y <= end_y; y++, i++) {
-        Line *line = visual_line_(self, y, scrolled_by);
+        Line *line = visual_line_(self, y);
         index_type xlimit = xlimit_for_line(line);
         if (y == end_y) xlimit = MIN(end_x + 1, xlimit);
         index_type xstart = (y == start_y ? start_x : 0);
@@ -1278,10 +1285,10 @@ text_for_selection(Screen *self, PyObject *args) {
  
 static PyObject*
 selection_range_for_line(Screen *self, PyObject *args) {
-    unsigned int y, scrolled_by;
-    if (!PyArg_ParseTuple(args, "II", &y, &scrolled_by)) return NULL;
+    unsigned int y;
+    if (!PyArg_ParseTuple(args, "I", &y)) return NULL;
     if (y >= self->lines) { PyErr_SetString(PyExc_ValueError, "y larger than lines"); return NULL; }
-    Line *line = visual_line_(self, y, scrolled_by);
+    Line *line = visual_line_(self, y);
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && CHAR_IS_BLANK(line->cells[xlimit - 1].ch)) xlimit--;
     while (xstart < xlimit && CHAR_IS_BLANK(line->cells[xstart].ch)) xstart++;
@@ -1298,13 +1305,13 @@ has_char(int kind, void *data, Py_ssize_t sz, char_type ch) {
 
 static PyObject*
 selection_range_for_word(Screen *self, PyObject *args) {
-    unsigned int x, y, scrolled_by;
+    unsigned int x, y;
     PyObject *extra_chars;
-    if (!PyArg_ParseTuple(args, "IIIU", &x, &y, &scrolled_by, &extra_chars)) return NULL;
+    if (!PyArg_ParseTuple(args, "IIU", &x, &y, &extra_chars)) return NULL;
     if (PyUnicode_READY(extra_chars) != 0) return NULL;
     if (y >= self->lines) { PyErr_SetString(PyExc_ValueError, "y larger than lines"); return NULL; }
     if (x >= self->columns) { PyErr_SetString(PyExc_ValueError, "x larger than columns"); return NULL; }
-    Line *line = visual_line_(self, y, scrolled_by);
+    Line *line = visual_line_(self, y);
 #define is_ok(x) (is_word_char((line->cells[x].ch) & CHAR_MASK) || has_char(PyUnicode_KIND(extra_chars), PyUnicode_DATA(extra_chars), PyUnicode_GET_LENGTH(extra_chars), (line->cells[x].ch) & CHAR_MASK))
     if (!is_ok(x)) Py_BuildValue("II", x, x + 1);
     unsigned int start = x, end = x;
@@ -1314,6 +1321,38 @@ selection_range_for_word(Screen *self, PyObject *args) {
 #undef is_ok
 }
 
+static PyObject*
+scroll(Screen *self, PyObject *args) {
+    int amt, upwards;
+    if (!PyArg_ParseTuple(args, "ip", &amt, &upwards)) return NULL;
+    switch(amt) {
+        case SCROLL_LINE:
+            amt = 1;
+            break;
+        case SCROLL_PAGE:
+            amt = self->lines - 1;
+            break;
+        case SCROLL_FULL:
+            amt = self->historybuf->count;
+            break;
+        default:
+            amt = MAX(0, amt);
+            break;
+    }
+    if (!upwards) {
+        amt = MIN((unsigned int)amt, self->scrolled_by);
+        amt *= -1;
+    }
+    if (amt != 0) {
+        unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
+        if (new_scroll != self->scrolled_by) {
+            self->scrolled_by = new_scroll;
+            self->scroll_changed = Py_True;
+            Py_RETURN_TRUE;
+        }
+    }
+    Py_RETURN_FALSE;
+}
 
 static 
 PyObject* mark_as_dirty(Screen *self) {
@@ -1403,6 +1442,7 @@ static PyMethodDef methods[] = {
     MND(selection_range_for_line, METH_VARARGS)
     MND(selection_range_for_word, METH_VARARGS)
     MND(text_for_selection, METH_VARARGS)
+    MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     {"update_cell_data", (PyCFunction)update_cell_data, METH_VARARGS, ""},
@@ -1432,11 +1472,13 @@ static PyGetSetDef getsetters[] = {
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
     {"cursor_changed", T_OBJECT_EX, offsetof(Screen, cursor_changed), 0, "cursor_changed"},
+    {"scroll_changed", T_OBJECT, offsetof(Screen, scroll_changed), 0, "scroll_changed"},
     {"is_dirty", T_OBJECT_EX, offsetof(Screen, is_dirty), 0, "is_dirty"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},
     {"historybuf", T_OBJECT_EX, offsetof(Screen, historybuf), READONLY, "historybuf"},
+    {"scrolled_by", T_UINT, offsetof(Screen, scrolled_by), READONLY, "scrolled_by"},
     {"lines", T_UINT, offsetof(Screen, lines), READONLY, "lines"},
     {"columns", T_UINT, offsetof(Screen, columns), READONLY, "columns"},
     {"margin_top", T_UINT, offsetof(Screen, margin_top), READONLY, "margin_top"},

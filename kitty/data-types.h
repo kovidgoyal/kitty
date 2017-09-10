@@ -223,12 +223,12 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, charset;
+    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     bool use_latin1;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
-    PyObject *callbacks, *is_dirty, *cursor_changed;
+    PyObject *callbacks, *is_dirty, *cursor_changed, *scroll_changed;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     HistoryBuf *historybuf;
     unsigned int history_line_added_count;

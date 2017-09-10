@@ -126,10 +126,8 @@ class CharGrid:
         self.vao_id = None
         self.current_selection = Selection()
         self.screen_reversed = False
-        self.scroll_changed = False
         self.last_rendered_selection = None
         self.render_data = None
-        self.scrolled_by = 0
         self.data_buffer_size = None
         self.screen = screen
         self.opts = opts
@@ -174,23 +172,13 @@ class CharGrid:
         if dirtied:
             self.screen.mark_as_dirty()
 
-    def scroll(self, amt, upwards=True):
-        if not isinstance(amt, int):
-            amt = {'line': 1, 'page': self.screen.lines - 1, 'full': self.screen.historybuf.count}[amt]
-        if not upwards:
-            amt *= -1
-        y = max(0, min(self.scrolled_by + amt, self.screen.historybuf.count))
-        if y != self.scrolled_by:
-            self.scrolled_by = y
-            self.scroll_changed = True
-
     def update_cell_data(self, cell_program):
         if self.data_buffer_size is None:
             return
         clear_selection = self.screen.is_dirty
         with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
-            cursor_changed, self.scrolled_by, self.screen_reversed = self.screen.update_cell_data(
-                address, self.scrolled_by, False)
+            cursor_changed, self.screen_reversed = self.screen.update_cell_data(
+                address, False)
 
         if clear_selection:
             self.current_selection.clear()
@@ -214,12 +202,12 @@ class CharGrid:
         if is_press:
             self.current_selection.start_x = self.current_selection.end_x = x
             self.current_selection.start_y = self.current_selection.end_y = y
-            self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.scrolled_by
+            self.current_selection.start_scrolled_by = self.current_selection.end_scrolled_by = self.screen.scrolled_by
             self.current_selection.in_progress = True
         elif self.current_selection.in_progress:
             self.current_selection.end_x = x
             self.current_selection.end_y = y
-            self.current_selection.end_scrolled_by = self.scrolled_by
+            self.current_selection.end_scrolled_by = self.screen.scrolled_by
             if is_press is False:
                 self.current_selection.in_progress = False
                 ps = self.text_for_selection()
@@ -229,7 +217,7 @@ class CharGrid:
     def has_url_at(self, x, y):
         x, y = self.cell_for_pos(x, y)
         if x is not None:
-            l = self.screen_line(y)
+            l = self.screen.visual_line(y)
             if l is not None:
                 text = str(l)
                 for m in self.url_pat.finditer(text):
@@ -240,7 +228,7 @@ class CharGrid:
     def click_url(self, x, y):
         x, y = self.cell_for_pos(x, y)
         if x is not None:
-            l = self.screen_line(y)
+            l = self.screen.visual_line(y)
             if l is not None:
                 text = str(l)
                 for m in self.url_pat.finditer(text):
@@ -258,24 +246,20 @@ class CharGrid:
                         if url:
                             open_url(url, self.opts.open_url_with)
 
-    def screen_line(self, y):
-        ' Return the Line object corresponding to the yth line on the rendered screen '
-        return self.screen.visual_line(y, self.scrolled_by)
-
     def multi_click(self, count, x, y):
         x, y = self.cell_for_pos(x, y)
         if x is not None:
-            line = self.screen_line(y)
+            line = self.screen.visual_line(y)
             if line is not None and count in (2, 3):
                 s = self.current_selection
                 s.start_scrolled_by = s.end_scrolled_by = self.scrolled_by
                 s.start_y = s.end_y = y
                 s.in_progress = False
                 if count == 2:
-                    s.start_x, xlimit = self.screen.selection_range_for_word(x, y, self.scrolled_by, self.opts.select_by_word_characters)
+                    s.start_x, xlimit = self.screen.selection_range_for_word(x, y, self.opts.select_by_word_characters)
                     s.end_x = max(s.start_x, xlimit - 1)
                 elif count == 3:
-                    s.start_x, xlimit = self.screen.selection_range_for_line(y, self.scrolled_by)
+                    s.start_x, xlimit = self.screen.selection_range_for_line(y)
                     s.end_x = max(s.start_x, xlimit - 1)
             ps = self.text_for_selection()
             if ps:
@@ -289,22 +273,21 @@ class CharGrid:
 
     def text_for_selection(self, sel=None):
         s = sel or self.current_selection
-        start, end = s.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
-        return ''.join(self.screen.text_for_selection(self.scrolled_by, *start, *end))
+        start, end = s.limits(self.screen.scrolled_by, self.screen.lines, self.screen.columns)
+        return ''.join(self.screen.text_for_selection(*start, *end))
 
     def prepare_for_render(self, cell_program):
         if self.vao_id is None:
             self.vao_id = cell_program.create_sprite_map()
-        if self.scroll_changed or self.screen.is_dirty:
+        if self.screen.scroll_changed or self.screen.is_dirty:
             self.update_cell_data(cell_program)
-            self.scroll_changed = False
         sg = self.render_data
-        start, end = self.current_selection.limits(self.scrolled_by, self.screen.lines, self.screen.columns)
-        sel = start, end, self.scrolled_by
+        start, end = self.current_selection.limits(self.screen.scrolled_by, self.screen.lines, self.screen.columns)
+        sel = start, end, self.screen.scrolled_by
         selection_changed = sel != self.last_rendered_selection
         if selection_changed:
             with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
-                self.screen.apply_selection(address, self.selection_buffer_size, self.scrolled_by, *start, *end)
+                self.screen.apply_selection(address, self.selection_buffer_size, *start, *end)
             self.last_rendered_selection = sel
         return sg
 
@@ -313,7 +296,7 @@ class CharGrid:
 
     def render_cursor(self, sg, cursor_program, is_focused):
         cursor = self.current_cursor
-        if not self.screen.cursor_visible or self.scrolled_by:
+        if not self.screen.cursor_visible or self.screen.scrolled_by:
             return
 
         def width(w=2, vert=True):

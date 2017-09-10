@@ -263,7 +263,7 @@ class Boss:
                 passthrough = f()
                 if not passthrough:
                     return
-        if window.char_grid.scrolled_by and key not in MODIFIER_KEYS and action == GLFW_PRESS:
+        if window.screen.scrolled_by and key not in MODIFIER_KEYS and action == GLFW_PRESS:
             window.scroll_end()
         data = get_sent_data(
             self.opts.send_text_map, key, scancode, mods, window, action
