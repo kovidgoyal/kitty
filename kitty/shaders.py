@@ -10,13 +10,13 @@ from ctypes import addressof, c_char, sizeof
 from functools import lru_cache
 
 from .fast_data_types import (
-    BOLD, GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
+    GL_ARRAY_BUFFER, GL_CLAMP_TO_EDGE, GL_COMPILE_STATUS, GL_FLOAT,
     GL_FRAGMENT_SHADER, GL_LINK_STATUS, GL_MAX_ARRAY_TEXTURE_LAYERS,
     GL_MAX_TEXTURE_SIZE, GL_NEAREST, GL_R8, GL_RED, GL_STREAM_DRAW,
     GL_TEXTURE0, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER, GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TRUE,
     GL_UNIFORM_BUFFER, GL_UNPACK_ALIGNMENT, GL_UNSIGNED_BYTE, GL_VERTEX_SHADER,
-    GL_WRITE_ONLY, ITALIC, copy_image_sub_data, get_uniform_block_offsets,
+    GL_WRITE_ONLY, copy_image_sub_data, get_uniform_block_offsets,
     get_uniform_block_size, glActiveTexture, glAttachShader, glBindBuffer,
     glBindBufferBase, glBindTexture, glBindVertexArray, glCompileShader,
     glCopyImageSubData, glCreateProgram, glCreateShader, glDeleteBuffer,
@@ -36,8 +36,6 @@ from .utils import safe_print
 
 GL_VERSION = (3, 3)
 VERSION = GL_VERSION[0] * 100 + GL_VERSION[1] * 10
-ITALIC_MASK = 1 << ITALIC
-BOLD_MASK = 1 << BOLD
 UBO = namedtuple('UBO', 'size index offsets buf_id')
 BASE = os.path.dirname(os.path.abspath(__file__))
 
