@@ -6,7 +6,6 @@ from gettext import gettext as _
 from time import monotonic
 from weakref import WeakValueDictionary
 
-from .borders import BordersProgram
 from .char_grid import load_shader_programs
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
@@ -121,7 +120,6 @@ class Boss:
         self.sprites = Sprites()
         self.sprites.do_layout(cell_size.width, cell_size.height)
         self.cell_program = load_shader_programs()
-        self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()

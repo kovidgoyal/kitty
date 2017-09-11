@@ -20,6 +20,7 @@ from .utils import color_as_int
 from .window import Window
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
+borders = None
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None):
@@ -29,11 +30,13 @@ def SpecialWindow(cmd, stdin=None, override_title=None):
 class Tab:
 
     def __init__(self, opts, args, on_title_change, session_tab=None, special_window=None):
+        global borders
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
         self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or opts.enabled_layouts)
-        self.borders = Borders(opts)
+        if borders is None:
+            borders = Borders(opts)
         self.windows = deque()
         self.active_window_idx = 0
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
@@ -41,7 +44,7 @@ class Tab:
         if session_tab is None:
             self.cwd = args.directory
             l = self.enabled_layouts[0]
-            self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[l](opts, borders.border_width, self.windows)
             if special_window is None:
                 self.new_window()
             else:
@@ -49,7 +52,7 @@ class Tab:
         else:
             self.cwd = session_tab.cwd or args.directory
             l = session_tab.layout
-            self.current_layout = all_layouts[l](opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[l](opts, borders.border_width, self.windows)
             self.startup(session_tab)
 
     def startup(self, session_tab):
@@ -85,8 +88,8 @@ class Tab:
 
     def relayout_borders(self):
         tm = get_boss().tab_manager
-        self.borders(self.windows, self.active_window, self.current_layout, tm.blank_rects,
-                     self.current_layout.needs_window_borders and len(self.windows) > 1)
+        borders(self.windows, self.active_window, self.current_layout, tm.blank_rects,
+                self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
@@ -95,7 +98,7 @@ class Tab:
             except Exception:
                 idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
-            self.current_layout = all_layouts[nl](self.opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[nl](self.opts, borders.border_width, self.windows)
             for w in self.windows:
                 w.is_visible_in_layout = True
             self.relayout()
@@ -193,7 +196,7 @@ class Tab:
         self.windows = deque()
 
     def render(self):
-        self.borders.render(get_boss().borders_program)
+        borders.render()
 
     def __repr__(self):
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
@@ -278,7 +281,7 @@ class TabBar:
                 self.vao_id = cell_program.create_sprite_map()
             if self.dirty:
                 with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
-                    self.screen.update_cell_data(address, 0, True)
+                    self.screen.update_cell_data(address, True)
                 if self.layout_changed:
                     with cell_program.mapped_vertex_data(self.vao_id, self.selection_buf_size, bufnum=1) as address:
                         memset(address, 0, self.selection_buf_size)

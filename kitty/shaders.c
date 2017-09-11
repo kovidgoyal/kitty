@@ -201,10 +201,11 @@ create_buffer(GLenum usage) {
     glGenBuffers(1, &buffer_id);
     if (set_error_from_gl()) return -1;
     for (size_t i = 0; i < sizeof(buffers)/sizeof(buffers[0]); i++) {
-        if (!buffers[i].id) {
+        if (buffers[i].id == 0) {
             buffers[i].id = buffer_id;
             buffers[i].size = 0;
             buffers[i].usage = usage;
+            return i;
         }
     }
     glDeleteBuffers(1, &buffer_id);
@@ -283,13 +284,13 @@ create_vao() {
 }
 
 static bool
-add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
+add_buffer_to_vao(ssize_t vao_idx) {
     VAO* vao = vaos + vao_idx;
     if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) {
         set_local_error("too many buffers in a single VAO");
         return false;
     }
-    ssize_t buf = create_buffer(usage);
+    ssize_t buf = create_buffer(GL_ARRAY_BUFFER);
     if (buf < 0) return false;
     vao->buffers[vao->num_buffers++] = buf;
     return true;
@@ -351,12 +352,11 @@ unbind_vertex_array() {
 }
 
 static void*
-map_vao_buffer(ssize_t vao_idx, size_t bufnum, GLsizeiptr size, GLenum usage, GLenum access) {
+map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum usage, GLenum access) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     bind_buffer(buf_idx);
     alloc_buffer(buf_idx, size, usage);
     void *ans = map_buffer(buf_idx, access);
-    unbind_buffer(buf_idx);
     return ans;
 }
 
@@ -364,6 +364,7 @@ static void
 unmap_vao_buffer(ssize_t vao_idx, size_t bufnum) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     unmap_buffer(buf_idx);
+    unbind_buffer(buf_idx);
 }
 
 // }}}
@@ -387,6 +388,7 @@ init_cursor_program() {
         else { set_local_error("Unknown uniform in cursor program"); return false; }
     }
     if (left) { set_local_error("Left over uniforms in cursor program"); return false; }
+#undef SET_LOC
     return true;
 }
 
@@ -400,6 +402,75 @@ draw_cursor(bool semi_transparent, bool is_focused, color_type color, float alph
     glDrawArrays(is_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4);
     unbind_vertex_array(); unbind_program();
     if (semi_transparent) glDisable(GL_BLEND);
+}
+// }}}
+
+// Borders {{{
+enum BorderUniforms { BORDER_viewport, NUM_BORDER_UNIFORMS };
+static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
+static ssize_t border_vertex_array;
+static GLsizei num_border_rects = 0;
+static GLuint rect_buf[5 * 1024];
+static GLuint *rect_pos = NULL;
+
+static bool
+init_borders_program() {
+    Program *p = programs + BORDERS_PROGRAM;
+    int left = NUM_BORDER_UNIFORMS;
+    border_vertex_array = create_vao();
+    if (set_error_from_gl()) return false;
+    for (int i = 0; i < p->num_of_uniforms; i++, left--) {
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].id
+        SET_LOC(viewport);
+        else { set_local_error("Unknown uniform in borders program"); return false; }
+    }
+    if (left) { set_local_error("Left over uniforms in borders program"); return false; }
+#undef SET_LOC
+    add_buffer_to_vao(border_vertex_array);
+    if (set_error_from_gl()) return false;
+    add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect",
+            /*size=*/4, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/0, /*divisor=*/1);
+    if (set_error_from_gl()) return false;
+    add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect_color",
+            /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/(void*)(sizeof(GLuint)*4), /*divisor=*/1);
+    if (set_error_from_gl()) return false;
+    return true;
+}
+
+static void
+draw_borders() {
+    if (num_border_rects) {
+        bind_program(BORDERS_PROGRAM);
+        bind_vertex_array(border_vertex_array);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
+        unbind_vertex_array();
+        unbind_program();
+    }
+}
+
+static void
+add_borders_rect(GLuint left, GLuint top, GLuint right, GLuint bottom, GLuint color) {
+    if (!left && !top && !right && !bottom) { num_border_rects = 0;  rect_pos = rect_buf; return; }
+    num_border_rects++;
+    *(rect_pos++) = left;
+    *(rect_pos++) = top;
+    *(rect_pos++) = right;
+    *(rect_pos++) = bottom;
+    *(rect_pos++) = color;
+}
+
+static void
+send_borders_rects(GLuint vw, GLuint vh) {
+    if (num_border_rects) {
+        size_t sz = sizeof(GLuint) * 5 * num_border_rects;
+        void *borders_buf_address = map_vao_buffer(border_vertex_array, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
+        if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
+        unmap_vao_buffer(border_vertex_array, 0);
+    }
+    bind_program(BORDERS_PROGRAM);
+    printf(gl_strerror(glGetError()));
+    glUniform2ui(border_uniform_locations[BORDER_viewport], vw, vh);
+    unbind_program();
 }
 // }}}
 
@@ -450,13 +521,14 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
 end:
     if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
+    set_error_from_gl();
     translate_error();
     if (PyErr_Occurred()) { glDeleteProgram(programs[which].id); programs[which].id = 0; return NULL;}
     return Py_BuildValue("I", programs[which].id);
     Py_RETURN_NONE;
 }
 
-#define CHECK_ERROR_ALWAYS { translate_error(); if (PyErr_Occurred()) return NULL; }
+#define CHECK_ERROR_ALWAYS { set_error_from_gl(); translate_error(); if (PyErr_Occurred()) return NULL; }
 #define CHECK_ERROR if (_enable_error_checking) CHECK_ERROR_ALWAYS
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
@@ -466,6 +538,7 @@ end:
 #define TWO_INT(name) PYWRAP1(name) { int a, b; PA("ii", &a, &b); name(a, b); CHECK_ERROR; Py_RETURN_NONE; } 
 #define NO_ARG(name) PYWRAP0(name) { name(); CHECK_ERROR; Py_RETURN_NONE; }
 #define NO_ARG_CHECK(name) PYWRAP0(name) { name(); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; }
+#define ONE_INT_CHECK(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; } 
 
 ONE_INT(bind_program)
 NO_ARG(unbind_program)
@@ -477,29 +550,29 @@ PYWRAP0(create_vao) {
 }
 
 ONE_INT(remove_vao)
-
-PYWRAP1(add_buffer_to_vao) {
-    int vao_idx, usage;
-    PA("ii", &vao_idx, &usage);
-    if (!add_buffer_to_vao(vao_idx, usage)) return NULL;
-    Py_RETURN_NONE;
-}
+ONE_INT_CHECK(add_buffer_to_vao)
 
 PYWRAP2(add_attribute_to_vao) {
     int program, vao, data_type = GL_FLOAT, size = 3;
     char *name;
     unsigned int stride = 0, divisor = 0;
-    PyObject *offset;
+    PyObject *offset = NULL;
     static char* keywords[] = {"program", "vao", "name", "size", "dtype", "stride", "offset", "divisor", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "i i s | i i I O! I", keywords, &program, &vao, &name, &size, &data_type, &stride, &offset, &PyLong_Type, &divisor)) return NULL;
-    if (!add_attribute_to_vao(program, vao, name, size, data_type, stride, PyLong_AsVoidPtr(offset), divisor)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "iis|iiIO!I", keywords, &program, &vao, &name, &size, &data_type, &stride, &PyLong_Type, &offset, &divisor)) return NULL;
+    if (!add_attribute_to_vao(program, vao, name, size, data_type, stride, offset ? PyLong_AsVoidPtr(offset) : NULL, divisor)) { translate_error(); return NULL; }
     Py_RETURN_NONE;
 }
 
 ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
 TWO_INT(unmap_vao_buffer)
-PYWRAP1(map_vao_buffer) { int a,b,c,d,e; PA("iiiii", &a, &b, &c, &d, &e); void *ans = map_vao_buffer(a, b, c, d, e); CHECK_ERROR; return PyLong_FromVoidPtr(ans); }
+PYWRAP1(map_vao_buffer) {
+    int vao_idx, bufnum=0, size, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY;
+    PA("ii|iii", &vao_idx, &size, &bufnum, &usage, &access); 
+    void *ans = map_vao_buffer(vao_idx, size, bufnum, usage, access); 
+    CHECK_ERROR;
+    return PyLong_FromVoidPtr(ans); 
+}
 
 NO_ARG_CHECK(init_cursor_program)
 PYWRAP1(draw_cursor) {
@@ -512,6 +585,11 @@ PYWRAP1(draw_cursor) {
     Py_RETURN_NONE;
 }
 
+NO_ARG_CHECK(init_borders_program)
+NO_ARG(draw_borders)
+PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); CHECK_ERROR; Py_RETURN_NONE; }
+TWO_INT(send_borders_rects)
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
@@ -520,8 +598,8 @@ static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
     MW(remove_vao, METH_O),
-    MW(add_buffer_to_vao, METH_VARARGS),
-    MW(add_attribute_to_vao, METH_VARARGS),
+    MW(add_buffer_to_vao, METH_O),
+    MW(add_attribute_to_vao, METH_VARARGS | METH_KEYWORDS),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
     MW(map_vao_buffer, METH_VARARGS),
@@ -530,6 +608,10 @@ static PyMethodDef module_methods[] = {
     MW(unbind_program, METH_NOARGS),
     MW(init_cursor_program, METH_NOARGS),
     MW(draw_cursor, METH_VARARGS),
+    MW(init_borders_program, METH_NOARGS),
+    MW(draw_borders, METH_NOARGS),
+    MW(add_borders_rect, METH_VARARGS),
+    MW(send_borders_rects, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
