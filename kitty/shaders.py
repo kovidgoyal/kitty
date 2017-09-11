@@ -35,7 +35,6 @@ UBO = namedtuple('UBO', 'size index offsets buf_id')
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
-@lru_cache()
 def load_shaders(name):
     vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
     frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)

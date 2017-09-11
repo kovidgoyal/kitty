@@ -105,9 +105,21 @@ glew_init(PyObject UNUSED *self) {
 // }}}
 
 // Programs {{{
-enum Program { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
+enum ProgramNames { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
-static GLuint program_ids[NUM_PROGRAMS] = {0};
+typedef struct {
+    char name[256];
+    GLint size;
+    GLenum type;
+} Uniform;
+
+typedef struct {
+    GLuint id;
+    Uniform uniforms[256];
+    GLint num_of_uniforms;
+} Program;
+
+static Program programs[NUM_PROGRAMS] = {{0}};
 
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {
@@ -130,14 +142,37 @@ compile_shader(GLenum shader_type, const char *source) {
     return shader_id;
 }
 
+
+static inline bool
+init_uniforms(int program) {
+    Program *p = programs + program;
+    glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &(p->num_of_uniforms));
+    if (set_error_from_gl()) return false;
+    for (GLint i = 0; i < p->num_of_uniforms; i++) {
+        Uniform *u = p->uniforms + i;
+        glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
+        if (set_error_from_gl()) return false;
+    }
+    return true;
+}
+
+
 static inline GLint
-get_attrib_location(int program, const char *name) {
-    return glGetAttribLocation(program_ids[program], name);
+uniform_location(int program, const char *name) {
+    for (GLint i = 0; i < programs[program].num_of_uniforms; i++) {
+        if (strncmp(programs[program].uniforms[i].name, name, sizeof(programs[program].uniforms[i].name)) == 0) return i;
+    }
+    return -1;
+}
+
+static inline GLint
+attrib_location(int program, const char *name) {
+    return glGetAttribLocation(programs[program].id, name);
 }
 
 static void
 bind_program(int program) {
-    glUseProgram(program_ids[program]);
+    glUseProgram(programs[program].id);
 }
 
 static void
@@ -244,12 +279,12 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
     VAO *vao = vaos + vao_idx;
     static char err[256] = {0};
     if (!vao->num_buffers) { set_local_error("You must create a buffer for this attribute first"); return false; }
-    GLint attrib_location = get_attrib_location(p, name);
+    GLint aloc = attrib_location(p, name);
     if (set_error_from_gl()) return false;
-    if (attrib_location == -1) { snprintf(err, sizeof(err)/sizeof(err[0]), "No attribute named: %s found in this program", name); set_local_error(err); return false; }
+    if (aloc == -1) { snprintf(err, sizeof(err)/sizeof(err[0]), "No attribute named: %s found in this program", name); set_local_error(err); return false; }
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     if (!bind_buffer(buf)) return false;
-    glEnableVertexAttribArray(attrib_location);
+    glEnableVertexAttribArray(aloc);
     if (set_error_from_gl()) return false;
     switch(data_type) {
         case GL_BYTE:
@@ -258,15 +293,15 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
         case GL_UNSIGNED_SHORT:
         case GL_INT:
         case GL_UNSIGNED_INT:
-            glVertexAttribIPointer(attrib_location, size, data_type, stride, offset);
+            glVertexAttribIPointer(aloc, size, data_type, stride, offset);
             break;
         default:
-            glVertexAttribPointer(attrib_location, size, data_type, GL_FALSE, stride, offset);
+            glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset);
             break;
     }
     if (set_error_from_gl()) return false;
     if (divisor) {
-        glVertexAttribDivisor(attrib_location, divisor);
+        glVertexAttribDivisor(aloc, divisor);
         if (set_error_from_gl()) return false;
     }
     unbind_buffer(buf);
@@ -317,33 +352,34 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     GLuint vertex_shader_id = 0, fragment_shader_id = 0;
     if (!PyArg_ParseTuple(args, "iss", &which, &vertex_shader, &fragment_shader)) return NULL;
     if (which < CELL_PROGRAM || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
-    if (program_ids[which] != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
-    program_ids[which] = glCreateProgram();
-    if (program_ids[which] == 0) { set_error_from_gl(); return NULL; }
+    if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
+    programs[which].id = glCreateProgram();
+    if (programs[which].id == 0) { set_error_from_gl(); return NULL; }
     vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
     if (vertex_shader_id == 0) goto end;
     fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
     if (vertex_shader_id == 0) goto end;
-    glAttachShader(program_ids[which], vertex_shader_id);
+    glAttachShader(programs[which].id, vertex_shader_id);
     if (set_error_from_gl()) goto end;
-    glAttachShader(program_ids[which], fragment_shader_id);
-    glLinkProgram(program_ids[which]);
+    glAttachShader(programs[which].id, fragment_shader_id);
+    glLinkProgram(programs[which].id);
     GLint ret = GL_FALSE;
-    glGetProgramiv(program_ids[which], GL_LINK_STATUS, &ret);
+    glGetProgramiv(programs[which].id, GL_LINK_STATUS, &ret);
     if (ret != GL_TRUE) {
         GLsizei len;
-        glGetProgramInfoLog(program_ids[which], sizeof(glbuf), &len, glbuf);
+        glGetProgramInfoLog(programs[which].id, sizeof(glbuf), &len, glbuf);
         fprintf(stderr, "Failed to compile GLSL shader!\n%s", glbuf);
         PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
         goto end;
     }
+    if (!init_uniforms(which)) goto end;
 
 end:
     if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
     translate_error();
-    if (PyErr_Occurred()) { glDeleteProgram(program_ids[which]); program_ids[which] = 0; return NULL;}
-    return Py_BuildValue("I", program_ids[which]);
+    if (PyErr_Occurred()) { glDeleteProgram(programs[which].id); programs[which].id = 0; return NULL;}
+    return Py_BuildValue("I", programs[which].id);
     Py_RETURN_NONE;
 }
 
