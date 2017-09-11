@@ -30,60 +30,37 @@ static char glbuf[4096];
 #define GL_STACK_OVERFLOW 0x0503
 #endif
 
-static int gl_error = GL_NO_ERROR;
-static const char *local_error = NULL;
+#define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
+#define fatal_msg(msg) fatal("%s", msg);
 
-static inline bool
-set_error_from_gl() {
-    if (gl_error != GL_NO_ERROR) return true;
-    gl_error = glGetError();
-    return gl_error == GL_NO_ERROR ? false : true;
-}
-
-
-static inline void
-set_local_error_(const char* msg, int line_no) {
-    static char buf[256] = {0};
-    if (!local_error) {
-        snprintf(buf, sizeof(buf)/sizeof(buf[0]), "%s (line: %d)", msg, line_no);
-        local_error = buf;
+static void
+check_for_gl_error(int line) {
+#define f(msg) fatal("%s (at line: %d)", msg, line); break;
+    int code = glGetError();
+    switch(code) { 
+        case GL_NO_ERROR: break;
+        case GL_INVALID_ENUM: 
+            f("An enum value is invalid (GL_INVALID_ENUM)"); 
+        case GL_INVALID_VALUE: 
+            f("An numeric value is invalid (GL_INVALID_VALUE)"); 
+        case GL_INVALID_OPERATION: 
+            f("This operation is not allowed in the current state (GL_INVALID_OPERATION)"); 
+        case GL_INVALID_FRAMEBUFFER_OPERATION: 
+            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)"); 
+        case GL_OUT_OF_MEMORY: 
+            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)"); 
+        case GL_STACK_UNDERFLOW: 
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"); 
+        case GL_STACK_OVERFLOW: 
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"); 
+        default: 
+            fatal("An unknown OpenGL error occurred with code: %d (at line: %d)", code, line); 
+            break;
     }
-}
-#define set_local_error(msg) set_local_error_(msg, __LINE__)
-
-static const char*
-gl_strerror(int code) {
-    static char buf[256] = {0};
-    const char *ans = NULL;
-    if (local_error) { ans = local_error; local_error = NULL; }
-    else {
-        switch(code) { 
-            case GL_NO_ERROR: break;
-            case GL_INVALID_ENUM: 
-                ans = "An enum value is invalid (GL_INVALID_ENUM)"; break; 
-            case GL_INVALID_VALUE: 
-                ans = "An numeric value is invalid (GL_INVALID_VALUE)"; break; 
-            case GL_INVALID_OPERATION: 
-                ans = "This operation is not allowed in the current state (GL_INVALID_OPERATION)"; break; 
-            case GL_INVALID_FRAMEBUFFER_OPERATION: 
-                ans = "The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)"; break; 
-            case GL_OUT_OF_MEMORY: 
-                ans = "There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)"; break; 
-            case GL_STACK_UNDERFLOW: 
-                ans = "An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"; break; 
-            case GL_STACK_OVERFLOW: 
-                ans = "An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"; break; 
-            default: 
-                snprintf(buf, sizeof(buf)/sizeof(buf[0]), "An unknown OpenGL error occurred with code: %d", code); break; 
-                ans = buf;
-        }
-    }
-    gl_error = GL_NO_ERROR;
-    return ans;
 }
 
 static bool _enable_error_checking = false;
-
+#define check_gl() { if (_enable_error_checking) check_for_gl_error(__LINE__); }
 
 static PyObject* 
 glew_init(PyObject UNUSED *self) {
@@ -125,11 +102,11 @@ static Program programs[NUM_PROGRAMS] = {{0}};
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {
     GLuint shader_id = glCreateShader(shader_type);
-    if (!shader_id) { set_error_from_gl(); return 0; }
+    check_gl();
     glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
-    if (set_error_from_gl()) { glDeleteShader(shader_id); return 0; }
+    check_gl();
     glCompileShader(shader_id);
-    if (set_error_from_gl()) { glDeleteShader(shader_id); return 0; }
+    check_gl();
     GLint ret = GL_FALSE;
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);
     if (ret != GL_TRUE) {
@@ -144,18 +121,17 @@ compile_shader(GLenum shader_type, const char *source) {
 }
 
 
-static inline bool
+static inline void
 init_uniforms(int program) {
     Program *p = programs + program;
     glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &(p->num_of_uniforms));
-    if (set_error_from_gl()) return false;
+    check_gl();
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
-        if (set_error_from_gl()) return false;
+        check_gl();
         u->id = i;
     }
-    return true;
 }
 
 
@@ -170,17 +146,21 @@ uniform(int program, const char *name) {
 
 static inline GLint
 attrib_location(int program, const char *name) {
-    return glGetAttribLocation(programs[program].id, name);
+    GLint ans = glGetAttribLocation(programs[program].id, name);
+    check_gl();
+    return ans;
 }
 
 static void
 bind_program(int program) {
     glUseProgram(programs[program].id);
+    check_gl();
 }
 
 static void
 unbind_program() {
     glUseProgram(0);
+    check_gl();
 }
 // }}}
 
@@ -199,7 +179,7 @@ static ssize_t
 create_buffer(GLenum usage) {
     GLuint buffer_id;
     glGenBuffers(1, &buffer_id);
-    if (set_error_from_gl()) return -1;
+    check_gl();
     for (size_t i = 0; i < sizeof(buffers)/sizeof(buffers[0]); i++) {
         if (buffers[i].id == 0) {
             buffers[i].id = buffer_id;
@@ -209,29 +189,28 @@ create_buffer(GLenum usage) {
         }
     }
     glDeleteBuffers(1, &buffer_id);
-    set_local_error("too many buffers");
+    fatal("too many buffers");
     return -1;
 }
 
 static void
 delete_buffer(ssize_t buf_idx) {
     glDeleteBuffers(1, &(buffers[buf_idx].id));
+    check_gl();
     buffers[buf_idx].id = 0;
     buffers[buf_idx].size = 0;
 }
 
-static bool
+static void
 bind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, buffers[buf_idx].id);
-    if (set_error_from_gl()) return false;
-    return true;
+    check_gl();
 }
 
-static bool
+static void
 unbind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, 0);
-    if (set_error_from_gl()) return false;
-    return true;
+    check_gl();
 }
 
 static inline void
@@ -240,16 +219,20 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     if (b->size == size) return;
     b->size = size;
     glBufferData(b->usage, size, NULL, usage);
+    check_gl();
 }
 
 static inline void*
 map_buffer(ssize_t idx, GLenum access) {
-    return glMapBuffer(buffers[idx].usage, access);
+    void *ans = glMapBuffer(buffers[idx].usage, access);
+    check_gl();
+    return ans;
 }
 
 static inline void
 unmap_buffer(ssize_t idx) {
     glUnmapBuffer(buffers[idx].usage);
+    check_gl();
 }
 
 // }}}
@@ -268,46 +251,42 @@ static ssize_t
 create_vao() {
     GLuint vao_id;
     glGenVertexArrays(1, &vao_id);
-    if (set_error_from_gl()) return -1;
+    check_gl();
     for (size_t i = 0; i < sizeof(vaos)/sizeof(vaos[0]); i++) {
         if (!vaos[i].id) {
             vaos[i].id = vao_id;
             vaos[i].num_buffers = 0;
             glBindVertexArray(vao_id);
-            if (set_error_from_gl()) return -1;
+            check_gl();
             return i;
         }
     }
     glDeleteVertexArrays(1, &vao_id);
-    set_local_error("too many VAOs");
+    fatal("too many VAOs");
     return -1;
 }
 
-static bool
+static void
 add_buffer_to_vao(ssize_t vao_idx) {
     VAO* vao = vaos + vao_idx;
     if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) {
-        set_local_error("too many buffers in a single VAO");
-        return false;
+        fatal("too many buffers in a single VAO");
+        return;
     }
     ssize_t buf = create_buffer(GL_ARRAY_BUFFER);
-    if (buf < 0) return false;
     vao->buffers[vao->num_buffers++] = buf;
-    return true;
 }
 
-static bool
+static void
 add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
     VAO *vao = vaos + vao_idx;
-    static char err[256] = {0};
-    if (!vao->num_buffers) { set_local_error("You must create a buffer for this attribute first"); return false; }
+    if (!vao->num_buffers) { fatal("You must create a buffer for this attribute first"); return; }
     GLint aloc = attrib_location(p, name);
-    if (set_error_from_gl()) return false;
-    if (aloc == -1) { snprintf(err, sizeof(err)/sizeof(err[0]), "No attribute named: %s found in this program", name); set_local_error(err); return false; }
+    if (aloc == -1) { fatal("No attribute named: %s found in this program", name); return; }
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
-    if (!bind_buffer(buf)) return false;
+    bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
-    if (set_error_from_gl()) return false;
+    check_gl();
     switch(data_type) {
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
@@ -321,13 +300,13 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
             glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset);
             break;
     }
-    if (set_error_from_gl()) return false;
+    check_gl();
     if (divisor) {
         glVertexAttribDivisor(aloc, divisor);
-        if (set_error_from_gl()) return false;
+        check_gl();
     }
     unbind_buffer(buf);
-    return true;
+    return;
 }
 
 static void
@@ -338,17 +317,20 @@ remove_vao(ssize_t vao_idx) {
         delete_buffer(vao->buffers[vao->num_buffers]);
     }
     glDeleteVertexArrays(1, &(vao->id));
+    check_gl();
     vaos[vao_idx].id = 0;
 }
 
 static void
 bind_vertex_array(ssize_t vao_idx) {
     glBindVertexArray(vaos[vao_idx].id);
+    check_gl();
 }
 
 static void
 unbind_vertex_array() {
     glBindVertexArray(0);
+    check_gl();
 }
 
 static void*
@@ -374,34 +356,36 @@ enum CursorUniforms { CURSOR_color, CURSOR_xpos, CURSOR_ypos, NUM_CURSOR_UNIFORM
 static GLint cursor_uniform_locations[NUM_CURSOR_UNIFORMS] = {0};
 static ssize_t cursor_vertex_array;
 
-static bool
+static void
 init_cursor_program() {
     Program *p = programs + CURSOR_PROGRAM;
     int left = NUM_CURSOR_UNIFORMS;
     cursor_vertex_array = create_vao();
-    if (set_error_from_gl()) return false;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
 #define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].id
         SET_LOC(color);
         else SET_LOC(xpos);
         else SET_LOC(ypos);
-        else { set_local_error("Unknown uniform in cursor program"); return false; }
+        else { fatal("Unknown uniform in cursor program"); }
     }
-    if (left) { set_local_error("Left over uniforms in cursor program"); return false; }
+    if (left) { fatal("Left over uniforms in cursor program"); }
 #undef SET_LOC
-    return true;
 }
 
 static void 
 draw_cursor(bool semi_transparent, bool is_focused, color_type color, float alpha, float left, float right, float top, float bottom) {
-    if (semi_transparent) glEnable(GL_BLEND);
+    if (semi_transparent) { glEnable(GL_BLEND); check_gl(); }
     bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array);
     glUniform4f(cursor_uniform_locations[CURSOR_color], ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0, alpha);
+    check_gl();
     glUniform2f(cursor_uniform_locations[CURSOR_xpos], left, right);
+    check_gl();
     glUniform2f(cursor_uniform_locations[CURSOR_ypos], top, bottom);
+    check_gl();
     glDrawArrays(is_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4);
+    check_gl();
     unbind_vertex_array(); unbind_program();
-    if (semi_transparent) glDisable(GL_BLEND);
+    if (semi_transparent) { glDisable(GL_BLEND); check_gl(); }
 }
 // }}}
 
@@ -413,28 +397,23 @@ static GLsizei num_border_rects = 0;
 static GLuint rect_buf[5 * 1024];
 static GLuint *rect_pos = NULL;
 
-static bool
+static void
 init_borders_program() {
     Program *p = programs + BORDERS_PROGRAM;
     int left = NUM_BORDER_UNIFORMS;
     border_vertex_array = create_vao();
-    if (set_error_from_gl()) return false;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
 #define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].id
         SET_LOC(viewport);
-        else { set_local_error("Unknown uniform in borders program"); return false; }
+        else { fatal("Unknown uniform in borders program"); return; }
     }
-    if (left) { set_local_error("Left over uniforms in borders program"); return false; }
+    if (left) { fatal("Left over uniforms in borders program"); return; }
 #undef SET_LOC
     add_buffer_to_vao(border_vertex_array);
-    if (set_error_from_gl()) return false;
     add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect",
             /*size=*/4, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/0, /*divisor=*/1);
-    if (set_error_from_gl()) return false;
     add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect_color",
             /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/(void*)(sizeof(GLuint)*4), /*divisor=*/1);
-    if (set_error_from_gl()) return false;
-    return true;
 }
 
 static void
@@ -443,6 +422,7 @@ draw_borders() {
         bind_program(BORDERS_PROGRAM);
         bind_vertex_array(border_vertex_array);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
+        check_gl();
         unbind_vertex_array();
         unbind_program();
     }
@@ -469,6 +449,7 @@ send_borders_rects(GLuint vw, GLuint vh) {
     }
     bind_program(BORDERS_PROGRAM);
     glUniform2ui(border_uniform_locations[BORDER_viewport], vw, vh);
+    check_gl();
     unbind_program();
 }
 // }}}
@@ -480,14 +461,6 @@ enable_automatic_opengl_error_checking(PyObject UNUSED *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-static inline bool
-translate_error() {
-    if (PyErr_Occurred()) return true;
-    const char *m = gl_strerror(gl_error);
-    if (m != NULL) { PyErr_SetString(PyExc_ValueError, m); return true; }
-    return false;
-}
-
 static PyObject*
 compile_program(PyObject UNUSED *self, PyObject *args) {
     const char *vertex_shader, *fragment_shader;
@@ -497,15 +470,15 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (which < CELL_PROGRAM || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
     programs[which].id = glCreateProgram();
-    if (programs[which].id == 0) { set_error_from_gl(); return NULL; }
+    check_gl();
     vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
-    if (vertex_shader_id == 0) goto end;
     fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
-    if (vertex_shader_id == 0) goto end;
     glAttachShader(programs[which].id, vertex_shader_id);
-    if (set_error_from_gl()) goto end;
+    check_gl();
     glAttachShader(programs[which].id, fragment_shader_id);
+    check_gl();
     glLinkProgram(programs[which].id);
+    check_gl();
     GLint ret = GL_FALSE;
     glGetProgramiv(programs[which].id, GL_LINK_STATUS, &ret);
     if (ret != GL_TRUE) {
@@ -515,29 +488,24 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
         goto end;
     }
-    if (!init_uniforms(which)) goto end;
+    init_uniforms(which);
 
 end:
     if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
-    set_error_from_gl();
-    translate_error();
+    check_gl();
     if (PyErr_Occurred()) { glDeleteProgram(programs[which].id); programs[which].id = 0; return NULL;}
     return Py_BuildValue("I", programs[which].id);
     Py_RETURN_NONE;
 }
 
-#define CHECK_ERROR_ALWAYS { set_error_from_gl(); translate_error(); if (PyErr_Occurred()) return NULL; }
-#define CHECK_ERROR if (_enable_error_checking) CHECK_ERROR_ALWAYS
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
 #define PYWRAP2(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args, PyObject *kw)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
-#define ONE_INT(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); CHECK_ERROR; Py_RETURN_NONE; } 
-#define TWO_INT(name) PYWRAP1(name) { int a, b; PA("ii", &a, &b); name(a, b); CHECK_ERROR; Py_RETURN_NONE; } 
-#define NO_ARG(name) PYWRAP0(name) { name(); CHECK_ERROR; Py_RETURN_NONE; }
-#define NO_ARG_CHECK(name) PYWRAP0(name) { name(); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; }
-#define ONE_INT_CHECK(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; } 
+#define ONE_INT(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); Py_RETURN_NONE; } 
+#define TWO_INT(name) PYWRAP1(name) { int a, b; PA("ii", &a, &b); name(a, b); Py_RETURN_NONE; } 
+#define NO_ARG(name) PYWRAP0(name) { name(); Py_RETURN_NONE; }
 
 ONE_INT(bind_program)
 NO_ARG(unbind_program)
@@ -549,7 +517,7 @@ PYWRAP0(create_vao) {
 }
 
 ONE_INT(remove_vao)
-ONE_INT_CHECK(add_buffer_to_vao)
+ONE_INT(add_buffer_to_vao)
 
 PYWRAP2(add_attribute_to_vao) {
     int program, vao, data_type = GL_FLOAT, size = 3;
@@ -558,7 +526,7 @@ PYWRAP2(add_attribute_to_vao) {
     PyObject *offset = NULL;
     static char* keywords[] = {"program", "vao", "name", "size", "dtype", "stride", "offset", "divisor", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "iis|iiIO!I", keywords, &program, &vao, &name, &size, &data_type, &stride, &PyLong_Type, &offset, &divisor)) return NULL;
-    if (!add_attribute_to_vao(program, vao, name, size, data_type, stride, offset ? PyLong_AsVoidPtr(offset) : NULL, divisor)) { translate_error(); return NULL; }
+    add_attribute_to_vao(program, vao, name, size, data_type, stride, offset ? PyLong_AsVoidPtr(offset) : NULL, divisor);
     Py_RETURN_NONE;
 }
 
@@ -569,24 +537,22 @@ PYWRAP1(map_vao_buffer) {
     int vao_idx, bufnum=0, size, usage=GL_STREAM_DRAW, access=GL_WRITE_ONLY;
     PA("ii|iii", &vao_idx, &size, &bufnum, &usage, &access); 
     void *ans = map_vao_buffer(vao_idx, size, bufnum, usage, access); 
-    CHECK_ERROR;
     return PyLong_FromVoidPtr(ans); 
 }
 
-NO_ARG_CHECK(init_cursor_program)
+NO_ARG(init_cursor_program)
 PYWRAP1(draw_cursor) {
     int semi_transparent, is_focused;
     unsigned int color;
     float alpha, left, right, top, bottom;
     PA("ppIfffff", &semi_transparent, &is_focused, &color, &alpha, &left, &right, &top, &bottom);
     draw_cursor(semi_transparent, is_focused, color, alpha, left, right, top, bottom);
-    CHECK_ERROR;
     Py_RETURN_NONE;
 }
 
-NO_ARG_CHECK(init_borders_program)
+NO_ARG(init_borders_program)
 NO_ARG(draw_borders)
-PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); CHECK_ERROR; Py_RETURN_NONE; }
+PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); Py_RETURN_NONE; }
 TWO_INT(send_borders_rects)
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
