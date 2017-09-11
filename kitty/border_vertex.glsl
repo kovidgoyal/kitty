@@ -17,8 +17,11 @@ const uvec2 pos_map[] = uvec2[4](
     uvec2(LEFT, TOP)   
 );
 
-float to_opengl(uint val, uint sz) {
-    return -1.0 + 2.0 * (float(val) / float(sz)); 
+vec2 to_opengl(uint x, uint y) {
+    return vec2(
+        -1.0 + 2.0 * (float(x) / float(viewport.x)),
+        1.0 - 2.0 * (float(y) / float(viewport.y))
+    );
 }
 
 float to_color(uint c) {
@@ -27,6 +30,6 @@ float to_color(uint c) {
 
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
-    gl_Position = vec4(to_opengl(rect[pos.x], viewport.x), to_opengl(rect[pos.y], viewport.y), 0, 1);
+    gl_Position = vec4(to_opengl(rect[pos.x], rect[pos.y]), 0, 1);
     color = vec3(to_color(rect_color >> 16), to_color(rect_color >> 8), to_color(rect_color));
 }
