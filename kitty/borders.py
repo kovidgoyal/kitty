@@ -6,10 +6,10 @@ from ctypes import addressof
 from functools import partial
 from itertools import chain
 
-from .constants import GLfloat, GLint, GLuint, viewport_size
+from .constants import GLfloat, GLuint, viewport_size
 from .fast_data_types import (
-    GL_STATIC_DRAW, GL_TRIANGLE_FAN, glMultiDrawArrays, glUniform3fv,
-    BORDERS_PROGRAM
+    GL_STATIC_DRAW, GL_TRIANGLE_FAN, glDrawArraysInstanced, glUniform3fv,
+    BORDERS_PROGRAM, GL_UNSIGNED_INT, glUniform2ui
 )
 from .shaders import ShaderProgram, load_shaders
 from .utils import pt_to_px
@@ -19,16 +19,15 @@ def as_color(c):
     return c[0] / 255, c[1] / 255, c[2] / 255
 
 
-def to_opengl(x, y):
-    return -1 + 2 * x / viewport_size.width, 1 - 2 * y / viewport_size.height
+def to_opengl(val, sz):
+    return -1 + 2 * val / sz
 
 
 def as_rect(left, top, right, bottom, color=0):
-    for (x, y) in ((right, top), (right, bottom), (left, bottom), (left, top)):
-        x, y = to_opengl(x, y)
-        yield x
-        yield y
-        yield color
+    yield left
+    yield top
+    yield right
+    yield bottom
 
 
 class BordersProgram(ShaderProgram):
@@ -37,13 +36,14 @@ class BordersProgram(ShaderProgram):
         ShaderProgram.__init__(self, BORDERS_PROGRAM, *load_shaders('border'))
         with self.array_object_creator() as add_attribute:
             self.vao_id = add_attribute.vao_id
-            add_attribute('rect')
+            add_attribute('rect', size=4, dtype=GL_UNSIGNED_INT, divisor=1)
 
     def send_data(self, data):
         self.send_vertex_data(self.vao_id, data, usage=GL_STATIC_DRAW)
 
     def set_colors(self, color_buf):
         glUniform3fv(self.uniform_location('colors'), 3, addressof(color_buf))
+        glUniform2ui(self.uniform_location('viewport'), viewport_size.width, viewport_size.height)
 
 
 def border_maker(rects):
@@ -112,16 +112,10 @@ class Borders:
                         color, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw)
 
-        self.num_of_rects = len(rects) // 12
-        self.rects = (GLfloat * len(rects))()
-        self.starts = (GLint * self.num_of_rects)()
-        self.counts = (GLuint * self.num_of_rects)()
+        self.num_of_rects = len(rects) // 4
+        self.rects = (GLuint * len(rects))()
         for i, x in enumerate(rects):
             self.rects[i] = x
-            if i % 12 == 0:
-                idx = i // 12
-                self.starts[idx] = i // 3
-                self.counts[idx] = 4
         self.is_dirty = True
         self.can_render = True
 
@@ -134,7 +128,5 @@ class Borders:
                 program.set_colors(self.color_buf)
                 self.is_dirty = False
             with program.bound_vertex_array(program.vao_id):
-                glMultiDrawArrays(
-                    GL_TRIANGLE_FAN,
-                    addressof(self.starts),
-                    addressof(self.counts), self.num_of_rects)
+                glDrawArraysInstanced(
+                    GL_TRIANGLE_FAN, 0, 4, self.num_of_rects)
