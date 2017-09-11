@@ -12,6 +12,7 @@
 #else
 #include <GL/glew.h>
 #endif
+#include <string.h>
 
 static char glbuf[4096];
 
@@ -109,7 +110,7 @@ enum ProgramNames { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS 
 
 typedef struct {
     char name[256];
-    GLint size;
+    GLint size, id;
     GLenum type;
 } Uniform;
 
@@ -152,17 +153,19 @@ init_uniforms(int program) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
         if (set_error_from_gl()) return false;
+        u->id = i;
     }
     return true;
 }
 
 
-static inline GLint
-uniform_location(int program, const char *name) {
+static inline Uniform*
+uniform(int program, const char *name) {
     for (GLint i = 0; i < programs[program].num_of_uniforms; i++) {
-        if (strncmp(programs[program].uniforms[i].name, name, sizeof(programs[program].uniforms[i].name)) == 0) return i;
+        Uniform *u = programs[program].uniforms + i;
+        if (strncmp(u->name, name, sizeof(u->name)/sizeof(u->name[0])) == 0) return u;
     }
-    return -1;
+    return NULL;
 }
 
 static inline GLint
@@ -330,6 +333,41 @@ unbind_vertex_array() {
 }
 // }}}
 
+// Cursor {{{
+enum CursorUniforms { CURSOR_color, CURSOR_xpos, CURSOR_ypos, NUM_CURSOR_UNIFORMS };
+static GLint cursor_uniform_locations[NUM_CURSOR_UNIFORMS] = {0};
+static ssize_t cursor_vertex_array;
+
+static bool
+init_cursor_program() {
+    Program *p = programs + CURSOR_PROGRAM;
+    int left = NUM_CURSOR_UNIFORMS;
+    cursor_vertex_array = create_vao();
+    if (set_error_from_gl()) return false;
+    for (int i = 0; i < p->num_of_uniforms; i++, left--) {
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].id
+        SET_LOC(color);
+        else SET_LOC(xpos);
+        else SET_LOC(ypos);
+        else { set_local_error("Unknown uniform in cursor program"); return false; }
+    }
+    if (left) { set_local_error("Left over uniforms in cursor program"); return false; }
+    return true;
+}
+
+static void 
+draw_cursor(bool semi_transparent, bool is_focused, color_type color, float alpha, float left, float right, float top, float bottom) {
+    if (semi_transparent) glEnable(GL_BLEND);
+    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array);
+    glUniform4f(cursor_uniform_locations[CURSOR_color], ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0, alpha);
+    glUniform2f(cursor_uniform_locations[CURSOR_xpos], left, right);
+    glUniform2f(cursor_uniform_locations[CURSOR_ypos], top, bottom);
+    glDrawArrays(is_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4);
+    unbind_vertex_array(); unbind_program();
+    if (semi_transparent) glDisable(GL_BLEND);
+}
+// }}}
+
 // Python API {{{
 static PyObject*
 enable_automatic_opengl_error_checking(PyObject UNUSED *self, PyObject *val) {
@@ -383,13 +421,15 @@ end:
     Py_RETURN_NONE;
 }
 
-#define CHECK_ERROR if (_enable_error_checking) { translate_error(); if (PyErr_Occurred()) return NULL; }
+#define CHECK_ERROR_ALWAYS { translate_error(); if (PyErr_Occurred()) return NULL; }
+#define CHECK_ERROR if (_enable_error_checking) CHECK_ERROR_ALWAYS
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
 #define PYWRAP2(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args, PyObject *kw)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 #define ONE_INT(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); CHECK_ERROR; Py_RETURN_NONE; } 
 #define NO_ARG(name) PYWRAP0(name) { name(); CHECK_ERROR; Py_RETURN_NONE; }
+#define NO_ARG_CHECK(name) PYWRAP0(name) { name(); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; }
 
 ONE_INT(bind_program)
 NO_ARG(unbind_program)
@@ -422,6 +462,17 @@ PYWRAP2(add_attribute_to_vao) {
 
 ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
+NO_ARG_CHECK(init_cursor_program)
+
+PYWRAP1(draw_cursor) {
+    int semi_transparent, is_focused;
+    unsigned int color;
+    float alpha, left, right, top, bottom;
+    PA("ppIfffff", &semi_transparent, &is_focused, &color, &alpha, &left, &right, &top, &bottom);
+    draw_cursor(semi_transparent, is_focused, color, alpha, left, right, top, bottom);
+    CHECK_ERROR;
+    Py_RETURN_NONE;
+}
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
@@ -437,6 +488,8 @@ static PyMethodDef module_methods[] = {
     MW(unbind_vertex_array, METH_NOARGS),
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
+    MW(init_cursor_program, METH_NOARGS),
+    MW(draw_cursor, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

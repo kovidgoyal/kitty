@@ -120,7 +120,7 @@ class Boss:
         self.tab_manager.init(startup_session)
         self.sprites = Sprites()
         self.sprites.do_layout(cell_size.width, cell_size.height)
-        self.cell_program, self.cursor_program = load_shader_programs()
+        self.cell_program = load_shader_programs()
         self.borders_program = BordersProgram()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.glfw_window.set_click_cursor(False)
@@ -395,10 +395,7 @@ class Boss:
                         self.ui_timers.add_if_before(
                             ((n + 1) * d / 1000) - now, None)
                     if draw_cursor:
-                        with self.cursor_program:
-                            active.char_grid.render_cursor(
-                                self.cursor_program,
-                                self.window_is_focused)
+                        active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
         window.char_grid.destroy(self.cell_program)

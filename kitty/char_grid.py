@@ -13,15 +13,15 @@ from .constants import (
 )
 from .fast_data_types import (
     CELL, CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM,
-    CURSOR_UNDERLINE, GL_BLEND, GL_FLOAT, GL_LINE_LOOP, GL_STATIC_DRAW,
-    GL_TRIANGLE_FAN, GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, glDisable,
-    glDrawArrays, glDrawArraysInstanced, glEnable, glUniform1i, glUniform2f,
-    glUniform2i, glUniform2ui, glUniform4f, glUniform4ui
+    CURSOR_UNDERLINE, GL_FLOAT, GL_STATIC_DRAW, GL_TRIANGLE_FAN,
+    GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, compile_program, draw_cursor,
+    glDrawArraysInstanced, glUniform1i, glUniform2f, glUniform2i, glUniform2ui,
+    glUniform4f, glUniform4ui, init_cursor_program
 )
 from .rgb import to_color
 from .shaders import ShaderProgram, load_shaders
 from .utils import (
-    color_as_int, color_from_int, get_logical_dpi, open_url,
+    color_as_int, get_logical_dpi, open_url,
     set_primary_selection
 )
 
@@ -56,10 +56,9 @@ class CellProgram(ShaderProgram):  # {{{
 
 def load_shader_programs():
     cell = CellProgram(CELL_PROGRAM, *load_shaders('cell'))
-    cursor = ShaderProgram(CURSOR_PROGRAM, *load_shaders('cursor'))
-    with cursor.array_object_creator() as add_attribute:
-        cursor.vao_id = add_attribute.vao_id
-    return cell, cursor
+    compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
+    init_cursor_program()
+    return cell
 # }}}
 
 
@@ -243,7 +242,7 @@ class CharGrid:
             self.screen.color_profile, invert_colors=invert_colors,
             screen_reversed=self.screen_reversed)
 
-    def render_cursor(self, cursor_program, is_focused):
+    def render_cursor(self, is_focused):
         cursor = self.current_cursor
         if not self.screen.cursor_visible or self.screen.scrolled_by:
             return
@@ -255,22 +254,15 @@ class CharGrid:
             return w * factor
 
         sg = self.screen_geometry
-        ul = cursor_program.uniform_location
         left = sg.xstart + cursor.x * sg.dx
         top = sg.ystart - cursor.y * sg.dy
-        col = color_from_int(self.screen.color_profile.cursor_color)
+        col = self.screen.color_profile.cursor_color
         shape = cursor.shape or self.default_cursor.shape
         alpha = self.opts.cursor_opacity
-        if alpha < 1.0 and shape == CURSOR_BLOCK:
-            glEnable(GL_BLEND)
         mult = self.screen.current_char_width()
         right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx * mult)
         bottom = top - sg.dy
         if shape == CURSOR_UNDERLINE:
             top = bottom + width(vert=False)
-        glUniform4f(ul('color'), col[0] / 255.0, col[1] / 255.0, col[2] / 255.0, alpha)
-        glUniform2f(ul('xpos'), left, right)
-        glUniform2f(ul('ypos'), top, bottom)
-        with cursor_program.bound_vertex_array(cursor_program.vao_id):
-            glDrawArrays(GL_TRIANGLE_FAN if is_focused else GL_LINE_LOOP, 0, 4)
-        glDisable(GL_BLEND)
+        semi_transparent = alpha < 1.0 and shape == CURSOR_BLOCK
+        draw_cursor(semi_transparent, is_focused, col, alpha, left, right, top, bottom)
