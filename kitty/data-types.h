@@ -38,6 +38,7 @@ typedef uint16_t sprite_index;
 #define SGR_PROTOCOL 2
 #define URXVT_PROTOCOL 3
 
+#define MAX_CHILDREN 256
 #define BLANK_CHAR 0
 #define CHAR_MASK 0xFFFFFF
 #define ATTRS_SHIFT 24

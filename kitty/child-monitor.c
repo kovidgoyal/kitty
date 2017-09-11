@@ -29,7 +29,6 @@ extern int pthread_setname_np(const char *name);
 #include <GLFW/glfw3.h>
 
 #define EXTRA_FDS 2
-#define MAX_CHILDREN 256
 
 static void (*parse_func)(Screen*, PyObject*);
 
