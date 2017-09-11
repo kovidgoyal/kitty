@@ -16,7 +16,7 @@ from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
     ChildMonitor, Timers as _Timers, glBlendFunc, glfw_post_empty_event,
-    glViewport
+    glViewport, draw_borders
 )
 from .fonts.render import set_font_family
 from .keys import (
@@ -375,7 +375,7 @@ class Boss:
                     cocoa_update_title(self.glfw_window_title)
             with self.sprites:
                 self.sprites.render_dirty_sprites()
-                tab.render()
+                draw_borders()
                 with self.cell_program:
                     self.tab_manager.render(self.cell_program, self.sprites)
                     for window in tab.visible_windows():

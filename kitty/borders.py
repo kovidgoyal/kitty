@@ -7,8 +7,8 @@ from itertools import chain
 
 from .constants import viewport_size
 from .fast_data_types import (
-    BORDERS_PROGRAM, add_borders_rect, compile_program, draw_borders,
-    init_borders_program, send_borders_rects
+    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
+    send_borders_rects
 )
 from .shaders import load_shaders
 from .utils import color_as_int, pt_to_px
@@ -76,6 +76,3 @@ class Borders:
                         g.bottom + pw
                     )
         send_borders_rects(viewport_size.width, viewport_size.height)
-
-    def render(self):
-        draw_borders()

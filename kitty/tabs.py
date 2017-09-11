@@ -195,9 +195,6 @@ class Tab:
     def destroy(self):
         self.windows = deque()
 
-    def render(self):
-        borders.render()
-
     def __repr__(self):
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
 
