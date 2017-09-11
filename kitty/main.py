@@ -17,13 +17,13 @@ from .constants import (
     appname, config_dir, isosx, logo_data_file, str_version, viewport_size
 )
 from .fast_data_types import (
-    GL_COLOR_BUFFER_BIT, GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_REQUIRED,
+    GL_COLOR_BUFFER_BIT, GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
-    enable_automatic_opengl_error_checking, glClear, glClearColor, glewInit,
-    glfw_init, glfw_init_hint_string, glfw_set_error_callback,
-    glfw_swap_interval, glfw_terminate, glfw_window_hint
+    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions, glClear,
+    glClearColor, glewInit, glfw_init, glfw_init_hint_string,
+    glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
+    glfw_window_hint
 )
 from .layout import all_layouts
 from .utils import detach, safe_print
@@ -109,7 +109,7 @@ def option_parser():
                ' child process. Useful for debugging.')
     )
     a(
-        '--debug-gl',
+        '--debug-kitty-gl',
         action='store_true',
         default=False,
         help=_('Debug OpenGL commands. This will cause all OpenGL calls'
@@ -294,7 +294,6 @@ def main():
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     glfw_set_error_callback(on_glfw_error)
-    enable_automatic_opengl_error_checking(args.debug_gl)
     if GLFW_X11_WM_CLASS_CLASS is not None:
         glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, opts.cls)
     if not glfw_init():

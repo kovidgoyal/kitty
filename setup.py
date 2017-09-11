@@ -194,6 +194,7 @@ def run_tool(cmd):
 
 SPECIAL_SOURCES = {
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
+    'kitty/shaders_debug.c': ('kitty/shaders.c', ['ENABLE_DEBUG_GL']),
 }
 
 
@@ -287,6 +288,7 @@ def find_c_files():
         key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True
     )
     ans.append('kitty/parser_dump.c')
+    ans.append('kitty/shaders_debug.c')
     return tuple(ans), tuple(headers)
 
 

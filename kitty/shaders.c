@@ -34,6 +34,7 @@ static char glbuf[4096];
 #define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
 #define fatal_msg(msg) fatal("%s", msg);
 
+#ifdef ENABLE_DEBUG_GL
 static void
 check_for_gl_error(int line) {
 #define f(msg) fatal("%s (at line: %d)", msg, line); break;
@@ -60,8 +61,10 @@ check_for_gl_error(int line) {
     }
 }
 
-static bool _enable_error_checking = false;
-#define check_gl() { if (_enable_error_checking) check_for_gl_error(__LINE__); }
+#define check_gl() { check_for_gl_error(__LINE__); }
+#else
+#define check_gl() {}
+#endif
 
 static PyObject* 
 glew_init(PyObject UNUSED *self) {
@@ -583,12 +586,6 @@ send_borders_rects(GLuint vw, GLuint vh) {
 
 // Python API {{{
 static PyObject*
-enable_automatic_opengl_error_checking(PyObject UNUSED *self, PyObject *val) {
-    _enable_error_checking = PyObject_IsTrue(val) ? true : false;
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 compile_program(PyObject UNUSED *self, PyObject *args) {
     const char *vertex_shader, *fragment_shader;
     int which;
@@ -686,7 +683,6 @@ PYWRAP1(draw_cells) {
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
-    M(enable_automatic_opengl_error_checking, METH_O),
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
     M(compile_program, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
@@ -711,7 +707,11 @@ static PyMethodDef module_methods[] = {
 };
 
 bool
+#ifdef ENABLE_DEBUG_GL
+init_shaders_debug(PyObject *module) {
+#else
 init_shaders(PyObject *module) {
+#endif
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     C(CELL_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM);
     C(GLSL_VERSION);
