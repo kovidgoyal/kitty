@@ -36,7 +36,6 @@ def border(color, sz, left, top, right, bottom):
 class Borders:
 
     def __init__(self, opts):
-        self.is_dirty = False
         self.border_width = pt_to_px(opts.window_border_width)
         self.padding_width = pt_to_px(opts.window_padding_width)
         compile_program(BORDERS_PROGRAM, *load_shaders('border'))
@@ -44,7 +43,6 @@ class Borders:
         self.background = color_as_int(opts.background)
         self.active_border = color_as_int(opts.active_border_color)
         self.inactive_border = color_as_int(opts.inactive_border_color)
-        self.dirty = False
 
     def __call__(
         self,
