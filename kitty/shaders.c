@@ -468,7 +468,6 @@ send_borders_rects(GLuint vw, GLuint vh) {
         unmap_vao_buffer(border_vertex_array, 0);
     }
     bind_program(BORDERS_PROGRAM);
-    printf(gl_strerror(glGetError()));
     glUniform2ui(border_uniform_locations[BORDER_viewport], vw, vh);
     unbind_program();
 }
