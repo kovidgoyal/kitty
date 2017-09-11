@@ -233,6 +233,24 @@ unbind_buffer(ssize_t buf_idx) {
     return true;
 }
 
+static inline void
+alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
+    Buffer *b = buffers + idx;
+    if (b->size == size) return;
+    b->size = size;
+    glBufferData(b->usage, size, NULL, usage);
+}
+
+static inline void*
+map_buffer(ssize_t idx, GLenum access) {
+    return glMapBuffer(buffers[idx].usage, access);
+}
+
+static inline void
+unmap_buffer(ssize_t idx) {
+    glUnmapBuffer(buffers[idx].usage);
+}
+
 // }}}
 
 // Vertex Array Objects (VAO) {{{
@@ -331,6 +349,23 @@ static void
 unbind_vertex_array() {
     glBindVertexArray(0);
 }
+
+static void*
+map_vao_buffer(ssize_t vao_idx, size_t bufnum, GLsizeiptr size, GLenum usage, GLenum access) {
+    ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
+    bind_buffer(buf_idx);
+    alloc_buffer(buf_idx, size, usage);
+    void *ans = map_buffer(buf_idx, access);
+    unbind_buffer(buf_idx);
+    return ans;
+}
+
+static void
+unmap_vao_buffer(ssize_t vao_idx, size_t bufnum) {
+    ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
+    unmap_buffer(buf_idx);
+}
+
 // }}}
 
 // Cursor {{{
@@ -428,6 +463,7 @@ end:
 #define PYWRAP2(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args, PyObject *kw)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 #define ONE_INT(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); CHECK_ERROR; Py_RETURN_NONE; } 
+#define TWO_INT(name) PYWRAP1(name) { int a, b; PA("ii", &a, &b); name(a, b); CHECK_ERROR; Py_RETURN_NONE; } 
 #define NO_ARG(name) PYWRAP0(name) { name(); CHECK_ERROR; Py_RETURN_NONE; }
 #define NO_ARG_CHECK(name) PYWRAP0(name) { name(); CHECK_ERROR_ALWAYS; Py_RETURN_NONE; }
 
@@ -462,8 +498,10 @@ PYWRAP2(add_attribute_to_vao) {
 
 ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
-NO_ARG_CHECK(init_cursor_program)
+TWO_INT(unmap_vao_buffer)
+PYWRAP1(map_vao_buffer) { int a,b,c,d,e; PA("iiiii", &a, &b, &c, &d, &e); void *ans = map_vao_buffer(a, b, c, d, e); CHECK_ERROR; return PyLong_FromVoidPtr(ans); }
 
+NO_ARG_CHECK(init_cursor_program)
 PYWRAP1(draw_cursor) {
     int semi_transparent, is_focused;
     unsigned int color;
@@ -486,6 +524,8 @@ static PyMethodDef module_methods[] = {
     MW(add_attribute_to_vao, METH_VARARGS),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
+    MW(map_vao_buffer, METH_VARARGS),
+    MW(unmap_vao_buffer, METH_VARARGS),
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
     MW(init_cursor_program, METH_NOARGS),
