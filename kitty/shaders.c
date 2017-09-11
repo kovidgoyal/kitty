@@ -135,15 +135,6 @@ init_uniforms(int program) {
 }
 
 
-static inline Uniform*
-uniform(int program, const char *name) {
-    for (GLint i = 0; i < programs[program].num_of_uniforms; i++) {
-        Uniform *u = programs[program].uniforms + i;
-        if (strncmp(u->name, name, sizeof(u->name)/sizeof(u->name[0])) == 0) return u;
-    }
-    return NULL;
-}
-
 static inline GLint
 attrib_location(int program, const char *name) {
     GLint ans = glGetAttribLocation(programs[program].id, name);
