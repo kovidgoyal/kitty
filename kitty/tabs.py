@@ -395,7 +395,7 @@ class TabManager:
 
     @property
     def blank_rects(self):
-        return self.tab_bar.blank_rects if len(self.tabs) < 2 else ()
+        return self.tab_bar.blank_rects if len(self.tabs) > 1 else ()
 
     def render(self, cell_program, sprites):
         if len(self.tabs) < 2:
