@@ -60,16 +60,13 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
         if (FG_BG_256[255] == 0) create_256_color_table();
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
-        self->dirty = Py_True; Py_INCREF(Py_True);
-        self->ubo = Py_None; Py_INCREF(Py_None);
+        self->dirty = true; 
     }
     return (PyObject*) self;
 }
 
 static void
 dealloc(ColorProfile* self) {
-    Py_DECREF(self->dirty);
-    Py_DECREF(self->ubo);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -90,6 +87,7 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
         self->color_table[i] = PyLong_AsUnsignedLong(PyList_GET_ITEM(val, i));
         self->orig_color_table[i] = self->color_table[i];
     }
+    self->dirty = true;
     Py_RETURN_NONE;
 }
 
@@ -136,6 +134,7 @@ static PyObject*
 reset_color_table(ColorProfile *self) {
 #define reset_color_table_doc "Reset all customized colors back to defaults"
     memcpy(self->color_table, self->orig_color_table, sizeof(FG_BG_256));
+    self->dirty = true;
     Py_RETURN_NONE;
 }
 
@@ -144,6 +143,7 @@ reset_color(ColorProfile *self, PyObject *val) {
 #define reset_color_doc "Reset the specified color"
     uint8_t i = PyLong_AsUnsignedLong(val) & 0xff;
     self->color_table[i] = self->orig_color_table[i];
+    self->dirty = true;
     Py_RETURN_NONE;
 }
 
@@ -154,6 +154,7 @@ set_color(ColorProfile *self, PyObject *args) {
     unsigned long val;
     if (!PyArg_ParseTuple(args, "Bk", &i, &val)) return NULL;
     self->color_table[i] = val;
+    self->dirty = true;
     Py_RETURN_NONE;
 }
 
@@ -161,21 +162,19 @@ static PyObject*
 set_configured_colors(ColorProfile *self, PyObject *args) {
 #define set_configured_colors_doc "Set the configured colors"
     if (!PyArg_ParseTuple(args, "II|III", &(self->configured.default_fg), &(self->configured.default_bg), &(self->configured.cursor_color), &(self->configured.highlight_fg), &(self->configured.highlight_bg))) return NULL;
+    self->dirty = true;
     Py_RETURN_NONE;
 }
 
-static PyObject*
-copy_color_table(ColorProfile *self, PyObject *args) {
-#define copy_color_table_doc "copy_color_table(address, offset, stride) -> copy the color table into the memory at address, using the specified offset and stride."
-    unsigned int offset, stride, i;
-    PyObject *ptr;
-    if (!PyArg_ParseTuple(args, "OII", &ptr, &offset, &stride)) return NULL;
-    color_type *buf = (color_type*)PyLong_AsVoidPtr(ptr);
+void
+copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, size_t stride) {
+    size_t i;
+    color_type *buf = address;
     stride = MAX(1, stride);
     for (i = 0, buf = buf + offset; i < sizeof(self->color_table)/sizeof(self->color_table[0]); i++, buf += stride) {
         *buf = self->color_table[i];
     }
-    Py_RETURN_NONE;
+    self->dirty = false;
 }
  
 static PyObject*
@@ -189,7 +188,7 @@ color_table_address(ColorProfile *self) {
 
 #define CGETSET(name) \
     static PyObject* name##_get(ColorProfile *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(colorprofile_to_color(self, self->overridden.name, self->configured.name));  } \
-    static int name##_set(ColorProfile *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->overridden.name = (color_type) PyLong_AsUnsignedLong(val); return 0; }
+    static int name##_set(ColorProfile *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->overridden.name = (color_type) PyLong_AsUnsignedLong(val); self->dirty = true; return 0; }
 
 CGETSET(default_fg)
 CGETSET(default_bg)
@@ -208,8 +207,6 @@ static PyGetSetDef getsetters[] = {
 
 
 static PyMemberDef members[] = {
-    {"dirty", T_OBJECT_EX, offsetof(ColorProfile, dirty), 0, "dirty"},
-    {"ubo", T_OBJECT_EX, offsetof(ColorProfile, ubo), 0, "ubo"},
     {NULL}
 };
 
@@ -221,7 +218,6 @@ static PyMethodDef methods[] = {
     METHOD(reset_color, METH_O)
     METHOD(set_color, METH_VARARGS)
     METHOD(set_configured_colors, METH_VARARGS)
-    METHOD(copy_color_table, METH_VARARGS)
     {NULL}  /* Sentinel */
 };
 

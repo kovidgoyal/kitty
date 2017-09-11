@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "screen.h"
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
 #include <OpenGL/gl3ext.h>
@@ -44,7 +45,7 @@ check_for_gl_error(int line) {
         case GL_INVALID_VALUE: 
             f("An numeric value is invalid (GL_INVALID_VALUE)"); 
         case GL_INVALID_OPERATION: 
-            f("This operation is not allowed in the current state (GL_INVALID_OPERATION)"); 
+            f("This operation is invalid (GL_INVALID_OPERATION)"); 
         case GL_INVALID_FRAMEBUFFER_OPERATION: 
             f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)"); 
         case GL_OUT_OF_MEMORY: 
@@ -87,7 +88,7 @@ enum ProgramNames { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS 
 
 typedef struct {
     char name[256];
-    GLint size, id;
+    GLint size, location, idx;
     GLenum type;
 } Uniform;
 
@@ -130,7 +131,8 @@ init_uniforms(int program) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
         check_gl();
-        u->id = i;
+        u->location = glGetUniformLocation(p->id, u->name);
+        u->idx = i;
     }
 }
 
@@ -138,6 +140,32 @@ init_uniforms(int program) {
 static inline GLint
 attrib_location(int program, const char *name) {
     GLint ans = glGetAttribLocation(programs[program].id, name);
+    check_gl();
+    return ans;
+}
+
+static inline GLuint
+block_index(int program, const char *name) {
+    GLuint ans = glGetUniformBlockIndex(programs[program].id, name);
+    check_gl();
+    if (ans == GL_INVALID_INDEX) { fatal("Could not find block index"); }
+    return ans;
+}
+
+
+static inline GLint
+block_size(int program, GLuint block_index) {
+    GLint ans;
+    glGetActiveUniformBlockiv(programs[program].id, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &ans);
+    check_gl();
+    return ans;
+}
+
+static GLint
+block_offset(int program, GLuint uniform_idx) {
+    GLint program_id = programs[program].id;
+    GLint ans;
+    glGetActiveUniformsiv(program_id, 1, &uniform_idx, GL_UNIFORM_OFFSET, &ans);
     check_gl();
     return ans;
 }
@@ -192,10 +220,11 @@ delete_buffer(ssize_t buf_idx) {
     buffers[buf_idx].size = 0;
 }
 
-static void
+static GLuint
 bind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, buffers[buf_idx].id);
     check_gl();
+    return buffers[buf_idx].id;
 }
 
 static void
@@ -258,13 +287,13 @@ create_vao() {
 }
 
 static void
-add_buffer_to_vao(ssize_t vao_idx) {
+add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
     VAO* vao = vaos + vao_idx;
     if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) {
         fatal("too many buffers in a single VAO");
         return;
     }
-    ssize_t buf = create_buffer(GL_ARRAY_BUFFER);
+    ssize_t buf = create_buffer(usage);
     vao->buffers[vao->num_buffers++] = buf;
 }
 
@@ -334,12 +363,119 @@ map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum usage, GL
 }
 
 static void
+bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index) {
+    ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
+    glBindBufferBase(GL_UNIFORM_BUFFER, block_index, buffers[buf_idx].id);
+    check_gl();
+}
+
+static void
 unmap_vao_buffer(ssize_t vao_idx, size_t bufnum) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     unmap_buffer(buf_idx);
     unbind_buffer(buf_idx);
 }
 
+// }}}
+
+// Cell {{{
+
+enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_color_table, NUM_CELL_UNIFORMS };
+static GLint cell_uniform_locations[NUM_CELL_UNIFORMS] = {0};
+static GLint cell_color_table_stride = 0, cell_color_table_offset = 0, cell_color_table_size = 0, cell_color_table_block_index = 0;
+
+static void
+init_cell_program() {
+    Program *p = programs + CELL_PROGRAM;
+    int left = NUM_CELL_UNIFORMS;
+    GLint ctable_idx = 0;
+    for (int i = 0; i < p->num_of_uniforms; i++, left--) {
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cell_uniform_locations[CELL_##which] = p->uniforms[i].location
+        SET_LOC(dimensions);
+        else SET_LOC(default_colors);
+        else SET_LOC(color_indices);
+        else SET_LOC(steps);
+        else SET_LOC(sprites);
+        else SET_LOC(sprite_layout);
+        else if (strcmp(p->uniforms[i].name, "color_table[0]") == 0) { ctable_idx = i; cell_uniform_locations[CELL_color_table] = p->uniforms[i].location; }
+        else { fatal("Unknown uniform in cell program: %s", p->uniforms[i].name); }
+    }
+    if (left) { fatal("Left over uniforms in cell program"); }
+    cell_color_table_block_index = block_index(CELL_PROGRAM, "ColorTable");
+    cell_color_table_size = block_size(CELL_PROGRAM, cell_color_table_block_index);
+    cell_color_table_stride = cell_color_table_size / (256 * sizeof(GLuint));
+    cell_color_table_offset = block_offset(CELL_PROGRAM, ctable_idx);
+#undef SET_LOC
+}
+
+static ssize_t
+create_cell_vao() {
+    ssize_t vao_idx = create_vao();
+#define A(name, size, dtype, offset, stride) \
+    add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
+            /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
+#define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
+
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    A1(text_attrs, 1, GL_UNSIGNED_INT, ch);
+    A1(sprite_coords, 3, GL_UNSIGNED_SHORT, sprite_x);
+    A1(colors, 3, GL_UNSIGNED_INT, fg);
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    A(is_selected, 1, GL_FLOAT, NULL, 0);
+    add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
+    bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
+    return vao_idx;
+#undef A
+#undef A1
+}
+
+static void 
+draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, bool inverted, Screen *screen) {
+    size_t sz;
+    void *address;
+    if (screen->modes.mDECSCNM) inverted = inverted ? false : true;
+    if (screen->scroll_changed || screen->is_dirty) {
+        sz = sizeof(Cell) * screen->lines * screen->columns;
+        address = map_vao_buffer(vao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        screen_update_cell_data(screen, address, sz);
+        unmap_vao_buffer(vao_idx, 0);
+    }
+    if (screen_is_selection_dirty(screen)) {
+        sz = sizeof(GLfloat) * screen->lines * screen->columns;
+        address = map_vao_buffer(vao_idx, sz, 1, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        screen_apply_selection(screen, address, sz);
+        unmap_vao_buffer(vao_idx, 1);
+    }
+    if (UNLIKELY(screen->color_profile->dirty)) {
+        address = map_vao_buffer(vao_idx, cell_color_table_size, 2, GL_STATIC_DRAW, GL_WRITE_ONLY);
+        copy_color_table_to_buffer(screen->color_profile, address, cell_color_table_offset, cell_color_table_stride);
+        unmap_vao_buffer(vao_idx, 2);
+    }
+#define UL(name) cell_uniform_locations[CELL_##name]
+    bind_program(CELL_PROGRAM); 
+    glUniform2ui(UL(dimensions), screen->columns, screen->lines);
+    check_gl();
+    glUniform4f(UL(steps), xstart, ystart, dx, dy);
+    check_gl();
+    glUniform2i(UL(color_indices), inverted & 1, 1 - (inverted & 1));
+    check_gl();
+#define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
+    glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg));
+    check_gl();
+#undef COLOR
+    glUniform1i(UL(sprites), 0);
+    check_gl();
+    unsigned int x, y, z;
+    sprite_map_current_layout(&x, &y, &z);
+    glUniform2f(UL(sprite_layout), 1.0 / (float)x, 1.0 / (float)y);
+    check_gl();
+    bind_vertex_array(vao_idx);
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    check_gl();
+    unbind_vertex_array();
+    unbind_program();
+#undef UL
+}
 // }}}
 
 // Cursor {{{
@@ -353,7 +489,7 @@ init_cursor_program() {
     int left = NUM_CURSOR_UNIFORMS;
     cursor_vertex_array = create_vao();
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].id
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].location
         SET_LOC(color);
         else SET_LOC(xpos);
         else SET_LOC(ypos);
@@ -394,13 +530,13 @@ init_borders_program() {
     int left = NUM_BORDER_UNIFORMS;
     border_vertex_array = create_vao();
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].id
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
         SET_LOC(viewport);
         else { fatal("Unknown uniform in borders program"); return; }
     }
     if (left) { fatal("Left over uniforms in borders program"); return; }
 #undef SET_LOC
-    add_buffer_to_vao(border_vertex_array);
+    add_buffer_to_vao(border_vertex_array, GL_ARRAY_BUFFER);
     add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect",
             /*size=*/4, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/0, /*divisor=*/1);
     add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect_color",
@@ -497,6 +633,7 @@ end:
 #define ONE_INT(name) PYWRAP1(name) { name(PyLong_AsSsize_t(args)); Py_RETURN_NONE; } 
 #define TWO_INT(name) PYWRAP1(name) { int a, b; PA("ii", &a, &b); name(a, b); Py_RETURN_NONE; } 
 #define NO_ARG(name) PYWRAP0(name) { name(); Py_RETURN_NONE; }
+#define NO_ARG_INT(name) PYWRAP0(name) { return PyLong_FromSsize_t(name()); }
 
 ONE_INT(bind_program)
 NO_ARG(unbind_program)
@@ -508,18 +645,6 @@ PYWRAP0(create_vao) {
 }
 
 ONE_INT(remove_vao)
-ONE_INT(add_buffer_to_vao)
-
-PYWRAP2(add_attribute_to_vao) {
-    int program, vao, data_type = GL_FLOAT, size = 3;
-    char *name;
-    unsigned int stride = 0, divisor = 0;
-    PyObject *offset = NULL;
-    static char* keywords[] = {"program", "vao", "name", "size", "dtype", "stride", "offset", "divisor", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "iis|iiIO!I", keywords, &program, &vao, &name, &size, &data_type, &stride, &PyLong_Type, &offset, &divisor)) return NULL;
-    add_attribute_to_vao(program, vao, name, size, data_type, stride, offset ? PyLong_AsVoidPtr(offset) : NULL, divisor);
-    Py_RETURN_NONE;
-}
 
 ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
@@ -546,6 +671,18 @@ NO_ARG(draw_borders)
 PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); Py_RETURN_NONE; }
 TWO_INT(send_borders_rects)
 
+NO_ARG(init_cell_program)
+NO_ARG_INT(create_cell_vao)
+PYWRAP1(draw_cells) { 
+    float xstart, ystart, dx, dy;
+    int vao_idx, inverted;
+    Screen *screen;
+
+    PA("iffffpO", &vao_idx, &xstart, &ystart, &dx, &dy, &inverted, &screen); 
+    draw_cells(vao_idx, xstart, ystart, dx, dy, inverted & 1, screen);
+    Py_RETURN_NONE;
+}
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
@@ -554,8 +691,6 @@ static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
     MW(remove_vao, METH_O),
-    MW(add_buffer_to_vao, METH_O),
-    MW(add_attribute_to_vao, METH_VARARGS | METH_KEYWORDS),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
     MW(map_vao_buffer, METH_VARARGS),
@@ -568,6 +703,9 @@ static PyMethodDef module_methods[] = {
     MW(draw_borders, METH_NOARGS),
     MW(add_borders_rect, METH_VARARGS),
     MW(send_borders_rects, METH_VARARGS),
+    MW(init_cell_program, METH_NOARGS),
+    MW(create_cell_vao, METH_NOARGS),
+    MW(draw_cells, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

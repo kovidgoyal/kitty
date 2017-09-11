@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import deque, namedtuple
-from ctypes import memset, sizeof
 from functools import partial
 
 from .borders import Borders
@@ -11,10 +10,12 @@ from .char_grid import calculate_gl_geometry, render_cells
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
-    GLfloat, WindowGeometry, appname, cell_size, get_boss, shell_path,
+    WindowGeometry, appname, cell_size, get_boss, shell_path,
     viewport_size
 )
-from .fast_data_types import CELL, DECAWM, Screen, glfw_post_empty_event
+from .fast_data_types import (
+    DECAWM, Screen, create_cell_vao, glfw_post_empty_event
+)
 from .layout import Rect, all_layouts
 from .utils import color_as_int
 from .window import Window
@@ -205,7 +206,7 @@ class TabBar:
         self.num_tabs = 1
         self.cell_width = 1
         self.data_buffer_size = 0
-        self.vao_id = None
+        self.vao_id = create_cell_vao()
         self.layout_changed = None
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
@@ -214,7 +215,6 @@ class TabBar:
             color_as_int(opts.inactive_tab_foreground),
             color_as_int(opts.inactive_tab_background)
         )
-        s.color_profile.dirty = True
         self.blank_rects = ()
 
         def as_rgb(x):
@@ -229,8 +229,6 @@ class TabBar:
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
-        self.selection_buf_size = sizeof(GLfloat) * s.lines * s.columns
-        self.data_buffer_size = s.lines * s.columns * CELL['size']
         self.layout_changed = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
@@ -269,22 +267,11 @@ class TabBar:
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.cell_ranges = cr
-        self.dirty = True
         glfw_post_empty_event()
 
-    def render(self, cell_program, sprites):
+    def render(self):
         if self.layout_changed is not None:
-            if self.vao_id is None:
-                self.vao_id = cell_program.create_sprite_map()
-            if self.dirty:
-                with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
-                    self.screen.update_cell_data(address, True)
-                if self.layout_changed:
-                    with cell_program.mapped_vertex_data(self.vao_id, self.selection_buf_size, bufnum=1) as address:
-                        memset(address, 0, self.selection_buf_size)
-                    self.layout_changed = False
-                self.dirty = False
-            render_cells(self.vao_id, self.screen_geometry, cell_program, sprites, self.screen.color_profile)
+            render_cells(self.vao_id, self.screen_geometry, self.screen)
 
     def tab_at(self, x):
         x = (x - self.window_geometry.left) // self.cell_width
@@ -394,7 +381,7 @@ class TabManager:
     def blank_rects(self):
         return self.tab_bar.blank_rects if len(self.tabs) > 1 else ()
 
-    def render(self, cell_program, sprites):
+    def render(self):
         if len(self.tabs) < 2:
             return
-        self.tab_bar.render(cell_program, sprites)
+        self.tab_bar.render()

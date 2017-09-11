@@ -187,7 +187,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    PyObject *dirty, *ubo;
+    bool dirty;
     uint32_t color_table[256];
     uint32_t orig_color_table[256];
     DynamicColor configured, overridden;
@@ -237,10 +237,10 @@ typedef struct {
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
-    bool use_latin1, selection_updated_once;
+    bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
-    PyObject *callbacks, *is_dirty, *cursor_changed, *scroll_changed;
+    PyObject *callbacks;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     HistoryBuf *historybuf;
     unsigned int history_line_added_count;
@@ -326,6 +326,8 @@ PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
+void copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, size_t stride);
+void sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int*);
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);

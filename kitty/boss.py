@@ -115,11 +115,11 @@ class Boss:
         glfw_window.scroll_callback = self.on_mouse_scroll
         glfw_window.cursor_pos_callback = self.on_mouse_move
         glfw_window.window_focus_callback = self.on_focus
+        load_shader_programs()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
         self.sprites = Sprites()
         self.sprites.do_layout(cell_size.width, cell_size.height)
-        self.cell_program = load_shader_programs()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
@@ -376,11 +376,10 @@ class Boss:
             with self.sprites:
                 self.sprites.render_dirty_sprites()
                 draw_borders()
-                with self.cell_program:
-                    self.tab_manager.render(self.cell_program, self.sprites)
-                    for window in tab.visible_windows():
-                        if not window.needs_layout:
-                            window.render_cells(self.cell_program, self.sprites)
+                self.tab_manager.render()
+                for window in tab.visible_windows():
+                    if not window.needs_layout:
+                        window.render_cells()
                 active = self.active_window
                 if active is not None:
                     draw_cursor = True
@@ -396,7 +395,7 @@ class Boss:
                         active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
-        window.char_grid.destroy(self.cell_program)
+        window.char_grid.destroy()
         for tab in self.tab_manager:
             if window in tab:
                 break

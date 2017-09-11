@@ -13,8 +13,16 @@ from functools import lru_cache
 from time import monotonic
 
 from .constants import isosx
-from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl, redirect_std_streams
+from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl, redirect_std_streams, GLSL_VERSION
 from .rgb import Color, to_color
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_shaders(name):
+    vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    return vert, frag
 
 
 def safe_print(*a, **k):

@@ -67,8 +67,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->columns = columns; self->lines = lines;
         self->write_buf = NULL;
         self->modes = empty_modes;
-        self->cursor_changed = Py_True; self->is_dirty = Py_True;
-        self->scroll_changed = Py_False;
+        self->is_dirty = true;
+        self->scroll_changed = false;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->history_line_added_count = 0;
         RESET_CHARSETS;
@@ -104,8 +104,7 @@ screen_reset(Screen *self) {
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
     cursor_reset(self->cursor);
-    self->cursor_changed = Py_True;
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
@@ -170,7 +169,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->tabstops = self->main_tabstops;
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
-    self->cursor_changed = Py_True; self->is_dirty = Py_True;
+    self->is_dirty = true;
+    self->selection = EMPTY_SELECTION;
     if (index_after_resize) screen_index(self);
 
     return true;
@@ -263,7 +263,6 @@ void
 screen_draw(Screen *self, uint32_t och) {
     if (is_ignored_char(och)) return;
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
-    unsigned int x = self->cursor->x, y = self->cursor->y;
     unsigned int char_width = safe_wcwidth(ch);
     if (self->columns - self->cursor->x < char_width) {
         if (self->modes.mDECAWM) {
@@ -285,19 +284,18 @@ screen_draw(Screen *self, uint32_t och) {
             line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor);
             self->cursor->x++;
         }
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
     } else if (is_combining_char(ch)) {
         if (self->cursor->x > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y);
             line_add_combining_char(self->linebuf->line, ch, self->cursor->x - 1);
-            self->is_dirty = Py_True;
+            self->is_dirty = true;
         } else if (self->cursor->y > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y - 1);
             line_add_combining_char(self->linebuf->line, ch, self->columns - 1);
-            self->is_dirty = Py_True;
+            self->is_dirty = true;
         }
     }
-    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void
@@ -419,7 +417,7 @@ screen_toggle_screen_buffer(Screen *self) {
         screen_restore_cursor(self);
     }
     CALLBACK("buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
 }
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
@@ -458,13 +456,12 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case DECTCEM: 
             self->modes.mDECTCEM = val; 
-            self->cursor_changed = Py_True;
             break;
         case DECSCNM: 
             // Render screen in reverse video
             if (self->modes.mDECSCNM != val) {
                 self->modes.mDECSCNM = val; 
-                self->is_dirty = Py_True;
+                self->is_dirty = true;
             }
             break;
         case DECOM: 
@@ -484,7 +481,6 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case CONTROL_CURSOR_BLINK:
             self->cursor->blink = val; 
-            self->cursor_changed = Py_True;
             break;
         case ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
@@ -526,7 +522,6 @@ screen_tab(Screen *self) {
     if (!found) found = self->columns - 1;
     if (found != self->cursor->x) {
         self->cursor->x = found;
-        self->cursor_changed = Py_True;
     }
 }
 
@@ -534,7 +529,6 @@ void
 screen_backtab(Screen *self, unsigned int count) {
     // Move back count tabs
     if (!count) count = 1;
-    unsigned int before = self->cursor->x;
     int i;
     while (count > 0 && self->cursor->x > 0) {
         count--;
@@ -543,7 +537,6 @@ screen_backtab(Screen *self, unsigned int count) {
         }
         if (i <= 0) self->cursor->x = 0;
     }
-    if (before != self->cursor->x) self->cursor_changed = Py_True;
 }
 
 void 
@@ -571,12 +564,10 @@ screen_set_tab_stop(Screen *self) {
 
 void 
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
-    unsigned int x = self->cursor->x;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
     screen_ensure_bounds(self, false);
-    if (x != self->cursor->x) self->cursor_changed = Py_True;
 }
 
 void 
@@ -586,13 +577,11 @@ screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
 
 void 
 screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
-    unsigned int x = self->cursor->x, y = self->cursor->y;
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
     else self->cursor->y += move_direction * count;
     screen_ensure_bounds(self, true);
     if (do_carriage_return) self->cursor->x = 0;
-    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void 
@@ -616,7 +605,6 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     if (x != self->cursor->x) {
         self->cursor->x = x;
         screen_ensure_bounds(self, false);
-        self->cursor_changed = Py_True;
     }
 }
 
@@ -629,7 +617,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         self->history_line_added_count++; \
     } \
     linebuf_clear_line(self->linebuf, bottom); \
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
 
 void 
 screen_index(Screen *self) {
@@ -654,7 +642,7 @@ screen_scroll(Screen *self, unsigned int count) {
 #define INDEX_DOWN \
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top); \
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
 
 void 
 screen_reverse_index(Screen *self) {
@@ -681,7 +669,6 @@ void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
-        self->cursor_changed = Py_True;
     }
 }
 
@@ -732,7 +719,6 @@ screen_restore_cursor(Screen *self) {
     Savepoint *sp = savepoints_pop(pts);
     if (sp == NULL) {
         screen_cursor_position(self, 1, 1);
-        self->cursor_changed = Py_True;
         screen_reset_mode(self, DECOM);
         RESET_CHARSETS;
         screen_reset_mode(self, DECSCNM);
@@ -766,10 +752,8 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
         line += self->margin_top;
         line = MAX(self->margin_top, MIN(line, self->margin_bottom));
     }
-    unsigned int x = self->cursor->x, y = self->cursor->y;
     self->cursor->x = column; self->cursor->y = line;
     screen_ensure_bounds(self, false);
-    if (x != self->cursor->x || y != self->cursor->y) self->cursor_changed = Py_True;
 }
 
 void 
@@ -816,7 +800,7 @@ void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
         } else {
             line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
         }
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
     }
 }
 
@@ -853,7 +837,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
         }
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
@@ -865,7 +849,7 @@ void screen_insert_lines(Screen *self, unsigned int count) {
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
         screen_carriage_return(self);
     }
 }
@@ -875,7 +859,7 @@ void screen_delete_lines(Screen *self, unsigned int count) {
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
         screen_carriage_return(self);
     }
 }
@@ -889,7 +873,7 @@ void screen_insert_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         line_right_shift(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
     }
 }
 
@@ -903,7 +887,7 @@ void screen_delete_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         left_shift_line(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
-        self->is_dirty = Py_True;
+        self->is_dirty = true;
     }
 }
 
@@ -914,7 +898,7 @@ void screen_erase_characters(Screen *self, unsigned int count) {
     unsigned int num = MIN(self->columns - x, count);
     linebuf_init_line(self->linebuf, self->cursor->y);
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
 }
 
 // }}}
@@ -1037,7 +1021,6 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
             }
             if (shape != self->cursor->shape || blink != self->cursor->blink) {
                 self->cursor->shape = shape; self->cursor->blink = blink;
-                self->cursor_changed = Py_True;
             }
             break;
     }
@@ -1068,6 +1051,102 @@ void screen_request_capabilities(Screen *self, PyObject *q) {
 
 // }}}
 
+// Rendering {{{
+static inline void
+update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
+    size_t base = dest_y * line->xnum * sizeof(Cell);
+    memcpy(data + base, line->cells, line->xnum * sizeof(Cell));
+}
+
+
+static inline void
+screen_reset_dirty(Screen *self) {
+    self->is_dirty = false;
+    self->history_line_added_count = 0;
+}
+
+void
+screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
+    unsigned int history_line_added_count = self->history_line_added_count;
+    bool selection_must_be_cleared = self->is_dirty ? true : false;
+    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
+    screen_reset_dirty(self);
+    self->scroll_changed = false;
+    for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
+        historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
+        update_line_data(self->historybuf->line, y, address);
+    }
+    for (index_type y = self->scrolled_by; y < self->lines; y++) {
+        linebuf_init_line(self->linebuf, y - self->scrolled_by);
+        update_line_data(self->linebuf->line, y, address);
+    }
+    if (selection_must_be_cleared) self->selection = EMPTY_SELECTION;
+}
+
+static inline bool
+is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, unsigned int end_x, unsigned int end_y) {
+    return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
+}
+
+static inline void
+selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
+    if (y + self->scrolled_by < ydelta) {
+        ans->x = 0; ans->y = 0;
+    } else {
+        y = y - ydelta + self->scrolled_by;
+        if (y >= self->lines) {
+            ans->x = self->columns - 1; ans->y = self->lines - 1;
+        } else {
+            ans->x = x; ans->y = y;
+        }
+    }
+}
+
+static inline void
+selection_limits_(Screen *self, SelectionBoundary *left, SelectionBoundary *right) {
+    SelectionBoundary a, b;
+    selection_coord(self, self->selection.start_x, self->selection.start_y, self->selection.start_scrolled_by, &a);
+    selection_coord(self, self->selection.end_x, self->selection.end_y, self->selection.end_scrolled_by, &b);
+    if (a.y < b.y || (a.y == b.y && a.x <= b.x)) { *left = a; *right = b; }
+    else { *left = b; *right = a; }
+}
+
+static inline Line*
+visual_line_(Screen *self, index_type y) {
+    if (self->scrolled_by) {
+        if (y < self->scrolled_by) {
+            historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
+            return self->historybuf->line;
+        } 
+        y -= self->scrolled_by;
+    }
+    linebuf_init_line(self->linebuf, y);
+    return self->linebuf->line;
+}
+
+void
+screen_apply_selection(Screen *self, void *address, size_t size) {
+#define start (self->last_rendered_selection_start)
+#define end (self->last_rendered_selection_end)
+    float *data = address;
+    memset(data, 0, size);
+    selection_limits_(self, &start, &end);
+    self->last_selection_scrolled_by = self->scrolled_by;
+    self->selection_updated_once = true;
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { return; }
+    for (index_type y = start.y; y <= end.y; y++) {
+        Line *line = visual_line_(self, y);
+        index_type xlimit = xlimit_for_line(line);
+        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
+        float *line_start = data + self->columns * y;
+        for (index_type x = (y == start.y ? start.x : 0); x < xlimit; x++) line_start[x] = 1.0;
+    }
+#undef start
+#undef end
+}
+
+// }}}
+
 // Python interface {{{
 #define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
 #define WRAP0x(name) static PyObject* xxx_##name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
@@ -1084,19 +1163,6 @@ line(Screen *self, PyObject *val) {
     linebuf_init_line(self->linebuf, y);
     Py_INCREF(self->linebuf->line);
     return (PyObject*) self->linebuf->line;
-}
-
-static inline Line*
-visual_line_(Screen *self, index_type y) {
-    if (self->scrolled_by) {
-        if (y < self->scrolled_by) {
-            historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
-            return self->historybuf->line;
-        } 
-        y -= self->scrolled_by;
-    }
-    linebuf_init_line(self->linebuf, y);
-    return self->linebuf->line;
 }
 
 static PyObject*
@@ -1149,9 +1215,7 @@ set_mode(Screen *self, PyObject *args) {
 
 static PyObject*
 reset_dirty(Screen *self) {
-    self->is_dirty = Py_False;
-    self->cursor_changed = Py_False;
-    self->history_line_added_count = 0;
+    screen_reset_dirty(self);
     Py_RETURN_NONE;
 }
 
@@ -1208,91 +1272,6 @@ change_scrollback_size(Screen *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; 
     if (!screen_change_scrollback_size(self, MAX(self->lines, count))) return NULL;
     Py_RETURN_NONE;
-}
-
-static inline void
-update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
-    size_t base = dest_y * line->xnum * sizeof(Cell);
-    memcpy(data + base, line->cells, line->xnum * sizeof(Cell));
-}
-
-
-static PyObject*
-update_cell_data(Screen *self, PyObject *args) {
-    PyObject *dp;
-    uint8_t *data;
-    int force_screen_refresh;
-    unsigned int history_line_added_count = self->history_line_added_count;
-    if (!PyArg_ParseTuple(args, "O!p", &PyLong_Type, &dp, &force_screen_refresh)) return NULL;
-    data = PyLong_AsVoidPtr(dp);
-    PyObject *cursor_changed = self->cursor_changed;
-    bool selection_must_be_cleared = self->is_dirty == Py_True ? true : false;
-    if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
-    reset_dirty(self);
-    self->scroll_changed = Py_False;
-    for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
-        historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
-        update_line_data(self->historybuf->line, y, data);
-    }
-    for (index_type y = self->scrolled_by; y < self->lines; y++) {
-        linebuf_init_line(self->linebuf, y - self->scrolled_by);
-        update_line_data(self->linebuf->line, y, data);
-    }
-    if (selection_must_be_cleared) self->selection = EMPTY_SELECTION;
-    return Py_BuildValue("OO", cursor_changed, self->modes.mDECSCNM ? Py_True : Py_False);
-}
-
-static inline bool
-is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, unsigned int end_x, unsigned int end_y) {
-    return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
-}
-
-static inline void
-selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
-    if (y + self->scrolled_by < ydelta) {
-        ans->x = 0; ans->y = 0;
-    } else {
-        y = y - ydelta + self->scrolled_by;
-        if (y >= self->lines) {
-            ans->x = self->columns - 1; ans->y = self->lines - 1;
-        } else {
-            ans->x = x; ans->y = y;
-        }
-    }
-}
-
-static inline void
-selection_limits_(Screen *self, SelectionBoundary *left, SelectionBoundary *right) {
-    SelectionBoundary a, b;
-    selection_coord(self, self->selection.start_x, self->selection.start_y, self->selection.start_scrolled_by, &a);
-    selection_coord(self, self->selection.end_x, self->selection.end_y, self->selection.end_scrolled_by, &b);
-    if (a.y < b.y || (a.y == b.y && a.x <= b.x)) { *left = a; *right = b; }
-    else { *left = b; *right = a; }
-}
-
-static PyObject*
-apply_selection(Screen *self, PyObject *args) {
-    unsigned int size;
-    PyObject *l;
-#define start (self->last_rendered_selection_start)
-#define end (self->last_rendered_selection_end)
-    if (!PyArg_ParseTuple(args, "O!I", &PyLong_Type, &l, &size)) return NULL;
-    float *data = PyLong_AsVoidPtr(l);
-    memset(data, 0, size);
-    selection_limits_(self, &start, &end);
-    self->last_selection_scrolled_by = self->scrolled_by;
-    self->selection_updated_once = true;
-    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { Py_RETURN_NONE; }
-    for (index_type y = start.y; y <= end.y; y++) {
-        Line *line = visual_line_(self, y);
-        index_type xlimit = xlimit_for_line(line);
-        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
-        float *line_start = data + self->columns * y;
-        for (index_type x = (y == start.y ? start.x : 0); x < xlimit; x++) line_start[x] = 1.0;
-    }
-    Py_RETURN_NONE;
-#undef start
-#undef end
 }
 
 static PyObject*
@@ -1383,17 +1362,11 @@ scroll(Screen *self, PyObject *args) {
         unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
         if (new_scroll != self->scrolled_by) {
             self->scrolled_by = new_scroll;
-            self->scroll_changed = Py_True;
+            self->scroll_changed = true;
             Py_RETURN_TRUE;
         }
     }
     Py_RETURN_FALSE;
-}
-
-static PyObject*
-clear_selection(Screen *self) {
-    self->selection = EMPTY_SELECTION;
-    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -1403,12 +1376,12 @@ is_selection_in_progress(Screen *self) {
     return ans;
 }
 
-static PyObject*
-is_selection_dirty(Screen *self) {
+bool
+screen_is_selection_dirty(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(self, &start, &end);
-    if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered_selection_start.x || start.y != self->last_rendered_selection_start.y || end.x != self->last_rendered_selection_end.x || end.y != self->last_rendered_selection_end.y || !self->selection_updated_once) { Py_RETURN_TRUE; }
-    Py_RETURN_FALSE;
+    if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered_selection_start.x || start.y != self->last_rendered_selection_start.y || end.x != self->last_rendered_selection_end.x || end.y != self->last_rendered_selection_end.y || !self->selection_updated_once) return true;
+    return false;
 }
 
 static PyObject*
@@ -1433,7 +1406,7 @@ update_selection(Screen *self, PyObject *args) {
 
 static PyObject* 
 mark_as_dirty(Screen *self) {
-    self->is_dirty = Py_True;
+    self->is_dirty = true;
     Py_RETURN_NONE;
 }
 
@@ -1515,19 +1488,15 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
-    MND(apply_selection, METH_VARARGS)
     MND(selection_range_for_line, METH_VARARGS)
     MND(selection_range_for_word, METH_VARARGS)
     MND(text_for_selection, METH_NOARGS)
-    MND(clear_selection, METH_NOARGS)
     MND(is_selection_in_progress, METH_NOARGS)
-    MND(is_selection_dirty, METH_NOARGS)
     MND(start_selection, METH_VARARGS)
     MND(update_selection, METH_VARARGS)
     MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
-    {"update_cell_data", (PyCFunction)update_cell_data, METH_VARARGS, ""},
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
@@ -1553,9 +1522,6 @@ static PyGetSetDef getsetters[] = {
 
 static PyMemberDef members[] = {
     {"callbacks", T_OBJECT_EX, offsetof(Screen, callbacks), 0, "callbacks"},
-    {"cursor_changed", T_OBJECT, offsetof(Screen, cursor_changed), 0, "cursor_changed"},
-    {"scroll_changed", T_OBJECT, offsetof(Screen, scroll_changed), 0, "scroll_changed"},
-    {"is_dirty", T_OBJECT, offsetof(Screen, is_dirty), 0, "is_dirty"},
     {"cursor", T_OBJECT_EX, offsetof(Screen, cursor), READONLY, "cursor"},
     {"color_profile", T_OBJECT_EX, offsetof(Screen, color_profile), READONLY, "color_profile"},
     {"linebuf", T_OBJECT_EX, offsetof(Screen, linebuf), READONLY, "linebuf"},

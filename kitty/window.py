@@ -283,13 +283,13 @@ class Window:
     def buf_toggled(self, is_main_linebuf):
         self.screen.scroll(SCROLL_FULL, False)
 
-    def render_cells(self, program, sprites):
+    def render_cells(self):
         invert_colors = False
         if self.start_visual_bell_at is not None:
             invert_colors = monotonic() - self.start_visual_bell_at <= self.opts.visual_bell_duration
             if not invert_colors:
                 self.start_visual_bell_at = None
-        self.char_grid.render_cells(program, sprites, invert_colors)
+        self.char_grid.render_cells(invert_colors)
 
     # actions {{{
 

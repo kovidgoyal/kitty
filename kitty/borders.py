@@ -10,8 +10,7 @@ from .fast_data_types import (
     BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
     send_borders_rects
 )
-from .shaders import load_shaders
-from .utils import color_as_int, pt_to_px
+from .utils import color_as_int, pt_to_px, load_shaders
 
 
 def vertical_edge(color, width, top, bottom, left):

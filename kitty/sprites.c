@@ -161,8 +161,13 @@ sprite_map_set_layout(PyObject UNUSED *s_, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject*
-sprite_map_current_layout(PyObject UNUSED *s) {
+void
+sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int *z) {
+    *x = sprite_map.xnum; *y = sprite_map.ynum; *z = sprite_map.z;
+}
+
+static PyObject*
+current_layout(PyObject UNUSED *self) {
     return Py_BuildValue("III", sprite_map.xnum, sprite_map.ynum, sprite_map.z);
 }
 
@@ -211,11 +216,11 @@ render_dirty_sprites(PyObject UNUSED *s_) {
 static PyMethodDef module_methods[] = {
     {"sprite_map_set_limits", (PyCFunction)sprite_map_set_limits, METH_VARARGS, ""}, \
     {"sprite_map_set_layout", (PyCFunction)sprite_map_set_layout, METH_VARARGS, ""}, \
-    {"sprite_map_current_layout", (PyCFunction)sprite_map_current_layout, METH_NOARGS, ""}, \
     {"sprite_map_free", (PyCFunction)sprite_map_free, METH_NOARGS, ""}, \
     {"sprite_map_increment", (PyCFunction)sprite_map_increment, METH_NOARGS, ""}, \
     {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""}, \
     {"render_dirty_sprites", (PyCFunction)render_dirty_sprites, METH_NOARGS, ""}, \
+    {"sprite_map_current_layout", (PyCFunction)current_layout, METH_NOARGS, ""}, \
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

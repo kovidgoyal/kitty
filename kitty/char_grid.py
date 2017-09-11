@@ -4,24 +4,18 @@
 
 import re
 from collections import namedtuple
-from ctypes import sizeof
 from enum import Enum
 
 from .config import build_ansi_color_table
-from .constants import (
-    GLfloat, GLuint, ScreenGeometry, cell_size, viewport_size
-)
+from .constants import ScreenGeometry, cell_size, viewport_size
 from .fast_data_types import (
-    CELL, CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM,
-    CURSOR_UNDERLINE, GL_FLOAT, GL_STATIC_DRAW, GL_TRIANGLE_FAN,
-    GL_UNSIGNED_INT, GL_UNSIGNED_SHORT, compile_program, draw_cursor,
-    glDrawArraysInstanced, glUniform1i, glUniform2f, glUniform2i, glUniform2ui,
-    glUniform4f, glUniform4ui, init_cursor_program
+    CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM, CURSOR_UNDERLINE,
+    compile_program, create_cell_vao, draw_cells, draw_cursor,
+    init_cell_program, init_cursor_program, remove_vao
 )
 from .rgb import to_color
-from .shaders import ShaderProgram, load_shaders
 from .utils import (
-    color_as_int, get_logical_dpi, open_url,
+    color_as_int, get_logical_dpi, load_shaders, open_url,
     set_primary_selection
 )
 
@@ -32,34 +26,11 @@ class DynamicColor(Enum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
 
 
-class CellProgram(ShaderProgram):  # {{{
-
-    def send_color_table(self, color_profile):
-        if color_profile.ubo is None:
-            color_profile.ubo = self.init_uniform_block('ColorTable', 'color_table')
-        ubo = color_profile.ubo
-        offset = ubo.offsets['color_table'] // sizeof(GLuint)
-        stride = ubo.size // (256 * sizeof(GLuint))
-        with self.mapped_uniform_data(ubo, usage=GL_STATIC_DRAW) as address:
-            color_profile.copy_color_table(address, offset, stride)
-
-    def create_sprite_map(self):
-        with self.array_object_creator() as add_attribute:
-            stride = CELL['size']
-            add_attribute('text_attrs', size=1, dtype=GL_UNSIGNED_INT, offset=CELL['ch'], stride=stride, divisor=1)
-            add_attribute('sprite_coords', size=3, dtype=GL_UNSIGNED_SHORT, offset=CELL['sprite_x'], stride=stride, divisor=1)
-            add_attribute('colors', size=3, dtype=GL_UNSIGNED_INT, stride=stride, offset=CELL['fg'], divisor=1)
-            add_attribute.newbuf()
-            add_attribute('is_selected', size=1, dtype=GL_FLOAT, stride=sizeof(GLfloat), divisor=1)
-            return add_attribute.vao_id
-
-
 def load_shader_programs():
-    cell = CellProgram(CELL_PROGRAM, *load_shaders('cell'))
+    compile_program(CELL_PROGRAM, *load_shaders('cell'))
+    init_cell_program()
     compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
     init_cursor_program()
-    return cell
-# }}}
 
 
 def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell_width, cell_height):
@@ -71,21 +42,8 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(vao_id, sg, cell_program, sprites, color_profile, invert_colors=False, screen_reversed=False):
-    if color_profile.dirty:
-        cell_program.send_color_table(color_profile)
-        color_profile.dirty = False
-    ul = cell_program.uniform_location
-    glUniform2ui(ul('dimensions'), sg.xnum, sg.ynum)
-    glUniform4ui(ul('default_colors'), color_profile.default_fg, color_profile.default_bg, color_profile.highlight_fg, color_profile.highlight_bg)
-    inverted = invert_colors or screen_reversed
-    glUniform2i(ul('color_indices'), 1 if inverted else 0, 0 if inverted else 1)
-    glUniform4f(ul('steps'), sg.xstart, sg.ystart, sg.dx, sg.dy)
-    glUniform1i(ul('sprites'), sprites.sampler_num)
-    glUniform1i(ul('screen_reversed'), 1 if screen_reversed else 0)
-    glUniform2f(ul('sprite_layout'), *(sprites.layout))
-    with cell_program.bound_vertex_array(vao_id), cell_program.bound_uniform_buffer(color_profile.ubo):
-        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, sg.xnum * sg.ynum)
+def render_cells(vao_id, sg, screen, invert_colors=False):
+    draw_cells(vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, invert_colors, screen)
 
 
 class CharGrid:
@@ -93,23 +51,21 @@ class CharGrid:
     url_pat = re.compile('(?:http|https|file|ftp)://\S+', re.IGNORECASE)
 
     def __init__(self, screen, opts):
-        self.vao_id = None
+        self.vao_id = create_cell_vao()
         self.screen_reversed = False
-        self.data_buffer_size = None
         self.screen = screen
         self.opts = opts
         self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen.color_profile.set_configured_colors(*map(color_as_int, (
             opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
-        self.screen.color_profile.dirty = True
         self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = self.current_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
+        self.default_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
 
-    def destroy(self, cell_program):
+    def destroy(self):
         if self.vao_id is not None:
-            cell_program.remove_vertex_array(self.vao_id)
+            remove_vao(self.vao_id)
             self.vao_id = None
 
     def update_position(self, window_geometry):
@@ -117,9 +73,6 @@ class CharGrid:
 
     def resize(self, window_geometry):
         self.update_position(window_geometry)
-        self.data_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * CELL['size']
-        self.selection_buffer_size = self.screen_geometry.ynum * self.screen_geometry.xnum * sizeof(GLfloat)
-        self.screen.clear_selection()
 
     def change_colors(self, changes):
         dirtied = False
@@ -138,16 +91,6 @@ class CharGrid:
             setattr(self.screen.color_profile, which.name, val)
         if dirtied:
             self.screen.mark_as_dirty()
-
-    def update_cell_data(self, cell_program):
-        if self.data_buffer_size is None:
-            return
-        with cell_program.mapped_vertex_data(self.vao_id, self.data_buffer_size) as address:
-            cursor_changed, self.screen_reversed = self.screen.update_cell_data(
-                address, False)
-        if cursor_changed:
-            c = self.screen.cursor
-            self.current_cursor = Cursor(c.x, c.y, c.shape, c.blink)
 
     def cell_for_pos(self, x, y):
         x, y = int(x // cell_size.width), int(y // cell_size.height)
@@ -229,23 +172,15 @@ class CharGrid:
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
 
-    def render_cells(self, cell_program, sprites, invert_colors=False):
-        if self.vao_id is None:
-            self.vao_id = cell_program.create_sprite_map()
-        if self.screen.scroll_changed or self.screen.is_dirty:
-            self.update_cell_data(cell_program)
-        if self.screen.is_selection_dirty():
-            with cell_program.mapped_vertex_data(self.vao_id, self.selection_buffer_size, bufnum=1) as address:
-                self.screen.apply_selection(address, self.selection_buffer_size)
+    def render_cells(self, invert_colors=False):
         render_cells(
-            self.vao_id, self.screen_geometry, cell_program, sprites,
-            self.screen.color_profile, invert_colors=invert_colors,
-            screen_reversed=self.screen_reversed)
+            self.vao_id, self.screen_geometry,
+            self.screen, invert_colors=invert_colors)
 
     def render_cursor(self, is_focused):
-        cursor = self.current_cursor
         if not self.screen.cursor_visible or self.screen.scrolled_by:
             return
+        cursor = self.screen.cursor
 
         def width(w=2, vert=True):
             dpi = self.dpix if vert else self.dpiy
