@@ -23,7 +23,7 @@ from .fast_data_types import (
     GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
     clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
     glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_window_hint
+    glfw_window_hint, set_options
 )
 from .layout import all_layouts
 from .utils import color_as_int, detach, safe_print
@@ -154,6 +154,7 @@ def setup_opengl(opts):
 
 
 def run_app(opts, args):
+    set_options(opts)
     setup_opengl(opts)
     load_cached_values()
     if 'window-size' in cached_values and opts.remember_window_size:

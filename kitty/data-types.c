@@ -98,6 +98,7 @@ extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
 extern bool init_glfw(PyObject *m);
 extern bool init_sprites(PyObject *module);
+extern bool init_state(PyObject *module);
 extern bool init_shaders(PyObject *module);
 extern bool init_shaders_debug(PyObject *module);
 #ifdef __APPLE__
@@ -124,6 +125,7 @@ PyInit_fast_data_types(void) {
         if (!init_Screen(m)) return NULL;
         if (!init_glfw(m)) return NULL;
         if (!init_sprites(m)) return NULL;
+        if (!init_state(m)) return NULL;
         if (PySys_GetObject("debug_gl") == Py_True) {
             if (!init_shaders_debug(m)) return NULL;
         } else { 
