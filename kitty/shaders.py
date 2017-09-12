@@ -29,14 +29,11 @@ class Sprites:
 
     def __init__(self):
         self.xnum = self.ynum = 1
-        self.first_cell_cache = {}
-        self.second_cell_cache = {}
         self.x = self.y = self.z = 0
         self.texture_id = None
         self.last_num_of_layers = 1
         self.last_ynum = -1
-        self.sampler_num = 0
-        self.texture_unit = GL_TEXTURE0 + self.sampler_num
+        self.texture_unit = GL_TEXTURE0
         sprite_map_set_limits(glGetIntegerv(GL_MAX_TEXTURE_SIZE), glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS))
 
     def do_layout(self, cell_width=1, cell_height=1):

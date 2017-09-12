@@ -466,7 +466,7 @@ draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat 
     glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg));
     check_gl();
 #undef COLOR
-    glUniform1i(UL(sprites), 0);
+    glUniform1i(UL(sprites), 0);  // the sprite map is bound to GL_TEXTURE0
     check_gl();
     unsigned int x, y, z;
     sprite_map_current_layout(&x, &y, &z);
