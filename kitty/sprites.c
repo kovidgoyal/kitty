@@ -52,6 +52,14 @@ sprite_map_set_limits(size_t max_texture_size, size_t max_array_len) {
     sprite_map.max_array_len = max_array_len;
 }
 
+static PyObject*
+sprite_map_set_limits_py(PyObject UNUSED *self, PyObject *args) {
+    unsigned int w, h;
+    if(!PyArg_ParseTuple(args, "II", &w, &h)) return NULL;
+    sprite_map_set_limits(w, h);
+    Py_RETURN_NONE;
+}
+
 void
 sprite_map_free() {
     SpritePosition *s, *t;
@@ -155,6 +163,14 @@ sprite_map_set_layout(unsigned int cell_width, unsigned int cell_height) {
     sprite_map.dirty = true;
 }
 
+static PyObject*
+sprite_map_set_layout_py(PyObject UNUSED *self, PyObject *args) {
+    unsigned int w, h;
+    if(!PyArg_ParseTuple(args, "II", &w, &h)) return NULL;
+    sprite_map_set_layout(w, h);
+    Py_RETURN_NONE;
+}
+
 void
 sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int *z) {
     *x = sprite_map.xnum; *y = sprite_map.ynum; *z = sprite_map.z;
@@ -196,7 +212,9 @@ render_dirty_sprites(void (*render)(PyObject*, bool, bool, bool, sprite_index, s
 
 
 static PyMethodDef module_methods[] = {
-    {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""}, \
+    {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""},
+    {"sprite_map_set_layout", (PyCFunction)sprite_map_set_layout_py, METH_VARARGS, ""},
+    {"sprite_map_set_limits", (PyCFunction)sprite_map_set_limits_py, METH_VARARGS, ""},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
