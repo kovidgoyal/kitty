@@ -15,8 +15,8 @@ from .constants import (
 from .fast_data_types import (
     GLFW_CURSOR, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1,
     GLFW_PRESS, GLFW_REPEAT, ChildMonitor, Timers as _Timers,
-    destroy_sprite_map, glfw_post_empty_event, layout_sprite_map,
-    resize_gl_viewport
+    destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
+    layout_sprite_map, resize_gl_viewport
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
@@ -365,7 +365,6 @@ class Boss:
             self.glfw_window.set_title(self.glfw_window_title)
             if isosx:
                 cocoa_update_title(self.glfw_window_title)
-        self.tab_manager.render()
         for window in tab.visible_windows():
             if not window.needs_layout:
                 window.char_grid.render_cells()
@@ -408,6 +407,7 @@ class Boss:
             t.destroy()
         del self.tab_manager
         destroy_sprite_map()
+        destroy_global_data()
         del self.glfw_window
 
     def paste_from_clipboard(self):

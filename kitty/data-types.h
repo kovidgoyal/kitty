@@ -22,6 +22,7 @@
 #define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #define xstr(s) str(s)
 #define str(s) #s
+#define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
 
 typedef uint32_t char_type;
 typedef uint32_t color_type;
@@ -293,7 +294,21 @@ typedef struct {
 } Options;
 
 typedef struct {
+    unsigned int id;
+} Tab;
+
+typedef struct {
+    ssize_t vao_idx;
+    float xstart, ystart, dx, dy;
+    Screen *screen;
+} ScreenRenderData;
+
+typedef struct {
     Options opts;
+
+    Tab tabs[MAX_CHILDREN];
+    unsigned int active_tab, num_tabs;
+    ScreenRenderData tab_bar_render_data;
 } GlobalState;
 
 #ifndef IS_STATE
@@ -313,6 +328,8 @@ extern GlobalState global_state;
 
 typedef void (*draw_borders_func)();
 extern draw_borders_func draw_borders;
+typedef void (*draw_cells_func)(ssize_t, float, float, float, float, Screen *);
+extern draw_cells_func draw_cells;
 
 // Global functions 
 Line* alloc_line();

@@ -33,8 +33,6 @@ static char glbuf[4096];
 #define GL_STACK_OVERFLOW 0x0503
 #endif
 
-#define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
-
 #ifdef ENABLE_DEBUG_GL
 static void
 check_for_gl_error(int line) {
@@ -596,7 +594,7 @@ create_cell_vao() {
 }
 
 static void 
-draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen) {
+draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen) {
     size_t sz;
     void *address;
     bool inverted = screen_invert_colors(screen);
@@ -842,7 +840,7 @@ PYWRAP1(draw_cells) {
     Screen *screen;
 
     PA("iffffO", &vao_idx, &xstart, &ystart, &dx, &dy, &screen); 
-    draw_cells(vao_idx, xstart, ystart, dx, dy, screen);
+    draw_cells_impl(vao_idx, xstart, ystart, dx, dy, screen);
     Py_RETURN_NONE;
 }
 NO_ARG(destroy_sprite_map)
@@ -900,6 +898,7 @@ PYWRAP0(check_for_extensions) {
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
+    {"draw_cells", (PyCFunction)pydraw_cells, METH_VARARGS, NULL},
     M(compile_program, METH_VARARGS),
     MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),
@@ -917,7 +916,6 @@ static PyMethodDef module_methods[] = {
     MW(send_borders_rects, METH_VARARGS),
     MW(init_cell_program, METH_NOARGS),
     MW(create_cell_vao, METH_NOARGS),
-    MW(draw_cells, METH_VARARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
     MW(resize_gl_viewport, METH_VARARGS),
@@ -965,6 +963,7 @@ init_shaders(PyObject *module) {
     PyModule_AddObject(module, "GL_VERSION_REQUIRED", Py_BuildValue("II", REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     draw_borders = &draw_borders_impl;
+    draw_cells = &draw_cells_impl;
     return true;
 }
 // }}}

@@ -424,6 +424,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static double last_render_at = -DBL_MAX;
 draw_borders_func draw_borders = NULL;
+draw_cells_func draw_cells = NULL;
 
 static inline bool
 render(ChildMonitor *self, double *timeout) {
@@ -432,6 +433,9 @@ render(ChildMonitor *self, double *timeout) {
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render > self->repaint_delay) {
         draw_borders();
+#define TD global_state.tab_bar_render_data
+        if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
+#undef TD
         ret = PyObject_CallFunctionObjArgs(self->render_func, NULL);
         if (ret == NULL) { PyErr_Print(); return false; }
         else Py_DECREF(ret);

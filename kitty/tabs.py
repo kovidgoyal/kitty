@@ -4,17 +4,18 @@
 
 from collections import deque, namedtuple
 from functools import partial
+from itertools import count
 
 from .borders import Borders
-from .char_grid import calculate_gl_geometry, render_cells
+from .char_grid import calculate_gl_geometry
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
-    WindowGeometry, appname, cell_size, get_boss, shell_path,
-    viewport_size
+    WindowGeometry, appname, cell_size, get_boss, shell_path, viewport_size
 )
 from .fast_data_types import (
-    DECAWM, Screen, create_cell_vao, glfw_post_empty_event
+    DECAWM, Screen, add_tab, create_cell_vao, glfw_post_empty_event,
+    remove_tab, set_active_tab, swap_tabs, set_tab_bar_render_data
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -22,16 +23,19 @@ from .window import Window
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
 borders = None
+tab_counter = count()
+next(tab_counter)
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None):
     return (cmd, stdin, override_title)
 
 
-class Tab:
+class Tab:  # {{{
 
     def __init__(self, opts, args, on_title_change, session_tab=None, special_window=None):
         global borders
+        self.id = next(tab_counter)
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
@@ -199,9 +203,10 @@ class Tab:
 
     def __repr__(self):
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
+# }}}
 
 
-class TabBar:
+class TabBar:  # {{{
 
     def __init__(self, opts):
         self.num_tabs = 1
@@ -238,7 +243,8 @@ class TabBar:
             self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_width, g.bottom))
         else:
             self.tab_bar_blank_rects = ()
-        self.screen_geometry = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
+        self.screen_geometry = sg = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
+        set_tab_bar_render_data(self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data):
         if self.layout_changed is None:
@@ -270,18 +276,15 @@ class TabBar:
         self.cell_ranges = cr
         glfw_post_empty_event()
 
-    def render(self):
-        if self.layout_changed is not None:
-            render_cells(self.vao_id, self.screen_geometry, self.screen)
-
     def tab_at(self, x):
         x = (x - self.window_geometry.left) // self.cell_width
         for i, (a, b) in enumerate(self.cell_ranges):
             if a <= x <= b:
                 return i
+# }}}
 
 
-class TabManager:
+class TabManager:  # {{{
 
     def __init__(self, opts, args):
         self.opts, self.args = opts, args
@@ -291,9 +294,22 @@ class TabManager:
         self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
 
+    def _add_tab(self, tab):
+        add_tab(tab.id)
+        self.tabs.append(tab)
+
+    def _remove_tab(self, tab):
+        remove_tab(tab.id)
+        self.tabs.remove(tab)
+
+    def _set_active_tab(self, idx):
+        self.active_tab_idx = idx
+        set_active_tab(idx)
+
     def init(self, startup_session):
-        self.tabs = [Tab(self.opts, self.args, self.title_changed, t) for t in startup_session.tabs]
-        self.active_tab_idx = startup_session.active_tab_idx
+        for t in startup_session.tabs:
+            self._add_tab(Tab(self.opts, self.args, self.title_changed, t))
+        self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
         if len(self.tabs) > 1:
             get_boss().tabbar_visibility_changed()
         self.update_tab_bar()
@@ -310,7 +326,7 @@ class TabManager:
             tab.relayout()
 
     def set_active_tab(self, idx):
-        self.active_tab_idx = idx
+        self._set_active_tab(idx)
         self.active_tab.relayout_borders()
         self.update_tab_bar()
 
@@ -337,7 +353,8 @@ class TabManager:
             idx = self.active_tab_idx
             nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
             self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
-            self.active_tab_idx = nidx
+            swap_tabs(idx, nidx)
+            self._set_active_tab(nidx)
             self.update_tab_bar()
 
     def title_changed(self, new_title):
@@ -345,16 +362,17 @@ class TabManager:
 
     def new_tab(self, special_window=None):
         needs_resize = len(self.tabs) == 1
-        self.active_tab_idx = len(self.tabs)
-        self.tabs.append(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
+        idx = len(self.tabs)
+        self._add_tab(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
+        self._set_active_tab(idx)
         self.update_tab_bar()
         if needs_resize:
             get_boss().tabbar_visibility_changed()
 
     def remove(self, tab):
         needs_resize = len(self.tabs) == 2
-        self.tabs.remove(tab)
-        self.active_tab_idx = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
+        self._remove_tab(tab)
+        self._set_active_tab(max(0, min(self.active_tab_idx, len(self.tabs) - 1)))
         self.update_tab_bar()
         tab.destroy()
         if needs_resize:
@@ -386,3 +404,4 @@ class TabManager:
         if len(self.tabs) < 2:
             return
         self.tab_bar.render()
+# }}}
