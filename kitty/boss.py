@@ -361,34 +361,35 @@ class Boss:
         self.cursor_blinking = False
 
     def render(self):
+        tab = self.active_tab
+        if tab is None:
+            return
         if self.resize_gl_viewport:
             glViewport(0, 0, viewport_size.width, viewport_size.height)
             self.resize_gl_viewport = False
-        tab = self.active_tab
-        if tab is not None:
-            if tab.title != self.glfw_window_title:
-                self.glfw_window_title = tab.title
-                self.glfw_window.set_title(self.glfw_window_title)
-                if isosx:
-                    cocoa_update_title(self.glfw_window_title)
-            draw_borders()
-            self.tab_manager.render()
-            for window in tab.visible_windows():
-                if not window.needs_layout:
-                    window.render_cells()
-            active = self.active_window
-            if active is not None:
-                draw_cursor = True
-                if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
-                    now = monotonic() - self.cursor_blink_zero_time
-                    t = int(now * 1000)
-                    d = int(self.opts.cursor_blink_interval * 1000)
-                    n = t // d
-                    draw_cursor = n % 2 == 0
-                    self.ui_timers.add_if_before(
-                        ((n + 1) * d / 1000) - now, None)
-                if draw_cursor:
-                    active.char_grid.render_cursor(self.window_is_focused)
+        if tab.title != self.glfw_window_title:
+            self.glfw_window_title = tab.title
+            self.glfw_window.set_title(self.glfw_window_title)
+            if isosx:
+                cocoa_update_title(self.glfw_window_title)
+        draw_borders()
+        self.tab_manager.render()
+        for window in tab.visible_windows():
+            if not window.needs_layout:
+                window.render_cells()
+        active = self.active_window
+        if active is not None:
+            draw_cursor = True
+            if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
+                now = monotonic() - self.cursor_blink_zero_time
+                t = int(now * 1000)
+                d = int(self.opts.cursor_blink_interval * 1000)
+                n = t // d
+                draw_cursor = n % 2 == 0
+                self.ui_timers.add_if_before(
+                    ((n + 1) * d / 1000) - now, None)
+            if draw_cursor:
+                active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
         window.char_grid.destroy()
