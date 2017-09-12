@@ -396,11 +396,8 @@ typedef struct {
 static SpriteMap sprite_map = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1, .texture_unit = GL_TEXTURE0 };
 
 #ifdef __APPLE__ 
-#ifdef glCopyImageSubData
-#define GLEW_ARB_copy_image true
-#else
+#define glCopyImageSubData(...)
 #define GLEW_ARB_copy_image false
-#endif
 #endif
 
 static bool copy_image_warned = false;
