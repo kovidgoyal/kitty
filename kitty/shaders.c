@@ -14,6 +14,7 @@
 #include <GL/glew.h>
 #endif
 #include <string.h>
+#include <stddef.h>
 
 static char glbuf[4096];
 
