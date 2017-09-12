@@ -423,6 +423,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef DECREF_CHILD
 
 static double last_render_at = -DBL_MAX;
+draw_borders_func draw_borders = NULL;
 
 static inline bool
 render(ChildMonitor *self, double *timeout) {
@@ -430,6 +431,7 @@ render(ChildMonitor *self, double *timeout) {
     double now = monotonic();
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render > self->repaint_delay) {
+        draw_borders();
         ret = PyObject_CallFunctionObjArgs(self->render_func, NULL);
         if (ret == NULL) { PyErr_Print(); return false; }
         else Py_DECREF(ret);

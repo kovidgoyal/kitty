@@ -714,7 +714,7 @@ init_borders_program() {
 }
 
 static void
-draw_borders() {
+draw_borders_impl() {
     if (num_border_rects) {
         bind_program(BORDERS_PROGRAM);
         bind_vertex_array(border_vertex_array);
@@ -831,7 +831,6 @@ PYWRAP1(draw_cursor) {
 }
 
 NO_ARG(init_borders_program)
-NO_ARG(draw_borders)
 PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); Py_RETURN_NONE; }
 TWO_INT(send_borders_rects)
 
@@ -914,7 +913,6 @@ static PyMethodDef module_methods[] = {
     MW(init_cursor_program, METH_NOARGS),
     MW(draw_cursor, METH_VARARGS),
     MW(init_borders_program, METH_NOARGS),
-    MW(draw_borders, METH_NOARGS),
     MW(add_borders_rect, METH_VARARGS),
     MW(send_borders_rects, METH_VARARGS),
     MW(init_cell_program, METH_NOARGS),
@@ -966,6 +964,7 @@ init_shaders(PyObject *module) {
 #undef C
     PyModule_AddObject(module, "GL_VERSION_REQUIRED", Py_BuildValue("II", REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    draw_borders = &draw_borders_impl;
     return true;
 }
 // }}}

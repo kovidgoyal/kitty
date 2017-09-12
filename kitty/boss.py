@@ -15,7 +15,7 @@ from .constants import (
 from .fast_data_types import (
     GLFW_CURSOR, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1,
     GLFW_PRESS, GLFW_REPEAT, ChildMonitor, Timers as _Timers,
-    destroy_sprite_map, draw_borders, glfw_post_empty_event, layout_sprite_map,
+    destroy_sprite_map, glfw_post_empty_event, layout_sprite_map,
     resize_gl_viewport
 )
 from .fonts.render import render_cell_wrapper, set_font_family
@@ -365,7 +365,6 @@ class Boss:
             self.glfw_window.set_title(self.glfw_window_title)
             if isosx:
                 cocoa_update_title(self.glfw_window_title)
-        draw_borders()
         self.tab_manager.render()
         for window in tab.visible_windows():
             if not window.needs_layout:

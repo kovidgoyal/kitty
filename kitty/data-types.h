@@ -311,6 +311,8 @@ extern GlobalState global_state;
         clear_sprite_position((line)->cells[(at)]); \
     }
 
+typedef void (*draw_borders_func)();
+extern draw_borders_func draw_borders;
 
 // Global functions 
 Line* alloc_line();
