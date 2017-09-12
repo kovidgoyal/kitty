@@ -84,7 +84,6 @@ static struct PyModuleDef module = {
 };
 
 
-extern bool add_module_gl_constants(PyObject*);
 extern int init_LineBuf(PyObject *);
 extern int init_HistoryBuf(PyObject *);
 extern int init_Cursor(PyObject *);
@@ -123,7 +122,6 @@ PyInit_fast_data_types(void) {
         if (!init_ChildMonitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
         if (!init_Screen(m)) return NULL;
-        if (!add_module_gl_constants(m)) return NULL;
         if (!init_glfw(m)) return NULL;
         if (!init_sprites(m)) return NULL;
         if (PySys_GetObject("debug_gl") == Py_True) {

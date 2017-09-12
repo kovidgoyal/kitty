@@ -17,16 +17,16 @@ from .constants import (
     appname, config_dir, isosx, logo_data_file, str_version, viewport_size
 )
 from .fast_data_types import (
-    GL_COLOR_BUFFER_BIT, GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
+    GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions, glClear,
-    glClearColor, glewInit, glfw_init, glfw_init_hint_string,
+    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
+    clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
     glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
     glfw_window_hint
 )
 from .layout import all_layouts
-from .utils import detach, safe_print
+from .utils import color_as_int, detach, safe_print
 
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
@@ -153,18 +153,6 @@ def setup_opengl(opts):
         glfw_window_hint(GLFW_STENCIL_BITS, 8)
 
 
-def clear_buffers(window, opts):
-    bg = opts.background
-    glClearColor(bg.red / 255, bg.green / 255, bg.blue / 255, 1)
-    glfw_swap_interval(0)
-    glClear(GL_COLOR_BUFFER_BIT)
-    window.swap_buffers()
-    glClear(GL_COLOR_BUFFER_BIT)
-    # We dont turn this on as it causes rendering performance to be much worse,
-    # for example, dragging the mouse to select is laggy
-    # glfw_swap_interval(1)
-
-
 def run_app(opts, args):
     setup_opengl(opts)
     load_cached_values()
@@ -204,7 +192,11 @@ def run_app(opts, args):
     glewInit()
     boss = Boss(window, opts, args)
     boss.start()
-    clear_buffers(window, opts)
+    glfw_swap_interval(0)
+    clear_buffers(window.swap_buffers, color_as_int(opts.background))
+    # We dont turn this on as it causes rendering performance to be much worse,
+    # for example, dragging the mouse to select is laggy
+    # glfw_swap_interval(1)
     try:
         boss.child_monitor.main_loop()
     finally:

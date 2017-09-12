@@ -83,6 +83,7 @@ glew_init(PyObject UNUSED *self) {
     ARB_TEST(texture_storage);
 #undef ARB_TEST
 #endif
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Py_RETURN_NONE;
 }
 // }}}
@@ -857,11 +858,54 @@ PYWRAP1(layout_sprite_map) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(resize_gl_viewport) {
+    unsigned int w, h; PA("II", &w, &h);
+    glViewport(0, 0, w, h);
+    Py_RETURN_NONE;
+}
+
+PYWRAP1(clear_buffers) {
+    PyObject *swap_buffers;
+    unsigned int bg;
+    PA("OI", &swap_buffers, &bg);
+#define C(shift) ((float)((bg >> shift) & 0xff)) / 255.0
+    glClearColor(C(16), C(8), C(0), 1);
+#undef C
+    glClear(GL_COLOR_BUFFER_BIT);
+    PyObject *ret = PyObject_CallFunctionObjArgs(swap_buffers, NULL);
+    if (ret == NULL) return NULL;
+    Py_DECREF(ret);
+    glClear(GL_COLOR_BUFFER_BIT);
+    Py_RETURN_NONE;
+}
+
+PYWRAP0(check_for_extensions) {
+    GLint n = 0, i, left = 2;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+    bool texture_storage = false;
+#define CHECK(name) if (!name) { \
+    if (strstr((const char*)ext, "GL_ARB_" #name) == (const char *)ext) { left--; name = true; } \
+}
+    for (i = 0; i < n; i++) {
+        const GLubyte *ext = glGetStringi(GL_EXTENSIONS, i);
+        CHECK(texture_storage); 
+        if (left < 1) break;
+    }
+#undef CHECK
+    if (left > 0) {
+#define CHECK(name) if (!name) { PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: GL_ARB_%s", #name); return NULL; }
+        CHECK(texture_storage); 
+#undef CHECK
+    }
+    Py_RETURN_NONE;
+}
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
     M(compile_program, METH_VARARGS),
+    MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),
     MW(remove_vao, METH_O),
     MW(bind_vertex_array, METH_O),
@@ -881,6 +925,8 @@ static PyMethodDef module_methods[] = {
     MW(draw_cells, METH_VARARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
+    MW(resize_gl_viewport, METH_VARARGS),
+    MW(clear_buffers, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

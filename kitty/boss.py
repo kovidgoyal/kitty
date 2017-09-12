@@ -13,10 +13,10 @@ from .constants import (
     mouse_cursor_pos, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
-    GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
-    GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    ChildMonitor, Timers as _Timers, destroy_sprite_map, draw_borders,
-    glBlendFunc, glfw_post_empty_event, glViewport, layout_sprite_map
+    GLFW_CURSOR, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1,
+    GLFW_PRESS, GLFW_REPEAT, ChildMonitor, Timers as _Timers,
+    destroy_sprite_map, draw_borders, glfw_post_empty_event, layout_sprite_map,
+    resize_gl_viewport
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
@@ -95,7 +95,6 @@ class Boss:
         self.cursor_blinking = True
         self.window_is_focused = True
         self.glfw_window_title = None
-        self.resize_gl_viewport = False
         self.shutting_down = False
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
@@ -118,7 +117,6 @@ class Boss:
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
         self.start_cursor_blink()
@@ -173,7 +171,7 @@ class Boss:
         if w > 100 and h > 100:
             viewport_size.width, viewport_size.height = w, h
             self.tab_manager.resize()
-            self.resize_gl_viewport = True
+            resize_gl_viewport(w, h)
             glfw_post_empty_event()
         else:
             safe_print('Ignoring resize request for sizes under 100x100')
@@ -364,9 +362,6 @@ class Boss:
         tab = self.active_tab
         if tab is None:
             return
-        if self.resize_gl_viewport:
-            glViewport(0, 0, viewport_size.width, viewport_size.height)
-            self.resize_gl_viewport = False
         if tab.title != self.glfw_window_title:
             self.glfw_window_title = tab.title
             self.glfw_window.set_title(self.glfw_window_title)

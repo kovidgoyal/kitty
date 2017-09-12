@@ -1,2 +1,2 @@
 #!/bin/bash
-cloc --exclude-list-file <(echo -e 'kitty/wcwidth9.h\nkitty/gl.c\nkitty/glfw.c\nkitty/glfw.h\nkitty/charsets.c\nkitty/key_encoding.py\nkitty/rgb.py') kitty
+cloc --exclude-list-file <(echo -e 'kitty/wcwidth9.h\nkitty/glfw.c\nkitty/glfw.h\nkitty/charsets.c\nkitty/key_encoding.py\nkitty/rgb.py') kitty
