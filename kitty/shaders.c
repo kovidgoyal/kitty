@@ -430,27 +430,27 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
 
 static void
 realloc_sprite_texture() {
-    const GLenum tgt = GL_TEXTURE_2D_ARRAY;
     GLuint tex;
     glGenTextures(1, &tex); check_gl();
-    glBindTexture(tgt, tex); check_gl();
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex); check_gl();
     // We use GL_NEAREST otherwise glyphs that touch the edge of the cell
     // often show a border between cells
-    glTexParameteri(tgt, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(tgt, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(tgt, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); check_gl();
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); check_gl();
     unsigned int xnum, ynum, z, znum, width, height, src_ynum;
     sprite_map_current_layout(&xnum, &ynum, &z);
     znum = z + 1;
     width = xnum * sprite_map.cell_width; height = ynum * sprite_map.cell_height;
-    glTexStorage3D(tgt, 1, GL_R8, width, height, znum); check_gl();
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); check_gl();
     if (sprite_map.texture_id) {
         // need to re-alloc
-        src_ynum = z == 0 ? ynum - 1 : ynum;  // Only copy the previous rows
+        src_ynum = MAX(1, sprite_map.last_ynum);
         copy_image_sub_data(sprite_map.texture_id, tex, width, src_ynum * sprite_map.cell_height, sprite_map.last_num_of_layers);
         glDeleteTextures(1, &sprite_map.texture_id); check_gl();
     }
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
     sprite_map.last_num_of_layers = znum;
     sprite_map.last_ynum = ynum;
     sprite_map.texture_id = tex;
