@@ -15,15 +15,14 @@ from .constants import (
 from .fast_data_types import (
     GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GLFW_CURSOR, GLFW_CURSOR_HIDDEN,
     GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT,
-    ChildMonitor, Timers as _Timers, glBlendFunc, glfw_post_empty_event,
-    glViewport, draw_borders
+    ChildMonitor, Timers as _Timers, destroy_sprite_map, draw_borders,
+    glBlendFunc, glfw_post_empty_event, glViewport, layout_sprite_map
 )
-from .fonts.render import set_font_family
+from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
     get_sent_data, get_shortcut, interpret_key_event, interpret_text_event
 )
 from .session import create_session
-from .shaders import Sprites
 from .tabs import SpecialWindow, TabManager
 from .utils import safe_print
 
@@ -118,8 +117,7 @@ class Boss:
         load_shader_programs()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
-        self.sprites = Sprites()
-        self.sprites.do_layout(cell_size.width, cell_size.height)
+        layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
@@ -201,7 +199,7 @@ class Boss:
         self.current_font_size = new_size
         cell_size.width, cell_size.height = set_font_family(
             self.opts, override_font_size=self.current_font_size)
-        self.sprites.do_layout(cell_size.width, cell_size.height)
+        layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
         self.resize_windows_after_font_size_change()
         for window in self.window_id_map.values():
             if window is not None:
@@ -373,26 +371,24 @@ class Boss:
                 self.glfw_window.set_title(self.glfw_window_title)
                 if isosx:
                     cocoa_update_title(self.glfw_window_title)
-            with self.sprites:
-                self.sprites.render_dirty_sprites()
-                draw_borders()
-                self.tab_manager.render()
-                for window in tab.visible_windows():
-                    if not window.needs_layout:
-                        window.render_cells()
-                active = self.active_window
-                if active is not None:
-                    draw_cursor = True
-                    if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
-                        now = monotonic() - self.cursor_blink_zero_time
-                        t = int(now * 1000)
-                        d = int(self.opts.cursor_blink_interval * 1000)
-                        n = t // d
-                        draw_cursor = n % 2 == 0
-                        self.ui_timers.add_if_before(
-                            ((n + 1) * d / 1000) - now, None)
-                    if draw_cursor:
-                        active.char_grid.render_cursor(self.window_is_focused)
+            draw_borders()
+            self.tab_manager.render()
+            for window in tab.visible_windows():
+                if not window.needs_layout:
+                    window.render_cells()
+            active = self.active_window
+            if active is not None:
+                draw_cursor = True
+                if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
+                    now = monotonic() - self.cursor_blink_zero_time
+                    t = int(now * 1000)
+                    d = int(self.opts.cursor_blink_interval * 1000)
+                    n = t // d
+                    draw_cursor = n % 2 == 0
+                    self.ui_timers.add_if_before(
+                        ((n + 1) * d / 1000) - now, None)
+                if draw_cursor:
+                    active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
         window.char_grid.destroy()
@@ -418,8 +414,7 @@ class Boss:
         for t in self.tab_manager:
             t.destroy()
         del self.tab_manager
-        self.sprites.destroy()
-        del self.sprites
+        destroy_sprite_map()
         del self.glfw_window
 
     def paste_from_clipboard(self):

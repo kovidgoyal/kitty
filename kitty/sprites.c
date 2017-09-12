@@ -46,13 +46,13 @@ sprite_map_set_error(int error) {
     }
 }
 
-PyObject*
-sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
-    if (!PyArg_ParseTuple(args, "kk", &(sprite_map.max_texture_size), &(sprite_map.max_array_len))) return NULL;
-    Py_RETURN_NONE;
+void
+sprite_map_set_limits(size_t max_texture_size, size_t max_array_len) {
+    sprite_map.max_texture_size = max_texture_size;
+    sprite_map.max_array_len = max_array_len;
 }
 
-PyObject*
+void
 sprite_map_free() {
     SpritePosition *s, *t;
     for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
@@ -64,7 +64,6 @@ sprite_map_free() {
             PyMem_Free(t);
         }
     }
-    Py_RETURN_NONE;
 }
 
 static inline void
@@ -125,21 +124,17 @@ set_sprite_position(Cell *cell, Cell *previous_cell) {
     cell->sprite_z = sp->z;
 }
 
-PyObject*
-sprite_map_increment() {
-#define increment_doc "Increment the current position and return the old (x, y, z) values"
-    unsigned int x = sprite_map.x, y = sprite_map.y, z = sprite_map.z;
+int 
+sprite_map_increment(sprite_index *x, sprite_index *y, sprite_index *z) {
     int error = 0;
+    *x = sprite_map.x; *y = sprite_map.y; *z = sprite_map.z;
     do_increment(&error);
-    if (error) { sprite_map_set_error(error); return NULL; }
-    return Py_BuildValue("III", x, y, z);
+    return error;
 }
 
-PyObject*
-sprite_map_set_layout(PyObject UNUSED *s_, PyObject *args) {
+void
+sprite_map_set_layout(unsigned int cell_width, unsigned int cell_height) {
     // Invalidate cache since cell size has changed.
-    unsigned long cell_width, cell_height;
-    if (!PyArg_ParseTuple(args, "kk", &cell_width, &cell_height)) return NULL;
     SpritePosition *s;
     sprite_map.xnum = MIN(MAX(1, sprite_map.max_texture_size / cell_width), UINT16_MAX);
     sprite_map.max_y = MIN(MAX(1, sprite_map.max_texture_size / cell_height), UINT16_MAX);
@@ -158,17 +153,11 @@ sprite_map_set_layout(PyObject UNUSED *s_, PyObject *args) {
         } while (s != NULL);
     }
     sprite_map.dirty = true;
-    Py_RETURN_NONE;
 }
 
 void
 sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int *z) {
     *x = sprite_map.xnum; *y = sprite_map.ynum; *z = sprite_map.z;
-}
-
-static PyObject*
-current_layout(PyObject UNUSED *self) {
-    return Py_BuildValue("III", sprite_map.xnum, sprite_map.ynum, sprite_map.z);
 }
 
 PyObject*
@@ -183,48 +172,34 @@ sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
 
-PyObject*
-render_dirty_sprites(PyObject UNUSED *s_) {
+void
+render_dirty_sprites(void (*render)(PyObject*, bool, bool, bool, sprite_index, sprite_index, sprite_index)) {
 #define render_dirty_cells_doc "Render all cells that are marked as dirty"
-    if (!sprite_map.dirty) { Py_RETURN_NONE; }
-    PyObject *ans = PyList_New(0);
-    if (ans == NULL) return NULL;
+    if (!sprite_map.dirty) return;
 
     for (size_t i = 0; i < sizeof(sprite_map.cache)/sizeof(sprite_map.cache[0]); i++) {
         SpritePosition *sp = &(sprite_map.cache[i]);
         do {
             if (sp->filled && !sp->rendered) {
                 PyObject *text = line_text_at(sp->ch & CHAR_MASK, sp->cc);
-                if (text == NULL) { Py_CLEAR(ans); return NULL; }
                 char_type attrs = sp->ch >> ATTRS_SHIFT;
                 bool bold = (attrs >> BOLD_SHIFT) & 1, italic = (attrs >> ITALIC_SHIFT) & 1;
-                PyObject *x = Py_BuildValue("OOOOHHH", text, bold ? Py_True : Py_False, italic ? Py_True : Py_False, sp->is_second ? Py_True : Py_False, sp->x, sp->y, sp->z);
+                render(text, bold, italic, sp->is_second, sp->x, sp->y, sp->z);
                 Py_CLEAR(text);
-                if (x == NULL) { Py_CLEAR(ans); return NULL; }
-                if (PyList_Append(ans, x) != 0) { Py_CLEAR(x); Py_CLEAR(ans); return NULL; }
-                Py_CLEAR(x);
                 sp->rendered = true; 
             }
             sp = sp->next;
         } while(sp);
     }
     sprite_map.dirty = false;
-    return ans;
 }
 
 
 static PyMethodDef module_methods[] = {
-    {"sprite_map_set_limits", (PyCFunction)sprite_map_set_limits, METH_VARARGS, ""}, \
-    {"sprite_map_set_layout", (PyCFunction)sprite_map_set_layout, METH_VARARGS, ""}, \
-    {"sprite_map_free", (PyCFunction)sprite_map_free, METH_NOARGS, ""}, \
-    {"sprite_map_increment", (PyCFunction)sprite_map_increment, METH_NOARGS, ""}, \
     {"sprite_position_for", (PyCFunction)sprite_position_for, METH_VARARGS, ""}, \
-    {"render_dirty_sprites", (PyCFunction)render_dirty_sprites, METH_NOARGS, ""}, \
-    {"sprite_map_current_layout", (PyCFunction)current_layout, METH_NOARGS, ""}, \
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
-
 
 bool 
 init_sprites(PyObject *module) {

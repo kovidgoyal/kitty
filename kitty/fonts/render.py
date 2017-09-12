@@ -57,6 +57,22 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
     return first, second
 
 
+class Buf:
+
+    def __init__(self, buf):
+        self.buf = buf
+
+    def __call__(self):
+        return ctypes.addressof(self.buf)
+
+
+def render_cell_wrapper(text, bold, italic, underline, strikethrough, is_second):
+    first, second = render_cell(text, bold, italic, underline, strikethrough)
+    ans = second if is_second else first
+    ans = ans or render_cell()[0]
+    return Buf(ans)
+
+
 def join_cells(cell_width, cell_height, *cells):
     dstride = len(cells) * cell_width
     ans = (ctypes.c_ubyte * (cell_height * dstride))()

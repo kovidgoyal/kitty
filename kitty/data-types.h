@@ -327,7 +327,6 @@ bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
 void copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, size_t stride);
-void sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int*);
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);
