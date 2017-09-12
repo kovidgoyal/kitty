@@ -590,7 +590,6 @@ create_cell_vao() {
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A(is_selected, 1, GL_FLOAT, NULL, 0);
     add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
     return vao_idx;
 #undef A
 #undef A1
@@ -622,6 +621,7 @@ draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat 
     render_dirty_sprites(render_and_send_dirty_sprites);
 #define UL(name) cell_uniform_locations[CELL_##name]
     bind_program(CELL_PROGRAM); 
+    bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
     glUniform2ui(UL(dimensions), screen->columns, screen->lines);
     check_gl();
     glUniform4f(UL(steps), xstart, ystart, dx, dy);
