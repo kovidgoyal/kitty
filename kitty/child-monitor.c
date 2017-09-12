@@ -366,20 +366,24 @@ resize_pty(ChildMonitor *self, PyObject *args) {
 #define resize_pty_doc "Resize the pty associated with the specified child"
     unsigned long window_id;
     struct winsize dim;
-    PyObject *found = Py_False;
+    int fd = -1;
     if (!PyArg_ParseTuple(args, "kHHHH", &window_id, &dim.ws_row, &dim.ws_col, &dim.ws_xpixel, &dim.ws_ypixel)) return NULL;
     children_mutex(lock);
-    for (size_t i = 0; i < self->count; i++) {
-        if (children[i].id == window_id) {
-            found = Py_True;
-            if (!pty_resize(children[i].fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
-            break;
-        }
-    }
+#define FIND(queue, count) { \
+    for (size_t i = 0; i < count; i++) { \
+        if (queue[i].id == window_id) { \
+            fd = queue[i].fd; \
+            break; \
+        } \
+    }}
+    FIND(children, self->count);
+    if (fd == -1) FIND(add_queue, add_queue_count);
+    if (fd != -1) {
+        if (!pty_resize(fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
+    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %lu)\n", window_id, self->count, add_queue_count);
     children_mutex(unlock);
     if (PyErr_Occurred()) return NULL;
-    Py_INCREF(found);
-    return found;
+    Py_RETURN_NONE;
 }
 
 bool

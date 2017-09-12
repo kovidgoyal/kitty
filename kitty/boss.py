@@ -137,12 +137,10 @@ class Boss:
         self.window_id_map[window.id] = window
         wakeup()
 
-    def retry_resize_pty(self, window_id):
-        # In case the child has not yet been added in the child monitor
+    def resize_pty(self, window_id):
         w = self.window_id_map.get(window_id)
         if w is not None:
-            if not self.child_monitor.resize_pty(window_id, *w.current_pty_size):
-                return 0.002  # re-add this timer
+            self.child_monitor.resize_pty(window_id, *w.current_pty_size)
 
     def on_child_death(self, window_id):
         w = self.window_id_map.pop(window_id, None)

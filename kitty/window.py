@@ -86,9 +86,7 @@ class Window:
                 max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             self.char_grid.resize(new_geometry)
             self.needs_layout = False
-            timeout = boss.retry_resize_pty(self.id)
-            if timeout is not None:
-                boss.ui_timers.add(timeout, boss.retry_resize_pty, self.id)
+            boss.resize_pty(self.id)
         else:
             self.char_grid.update_position(new_geometry)
         self.geometry = new_geometry

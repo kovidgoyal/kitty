@@ -119,6 +119,7 @@ class Tab:
         window = Window(self, child, self.opts, self.args)
         if override_title is not None:
             window.title = window.override_title = override_title
+        # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.relayout_borders()
