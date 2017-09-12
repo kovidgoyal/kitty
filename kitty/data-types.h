@@ -247,6 +247,7 @@ typedef struct {
     bool *tabstops, *main_tabstops, *alt_tabstops;
     ScreenModes modes;
     ColorProfile *color_profile;
+    double start_visual_bell_at;
 
     uint32_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;
@@ -285,6 +286,19 @@ typedef struct {
     pthread_t io_thread;
 } ChildMonitor;
 PyTypeObject ChildMonitor_Type;
+
+typedef struct {
+    double visual_bell_duration;
+    bool enable_audio_bell;
+} Options;
+
+typedef struct {
+    Options opts;
+} GlobalState;
+
+#ifndef IS_STATE
+extern GlobalState global_state;
+#endif
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
 

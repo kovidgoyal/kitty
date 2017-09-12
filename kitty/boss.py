@@ -369,7 +369,7 @@ class Boss:
         self.tab_manager.render()
         for window in tab.visible_windows():
             if not window.needs_layout:
-                window.render_cells()
+                window.char_grid.render_cells()
         active = self.active_window
         if active is not None:
             draw_cursor = True

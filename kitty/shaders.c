@@ -596,10 +596,10 @@ create_cell_vao() {
 }
 
 static void 
-draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, bool inverted, Screen *screen) {
+draw_cells(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen) {
     size_t sz;
     void *address;
-    if (screen->modes.mDECSCNM) inverted = inverted ? false : true;
+    bool inverted = screen_invert_colors(screen);
     if (screen->scroll_changed || screen->is_dirty) {
         sz = sizeof(Cell) * screen->lines * screen->columns;
         address = map_vao_buffer(vao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
@@ -839,11 +839,11 @@ NO_ARG(init_cell_program)
 NO_ARG_INT(create_cell_vao)
 PYWRAP1(draw_cells) { 
     float xstart, ystart, dx, dy;
-    int vao_idx, inverted;
+    int vao_idx;
     Screen *screen;
 
-    PA("iffffpO", &vao_idx, &xstart, &ystart, &dx, &dy, &inverted, &screen); 
-    draw_cells(vao_idx, xstart, ystart, dx, dy, inverted & 1, screen);
+    PA("iffffO", &vao_idx, &xstart, &ystart, &dx, &dy, &screen); 
+    draw_cells(vao_idx, xstart, ystart, dx, dy, screen);
     Py_RETURN_NONE;
 }
 NO_ARG(destroy_sprite_map)

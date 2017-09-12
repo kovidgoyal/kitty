@@ -117,14 +117,6 @@ class Window:
                 print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
 
     def bell(self):
-        if self.opts.enable_audio_bell:
-            try:
-                with open('/dev/tty', 'wb') as f:
-                    f.write(b'\007')
-            except EnvironmentError:
-                pass  # failure to beep is not critical
-        if self.opts.visual_bell_duration > 0:
-            self.start_visual_bell_at = monotonic()
         get_boss().request_attention()
         glfw_post_empty_event()
 
@@ -280,14 +272,6 @@ class Window:
 
     def buf_toggled(self, is_main_linebuf):
         self.screen.scroll(SCROLL_FULL, False)
-
-    def render_cells(self):
-        invert_colors = False
-        if self.start_visual_bell_at is not None:
-            invert_colors = monotonic() - self.start_visual_bell_at <= self.opts.visual_bell_duration
-            if not invert_colors:
-                self.start_visual_bell_at = None
-        self.char_grid.render_cells(invert_colors)
 
     # actions {{{
 

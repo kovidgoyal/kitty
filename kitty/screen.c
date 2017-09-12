@@ -16,6 +16,9 @@
 #include "screen.h"
 #include <structmember.h>
 #include <limits.h>
+#include <sys/types.h>                                                                                          
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "unicode-data.h"
 #include "modes.h"
 #include "wcwidth9.h"
@@ -911,8 +914,34 @@ screen_use_latin1(Screen *self, bool on) {
     CALLBACK("use_utf8", "O", on ? Py_False : Py_True);
 }
 
+bool
+screen_invert_colors(Screen *self) {
+    bool inverted = false;
+    if (self->start_visual_bell_at > 0) {
+        if (monotonic() - self->start_visual_bell_at <= global_state.opts.visual_bell_duration) inverted = true;
+        else self->start_visual_bell_at = 0;
+    }
+    if (self->modes.mDECSCNM) inverted = inverted ? false : true;
+    return inverted;
+}
+
 void 
 screen_bell(Screen UNUSED *self) {  
+    if (global_state.opts.enable_audio_bell) {
+        int fd = open("/dev/tty", O_WRONLY | O_CLOEXEC | O_NOCTTY);
+        if (fd > 0) {
+            static const char bell[2] = {7, 0};
+            while(true) {
+                if (write(fd, &bell, sizeof(bell)) == sizeof(bell)) break;
+                if (errno == EINTR) continue;
+                break;
+            }
+            close(fd);
+        }
+    }
+    if (global_state.opts.visual_bell_duration > 0) {
+        self->start_visual_bell_at = monotonic();
+    }
     CALLBACK("bell", NULL);
 } 
 

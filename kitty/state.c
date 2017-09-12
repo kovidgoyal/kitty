@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define IS_STATE
 #include "data-types.h"
 
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
@@ -12,21 +13,14 @@
 #define PYWRAP2(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args, PyObject *kw)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 
-typedef struct {
-    double visual_bell_duration;
-} Options;
-
-typedef struct {
-    Options opts;
-} GlobalState;
-
-static GlobalState global_state = {{0}};
+GlobalState global_state = {{0}};
 
 
 // Python API {{{
 PYWRAP1(set_options) {
 #define S(name, convert) { PyObject *ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL; global_state.opts.name = convert(ret); Py_DECREF(ret); }
     S(visual_bell_duration, PyFloat_AsDouble);
+    S(enable_audio_bell, PyObject_IsTrue);
 #undef S
     Py_RETURN_NONE;
 }

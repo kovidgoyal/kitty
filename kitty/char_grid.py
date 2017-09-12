@@ -42,8 +42,8 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(vao_id, sg, screen, invert_colors=False):
-    draw_cells(vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, invert_colors, screen)
+def render_cells(vao_id, sg, screen):
+    draw_cells(vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, screen)
 
 
 class CharGrid:
@@ -172,10 +172,8 @@ class CharGrid:
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
 
-    def render_cells(self, invert_colors=False):
-        render_cells(
-            self.vao_id, self.screen_geometry,
-            self.screen, invert_colors=invert_colors)
+    def render_cells(self):
+        render_cells(self.vao_id, self.screen_geometry, self.screen)
 
     def render_cursor(self, is_focused):
         if not self.screen.cursor_visible or self.screen.scrolled_by:
