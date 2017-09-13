@@ -57,7 +57,6 @@ class Window:
         self.child, self.opts = child, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.char_grid = CharGrid(self.screen, opts)
-        self.current_pty_size = None
 
     def __repr__(self):
         return 'Window(title={}, id={})'.format(self.title, self.id)
@@ -80,12 +79,12 @@ class Window:
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
             boss = get_boss()
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
-            self.current_pty_size = (
+            current_pty_size = (
                 self.screen.lines, self.screen.columns,
                 max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             sg = self.char_grid.update_position(new_geometry)
             self.needs_layout = False
-            boss.resize_pty(self.id)
+            boss.child_monitor.resize_pty(self.id, *current_pty_size)
         else:
             sg = self.char_grid.update_position(new_geometry)
         set_window_render_data(self.tab_id, window_idx, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)

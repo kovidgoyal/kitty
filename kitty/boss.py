@@ -101,11 +101,6 @@ class Boss:
         self.window_id_map[window.id] = window
         wakeup()
 
-    def resize_pty(self, window_id):
-        w = self.window_id_map.get(window_id)
-        if w is not None:
-            self.child_monitor.resize_pty(window_id, *w.current_pty_size)
-
     def on_child_death(self, window_id):
         w = self.window_id_map.pop(window_id, None)
         if w is not None:
