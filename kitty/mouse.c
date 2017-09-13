@@ -6,6 +6,8 @@
  */
 
 #include "state.h"
+#include "screen.h"
+#include "lineops.h"
 #include <GLFW/glfw3.h>
 
 extern void set_click_cursor(bool yes);
@@ -21,7 +23,7 @@ contains_mouse(Window *w) {
 static inline bool
 cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
     unsigned int qx = (unsigned int)((double)global_state.mouse_x / global_state.cell_width);
-    unsigned int qy = (unsigned int)((double)global_state.mouse_x / global_state.cell_width);
+    unsigned int qy = (unsigned int)((double)global_state.mouse_y / global_state.cell_height);
     bool ret = false;
     Screen *screen = w->render_data.screen;
     if (screen && qx <= screen->columns && qy <= screen->lines) {
@@ -34,6 +36,8 @@ void
 handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers) {
     unsigned int x, y;
     if (cell_for_pos(w, &x, &y)) {
+        Line *line = screen_visual_line(w->render_data.screen, y);
+        has_click_cursor = (line && line_url_start_at(line, x) < line->xnum) ? true : false;
         if (x != w->mouse_cell_x || y != w->mouse_cell_y) {
             w->mouse_cell_x = x; w->mouse_cell_y = y;
         }
@@ -75,7 +79,7 @@ mouse_event(int button, int modifiers) {
     } else {
         Tab *t = global_state.tabs + global_state.active_tab;
         for (size_t i = 0; i < t->num_windows; i++) {
-            if (contains_mouse(t->windows + i)) {
+            if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
                 handle_event(t->windows + i, button, modifiers);
                 break;
             }

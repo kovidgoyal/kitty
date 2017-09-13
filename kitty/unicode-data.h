@@ -17,3 +17,8 @@ static inline bool
 is_word_char(uint32_t ch) {
     return uc_is_general_category_withtable(ch, UC_CATEGORY_MASK_L | UC_CATEGORY_MASK_N);
 }
+
+static inline bool
+is_url_char(uint32_t ch) {
+    return ch && !uc_is_general_category_withtable(ch, UC_CATEGORY_MASK_C | UC_CATEGORY_MASK_Z);
+}

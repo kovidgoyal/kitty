@@ -1208,6 +1208,12 @@ line(Screen *self, PyObject *val) {
     return (PyObject*) self->linebuf->line;
 }
 
+Line*
+screen_visual_line(Screen *self, index_type y) {
+    if (y >= self->lines) return NULL;
+    return visual_line_(self, y);
+}
+
 static PyObject*
 visual_line(Screen *self, PyObject *args) {
     // The line corresponding to the yth visual line, taking into account scrolling
