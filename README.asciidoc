@@ -58,7 +58,7 @@ using your favorite pager program such as less
 working directories and programs to run on startup.
 
 * Easily hackable (UI layer written in python, inner loops in C for
-speed). Less than ten thousand lines of code.
+speed). Less than fifteen thousand lines of code.
 
 * Uses OpenGL for rendering, offloads rendering work to the GPU for lower system load.
 

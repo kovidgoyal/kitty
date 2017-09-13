@@ -34,7 +34,7 @@ static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
         "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
-        self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES && self->shape >= 0 ? cursor_names[self->shape] : "INVALID"),
+        self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
         BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
     );
 }
