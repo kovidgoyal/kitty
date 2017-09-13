@@ -143,7 +143,6 @@ cocoa_update_title(PyObject *pytitle) {
     [title_menu setSubmenu:m];
     [m release];
     [title release];
-    Py_RETURN_NONE;
 }
 
 PyObject*
