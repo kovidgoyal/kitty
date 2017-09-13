@@ -268,18 +268,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    TimerEvent *events, *buf1, *buf2;
-    size_t capacity;
-    size_t count;
-    bool in_call;
-} Timers;
-PyTypeObject Timers_Type;
-
-typedef struct {
-    PyObject_HEAD
-
     PyObject *dump_callback, *update_screen, *death_notify;
-    Timers *timers;
     double repaint_delay;
     unsigned int count;
     bool shutting_down;
@@ -317,11 +306,6 @@ void cursor_reset_display_attrs(Cursor*);
 void set_sprite_position(Cell *cell, Cell *previous_cell);
 
 double monotonic();
-double timers_timeout(Timers*);
-void timers_call(Timers*);
-bool timers_add(Timers *self, double delay, bool, PyObject *callback, PyObject *args);
-bool timers_add_if_missing(Timers *self, double delay, PyObject *callback, PyObject *args);
-bool timers_add_if_before(Timers *self, double delay, PyObject *callback, PyObject *args);
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool set_iutf8(int, bool);
 

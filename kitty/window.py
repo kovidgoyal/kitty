@@ -39,10 +39,6 @@ window_counter = count()
 next(window_counter)
 
 
-def clear_visual_bell():
-    pass
-
-
 class Window:
 
     def __init__(self, tab, child, opts, args):
@@ -59,7 +55,6 @@ class Window:
         self.title = appname
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
-        self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
         self.char_grid = CharGrid(self.screen, opts)
         self.current_pty_size = None
@@ -125,9 +120,6 @@ class Window:
         boss = get_boss()
         boss.request_attention()
         glfw_post_empty_event()
-        if self.opts.visual_bell_duration > 0:
-            # ensure that the UI thread wakes up and clears the visual bell
-            boss.ui_timers.add(self.opts.visual_bell_duration + 0.01, clear_visual_bell)
 
     def use_utf8(self, on):
         get_boss().child_monitor.set_iutf8(self.window_id, on)

@@ -13,6 +13,44 @@
 #include <gperftools/profiler.h>
 #endif
 
+/* To millisecond (10^-3) */
+#define SEC_TO_MS 1000
+
+/* To microseconds (10^-6) */
+#define MS_TO_US 1000
+#define SEC_TO_US (SEC_TO_MS * MS_TO_US)
+
+/* To nanoseconds (10^-9) */
+#define US_TO_NS 1000
+#define MS_TO_NS (MS_TO_US * US_TO_NS)
+#define SEC_TO_NS (SEC_TO_MS * MS_TO_NS)
+
+/* Conversion from nanoseconds */
+#define NS_TO_MS (1000 * 1000)
+#define NS_TO_US (1000)
+
+#ifdef __APPLE__
+#include <mach/mach_time.h>
+static mach_timebase_info_data_t timebase = {0};
+static inline double monotonic_() {
+	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
+}
+#else
+#include <time.h>
+static inline double monotonic_() {
+    struct timespec ts = {0};
+#ifdef CLOCK_HIGHRES
+	clock_gettime(CLOCK_HIGHRES, &ts);
+#elif CLOCK_MONOTONIC_RAW
+	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+	return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
+}
+#endif
+
+double monotonic() { return monotonic_(); }
 
 static PyObject*
 wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
@@ -87,7 +125,6 @@ static struct PyModuleDef module = {
 extern int init_LineBuf(PyObject *);
 extern int init_HistoryBuf(PyObject *);
 extern int init_Cursor(PyObject *);
-extern int init_Timers(PyObject *);
 extern int init_ChildMonitor(PyObject *);
 extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
@@ -112,13 +149,15 @@ PyInit_fast_data_types(void) {
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
+#ifdef __APPLE__
+    mach_timebase_info(&timebase);
+#endif
 
     if (m != NULL) {
         if (!init_LineBuf(m)) return NULL;
         if (!init_HistoryBuf(m)) return NULL;
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
-        if (!init_Timers(m)) return NULL;
         if (!init_ChildMonitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
         if (!init_Screen(m)) return NULL;

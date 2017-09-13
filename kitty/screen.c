@@ -1061,7 +1061,7 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
             shape = 0; blink = false;
             if (mode > 0) {
                 blink = mode % 2;
-                shape = (mode < 3) ? CURSOR_BLOCK : (mode < 5) ? CURSOR_UNDERLINE : (mode < 7) ? CURSOR_BEAM : 0;
+                shape = (mode < 3) ? CURSOR_BLOCK : (mode < 5) ? CURSOR_UNDERLINE : (mode < 7) ? CURSOR_BEAM : NO_CURSOR_SHAPE;
             }
             if (shape != self->cursor->shape || blink != self->cursor->blink) {
                 self->cursor->shape = shape; self->cursor->blink = blink;

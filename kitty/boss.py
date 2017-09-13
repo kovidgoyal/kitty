@@ -13,7 +13,7 @@ from .constants import (
 )
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
-    Timers as _Timers, destroy_global_data, destroy_sprite_map,
+    destroy_global_data, destroy_sprite_map,
     glfw_post_empty_event, layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
@@ -23,33 +23,6 @@ from .keys import (
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import safe_print
-
-
-class Timers(_Timers):
-
-    def __init__(self):
-        _Timers.__init__(self)
-        self.timer_hash = {}
-
-    def add(self, delay, timer, *args):
-        # Needed because bound methods are recreated on every access
-        timer = self.timer_hash.setdefault(timer, timer)
-        return _Timers.add(self, delay, timer, args) if args else _Timers.add(self, delay, timer)
-
-    def add_if_before(self, delay, timer, *args):
-        # Needed because bound methods are recreated on every access
-        timer = self.timer_hash.setdefault(timer, timer)
-        return _Timers.add_if_before(self, delay, timer, *args)
-
-    def add_if_missing(self, delay, timer, *args):
-        # Needed because bound methods are recreated on every access
-        timer = self.timer_hash.setdefault(timer, timer)
-        return _Timers.add_if_missing(self, delay, timer, *args)
-
-    def remove(self, timer):
-        # Needed because bound methods are recreated on every access
-        timer = self.timer_hash.setdefault(timer, timer)
-        return _Timers.remove_event(self, timer)
 
 
 class DumpCommands:  # {{{
@@ -90,10 +63,9 @@ class Boss:
         self.window_is_focused = True
         self.glfw_window_title = None
         self.shutting_down = False
-        self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
             opts.repaint_delay / 1000.0, glfw_window.window_id(),
-            self.on_child_death, self.ui_timers,
+            self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size

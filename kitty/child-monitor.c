@@ -83,6 +83,15 @@ set_thread_name(const char *name) {
 #define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
 #define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 
+// The max time (in secs) to wait for events from the window system
+// before ticking over the main loop. Negative values mean wait forever.
+static double maximum_wait = -1.0;
+
+static inline void
+set_maximum_wait(double val) {
+    if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
+}
+
 static void
 handle_signal(int sig_num) {
     int save_err = errno;
@@ -112,12 +121,12 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *timers, *wid; 
+    PyObject *dump_callback, *death_notify, *wid; 
     int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOOO", &repaint_delay, &wid, &death_notify, &timers, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOO", &repaint_delay, &wid, &death_notify, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
@@ -133,7 +142,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
-    self->timers = (Timers*)timers; Py_INCREF(timers);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
         parse_func = parse_worker_dump;
@@ -151,7 +159,6 @@ dealloc(ChildMonitor* self) {
     pthread_mutex_destroy(&children_lock);
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
-    Py_CLEAR(self->timers);
     Py_TYPE(self)->tp_free((PyObject*)self);
     while (remove_queue_count) {
         remove_queue_count--;
@@ -326,7 +333,7 @@ parse_input(ChildMonitor *self) {
         DECREF_CHILD(scratch[i]);
     }
     if (!parse_needed) {
-        timers_add_if_before(self->timers, self->repaint_delay - time_since_last_parse, Py_None, NULL);
+        set_maximum_wait(self->repaint_delay - time_since_last_parse);
     } 
 }
 
@@ -438,7 +445,7 @@ cursor_width(double w, bool vert) {
 extern void cocoa_update_title(PyObject*);
 
 static inline void
-render_cursor(ChildMonitor *self, Window *w, double now) {
+render_cursor(Window *w, double now) {
     ScreenRenderData *rd = &w->render_data;
     if (rd->screen->scrolled_by || ! screen_is_cursor_visible(rd->screen)) return;
     double time_since_start_blink = now - global_state.cursor_blink_zero_time;
@@ -449,8 +456,9 @@ render_cursor(ChildMonitor *self, Window *w, double now) {
         int d = (int)(OPT(cursor_blink_interval) * 1000);
         int n = t / d;
         do_draw_cursor = n % 2 == 0 ? true : false;
-        double delay = MAX(0, ((n + 1) * d / 1000) - time_since_start_blink);
-        timers_add_if_before(self->timers, delay, Py_None, NULL);
+        double bucket = (n + 1) * d;
+        double delay = (bucket / 1000.0) - time_since_start_blink;
+        set_maximum_wait(delay);
     }
     if (do_draw_cursor) {
         Cursor *cursor = rd->screen->cursor;
@@ -469,7 +477,7 @@ render_cursor(ChildMonitor *self, Window *w, double now) {
 }
 
 static inline bool
-render(ChildMonitor *self, double *timeout, double now) {
+render(ChildMonitor *self, double now) {
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render > self->repaint_delay) {
         draw_borders();
@@ -481,10 +489,16 @@ render(ChildMonitor *self, double *timeout, double now) {
             for (size_t i = 0; i < tab->num_windows; i++) {
                 Window *w = tab->windows + i;
 #define WD w->render_data
-                if (w->visible && WD.screen) draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
+                if (w->visible && WD.screen) {
+                    draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
+                    if (WD.screen->start_visual_bell_at != 0) {
+                        double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
+                        set_maximum_wait(bell_left);
+                    }
+                }
             }
             Window *w = tab->windows + tab->active_window;
-            if (w->visible && WD.screen) render_cursor(self, w, now);
+            if (w->visible && WD.screen) render_cursor(w, now);
             if (w->title && w->title != global_state.application_title) {
                 global_state.application_title = w->title;
                 glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
@@ -497,7 +511,7 @@ render(ChildMonitor *self, double *timeout, double now) {
         glfwSwapBuffers(glfw_window_id);
         last_render_at = now;
     } else {
-        *timeout = self->repaint_delay - time_since_last_render;
+        set_maximum_wait(self->repaint_delay - time_since_last_render);
     }
     return true;
 }
@@ -553,20 +567,16 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
-    double timeout = 0, t;
-
     while (!glfwWindowShouldClose(glfw_window_id)) {
         double now = monotonic();
-        if (!render(self, &timeout, now)) break;
+        maximum_wait = -1;
+        if (!render(self, now)) break;
         if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
             glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             global_state.mouse_visible = false;
         }
-        t = timers_timeout(self->timers);
-        timeout = MIN(timeout, t);
-        if (timeout < 0) glfwWaitEvents();
-        else if (timeout > 0) glfwWaitEventsTimeout(timeout);
-        timers_call(self->timers);
+        if (maximum_wait < 0) glfwWaitEvents();
+        else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
         parse_input(self);
     }
     if (PyErr_Occurred()) return NULL;
