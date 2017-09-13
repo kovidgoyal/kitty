@@ -112,12 +112,12 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *timers, *wid, *render_func;
+    PyObject *dump_callback, *death_notify, *timers, *wid; 
     int ret;
     double repaint_delay;
 
     if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOOOO", &repaint_delay, &wid, &death_notify, &timers, &render_func, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "dOOOO", &repaint_delay, &wid, &death_notify, &timers, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
     created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
@@ -133,7 +133,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
-    self->render_func = render_func; Py_INCREF(self->render_func);
     self->timers = (Timers*)timers; Py_INCREF(timers);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
@@ -153,7 +152,6 @@ dealloc(ChildMonitor* self) {
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
     Py_CLEAR(self->timers);
-    Py_CLEAR(self->render_func);
     Py_TYPE(self)->tp_free((PyObject*)self);
     while (remove_queue_count) {
         remove_queue_count--;
@@ -430,12 +428,14 @@ draw_cells_func draw_cells = NULL;
 draw_cursor_func draw_cursor = NULL;
 
 static inline double
-cursor_width(unsigned int w, bool vert) {
+cursor_width(double w, bool vert) {
     double dpi = vert ? global_state.logical_dpi_x : global_state.logical_dpi_y;
     double ans = w * dpi / 72.0;  // as pixels
     double factor = 2.0 / (vert ? global_state.viewport_width : global_state.viewport_height);
     return ans * factor;
 }
+
+extern void cocoa_update_title(PyObject*);
 
 static inline void
 render_cursor(ChildMonitor *self, Window *w, double now) {
@@ -470,7 +470,6 @@ render_cursor(ChildMonitor *self, Window *w, double now) {
 
 static inline bool
 render(ChildMonitor *self, double *timeout, double now) {
-    PyObject *ret;
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render > self->repaint_delay) {
         draw_borders();
@@ -486,12 +485,15 @@ render(ChildMonitor *self, double *timeout, double now) {
             }
             Window *w = tab->windows + tab->active_window;
             if (w->visible && WD.screen) render_cursor(self, w, now);
+            if (w->title && w->title != global_state.application_title) {
+                global_state.application_title = w->title;
+                glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
+#ifdef __APPLE__
+                cocoa_update_title(w->title);
+#endif
+            }
 #undef WD
         }
-
-        ret = PyObject_CallFunctionObjArgs(self->render_func, NULL);
-        if (ret == NULL) { PyErr_Print(); return false; }
-        else Py_DECREF(ret);
         glfwSwapBuffers(glfw_window_id);
         last_render_at = now;
     } else {
@@ -548,8 +550,6 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-extern void hide_mouse_cursor();
-
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
@@ -558,7 +558,10 @@ main_loop(ChildMonitor *self) {
     while (!glfwWindowShouldClose(glfw_window_id)) {
         double now = monotonic();
         if (!render(self, &timeout, now)) break;
-        if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse_cursor();
+        if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
+            glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            global_state.mouse_visible = false;
+        }
         t = timers_timeout(self->timers);
         timeout = MIN(timeout, t);
         if (timeout < 0) glfwWaitEvents();

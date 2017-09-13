@@ -40,13 +40,29 @@ add_tab(unsigned int id) {
 }
 
 static inline void
-add_window(unsigned int tab_id, unsigned int id) {
+add_window(unsigned int tab_id, unsigned int id, PyObject *title) {
     WITH_TAB(tab_id);
     ensure_can_add(tab->windows, tab->num_windows, "Too many children (add_window)");
     tab->windows[tab->num_windows] = EMPTY_WINDOW;
     tab->windows[tab->num_windows].id = id;
     tab->windows[tab->num_windows].visible = true;
+    tab->windows[tab->num_windows].title = title;
+    Py_INCREF(tab->windows[tab->num_windows].title);
     tab->num_windows++;
+    END_WITH_TAB;
+}
+
+static inline void
+update_window_title(unsigned int tab_id, unsigned int window_id, PyObject *title) {
+    WITH_TAB(tab_id);
+    for (size_t i = 0; i < tab->num_windows; i++) {
+        if (tab->windows[i].id == window_id) {
+            Py_CLEAR(tab->windows[i].title);
+            tab->windows[i].title = title;
+            Py_INCREF(tab->windows[i].title);
+            break;
+        }
+    }
     END_WITH_TAB;
 }
 
@@ -58,7 +74,7 @@ remove_tab(unsigned int id) {
 static inline void
 remove_window(unsigned int tab_id, unsigned int id) {
     WITH_TAB(tab_id);
-#define destroy_window(w) Py_CLEAR(w.render_data.screen)
+#define destroy_window(w) Py_CLEAR(w.render_data.screen); Py_CLEAR(w.title);
     REMOVER(tab->windows, id, tab->num_windows, EMPTY_WINDOW, Window, destroy_window);
 #undef destroy_window
     END_WITH_TAB;
@@ -159,8 +175,17 @@ PYWRAP0(destroy_global_data) {
     Py_RETURN_NONE;
 }
 
+#define WF(name) PYWRAP1(name) { \
+    unsigned int tab_id, window_id; \
+    PyObject *title; \
+    PA("IIO", &tab_id, &window_id, &title); \
+    name(tab_id, window_id, title); \
+    Py_RETURN_NONE; \
+}
+WF(add_window)
+WF(update_window_title)
+
 ONE_UINT(add_tab)
-TWO_UINT(add_window)
 ONE_UINT(remove_tab)
 TWO_UINT(remove_window)
 ONE_UINT(set_active_tab)
@@ -176,6 +201,7 @@ static PyMethodDef module_methods[] = {
     MW(set_logical_dpi, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
+    MW(update_window_title, METH_VARARGS),
     MW(remove_tab, METH_O),
     MW(remove_window, METH_VARARGS),
     MW(set_active_tab, METH_O),

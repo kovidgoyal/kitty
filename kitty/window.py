@@ -20,7 +20,7 @@ from .fast_data_types import (
     GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, MOTION_MODE,
     SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, create_cell_vao,
     glfw_post_empty_event, remove_vao, set_window_render_data,
-    update_window_visibility
+    update_window_title, update_window_visibility
 )
 from .keys import get_key_map
 from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
@@ -143,6 +143,7 @@ class Window:
     def title_changed(self, new_title):
         if self.override_title is None:
             self.title = sanitize_title(new_title or appname)
+            update_window_title(self.tab_id, self.id, self.title)
             t = self.tabref()
             if t is not None:
                 t.title_changed(self)

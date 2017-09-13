@@ -175,7 +175,6 @@ def run_app(opts, args):
         viewport_size.width = 640
         viewport_size.height = 400
         window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
-    window.set_title(appname)
     window.make_context_current()
     if isosx:
         from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu

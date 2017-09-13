@@ -8,7 +8,7 @@ from weakref import WeakValueDictionary
 from .char_grid import load_shader_programs
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
-    MODIFIER_KEYS, cell_size, is_key_pressed, isosx, mouse_button_pressed,
+    MODIFIER_KEYS, cell_size, is_key_pressed, mouse_button_pressed,
     mouse_cursor_pos, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
@@ -23,9 +23,6 @@ from .keys import (
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import safe_print
-
-if isosx:
-    from .fast_data_types import cocoa_update_title
 
 
 class Timers(_Timers):
@@ -96,7 +93,7 @@ class Boss:
         self.ui_timers = Timers()
         self.child_monitor = ChildMonitor(
             opts.repaint_delay / 1000.0, glfw_window.window_id(),
-            self.on_child_death, self.ui_timers, self.render,
+            self.on_child_death, self.ui_timers,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size
@@ -320,16 +317,6 @@ class Boss:
             self.glfw_window.request_window_attention()
         except AttributeError:
             pass  # needs glfw 3.3
-
-    def render(self):
-        tab = self.active_tab
-        if tab is None:
-            return
-        if tab.title != self.glfw_window_title:
-            self.glfw_window_title = tab.title
-            self.glfw_window.set_title(self.glfw_window_title)
-            if isosx:
-                cocoa_update_title(self.glfw_window_title)
 
     def gui_close_window(self, window):
         window.destroy()

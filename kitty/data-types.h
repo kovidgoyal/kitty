@@ -278,7 +278,7 @@ PyTypeObject Timers_Type;
 typedef struct {
     PyObject_HEAD
 
-    PyObject *dump_callback, *update_screen, *death_notify, *render_func;
+    PyObject *dump_callback, *update_screen, *death_notify;
     Timers *timers;
     double repaint_delay;
     unsigned int count;

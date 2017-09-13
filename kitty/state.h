@@ -25,6 +25,7 @@ typedef struct {
 typedef struct {
     unsigned int id;
     bool visible;
+    PyObject *title;
     ScreenRenderData render_data;
 } Window;
 
@@ -43,6 +44,7 @@ typedef struct {
     double cursor_blink_zero_time, last_mouse_activity_at;
     double logical_dpi_x, logical_dpi_y;
     int viewport_width, viewport_height;
+    PyObject *application_title;
 } GlobalState;
 
 #define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name

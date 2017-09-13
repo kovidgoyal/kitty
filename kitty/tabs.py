@@ -127,7 +127,7 @@ class Tab:  # {{{
             window.title = window.override_title = override_title
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        add_window(self.id, window.id)
+        add_window(self.id, window.id, window.override_title or window.title or appname)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         set_active_window(self.id, self.active_window_idx)
         self.relayout_borders()

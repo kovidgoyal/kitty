@@ -332,15 +332,6 @@ set_window_icon(WindowWrapper *self, PyObject *args) {
 
 
 static PyObject*
-_set_title(WindowWrapper *self, PyObject *args) {
-    char *title;
-    if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
-    glfwSetWindowTitle(self->window, title);
-    Py_RETURN_NONE;
-}
-
-
-static PyObject*
 get_framebuffer_size(WindowWrapper *self) {
     int w, h;
     glfwGetFramebufferSize(self->window, &w, &h);
@@ -437,7 +428,6 @@ static PyMethodDef methods[] = {
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     MND(window_id, METH_NOARGS),
-    {"set_title", (PyCFunction)_set_title, METH_VARARGS, ""},
     {"set_icon", (PyCFunction)set_window_icon, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

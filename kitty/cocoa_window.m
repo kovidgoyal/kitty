@@ -131,8 +131,8 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
     Py_RETURN_NONE;
 }
 
-PyObject*
-cocoa_update_title(PyObject UNUSED *self, PyObject *pytitle) {
+void
+cocoa_update_title(PyObject *pytitle) {
     NSString *title = [[NSString alloc] initWithUTF8String:PyUnicode_AsUTF8(pytitle)];
     NSMenu *bar = [NSApp mainMenu];
     if (title_menu != NULL) {
@@ -178,7 +178,6 @@ static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
     {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
     {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
-    {"cocoa_update_title", (PyCFunction)cocoa_update_title, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
