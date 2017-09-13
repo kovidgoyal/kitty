@@ -93,7 +93,6 @@ extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
 extern int init_Face(PyObject *);
-extern int init_Window(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
 extern bool init_glfw(PyObject *m);
@@ -131,7 +130,6 @@ PyInit_fast_data_types(void) {
         } else { 
             if (!init_shaders(m)) return NULL;
         }
-        if (!init_Window(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
         if (!init_cocoa(m)) return NULL;

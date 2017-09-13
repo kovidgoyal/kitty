@@ -20,7 +20,7 @@ from .fast_data_types import (
     GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, Window, change_wcwidth, check_for_extensions,
+    GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
     clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
     glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
     glfw_window_hint, set_options
@@ -169,12 +169,12 @@ def run_app(opts, args):
         viewport_size.width = opts.initial_window_width
         viewport_size.height = opts.initial_window_height
     try:
-        window = Window(viewport_size.width, viewport_size.height, args.cls)
+        window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
     except ValueError:
         safe_print('Failed to create GLFW window with initial size:', viewport_size)
         viewport_size.width = 640
         viewport_size.height = 400
-        window = Window(viewport_size.width, viewport_size.height, args.cls)
+        window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
     window.set_title(appname)
     window.make_context_current()
     if isosx:

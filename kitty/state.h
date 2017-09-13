@@ -35,6 +35,7 @@ typedef struct {
     Tab tabs[MAX_CHILDREN];
     unsigned int active_tab, num_tabs;
     ScreenRenderData tab_bar_render_data;
+    bool application_focused;
 } GlobalState;
 
 typedef void (*draw_borders_func)();

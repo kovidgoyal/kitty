@@ -182,6 +182,7 @@ static PyMethodDef module_methods[] = {
 
 bool 
 init_state(PyObject *module) {
+    global_state.application_focused = true;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

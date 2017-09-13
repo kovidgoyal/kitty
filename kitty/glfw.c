@@ -4,7 +4,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "state.h"
 #include <structmember.h>
 #include <GLFW/glfw3.h>
 #if defined(__APPLE__)
@@ -16,6 +16,7 @@
 #error "glfw >= 3.2 required"
 #endif
 
+extern GlobalState global_state;
 #define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
@@ -34,10 +35,10 @@ typedef struct {
     GLFWwindow *window;
     PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *mouse_button_callback, *scroll_callback, *cursor_pos_callback, *window_focus_callback;
     GLFWcursor *standard_cursor, *click_cursor;
-} Window;
+} WindowWrapper;
 
 // callbacks {{{
-static Window* the_window = NULL;
+static WindowWrapper* the_window = NULL;
 
 static void 
 framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
@@ -71,19 +72,20 @@ cursor_pos_callback(GLFWwindow UNUSED *w, double x, double y) {
 
 static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
+    global_state.application_focused = focused ? true : false;
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
 // }}}
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
-    Window *self;
+    WindowWrapper *self;
     char *title;
     int width, height;
     if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
     if (the_window != NULL) { PyErr_SetString(PyExc_ValueError, "Only one glfw window is supported");  return NULL; }
 
-    self = (Window *)type->tp_alloc(type, 0);
+    self = (WindowWrapper *)type->tp_alloc(type, 0);
     if (self != NULL) {
         the_window = self;
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
@@ -207,7 +209,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
 // }}}
 
 static void
-dealloc(Window* self) {
+dealloc(WindowWrapper* self) {
     the_window = NULL;
     Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->mouse_button_callback); Py_CLEAR(self->scroll_callback); Py_CLEAR(self->cursor_pos_callback); Py_CLEAR(self->window_focus_callback);
     if (self->window != NULL) glfwDestroyWindow(self->window);
@@ -215,43 +217,43 @@ dealloc(Window* self) {
 }
 
 static PyObject*
-swap_buffers(Window *self) {
+swap_buffers(WindowWrapper *self) {
     glfwSwapBuffers(self->window);
     Py_RETURN_NONE;
 }
 
 static PyObject*
-make_context_current(Window *self) {
+make_context_current(WindowWrapper *self) {
     glfwMakeContextCurrent(self->window);
     Py_RETURN_NONE;
 }
 
 static PyObject*
-window_id(Window *self) {
+window_id(WindowWrapper *self) {
     return PyLong_FromVoidPtr(self->window);
 }
 
 static PyObject*
-should_close(Window *self) {
+should_close(WindowWrapper *self) {
     PyObject *ans = glfwWindowShouldClose(self->window) ? Py_True : Py_False;
     Py_INCREF(ans);
     return ans;
 }
 
 static PyObject*
-get_clipboard_string(Window *self) {
+get_clipboard_string(WindowWrapper *self) {
     return Py_BuildValue("s", glfwGetClipboardString(self->window));
 }
 
 static PyObject*
-get_cursor_pos(Window *self) {
+get_cursor_pos(WindowWrapper *self) {
     double x=0, y=0;
     glfwGetCursorPos(self->window, &x, &y);
     return Py_BuildValue("dd", x, y);
 }
 
 static PyObject*
-set_should_close(Window *self, PyObject *args) {
+set_should_close(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
     glfwSetWindowShouldClose(self->window, c);
@@ -259,7 +261,7 @@ set_should_close(Window *self, PyObject *args) {
 }
 
 static PyObject*
-set_input_mode(Window *self, PyObject *args) {
+set_input_mode(WindowWrapper *self, PyObject *args) {
     int which, value;
     if (!PyArg_ParseTuple(args, "ii", &which, &value)) return NULL;
     glfwSetInputMode(self->window, which, value);
@@ -267,7 +269,7 @@ set_input_mode(Window *self, PyObject *args) {
 }
 
 static PyObject*
-is_key_pressed(Window *self, PyObject *args) {
+is_key_pressed(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "i", &c)) return NULL;
     PyObject *ans = glfwGetKey(self->window, c) == GLFW_PRESS ? Py_True : Py_False;
@@ -276,7 +278,7 @@ is_key_pressed(Window *self, PyObject *args) {
 }
 
 static PyObject*
-set_click_cursor(Window *self, PyObject *args) {
+set_click_cursor(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
     glfwSetCursor(self->window, c ? self->click_cursor : self->standard_cursor);
@@ -284,7 +286,7 @@ set_click_cursor(Window *self, PyObject *args) {
 }
 
 static PyObject*
-set_clipboard_string(Window *self, PyObject *args) {
+set_clipboard_string(WindowWrapper *self, PyObject *args) {
     char *title;
     if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
     glfwSetClipboardString(self->window, title);
@@ -292,7 +294,7 @@ set_clipboard_string(Window *self, PyObject *args) {
 }
 
 static PyObject*
-set_window_icon(Window *self, PyObject *args) {
+set_window_icon(WindowWrapper *self, PyObject *args) {
     GLFWimage logo;
     Py_ssize_t sz;
     if(!PyArg_ParseTuple(args, "s#ii", &(logo.pixels), &sz, &(logo.width), &(logo.height))) return NULL;
@@ -302,7 +304,7 @@ set_window_icon(Window *self, PyObject *args) {
 
 
 static PyObject*
-_set_title(Window *self, PyObject *args) {
+_set_title(WindowWrapper *self, PyObject *args) {
     char *title;
     if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
     glfwSetWindowTitle(self->window, title);
@@ -311,14 +313,14 @@ _set_title(Window *self, PyObject *args) {
 
 
 static PyObject*
-get_framebuffer_size(Window *self) {
+get_framebuffer_size(WindowWrapper *self) {
     int w, h;
     glfwGetFramebufferSize(self->window, &w, &h);
     return Py_BuildValue("ii", w, h);
 }
 
 static PyObject*
-get_window_size(Window *self) {
+get_window_size(WindowWrapper *self) {
     int w, h;
     glfwGetWindowSize(self->window, &w, &h);
     return Py_BuildValue("ii", w, h);
@@ -360,7 +362,7 @@ current_monitor(GLFWwindow *window) {
 }
 
 static PyObject*
-current_monitor_dpi(Window *self) {
+current_monitor_dpi(WindowWrapper *self) {
     GLFWmonitor *m = current_monitor(self->window);
     if (m == NULL) return NULL;
     return get_physical_dpi(m);
@@ -368,7 +370,7 @@ current_monitor_dpi(Window *self) {
 
 #ifdef glfwRequestWindowAttention
 static PyObject*
-request_window_attention(Window *self) {
+request_window_attention(WindowWrapper *self) {
     glfwRequestWindowAttention(self->window);
     Py_RETURN_NONE;
 }
@@ -376,7 +378,7 @@ request_window_attention(Window *self) {
 
 #ifdef __APPLE__
 static PyObject*
-cocoa_window_id(Window *self) {
+cocoa_window_id(WindowWrapper *self) {
     void *wid = glfwGetCocoaWindow(self->window);
     if (wid == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get native window handle"); return NULL; }
     return PyLong_FromVoidPtr(wid);
@@ -413,7 +415,7 @@ static PyMethodDef methods[] = {
 };
 
 static PyMemberDef members[] = {
-#define CBE(name) {#name, T_OBJECT_EX, offsetof(Window, name), 0, #name}
+#define CBE(name) {#name, T_OBJECT_EX, offsetof(WindowWrapper, name), 0, #name}
     CBE(framebuffer_size_callback),
     CBE(char_mods_callback),
     CBE(key_callback),
@@ -425,10 +427,10 @@ static PyMemberDef members[] = {
 #undef CBE
 };
  
-PyTypeObject Window_Type = {
+PyTypeObject WindowWrapper_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "fast_data_types.Window",
-    .tp_basicsize = sizeof(Window),
+    .tp_name = "fast_data_types.GLFWWindow",
+    .tp_basicsize = sizeof(WindowWrapper),
     .tp_dealloc = (destructor)dealloc, 
     .tp_flags = Py_TPFLAGS_DEFAULT,        
     .tp_doc = "A GLFW window",
@@ -436,8 +438,6 @@ PyTypeObject Window_Type = {
     .tp_members = members,
     .tp_new = new,                
 };
-
-INIT_TYPE(Window)
 
 static PyMethodDef module_methods[] = {
     {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
@@ -457,6 +457,9 @@ static PyMethodDef module_methods[] = {
 bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
+    if (PyType_Ready(&WindowWrapper_Type) < 0) return false; 
+    if (PyModule_AddObject(m, "GLFWWindow", (PyObject *)&WindowWrapper_Type) != 0) return 0;
+    Py_INCREF(&WindowWrapper_Type); 
     glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
 #ifdef GLFW_X11_WM_CLASS_NAME
