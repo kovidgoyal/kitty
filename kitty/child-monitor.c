@@ -31,7 +31,6 @@ extern int pthread_setname_np(const char *name);
 
 #define EXTRA_FDS 2
 
-extern GlobalState global_state;
 static void (*parse_func)(Screen*, PyObject*);
 
 typedef struct {

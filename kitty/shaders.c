@@ -518,6 +518,8 @@ static void
 layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *render_cell) {
     sprite_map.cell_width = MAX(1, cell_width);
     sprite_map.cell_height = MAX(1, cell_height);
+    global_state.cell_width = sprite_map.cell_width;
+    global_state.cell_height = sprite_map.cell_height;
     if (sprite_map.max_texture_size == 0) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size));
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers));

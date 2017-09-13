@@ -142,17 +142,21 @@ PYWRAP1(set_tab_bar_render_data) {
 
 PYWRAP1(set_window_render_data) {
 #define A(name) &(d.name)
+#define B(name) &(g.name)
     unsigned int window_idx, tab_id;
-    ScreenRenderData d = {0};
-    PA("IIiffffO", &tab_id, &window_idx, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen));
+    static ScreenRenderData d = {0};
+    static WindowGeometry g = {0};
+    PA("IIiffffOIIII", &tab_id, &window_idx, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_TAB(tab_id);
     Py_CLEAR(tab->windows[window_idx].render_data.screen);
     tab->windows[window_idx].render_data = d;
+    tab->windows[window_idx].geometry = g;
     Py_INCREF(tab->windows[window_idx].render_data.screen);
     END_WITH_TAB;
     Py_RETURN_NONE;
 #undef A
+#undef B
 }
 
 PYWRAP1(update_window_visibility) {
@@ -170,8 +174,16 @@ PYWRAP1(set_logical_dpi) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_boss) {
+    Py_CLEAR(global_state.boss);
+    global_state.boss = args;
+    Py_INCREF(global_state.boss);
+    Py_RETURN_NONE;
+}
+
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.tab_bar_render_data.screen);
+    Py_CLEAR(global_state.boss);
     Py_RETURN_NONE;
 }
 
@@ -211,6 +223,7 @@ static PyMethodDef module_methods[] = {
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(update_window_visibility, METH_VARARGS),
+    MW(set_boss, METH_O),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -224,6 +237,7 @@ init_state(PyObject *module) {
     global_state.cursor_blink_zero_time = now;
     global_state.last_mouse_activity_at = now;
     global_state.mouse_visible = true;
+    global_state.cell_width = 1; global_state.cell_height = 1;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

@@ -82,8 +82,8 @@ class Boss:
         load_shader_programs()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
+        self.activate_tab_at = self.tab_manager.activate_tab_at
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
-        self.glfw_window.set_click_cursor(False)
 
     @property
     def current_tab_bar_height(self):

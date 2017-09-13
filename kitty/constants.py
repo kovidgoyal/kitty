@@ -11,7 +11,7 @@ from collections import namedtuple, defaultdict
 from .fast_data_types import (
     GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_LEFT_ALT,
     GLFW_KEY_RIGHT_ALT, GLFW_KEY_LEFT_CONTROL, GLFW_KEY_RIGHT_CONTROL,
-    GLFW_KEY_LEFT_SUPER, GLFW_KEY_RIGHT_SUPER)
+    GLFW_KEY_LEFT_SUPER, GLFW_KEY_RIGHT_SUPER, set_boss as set_c_boss)
 
 appname = 'kitty'
 version = (0, 3, 0)
@@ -57,6 +57,7 @@ def get_boss():
 
 def set_boss(m):
     get_boss.boss = m
+    set_c_boss(m)
 
 
 def wakeup():

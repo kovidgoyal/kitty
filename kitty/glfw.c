@@ -16,7 +16,6 @@
 #error "glfw >= 3.2 required"
 #endif
 
-extern GlobalState global_state;
 #define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
@@ -63,12 +62,29 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
     WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
 }
 
+extern void mouse_event(int, int);
+
 static void 
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
-    WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods);
+    if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed)) {
+        global_state.mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
+        mouse_event(button, mods);
+    }
+    /* WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods); */
+}
+
+static void 
+cursor_pos_callback(GLFWwindow *w, double x, double y) {
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    double now = monotonic();
+    global_state.last_mouse_activity_at = now;
+    global_state.cursor_blink_zero_time = now;
+    global_state.mouse_x = x; global_state.mouse_y = y;
+    mouse_event(-1, 0);
+    /* WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y); */
 }
 
 static void 
@@ -80,21 +96,6 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 }
 
 static void 
-cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
-    double now = monotonic();
-    global_state.last_mouse_activity_at = now;
-    global_state.cursor_blink_zero_time = now;
-    WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
-}
-
-void
-hide_mouse_cursor() {
-    glfwSetInputMode(the_window->window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    global_state.mouse_visible = false;
-}
-
-static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
     double now = monotonic();
@@ -103,6 +104,11 @@ window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
 // }}}
+
+void
+set_click_cursor(bool yes) {
+    glfwSetCursor(the_window->window, yes ? the_window->click_cursor : the_window->standard_cursor);
+}
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -121,6 +127,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         if (self->standard_cursor == NULL || self->click_cursor == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+        set_click_cursor(false);
         glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
         glfwSetCharModsCallback(self->window, char_mods_callback);
         glfwSetKeyCallback(self->window, key_callback);
@@ -306,14 +313,6 @@ is_key_pressed(WindowWrapper *self, PyObject *args) {
 }
 
 static PyObject*
-set_click_cursor(WindowWrapper *self, PyObject *args) {
-    int c;
-    if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
-    glfwSetCursor(self->window, c ? self->click_cursor : self->standard_cursor);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 set_clipboard_string(WindowWrapper *self, PyObject *args) {
     char *title;
     if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
@@ -424,7 +423,6 @@ static PyMethodDef methods[] = {
     MND(set_should_close, METH_VARARGS),
     MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
-    MND(set_click_cursor, METH_VARARGS),
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     MND(window_id, METH_NOARGS),

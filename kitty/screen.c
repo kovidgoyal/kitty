@@ -23,7 +23,6 @@
 #include "modes.h"
 #include "wcwidth9.h"
 
-extern GlobalState global_state;
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {0};
 

@@ -121,8 +121,8 @@ class Window:
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
         else:
             sg = self.update_position(new_geometry)
-        set_window_render_data(self.tab_id, window_idx, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
-        self.geometry = new_geometry
+        self.geometry = g = new_geometry
+        set_window_render_data(self.tab_id, window_idx, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
 
     def contains(self, x, y):
         g = self.geometry
