@@ -18,7 +18,9 @@ from .fast_data_types import (
     GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP, GLFW_MOD_SHIFT,
     GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4, GLFW_MOUSE_BUTTON_5,
     GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE, MOTION_MODE,
-    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, glfw_post_empty_event
+    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, create_cell_vao,
+    glfw_post_empty_event, remove_vao, set_window_render_data,
+    update_window_visibility
 )
 from .keys import get_key_map
 from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
@@ -45,6 +47,8 @@ class Window:
 
     def __init__(self, tab, child, opts, args):
         self.id = next(window_counter)
+        self.vao_id = create_cell_vao()
+        self.tab_id = tab.id
         self.tabref = weakref.ref(tab)
         self.override_title = None
         self.last_mouse_cursor_pos = 0, 0
@@ -53,7 +57,7 @@ class Window:
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
         self.title = appname
-        self._is_visible_in_layout = True
+        self.is_visible_in_layout = True
         self.child, self.opts = child, opts
         self.start_visual_bell_at = None
         self.screen = Screen(self, 24, 80, opts.scrollback_lines)
@@ -63,15 +67,11 @@ class Window:
     def __repr__(self):
         return 'Window(title={}, id={})'.format(self.title, self.id)
 
-    @property
-    def is_visible_in_layout(self):
-        return self._is_visible_in_layout
-
-    @is_visible_in_layout.setter
-    def is_visible_in_layout(self, val):
+    def set_visible_in_layout(self, window_idx, val):
         val = bool(val)
-        if val != self._is_visible_in_layout:
-            self._is_visible_in_layout = val
+        if val is not self.is_visible_in_layout:
+            self.is_visible_in_layout = val
+            update_window_visibility(self.tab_id, window_idx, val)
             if val:
                 self.refresh()
 
@@ -79,7 +79,7 @@ class Window:
         self.screen.mark_as_dirty()
         wakeup()
 
-    def set_geometry(self, new_geometry):
+    def set_geometry(self, window_idx, new_geometry):
         if self.destroyed:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
@@ -88,11 +88,12 @@ class Window:
             self.current_pty_size = (
                 self.screen.lines, self.screen.columns,
                 max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
-            self.char_grid.resize(new_geometry)
+            sg = self.char_grid.update_position(new_geometry)
             self.needs_layout = False
             boss.resize_pty(self.id)
         else:
-            self.char_grid.update_position(new_geometry)
+            sg = self.char_grid.update_position(new_geometry)
+        set_window_render_data(self.tab_id, window_idx, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
         self.geometry = new_geometry
 
     def contains(self, x, y):
@@ -280,6 +281,11 @@ class Window:
 
     def buf_toggled(self, is_main_linebuf):
         self.screen.scroll(SCROLL_FULL, False)
+
+    def destroy(self):
+        if self.vao_id is not None:
+            remove_vao(self.vao_id)
+            self.vao_id = None
 
     # actions {{{
 

@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "state.h"
 #include "screen.h"
 #include "sprites.h"
 #ifdef __APPLE__

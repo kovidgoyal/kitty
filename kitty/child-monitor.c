@@ -15,7 +15,7 @@ extern int pthread_setname_np(const char *name);
 #include <pthread.h>
 #undef _GNU_SOURCE
 #endif
-#include "data-types.h"
+#include "state.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -30,6 +30,7 @@ extern int pthread_setname_np(const char *name);
 
 #define EXTRA_FDS 2
 
+extern GlobalState global_state;
 static void (*parse_func)(Screen*, PyObject*);
 
 typedef struct {
@@ -436,6 +437,16 @@ render(ChildMonitor *self, double *timeout) {
 #define TD global_state.tab_bar_render_data
         if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
 #undef TD
+        if (global_state.num_tabs) {
+            Tab *tab = global_state.tabs + global_state.active_tab;
+            for (size_t i = 0; i < tab->num_windows; i++) {
+                Window *w = tab->windows + i;
+#define WD w->render_data
+                if (w->visible && WD.screen) draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
+#undef WD
+            }
+        }
+
         ret = PyObject_CallFunctionObjArgs(self->render_func, NULL);
         if (ret == NULL) { PyErr_Print(); return false; }
         else Py_DECREF(ret);

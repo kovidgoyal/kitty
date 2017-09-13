@@ -122,14 +122,14 @@ class Stack(Layout):
 
     def set_active_window(self, windows, active_window_idx):
         for i, w in enumerate(windows):
-            w.is_visible_in_layout = i == active_window_idx
+            w.set_visible_in_layout(i, i == active_window_idx)
 
     def __call__(self, windows, active_window_idx):
         self.blank_rects = []
         wg = layout_single_window(self.margin_width, self.padding_width)
         for i, w in enumerate(windows):
-            w.is_visible_in_layout = i == active_window_idx
-            w.set_geometry(wg)
+            w.set_visible_in_layout(i, i == active_window_idx)
+            w.set_geometry(i, wg)
             if w.is_visible_in_layout:
                 self.blank_rects = blank_rects_for_window(w)
 
@@ -142,7 +142,7 @@ class Tall(Layout):
         self.blank_rects = br = []
         if len(windows) == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
-            windows[0].set_geometry(wg)
+            windows[0].set_geometry(0, wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
         xlayout = layout_dimension(
@@ -152,14 +152,14 @@ class Tall(Layout):
         ystart, ynum = next(layout_dimension(
             available_height(), cell_size.height, 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width))
-        windows[0].set_geometry(window_geometry(xstart, xnum, ystart, ynum))
+        windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
         vh = available_height()
         xstart, xnum = next(xlayout)
         ylayout = layout_dimension(
             available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width)
-        for w, (ystart, ynum) in zip(islice(windows, 1, None), ylayout):
-            w.set_geometry(window_geometry(xstart, xnum, ystart, ynum))
+        for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
+            w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
         left_blank_rect(windows[0], br, vh), top_blank_rect(windows[0], br, vh), right_blank_rect(windows[-1], br, vh)
         br.append(Rect(windows[0].geometry.right, 0, windows[1].geometry.left, vh))
         br.append(Rect(0, windows[0].geometry.bottom, windows[0].geometry.right, vh))

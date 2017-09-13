@@ -365,9 +365,6 @@ class Boss:
             self.glfw_window.set_title(self.glfw_window_title)
             if isosx:
                 cocoa_update_title(self.glfw_window_title)
-        for window in tab.visible_windows():
-            if not window.needs_layout:
-                window.char_grid.render_cells()
         active = self.active_window
         if active is not None:
             draw_cursor = True
@@ -383,7 +380,7 @@ class Boss:
                 active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
-        window.char_grid.destroy()
+        window.destroy()
         for tab in self.tab_manager:
             if window in tab:
                 break

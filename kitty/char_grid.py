@@ -10,8 +10,7 @@ from .config import build_ansi_color_table
 from .constants import ScreenGeometry, cell_size, viewport_size
 from .fast_data_types import (
     CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM, CURSOR_UNDERLINE,
-    compile_program, create_cell_vao, draw_cells, draw_cursor,
-    init_cell_program, init_cursor_program, remove_vao
+    compile_program, draw_cursor, init_cell_program, init_cursor_program
 )
 from .rgb import to_color
 from .utils import (
@@ -42,16 +41,11 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def render_cells(vao_id, sg, screen):
-    draw_cells(vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, screen)
-
-
 class CharGrid:
 
     url_pat = re.compile('(?:http|https|file|ftp)://\S+', re.IGNORECASE)
 
     def __init__(self, screen, opts):
-        self.vao_id = create_cell_vao()
         self.screen_reversed = False
         self.screen = screen
         self.opts = opts
@@ -63,16 +57,9 @@ class CharGrid:
         self.default_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
 
-    def destroy(self):
-        if self.vao_id is not None:
-            remove_vao(self.vao_id)
-            self.vao_id = None
-
     def update_position(self, window_geometry):
-        self.screen_geometry = calculate_gl_geometry(window_geometry, viewport_size.width, viewport_size.height, cell_size.width, cell_size.height)
-
-    def resize(self, window_geometry):
-        self.update_position(window_geometry)
+        self.screen_geometry = sg = calculate_gl_geometry(window_geometry, viewport_size.width, viewport_size.height, cell_size.width, cell_size.height)
+        return sg
 
     def change_colors(self, changes):
         dirtied = False
@@ -171,9 +158,6 @@ class CharGrid:
 
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
-
-    def render_cells(self):
-        render_cells(self.vao_id, self.screen_geometry, self.screen)
 
     def render_cursor(self, is_focused):
         if not self.screen.cursor_visible or self.screen.scrolled_by:

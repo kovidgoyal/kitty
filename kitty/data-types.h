@@ -288,33 +288,6 @@ typedef struct {
 } ChildMonitor;
 PyTypeObject ChildMonitor_Type;
 
-typedef struct {
-    double visual_bell_duration;
-    bool enable_audio_bell;
-} Options;
-
-typedef struct {
-    unsigned int id;
-} Tab;
-
-typedef struct {
-    ssize_t vao_idx;
-    float xstart, ystart, dx, dy;
-    Screen *screen;
-} ScreenRenderData;
-
-typedef struct {
-    Options opts;
-
-    Tab tabs[MAX_CHILDREN];
-    unsigned int active_tab, num_tabs;
-    ScreenRenderData tab_bar_render_data;
-} GlobalState;
-
-#ifndef IS_STATE
-extern GlobalState global_state;
-#endif
-
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
 
 #define left_shift_line(line, at, num) \
@@ -325,11 +298,6 @@ extern GlobalState global_state;
         (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR; \
         clear_sprite_position((line)->cells[(at)]); \
     }
-
-typedef void (*draw_borders_func)();
-extern draw_borders_func draw_borders;
-typedef void (*draw_cells_func)(ssize_t, float, float, float, float, Screen *);
-extern draw_cells_func draw_cells;
 
 // Global functions 
 Line* alloc_line();

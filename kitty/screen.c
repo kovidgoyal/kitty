@@ -11,7 +11,7 @@
 
 #define EXTRA_INIT PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL);
 
-#include "data-types.h"
+#include "state.h"
 #include "lineops.h"
 #include "screen.h"
 #include <structmember.h>
@@ -23,6 +23,7 @@
 #include "modes.h"
 #include "wcwidth9.h"
 
+extern GlobalState global_state;
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {0};
 

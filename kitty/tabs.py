@@ -14,8 +14,9 @@ from .constants import (
     WindowGeometry, appname, cell_size, get_boss, shell_path, viewport_size
 )
 from .fast_data_types import (
-    DECAWM, Screen, add_tab, create_cell_vao, glfw_post_empty_event,
-    remove_tab, set_active_tab, swap_tabs, set_tab_bar_render_data
+    DECAWM, Screen, add_tab, add_window, create_cell_vao,
+    glfw_post_empty_event, remove_tab, remove_window, set_active_tab,
+    set_active_window, set_tab_bar_render_data, swap_tabs, swap_windows
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -36,6 +37,7 @@ class Tab:  # {{{
     def __init__(self, opts, args, on_title_change, session_tab=None, special_window=None):
         global borders
         self.id = next(tab_counter)
+        add_tab(self.id)
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
@@ -104,8 +106,8 @@ class Tab:  # {{{
                 idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
             self.current_layout = all_layouts[nl](self.opts, borders.border_width, self.windows)
-            for w in self.windows:
-                w.is_visible_in_layout = True
+            for i, w in enumerate(self.windows):
+                w.set_visible_in_layout(i, True)
             self.relayout()
 
     def launch_child(self, use_shell=False, cmd=None, stdin=None):
@@ -125,7 +127,9 @@ class Tab:  # {{{
             window.title = window.override_title = override_title
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
+        add_window(self.id, window.id)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
+        set_active_window(self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
         return window
@@ -138,7 +142,9 @@ class Tab:  # {{{
             self.remove_window(self.windows[self.active_window_idx])
 
     def remove_window(self, window):
+        remove_window(self.id, window.id)
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
+        set_active_window(self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
 
@@ -146,6 +152,7 @@ class Tab:  # {{{
         if idx != self.active_window_idx:
             self.current_layout.set_active_window(self.windows, idx)
             self.active_window_idx = idx
+            set_active_window(self.id, self.active_window_idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -163,6 +170,7 @@ class Tab:  # {{{
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
+            set_active_window(self.id, self.active_window_idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -177,7 +185,9 @@ class Tab:  # {{{
             idx = self.active_window_idx
             nidx = (idx + len(self.windows) + delta) % len(self.windows)
             self.windows[nidx], self.windows[idx] = self.windows[idx], self.windows[nidx]
+            swap_windows(self.id, nidx, idx)
             self.active_window_idx = nidx
+            set_active_window(self.id, self.active_window_idx)
             self.relayout()
 
     def move_window_to_top(self):
@@ -295,7 +305,6 @@ class TabManager:  # {{{
         self.active_tab_idx = 0
 
     def _add_tab(self, tab):
-        add_tab(tab.id)
         self.tabs.append(tab)
 
     def _remove_tab(self, tab):
