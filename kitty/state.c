@@ -110,6 +110,7 @@ PYWRAP1(set_options) {
     S(cursor_stop_blinking_after, PyFloat_AsDouble);
     S(cursor_shape, PyLong_AsLong);
     S(cursor_opacity, PyFloat_AsDouble);
+    S(mouse_hide_wait, PyFloat_AsDouble);
 #undef S
     Py_RETURN_NONE;
 }
@@ -192,8 +193,11 @@ static PyMethodDef module_methods[] = {
 
 bool 
 init_state(PyObject *module) {
+    double now = monotonic();
     global_state.application_focused = true;
-    global_state.cursor_blink_zero_time = monotonic();
+    global_state.cursor_blink_zero_time = now;
+    global_state.last_mouse_activity_at = now;
+    global_state.mouse_visible = true;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

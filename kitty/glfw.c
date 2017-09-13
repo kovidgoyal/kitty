@@ -64,25 +64,42 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
 }
 
 static void 
-mouse_button_callback(GLFWwindow UNUSED *w, int button, int action, int mods) {
+mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    double now = monotonic();
+    global_state.last_mouse_activity_at = now;
     WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods);
 }
 
 static void 
-scroll_callback(GLFWwindow UNUSED *w, double xoffset, double yoffset) {
+scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    double now = monotonic();
+    global_state.last_mouse_activity_at = now;
     WINDOW_CALLBACK(scroll_callback, "dd", xoffset, yoffset);
 }
 
 static void 
-cursor_pos_callback(GLFWwindow UNUSED *w, double x, double y) {
-    global_state.cursor_blink_zero_time = monotonic();
+cursor_pos_callback(GLFWwindow *w, double x, double y) {
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    double now = monotonic();
+    global_state.last_mouse_activity_at = now;
+    global_state.cursor_blink_zero_time = now;
     WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
+}
+
+void
+hide_mouse_cursor() {
+    glfwSetInputMode(the_window->window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    global_state.mouse_visible = false;
 }
 
 static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
-    global_state.cursor_blink_zero_time = monotonic();
+    double now = monotonic();
+    global_state.last_mouse_activity_at = now;
+    global_state.cursor_blink_zero_time = now;
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
 // }}}

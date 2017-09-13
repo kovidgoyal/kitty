@@ -10,7 +10,7 @@
 #define OPT(name) global_state.opts.name
 
 typedef struct {
-    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after;
+    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait;
     bool enable_audio_bell;
     CursorShape cursor_shape;
     double cursor_opacity;
@@ -39,8 +39,8 @@ typedef struct {
     Tab tabs[MAX_CHILDREN];
     unsigned int active_tab, num_tabs;
     ScreenRenderData tab_bar_render_data;
-    bool application_focused;
-    double cursor_blink_zero_time;
+    bool application_focused, mouse_visible;
+    double cursor_blink_zero_time, last_mouse_activity_at;
     double logical_dpi_x, logical_dpi_y;
     int viewport_width, viewport_height;
 } GlobalState;

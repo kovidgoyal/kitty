@@ -12,10 +12,9 @@ from .constants import (
     mouse_cursor_pos, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
-    GLFW_CURSOR, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1,
-    GLFW_PRESS, GLFW_REPEAT, ChildMonitor, Timers as _Timers,
-    destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
-    layout_sprite_map
+    GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
+    Timers as _Timers, destroy_global_data, destroy_sprite_map,
+    glfw_post_empty_event, layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
@@ -116,7 +115,6 @@ class Boss:
         self.tab_manager.init(startup_session)
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
         self.glfw_window.set_click_cursor(False)
-        self.show_mouse_cursor()
 
     @property
     def current_tab_bar_height(self):
@@ -281,7 +279,6 @@ class Boss:
 
     def on_mouse_button(self, window, button, action, mods):
         mouse_button_pressed[button] = action == GLFW_PRESS
-        self.show_mouse_cursor()
         x, y = mouse_cursor_pos
         w = self.window_for_pos(x, y)
         if w is None:
@@ -304,7 +301,6 @@ class Boss:
     def on_mouse_move(self, window, xpos, ypos):
         mouse_cursor_pos[:2] = xpos, ypos = int(
             xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
-        self.show_mouse_cursor()
         w = self.window_for_pos(xpos, ypos)
         if w is not None:
             w.on_mouse_move(xpos, ypos)
@@ -312,19 +308,9 @@ class Boss:
             self.change_mouse_cursor(self.in_tab_bar(ypos))
 
     def on_mouse_scroll(self, window, x, y):
-        self.show_mouse_cursor()
         w = self.window_for_pos(*mouse_cursor_pos)
         if w is not None:
             w.on_mouse_scroll(x, y)
-
-    def show_mouse_cursor(self):
-        self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_NORMAL)
-        if self.opts.mouse_hide_wait > 0:
-            self.ui_timers.add(
-                self.opts.mouse_hide_wait, self.hide_mouse_cursor)
-
-    def hide_mouse_cursor(self):
-        self.glfw_window.set_input_mode(GLFW_CURSOR, GLFW_CURSOR_HIDDEN)
 
     def change_mouse_cursor(self, click=False):
         self.glfw_window.set_click_cursor(click)

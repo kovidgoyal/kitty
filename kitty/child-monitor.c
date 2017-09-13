@@ -469,9 +469,8 @@ render_cursor(ChildMonitor *self, Window *w, double now) {
 }
 
 static inline bool
-render(ChildMonitor *self, double *timeout) {
+render(ChildMonitor *self, double *timeout, double now) {
     PyObject *ret;
-    double now = monotonic();
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render > self->repaint_delay) {
         draw_borders();
@@ -549,13 +548,17 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+extern void hide_mouse_cursor();
+
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
     double timeout = 0, t;
 
     while (!glfwWindowShouldClose(glfw_window_id)) {
-        if (!render(self, &timeout)) break;
+        double now = monotonic();
+        if (!render(self, &timeout, now)) break;
+        if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse_cursor();
         t = timers_timeout(self->timers);
         timeout = MIN(timeout, t);
         if (timeout < 0) glfwWaitEvents();
