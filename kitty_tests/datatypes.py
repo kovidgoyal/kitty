@@ -215,6 +215,27 @@ class TestDataTypes(BaseTest):
         l.set_char(0, 'x', 1, q)
         self.assertEqualAttributes(l.cursor_from(0), q)
 
+    def test_url_at(self):
+        def create(t):
+            lb = create.lb = LineBuf(1, len(t))
+            l = lb.line(0)
+            l.set_text(t, 0, len(t), C())
+            return l
+
+        def lspace_test(n):
+            l = create(' ' * n + 'http://acme.com')
+            for i in range(0, n):
+                self.ae(l.url_start_at(i), len(l))
+            for i in range(n, len(l)):
+                self.ae(l.url_start_at(i), n)
+        for i in range(5):
+            lspace_test(i)
+        l = create('b https://testing.me a')
+        for s in (0, 1, len(l) - 1, len(l) - 2):
+            self.ae(l.url_start_at(s), len(l), 'failed with start at: %d' % s)
+        for s in range(2, len(l) - 2):
+            self.ae(l.url_start_at(s), 2, 'failed with start at: %d (%s)' % (s, str(l)[s:]))
+
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)
         cy = lb.rewrap(lb2, hb)

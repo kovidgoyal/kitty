@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "unicode-data.h"
 #include "lineops.h"
 
 static PyObject *
@@ -49,6 +50,85 @@ line_text_at(char_type ch, combining_type cc) {
     }
 
     return ans;
+}
+
+static const char* url_prefixes[4] = {"https", "http", "file", "ftp"};
+static size_t url_prefix_lengths[sizeof(url_prefixes)/sizeof(url_prefixes[0])] = {0};
+typedef enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH} URL_PARSER_STATE;
+
+static inline index_type
+find_colon_slash(Line *self, index_type x, index_type limit) {
+    // Find :// at or before x
+    index_type pos = x;
+    URL_PARSER_STATE state = ANY;
+    limit = MAX(2, limit);
+    if (pos < limit) return 0;
+    do {
+        char_type ch = self->cells[pos].ch & CHAR_MASK;
+        if (!is_url_char(ch)) return false;
+        switch(state) {
+            case ANY:
+                if (ch == '/') state = FIRST_SLASH; 
+                break;
+            case FIRST_SLASH:
+                state = ch == '/' ? SECOND_SLASH : ANY;
+                break;
+            case SECOND_SLASH:
+                if (ch == ':') return pos;
+                state = ANY;
+                break;
+        }
+        pos--;
+    } while(pos >= limit);
+    return 0;
+}
+
+static inline bool
+prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_len) {
+    if (prefix_len > at) return false;
+    index_type p, i;
+    for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
+        if ((self->cells[p].ch & CHAR_MASK) != (unsigned char)prefix[i]) return false;
+    }
+    return i == prefix_len ? true : false;
+}
+
+static inline bool
+has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans) {
+    if (UNLIKELY(!url_prefix_lengths[0])) {
+        for (index_type i = 0; i < sizeof(url_prefixes)/sizeof(url_prefixes[0]); i++) url_prefix_lengths[i] = strlen(url_prefixes[i]);
+    }
+    for (index_type i = 0; i < sizeof(url_prefixes)/sizeof(url_prefixes[0]); i++) {
+        index_type prefix_len = url_prefix_lengths[i];
+        if (at < prefix_len || prefix_len < min_prefix_len) continue;
+        if (prefix_matches(self, at, url_prefixes[i], prefix_len)) { *ans = at - prefix_len; return true; }
+    }
+    return false;
+}
+
+#define MAX_URL_SCHEME_LEN 5
+#define MIN_URL_LEN 5
+index_type
+line_url_start_at(Line *self, index_type x) {
+    // Find the starting cell for a URL that contains the position x. A URL is defined as
+    // known-prefix://url-chars. If no URL is found self->xnum is returned.
+    if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return self->xnum;
+    index_type ds_pos = 0, t;
+    // First look for :// ahead of x
+    if (self->xnum - x > MAX_URL_SCHEME_LEN + 3) ds_pos = find_colon_slash(self, x + MAX_URL_SCHEME_LEN + 3, x < 2 ? 0 : x - 2);
+    if (ds_pos != 0) {
+        if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
+    }
+    ds_pos = find_colon_slash(self, x, 0);
+    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3) return self->xnum;
+    if (has_url_prefix_at(self, ds_pos, 0, &t)) return t;
+    return self->xnum;
+}
+
+static PyObject*
+url_start_at(Line *self, PyObject *x) {
+#define url_start_at_doc "url_start_at(x) -> Return the start cell number for a URL containing x or self->xnum if not found"
+    return PyLong_FromUnsignedLong((unsigned long)line_url_start_at(self, PyLong_AsUnsignedLong(x)));
 }
 
 static PyObject*
@@ -474,6 +554,7 @@ static PyMethodDef methods[] = {
     METHOD(as_ansi, METH_NOARGS)
     METHOD(is_continued, METH_NOARGS)
     METHOD(width, METH_O)
+    METHOD(url_start_at, METH_O)
         
     {NULL}  /* Sentinel */
 };
