@@ -222,19 +222,29 @@ class TestDataTypes(BaseTest):
             l.set_text(t, 0, len(t), C())
             return l
 
-        def lspace_test(n):
-            l = create(' ' * n + 'http://acme.com')
+        def lspace_test(n, scheme='http'):
+            l = create(' ' * n + scheme + '://acme.com')
             for i in range(0, n):
                 self.ae(l.url_start_at(i), len(l))
             for i in range(n, len(l)):
                 self.ae(l.url_start_at(i), n)
-        for i in range(5):
-            lspace_test(i)
+        for i in range(7):
+            for scheme in 'http https ftp file'.split():
+                lspace_test(i)
         l = create('b https://testing.me a')
         for s in (0, 1, len(l) - 1, len(l) - 2):
             self.ae(l.url_start_at(s), len(l), 'failed with start at: %d' % s)
         for s in range(2, len(l) - 2):
             self.ae(l.url_start_at(s), 2, 'failed with start at: %d (%s)' % (s, str(l)[s:]))
+
+        def no_url(t):
+            l = create(t)
+            for s in range(len(l)):
+                self.ae(l.url_start_at(s), len(l))
+        no_url('https:// testing.me a')
+        no_url('h ttp://acme.com')
+        no_url('http: //acme.com')
+        no_url('http:/ /acme.com')
 
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)

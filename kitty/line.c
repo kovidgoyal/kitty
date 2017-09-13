@@ -108,6 +108,16 @@ has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_ty
 
 #define MAX_URL_SCHEME_LEN 5
 #define MIN_URL_LEN 5
+
+static inline bool
+has_url_beyond(Line *self, index_type x) {
+    if (self->xnum <= x + MIN_URL_LEN + 3) return false;
+    for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
+        if (!is_url_char(self->cells[i].ch & CHAR_MASK)) return false;
+    }
+    return true;
+}
+
 index_type
 line_url_start_at(Line *self, index_type x) {
     // Find the starting cell for a URL that contains the position x. A URL is defined as
@@ -116,11 +126,11 @@ line_url_start_at(Line *self, index_type x) {
     index_type ds_pos = 0, t;
     // First look for :// ahead of x
     if (self->xnum - x > MAX_URL_SCHEME_LEN + 3) ds_pos = find_colon_slash(self, x + MAX_URL_SCHEME_LEN + 3, x < 2 ? 0 : x - 2);
-    if (ds_pos != 0) {
+    if (ds_pos != 0 && has_url_beyond(self, ds_pos)) {
         if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
     }
     ds_pos = find_colon_slash(self, x, 0);
-    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3) return self->xnum;
+    if (ds_pos == 0 || self->xnum < ds_pos + MIN_URL_LEN + 3 || !has_url_beyond(self, ds_pos)) return self->xnum;
     if (has_url_prefix_at(self, ds_pos, 0, &t)) return t;
     return self->xnum;
 }
