@@ -7,9 +7,13 @@
 #pragma once
 #include "data-types.h"
 
+#define OPT(name) global_state.opts.name
+
 typedef struct {
-    double visual_bell_duration;
+    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after;
     bool enable_audio_bell;
+    CursorShape cursor_shape;
+    double cursor_opacity;
 } Options;
 
 typedef struct {
@@ -36,9 +40,14 @@ typedef struct {
     unsigned int active_tab, num_tabs;
     ScreenRenderData tab_bar_render_data;
     bool application_focused;
+    double cursor_blink_zero_time;
+    double logical_dpi_x, logical_dpi_y;
+    int viewport_width, viewport_height;
 } GlobalState;
 
-typedef void (*draw_borders_func)();
-extern draw_borders_func draw_borders;
-typedef void (*draw_cells_func)(ssize_t, float, float, float, float, Screen *);
-extern draw_cells_func draw_cells;
+#define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
+#define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
+EXTERNAL_FUNC0(draw_borders, void);
+EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *);
+EXTERNAL_FUNC(draw_cursor, void, bool, bool, color_type, float, float, float, float, float);
+EXTERNAL_FUNC(update_viewport_size, void, int, int);

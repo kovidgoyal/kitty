@@ -84,6 +84,11 @@ glew_init(PyObject UNUSED *self) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Py_RETURN_NONE;
 }
+
+static void
+update_viewport_size_impl(int w, int h) {
+    glViewport(0, 0, w, h); check_gl();
+}
 // }}}
 
 // Programs {{{
@@ -668,7 +673,7 @@ init_cursor_program() {
 }
 
 static void 
-draw_cursor(bool semi_transparent, bool is_focused, color_type color, float alpha, float left, float right, float top, float bottom) {
+draw_cursor_impl(bool semi_transparent, bool is_focused, color_type color, float alpha, float left, float right, float top, float bottom) {
     if (semi_transparent) { glEnable(GL_BLEND); check_gl(); }
     bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array);
     glUniform4f(cursor_uniform_locations[CURSOR_color], ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0, alpha);
@@ -852,12 +857,6 @@ PYWRAP1(layout_sprite_map) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(resize_gl_viewport) {
-    unsigned int w, h; PA("II", &w, &h);
-    glViewport(0, 0, w, h);
-    Py_RETURN_NONE;
-}
-
 PYWRAP1(clear_buffers) {
     PyObject *swap_buffers;
     unsigned int bg;
@@ -918,7 +917,6 @@ static PyMethodDef module_methods[] = {
     MW(create_cell_vao, METH_NOARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
-    MW(resize_gl_viewport, METH_VARARGS),
     MW(clear_buffers, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -962,8 +960,10 @@ init_shaders(PyObject *module) {
 #undef C
     PyModule_AddObject(module, "GL_VERSION_REQUIRED", Py_BuildValue("II", REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    update_viewport_size = &update_viewport_size_impl;
     draw_borders = &draw_borders_impl;
     draw_cells = &draw_cells_impl;
+    draw_cursor = &draw_cursor_impl;
     return true;
 }
 // }}}

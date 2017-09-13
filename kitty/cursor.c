@@ -27,12 +27,15 @@ static int __eq__(Cursor *a, Cursor *b) {
     return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink);
 }
 
+static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE" };
+
 #define BOOL(x) ((x) ? Py_True : Py_False)
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%d, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
-        self->x, self->y, self->shape, BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
+        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
+        self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES && self->shape >= 0 ? cursor_names[self->shape] : "INVALID"),
+        BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
     );
 }
 
@@ -51,7 +54,7 @@ reset_display_attrs(Cursor *self) {
 void cursor_reset(Cursor *self) {
     cursor_reset_display_attrs(self);
     self->x = 0; self->y = 0;
-    self->shape = 0; self->blink = false;
+    self->shape = NO_CURSOR_SHAPE; self->blink = false;
 }
 
 void cursor_copy_to(Cursor *src, Cursor *dest) {
@@ -75,7 +78,7 @@ BOOL_GETSET(Cursor, blink)
 static PyMemberDef members[] = {
     {"x", T_UINT, offsetof(Cursor, x), 0, "x"},
     {"y", T_UINT, offsetof(Cursor, y), 0, "y"},
-    {"shape", T_UBYTE, offsetof(Cursor, shape), 0, "shape"},
+    {"shape", T_INT, offsetof(Cursor, shape), 0, "shape"},
     {"decoration", T_UBYTE, offsetof(Cursor, decoration), 0, "decoration"},
     {"fg", T_ULONG, offsetof(Cursor, fg), 0, "fg"},
     {"bg", T_ULONG, offsetof(Cursor, bg), 0, "bg"},

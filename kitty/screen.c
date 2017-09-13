@@ -511,6 +511,20 @@ void screen_reset_mode(Screen *self, unsigned int mode) {
 
 // Cursor {{{
 
+unsigned long
+screen_current_char_width(Screen *self) {
+    unsigned long ans = 1;
+    if (self->cursor->x < self->columns - 1 && self->cursor->y < self->lines) {
+        ans = linebuf_char_width_at(self->linebuf, self->cursor->x, self->cursor->y);
+    }
+    return ans;
+}
+
+bool
+screen_is_cursor_visible(Screen *self) {
+    return self->modes.mDECTCEM;
+}
+
 void 
 screen_backspace(Screen *self) {
     screen_cursor_back(self, 1, -1);
@@ -1443,11 +1457,7 @@ mark_as_dirty(Screen *self) {
 static PyObject* 
 current_char_width(Screen *self) {
 #define current_char_width_doc "The width of the character under the cursor"
-    unsigned long ans = 1;
-    if (self->cursor->x < self->columns - 1 && self->cursor->y < self->lines) {
-        ans = linebuf_char_width_at(self->linebuf, self->cursor->x, self->cursor->y);
-    }
-    return PyLong_FromUnsignedLong(ans);
+    return PyLong_FromUnsignedLong(screen_current_char_width(self));
 }
 
 static PyObject* 

@@ -39,19 +39,27 @@ typedef struct {
 
 // callbacks {{{
 static WindowWrapper* the_window = NULL;
+update_viewport_size_func update_viewport_size = NULL;
 
 static void 
 framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
-    WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
+    if (width > 100 && height > 100) {
+        update_viewport_size(width, height);
+        global_state.viewport_width = width; global_state.viewport_height = height;
+        WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
+        glfwPostEmptyEvent();
+    } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
 }
 
 static void 
 char_mods_callback(GLFWwindow UNUSED *w, unsigned int codepoint, int mods) {
+    global_state.cursor_blink_zero_time = monotonic();
     WINDOW_CALLBACK(char_mods_callback, "Ii", codepoint, mods);
 }
 
 static void 
 key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) {
+    global_state.cursor_blink_zero_time = monotonic();
     WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
 }
 
@@ -67,12 +75,14 @@ scroll_callback(GLFWwindow UNUSED *w, double xoffset, double yoffset) {
 
 static void 
 cursor_pos_callback(GLFWwindow UNUSED *w, double x, double y) {
+    global_state.cursor_blink_zero_time = monotonic();
     WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y);
 }
 
 static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
+    global_state.cursor_blink_zero_time = monotonic();
     WINDOW_CALLBACK(window_focus_callback, "O", focused ? Py_True : Py_False);
 }
 // }}}
@@ -90,6 +100,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         the_window = self;
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (self->window == NULL) { Py_CLEAR(self); the_window = NULL; PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+        global_state.viewport_width = width; global_state.viewport_height = height;
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         if (self->standard_cursor == NULL || self->click_cursor == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }

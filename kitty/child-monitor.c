@@ -16,6 +16,7 @@ extern int pthread_setname_np(const char *name);
 #undef _GNU_SOURCE
 #endif
 #include "state.h"
+#include "screen.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -426,6 +427,46 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 static double last_render_at = -DBL_MAX;
 draw_borders_func draw_borders = NULL;
 draw_cells_func draw_cells = NULL;
+draw_cursor_func draw_cursor = NULL;
+
+static inline double
+cursor_width(unsigned int w, bool vert) {
+    double dpi = vert ? global_state.logical_dpi_x : global_state.logical_dpi_y;
+    double ans = w * dpi / 72.0;  // as pixels
+    double factor = 2.0 / (vert ? global_state.viewport_width : global_state.viewport_height);
+    return ans * factor;
+}
+
+static inline void
+render_cursor(ChildMonitor *self, Window *w, double now) {
+    ScreenRenderData *rd = &w->render_data;
+    if (rd->screen->scrolled_by || ! screen_is_cursor_visible(rd->screen)) return;
+    double time_since_start_blink = now - global_state.cursor_blink_zero_time;
+    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && global_state.application_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
+    bool do_draw_cursor = true;
+    if (cursor_blinking) {
+        int t = (int)(time_since_start_blink * 1000);
+        int d = (int)(OPT(cursor_blink_interval) * 1000);
+        int n = t / d;
+        do_draw_cursor = n % 2 == 0 ? true : false;
+        double delay = MAX(0, ((n + 1) * d / 1000) - time_since_start_blink);
+        timers_add_if_before(self->timers, delay, Py_None, NULL);
+    }
+    if (do_draw_cursor) {
+        Cursor *cursor = rd->screen->cursor;
+        double left = rd->xstart + cursor->x * rd->dx;
+        double top = rd->ystart - cursor->y * rd->dy;
+        int shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
+        unsigned long mult = screen_current_char_width(rd->screen);
+        double right = left + (shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
+        double bottom = top - rd->dy;
+        if (shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
+        bool semi_transparent = OPT(cursor_opacity) < 1.0 && shape == CURSOR_BLOCK ? true : false;
+        ColorProfile *cp = rd->screen->color_profile;
+        color_type col = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
+        draw_cursor(semi_transparent, global_state.application_focused, col, OPT(cursor_opacity), left, right, top, bottom);
+    }
+}
 
 static inline bool
 render(ChildMonitor *self, double *timeout) {
@@ -443,8 +484,10 @@ render(ChildMonitor *self, double *timeout) {
                 Window *w = tab->windows + i;
 #define WD w->render_data
                 if (w->visible && WD.screen) draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
-#undef WD
             }
+            Window *w = tab->windows + tab->active_window;
+            if (w->visible && WD.screen) render_cursor(self, w, now);
+#undef WD
         }
 
         ret = PyObject_CallFunctionObjArgs(self->render_func, NULL);

@@ -23,10 +23,10 @@ from .fast_data_types import (
     GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
     clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
     glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_window_hint, set_options
+    glfw_window_hint, set_logical_dpi, set_options
 )
 from .layout import all_layouts
-from .utils import color_as_int, detach, safe_print
+from .utils import color_as_int, detach, get_logical_dpi, safe_print
 
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
@@ -186,6 +186,7 @@ def run_app(opts, args):
     else:
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
+    set_logical_dpi(*get_logical_dpi())
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
     w, h = window.get_window_size()
     viewport_size.x_ratio = viewport_size.width / float(w)

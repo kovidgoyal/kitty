@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from gettext import gettext as _
-from time import monotonic
 from weakref import WeakValueDictionary
 
 from .char_grid import load_shader_programs
@@ -16,7 +15,7 @@ from .fast_data_types import (
     GLFW_CURSOR, GLFW_CURSOR_HIDDEN, GLFW_CURSOR_NORMAL, GLFW_MOUSE_BUTTON_1,
     GLFW_PRESS, GLFW_REPEAT, ChildMonitor, Timers as _Timers,
     destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
-    layout_sprite_map, resize_gl_viewport
+    layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
@@ -91,7 +90,6 @@ class Boss:
     def __init__(self, glfw_window, opts, args):
         self.window_id_map = WeakValueDictionary()
         startup_session = create_session(opts, args)
-        self.cursor_blink_zero_time = monotonic()
         self.cursor_blinking = True
         self.window_is_focused = True
         self.glfw_window_title = None
@@ -119,7 +117,6 @@ class Boss:
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
         self.glfw_window.set_click_cursor(False)
         self.show_mouse_cursor()
-        self.start_cursor_blink()
 
     @property
     def current_tab_bar_height(self):
@@ -165,14 +162,8 @@ class Boss:
             self.io_thread_started = True
 
     def on_window_resize(self, window, w, h):
-        # debounce resize events
-        if w > 100 and h > 100:
-            viewport_size.width, viewport_size.height = w, h
-            self.tab_manager.resize()
-            resize_gl_viewport(w, h)
-            glfw_post_empty_event()
-        else:
-            safe_print('Ignoring resize request for sizes under 100x100')
+        viewport_size.width, viewport_size.height = w, h
+        self.tab_manager.resize()
 
     def increase_font_size(self):
         self.change_font_size(
@@ -232,8 +223,6 @@ class Boss:
 
     def on_key(self, window, key, scancode, action, mods):
         is_key_pressed[key] = action == GLFW_PRESS
-        self.start_cursor_blink()
-        self.cursor_blink_zero_time = monotonic()
         func = None
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key, scancode)
@@ -346,16 +335,6 @@ class Boss:
         except AttributeError:
             pass  # needs glfw 3.3
 
-    def start_cursor_blink(self):
-        self.cursor_blinking = True
-        if self.opts.cursor_stop_blinking_after > 0:
-            self.ui_timers.add(
-                self.opts.cursor_stop_blinking_after,
-                self.stop_cursor_blinking)
-
-    def stop_cursor_blinking(self):
-        self.cursor_blinking = False
-
     def render(self):
         tab = self.active_tab
         if tab is None:
@@ -365,19 +344,6 @@ class Boss:
             self.glfw_window.set_title(self.glfw_window_title)
             if isosx:
                 cocoa_update_title(self.glfw_window_title)
-        active = self.active_window
-        if active is not None:
-            draw_cursor = True
-            if self.cursor_blinking and self.opts.cursor_blink_interval > 0 and self.window_is_focused:
-                now = monotonic() - self.cursor_blink_zero_time
-                t = int(now * 1000)
-                d = int(self.opts.cursor_blink_interval * 1000)
-                n = t // d
-                draw_cursor = n % 2 == 0
-                self.ui_timers.add_if_before(
-                    ((n + 1) * d / 1000) - now, None)
-            if draw_cursor:
-                active.char_grid.render_cursor(self.window_is_focused)
 
     def gui_close_window(self, window):
         window.destroy()

@@ -63,6 +63,8 @@ void screen_apply_selection(Screen *self, void *address, size_t size);
 bool screen_is_selection_dirty(Screen *self);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, size_t sz);
+bool screen_is_cursor_visible(Screen *self);
+unsigned long screen_current_char_width(Screen *self);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

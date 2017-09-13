@@ -29,6 +29,7 @@ typedef uint32_t color_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
+typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
 #define ANY_MODE 3
@@ -61,9 +62,6 @@ typedef uint16_t sprite_index;
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch & CHAR_MASK) == 32 || (ch & CHAR_MASK) == 0)
 
-#define CURSOR_BLOCK 1
-#define CURSOR_BEAM 2
-#define CURSOR_UNDERLINE 3
 #define FG 1
 #define BG 2
 
@@ -172,7 +170,8 @@ typedef struct {
 
     bool bold, italic, reverse, strikethrough, blink;
     unsigned int x, y;
-    uint8_t decoration, shape;
+    uint8_t decoration;
+    CursorShape shape;
     unsigned long fg, bg, decoration_fg;
 
 } Cursor;

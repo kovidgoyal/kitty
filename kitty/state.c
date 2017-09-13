@@ -103,9 +103,13 @@ swap_windows(unsigned int tab_id, unsigned int a, unsigned int b) {
 #define THREE_UINT(name) PYWRAP1(name) { unsigned int a, b, c; PA("III", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 
 PYWRAP1(set_options) {
-#define S(name, convert) { PyObject *ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL; global_state.opts.name = convert(ret); Py_DECREF(ret); }
+#define S(name, convert) { PyObject *ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL; global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
+    S(cursor_blink_interval, PyFloat_AsDouble);
+    S(cursor_stop_blinking_after, PyFloat_AsDouble);
+    S(cursor_shape, PyLong_AsLong);
+    S(cursor_opacity, PyFloat_AsDouble);
 #undef S
     Py_RETURN_NONE;
 }
@@ -144,6 +148,11 @@ PYWRAP1(update_window_visibility) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_logical_dpi) {
+    PA("dd", &global_state.logical_dpi_x, &global_state.logical_dpi_y);
+    Py_RETURN_NONE;
+}
+
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.tab_bar_render_data.screen);
     Py_RETURN_NONE;
@@ -163,6 +172,7 @@ THREE_UINT(swap_windows)
 
 static PyMethodDef module_methods[] = {
     MW(set_options, METH_O),
+    MW(set_logical_dpi, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
     MW(remove_tab, METH_O),
@@ -183,6 +193,7 @@ static PyMethodDef module_methods[] = {
 bool 
 init_state(PyObject *module) {
     global_state.application_focused = true;
+    global_state.cursor_blink_zero_time = monotonic();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

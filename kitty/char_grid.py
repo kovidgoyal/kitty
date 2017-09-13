@@ -3,22 +3,16 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from collections import namedtuple
 from enum import Enum
 
 from .config import build_ansi_color_table
 from .constants import ScreenGeometry, cell_size, viewport_size
 from .fast_data_types import (
-    CELL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK, CURSOR_PROGRAM, CURSOR_UNDERLINE,
-    compile_program, draw_cursor, init_cell_program, init_cursor_program
+    CELL_PROGRAM, CURSOR_PROGRAM, compile_program, init_cell_program,
+    init_cursor_program
 )
 from .rgb import to_color
-from .utils import (
-    color_as_int, get_logical_dpi, load_shaders, open_url,
-    set_primary_selection
-)
-
-Cursor = namedtuple('Cursor', 'x y shape blink')
+from .utils import color_as_int, load_shaders, open_url, set_primary_selection
 
 
 class DynamicColor(Enum):
@@ -52,9 +46,7 @@ class CharGrid:
         self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen.color_profile.set_configured_colors(*map(color_as_int, (
             opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
-        self.dpix, self.dpiy = get_logical_dpi()
         self.opts = opts
-        self.default_cursor = Cursor(0, 0, opts.cursor_shape, opts.cursor_blink_interval > 0)
         self.opts = opts
 
     def update_position(self, window_geometry):
@@ -158,28 +150,3 @@ class CharGrid:
 
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
-
-    def render_cursor(self, is_focused):
-        if not self.screen.cursor_visible or self.screen.scrolled_by:
-            return
-        cursor = self.screen.cursor
-
-        def width(w=2, vert=True):
-            dpi = self.dpix if vert else self.dpiy
-            w *= dpi / 72.0  # as pixels
-            factor = 2 / (viewport_size.width if vert else viewport_size.height)
-            return w * factor
-
-        sg = self.screen_geometry
-        left = sg.xstart + cursor.x * sg.dx
-        top = sg.ystart - cursor.y * sg.dy
-        col = self.screen.color_profile.cursor_color
-        shape = cursor.shape or self.default_cursor.shape
-        alpha = self.opts.cursor_opacity
-        mult = self.screen.current_char_width()
-        right = left + (width(1.5) if shape == CURSOR_BEAM else sg.dx * mult)
-        bottom = top - sg.dy
-        if shape == CURSOR_UNDERLINE:
-            top = bottom + width(vert=False)
-        semi_transparent = alpha < 1.0 and shape == CURSOR_BLOCK
-        draw_cursor(semi_transparent, is_focused, col, alpha, left, right, top, bottom)
