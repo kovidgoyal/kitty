@@ -5,7 +5,6 @@
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
-from .char_grid import load_shader_programs
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
     MODIFIER_KEYS, cell_size, is_key_pressed, mouse_button_pressed,
@@ -13,8 +12,8 @@ from .constants import (
 )
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
-    destroy_global_data, destroy_sprite_map,
-    glfw_post_empty_event, layout_sprite_map
+    destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
+    layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
@@ -23,6 +22,7 @@ from .keys import (
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import safe_print
+from .window import load_shader_programs
 
 
 class DumpCommands:  # {{{

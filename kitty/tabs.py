@@ -7,7 +7,6 @@ from functools import partial
 from itertools import count
 
 from .borders import Borders
-from .char_grid import calculate_gl_geometry
 from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
@@ -20,7 +19,7 @@ from .fast_data_types import (
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
-from .window import Window
+from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
 borders = None
