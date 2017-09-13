@@ -105,7 +105,6 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
     NSMenuItem* windowMenuItem =
         [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
-    [NSApp setWindowsMenu:windowMenu];
     [windowMenuItem setSubmenu:windowMenu];
 
     [windowMenu addItemWithTitle:@"Minimize"
@@ -124,6 +123,7 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
                            action:@selector(toggleFullScreen:)
                     keyEquivalent:@"f"]
      setKeyEquivalentModifierMask:NSControlKeyMask | NSCommandKeyMask];
+    [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
 
 
