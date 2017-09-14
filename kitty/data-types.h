@@ -250,7 +250,7 @@ typedef struct {
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ], *write_buf;
-    size_t read_buf_sz, write_buf_sz;
+    size_t read_buf_sz, write_buf_sz, write_buf_used;
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
 } Screen;
@@ -305,6 +305,7 @@ void set_sprite_position(Cell *cell, Cell *previous_cell);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
+bool schedule_write_to_child(unsigned long id, const char *data, size_t sz);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);

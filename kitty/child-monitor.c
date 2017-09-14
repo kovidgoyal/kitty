@@ -55,7 +55,8 @@ static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock;
-static bool created = false, signal_received = false;
+static bool signal_received = false;
+static ChildMonitor *the_monitor = NULL;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
 static void *glfw_window_id = NULL;
@@ -124,10 +125,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     int ret;
     double repaint_delay;
 
-    if (created) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
+    if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
     if (!PyArg_ParseTuple(args, "dOOO", &repaint_delay, &wid, &death_notify, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
-    created = true;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -149,6 +149,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fds[0];
     fds[0].events = POLLIN; fds[1].events = POLLIN;
     self->repaint_delay = repaint_delay;
+    the_monitor = self;
 
     return (PyObject*) self;
 }
@@ -229,34 +230,45 @@ add_child(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject *
-needs_write(ChildMonitor *self, PyObject *args) {
-#define needs_write_doc "needs_write(id, data) -> Queue data to be written to child."
-    unsigned long id, sz;
-    const char *data;
-    if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL; 
-    PyObject *found = Py_False;
+bool
+schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
+    ChildMonitor *self = the_monitor;
+    bool found = false;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == id) { 
-            found = Py_True;
+            found = true;
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
-            uint8_t *buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz + sz);
-            if (buf == NULL) PyErr_NoMemory();
-            else {
-                memcpy(buf + screen->write_buf_sz, data, sz);
-                screen->write_buf = buf;
-                screen->write_buf_sz += sz;
+            size_t space_left = screen->write_buf_sz - screen->write_buf_used;
+            if (space_left < sz) { 
+                if (screen->write_buf_used + sz > 100 * 1024 * 1024) {
+                    fprintf(stderr, "Too much data being sent to child with id: %lu, ignoring it\n", id);
+                    screen_mutex(unlock, write);
+                    break;
+                }
+                screen->write_buf_sz = screen->write_buf_used + sz;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
+            memcpy(screen->write_buf + screen->write_buf_used, data, sz);
+            screen->write_buf_used += sz;
             screen_mutex(unlock, write);
             break;
         }
     }
     children_mutex(unlock);
-    if (PyErr_Occurred()) return NULL;
-    Py_INCREF(found);
     return found;
+}
+
+static PyObject *
+needs_write(ChildMonitor UNUSED *self, PyObject *args) {
+#define needs_write_doc "needs_write(id, data) -> Queue data to be written to child."
+    unsigned long id, sz;
+    const char *data;
+    if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL; 
+    if (schedule_write_to_child(id, data, sz)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
 }
 
 static PyObject *
@@ -727,8 +739,8 @@ write_to_child(int fd, Screen *screen) {
     size_t written = 0;
     ssize_t ret = 0;
     screen_mutex(lock, write);
-    while (written < screen->write_buf_sz) {
-        ret = write(fd, screen->write_buf + written, screen->write_buf_sz - written);
+    while (written < screen->write_buf_used) {
+        ret = write(fd, screen->write_buf + written, screen->write_buf_used - written);
         if (ret > 0) { written += ret; }
         else if (ret == 0) { 
             // could mean anything, ignore
@@ -737,10 +749,10 @@ write_to_child(int fd, Screen *screen) {
             if (errno == EINTR) continue;
             if (errno == EWOULDBLOCK || errno == EAGAIN) break;
             perror("Call to write() to child fd failed, discarding data.");
-            written = screen->write_buf_sz;
+            written = screen->write_buf_used;
         }
     }
-    screen->write_buf_sz -= written;
+    screen->write_buf_used -= written;
     screen_mutex(unlock, write);
 }
 

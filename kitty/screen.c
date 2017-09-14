@@ -64,7 +64,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             return NULL;
         }
         self->columns = columns; self->lines = lines;
-        self->write_buf = NULL;
+        self->write_buf = PyMem_RawMalloc(BUFSIZ);
+        if (self->write_buf == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        self->write_buf_sz = BUFSIZ;
         self->modes = empty_modes;
         self->is_dirty = true;
         self->scroll_changed = false;
