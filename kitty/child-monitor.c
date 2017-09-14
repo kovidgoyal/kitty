@@ -214,7 +214,7 @@ wakeup(ChildMonitor UNUSED *self) {
 
 static PyObject *
 add_child(ChildMonitor *self, PyObject *args) {
-#define add_child_doc "add_child(id, fd, screen) -> Add a child."
+#define add_child_doc "add_child(id, pid, fd, screen) -> Add a child."
     children_mutex(lock);
     if (self->count + add_queue_count >= MAX_CHILDREN) { PyErr_SetString(PyExc_ValueError, "Too many children"); children_mutex(unlock); return NULL; }
     add_queue[add_queue_count] = EMPTY_CHILD;
