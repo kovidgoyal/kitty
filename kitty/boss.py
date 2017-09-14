@@ -7,21 +7,21 @@ from weakref import WeakValueDictionary
 
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
-    MODIFIER_KEYS, cell_size, is_key_pressed,
-    set_boss, viewport_size, wakeup
+    MODIFIER_KEYS, cell_size, is_key_pressed, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
-    GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
+    GLFW_KEY_DOWN, GLFW_KEY_UP, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
     destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
     layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
 from .keys import (
-    get_sent_data, get_shortcut, interpret_key_event, interpret_text_event
+    get_key_map, get_sent_data, get_shortcut, interpret_key_event,
+    interpret_text_event
 )
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
-from .utils import safe_print, get_primary_selection, set_primary_selection
+from .utils import get_primary_selection, safe_print, set_primary_selection
 from .window import load_shader_programs
 
 
@@ -240,6 +240,12 @@ class Boss:
             self.glfw_window.request_window_attention()
         except AttributeError:
             pass  # needs glfw 3.3
+
+    def send_fake_scroll(self, window_idx, amt, upwards):
+        tab = self.active_tab
+        w = tab.windows[window_idx]
+        k = get_key_map(w.screen)[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
+        w.write_to_child(k * amt)
 
     def gui_close_window(self, window):
         window.destroy()

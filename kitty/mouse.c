@@ -48,7 +48,7 @@ button_map(int button) {
 
 static char mouse_event_buf[64];
 
-unsigned int
+size_t
 encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
     unsigned int cb = 0;
@@ -172,7 +172,8 @@ HANDLER(handle_move_event) {
         }
     } else {
         if (!mouse_cell_changed) return;
-        // TODO: Implement this
+        size_t sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
+        if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
     }
 }
 
@@ -246,7 +247,8 @@ HANDLER(handle_button_event) {
                 break;
         }
     } else {
-        // TODO: Implement this
+        size_t sz = encode_mouse_event(w, button, is_release ? RELEASE : PRESS, modifiers);
+        if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
     }
 }
 
@@ -320,9 +322,10 @@ scroll_event(double UNUSED xoffset, double yoffset) {
             screen_history_scroll(screen, abs(s), upwards);
         } else {
             if (screen->modes.mouse_tracking_mode) {
-                // TODO: Implement this
+                size_t sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
+                if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
             } else {
-                // TODO: Implement this, writing a up arrow or down arrow key event to the child    
+                call_boss(send_fake_scroll, "IiO", window_idx, abs(s), upwards ? Py_True : Py_False);
             }
         }
     }

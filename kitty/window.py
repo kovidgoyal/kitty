@@ -8,24 +8,19 @@ import weakref
 from collections import deque
 from enum import Enum
 from itertools import count
-from time import monotonic
 
 from .config import build_ansi_color_table
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, cell_size, get_boss,
-    is_key_pressed, mouse_button_pressed, viewport_size, wakeup
+    viewport_size, wakeup
 )
 from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM, CURSOR_PROGRAM,
-    GLFW_KEY_DOWN, GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP,
-    GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4,
-    GLFW_MOUSE_BUTTON_5, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
     SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, compile_program,
     create_cell_vao, glfw_post_empty_event, init_cell_program,
     init_cursor_program, remove_vao, set_window_render_data,
     update_window_title, update_window_visibility
 )
-from .keys import get_key_map
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
@@ -260,80 +255,6 @@ class Window:
                         if url:
                             open_url(url, self.opts.open_url_with)
 
-    def on_mouse_button(self, button, action, mods):
-        mode = self.screen.mouse_tracking_mode()
-        handle_event = mods == GLFW_MOD_SHIFT or mode == 0 or button == GLFW_MOUSE_BUTTON_MIDDLE or (
-            mods == self.opts.open_url_modifiers and button == GLFW_MOUSE_BUTTON_1)
-        x, y = self.last_mouse_cursor_pos
-        if handle_event:
-            if button == GLFW_MOUSE_BUTTON_1:
-                self.update_drag(action == GLFW_PRESS, x, y)
-                if action == GLFW_RELEASE:
-                    if mods == self.opts.open_url_modifiers:
-                        self.click_url(x, y)
-                    self.click_queue.append(monotonic())
-                    self.dispatch_multi_click(x, y)
-            elif button == GLFW_MOUSE_BUTTON_MIDDLE:
-                if action == GLFW_RELEASE:
-                    self.paste_from_selection()
-        else:
-            x, y = self.cell_for_pos(x, y)
-            if x is not None:
-                ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
-                                        button, PRESS if action == GLFW_PRESS else RELEASE, mods, x, y)
-                if ev:
-                    self.write_to_child(ev)
-
-    def on_mouse_move(self, x, y):
-        button = None
-        for b in range(0, GLFW_MOUSE_BUTTON_5 + 1):
-            if mouse_button_pressed[b]:
-                button = b
-                break
-        mode = self.screen.mouse_tracking_mode()
-        ANY_MODE, MOTION_MODE = 3, 2
-        send_event = (mode == ANY_MODE or (mode == MOTION_MODE and button is not None)) and not (
-            is_key_pressed[GLFW_KEY_LEFT_SHIFT] or is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
-        x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
-        self.last_mouse_cursor_pos = x, y
-        get_boss().change_mouse_cursor(self.has_url_at(x, y))
-        if send_event:
-            action = MOVE if button is None else DRAG
-            x, y = self.cell_for_pos(x, y)
-            if x is not None:
-                ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
-                                        button, action, 0, x, y)
-                if ev:
-                    self.write_to_child(ev)
-        else:
-            if self.screen.is_selection_in_progress():
-                self.update_drag(None, x, y)
-                margin = cell_size.height // 2
-                if y <= margin or y >= self.geometry.bottom - margin:
-                    get_boss().ui_timers.add(0.02, self.drag_scroll)
-
-    def on_mouse_scroll(self, x, y):
-        s = int(round(y * self.opts.wheel_scroll_multiplier))
-        if abs(s) < 0:
-            return
-        upwards = s > 0
-        if self.screen.is_main_linebuf():
-            self.screen.scroll(abs(s), upwards)
-            glfw_post_empty_event()
-        else:
-            mode = self.screen.mouse_tracking_mode()
-            send_event = mode > 0
-            if send_event:
-                x, y = self.last_mouse_cursor_pos
-                x, y = self.cell_for_pos(x, y)
-                if x is not None:
-                    ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),
-                                            GLFW_MOUSE_BUTTON_4 if upwards else GLFW_MOUSE_BUTTON_5, PRESS, 0, x, y)
-                    if ev:
-                        self.write_to_child(ev)
-            else:
-                k = get_key_map(self.screen)[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
-                self.write_to_child(k * abs(s))
     # }}}
 
     def destroy(self):
