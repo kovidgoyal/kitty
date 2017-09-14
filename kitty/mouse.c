@@ -13,6 +13,12 @@
 extern void set_click_cursor(bool yes);
 static bool has_click_cursor = false;
 
+#define call_boss(name, ...) { \
+    PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
+    if (cret_ == NULL) { PyErr_Print(); } \
+    else Py_DECREF(cret_); \
+}
+
 static inline bool
 contains_mouse(Window *w) {
     WindowGeometry *g = &w->geometry;
@@ -63,9 +69,7 @@ handle_event(Window *w, int button, int modifiers) {
 
 void handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.mouse_button_pressed[button]) return;
-    PyObject *ret = PyObject_CallMethod(global_state.boss, "activate_tab_at", "d", global_state.mouse_x);
-    if (ret == NULL) { PyErr_Print(); }
-    else Py_DECREF(ret);
+    call_boss(activate_tab_at, "d", global_state.mouse_x);
 }
 
 void
