@@ -253,6 +253,11 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
             }
             memcpy(screen->write_buf + screen->write_buf_used, data, sz);
             screen->write_buf_used += sz;
+            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
+                screen->write_buf_sz = BUFSIZ;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            }
             screen_mutex(unlock, write);
             break;
         }
