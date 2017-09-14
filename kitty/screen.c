@@ -172,6 +172,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     init_tabstops(self->alt_tabstops, self->columns);
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
+    self->url_range = EMPTY_SELECTION;
     if (index_after_resize) screen_index(self);
 
     return true;
@@ -1121,7 +1122,9 @@ screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
         linebuf_init_line(self->linebuf, y - self->scrolled_by);
         update_line_data(self->linebuf->line, y, address);
     }
-    if (selection_must_be_cleared) self->selection = EMPTY_SELECTION;
+    if (selection_must_be_cleared) {
+        self->selection = EMPTY_SELECTION; self->url_range = EMPTY_SELECTION;
+    }
 }
 
 static inline bool
@@ -1143,13 +1146,12 @@ selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelt
     }
 }
 
-static inline void
-selection_limits_(Screen *self, SelectionBoundary *left, SelectionBoundary *right) {
-    SelectionBoundary a, b;
-    selection_coord(self, self->selection.start_x, self->selection.start_y, self->selection.start_scrolled_by, &a);
-    selection_coord(self, self->selection.end_x, self->selection.end_y, self->selection.end_scrolled_by, &b);
-    if (a.y < b.y || (a.y == b.y && a.x <= b.x)) { *left = a; *right = b; }
-    else { *left = b; *right = a; }
+#define selection_limits_(which, left, right) { \
+    SelectionBoundary a, b; \
+    selection_coord(self, self->which.start_x, self->which.start_y, self->which.start_scrolled_by, &a); \
+    selection_coord(self, self->which.end_x, self->which.end_y, self->which.end_scrolled_by, &b); \
+    if (a.y < b.y || (a.y == b.y && a.x <= b.x)) { *(left) = a; *(right) = b; } \
+    else { *(left) = b; *(right) = a; } \
 }
 
 static inline Line*
@@ -1171,7 +1173,7 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
 #define end (self->last_rendered_selection_end)
     float *data = address;
     memset(data, 0, size);
-    selection_limits_(self, &start, &end);
+    selection_limits_(selection, &start, &end);
     self->last_selection_scrolled_by = self->scrolled_by;
     self->selection_updated_once = true;
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { return; }
@@ -1184,6 +1186,14 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     }
 #undef start
 #undef end
+}
+
+void
+screen_url_range(Screen *self, unsigned int *start_x, unsigned int *start_y, unsigned int *end_x, unsigned int *end_y) {
+    SelectionBoundary start, end;
+    selection_limits_(url_range, &start, &end);
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *start_y = self->lines; *end_y = self->lines; *start_x = self->columns; *end_x = self->columns; }
+    else { *start_x = start.x; *start_y = start.y; *end_x = end.x; *end_y = end.y; }
 }
 
 // }}}
@@ -1314,7 +1324,7 @@ change_scrollback_size(Screen *self, PyObject *args) {
 static PyObject*
 text_for_selection(Screen *self) {
     SelectionBoundary start, end;
-    selection_limits_(self, &start, &end);
+    selection_limits_(selection, &start, &end);
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return PyTuple_New(0);
     Py_ssize_t i = 0, num_of_lines = end.y - start.y + 1;
     PyObject *ans = PyTuple_New(num_of_lines);
@@ -1410,7 +1420,7 @@ scroll(Screen *self, PyObject *args) {
 bool
 screen_is_selection_dirty(Screen *self) {
     SelectionBoundary start, end;
-    selection_limits_(self, &start, &end);
+    selection_limits_(selection, &start, &end);
     if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered_selection_start.x || start.y != self->last_rendered_selection_start.y || end.x != self->last_rendered_selection_end.x || end.y != self->last_rendered_selection_end.y || !self->selection_updated_once) return true;
     return false;
 }
@@ -1419,6 +1429,13 @@ void
 screen_start_selection(Screen *self, index_type x, index_type y) {
 #define A(attr, val) self->selection.attr = val;
     A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); A(in_progress, true);
+#undef A
+}
+
+void
+screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
+#define A(attr, val) self->url_range.attr = val;
+    A(start_x, start_x); A(end_x, end_x); A(start_y, start_y); A(end_y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); 
 #undef A
 }
 

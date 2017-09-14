@@ -552,7 +552,7 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_color_table, NUM_CELL_UNIFORMS };
+enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
 static GLint cell_uniform_locations[NUM_CELL_UNIFORMS] = {0};
 static GLint cell_color_table_stride = 0, cell_color_table_offset = 0, cell_color_table_size = 0, cell_color_table_block_index = 0;
 
@@ -569,6 +569,7 @@ init_cell_program() {
         else SET_LOC(steps);
         else SET_LOC(sprites);
         else SET_LOC(sprite_layout);
+        else SET_LOC(url_range);
         else if (strcmp(p->uniforms[i].name, "color_table[0]") == 0) { ctable_idx = i; cell_uniform_locations[CELL_color_table] = p->uniforms[i].location; }
         else { fatal("Unknown uniform in cell program: %s", p->uniforms[i].name); }
     }
@@ -637,6 +638,10 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg));
     check_gl();
 #undef COLOR
+    GLuint start_x, start_y, end_x, end_y;
+    screen_url_range(screen, &start_x, &start_y, &end_x, &end_y);
+    glUniform4ui(UL(url_range), start_x, end_x, start_y, end_y);
+    check_gl();
     glUniform1i(UL(sprites), sprite_map_unit);  
     check_gl();
     unsigned int x, y, z;
@@ -767,14 +772,11 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
     programs[which].id = glCreateProgram();
     check_gl();
-    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
-    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
-    glAttachShader(programs[which].id, vertex_shader_id);
-    check_gl();
-    glAttachShader(programs[which].id, fragment_shader_id);
-    check_gl();
-    glLinkProgram(programs[which].id);
-    check_gl();
+    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader); check_gl();
+    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader); check_gl();
+    glAttachShader(programs[which].id, vertex_shader_id); check_gl();
+    glAttachShader(programs[which].id, fragment_shader_id); check_gl();
+    glLinkProgram(programs[which].id); check_gl();
     GLint ret = GL_FALSE;
     glGetProgramiv(programs[which].id, GL_LINK_STATUS, &ret);
     if (ret != GL_TRUE) {

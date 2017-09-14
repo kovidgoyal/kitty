@@ -73,6 +73,8 @@ void screen_update_selection(Screen *self, index_type x, index_type y, bool ende
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
+void screen_url_range(Screen *self, unsigned int *start_x, unsigned int *start_y, unsigned int *limit_x, unsigned int *limit_y);
+void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

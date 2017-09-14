@@ -234,6 +234,7 @@ typedef struct {
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
+    Selection url_range;
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;

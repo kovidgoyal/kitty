@@ -149,14 +149,33 @@ drag_scroll(Window *w) {
 }
 
 
+static inline void
+detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
+    bool has_url = false;
+    index_type url_start, url_end = 0;
+    Line *line = screen_visual_line(screen, y);
+    if (line) {
+        url_start = line_url_start_at(line, x);
+        if (url_start < line->xnum) url_end = line_url_end_at(line, x);
+        has_url = url_end > url_start ? true : false;
+    }
+    if (has_url) {
+        mouse_cursor_shape = HAND;
+        screen_mark_url(screen, url_start, w->mouse_cell_y, url_end, w->mouse_cell_y);
+    } else {
+        mouse_cursor_shape = BEAM;
+        screen_mark_url(screen, 0, 0, 0, 0);
+    }
+}
+
+
 HANDLER(handle_move_event) {
     unsigned int x, y;
     if (!cell_for_pos(w, &x, &y)) return;
-    Line *line = screen_visual_line(w->render_data.screen, y);
-    mouse_cursor_shape = (line && line_url_start_at(line, x) < line->xnum) ? HAND : BEAM;
+    Screen *screen = w->render_data.screen;
+    detect_url(w, screen, x, y);
     bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y ? true : false;
     w->mouse_cell_x = x; w->mouse_cell_y = y;
-    Screen *screen = w->render_data.screen;
     bool handle_in_kitty = (
             (screen->modes.mouse_tracking_mode == ANY_MODE ||
             (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
