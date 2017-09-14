@@ -16,12 +16,12 @@ from .constants import (
     is_key_pressed, mouse_button_pressed, viewport_size, wakeup
 )
 from .fast_data_types import (
-    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM,
-    CURSOR_PROGRAM, GLFW_KEY_DOWN, GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT,
-    GLFW_KEY_UP, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4,
+    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM, CURSOR_PROGRAM,
+    GLFW_KEY_DOWN, GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_UP,
+    GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4,
     GLFW_MOUSE_BUTTON_5, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
-    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
-    compile_program, create_cell_vao, glfw_post_empty_event, init_cell_program,
+    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, compile_program,
+    create_cell_vao, glfw_post_empty_event, init_cell_program,
     init_cursor_program, remove_vao, set_window_render_data,
     update_window_title, update_window_visibility
 )
@@ -30,8 +30,7 @@ from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
-    color_as_int, load_shaders, open_url, parse_color_set, sanitize_title,
-    set_primary_selection
+    color_as_int, load_shaders, open_url, parse_color_set, sanitize_title
 )
 
 
@@ -237,65 +236,10 @@ class Window:
         self.screen.scroll(SCROLL_FULL, False)
     # }}}
 
+    def text_for_selection(self):
+        return ''.join(self.screen.text_for_selection())
+
     # mouse handling {{{
-    def multi_click(self, count, x, y):
-        x, y = self.cell_for_pos(x, y)
-        if x is not None:
-            line = self.screen.visual_line(y)
-            if line is not None and count in (2, 3):
-                if count == 2:
-                    start_x, xlimit = self.screen.selection_range_for_word(x, y, self.opts.select_by_word_characters)
-                    end_x = max(start_x, xlimit - 1)
-                elif count == 3:
-                    start_x, xlimit = self.screen.selection_range_for_line(y)
-                    end_x = max(start_x, xlimit - 1)
-                self.screen.start_selection(start_x, y)
-                self.screen.update_selection(end_x, y, True)
-            ps = self.text_for_selection()
-            if ps:
-                set_primary_selection(ps)
-
-    def cell_for_pos(self, x, y):
-        x, y = int(x // cell_size.width), int(y // cell_size.height)
-        if 0 <= x < self.screen.columns and 0 <= y < self.screen.lines:
-            return x, y
-        return None, None
-
-    def dispatch_multi_click(self, x, y):
-        if len(self.click_queue) > 2 and self.click_queue[-1] - self.click_queue[-3] <= 2 * self.opts.click_interval:
-            self.multi_click(3, x, y)
-            glfw_post_empty_event()
-        elif len(self.click_queue) > 1 and self.click_queue[-1] - self.click_queue[-2] <= self.opts.click_interval:
-            self.multi_click(2, x, y)
-            glfw_post_empty_event()
-
-    def update_drag(self, is_press, mx, my):
-        x, y = self.cell_for_pos(mx, my)
-        if x is None:
-            x = 0 if mx <= cell_size.width else self.screen.columns - 1
-            y = 0 if my <= cell_size.height else self.screen.lines - 1
-        ps = None
-        if is_press:
-            self.screen.start_selection(x, y)
-        elif self.screen.is_selection_in_progress():
-            ended = is_press is False
-            self.screen.update_selection(x, y, ended)
-            if ended:
-                ps = self.text_for_selection()
-        if ps and ps.strip():
-            set_primary_selection(ps)
-
-    def has_url_at(self, x, y):
-        x, y = self.cell_for_pos(x, y)
-        if x is not None:
-            l = self.screen.visual_line(y)
-            if l is not None:
-                text = str(l)
-                for m in self.url_pat.finditer(text):
-                    if m.start() <= x < m.end():
-                        return True
-        return False
-
     def click_url(self, x, y):
         x, y = self.cell_for_pos(x, y)
         if x is not None:
@@ -316,9 +260,6 @@ class Window:
                                 url = url[:-1]
                         if url:
                             open_url(url, self.opts.open_url_with)
-
-    def text_for_selection(self):
-        return ''.join(self.screen.text_for_selection())
 
     def on_mouse_button(self, button, action, mods):
         mode = self.screen.mouse_tracking_mode()
@@ -371,14 +312,6 @@ class Window:
                 margin = cell_size.height // 2
                 if y <= margin or y >= self.geometry.bottom - margin:
                     get_boss().ui_timers.add(0.02, self.drag_scroll)
-
-    def drag_scroll(self):
-        x, y = self.last_mouse_cursor_pos
-        margin = cell_size.height // 2
-        if y <= margin or y >= self.geometry.bottom - margin:
-            self.scroll_line_up() if y < 50 else self.scroll_line_down()
-            self.update_drag(None, x, y)
-            return 0.02  # causes the timer to be re-added
 
     def on_mouse_scroll(self, x, y):
         s = int(round(y * self.opts.wheel_scroll_multiplier))

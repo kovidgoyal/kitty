@@ -8,7 +8,7 @@ from weakref import WeakValueDictionary
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
     MODIFIER_KEYS, cell_size, is_key_pressed,
-    mouse_cursor_pos, set_boss, viewport_size, wakeup
+    set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
     GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
@@ -234,11 +234,6 @@ class Boss:
         if not old_focus.destroyed:
             old_focus.focus_changed(False)
         tab.active_window.focus_changed(True)
-
-    def on_mouse_scroll(self, window, x, y):
-        w = self.window_for_pos(*mouse_cursor_pos)
-        if w is not None:
-            w.on_mouse_scroll(x, y)
 
     def request_attention(self):
         try:
