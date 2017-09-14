@@ -16,6 +16,10 @@
 #error "glfw >= 3.2 required"
 #endif
 
+#if GLFW_KEY_LAST >= MAX_KEY_COUNT
+#error "glfw has too many keys, you should increase MAX_KEY_COUNT"
+#endif
+
 #define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
@@ -59,6 +63,7 @@ char_mods_callback(GLFWwindow UNUSED *w, unsigned int codepoint, int mods) {
 static void 
 key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) {
     global_state.cursor_blink_zero_time = monotonic();
+    if (key >= 0 && key <= GLFW_KEY_LAST) global_state.is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
     WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
 }
 

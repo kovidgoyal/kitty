@@ -53,6 +53,8 @@ typedef struct {
     Window windows[MAX_CHILDREN];
 } Tab;
 
+#define MAX_KEY_COUNT 512
+
 typedef struct {
     Options opts;
 
@@ -68,6 +70,7 @@ typedef struct {
     unsigned int cell_width, cell_height;
     PyObject *application_title;
     PyObject *boss;
+    bool is_key_pressed[MAX_KEY_COUNT];
 } GlobalState;
 extern GlobalState global_state;
 

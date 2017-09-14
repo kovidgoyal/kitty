@@ -1284,16 +1284,6 @@ MODE_GETSET(cursor_visible, DECTCEM)
 MODE_GETSET(cursor_key_mode, DECCKM)
 
 static PyObject*
-mouse_tracking_mode(Screen *self) {
-    return PyLong_FromUnsignedLong(self->modes.mouse_tracking_mode);
-}
-
-static PyObject*
-mouse_tracking_protocol(Screen *self) {
-    return PyLong_FromUnsignedLong(self->modes.mouse_tracking_protocol);
-}
-
-static PyObject*
 cursor_up(Screen *self, PyObject *args) {
     unsigned int count = 1;
     int do_carriage_return = false, move_direction = -1;
@@ -1417,13 +1407,6 @@ scroll(Screen *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
-static PyObject*
-is_selection_in_progress(Screen *self) {
-    PyObject *ans = self->selection.in_progress ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
-}
-
 bool
 screen_is_selection_dirty(Screen *self) {
     SelectionBoundary start, end;
@@ -1507,8 +1490,6 @@ static PyMethodDef methods[] = {
     MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
-    MND(mouse_tracking_mode, METH_NOARGS)
-    MND(mouse_tracking_protocol, METH_NOARGS)
     MND(cursor_up1, METH_VARARGS)
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
@@ -1526,7 +1507,6 @@ static PyMethodDef methods[] = {
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
     MND(text_for_selection, METH_NOARGS)
-    MND(is_selection_in_progress, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)

@@ -40,14 +40,37 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
 
 #define HANDLER(name) static inline void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
 
+static inline void
+update_drag(bool from_button, Window *w, bool is_release) {
+    Screen *screen = w->render_data.screen;
+    if (from_button) {
+        if (is_release) screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
+        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y);
+    } else if (screen->selection.in_progress) {
+        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+        call_boss(set_primary_selection, NULL);
+    }
+}
+
 HANDLER(handle_move_event) {
     unsigned int x, y;
-    if (cell_for_pos(w, &x, &y)) {
-        Line *line = screen_visual_line(w->render_data.screen, y);
-        has_click_cursor = (line && line_url_start_at(line, x) < line->xnum) ? true : false;
-        if (x != w->mouse_cell_x || y != w->mouse_cell_y) {
-            w->mouse_cell_x = x; w->mouse_cell_y = y;
+    if (!cell_for_pos(w, &x, &y)) return;
+    Line *line = screen_visual_line(w->render_data.screen, y);
+    has_click_cursor = (line && line_url_start_at(line, x) < line->xnum) ? true : false;
+    if (x == w->mouse_cell_x && y == w->mouse_cell_y) return;
+    w->mouse_cell_x = x; w->mouse_cell_y = y;
+    Screen *screen = w->render_data.screen;
+    bool handle_in_kitty = (
+            (screen->modes.mouse_tracking_mode == ANY_MODE ||
+            (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
+            !(global_state.is_key_pressed[GLFW_KEY_LEFT_SHIFT] || global_state.is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
+    ) ? false : true;
+    if (handle_in_kitty) {
+        if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
+            update_drag(false, w, false);
         }
+    } else {
+        // TODO: Implement this
     }
 }
 
@@ -107,7 +130,7 @@ HANDLER(handle_button_event) {
     if (handle_in_kitty) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
-                // TODO: update_drag
+                update_drag(true, w, is_release);
                 if (is_release) {
                     if (modifiers == (int)OPT(open_url_modifiers)) {
                         // TODO: click_url
@@ -121,12 +144,14 @@ HANDLER(handle_button_event) {
                 break;
         }
     } else {
+        // TODO: Implement this
     }
 }
 
 HANDLER(handle_event) {
     switch(button) {
         case -1:
+            for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.mouse_button_pressed[i]) { button = i; break; } }
             handle_move_event(w, button, modifiers, window_idx);
             break;
         case GLFW_MOUSE_BUTTON_LEFT:  

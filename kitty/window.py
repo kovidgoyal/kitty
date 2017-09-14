@@ -16,11 +16,11 @@ from .constants import (
     is_key_pressed, mouse_button_pressed, viewport_size, wakeup
 )
 from .fast_data_types import (
-    ANY_MODE, BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM,
+    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM,
     CURSOR_PROGRAM, GLFW_KEY_DOWN, GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT,
     GLFW_KEY_UP, GLFW_MOD_SHIFT, GLFW_MOUSE_BUTTON_1, GLFW_MOUSE_BUTTON_4,
     GLFW_MOUSE_BUTTON_5, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
-    MOTION_MODE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
+    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
     compile_program, create_cell_vao, glfw_post_empty_event, init_cell_program,
     init_cursor_program, remove_vao, set_window_render_data,
     update_window_title, update_window_visibility
@@ -350,14 +350,15 @@ class Window:
             if mouse_button_pressed[b]:
                 button = b
                 break
-        action = MOVE if button is None else DRAG
         mode = self.screen.mouse_tracking_mode()
+        ANY_MODE, MOTION_MODE = 3, 2
         send_event = (mode == ANY_MODE or (mode == MOTION_MODE and button is not None)) and not (
             is_key_pressed[GLFW_KEY_LEFT_SHIFT] or is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
         x, y = max(0, x - self.geometry.left), max(0, y - self.geometry.top)
         self.last_mouse_cursor_pos = x, y
         get_boss().change_mouse_cursor(self.has_url_at(x, y))
         if send_event:
+            action = MOVE if button is None else DRAG
             x, y = self.cell_for_pos(x, y)
             if x is not None:
                 ev = encode_mouse_event(mode, self.screen.mouse_tracking_protocol(),

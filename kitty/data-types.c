@@ -197,13 +197,6 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, DECCOLM);
         PyModule_AddIntMacro(m, DECOM);
         PyModule_AddIntMacro(m, IRM);
-        PyModule_AddIntMacro(m, ANY_MODE);
-        PyModule_AddIntMacro(m, MOTION_MODE);
-        PyModule_AddIntMacro(m, BUTTON_MODE);
-        PyModule_AddIntMacro(m, SGR_PROTOCOL);
-        PyModule_AddIntMacro(m, NORMAL_PROTOCOL);
-        PyModule_AddIntMacro(m, URXVT_PROTOCOL);
-        PyModule_AddIntMacro(m, UTF8_PROTOCOL);
     }
 
     return m;

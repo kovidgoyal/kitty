@@ -32,13 +32,8 @@ typedef uint16_t sprite_index;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
-#define ANY_MODE 3
-#define MOTION_MODE 2
-#define BUTTON_MODE 1
-#define NORMAL_PROTOCOL 0
-#define UTF8_PROTOCOL 1
-#define SGR_PROTOCOL 2
-#define URXVT_PROTOCOL 3
+typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MODE } MouseTrackingMode;
+typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL} MouseTrackingProtocol;
 
 #define MAX_CHILDREN 256
 #define BLANK_CHAR 0
@@ -197,7 +192,8 @@ PyTypeObject ColorProfile_Type;
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
          mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD;
-    unsigned long mouse_tracking_mode, mouse_tracking_protocol;
+    MouseTrackingMode mouse_tracking_mode;
+    MouseTrackingProtocol mouse_tracking_protocol;
 } ScreenModes;
 PyTypeObject ScreenModes_Type;
 
