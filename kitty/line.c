@@ -41,6 +41,8 @@ line_text_at(char_type ch, combining_type cc) {
         PyUnicode_WriteChar(ans, 0, ch);
     } else {
         Py_UCS4 cc1 = cc & CC_MASK, cc2 = cc >> 16;
+        Py_UCS4 normalized = normalize(ch, cc1, cc2);
+        if (normalized) { return line_text_at(normalized, 0); }
         Py_UCS4 maxc = (ch > cc1) ? MAX(ch, cc2) : MAX(cc1, cc2);
         ans = PyUnicode_New(cc2 ? 3 : 2, maxc);
         if (ans == NULL) return PyErr_NoMemory();

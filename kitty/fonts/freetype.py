@@ -4,7 +4,6 @@
 
 import ctypes
 import sys
-import unicodedata
 from collections import namedtuple
 from functools import lru_cache
 from itertools import chain
@@ -252,7 +251,7 @@ def missing_glyph(width):
 def render_cell(text=' ', bold=False, italic=False):
     # TODO: Handle non-normalizable combining chars. Probably need to use
     # harfbuzz for that
-    text = unicodedata.normalize('NFC', text)[0]
+    text = text[0]
     width = wcwidth(text)
     try:
         bitmap_char = render_char(text, bold, italic, width)

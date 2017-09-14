@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unictype.h>
+#include <uninorm.h>
 
 static inline bool 
 is_combining_char(uint32_t ch) {
@@ -21,4 +22,11 @@ is_word_char(uint32_t ch) {
 static inline bool
 is_url_char(uint32_t ch) {
     return ch && !uc_is_general_category_withtable(ch, UC_CATEGORY_MASK_C | UC_CATEGORY_MASK_Z);
+}
+
+static inline uint32_t
+normalize(uint32_t ch, uint32_t cc1, uint32_t cc2) {
+    uint32_t ans = uc_composition(ch, cc1);
+    if (ans && cc2) ans = uc_composition(ans, cc2);
+    return ans;
 }
