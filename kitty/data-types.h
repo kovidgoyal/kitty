@@ -34,6 +34,7 @@ typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_U
 #define ERROR_PREFIX "[PARSE ERROR]"
 typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MODE } MouseTrackingMode;
 typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL} MouseTrackingProtocol;
+typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 
 #define MAX_CHILDREN 256
 #define BLANK_CHAR 0

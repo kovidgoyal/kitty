@@ -37,7 +37,7 @@ typedef struct {
 
     GLFWwindow *window;
     PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *mouse_button_callback, *scroll_callback, *cursor_pos_callback, *window_focus_callback;
-    GLFWcursor *standard_cursor, *click_cursor;
+    GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
 } WindowWrapper;
 
 // callbacks {{{
@@ -111,8 +111,18 @@ window_focus_callback(GLFWwindow UNUSED *w, int focused) {
 // }}}
 
 void
-set_click_cursor(bool yes) {
-    glfwSetCursor(the_window->window, yes ? the_window->click_cursor : the_window->standard_cursor);
+set_mouse_cursor(MouseShape type) {
+    switch(type) {
+        case HAND:
+            glfwSetCursor(the_window->window, the_window->click_cursor);
+            break;
+        case ARROW:
+            glfwSetCursor(the_window->window, the_window->arrow_cursor);
+            break;
+        default:
+            glfwSetCursor(the_window->window, the_window->standard_cursor);
+            break;
+    }
 }
 
 static PyObject*
@@ -131,8 +141,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         global_state.viewport_width = width; global_state.viewport_height = height;
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-        if (self->standard_cursor == NULL || self->click_cursor == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
-        set_click_cursor(false);
+        self->arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+        if (self->standard_cursor == NULL || self->click_cursor == NULL || self->arrow_cursor == NULL) {
+            Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+        set_mouse_cursor(0);
         glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
         glfwSetCharModsCallback(self->window, char_mods_callback);
         glfwSetKeyCallback(self->window, key_callback);

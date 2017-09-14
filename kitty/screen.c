@@ -5,10 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define SCROLL_LINE -1
-#define SCROLL_PAGE -2
-#define SCROLL_FULL -3
-
 #define EXTRA_INIT PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL);
 
 #include "state.h"
@@ -1371,10 +1367,8 @@ screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_
 #undef is_ok
 }
 
-static PyObject*
-scroll(Screen *self, PyObject *args) {
-    int amt, upwards;
-    if (!PyArg_ParseTuple(args, "ip", &amt, &upwards)) return NULL;
+bool
+screen_history_scroll(Screen *self, int amt, bool upwards) {
     switch(amt) {
         case SCROLL_LINE:
             amt = 1;
@@ -1386,24 +1380,28 @@ scroll(Screen *self, PyObject *args) {
             amt = self->historybuf->count;
             break;
         default:
-            if (amt < 0) {
-                PyErr_SetString(PyExc_ValueError, "scroll amounts must be positive numbers");
-                return NULL;
-            }
+            amt = MAX(0, amt);
             break;
     }
     if (!upwards) {
         amt = MIN((unsigned int)amt, self->scrolled_by);
         amt *= -1;
     }
-    if (amt != 0) {
-        unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
-        if (new_scroll != self->scrolled_by) {
-            self->scrolled_by = new_scroll;
-            self->scroll_changed = true;
-            Py_RETURN_TRUE;
-        }
+    if (amt == 0) return false;
+    unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
+    if (new_scroll != self->scrolled_by) {
+        self->scrolled_by = new_scroll;
+        self->scroll_changed = true;
+        return true;
     }
+    return false;
+}
+
+static PyObject*
+scroll(Screen *self, PyObject *args) {
+    int amt, upwards;
+    if (!PyArg_ParseTuple(args, "ip", &amt, &upwards)) return NULL;
+    if (screen_history_scroll(self, amt, upwards)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 

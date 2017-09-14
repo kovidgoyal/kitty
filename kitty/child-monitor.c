@@ -475,6 +475,8 @@ render_cursor(Window *w, double now) {
     }
 }
 
+extern bool drag_scroll(Window *);
+
 static inline bool
 render(ChildMonitor *self, double now) {
     double time_since_last_render = now - last_render_at;
@@ -489,6 +491,14 @@ render(ChildMonitor *self, double now) {
                 Window *w = tab->windows + i;
 #define WD w->render_data
                 if (w->visible && WD.screen) {
+                    if (w->last_drag_scroll_at > 0) {
+                        if (now - w->last_drag_scroll_at >= 0.02) { 
+                            if (drag_scroll(w)) {
+                                w->last_drag_scroll_at = now;
+                                set_maximum_wait(0.02);
+                            } else w->last_drag_scroll_at = 0;
+                        } else set_maximum_wait(now - w->last_drag_scroll_at);
+                    }
                     draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
                     if (WD.screen->start_visual_bell_at != 0) {
                         double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);

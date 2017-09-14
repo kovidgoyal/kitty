@@ -6,6 +6,8 @@
 
 #pragma once
 
+typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
+
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
@@ -68,6 +70,7 @@ bool screen_selection_range_for_line(Screen *self, index_type y, index_type *sta
 bool screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_type *start, index_type *end);
 void screen_start_selection(Screen *self, index_type x, index_type y);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool ended);
+bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
@@ -76,4 +79,3 @@ DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
-

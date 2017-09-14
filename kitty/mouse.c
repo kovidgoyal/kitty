@@ -10,8 +10,8 @@
 #include "lineops.h"
 #include <GLFW/glfw3.h>
 
-extern void set_click_cursor(bool yes);
-static bool has_click_cursor = false;
+extern void set_mouse_cursor(MouseShape);
+static MouseShape mouse_cursor_shape = BEAM;
 
 #define call_boss(name, ...) { \
     PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
@@ -52,12 +52,37 @@ update_drag(bool from_button, Window *w, bool is_release) {
     }
 }
 
+
+bool
+drag_scroll(Window *w) {
+    unsigned int margin = global_state.cell_height / 2;
+    double x = global_state.mouse_x, y = global_state.mouse_y;
+    if (y < w->geometry.top || y > w->geometry.bottom) return false;
+    if (x < w->geometry.left || x > w->geometry.right) return false;
+    bool upwards = y <= w->geometry.top + margin ? true : false;
+    if (upwards || y >= w->geometry.bottom - margin) {
+        Screen *screen = w->render_data.screen;
+        if (screen->linebuf == screen->main_linebuf) {
+            screen_history_scroll(screen, SCROLL_LINE, upwards);
+            update_drag(false, w, false);
+            global_state.last_mouse_activity_at = monotonic();
+            if (mouse_cursor_shape != ARROW) {
+                mouse_cursor_shape = ARROW;
+                set_mouse_cursor(mouse_cursor_shape);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+
 HANDLER(handle_move_event) {
     unsigned int x, y;
     if (!cell_for_pos(w, &x, &y)) return;
     Line *line = screen_visual_line(w->render_data.screen, y);
-    has_click_cursor = (line && line_url_start_at(line, x) < line->xnum) ? true : false;
-    if (x == w->mouse_cell_x && y == w->mouse_cell_y) return;
+    mouse_cursor_shape = (line && line_url_start_at(line, x) < line->xnum) ? HAND : BEAM;
+    bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y ? true : false;
     w->mouse_cell_x = x; w->mouse_cell_y = y;
     Screen *screen = w->render_data.screen;
     bool handle_in_kitty = (
@@ -67,9 +92,14 @@ HANDLER(handle_move_event) {
     ) ? false : true;
     if (handle_in_kitty) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
-            update_drag(false, w, false);
+            double now = monotonic();
+            if ((now - w->last_drag_scroll_at) >= 0.02 || mouse_cell_changed) {
+                update_drag(false, w, false);
+                w->last_drag_scroll_at = monotonic();
+            }
         }
     } else {
+        if (!mouse_cell_changed) return;
         // TODO: Implement this
     }
 }
@@ -174,11 +204,10 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
 
 void
 mouse_event(int button, int modifiers) {
-    bool old_has_click_cursor = has_click_cursor;
+    MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height ? true : false;
-    has_click_cursor = false;
     if (in_tab_bar) { 
-        has_click_cursor = true;
+        mouse_cursor_shape = HAND;
         handle_tab_bar_mouse(button, modifiers); 
     } else {
         Tab *t = global_state.tabs + global_state.active_tab;
@@ -189,7 +218,7 @@ mouse_event(int button, int modifiers) {
             }
         }
     }
-    if (has_click_cursor != old_has_click_cursor) {
-        set_click_cursor(has_click_cursor);
+    if (mouse_cursor_shape != old_cursor) {
+        set_mouse_cursor(mouse_cursor_shape);
     }
 }

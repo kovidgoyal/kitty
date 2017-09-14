@@ -46,6 +46,7 @@ typedef struct {
     unsigned int mouse_cell_x, mouse_cell_y;
     WindowGeometry geometry;
     ClickQueue click_queue;
+    double last_drag_scroll_at;
 } Window;
 
 typedef struct {
