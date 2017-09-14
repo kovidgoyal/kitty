@@ -128,6 +128,14 @@ PYWRAP1(set_options) {
     S(cursor_opacity, PyFloat_AsDouble);
     S(mouse_hide_wait, PyFloat_AsDouble);
     S(open_url_modifiers, PyLong_AsUnsignedLong);
+    S(click_interval, PyFloat_AsDouble);
+    PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
+    if (chars == NULL) return NULL;
+    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {
+        OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
+    }
+    OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
+    Py_DECREF(chars);
 #undef S
     Py_RETURN_NONE;
 }

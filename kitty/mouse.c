@@ -38,8 +38,9 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
     return ret;
 }
 
-void 
-handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx) {
+#define HANDLER(name) static inline void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
+
+HANDLER(handle_move_event) {
     unsigned int x, y;
     if (cell_for_pos(w, &x, &y)) {
         Line *line = screen_visual_line(w->render_data.screen, y);
@@ -50,8 +51,46 @@ handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers, unsigned i
     }
 }
 
-void 
-handle_button_event(Window *w, int button, int modifiers, unsigned int window_idx) {
+static inline void
+multi_click(Window *w, unsigned int count) {
+    Screen *screen = w->render_data.screen;
+    index_type start, end;
+    bool found_selection = false;
+    switch(count) {
+        case 2:
+            found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
+            break;
+        case 3:
+            found_selection = screen_selection_range_for_line(screen, w->mouse_cell_y, &start, &end);
+            break;
+        default:
+            break;
+    }
+    if (found_selection) {
+        screen_start_selection(screen, start, w->mouse_cell_y);
+        screen_update_selection(screen, end, w->mouse_cell_y, true);
+        call_boss(set_primary_selection, NULL);
+    }
+}
+
+HANDLER(add_click) {
+    ClickQueue *q = &w->click_queue;
+    if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
+    double now = monotonic();
+#define N(n) (q->clicks[q->length - n])
+    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers;
+    q->length++;
+    // Now dispatch the multi-click if any
+    if (q->length > 2 && N(1).at - N(3).at <= 2 * OPT(click_interval)) {
+        multi_click(w, 3);
+        q->length = 0;
+    } else if (q->length > 1 && N(1).at - N(2).at <= OPT(click_interval)) {
+        multi_click(w, 2);
+    }
+#undef N
+}
+
+HANDLER(handle_button_event) {
     Tab *t = global_state.tabs + global_state.active_tab;
     bool is_release = !global_state.mouse_button_pressed[button];
     if (window_idx != t->active_window) {
@@ -72,8 +111,8 @@ handle_button_event(Window *w, int button, int modifiers, unsigned int window_id
                 if (is_release) {
                     if (modifiers == (int)OPT(open_url_modifiers)) {
                         // TODO: click_url
-                    } else if (!modifiers) {
-                        // TODO: handle multi click
+                    } else {
+                        if (is_release) add_click(w, button, modifiers, window_idx);
                     }
                 }
                 break;
@@ -85,8 +124,7 @@ handle_button_event(Window *w, int button, int modifiers, unsigned int window_id
     }
 }
 
-void 
-handle_event(Window *w, int button, int modifiers, unsigned int window_idx) {
+HANDLER(handle_event) {
     switch(button) {
         case -1:
             handle_move_event(w, button, modifiers, window_idx);
@@ -103,7 +141,8 @@ handle_event(Window *w, int button, int modifiers, unsigned int window_idx) {
     }
 }
 
-void handle_tab_bar_mouse(int button, int UNUSED modifiers) {
+static inline void 
+handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.mouse_button_pressed[button]) return;
     call_boss(activate_tab_at, "d", global_state.mouse_x);
 }

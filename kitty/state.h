@@ -10,11 +10,11 @@
 #define OPT(name) global_state.opts.name
 
 typedef struct {
-    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait;
+    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, cursor_opacity;
     bool enable_audio_bell;
     CursorShape cursor_shape;
-    double cursor_opacity;
     unsigned int open_url_modifiers;
+    char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
 } Options;
 
 typedef struct {
@@ -28,12 +28,24 @@ typedef struct {
 } WindowGeometry;
 
 typedef struct {
+    double at;
+    int button, modifiers;
+} Click;
+
+#define CLICK_QUEUE_SZ 3
+typedef struct {
+    Click clicks[CLICK_QUEUE_SZ];
+    unsigned int length;
+} ClickQueue;
+
+typedef struct {
     unsigned int id;
     bool visible;
     PyObject *title;
     ScreenRenderData render_data;
     unsigned int mouse_cell_x, mouse_cell_y;
     WindowGeometry geometry;
+    ClickQueue click_queue;
 } Window;
 
 typedef struct {

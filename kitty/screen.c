@@ -1344,41 +1344,40 @@ text_for_selection(Screen *self) {
     return ans;
 }
  
-static PyObject*
-selection_range_for_line(Screen *self, PyObject *args) {
-    unsigned int y;
-    if (!PyArg_ParseTuple(args, "I", &y)) return NULL;
-    if (y >= self->lines) { PyErr_SetString(PyExc_ValueError, "y larger than lines"); return NULL; }
+bool
+screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
+    if (y >= self->lines) { return false; }
     Line *line = visual_line_(self, y);
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && CHAR_IS_BLANK(line->cells[xlimit - 1].ch)) xlimit--;
     while (xstart < xlimit && CHAR_IS_BLANK(line->cells[xstart].ch)) xstart++;
-    return Py_BuildValue("II", (unsigned int)xstart, (unsigned int)xlimit);
+    *start = xstart; *end = xlimit;
+    return true;
 }
 
 static inline bool
-has_char(int kind, void *data, Py_ssize_t sz, char_type ch) {
-    for (Py_ssize_t i = 0; i < sz; i++) {
-        if (PyUnicode_READ(kind, data, i) == ch) return true;
+is_opt_word_char(char_type ch) {
+    for (size_t i = 0; i < OPT(select_by_word_characters_count); i++) {
+        if (OPT(select_by_word_characters[i]) == ch) return true;
     }
     return false;
 }
 
-static PyObject*
-selection_range_for_word(Screen *self, PyObject *args) {
-    unsigned int x, y;
-    PyObject *extra_chars;
-    if (!PyArg_ParseTuple(args, "IIU", &x, &y, &extra_chars)) return NULL;
-    if (PyUnicode_READY(extra_chars) != 0) return NULL;
-    if (y >= self->lines) { PyErr_SetString(PyExc_ValueError, "y larger than lines"); return NULL; }
-    if (x >= self->columns) { PyErr_SetString(PyExc_ValueError, "x larger than columns"); return NULL; }
+bool
+screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_type *s, index_type *e) {
+    if (y >= self->lines || x >= self->columns) return false;
+    index_type start, end;
     Line *line = visual_line_(self, y);
-#define is_ok(x) (is_word_char((line->cells[x].ch) & CHAR_MASK) || has_char(PyUnicode_KIND(extra_chars), PyUnicode_DATA(extra_chars), PyUnicode_GET_LENGTH(extra_chars), (line->cells[x].ch) & CHAR_MASK))
-    if (!is_ok(x)) Py_BuildValue("II", x, x + 1);
-    unsigned int start = x, end = x;
-    while(start > 0 && is_ok(start - 1)) start--;
-    while(end < self->columns - 1 && is_ok(end + 1)) end++; 
-    return Py_BuildValue("II", start, end + 1);
+#define is_ok(x) (is_word_char((line->cells[x].ch) & CHAR_MASK) || is_opt_word_char(line->cells[x].ch & CHAR_MASK))
+    if (!is_ok(x)) {
+        start = x; end = x + 1;
+    } else {
+        start = x, end = x;
+        while(start > 0 && is_ok(start - 1)) start--;
+        while(end < self->columns - 1 && is_ok(end + 1)) end++; 
+    }
+    *s = start; *e = end;
+    return true;
 #undef is_ok
 }
 
@@ -1433,24 +1432,17 @@ screen_is_selection_dirty(Screen *self) {
     return false;
 }
 
-static PyObject*
-start_selection(Screen *self, PyObject *args) {
-    unsigned int x, y;
-    if (!PyArg_ParseTuple(args, "II", &x, &y)) return NULL;
+void
+screen_start_selection(Screen *self, index_type x, index_type y) {
 #define A(attr, val) self->selection.attr = val;
     A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); A(in_progress, true);
 #undef A
-    Py_RETURN_NONE;
 }
 
-static PyObject*
-update_selection(Screen *self, PyObject *args) {
-    unsigned int x, y;
-    int ended;
-    if (!PyArg_ParseTuple(args, "IIp", &x, &y, &ended)) return NULL;
+void
+screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
     if (ended) self->selection.in_progress = false;
-    Py_RETURN_NONE;
 }
 
 static PyObject* 
@@ -1533,12 +1525,8 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
-    MND(selection_range_for_line, METH_VARARGS)
-    MND(selection_range_for_word, METH_VARARGS)
     MND(text_for_selection, METH_NOARGS)
     MND(is_selection_in_progress, METH_NOARGS)
-    MND(start_selection, METH_VARARGS)
-    MND(update_selection, METH_VARARGS)
     MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)

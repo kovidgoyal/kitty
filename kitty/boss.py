@@ -21,7 +21,7 @@ from .keys import (
 )
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
-from .utils import safe_print, get_primary_selection
+from .utils import safe_print, get_primary_selection, set_primary_selection
 from .window import load_shader_programs
 
 
@@ -287,6 +287,13 @@ class Boss:
     def paste_from_selection(self):
         text = get_primary_selection()
         self.paste_to_active_window(text)
+
+    def set_primary_selection(self):
+        w = self.active_window
+        if w is not None and not w.destroyed:
+            text = w.text_for_selection()
+            if text:
+                set_primary_selection(text)
 
     def next_tab(self):
         self.tab_manager.next_tab()
