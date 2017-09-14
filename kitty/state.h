@@ -14,6 +14,7 @@ typedef struct {
     bool enable_audio_bell;
     CursorShape cursor_shape;
     double cursor_opacity;
+    unsigned int open_url_modifiers;
 } Options;
 
 typedef struct {

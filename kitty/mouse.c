@@ -51,11 +51,37 @@ handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers, unsigned i
 }
 
 void 
-handle_button_event(Window UNUSED *w, int button, int UNUSED modifiers, unsigned int window_idx) {
+handle_button_event(Window *w, int button, int modifiers, unsigned int window_idx) {
     Tab *t = global_state.tabs + global_state.active_tab;
-    if (window_idx != t->active_window && button == GLFW_MOUSE_BUTTON_LEFT) {
-        call_boss(switch_focus_to, "I", window_idx);
-        return;
+    bool is_release = !global_state.mouse_button_pressed[button];
+    if (window_idx != t->active_window) {
+        if (is_release) call_boss(switch_focus_to, "I", window_idx);
+    }
+    Screen *screen = w->render_data.screen;
+    if (!screen) return;
+    bool handle_in_kitty = (
+            modifiers == GLFW_MOD_SHIFT || 
+            screen->modes.mouse_tracking_mode == 0 ||
+            button == GLFW_MOUSE_BUTTON_MIDDLE ||
+            (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)
+        ) ? true : false;
+    if (handle_in_kitty) {
+        switch(button) {
+            case GLFW_MOUSE_BUTTON_LEFT:
+                // TODO: update_drag
+                if (is_release) {
+                    if (modifiers == (int)OPT(open_url_modifiers)) {
+                        // TODO: click_url
+                    } else if (!modifiers) {
+                        // TODO: handle multi click
+                    }
+                }
+                break;
+            case GLFW_MOUSE_BUTTON_MIDDLE:
+                if (is_release && !modifiers) { call_boss(paste_from_selection, NULL); return; }
+                break;
+        }
+    } else {
     }
 }
 

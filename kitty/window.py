@@ -30,8 +30,8 @@ from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
-    color_as_int, get_primary_selection, load_shaders, open_url,
-    parse_color_set, sanitize_title, set_primary_selection
+    color_as_int, load_shaders, open_url, parse_color_set, sanitize_title,
+    set_primary_selection
 )
 
 
@@ -424,13 +424,6 @@ class Window:
             if self.screen.in_bracketed_paste_mode:
                 text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
             self.write_to_child(text)
-
-    def paste_from_selection(self):
-        text = get_primary_selection()
-        if text:
-            if isinstance(text, bytes):
-                text = text.decode('utf-8')
-            self.paste(text)
 
     def copy_to_clipboard(self):
         text = self.text_for_selection()

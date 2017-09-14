@@ -69,7 +69,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
-    if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed)) {
+    if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed[0])) {
         global_state.mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
         mouse_event(button, mods);
     }

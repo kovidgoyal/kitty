@@ -165,7 +165,11 @@ def get_primary_selection():
         return ''  # There is no primary selection on OS X
     # glfw has no way to get the primary selection
     # https://github.com/glfw/glfw/issues/894
-    return subprocess.check_output(['xsel', '-p'], stderr=open(os.devnull, 'wb'), stdin=open(os.devnull, 'rb')).decode('utf-8')
+    ans = subprocess.check_output(['xsel', '-p'], stderr=open(os.devnull, 'wb'), stdin=open(os.devnull, 'rb')).decode('utf-8')
+    if ans:
+        # Without this for some reason repeated pastes dont work
+        set_primary_selection(ans)
+    return ans
 
 
 def base64_encode(

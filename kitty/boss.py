@@ -21,7 +21,7 @@ from .keys import (
 )
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
-from .utils import safe_print
+from .utils import safe_print, get_primary_selection
 from .window import load_shader_programs
 
 
@@ -75,9 +75,6 @@ class Boss:
         glfw_window.framebuffer_size_callback = self.on_window_resize
         glfw_window.char_mods_callback = self.on_text_input
         glfw_window.key_callback = self.on_key
-        glfw_window.mouse_button_callback = self.on_mouse_button
-        glfw_window.scroll_callback = self.on_mouse_scroll
-        glfw_window.cursor_pos_callback = self.on_mouse_move
         glfw_window.window_focus_callback = self.on_focus
         load_shader_programs()
         self.tab_manager = TabManager(opts, args)
@@ -277,12 +274,19 @@ class Boss:
         destroy_global_data()
         del self.glfw_window
 
-    def paste_from_clipboard(self):
-        text = self.glfw_window.get_clipboard_string()
+    def paste_to_active_window(self, text):
         if text:
             w = self.active_window
             if w is not None:
                 w.paste(text)
+
+    def paste_from_clipboard(self):
+        text = self.glfw_window.get_clipboard_string()
+        self.paste_to_active_window(text)
+
+    def paste_from_selection(self):
+        text = get_primary_selection()
+        self.paste_to_active_window(text)
 
     def next_tab(self):
         self.tab_manager.next_tab()

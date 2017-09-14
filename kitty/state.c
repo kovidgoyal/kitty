@@ -127,6 +127,7 @@ PYWRAP1(set_options) {
     S(cursor_shape, PyLong_AsLong);
     S(cursor_opacity, PyFloat_AsDouble);
     S(mouse_hide_wait, PyFloat_AsDouble);
+    S(open_url_modifiers, PyLong_AsUnsignedLong);
 #undef S
     Py_RETURN_NONE;
 }
