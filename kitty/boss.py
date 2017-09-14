@@ -7,11 +7,11 @@ from weakref import WeakValueDictionary
 
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
-    MODIFIER_KEYS, cell_size, is_key_pressed, mouse_button_pressed,
+    MODIFIER_KEYS, cell_size, is_key_pressed,
     mouse_cursor_pos, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
-    GLFW_MOUSE_BUTTON_1, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
+    GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
     destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
     layout_sprite_map
 )
@@ -230,54 +230,18 @@ class Boss:
                     SpecialWindow(
                         self.opts.scrollback_pager, data, _('History')))
 
-    def window_for_pos(self, x, y):
+    def switch_focus_to(self, window_idx):
         tab = self.active_tab
-        if tab is not None:
-            for w in tab:
-                if w.is_visible_in_layout and w.contains(x, y):
-                    return w
-
-    def in_tab_bar(self, y):
-        th = self.current_tab_bar_height
-        return th > 0 and y >= viewport_size.height - th
-
-    def on_mouse_button(self, window, button, action, mods):
-        mouse_button_pressed[button] = action == GLFW_PRESS
-        x, y = mouse_cursor_pos
-        w = self.window_for_pos(x, y)
-        if w is None:
-            if self.in_tab_bar(y):
-                if button == GLFW_MOUSE_BUTTON_1 and action == GLFW_PRESS:
-                    self.tab_manager.activate_tab_at(x)
-            return
-        focus_moved = False
-        old_focus = self.active_window
-        tab = self.active_tab
-        if button == GLFW_MOUSE_BUTTON_1 and w is not old_focus:
-            tab.set_active_window(w)
-            focus_moved = True
-        if focus_moved:
-            if old_focus is not None and not old_focus.destroyed:
-                old_focus.focus_changed(False)
-            w.focus_changed(True)
-        w.on_mouse_button(button, action, mods)
-
-    def on_mouse_move(self, window, xpos, ypos):
-        mouse_cursor_pos[:2] = xpos, ypos = int(
-            xpos * viewport_size.x_ratio), int(ypos * viewport_size.y_ratio)
-        w = self.window_for_pos(xpos, ypos)
-        if w is not None:
-            w.on_mouse_move(xpos, ypos)
-        else:
-            self.change_mouse_cursor(self.in_tab_bar(ypos))
+        tab.set_active_window_idx(window_idx)
+        old_focus = tab.active_window
+        if not old_focus.destroyed:
+            old_focus.focus_changed(False)
+        tab.active_window.focus_changed(True)
 
     def on_mouse_scroll(self, window, x, y):
         w = self.window_for_pos(*mouse_cursor_pos)
         if w is not None:
             w.on_mouse_scroll(x, y)
-
-    def change_mouse_cursor(self, click=False):
-        self.glfw_window.set_click_cursor(click)
 
     def request_attention(self):
         try:

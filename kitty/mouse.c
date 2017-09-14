@@ -39,7 +39,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
 }
 
 void 
-handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers) {
+handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx) {
     unsigned int x, y;
     if (cell_for_pos(w, &x, &y)) {
         Line *line = screen_visual_line(w->render_data.screen, y);
@@ -51,16 +51,26 @@ handle_move_event(Window *w, int UNUSED button, int UNUSED modifiers) {
 }
 
 void 
-handle_event(Window *w, int button, int modifiers) {
+handle_button_event(Window UNUSED *w, int button, int UNUSED modifiers, unsigned int window_idx) {
+    Tab *t = global_state.tabs + global_state.active_tab;
+    if (window_idx != t->active_window && button == GLFW_MOUSE_BUTTON_LEFT) {
+        call_boss(switch_focus_to, "I", window_idx);
+        return;
+    }
+}
+
+void 
+handle_event(Window *w, int button, int modifiers, unsigned int window_idx) {
     switch(button) {
         case -1:
-            handle_move_event(w, button, modifiers);
+            handle_move_event(w, button, modifiers, window_idx);
             break;
         case GLFW_MOUSE_BUTTON_LEFT:  
         case GLFW_MOUSE_BUTTON_RIGHT:
         case GLFW_MOUSE_BUTTON_MIDDLE:
         case GLFW_MOUSE_BUTTON_4:
         case GLFW_MOUSE_BUTTON_5:
+            handle_button_event(w, button, modifiers, window_idx);
             break;
         default:
             break;
@@ -82,9 +92,9 @@ mouse_event(int button, int modifiers) {
         handle_tab_bar_mouse(button, modifiers); 
     } else {
         Tab *t = global_state.tabs + global_state.active_tab;
-        for (size_t i = 0; i < t->num_windows; i++) {
+        for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
-                handle_event(t->windows + i, button, modifiers);
+                handle_event(t->windows + i, button, modifiers, i);
                 break;
             }
         }
