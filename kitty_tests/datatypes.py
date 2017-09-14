@@ -222,6 +222,14 @@ class TestDataTypes(BaseTest):
             l.set_text(t, 0, len(t), C())
             return l
 
+        for trail in '.,]>)\\':
+            l = create("http://xyz.com" + trail)
+            self.ae(l.url_end_at(0), len(l) - 2)
+        l = create("ftp://abc/")
+        self.ae(l.url_end_at(0), len(l) - 1)
+        l = create("http://-abcd] ")
+        self.ae(l.url_end_at(0), len(l) - 3)
+
         def lspace_test(n, scheme='http'):
             l = create(' ' * n + scheme + '://acme.com')
             for i in range(0, n):

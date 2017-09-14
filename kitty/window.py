@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import re
 import sys
 import weakref
 from collections import deque
@@ -23,9 +22,7 @@ from .fast_data_types import (
 )
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .utils import (
-    color_as_int, load_shaders, open_url, parse_color_set, sanitize_title
-)
+from .utils import color_as_int, load_shaders, parse_color_set, sanitize_title
 
 
 class DynamicColor(Enum):
@@ -232,30 +229,6 @@ class Window:
 
     def text_for_selection(self):
         return ''.join(self.screen.text_for_selection())
-
-    # mouse handling {{{
-    def click_url(self, x, y):
-        x, y = self.cell_for_pos(x, y)
-        if x is not None:
-            l = self.screen.visual_line(y)
-            if l is not None:
-                text = str(l)
-                for m in self.url_pat.finditer(text):
-                    if m.start() <= x < m.end():
-                        url = ''.join(l[i] for i in range(*m.span())).rstrip('.')
-                        # Remove trailing "] and similar
-                        url = re.sub(r'''["'][)}\]]$''', '', url)
-                        # Remove closing trailing character if it is matched by it's
-                        # corresponding opening character before the url
-                        if m.start() > 0:
-                            before = l[m.start() - 1]
-                            closing = {'(': ')', '[': ']', '{': '}', '<': '>', '"': '"', "'": "'", '`': '`', '|': '|', ':': ':'}.get(before)
-                            if closing is not None and url.endswith(closing):
-                                url = url[:-1]
-                        if url:
-                            open_url(url, self.opts.open_url_with)
-
-    # }}}
 
     def destroy(self):
         if self.vao_id is not None:

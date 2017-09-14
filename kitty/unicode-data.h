@@ -30,3 +30,12 @@ normalize(uint32_t ch, uint32_t cc1, uint32_t cc2) {
     if (ans && cc2) ans = uc_composition(ans, cc2);
     return ans;
 }
+
+static inline bool
+can_strip_from_end_of_url(uint32_t ch) {
+    // remove trailing punctuation
+    return (
+        (uc_is_general_category_withtable(ch, UC_CATEGORY_MASK_P) && ch != '/') ||
+        ch == '>'
+    ) ? true : false;
+}

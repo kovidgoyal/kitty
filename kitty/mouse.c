@@ -216,6 +216,20 @@ HANDLER(add_click) {
 #undef N
 }
 
+static inline void
+open_url(Window *w) {
+    Line *line = screen_visual_line(w->render_data.screen, w->mouse_cell_y);
+    if (line) {
+        index_type start = line_url_start_at(line, w->mouse_cell_x); 
+        if (start < line->xnum) {
+            index_type end = line_url_end_at(line, w->mouse_cell_x);
+            if (end > start) {
+                call_boss(open_url, "N", unicode_in_range(line, start, end + 1, true, 0));
+            }
+        }
+    }
+}
+
 HANDLER(handle_button_event) {
     Tab *t = global_state.tabs + global_state.active_tab;
     bool is_release = !global_state.mouse_button_pressed[button];
@@ -236,7 +250,7 @@ HANDLER(handle_button_event) {
                 update_drag(true, w, is_release);
                 if (is_release) {
                     if (modifiers == (int)OPT(open_url_modifiers)) {
-                        // TODO: click_url
+                        open_url(w);
                     } else {
                         if (is_release) add_click(w, button, modifiers, window_idx);
                     }

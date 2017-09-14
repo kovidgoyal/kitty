@@ -54,6 +54,8 @@ line_text_at(char_type ch, combining_type cc) {
     return ans;
 }
 
+// URL detection {{{
+
 static const char* url_prefixes[4] = {"https", "http", "file", "ftp"};
 static size_t url_prefix_lengths[sizeof(url_prefixes)/sizeof(url_prefixes[0])] = {0};
 typedef enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH} URL_PARSER_STATE;
@@ -137,11 +139,29 @@ line_url_start_at(Line *self, index_type x) {
     return self->xnum;
 }
 
+index_type
+line_url_end_at(Line *self, index_type x) {
+    index_type ans = x;
+    if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return 0;
+    while (ans < self->xnum && is_url_char(self->cells[ans].ch & CHAR_MASK)) ans++;
+    ans--;
+    while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch & CHAR_MASK)) ans--;
+    return ans;
+}
+
 static PyObject*
 url_start_at(Line *self, PyObject *x) {
 #define url_start_at_doc "url_start_at(x) -> Return the start cell number for a URL containing x or self->xnum if not found"
     return PyLong_FromUnsignedLong((unsigned long)line_url_start_at(self, PyLong_AsUnsignedLong(x)));
 }
+
+static PyObject*
+url_end_at(Line *self, PyObject *x) {
+#define url_end_at_doc "url_end_at(x) -> Return the end cell number for a URL containing x or 0 if not found"
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, PyLong_AsUnsignedLong(x)));
+}
+
+// }}}
 
 static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
@@ -567,6 +587,7 @@ static PyMethodDef methods[] = {
     METHOD(is_continued, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)
+    METHOD(url_end_at, METH_O)
         
     {NULL}  /* Sentinel */
 };

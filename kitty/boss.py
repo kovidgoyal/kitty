@@ -21,7 +21,7 @@ from .keys import (
 )
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
-from .utils import get_primary_selection, safe_print, set_primary_selection
+from .utils import get_primary_selection, safe_print, set_primary_selection, open_url
 from .window import load_shader_programs
 
 
@@ -246,6 +246,10 @@ class Boss:
         w = tab.windows[window_idx]
         k = get_key_map(w.screen)[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
         w.write_to_child(k * amt)
+
+    def open_url(self, url):
+        if url:
+            open_url(url, self.opts.open_url_with)
 
     def gui_close_window(self, window):
         window.destroy()
