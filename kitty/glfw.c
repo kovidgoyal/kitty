@@ -36,7 +36,7 @@ typedef struct {
     PyObject_HEAD
 
     GLFWwindow *window;
-    PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *mouse_button_callback, *scroll_callback, *cursor_pos_callback, *window_focus_callback;
+    PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *window_focus_callback;
     GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
 } WindowWrapper;
 
@@ -68,6 +68,7 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
 }
 
 extern void mouse_event(int, int);
+extern void scroll_event(double, double);
 
 static void 
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
@@ -78,7 +79,6 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
         global_state.mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
         mouse_event(button, mods);
     }
-    /* WINDOW_CALLBACK(mouse_button_callback, "iii", button, action, mods); */
 }
 
 static void 
@@ -89,7 +89,6 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.cursor_blink_zero_time = now;
     global_state.mouse_x = x; global_state.mouse_y = y;
     mouse_event(-1, 0);
-    /* WINDOW_CALLBACK(cursor_pos_callback, "dd", x, y); */
 }
 
 static void 
@@ -97,7 +96,7 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
-    WINDOW_CALLBACK(scroll_callback, "dd", xoffset, yoffset);
+    scroll_event(xoffset, yoffset);
 }
 
 static void 
@@ -147,10 +146,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         set_mouse_cursor(0);
         glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
         glfwSetCharModsCallback(self->window, char_mods_callback);
-        glfwSetKeyCallback(self->window, key_callback);
         glfwSetMouseButtonCallback(self->window, mouse_button_callback);
         glfwSetScrollCallback(self->window, scroll_callback);
         glfwSetCursorPosCallback(self->window, cursor_pos_callback);
+        glfwSetKeyCallback(self->window, key_callback);
         glfwSetWindowFocusCallback(self->window, window_focus_callback);
     }
     return (PyObject*)self;
@@ -263,7 +262,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
 static void
 dealloc(WindowWrapper* self) {
     the_window = NULL;
-    Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->mouse_button_callback); Py_CLEAR(self->scroll_callback); Py_CLEAR(self->cursor_pos_callback); Py_CLEAR(self->window_focus_callback);
+    Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->window_focus_callback);
     if (self->window != NULL) glfwDestroyWindow(self->window);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -452,9 +451,6 @@ static PyMemberDef members[] = {
     CBE(framebuffer_size_callback),
     CBE(char_mods_callback),
     CBE(key_callback),
-    CBE(mouse_button_callback),
-    CBE(scroll_callback),
-    CBE(cursor_pos_callback),
     CBE(window_focus_callback),
     {NULL}
 #undef CBE

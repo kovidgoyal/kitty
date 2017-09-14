@@ -8,6 +8,7 @@
 #include "state.h"
 #include "screen.h"
 #include "lineops.h"
+#include <math.h>
 #include <GLFW/glfw3.h>
 
 extern void set_mouse_cursor(MouseShape);
@@ -203,23 +204,56 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     call_boss(activate_tab_at, "d", global_state.mouse_x);
 }
 
-void
-mouse_event(int button, int modifiers) {
-    MouseShape old_cursor = mouse_cursor_shape;
-    bool in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height ? true : false;
-    if (in_tab_bar) { 
-        mouse_cursor_shape = HAND;
-        handle_tab_bar_mouse(button, modifiers); 
-    } else {
+static inline Window*
+window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
+    *in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height ? true : false;
+    if (!*in_tab_bar) {
         Tab *t = global_state.tabs + global_state.active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
-                handle_event(t->windows + i, button, modifiers, i);
-                break;
+                *window_idx = i; return t->windows + i;
             }
         }
     }
+    return NULL;
+
+}
+
+void
+mouse_event(int button, int modifiers) {
+    MouseShape old_cursor = mouse_cursor_shape;
+    bool in_tab_bar;
+    unsigned int window_idx;
+    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (in_tab_bar) { 
+        mouse_cursor_shape = HAND;
+        handle_tab_bar_mouse(button, modifiers); 
+    } else if(w) {
+        handle_event(w, button, modifiers, window_idx);
+    }
     if (mouse_cursor_shape != old_cursor) {
         set_mouse_cursor(mouse_cursor_shape);
+    }
+}
+
+void
+scroll_event(double UNUSED xoffset, double yoffset) {
+    int s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
+    if (s == 0) return;
+    bool upwards = s > 0 ? true : false;
+    bool in_tab_bar;
+    unsigned int window_idx;
+    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (w) {
+        Screen *screen = w->render_data.screen;
+        if (screen->linebuf == screen->main_linebuf) {
+            screen_history_scroll(screen, abs(s), upwards);
+        } else {
+            if (screen->modes.mouse_tracking_mode) {
+                // TODO: Implement this
+            } else {
+                // TODO: Implement this, writing a up arrow or down arrow key event to the child    
+            }
+        }
     }
 }

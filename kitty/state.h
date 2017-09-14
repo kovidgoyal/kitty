@@ -10,7 +10,7 @@
 #define OPT(name) global_state.opts.name
 
 typedef struct {
-    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, cursor_opacity;
+    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, cursor_opacity, wheel_scroll_multiplier;
     bool enable_audio_bell;
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
