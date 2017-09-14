@@ -28,8 +28,9 @@ contains_mouse(Window *w) {
 
 static inline bool
 cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
-    unsigned int qx = (unsigned int)((double)global_state.mouse_x / global_state.cell_width);
-    unsigned int qy = (unsigned int)((double)global_state.mouse_y / global_state.cell_height);
+    WindowGeometry *g = &w->geometry;
+    unsigned int qx = (unsigned int)((double)(global_state.mouse_x - g->left) / global_state.cell_width);
+    unsigned int qy = (unsigned int)((double)(global_state.mouse_y - g->top) / global_state.cell_height);
     bool ret = false;
     Screen *screen = w->render_data.screen;
     if (screen && qx <= screen->columns && qy <= screen->lines) {
@@ -147,7 +148,7 @@ HANDLER(handle_button_event) {
     Tab *t = global_state.tabs + global_state.active_tab;
     bool is_release = !global_state.mouse_button_pressed[button];
     if (window_idx != t->active_window) {
-        if (is_release) call_boss(switch_focus_to, "I", window_idx);
+        call_boss(switch_focus_to, "I", window_idx);
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
