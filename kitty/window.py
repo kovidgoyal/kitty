@@ -26,7 +26,6 @@ from .fast_data_types import (
     update_window_title, update_window_visibility
 )
 from .keys import get_key_map
-from .mouse import DRAG, MOVE, PRESS, RELEASE, encode_mouse_event
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (

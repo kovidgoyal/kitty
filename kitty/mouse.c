@@ -8,16 +8,86 @@
 #include "state.h"
 #include "screen.h"
 #include "lineops.h"
+#include <limits.h>
 #include <math.h>
 #include <GLFW/glfw3.h>
 
 extern void set_mouse_cursor(MouseShape);
 static MouseShape mouse_cursor_shape = BEAM;
+typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 
 #define call_boss(name, ...) { \
     PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
     if (cret_ == NULL) { PyErr_Print(); } \
     else Py_DECREF(cret_); \
+}
+
+#define SHIFT_INDICATOR  (1 << 2)
+#define ALT_INDICATOR (1 << 3)
+#define CONTROL_INDICATOR (1 << 4)
+#define MOTION_INDICATOR  (1 << 5)
+#define EXTRA_BUTTON_INDICATOR (1 << 6)
+
+static inline unsigned int
+button_map(int button) {
+    switch(button) {
+        case GLFW_MOUSE_BUTTON_1:
+            return 0;
+        case GLFW_MOUSE_BUTTON_2:
+            return 1;
+        case GLFW_MOUSE_BUTTON_3:
+            return 2;
+        case GLFW_MOUSE_BUTTON_4:
+            return EXTRA_BUTTON_INDICATOR;
+        case GLFW_MOUSE_BUTTON_5:
+            return EXTRA_BUTTON_INDICATOR | 1;
+        default:
+            return UINT_MAX;
+    }
+}
+
+static char mouse_event_buf[64];
+
+unsigned int
+encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
+    unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
+    unsigned int cb = 0;
+    Screen *screen = w->render_data.screen;
+
+    if (action == MOVE) {
+        if (screen->modes.mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
+    } else {
+        cb = button_map(button);
+        if (cb == UINT_MAX) return 0;
+    }
+    if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
+    else if (action == RELEASE && screen->modes.mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
+    if (mods & GLFW_MOD_SHIFT) cb |= SHIFT_INDICATOR;
+    if (mods & GLFW_MOD_ALT) cb |= ALT_INDICATOR;
+    if (mods & GLFW_MOD_CONTROL) cb |= CONTROL_INDICATOR;
+    switch(screen->modes.mouse_tracking_protocol) {
+        case SGR_PROTOCOL:
+            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
+            break;
+        case URXVT_PROTOCOL:
+            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[%d;%d;%dM", cb, x, y);
+            break;
+        case UTF8_PROTOCOL:
+            mouse_event_buf[0] = 033; mouse_event_buf[1] = '['; mouse_event_buf[2] = cb + 32; 
+            unsigned int sz = 3;
+            sz += encode_utf8(x + 32, mouse_event_buf + sz);
+            sz += encode_utf8(y + 32, mouse_event_buf + sz);
+            return sz;
+            break;
+        default:
+            if (x > 223 || y > 223) return 0;
+            else {
+                mouse_event_buf[0] = 033; mouse_event_buf[1] = '['; mouse_event_buf[2] = 'M'; mouse_event_buf[3] = cb + 32; mouse_event_buf[4] = x + 32; mouse_event_buf[5] = y + 32;
+                return 6;
+            }
+            break;
+    }
+    return 0;
 }
 
 static inline bool
