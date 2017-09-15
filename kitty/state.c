@@ -126,8 +126,24 @@ color_as_int(PyObject *color) {
 #undef I
 }
 
+#define dict_iter(d) { \
+    PyObject *key, *value; Py_ssize_t pos; \
+    while (PyDict_Next(d, &pos, &key, &value))
+
+static inline void
+set_special_keys(PyObject *dict) {
+    dict_iter(dict) {
+        if (!PyTuple_Check(key)) { PyErr_SetString(PyExc_TypeError, "dict keys for special keys must be tuples"); return; }
+        int mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 0));
+        int glfw_key = PyLong_AsLong(PyTuple_GET_ITEM(key, 1));
+        set_special_key_combo(glfw_key, mods);
+    }}
+}
+
 PYWRAP1(set_options) {
-#define S(name, convert) { PyObject *ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL; global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
+    PyObject *ret;
+#define GA(name) ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL;
+#define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
     S(cursor_blink_interval, PyFloat_AsDouble);
@@ -139,12 +155,22 @@ PYWRAP1(set_options) {
     S(open_url_modifiers, PyLong_AsUnsignedLong);
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
+
     PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
     if (chars == NULL) return NULL;
     for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {
         OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
     }
     OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
+
+    GA(keymap); set_special_keys(ret);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    GA(send_text_map);
+    dict_iter(ret) {
+        set_special_keys(value);
+    }}
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+
     Py_DECREF(chars);
 #undef S
     Py_RETURN_NONE;

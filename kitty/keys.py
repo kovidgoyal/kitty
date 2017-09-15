@@ -227,7 +227,9 @@ def generate_key_table():
     w('// auto-generated from keys.py, do not edit!')
     w('#pragma once')
     w('#include <stdint.h>')
+    w('#include <stdbool.h>')
     w('#include <limits.h>')
+    w('static bool needs_special_handling[%d] = {0};' % (128 * 16))
     number_of_keys = defines.GLFW_KEY_LAST + 1
     w('static const uint8_t key_map[%d] = {' % number_of_keys)
     key_count = 0
@@ -244,7 +246,7 @@ def generate_key_table():
             if key_count > 128:
                 raise OverflowError('Too many keys')
     w('};\n')
-    number_entries = 0x7f | (0xff << 7)
+    number_entries = 128 * 256
     inits = []
     longest = 0
     for i in range(number_entries):

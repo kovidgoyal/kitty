@@ -23,6 +23,12 @@ key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
     return key_bytes[key];
 }
 
+void
+set_special_key_combo(int glfw_key, int mods) {
+    int k = (glfw_key & 0x7f) | ( (mods & 0xF) << 7);
+    needs_special_handling[k] = true;
+}
+
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 #define M(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}

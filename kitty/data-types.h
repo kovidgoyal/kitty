@@ -317,3 +317,4 @@ void change_wcwidth(bool use9);
 void set_mouse_cursor(MouseShape);
 void mouse_event(int, int);
 void scroll_event(double, double);
+void set_special_key_combo(int glfw_key, int mods);
