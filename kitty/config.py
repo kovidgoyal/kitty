@@ -235,7 +235,7 @@ type_map = {
 
 for name in (
     'foreground background cursor active_border_color inactive_border_color'
-    ' selection_foreground selection_background'
+    ' selection_foreground selection_background url_color'
 ).split():
     type_map[name] = lambda x: to_color(x, validate=True)
 for i in range(16):

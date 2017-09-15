@@ -15,6 +15,7 @@ typedef struct {
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
+    color_type url_color;
 } Options;
 
 typedef struct {

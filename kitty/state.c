@@ -118,6 +118,14 @@ swap_windows(unsigned int tab_id, unsigned int a, unsigned int b) {
 #define TWO_UINT(name) PYWRAP1(name) { unsigned int a, b; PA("II", &a, &b); name(a, b); Py_RETURN_NONE; }
 #define THREE_UINT(name) PYWRAP1(name) { unsigned int a, b, c; PA("III", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 
+static inline color_type
+color_as_int(PyObject *color) {
+    if (!PyTuple_Check(color)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return 0; }
+#define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
+    return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
+#undef I
+}
+
 PYWRAP1(set_options) {
 #define S(name, convert) { PyObject *ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL; global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
@@ -130,6 +138,7 @@ PYWRAP1(set_options) {
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, PyLong_AsUnsignedLong);
     S(click_interval, PyFloat_AsDouble);
+    S(url_color, color_as_int);
     PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
     if (chars == NULL) return NULL;
     for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {

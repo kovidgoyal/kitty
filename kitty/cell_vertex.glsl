@@ -4,6 +4,7 @@ uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
 uniform uvec4 default_colors; // The default colors
+uniform uint url_color;  // The color to use for the URL highlight 
 uniform uvec4 url_range; // The range for the currently highlighted URL (start_x, end_x, start_y, end_y)
 uniform ColorTable {
     uint color_table[256]; // The color table
@@ -30,6 +31,7 @@ const uint BYTE_MASK = uint(0xFF);
 const uint SHORT_MASK = uint(0xFFFF);
 const uint ZERO = uint(0);
 const uint ONE = uint(1);
+const uint TWO = uint(2);
 const uint THREE = uint(3);
 const uint DECORATION_MASK = uint(3);
 const uint STRIKE_MASK = uint(1);
@@ -72,16 +74,19 @@ vec3 apply_selection(vec3 color, uint which) {
     return is_selected * color_to_vec(which) + (1.0 - is_selected) * color;
 }
 
-uint in_range(uvec4 range, uint x, uint y) {
-    if (range[0] <= x && x <= range[1] && range[2] <= y && y <= range[3]) return ONE;
-    return ZERO;
+vec3 mix_vecs(float q, vec3 a, vec3 b) {
+    return q * a + (1.0 - q) * b;
+}
+
+float in_range(uvec4 range, uint x, uint y) {
+    if (range[2] == y && range[0] <= x && x <= range[1]) return 1.0;
+    return 0.0;
 }
 
 void main() {
     uint instance_id = uint(gl_InstanceID);
     uint r = instance_id / dimensions.x;
     uint c = instance_id - r * dimensions.x;
-    uint in_url = in_range(url_range, c, r);
     float left = steps[0] + c * steps[2];
     float top = steps[1] - r * steps[3];
     vec2 xpos = vec2(left, left + steps[2]);
@@ -94,11 +99,10 @@ void main() {
     uint fg = colors[color_indices[reverse]];
     uint bg = colors[color_indices[ONE - reverse]];
     uint resolved_fg = as_color(fg, default_colors[color_indices[0]]);
-    uint underline;
     foreground = apply_selection(color_to_vec(resolved_fg), default_colors[2]);
     background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
-    if (in_url == ONE) { underline = ONE; decoration_fg = color_to_vec(uint(255)); }
-    else { underline = (text_attrs >> 26) & DECORATION_MASK; decoration_fg = to_color(colors[2], resolved_fg); }
-    underline_pos = to_sprite_pos(pos, underline, ZERO, ZERO);
+    float in_url = in_range(url_range, c, r);
+    decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
+    underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 26) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 31) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }

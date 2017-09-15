@@ -552,7 +552,7 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
+enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_color, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
 static GLint cell_uniform_locations[NUM_CELL_UNIFORMS] = {0};
 static GLint cell_color_table_stride = 0, cell_color_table_offset = 0, cell_color_table_size = 0, cell_color_table_block_index = 0;
 
@@ -570,6 +570,7 @@ init_cell_program() {
         else SET_LOC(sprites);
         else SET_LOC(sprite_layout);
         else SET_LOC(url_range);
+        else SET_LOC(url_color);
         else if (strcmp(p->uniforms[i].name, "color_table[0]") == 0) { ctable_idx = i; cell_uniform_locations[CELL_color_table] = p->uniforms[i].location; }
         else { fatal("Unknown uniform in cell program: %s", p->uniforms[i].name); }
     }
@@ -601,6 +602,8 @@ create_cell_vao() {
 #undef A1
 }
 
+static bool cell_constants_sent = false;
+
 static void 
 draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen) {
     size_t sz;
@@ -628,29 +631,25 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
 #define UL(name) cell_uniform_locations[CELL_##name]
     bind_program(CELL_PROGRAM); 
     bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
-    glUniform2ui(UL(dimensions), screen->columns, screen->lines);
-    check_gl();
-    glUniform4f(UL(steps), xstart, ystart, dx, dy);
-    check_gl();
-    glUniform2i(UL(color_indices), inverted & 1, 1 - (inverted & 1));
-    check_gl();
+    glUniform2ui(UL(dimensions), screen->columns, screen->lines); check_gl();
+    glUniform4f(UL(steps), xstart, ystart, dx, dy); check_gl();
+    glUniform2i(UL(color_indices), inverted & 1, 1 - (inverted & 1)); check_gl();
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
-    glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg));
-    check_gl();
+    glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg)); check_gl();
 #undef COLOR
     GLuint start_x, start_y, end_x, end_y;
     screen_url_range(screen, &start_x, &start_y, &end_x, &end_y);
-    glUniform4ui(UL(url_range), start_x, end_x, start_y, end_y);
-    check_gl();
-    glUniform1i(UL(sprites), sprite_map_unit);  
-    check_gl();
+    glUniform4ui(UL(url_range), start_x, end_x, start_y, end_y); check_gl();
+    glUniform1i(UL(sprites), sprite_map_unit);  check_gl();
     unsigned int x, y, z;
     sprite_map_current_layout(&x, &y, &z);
-    glUniform2f(UL(sprite_layout), 1.0 / (float)x, 1.0 / (float)y);
-    check_gl();
+    glUniform2f(UL(sprite_layout), 1.0 / (float)x, 1.0 / (float)y); check_gl();
+    if (!cell_constants_sent) { 
+        glUniform1ui(UL(url_color), OPT(url_color)); check_gl(); 
+        cell_constants_sent = true; 
+    }
     bind_vertex_array(vao_idx);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    check_gl();
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
     unbind_program();
     unbind_sprite_map();
