@@ -175,9 +175,9 @@ dealloc(ChildMonitor* self) {
 }
 
 static void
-wakeup_(int fd) {
+wakeup_() {
     while(true) {
-        ssize_t ret = write(fd, "w", 1);
+        ssize_t ret = write(wakeup_fds[1], "w", 1);
         if (ret < 0) {
             if (errno == EINTR) continue;
             perror("Failed to write to wakeup fd with error");
@@ -208,7 +208,7 @@ join(ChildMonitor *self) {
 static PyObject *
 wakeup(ChildMonitor UNUSED *self) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_(wakeup_fds[1]);
+    wakeup_();
     Py_RETURN_NONE;
 }
 
@@ -258,6 +258,7 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
+            if (screen->write_buf_used) wakeup_();
             screen_mutex(unlock, write);
             break;
         }
@@ -291,7 +292,7 @@ do_parse(ChildMonitor *self, Screen *screen) {
     screen_mutex(lock, read);
     if (screen->read_buf_sz) {
         parse_func(screen, self->dump_callback);
-        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_(wakeup_fds[1]);  // Ensure the read fd has POLLIN set
+        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_();  // Ensure the read fd has POLLIN set
         screen->read_buf_sz = 0;
         updated = true;
     }
@@ -778,9 +779,9 @@ io_loop(void *data) {
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
         for (i = 0; i < self->count; i++) {
             screen = children[i].screen;
-            /* printf("i:%lu id:%lu fd: %d read_buf_sz: %lu write_buf_sz: %lu\n", i, children[i].id, children[i].fd, screen->read_buf_sz, screen->write_buf_sz); */
+            /* printf("i:%lu id:%lu fd: %d read_buf_sz: %lu write_buf_used: %lu\n", i, children[i].id, children[i].fd, screen->read_buf_sz, screen->write_buf_used); */
             screen_mutex(lock, read); screen_mutex(lock, write);
-            fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_sz ? POLLOUT  : 0);
+            fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_used ? POLLOUT  : 0);
             screen_mutex(unlock, read); screen_mutex(unlock, write);
         }
         ret = poll(fds, self->count + EXTRA_FDS, -1);
