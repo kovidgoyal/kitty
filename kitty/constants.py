@@ -6,7 +6,7 @@ import os
 import pwd
 import ctypes
 import sys
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 
 from .fast_data_types import (
     GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_LEFT_ALT,
@@ -64,9 +64,6 @@ def wakeup():
     get_boss.boss.child_monitor.wakeup()
 
 
-is_key_pressed = defaultdict(lambda: False)
-mouse_button_pressed = defaultdict(lambda: False)
-mouse_cursor_pos = [0, 0]
 viewport_size = ViewportSize()
 cell_size = ViewportSize()
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

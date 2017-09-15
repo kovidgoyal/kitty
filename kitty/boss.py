@@ -7,7 +7,7 @@ from weakref import WeakValueDictionary
 
 from .config import MINIMUM_FONT_SIZE
 from .constants import (
-    MODIFIER_KEYS, cell_size, is_key_pressed, set_boss, viewport_size, wakeup
+    MODIFIER_KEYS, cell_size, set_boss, viewport_size, wakeup
 )
 from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
@@ -21,7 +21,9 @@ from .keys import (
 )
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
-from .utils import get_primary_selection, safe_print, set_primary_selection, open_url
+from .utils import (
+    get_primary_selection, open_url, safe_print, set_primary_selection
+)
 from .window import load_shader_programs
 
 
@@ -181,7 +183,6 @@ class Boss:
                 w.write_to_child(data)
 
     def on_key(self, window, key, scancode, action, mods):
-        is_key_pressed[key] = action == GLFW_PRESS
         func = None
         if action == GLFW_PRESS or action == GLFW_REPEAT:
             func = get_shortcut(self.opts.keymap, mods, key, scancode)
