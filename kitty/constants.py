@@ -8,10 +8,7 @@ import ctypes
 import sys
 from collections import namedtuple
 
-from .fast_data_types import (
-    GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_LEFT_ALT,
-    GLFW_KEY_RIGHT_ALT, GLFW_KEY_LEFT_CONTROL, GLFW_KEY_RIGHT_CONTROL,
-    GLFW_KEY_LEFT_SUPER, GLFW_KEY_RIGHT_SUPER, set_boss as set_c_boss)
+from .fast_data_types import set_boss as set_c_boss
 
 appname = 'kitty'
 version = (0, 3, 0)
@@ -78,8 +75,3 @@ if ctypes.sizeof(GLfloat) != 4:
     raise RuntimeError('float size is not 4')
 if ctypes.sizeof(GLint) != 4:
     raise RuntimeError('int size is not 4')
-
-MODIFIER_KEYS = (
-    GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT, GLFW_KEY_LEFT_ALT,
-    GLFW_KEY_RIGHT_ALT, GLFW_KEY_LEFT_CONTROL, GLFW_KEY_RIGHT_CONTROL,
-    GLFW_KEY_LEFT_SUPER, GLFW_KEY_RIGHT_SUPER)

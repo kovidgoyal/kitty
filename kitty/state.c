@@ -127,7 +127,7 @@ color_as_int(PyObject *color) {
 }
 
 #define dict_iter(d) { \
-    PyObject *key, *value; Py_ssize_t pos; \
+    PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
 
 static inline void

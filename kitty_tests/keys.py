@@ -39,7 +39,6 @@ class TestParser(BaseTest):
                 mods,
                 w,
                 defines.GLFW_PRESS,
-                get_localized_key=lambda k, s: k
             )
             self.ae(b'\033' + expected.encode('ascii'), actual)
 

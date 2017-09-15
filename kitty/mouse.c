@@ -15,12 +15,6 @@
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 
-#define call_boss(name, ...) { \
-    PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
-    if (cret_ == NULL) { PyErr_Print(); } \
-    else Py_DECREF(cret_); \
-}
-
 #define SHIFT_INDICATOR  (1 << 2)
 #define ALT_INDICATOR (1 << 3)
 #define CONTROL_INDICATOR (1 << 4)

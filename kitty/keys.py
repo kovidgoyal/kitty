@@ -111,32 +111,6 @@ def keyboard_mode_name(screen):
     return 'application' if screen.cursor_key_mode else 'normal'
 
 
-valid_localized_key_names = {
-    k: getattr(defines, 'GLFW_KEY_' + k)
-    for k in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-}
-
-for name, ch in {
-    'APOSTROPHE': "'",
-    'COMMA': ',',
-    'PERIOD': '.',
-    'SLASH': '/',
-    'MINUS': '-',
-    'SEMICOLON': ';',
-    'EQUAL': '=',
-    'LEFT_BRACKET': '[',
-    'RIGHT_BRACKET': ']',
-    'GRAVE_ACCENT': '`',
-    'BACKSLASH': '\\'
-}.items():
-    valid_localized_key_names[ch] = getattr(defines, 'GLFW_KEY_' + name)
-
-
-def get_localized_key(key, scancode):
-    name = defines.glfw_get_key_name(key, scancode)
-    return valid_localized_key_names.get((name or '').upper(), key)
-
-
 action_map = {
     defines.GLFW_PRESS: 'p',
     defines.GLFW_RELEASE: 'r',
@@ -182,26 +156,23 @@ def key_to_bytes(key, smkx, extended, mods, action):
     return bytes(data)
 
 
-def interpret_key_event(key, scancode, mods, window, action, get_localized_key=get_localized_key):
+def interpret_key_event(key, scancode, mods, window, action):
     screen = window.screen
     if (
             action == defines.GLFW_PRESS or
             (action == defines.GLFW_REPEAT and screen.auto_repeat_enabled) or
             screen.extended_keyboard
     ):
-        key = get_localized_key(key, scancode)
         return defines.key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
     return b''
 
 
 def get_shortcut(keymap, mods, key, scancode):
-    key = get_localized_key(key, scancode)
     return keymap.get((mods & 0b1111, key))
 
 
 def get_sent_data(send_text_map, key, scancode, mods, window, action):
     if action in (defines.GLFW_PRESS, defines.GLFW_REPEAT):
-        key = get_localized_key(key, scancode)
         m = keyboard_mode_name(window.screen)
         keymap = send_text_map[m]
         return keymap.get((mods & 0b1111, key))
@@ -215,6 +186,7 @@ def generate_key_table():
     w = partial(print, file=f)
     w('// auto-generated from keys.py, do not edit!')
     w('#pragma once')
+    w('#include <stddef.h>')
     w('#include <stdint.h>')
     w('#include <stdbool.h>')
     w('#include <limits.h>')
@@ -222,7 +194,11 @@ def generate_key_table():
     number_of_keys = defines.GLFW_KEY_LAST + 1
     w('static const uint8_t key_map[%d] = {' % number_of_keys)
     key_count = 0
-    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in 'GLFW_KEY_LAST GLFW_KEY_UNKNOWN'}
+
+    def key_name(k):
+        return k[len('GLFW_KEY_'):]
+
+    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_UNKNOWN'}}
     key_rmap = []
     for i in range(number_of_keys):
         k = keys.get(i)
@@ -235,6 +211,12 @@ def generate_key_table():
             if key_count > 128:
                 raise OverflowError('Too many keys')
     w('};\n')
+    w('static inline const char* key_name(int key) { switch(key) {')
+    for i in range(number_of_keys):
+        k = keys.get(i)
+        if k is not None:
+            w('case %d: return "%s";' % (i, key_name(k)))
+    w('default: return NULL; }}\n')
     number_entries = 128 * 256
     inits = []
     longest = 0
@@ -275,6 +257,6 @@ def generate_key_table():
         else:
             b, k, mods, smkx, extended = b
             b = bytearray(b)
-            name = '+'.join([k for k, v in all_mods.items() if v & mods] + [k.rpartition('_')[2]])
+            name = '+'.join([k for k, v in all_mods.items() if v & mods] + [key_name(k)])
             w('{0x%x, ' % len(b) + ', '.join(map(str, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
     w('};')

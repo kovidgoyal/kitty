@@ -78,6 +78,12 @@ typedef struct {
 extern GlobalState global_state;
 bool drag_scroll(Window *);
 
+#define call_boss(name, ...) { \
+    PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
+    if (cret_ == NULL) { PyErr_Print(); } \
+    else Py_DECREF(cret_); \
+}
+
 #define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
 #define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
 EXTERNAL_FUNC0(draw_borders, void);

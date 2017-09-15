@@ -6,16 +6,13 @@ from gettext import gettext as _
 from weakref import WeakValueDictionary
 
 from .config import MINIMUM_FONT_SIZE
-from .constants import (
-    MODIFIER_KEYS, cell_size, set_boss, viewport_size, wakeup
-)
+from .constants import cell_size, set_boss, viewport_size, wakeup
 from .fast_data_types import (
-    GLFW_KEY_DOWN, GLFW_KEY_UP, GLFW_PRESS, GLFW_REPEAT, ChildMonitor,
-    destroy_global_data, destroy_sprite_map, glfw_post_empty_event,
-    layout_sprite_map
+    GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
+    destroy_sprite_map, glfw_post_empty_event, layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
-from .keys import get_key_map, get_sent_data, get_shortcut, interpret_key_event
+from .keys import get_key_map, get_sent_data, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
@@ -72,7 +69,6 @@ class Boss:
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
         glfw_window.framebuffer_size_callback = self.on_window_resize
-        glfw_window.key_callback = self.on_key
         glfw_window.window_focus_callback = self.on_focus
         load_shader_programs()
         self.tab_manager = TabManager(opts, args)
@@ -171,35 +167,34 @@ class Boss:
         if t is not None:
             return t.active_window
 
-    def on_key(self, window, key, scancode, action, mods):
-        func = None
-        if action == GLFW_PRESS or action == GLFW_REPEAT:
-            func = get_shortcut(self.opts.keymap, mods, key, scancode)
-            if func is not None:
-                f = getattr(self, func, None)
-                if f is not None:
-                    passthrough = f()
-                    if not passthrough:
-                        return
+    def dispatch_special_key(self, key, scancode, action, mods):
+        # Handles shortcuts, return True if the key was consumed
+        func = get_shortcut(self.opts.keymap, mods, key, scancode)
+        if func is not None:
+            f = getattr(self, func, None)
+            if f is not None:
+                passthrough = f()
+                if not passthrough:
+                    return True
         tab = self.active_tab
         if tab is None:
-            return
+            return False
         window = self.active_window
         if window is None:
-            return
+            return False
         if func is not None:
             f = getattr(tab, func, getattr(window, func, None))
             if f is not None:
                 passthrough = f()
                 if not passthrough:
-                    return
-        if window.screen.scrolled_by and key not in MODIFIER_KEYS and action == GLFW_PRESS:
-            window.scroll_end()
+                    return True
         data = get_sent_data(
             self.opts.send_text_map, key, scancode, mods, window, action
-        ) or interpret_key_event(key, scancode, mods, window, action)
+        )
         if data:
             window.write_to_child(data)
+            return True
+        return False
 
     def on_focus(self, window, focused):
         self.window_is_focused = focused

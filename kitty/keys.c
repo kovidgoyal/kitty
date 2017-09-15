@@ -7,6 +7,7 @@
 
 #include "keys.h"
 #include "state.h"
+#include "screen.h"
 #include <GLFW/glfw3.h>
 
 const uint8_t*
@@ -24,10 +25,15 @@ key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
     return key_bytes[key];
 }
 
+#define SPECIAL_INDEX(key) ((key & 0x7f) | ( (mods & 0xF) << 7))
+
 void
 set_special_key_combo(int glfw_key, int mods) {
-    int k = (glfw_key & 0x7f) | ( (mods & 0xF) << 7);
-    needs_special_handling[k] = true;
+    uint16_t key = key_map[glfw_key];
+    if (key != UINT8_MAX) {
+        key = SPECIAL_INDEX(key);
+        needs_special_handling[key] = true;
+    }
 }
 
 static inline Window*
@@ -53,6 +59,119 @@ on_text_input(unsigned int codepoint, int mods) {
             unsigned int sz = encode_utf8(codepoint, buf);
             if (sz) schedule_write_to_child(w->id, buf, sz);
         }
+    }
+}
+
+static inline bool
+is_modifier_key(int key) {
+    switch(key) {
+        case GLFW_KEY_LEFT_SHIFT:
+        case GLFW_KEY_RIGHT_SHIFT: 
+        case GLFW_KEY_LEFT_ALT:
+        case GLFW_KEY_RIGHT_ALT:
+        case GLFW_KEY_LEFT_CONTROL:
+        case GLFW_KEY_RIGHT_CONTROL:
+        case GLFW_KEY_LEFT_SUPER:
+        case GLFW_KEY_RIGHT_SUPER:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static inline int
+get_localized_key(int key, int scancode) {
+    const char *name = glfwGetKeyName(key, scancode);
+    if (name == NULL || name[1] != 0) return key;
+    switch(name[0]) {
+#define K(ch, name) case ch: return GLFW_KEY_##name
+        // key names {{{
+        K('A', A);
+        K('B', B);
+        K('C', C);
+        K('D', D);
+        K('E', E);
+        K('F', F);
+        K('G', G);
+        K('H', H);
+        K('I', I);
+        K('J', J);
+        K('K', K);
+        K('L', L);
+        K('M', M);
+        K('N', N);
+        K('O', O);
+        K('P', P);
+        K('Q', Q);
+        K('S', S);
+        K('T', T);
+        K('U', U);
+        K('V', V);
+        K('W', W);
+        K('X', X);
+        K('Y', Y);
+        K('Z', Z);
+        K('0', 0);
+        K('1', 1);
+        K('2', 2);
+        K('3', 3);
+        K('5', 5);
+        K('6', 6);
+        K('7', 7);
+        K('8', 8);
+        K('9', 9);
+        K('\'', APOSTROPHE);
+        K(',', COMMA);
+        K('.', PERIOD);
+        K('/', SLASH);
+        K('-', MINUS);
+        K(';', SEMICOLON);
+        K('=', EQUAL);
+        K('[', LEFT_BRACKET);
+        K(']', RIGHT_BRACKET);
+        K('`', GRAVE_ACCENT);
+        K('\\', BACKSLASH);
+        // }}}
+#undef K
+        default:
+            return key;
+    }
+}
+
+void
+on_key_input(int key, int scancode, int action, int mods) {
+    Window *w = active_window();
+    if (!w) return;
+    Screen *screen = w->render_data.screen;
+    if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
+        screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
+    }
+    int lkey = get_localized_key(key, scancode);
+    if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+        uint16_t qkey = key_map[lkey];
+        bool special = false;
+        if (qkey != UINT8_MAX) {
+            qkey = SPECIAL_INDEX(qkey);
+            special = needs_special_handling[qkey];
+        }
+        /* printf("key: %s mods: %d special: %d\n", key_name(lkey), mods, special); */
+        if (special) {
+            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", lkey, scancode, action, mods);
+            if (ret == NULL) { PyErr_Print(); }
+            else {
+                bool consumed = ret == Py_True ? true : false;
+                Py_DECREF(ret);
+                if (consumed) return;
+            }
+        }
+    }
+    if (
+            action == GLFW_PRESS ||
+            (action == GLFW_REPEAT && screen->modes.mDECARM) ||
+            screen->modes.mEXTENDED_KEYBOARD
+       ) {
+        const uint8_t *data = key_to_bytes(lkey, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
+        if (data) schedule_write_to_child(w->id, (char*)(data + 1), *data);
     }
 }
 
