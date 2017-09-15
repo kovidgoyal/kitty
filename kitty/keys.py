@@ -144,7 +144,7 @@ action_map = {
 }
 
 
-def extended_key_event(key, scancode, mods, action):
+def extended_key_event(key, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
         # Shifted printable key should be handled by interpret_text_event()
         mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126
@@ -162,29 +162,36 @@ def extended_key_event(key, scancode, mods, action):
     ).encode('ascii')
 
 
+def key_to_bytes(key, smkx, extended, mods, action):
+    if extended:
+        return extended_key_event(key, mods, action)
+    data = bytearray()
+    if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
+        # Map Ctrl-key to ascii control code
+        data.extend(control_codes[key])
+    elif mods in alt_mods and key in alt_codes:
+        # Printable keys handled by interpret_text_event()
+        data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+    else:
+        key_map = cursor_key_mode_map[smkx]
+        x = key_map.get(key)
+        if x is not None:
+            if mods == defines.GLFW_MOD_SHIFT:
+                x = SHIFTED_KEYS.get(key, x)
+            data.extend(x)
+    return bytes(data)
+
+
 def interpret_key_event(key, scancode, mods, window, action, get_localized_key=get_localized_key):
     screen = window.screen
-    key = get_localized_key(key, scancode)
-    if screen.extended_keyboard:
-        return extended_key_event(key, scancode, mods, action)
-    data = bytearray()
-    if action == defines.GLFW_PRESS or (
-        action == defines.GLFW_REPEAT and screen.auto_repeat_enabled
+    if (
+            action == defines.GLFW_PRESS or
+            (action == defines.GLFW_REPEAT and screen.auto_repeat_enabled) or
+            screen.extended_keyboard
     ):
-        if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
-            # Map Ctrl-key to ascii control code
-            data.extend(control_codes[key])
-        elif mods in alt_mods and key in alt_codes:
-            # Printable keys handled by interpret_text_event()
-            data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
-        else:
-            key_map = get_key_map(screen)
-            x = key_map.get(key)
-            if x is not None:
-                if mods == defines.GLFW_MOD_SHIFT:
-                    x = SHIFTED_KEYS.get(key, x)
-                data.extend(x)
-    return bytes(data)
+        key = get_localized_key(key, scancode)
+        return key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
+    return b''
 
 
 def interpret_text_event(codepoint, mods, window):
