@@ -507,7 +507,7 @@ left_shift(Line *self, PyObject *args) {
 }
  
 void 
-line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor) {
+line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool is_second) {
     char_type attrs;
     if (cursor == NULL) {
         attrs = (((self->cells[at].ch >> ATTRS_SHIFT) & ~WIDTH_MASK) | (width & WIDTH_MASK)) << ATTRS_SHIFT;
@@ -519,7 +519,7 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
     }
     self->cells[at].ch = (ch & CHAR_MASK) | attrs;
     self->cells[at].cc = 0;
-    if (CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
+    if (!is_second && CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
     else set_sprite_position_at(at);
 }
 
@@ -535,7 +535,7 @@ set_char(Line *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
     }
-    line_set_char(self, at, ch, width, cursor);
+    line_set_char(self, at, ch, width, cursor, false);
     Py_RETURN_NONE;
 }
 

@@ -280,10 +280,10 @@ screen_draw(Screen *self, uint32_t och) {
         if (self->modes.mIRM) {
             line_right_shift(self->linebuf->line, self->cursor->x, char_width);
         }
-        line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor);
+        line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, false);
         self->cursor->x++;
         if (char_width == 2) {
-            line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor);
+            line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
             self->cursor->x++;
         }
         self->is_dirty = true;

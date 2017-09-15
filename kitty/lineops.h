@@ -58,7 +58,7 @@ xlimit_for_line(Line *line) {
 PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, int ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
-void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *);
+void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
