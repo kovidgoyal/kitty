@@ -138,9 +138,9 @@ def get_localized_key(key, scancode):
 
 
 action_map = {
-    defines.GLFW_PRESS: b'p',
-    defines.GLFW_RELEASE: b'r',
-    defines.GLFW_REPEAT: b't'
+    defines.GLFW_PRESS: 'p',
+    defines.GLFW_RELEASE: 'r',
+    defines.GLFW_REPEAT: 't'
 }
 
 
