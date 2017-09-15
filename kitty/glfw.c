@@ -36,7 +36,7 @@ typedef struct {
     PyObject_HEAD
 
     GLFWwindow *window;
-    PyObject *framebuffer_size_callback, *char_mods_callback, *key_callback, *window_focus_callback;
+    PyObject *framebuffer_size_callback, *key_callback, *window_focus_callback;
     GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
 } WindowWrapper;
 
@@ -57,7 +57,7 @@ framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
 static void 
 char_mods_callback(GLFWwindow UNUSED *w, unsigned int codepoint, int mods) {
     global_state.cursor_blink_zero_time = monotonic();
-    WINDOW_CALLBACK(char_mods_callback, "Ii", codepoint, mods);
+    on_text_input(codepoint, mods);
 }
 
 static void 
@@ -259,7 +259,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
 static void
 dealloc(WindowWrapper* self) {
     the_window = NULL;
-    Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->char_mods_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->window_focus_callback);
+    Py_CLEAR(self->framebuffer_size_callback); Py_CLEAR(self->key_callback); Py_CLEAR(self->window_focus_callback);
     if (self->window != NULL) glfwDestroyWindow(self->window);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -446,7 +446,6 @@ static PyMethodDef methods[] = {
 static PyMemberDef members[] = {
 #define CBE(name) {#name, T_OBJECT_EX, offsetof(WindowWrapper, name), 0, #name}
     CBE(framebuffer_size_callback),
-    CBE(char_mods_callback),
     CBE(key_callback),
     CBE(window_focus_callback),
     {NULL}

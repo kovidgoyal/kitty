@@ -15,10 +15,7 @@ from .fast_data_types import (
     layout_sprite_map
 )
 from .fonts.render import render_cell_wrapper, set_font_family
-from .keys import (
-    get_key_map, get_sent_data, get_shortcut, interpret_key_event,
-    interpret_text_event
-)
+from .keys import get_key_map, get_sent_data, get_shortcut, interpret_key_event
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
@@ -75,7 +72,6 @@ class Boss:
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
         glfw_window.framebuffer_size_callback = self.on_window_resize
-        glfw_window.char_mods_callback = self.on_text_input
         glfw_window.key_callback = self.on_key
         glfw_window.window_focus_callback = self.on_focus
         load_shader_programs()
@@ -174,13 +170,6 @@ class Boss:
         t = self.active_tab
         if t is not None:
             return t.active_window
-
-    def on_text_input(self, window, codepoint, mods):
-        w = self.active_window
-        if w is not None:
-            data = interpret_text_event(codepoint, mods, w)
-            if data:
-                w.write_to_child(data)
 
     def on_key(self, window, key, scancode, action, mods):
         func = None

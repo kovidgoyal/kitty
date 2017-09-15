@@ -146,7 +146,7 @@ action_map = {
 
 def extended_key_event(key, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
-        # Shifted printable key should be handled by interpret_text_event()
+        # Shifted printable key should be handled by on_text_input()
         mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126
     ):
         return b''
@@ -170,7 +170,7 @@ def key_to_bytes(key, smkx, extended, mods, action):
         # Map Ctrl-key to ascii control code
         data.extend(control_codes[key])
     elif mods in alt_mods and key in alt_codes:
-        # Printable keys handled by interpret_text_event()
+        # Printable keys handled by on_text_input()
         data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
     else:
         key_map = cursor_key_mode_map[smkx]
@@ -192,17 +192,6 @@ def interpret_key_event(key, scancode, mods, window, action, get_localized_key=g
         key = get_localized_key(key, scancode)
         return defines.key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
     return b''
-
-
-def interpret_text_event(codepoint, mods, window):
-    screen = window.screen
-    if mods > defines.GLFW_MOD_SHIFT:
-        if mods in alt_mods and not screen.extended_keyboard:
-            data = chr(codepoint).encode('utf-8')
-            return b'\x1b' + data
-        return b''  # Handled by interpret_key_event above
-    data = chr(codepoint).encode('utf-8')
-    return data
 
 
 def get_shortcut(keymap, mods, key, scancode):
