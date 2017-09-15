@@ -116,7 +116,7 @@ line(LineBuf *self, PyObject *y) {
 
 unsigned int 
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return (lineptr(self, y)[x].ch >> ATTRS_SHIFT) & WIDTH_MASK;
+    return (lineptr(self, self->line_map[y])[x].ch >> ATTRS_SHIFT) & WIDTH_MASK;
 }
 
 void 
