@@ -190,7 +190,7 @@ def interpret_key_event(key, scancode, mods, window, action, get_localized_key=g
             screen.extended_keyboard
     ):
         key = get_localized_key(key, scancode)
-        return key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
+        return defines.key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
     return b''
 
 
@@ -216,3 +216,74 @@ def get_sent_data(send_text_map, key, scancode, mods, window, action):
         m = keyboard_mode_name(window.screen)
         keymap = send_text_map[m]
         return keymap.get((mods & 0b1111, key))
+
+
+def generate_key_table():
+    # To run this, use: python3 . -c "from kitty.keys import *; generate_key_table()"
+    import os
+    from functools import partial
+    f = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w')
+    w = partial(print, file=f)
+    w('// auto-generated from keys.py, do not edit!')
+    w('#pragma once')
+    w('#include <stdint.h>')
+    w('#include <limits.h>')
+    number_of_keys = defines.GLFW_KEY_LAST + 1
+    w('static const uint8_t key_map[%d] = {' % number_of_keys)
+    key_count = 0
+    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in 'GLFW_KEY_LAST GLFW_KEY_UNKNOWN'}
+    key_rmap = []
+    for i in range(number_of_keys):
+        k = keys.get(i)
+        if k is None:
+            w('UINT8_MAX,', end=' ')
+        else:
+            w('%d,' % key_count, end=' ')
+            key_rmap.append(i)
+            key_count += 1
+            if key_count > 128:
+                raise OverflowError('Too many keys')
+    w('};\n')
+    number_entries = 0x7f | (0xff << 7)
+    inits = []
+    longest = 0
+    for i in range(number_entries):
+        key = i & 0x7f  # lowest seven bits
+        if key < key_count:
+            glfw_key = key_rmap[key]
+            k = keys.get(glfw_key)
+        else:
+            k = None
+        if k is None:
+            inits.append(None)
+        else:
+            mods = (i >> 7) & 0b1111
+            rest = i >> 11
+            action = rest & 0b11
+            if action == 0b11:  # no such action
+                inits.append(None)
+            else:
+                smkx = bool(rest & 0b100)
+                extended = bool(rest & 0b1000)
+                data = key_to_bytes(glfw_key, smkx, extended, mods, action)
+                if data:
+                    longest = max(len(data), longest)
+                    inits.append((data, k, mods, smkx, extended))
+                else:
+                    inits.append(None)
+    longest += 1
+    w('#define SIZE_OF_KEY_BYTES_MAP %d\n' % number_entries)
+    w('static const uint8_t key_bytes[%d][%d] = {' % (number_entries, longest))
+    # empty = '{' + ('0, ' * longest) + '},'
+    empty = '{0},'
+    all_mods = {k.rpartition('_')[2]: v for k, v in vars(defines).items() if k.startswith('GLFW_MOD_')}
+    all_mods = {k: v for k, v in sorted(all_mods.items(), key=lambda x: x[0])}
+    for b in inits:
+        if b is None:
+            w(empty)
+        else:
+            b, k, mods, smkx, extended = b
+            b = bytearray(b)
+            name = '+'.join([k for k, v in all_mods.items() if v & mods] + [k.rpartition('_')[2]])
+            w('{0x%x, ' % len(b) + ', '.join(map(str, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
+    w('};')
