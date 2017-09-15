@@ -463,7 +463,7 @@ extern void cocoa_update_title(PyObject*);
 static inline void
 render_cursor(Window *w, double now) {
     ScreenRenderData *rd = &w->render_data;
-    if (rd->screen->scrolled_by || ! screen_is_cursor_visible(rd->screen)) return;
+    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
     double time_since_start_blink = now - global_state.cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && global_state.application_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
     bool do_draw_cursor = true;
@@ -481,7 +481,7 @@ render_cursor(Window *w, double now) {
         double left = rd->xstart + cursor->x * rd->dx;
         double top = rd->ystart - cursor->y * rd->dy;
         int shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
-        unsigned long mult = screen_current_char_width(rd->screen);
+        unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
         double right = left + (shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
         double bottom = top - rd->dy;
         if (shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
