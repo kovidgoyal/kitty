@@ -67,9 +67,6 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
     WINDOW_CALLBACK(key_callback, "iiii", key, scancode, action, mods);
 }
 
-extern void mouse_event(int, int);
-extern void scroll_event(double, double);
-
 static void 
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 

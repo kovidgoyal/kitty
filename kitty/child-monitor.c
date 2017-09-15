@@ -492,8 +492,6 @@ render_cursor(Window *w, double now) {
     }
 }
 
-extern bool drag_scroll(Window *);
-
 static inline bool
 render(ChildMonitor *self, double now) {
     double time_since_last_render = now - last_render_at;

@@ -12,7 +12,6 @@
 #include <math.h>
 #include <GLFW/glfw3.h>
 
-extern void set_mouse_cursor(MouseShape);
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 

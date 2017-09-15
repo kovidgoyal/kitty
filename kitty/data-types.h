@@ -314,4 +314,6 @@ void copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, s
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);
-
+void set_mouse_cursor(MouseShape);
+void mouse_event(int, int);
+void scroll_event(double, double);

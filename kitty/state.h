@@ -74,7 +74,9 @@ typedef struct {
     PyObject *boss;
     bool is_key_pressed[MAX_KEY_COUNT];
 } GlobalState;
+
 extern GlobalState global_state;
+bool drag_scroll(Window *);
 
 #define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
 #define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
