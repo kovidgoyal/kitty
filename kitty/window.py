@@ -249,30 +249,24 @@ class Window:
     def scroll_line_up(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, True)
-            glfw_post_empty_event()
 
     def scroll_line_down(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, False)
-            glfw_post_empty_event()
 
     def scroll_page_up(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, True)
-            glfw_post_empty_event()
 
     def scroll_page_down(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, False)
-            glfw_post_empty_event()
 
     def scroll_home(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, True)
-            glfw_post_empty_event()
 
     def scroll_end(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
-            glfw_post_empty_event()
     # }}}

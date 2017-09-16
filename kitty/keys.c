@@ -146,9 +146,6 @@ on_key_input(int key, int scancode, int action, int mods) {
     Window *w = active_window();
     if (!w) return;
     Screen *screen = w->render_data.screen;
-    if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
-        screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
-    }
     int lkey = get_localized_key(key, scancode);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         uint16_t qkey = key_map[lkey];
@@ -167,6 +164,9 @@ on_key_input(int key, int scancode, int action, int mods) {
                 if (consumed) return;
             }
         }
+    }
+    if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
+        screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
     if (
             action == GLFW_PRESS ||
