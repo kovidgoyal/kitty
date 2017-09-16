@@ -226,6 +226,7 @@ add_child(ChildMonitor *self, PyObject *args) {
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
+    wakeup_io_loop();
     Py_RETURN_NONE;
 }
 
@@ -354,6 +355,7 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
         }
     }
     children_mutex(unlock);
+    wakeup_io_loop();
     Py_RETURN_NONE;
 }
 

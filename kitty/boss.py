@@ -90,7 +90,6 @@ class Boss:
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
-        wakeup()
 
     def on_child_death(self, window_id):
         w = self.window_id_map.pop(window_id, None)
@@ -101,7 +100,6 @@ class Boss:
         if window is None:
             window = self.active_window
         self.child_monitor.mark_for_close(window.id)
-        wakeup()
 
     def close_tab(self, tab=None):
         if tab is None:
