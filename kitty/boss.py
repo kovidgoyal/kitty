@@ -174,7 +174,7 @@ class Boss:
             f = getattr(self, func, None)
             if f is not None:
                 passthrough = f()
-                if not passthrough:
+                if passthrough is not True:
                     return True
         tab = self.active_tab
         if tab is None:
@@ -186,7 +186,7 @@ class Boss:
             f = getattr(tab, func, getattr(window, func, None))
             if f is not None:
                 passthrough = f()
-                if not passthrough:
+                if passthrough is not True:
                     return True
         data = get_sent_data(
             self.opts.send_text_map, key, scancode, mods, window, action
