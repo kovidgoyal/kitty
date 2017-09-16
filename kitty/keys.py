@@ -192,6 +192,7 @@ def generate_key_table():
     w('#include <limits.h>')
     w('static bool needs_special_handling[%d] = {0};' % (128 * 16))
     number_of_keys = defines.GLFW_KEY_LAST + 1
+    w('// map glfw key numbers to 7-bit numbers for compact data storage')
     w('static const uint8_t key_map[%d] = {' % number_of_keys)
     key_count = 0
 
@@ -203,9 +204,9 @@ def generate_key_table():
     for i in range(number_of_keys):
         k = keys.get(i)
         if k is None:
-            w('UINT8_MAX,', end=' ')
+            w('UINT8_MAX,')
         else:
-            w('%d,' % key_count, end=' ')
+            w('%d, /* %s */' % (key_count, key_name(k)))
             key_rmap.append(i)
             key_count += 1
             if key_count > 128:
@@ -258,5 +259,5 @@ def generate_key_table():
             b, k, mods, smkx, extended = b
             b = bytearray(b)
             name = '+'.join([k for k, v in all_mods.items() if v & mods] + [key_name(k)])
-            w('{0x%x, ' % len(b) + ', '.join(map(str, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
+            w('{%d, ' % len(b) + ', '.join(map(hex, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
     w('};')
