@@ -480,52 +480,52 @@ render_cursor(Window *w, double now) {
     }
 }
 
-static inline bool
+static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
-    if (time_since_last_render > OPT(repaint_delay)) {
-        draw_borders();
+    if (time_since_last_render < OPT(repaint_delay)) { 
+        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
+        return;
+    }
+
+    draw_borders();
 #define TD global_state.tab_bar_render_data
-        if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
+    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
 #undef TD
-        if (global_state.num_tabs) {
-            Tab *tab = global_state.tabs + global_state.active_tab;
-            for (size_t i = 0; i < tab->num_windows; i++) {
-                Window *w = tab->windows + i;
+    if (global_state.num_tabs) {
+        Tab *tab = global_state.tabs + global_state.active_tab;
+        for (size_t i = 0; i < tab->num_windows; i++) {
+            Window *w = tab->windows + i;
 #define WD w->render_data
-                if (w->visible && WD.screen) {
-                    if (w->last_drag_scroll_at > 0) {
-                        if (now - w->last_drag_scroll_at >= 0.02) { 
-                            if (drag_scroll(w)) {
-                                w->last_drag_scroll_at = now;
-                                set_maximum_wait(0.02);
-                            } else w->last_drag_scroll_at = 0;
-                        } else set_maximum_wait(now - w->last_drag_scroll_at);
-                    }
-                    draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
-                    if (WD.screen->start_visual_bell_at != 0) {
-                        double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
-                        set_maximum_wait(bell_left);
-                    }
+            if (w->visible && WD.screen) {
+                if (w->last_drag_scroll_at > 0) {
+                    if (now - w->last_drag_scroll_at >= 0.02) { 
+                        if (drag_scroll(w)) {
+                            w->last_drag_scroll_at = now;
+                            set_maximum_wait(0.02);
+                        } else w->last_drag_scroll_at = 0;
+                    } else set_maximum_wait(now - w->last_drag_scroll_at);
+                }
+                draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
+                if (WD.screen->start_visual_bell_at != 0) {
+                    double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
+                    set_maximum_wait(bell_left);
                 }
             }
-            Window *w = tab->windows + tab->active_window;
-            if (w->visible && WD.screen) render_cursor(w, now);
-            if (w->title && w->title != global_state.application_title) {
-                global_state.application_title = w->title;
-                glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
-#ifdef __APPLE__
-                cocoa_update_title(w->title);
-#endif
-            }
-#undef WD
         }
-        glfwSwapBuffers(glfw_window_id);
-        last_render_at = now;
-    } else {
-        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
+        Window *w = tab->windows + tab->active_window;
+        if (w->visible && WD.screen) render_cursor(w, now);
+        if (w->title && w->title != global_state.application_title) {
+            global_state.application_title = w->title;
+            glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
+#ifdef __APPLE__
+            cocoa_update_title(w->title);
+#endif
+        }
+#undef WD
     }
-    return true;
+    glfwSwapBuffers(glfw_window_id);
+    last_render_at = now;
 }
 
 typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
@@ -581,14 +581,14 @@ main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
     while (!glfwWindowShouldClose(glfw_window_id)) {
         double now = monotonic();
-        maximum_wait = -1;
-        if (!render(now)) break;
+        render(now);
         if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
             glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             global_state.mouse_visible = false;
         }
         if (maximum_wait < 0) glfwWaitEvents();
         else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
+        maximum_wait = -1;
         parse_input(self);
     }
     if (PyErr_Occurred()) return NULL;
