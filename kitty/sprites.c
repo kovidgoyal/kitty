@@ -15,6 +15,7 @@ struct SpritePosition {
     sprite_index x, y, z;
     char_type ch;
     combining_type cc;
+    bool bold, italic;
     bool is_second;
     bool filled;
     bool rendered;
@@ -88,15 +89,15 @@ do_increment(int *error) {
 }
 
 SpritePosition*
-sprite_map_position_for(char_type ch, combining_type cc, bool is_second, int *error) {
-    char_type pos_char = ch & POSCHAR_MASK;  // Includes only the char and bold and italic bits
-    unsigned int idx = ((ch >> (ATTRS_SHIFT - 4)) & 0x300) | (ch & 0xFF); // Includes only italic, bold and lowest byte of ch
+sprite_map_position_for(char_type ch, attrs_type attrs, combining_type cc, bool is_second, int *error) {
+    uint8_t bold_italic = (attrs >> BOLD_SHIFT) & 3;
+    unsigned int idx = (ch & 0xFF) | (bold_italic << 8); // Only bold italic bits and lowest byte of char
     SpritePosition *s = &(sprite_map.cache[idx]);
     // Optimize for the common case of an ASCII char already in the cache
-    if (LIKELY(s->ch == pos_char && s->filled && s->cc == cc && s->is_second == is_second)) return s;  // Cache hit
+    if (LIKELY(s->ch == ch && s->filled && s->cc == cc && s->is_second == is_second)) return s;  // Cache hit
     while(true) {
         if (s->filled) {
-            if (s->ch == pos_char && s->cc == cc && s->is_second == is_second) return s;  // Cache hit
+            if (s->ch == ch && s->cc == cc && s->is_second == is_second) return s;  // Cache hit
         } else {
             break;
         }
@@ -106,11 +107,13 @@ sprite_map_position_for(char_type ch, combining_type cc, bool is_second, int *er
         }
         s = s->next;
     }
-    s->ch = pos_char;
+    s->ch = ch;
     s->cc = cc;
     s->is_second = is_second;
     s->filled = true;
     s->rendered = false;
+    s->bold = bold_italic & 1;
+    s->italic = bold_italic >> 1;
     s->x = sprite_map.x; s->y = sprite_map.y; s->z = sprite_map.z;
     do_increment(error);
     sprite_map.dirty = true;
@@ -122,10 +125,10 @@ void
 set_sprite_position(Cell *cell, Cell *previous_cell) {
     SpritePosition *sp;
     static int error;
-    if (UNLIKELY(previous_cell != NULL && ((previous_cell->ch >> ATTRS_SHIFT) & WIDTH_MASK) == 2)) {
-        sp = sprite_map_position_for(previous_cell->ch, 0, true, &error);
+    if (UNLIKELY(previous_cell != NULL && ((previous_cell->attrs) & WIDTH_MASK) == 2)) {
+        sp = sprite_map_position_for(previous_cell->ch, previous_cell->attrs, 0, true, &error);
     } else {
-        sp = sprite_map_position_for(cell->ch, cell->cc, false, &error);
+        sp = sprite_map_position_for(cell->ch, cell->attrs, cell->cc, false, &error);
     }
     cell->sprite_x = sp->x;
     cell->sprite_y = sp->y;
@@ -178,12 +181,13 @@ sprite_map_current_layout(unsigned int *x, unsigned int *y, unsigned int *z) {
 
 PyObject*
 sprite_position_for(PyObject UNUSED *self, PyObject *args) {
-#define position_for_doc "position_for(ch, cc, is_second) -> x, y, z the sprite position for the specified text"
+#define sprite_position_for_doc "sprite_position_for(ch, cc, is_second, attrs) -> x, y, z the sprite position for the specified text"
     unsigned long ch = 0;
     unsigned long long cc = 0;
+    unsigned int attrs = 1;
     int is_second = 0, error = 0;
-    if (!PyArg_ParseTuple(args, "|kKp", &ch, &cc, &is_second)) return NULL;
-    SpritePosition *pos = sprite_map_position_for(ch, cc, is_second, &error);
+    if (!PyArg_ParseTuple(args, "|kKpI", &ch, &cc, &is_second, &attrs)) return NULL;
+    SpritePosition *pos = sprite_map_position_for(ch, attrs, cc, is_second, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("III", pos->x, pos->y, pos->z);
 }
@@ -197,10 +201,8 @@ render_dirty_sprites(void (*render)(PyObject*, bool, bool, bool, sprite_index, s
         SpritePosition *sp = &(sprite_map.cache[i]);
         do {
             if (sp->filled && !sp->rendered) {
-                PyObject *text = line_text_at(sp->ch & CHAR_MASK, sp->cc);
-                char_type attrs = sp->ch >> ATTRS_SHIFT;
-                bool bold = (attrs >> BOLD_SHIFT) & 1, italic = (attrs >> ITALIC_SHIFT) & 1;
-                render(text, bold, italic, sp->is_second, sp->x, sp->y, sp->z);
+                PyObject *text = line_text_at(sp->ch, sp->cc);
+                render(text, sp->bold, sp->italic, sp->is_second, sp->x, sp->y, sp->z);
                 Py_CLEAR(text);
                 sp->rendered = true; 
             }

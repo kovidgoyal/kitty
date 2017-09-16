@@ -116,7 +116,7 @@ line(LineBuf *self, PyObject *y) {
 
 unsigned int 
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return (lineptr(self, self->line_map[y])[x].ch >> ATTRS_SHIFT) & WIDTH_MASK;
+    return (lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
 }
 
 void 
@@ -453,7 +453,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
     for (first = self->ynum - 1; true; first--) {
         Cell *cells = lineptr(self, first);
         for(i = 0; i < self->xnum; i++) {
-            if ((cells[i].ch & CHAR_MASK) != BLANK_CHAR) { is_empty = false; break; }
+            if ((cells[i].ch) != BLANK_CHAR) { is_empty = false; break; }
         }
         if (!is_empty || !first) break;
     }

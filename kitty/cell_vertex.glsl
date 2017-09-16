@@ -9,8 +9,7 @@ uniform uvec4 url_range; // The range for the currently highlighted URL (start_x
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
-in uint text_attrs;
-in uvec3 sprite_coords;
+in uvec4 sprite_coords;
 in uvec3 colors;
 in float is_selected;
 out vec3 sprite_pos;
@@ -95,7 +94,8 @@ void main() {
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
-    uint reverse = (text_attrs >> 30) & STRIKE_MASK;
+    uint text_attrs = sprite_coords[3];
+    uint reverse = (text_attrs >> 6) & STRIKE_MASK;
     uint fg = colors[color_indices[reverse]];
     uint bg = colors[color_indices[ONE - reverse]];
     uint resolved_fg = as_color(fg, default_colors[color_indices[0]]);
@@ -103,6 +103,6 @@ void main() {
     background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
     float in_url = in_range(url_range, c, r);
     decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
-    underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 26) & DECORATION_MASK, ZERO, ZERO));
-    strike_pos = to_sprite_pos(pos, ((text_attrs >> 31) & STRIKE_MASK) * THREE, ZERO, ZERO);
+    underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
+    strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }

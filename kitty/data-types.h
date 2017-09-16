@@ -29,6 +29,7 @@ typedef uint32_t color_type;
 typedef uint32_t combining_type;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
+typedef uint16_t attrs_type;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
@@ -38,15 +39,12 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 
 #define MAX_CHILDREN 256
 #define BLANK_CHAR 0
-#define CHAR_MASK 0xFFFFFF
-#define ATTRS_SHIFT 24
-#define ATTRS_MASK_WITHOUT_WIDTH 0xFC000000
+#define ATTRS_MASK_WITHOUT_WIDTH 0xFFC
 #define WIDTH_MASK  3
 #define DECORATION_SHIFT  2
 #define DECORATION_MASK 3
 #define BOLD_SHIFT 4
 #define ITALIC_SHIFT 5
-#define POSCHAR_MASK 0x30FFFFFF
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
@@ -56,14 +54,14 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define UTF8_REJECT 1
 #define UNDERCURL_CODE 6
 #define DECORATION_FG_CODE 58
-#define CHAR_IS_BLANK(ch) ((ch & CHAR_MASK) == 32 || (ch & CHAR_MASK) == 0)
+#define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 
 #define FG 1
 #define BG 2
 
 #define CURSOR_TO_ATTRS(c, w) \
     ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
-            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) << ATTRS_SHIFT
+            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) 
 
 #define ATTRS_TO_CURSOR(a, c) \
     c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
@@ -126,6 +124,7 @@ typedef struct {
     color_type fg, bg, decoration_fg;
     combining_type cc;
     sprite_index sprite_x, sprite_y, sprite_z;
+    attrs_type attrs;
 } Cell;
 
 typedef struct {
@@ -280,8 +279,9 @@ PyTypeObject ChildMonitor_Type;
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
-    if ((((line)->cells[(at)].ch >> ATTRS_SHIFT) & WIDTH_MASK) != 1) { \
-        (line)->cells[(at)].ch = (1 << ATTRS_SHIFT) | BLANK_CHAR; \
+    if ((((line)->cells[(at)].attrs) & WIDTH_MASK) != 1) { \
+        (line)->cells[(at)].ch = BLANK_CHAR; \
+        (line)->cells[(at)].attrs = BLANK_CHAR ? 1 : 0; \
         clear_sprite_position((line)->cells[(at)]); \
     }
 

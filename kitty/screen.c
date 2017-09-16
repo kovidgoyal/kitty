@@ -1366,7 +1366,7 @@ screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_
     if (y >= self->lines || x >= self->columns) return false;
     index_type start, end;
     Line *line = visual_line_(self, y);
-#define is_ok(x) (is_word_char((line->cells[x].ch) & CHAR_MASK) || is_opt_word_char(line->cells[x].ch & CHAR_MASK))
+#define is_ok(x) (is_word_char((line->cells[x].ch)) || is_opt_word_char(line->cells[x].ch))
     if (!is_ok(x)) {
         start = x; end = x + 1;
     } else {

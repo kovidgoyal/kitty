@@ -27,7 +27,7 @@ unsigned int
 line_length(Line *self) {
     index_type last = self->xnum - 1;
     for (index_type i = 0; i < self->xnum; i++) {
-        if ((self->cells[last - i].ch & CHAR_MASK) != BLANK_CHAR) return self->xnum - i;
+        if ((self->cells[last - i].ch) != BLANK_CHAR) return self->xnum - i;
     }
     return 0;
 }
@@ -68,7 +68,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     limit = MAX(2, limit);
     if (pos < limit) return 0;
     do {
-        char_type ch = self->cells[pos].ch & CHAR_MASK;
+        char_type ch = self->cells[pos].ch;
         if (!is_url_char(ch)) return false;
         switch(state) {
             case ANY:
@@ -92,7 +92,7 @@ prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_
     if (prefix_len > at) return false;
     index_type p, i;
     for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
-        if ((self->cells[p].ch & CHAR_MASK) != (unsigned char)prefix[i]) return false;
+        if ((self->cells[p].ch) != (unsigned char)prefix[i]) return false;
     }
     return i == prefix_len;
 }
@@ -117,7 +117,7 @@ static inline bool
 has_url_beyond(Line *self, index_type x) {
     if (self->xnum <= x + MIN_URL_LEN + 3) return false;
     for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
-        if (!is_url_char(self->cells[i].ch & CHAR_MASK)) return false;
+        if (!is_url_char(self->cells[i].ch)) return false;
     }
     return true;
 }
@@ -143,9 +143,9 @@ index_type
 line_url_end_at(Line *self, index_type x) {
     index_type ans = x;
     if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return 0;
-    while (ans < self->xnum && is_url_char(self->cells[ans].ch & CHAR_MASK)) ans++;
+    while (ans < self->xnum && is_url_char(self->cells[ans].ch)) ans++;
     ans--;
-    while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch & CHAR_MASK)) ans--;
+    while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch)) ans--;
     return ans;
 }
 
@@ -167,7 +167,7 @@ static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
     if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    return line_text_at(self->cells[xval].ch & CHAR_MASK, self->cells[xval].cc);
+    return line_text_at(self->cells[xval].ch, self->cells[xval].cc);
 }
 
 PyObject*
@@ -177,7 +177,7 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
     if (leading_char) buf[n++] = leading_char; 
     char_type previous_width = 0;
     for(index_type i = start; i < limit && n < sizeof(buf)/sizeof(buf[0]) - 4; i++) {
-        char_type ch = self->cells[i].ch & CHAR_MASK;
+        char_type ch = self->cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
             ch = ' ';
@@ -192,7 +192,7 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
                 if (cc2) buf[n++] = cc2;
             }
         }
-        previous_width = (self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK;
+        previous_width = self->cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
@@ -247,7 +247,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 
     WRITE_SGR(0);
     for (index_type pos=0; pos < limit; pos++) {
-        char_type attrs = self->cells[pos].ch >> ATTRS_SHIFT, ch = self->cells[pos].ch & CHAR_MASK;
+        char_type attrs = self->cells[pos].attrs, ch = self->cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
@@ -319,7 +319,7 @@ width(Line *self, PyObject *val) {
 #define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
     if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    char_type attrs = self->cells[x].ch >> ATTRS_SHIFT;
+    char_type attrs = self->cells[x].attrs;
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
@@ -375,7 +375,8 @@ set_text(Line* self, PyObject *args) {
     color_type dfg = cursor->decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
-        self->cells[i].ch = (PyUnicode_READ(kind, buf, offset) & CHAR_MASK) | attrs;
+        self->cells[i].ch = (PyUnicode_READ(kind, buf, offset));
+        self->cells[i].attrs = attrs;
         self->cells[i].fg = fg;
         self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
@@ -399,7 +400,7 @@ cursor_from(Line* self, PyObject *args) {
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->x = x; ans->y = y;
-    char_type attrs = self->cells[x].ch >> ATTRS_SHIFT;
+    char_type attrs = self->cells[x].attrs;
     ATTRS_TO_CURSOR(attrs, ans);
     ans->fg = self->cells[x].fg; ans->bg = self->cells[x].bg;
     ans->decoration_fg = self->cells[x].decoration_fg & COL_MASK;
@@ -408,12 +409,12 @@ cursor_from(Line* self, PyObject *args) {
 }
 
 void 
-line_clear_text(Line *self, unsigned int at, unsigned int num, int ch) {
-    const char_type repl = ((char_type)ch & CHAR_MASK) | ( (ch ? 1 : 0) << ATTRS_SHIFT);
+line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
+    attrs_type width = ch ? 1 : 0;
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
-        self->cells[i].ch = (self->cells[i].ch  & ATTRS_MASK_WITHOUT_WIDTH) | repl; \
-        self->cells[i].cc = 0; 
+        self->cells[i].ch = ch; self->cells[i].cc = 0; \
+        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     if (CHAR_IS_BLANK(ch)) {
         PREFIX
         clear_sprite_position(self->cells[i]); }
@@ -438,16 +439,17 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
     color_type dfg = cursor->decoration_fg & COL_MASK;
-    if (!clear_char) attrs = ((attrs >> ATTRS_SHIFT) & ~WIDTH_MASK) << ATTRS_SHIFT;
+    if (!clear_char) attrs = attrs & ATTRS_MASK_WITHOUT_WIDTH;
     
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
-            self->cells[i].ch = BLANK_CHAR | attrs;
+            self->cells[i].ch = BLANK_CHAR;
             self->cells[i].cc = 0;
+            self->cells[i].attrs = attrs;
             clear_sprite_position(self->cells[i]);
         } else {
-            char_type w = ((self->cells[i].ch >> ATTRS_SHIFT) & WIDTH_MASK) << ATTRS_SHIFT;
-            self->cells[i].ch = (self->cells[i].ch & CHAR_MASK) | attrs | w;
+            attrs_type w = self->cells[i].attrs & WIDTH_MASK;
+            self->cells[i].attrs = attrs | w;
             set_sprite_position_at(i);
         }
         self->cells[i].fg = fg; self->cells[i].bg = bg;
@@ -471,9 +473,10 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
         COPY_SELF_CELL(i - num, i)
     }
     // Check if a wide character was split at the right edge
-    char_type w = (self->cells[self->xnum - 1].ch >> ATTRS_SHIFT) & WIDTH_MASK;
+    char_type w = (self->cells[self->xnum - 1].attrs) & WIDTH_MASK;
     if (w != 1) {
-        self->cells[self->xnum - 1].ch = ((BLANK_CHAR ? 1 : 0) << ATTRS_SHIFT) | BLANK_CHAR;
+        self->cells[self->xnum - 1].ch = BLANK_CHAR;
+        self->cells[self->xnum - 1].attrs = BLANK_CHAR ? 1 : 0;
         clear_sprite_position(self->cells[self->xnum - 1]);
     }
 }
@@ -508,16 +511,15 @@ left_shift(Line *self, PyObject *args) {
  
 void 
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool is_second) {
-    char_type attrs;
     if (cursor == NULL) {
-        attrs = (((self->cells[at].ch >> ATTRS_SHIFT) & ~WIDTH_MASK) | (width & WIDTH_MASK)) << ATTRS_SHIFT;
+        self->cells[at].attrs = (self->cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     } else {
-        attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
+        self->cells[at].attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
         self->cells[at].fg = (cursor->fg & COL_MASK);
         self->cells[at].bg = (cursor->bg & COL_MASK);
         self->cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
     }
-    self->cells[at].ch = (ch & CHAR_MASK) | attrs;
+    self->cells[at].ch = ch;
     self->cells[at].cc = 0;
     if (!is_second && CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
     else set_sprite_position_at(at);

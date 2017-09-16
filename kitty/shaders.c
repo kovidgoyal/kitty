@@ -591,8 +591,7 @@ create_cell_vao() {
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A1(text_attrs, 1, GL_UNSIGNED_INT, ch);
-    A1(sprite_coords, 3, GL_UNSIGNED_SHORT, sprite_x);
+    A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
     A1(colors, 3, GL_UNSIGNED_INT, fg);
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A(is_selected, 1, GL_FLOAT, NULL, 0);
