@@ -48,17 +48,20 @@ void
 on_text_input(unsigned int codepoint, int mods) {
     Window *w = active_window();
     static char buf[10];
+    unsigned int sz = 0;
 
     if (w != NULL) {
         Screen *screen = w->render_data.screen;
-        bool handle_event = (
-                mods <= GLFW_MOD_SHIFT ||
-                (!screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT)))
-            ) ? true : false;  // non text input is handle in on_key_input
-        if (handle_event) {
-            unsigned int sz = encode_utf8(codepoint, buf);
-            if (sz) schedule_write_to_child(w->id, buf, sz);
-        }
+        bool in_alt_mods = !screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT)) ? true : false;
+        bool is_text = mods <= GLFW_MOD_SHIFT ? true : false;
+        if (in_alt_mods) {
+            sz = encode_utf8(codepoint, buf + 1);
+            if (sz) {
+                buf[0] = 033;
+                sz++;
+            }
+        } else if (is_text) sz = encode_utf8(codepoint, buf);
+        if (sz) schedule_write_to_child(w->id, buf, sz);
     }
 }
 
