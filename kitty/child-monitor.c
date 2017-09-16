@@ -576,19 +576,31 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static inline void
+hide_mouse(double now) {
+    if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
+        glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+        global_state.mouse_visible = false;
+    }
+}
+
+
+static inline void
+wait_for_events() {
+    if (maximum_wait < 0) glfwWaitEvents();
+    else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
+    maximum_wait = -1;
+}
+
+
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
     while (!glfwWindowShouldClose(glfw_window_id)) {
         double now = monotonic();
         render(now);
-        if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
-            glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-            global_state.mouse_visible = false;
-        }
-        if (maximum_wait < 0) glfwWaitEvents();
-        else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
-        maximum_wait = -1;
+        hide_mouse(now);
+        wait_for_events();
         parse_input(self);
     }
     if (PyErr_Occurred()) return NULL;
