@@ -419,7 +419,7 @@ screen_toggle_screen_buffer(Screen *self) {
         self->tabstops = self->main_tabstops;
         screen_restore_cursor(self);
     }
-    CALLBACK("buf_toggled", "O", self->linebuf == self->main_linebuf ? Py_True : Py_False);
+    screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
 }
 

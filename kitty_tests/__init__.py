@@ -30,16 +30,12 @@ class Callbacks:
     def request_capabilities(self, q):
         self.qbuf += q
 
-    def buf_toggled(self, is_alt):
-        self.is_alt = is_alt
-
     def use_utf8(self, on):
         self.iutf8 = on
 
     def clear(self):
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = self.ctbuf = ''
-        self.is_alt = False
         self.iutf8 = True
 
 

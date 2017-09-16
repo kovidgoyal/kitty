@@ -214,8 +214,6 @@ class Window:
     def request_capabilities(self, q):
         self.write_to_child(get_capabilities(q))
 
-    def buf_toggled(self, is_main_linebuf):
-        self.screen.scroll(SCROLL_FULL, False)
     # }}}
 
     def text_for_selection(self):
