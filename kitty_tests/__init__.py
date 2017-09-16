@@ -12,7 +12,7 @@ class Callbacks:
     def __init__(self):
         self.clear()
 
-    def write_to_child(self, data):
+    def write(self, data):
         self.wtcbuf += data
 
     def title_changed(self, data):
@@ -70,7 +70,8 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
 
     def create_screen(self, cols=5, lines=5, scrollback=5):
-        return Screen(Callbacks(), lines, cols, scrollback)
+        c = Callbacks()
+        return Screen(c, lines, cols, scrollback, 0, c)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

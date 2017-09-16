@@ -49,9 +49,9 @@ static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     int ret = 0;
-    PyObject *callbacks = Py_None;
+    PyObject *callbacks = Py_None, *test_child = Py_None;
     unsigned int columns=80, lines=24, scrollback=0, window_id=0;
-    if (!PyArg_ParseTuple(args, "|OIIII", &callbacks, &lines, &columns, &scrollback, &window_id)) return NULL;
+    if (!PyArg_ParseTuple(args, "|OIIIIO", &callbacks, &lines, &columns, &scrollback, &window_id, &test_child)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -75,6 +75,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->history_line_added_count = 0;
         RESET_CHARSETS;
         self->callbacks = callbacks; Py_INCREF(callbacks);
+        self->test_child = test_child; Py_INCREF(test_child);
         self->cursor = alloc_cursor();
         self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
@@ -208,6 +209,7 @@ dealloc(Screen* self) {
     pthread_mutex_destroy(&self->write_buf_lock);
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
+    Py_CLEAR(self->test_child);
     Py_CLEAR(self->cursor); 
     Py_CLEAR(self->main_linebuf); 
     Py_CLEAR(self->alt_linebuf);
@@ -962,7 +964,9 @@ screen_bell(Screen UNUSED *self) {
 static inline void
 write_to_child(Screen *self, const char *data, size_t sz) {
     if (self->window_id) schedule_write_to_child(self->window_id, data, sz);
+    if (self->test_child != Py_None) { PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r); }
 }
+
 #define write_str_to_child(s) write_to_child(self, (s), sizeof((s)) - 1)
 
 void 

@@ -237,7 +237,7 @@ typedef struct {
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
-    PyObject *callbacks;
+    PyObject *callbacks, *test_child;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     HistoryBuf *historybuf;
     unsigned int history_line_added_count;
