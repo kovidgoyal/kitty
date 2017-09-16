@@ -34,6 +34,7 @@ const uint TWO = uint(2);
 const uint THREE = uint(3);
 const uint DECORATION_MASK = uint(3);
 const uint STRIKE_MASK = uint(1);
+const uint REVERSE_MASK = uint(1);
 
 vec3 color_to_vec(uint c) {
     uint r, g, b;
@@ -95,12 +96,11 @@ void main() {
 
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
     uint text_attrs = sprite_coords[3];
-    uint reverse = (text_attrs >> 6) & STRIKE_MASK;
-    uint fg = colors[color_indices[reverse]];
-    uint bg = colors[color_indices[ONE - reverse]];
-    uint resolved_fg = as_color(fg, default_colors[color_indices[0]]);
+    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
+    int bg_index = color_indices[1 - fg_index];
+    uint resolved_fg = as_color(colors[fg_index], default_colors[fg_index]);
     foreground = apply_selection(color_to_vec(resolved_fg), default_colors[2]);
-    background = apply_selection(to_color(bg, default_colors[color_indices[1]]), default_colors[3]);
+    background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), default_colors[3]);
     float in_url = in_range(url_range, c, r);
     decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
     underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
