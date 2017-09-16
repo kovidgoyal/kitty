@@ -220,12 +220,6 @@ class Boss:
             old_focus.focus_changed(False)
         tab.active_window.focus_changed(True)
 
-    def request_attention(self):
-        try:
-            self.glfw_window.request_window_attention()
-        except AttributeError:
-            pass  # needs glfw 3.3
-
     def send_fake_scroll(self, window_idx, amt, upwards):
         tab = self.active_tab
         w = tab.windows[window_idx]

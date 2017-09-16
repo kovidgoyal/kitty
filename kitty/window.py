@@ -139,11 +139,6 @@ class Window:
                 print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
 
     # screen callbacks {{{
-    def bell(self):
-        boss = get_boss()
-        boss.request_attention()
-        glfw_post_empty_event()
-
     def use_utf8(self, on):
         get_boss().child_monitor.set_iutf8(self.window_id, on)
 

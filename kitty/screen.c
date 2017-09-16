@@ -951,11 +951,11 @@ screen_bell(Screen UNUSED *self) {
             }
             close(fd);
         }
+        request_window_attention();
     }
     if (global_state.opts.visual_bell_duration > 0) {
         self->start_visual_bell_at = monotonic();
     }
-    CALLBACK("bell", NULL);
 } 
 
 static inline void 

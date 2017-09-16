@@ -16,6 +16,10 @@
 #error "glfw >= 3.2 required"
 #endif
 
+#if GLFW_VERSION_MAJOR > 4 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
+#define has_request_attention
+#endif
+
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
 #endif
@@ -401,13 +405,13 @@ current_monitor_dpi(WindowWrapper *self) {
     return get_physical_dpi(m);
 }
 
-#ifdef glfwRequestWindowAttention
-static PyObject*
-request_window_attention(WindowWrapper *self) {
-    glfwRequestWindowAttention(self->window);
-    Py_RETURN_NONE;
-}
+void
+request_window_attention() {
+#ifdef has_request_attention
+    glfwRequestWindowAttention(the->window);
 #endif
+    glfwPostEmptyEvent();
+}
 
 #ifdef __APPLE__
 static PyObject*
@@ -429,9 +433,6 @@ static PyMethodDef methods[] = {
     MND(get_framebuffer_size, METH_NOARGS),
     MND(get_window_size, METH_NOARGS),
     MND(current_monitor_dpi, METH_NOARGS),
-#ifdef glfwRequestWindowAttention
-    MND(request_window_attention, METH_NOARGS),
-#endif
 #ifdef __APPLE__
     MND(cocoa_window_id, METH_NOARGS),
 #endif
