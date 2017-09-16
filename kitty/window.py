@@ -73,7 +73,7 @@ class Window:
         self.title = appname
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
-        self.screen = Screen(self, 24, 80, opts.scrollback_lines)
+        self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id)
         self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.screen.color_profile.set_configured_colors(*map(color_as_int, (
             opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
@@ -133,9 +133,7 @@ class Window:
 
     def write_to_child(self, data):
         if data:
-            if get_boss().child_monitor.needs_write(self.id, data) is True:
-                wakeup()
-            else:
+            if get_boss().child_monitor.needs_write(self.id, data) is not True:
                 print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
 
     # screen callbacks {{{

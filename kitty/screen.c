@@ -50,8 +50,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     int ret = 0;
     PyObject *callbacks = Py_None;
-    unsigned int columns=80, lines=24, scrollback=0;
-    if (!PyArg_ParseTuple(args, "|OIII", &callbacks, &lines, &columns, &scrollback)) return NULL;
+    unsigned int columns=80, lines=24, scrollback=0, window_id=0;
+    if (!PyArg_ParseTuple(args, "|OIIII", &callbacks, &lines, &columns, &scrollback, &window_id)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -65,6 +65,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         }
         self->columns = columns; self->lines = lines;
         self->write_buf = PyMem_RawMalloc(BUFSIZ);
+        self->window_id = window_id;
         if (self->write_buf == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->write_buf_sz = BUFSIZ;
         self->modes = empty_modes;
@@ -958,21 +959,21 @@ screen_bell(Screen UNUSED *self) {
     request_window_attention();
 } 
 
-static inline void 
-callback(const char *name, Screen *self, const char *data, unsigned int sz) {
-    if (sz) { CALLBACK(name, "y#", data, sz); }
-    else { CALLBACK(name, "y", data); }
+static inline void
+write_to_child(Screen *self, const char *data, size_t sz) {
+    if (self->window_id) schedule_write_to_child(self->window_id, data, sz);
 }
+#define write_str_to_child(s) write_to_child(self, (s), sizeof((s)) - 1)
 
 void 
 report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     if (mode == 0) {
         switch(start_modifier) {
             case 0:
-                callback("write_to_child", self, "\x1b[?62;c", 0);  // VT-220 with no extra info
+                write_str_to_child("\x1b[?62;c"); // VT-220 with no extra info
                 break;
             case '>':
-                callback("write_to_child", self, "\x1b[>1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c", 0);  // VT-220 + primary version + secondary version
+                write_str_to_child("\x1b[>1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
                 break;
         }
     }
@@ -983,10 +984,10 @@ report_device_status(Screen *self, unsigned int which, bool private) {
     // We dont implement the private device status codes, since I haven't come
     // across any programs that use them
     unsigned int x, y;
-    char buf[50] = {0};
+    static char buf[50];
     switch(which) {
         case 5:  // device status
-            callback("write_to_child", self, "\x1b[0n", 0); 
+            write_str_to_child("\x1b[0n");
             break;
         case 6:  // cursor position
             x = self->cursor->x; y = self->cursor->y;
@@ -995,8 +996,9 @@ report_device_status(Screen *self, unsigned int which, bool private) {
                 else x--;
             }
             if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
-            x++; y++;  // 1-based indexing
-            if (snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%uR", (private ? "?": ""), y, x) > 0) callback("write_to_child", self, buf, 0);
+            // 1-based indexing
+            int sz = snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%uR", (private ? "?": ""), y + 1, x + 1);
+            if (sz > 0) write_to_child(self, buf, sz);
             break;
     }
 }
@@ -1026,7 +1028,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         case STYLED_UNDERLINES:
             ans = 3; break;
     }
-    if (snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%u$y", (private ? "?" : ""), which, ans)) callback("write_to_child", self, buf, 0);
+    int sz = snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%u$y", (private ? "?" : ""), which, ans);
+    if (sz > 0) write_to_child(self, buf, sz);
 }
 
 void 

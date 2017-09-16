@@ -229,7 +229,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
+    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by, window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
