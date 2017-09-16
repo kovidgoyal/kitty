@@ -126,6 +126,11 @@ color_as_int(PyObject *color) {
 #undef I
 }
 
+static inline double
+repaint_delay(PyObject *val) {
+    return (double)(PyLong_AsUnsignedLong(val)) / 1000.0;
+}
+
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
@@ -155,6 +160,8 @@ PYWRAP1(set_options) {
     S(open_url_modifiers, PyLong_AsUnsignedLong);
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
+    S(repaint_delay, repaint_delay);
+    S(input_delay, repaint_delay);
 
     PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
     if (chars == NULL) return NULL;

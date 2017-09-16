@@ -16,6 +16,7 @@ typedef struct {
     unsigned int open_url_modifiers;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
     color_type url_color;
+    double repaint_delay, input_delay;
 } Options;
 
 typedef struct {

@@ -215,6 +215,7 @@ type_map = {
     'cursor_opacity': to_opacity,
     'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': positive_int,
+    'input_delay': positive_int,
     'window_border_width': positive_float,
     'window_margin_width': positive_float,
     'window_padding_width': positive_float,

@@ -60,7 +60,7 @@ class Boss:
         self.glfw_window_title = None
         self.shutting_down = False
         self.child_monitor = ChildMonitor(
-            opts.repaint_delay / 1000.0, glfw_window.window_id(),
+            glfw_window.window_id(),
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)

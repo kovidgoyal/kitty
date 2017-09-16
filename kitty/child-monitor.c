@@ -30,6 +30,7 @@ extern int pthread_setname_np(const char *name);
 #include <GLFW/glfw3.h>
 
 #define EXTRA_FDS 2
+#define wakeup_main_loop glfwPostEmptyEvent
 
 static void (*parse_func)(Screen*, PyObject*);
 
@@ -123,10 +124,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify, *wid; 
     int ret;
-    double repaint_delay;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "dOOO", &repaint_delay, &wid, &death_notify, &dump_callback)) return NULL; 
+    if (!PyArg_ParseTuple(args, "OOO", &wid, &death_notify, &dump_callback)) return NULL; 
     glfw_window_id = PyLong_AsVoidPtr(wid);
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
@@ -148,7 +148,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self->count = 0; 
     fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fds[0];
     fds[0].events = POLLIN; fds[1].events = POLLIN;
-    self->repaint_delay = repaint_delay;
     the_monitor = self;
 
     return (PyObject*) self;
@@ -175,7 +174,7 @@ dealloc(ChildMonitor* self) {
 }
 
 static void
-wakeup_() {
+wakeup_io_loop() {
     while(true) {
         ssize_t ret = write(wakeup_fds[1], "w", 1);
         if (ret < 0) {
@@ -208,7 +207,7 @@ join(ChildMonitor *self) {
 static PyObject *
 wakeup(ChildMonitor UNUSED *self) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_();
+    wakeup_io_loop();
     Py_RETURN_NONE;
 }
 
@@ -258,7 +257,7 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
-            if (screen->write_buf_used) wakeup_();
+            if (screen->write_buf_used) wakeup_io_loop();
             screen_mutex(unlock, write);
             break;
         }
@@ -286,31 +285,26 @@ shutdown(ChildMonitor *self) {
     Py_RETURN_NONE;
 }
 
-static inline bool
-do_parse(ChildMonitor *self, Screen *screen) {
-    bool updated = false;
+static inline void
+do_parse(ChildMonitor *self, Screen *screen, double now) {
     screen_mutex(lock, read);
     if (screen->read_buf_sz) {
-        parse_func(screen, self->dump_callback);
-        if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_();  // Ensure the read fd has POLLIN set
-        screen->read_buf_sz = 0;
-        updated = true;
+        double time_since_new_input = now - screen->new_input_at;
+        if (time_since_new_input >= OPT(input_delay)) {
+            parse_func(screen, self->dump_callback);
+            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop();  // Ensure the read fd has POLLIN set
+            screen->read_buf_sz = 0;
+            screen->new_input_at = 0;
+        } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
     }
     screen_mutex(unlock, read);
-    if (LIKELY(updated)) {
-        glfwPostEmptyEvent();
-    }
-    return updated;
 }
-static double last_parse_at = -1000;
 
 static void
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
     double now = monotonic();
-    double time_since_last_parse = now - last_parse_at; 
-    bool parse_needed = time_since_last_parse >= self->repaint_delay ? true : false;
     children_mutex(lock);
     while (remove_queue_count) {
         remove_queue_count--; 
@@ -321,15 +315,11 @@ parse_input(ChildMonitor *self) {
 
     if (UNLIKELY(signal_received)) {
         glfwSetWindowShouldClose(glfw_window_id, true);
-        glfwPostEmptyEvent();
     } else {
-        if (parse_needed) {
-            count = self->count;
-            for (size_t i = 0; i < count; i++) {
-                scratch[i] = children[i];
-                INCREF_CHILD(scratch[i]);
-            }
-            last_parse_at = now;
+        count = self->count;
+        for (size_t i = 0; i < count; i++) {
+            scratch[i] = children[i];
+            INCREF_CHILD(scratch[i]);
         }
     }
     children_mutex(unlock);
@@ -345,13 +335,10 @@ parse_input(ChildMonitor *self) {
 
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            do_parse(self, scratch[i].screen);
+            do_parse(self, scratch[i].screen, now);
         }
         DECREF_CHILD(scratch[i]);
     }
-    if (!parse_needed) {
-        set_maximum_wait(self->repaint_delay - time_since_last_parse);
-    } 
 }
 
 static PyObject *
@@ -494,9 +481,9 @@ render_cursor(Window *w, double now) {
 }
 
 static inline bool
-render(ChildMonitor *self, double now) {
+render(double now) {
     double time_since_last_render = now - last_render_at;
-    if (time_since_last_render > self->repaint_delay) {
+    if (time_since_last_render > OPT(repaint_delay)) {
         draw_borders();
 #define TD global_state.tab_bar_render_data
         if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
@@ -536,7 +523,7 @@ render(ChildMonitor *self, double now) {
         glfwSwapBuffers(glfw_window_id);
         last_render_at = now;
     } else {
-        set_maximum_wait(self->repaint_delay - time_since_last_render);
+        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
     }
     return true;
 }
@@ -595,7 +582,7 @@ main_loop(ChildMonitor *self) {
     while (!glfwWindowShouldClose(glfw_window_id)) {
         double now = monotonic();
         maximum_wait = -1;
-        if (!render(self, now)) break;
+        if (!render(now)) break;
         if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
             glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             global_state.mouse_visible = false;
@@ -714,6 +701,7 @@ read_bytes(int fd, Screen *screen) {
         break;
     }
     if (UNLIKELY(len == 0)) return false;
+    if (screen->new_input_at == 0) screen->new_input_at = monotonic();
     screen_mutex(lock, read);
     if (orig_sz != screen->read_buf_sz) {
         // The other thread consumed some of the screen read buffer
@@ -828,7 +816,7 @@ io_loop(void *data) {
                 perror("Call to poll() failed");
             }
         }
-        if (data_received) glfwPostEmptyEvent();
+        if (data_received) wakeup_main_loop();
     }
     children_mutex(lock);
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;

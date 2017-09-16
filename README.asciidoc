@@ -124,7 +124,7 @@ or a similar package manager)
 kitty is designed for power keyboard users. To that end all its controls
 work with the keyboard (although it fully supports mouse interactions as
 well). Its configuration is a simple, human editable, single file for
-easy reproducability (I like to store config files in source control).
+easy reproducibility (I like to store config files in source control).
 
 The code in kitty is designed to be simple, modular and hackable. It is
 written in a mix of C (for performance sensitive parts) and Python (for
@@ -296,10 +296,15 @@ link:kitty/kitty.conf[config file].
 == Performance
 
 The main goals for kitty performance are user perceived latency while typing
-and "smoothness" while scrolling. kitty tries hard to optimize these. To that
-end it keeps a cache of each rendered glyph in video RAM so that font rendering
-is not a bottleneck.  Interaction with child programs takes place in a separate
-thread from rendering, to improve smoothness.
+and "smoothness" while scrolling as well as CPU usage. kitty tries hard to find
+an optimum balance for these. To that end it keeps a cache of each rendered
+glyph in video RAM so that font rendering is not a bottleneck.  Interaction
+with child programs takes place in a separate thread from rendering, to improve
+smoothness.
+
+There are two parameters you can tune to adjust the performance. ``repaint_delay``
+and ``input_delay``. These control the artificial delays introduced into the
+render loop to reduce CPU usage. See the link:kitty/kitty.conf[config file] for details.
 
 You can generate detailed per-function performance data using
 link:https://github.com/gperftools/gperftools[gperftools]. Build kitty with the

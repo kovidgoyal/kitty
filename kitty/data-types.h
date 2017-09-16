@@ -251,6 +251,7 @@ typedef struct {
     unsigned int parser_state, parser_text_start, parser_buf_pos;
     bool parser_has_pending_text;
     uint8_t read_buf[READ_BUF_SZ], *write_buf;
+    double new_input_at;
     size_t read_buf_sz, write_buf_sz, write_buf_used;
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
@@ -267,7 +268,6 @@ typedef struct {
     PyObject_HEAD
 
     PyObject *dump_callback, *update_screen, *death_notify;
-    double repaint_delay;
     unsigned int count;
     bool shutting_down;
     pthread_t io_thread;
