@@ -87,7 +87,7 @@ static inline bool
 contains_mouse(Window *w) {
     WindowGeometry *g = &w->geometry;
     double x = global_state.mouse_x, y = global_state.mouse_y;
-    return (w->visible && g->left <= x && x <= g->right && g->top <= y && y <= g->bottom) ? true : false;
+    return (w->visible && g->left <= x && x <= g->right && g->top <= y && y <= g->bottom);
 }
 
 static inline bool
@@ -124,7 +124,7 @@ drag_scroll(Window *w) {
     double x = global_state.mouse_x, y = global_state.mouse_y;
     if (y < w->geometry.top || y > w->geometry.bottom) return false;
     if (x < w->geometry.left || x > w->geometry.right) return false;
-    bool upwards = y <= w->geometry.top + margin ? true : false;
+    bool upwards = y <= (w->geometry.top + margin);
     if (upwards || y >= w->geometry.bottom - margin) {
         Screen *screen = w->render_data.screen;
         if (screen->linebuf == screen->main_linebuf) {
@@ -150,7 +150,7 @@ detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
     if (line) {
         url_start = line_url_start_at(line, x);
         if (url_start < line->xnum) url_end = line_url_end_at(line, x);
-        has_url = url_end > url_start ? true : false;
+        has_url = url_end > url_start;
     }
     if (has_url) {
         mouse_cursor_shape = HAND;
@@ -167,7 +167,7 @@ HANDLER(handle_move_event) {
     if (!cell_for_pos(w, &x, &y)) return;
     Screen *screen = w->render_data.screen;
     detect_url(w, screen, x, y);
-    bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y ? true : false;
+    bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y;
     w->mouse_cell_x = x; w->mouse_cell_y = y;
     bool handle_in_kitty = (
             (screen->modes.mouse_tracking_mode == ANY_MODE ||
@@ -255,7 +255,7 @@ HANDLER(handle_button_event) {
             screen->modes.mouse_tracking_mode == 0 ||
             button == GLFW_MOUSE_BUTTON_MIDDLE ||
             (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)
-        ) ? true : false;
+        );
     if (handle_in_kitty) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
@@ -304,7 +304,7 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
 
 static inline Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
-    *in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height ? true : false;
+    *in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height;
     if (!*in_tab_bar) {
         Tab *t = global_state.tabs + global_state.active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
@@ -338,7 +338,7 @@ void
 scroll_event(double UNUSED xoffset, double yoffset) {
     int s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
     if (s == 0) return;
-    bool upwards = s > 0 ? true : false;
+    bool upwards = s > 0;
     bool in_tab_bar;
     unsigned int window_idx;
     Window *w = window_for_event(&window_idx, &in_tab_bar);

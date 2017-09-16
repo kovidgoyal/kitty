@@ -52,8 +52,8 @@ on_text_input(unsigned int codepoint, int mods) {
 
     if (w != NULL) {
         Screen *screen = w->render_data.screen;
-        bool in_alt_mods = !screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT)) ? true : false;
-        bool is_text = mods <= GLFW_MOD_SHIFT ? true : false;
+        bool in_alt_mods = !screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT));
+        bool is_text = mods <= GLFW_MOD_SHIFT;
         if (in_alt_mods) {
             sz = encode_utf8(codepoint, buf + 1);
             if (sz) {
@@ -162,7 +162,7 @@ on_key_input(int key, int scancode, int action, int mods) {
             PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", lkey, scancode, action, mods);
             if (ret == NULL) { PyErr_Print(); }
             else {
-                bool consumed = ret == Py_True ? true : false;
+                bool consumed = ret == Py_True;
                 Py_DECREF(ret);
                 if (consumed) return;
             }

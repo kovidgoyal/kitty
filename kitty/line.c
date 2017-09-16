@@ -94,7 +94,7 @@ prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_
     for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
         if ((self->cells[p].ch & CHAR_MASK) != (unsigned char)prefix[i]) return false;
     }
-    return i == prefix_len ? true : false;
+    return i == prefix_len;
 }
 
 static inline bool
