@@ -691,6 +691,7 @@ read_bytes(int fd, Screen *screen) {
     if (orig_sz >= READ_BUF_SZ) { screen_mutex(unlock, read); return true; }  // screen read buffer is full
     available_buffer_space = READ_BUF_SZ - orig_sz;
     screen_mutex(unlock, read);
+
     while(true) {
         len = read(fd, screen->read_buf + orig_sz, available_buffer_space);
         if (len < 0) {
@@ -701,8 +702,9 @@ read_bytes(int fd, Screen *screen) {
         break;
     }
     if (UNLIKELY(len == 0)) return false;
-    if (screen->new_input_at == 0) screen->new_input_at = monotonic();
+
     screen_mutex(lock, read);
+    if (screen->new_input_at == 0) screen->new_input_at = monotonic();
     if (orig_sz != screen->read_buf_sz) {
         // The other thread consumed some of the screen read buffer
         memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
