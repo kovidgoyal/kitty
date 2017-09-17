@@ -61,7 +61,8 @@ vec3 color_to_vec(uint c) {
     return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
 }
 
-uint as_color(uint c, uint defval) {
+uint resolve_color(uint c, uint defval) {
+    // Convert a cell color to an actual color based on the color table
     int t = int(c & BYTE_MASK);
     uint r;
     switch(t) {
@@ -78,17 +79,13 @@ uint as_color(uint c, uint defval) {
 }
 
 vec3 to_color(uint c, uint defval) {
-    return color_to_vec(as_color(c, defval));
+    return color_to_vec(resolve_color(c, defval));
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
     vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_dx;
     vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_dy;
     return vec3(s_xpos[pos.x], s_ypos[pos.y], z);
-}
-
-vec3 apply_selection(vec3 color, uint which) {
-    return is_selected * color_to_vec(which) + (1.0 - is_selected) * color;
 }
 
 vec3 choose_color(float q, vec3 a, vec3 b) {
@@ -126,9 +123,13 @@ void main() {
     uint text_attrs = sprite_coords[3];
     int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
     int bg_index = color_indices[1 - fg_index];
-    uint resolved_fg = as_color(colors[fg_index], default_colors[fg_index]);
-    foreground = apply_selection(color_to_vec(resolved_fg), highlight_fg);
-    background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), highlight_bg);
+    uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
+    foreground = color_to_vec(resolved_fg);
+    background = to_color(colors[bg_index], default_colors[bg_index]);
+
+    // Selection
+    foreground = choose_color(is_selected, color_to_vec(highlight_fg), foreground);
+    background = choose_color(is_selected, color_to_vec(highlight_bg), background);
 
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(c, r);
