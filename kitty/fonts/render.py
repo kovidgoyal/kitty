@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import ctypes
+from math import sin, pi, ceil, floor
 
 from kitty.constants import isosx
 from .box_drawing import render_box_char, is_renderable_box_char
@@ -23,12 +24,11 @@ def add_line(buf, cell_width, position, thickness, cell_height):
 
 
 def add_curl(buf, cell_width, position, thickness, cell_height):
-    from math import sin, pi, ceil, floor
     xfactor = 2.0 * pi / cell_width
     yfactor = thickness
 
     def clamp_y(y):
-        return max(0, min(int(y), cell_height))
+        return max(0, min(int(y), cell_height - 1))
 
     for x in range(cell_width):
         y_exact = yfactor * sin(x * xfactor) + position
