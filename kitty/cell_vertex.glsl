@@ -8,9 +8,23 @@ uniform uvec4 url_range; // The range for the currently highlighted URL (start_x
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
+#define xstart steps[0]
+#define ystart steps[1]
+#define dx steps[2]
+#define dy steps[3]
+#define highlight_fg default_colors[2]
+#define highlight_bg default_colors[3]
+#define cursor_color default_colors[4]
+#define url_color default_colors[5]
+#define cursor_x dimensions[2]
+#define cursor_y dimensions[3]
+#define sprite_dx sprite_layout.x 
+#define sprite_dy sprite_layout.y
+
 in uvec4 sprite_coords;
 in uvec3 colors;
 in float is_selected;
+
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -64,8 +78,8 @@ vec3 to_color(uint c, uint defval) {
 }
 
 vec3 to_sprite_pos(uvec2 pos, uint x, uint y, uint z) {
-    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_layout.x;
-    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_layout.y;
+    vec2 s_xpos = vec2(x, float(x) + 1.0) * sprite_dx;
+    vec2 s_ypos = vec2(y, float(y) + 1.0) * sprite_dy;
     return vec3(s_xpos[pos.x], s_ypos[pos.y], z);
 }
 
@@ -83,7 +97,7 @@ float in_range(uvec4 range, uint x, uint y) {
 }
 
 float is_cursor(uint x, uint y) {
-    if (x == dimensions[2] && y == dimensions[3]) return 1.0;
+    if (x == cursor_x && y == cursor_y) return 1.0;
     return 0.0;
 }
 
@@ -94,10 +108,10 @@ void main() {
     uint c = instance_id - r * dimensions.x;
 
     // The position of this vertex, at a corner of the cell
-    float left = steps[0] + c * steps[2];
-    float top = steps[1] - r * steps[3];
-    vec2 xpos = vec2(left, left + steps[2]);
-    vec2 ypos = vec2(top, top - steps[3]);
+    float left = xstart + c * dx;
+    float top = ystart - r * dy;
+    vec2 xpos = vec2(left, left + dx);
+    vec2 ypos = vec2(top, top - dy);
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
@@ -109,15 +123,15 @@ void main() {
     int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
     int bg_index = color_indices[1 - fg_index];
     uint resolved_fg = as_color(colors[fg_index], default_colors[fg_index]);
-    foreground = apply_selection(color_to_vec(resolved_fg), default_colors[2]);
-    background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), default_colors[3]);
+    foreground = apply_selection(color_to_vec(resolved_fg), highlight_fg);
+    background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), highlight_bg);
     float cursor = is_cursor(c, r);
     foreground = cursor * background + (1.0 - cursor) * foreground;
-    background = cursor * color_to_vec(default_colors[4]) + (1.0 - cursor) * background;
+    background = cursor * color_to_vec(cursor_color) + (1.0 - cursor) * background;
 
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(url_range, c, r);
-    decoration_fg = mix_vecs(in_url, color_to_vec(default_colors[5]), to_color(colors[2], resolved_fg));
+    decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
     underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }
