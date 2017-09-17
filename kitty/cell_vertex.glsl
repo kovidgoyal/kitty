@@ -1,25 +1,24 @@
 #version GLSL_VERSION
 uniform uvec4 dimensions;  // xnum, ynum, cursor.x, cursor.y
-uniform vec4 steps;  // xstart, ystart, dx, dy
-uniform vec2 sprite_layout;  // dx, dy
+uniform float geom[6];
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
 uniform uint default_colors[6]; // The default colors
 uniform uvec4 url_range; // The range for the currently highlighted URL (start_x, end_x, start_y, end_y)
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
-#define xstart steps[0]
-#define ystart steps[1]
-#define dx steps[2]
-#define dy steps[3]
+#define xstart geom[0]
+#define ystart geom[1]
+#define dx geom[2]
+#define dy geom[3]
 #define highlight_fg default_colors[2]
 #define highlight_bg default_colors[3]
 #define cursor_color default_colors[4]
 #define url_color default_colors[5]
 #define cursor_x dimensions[2]
 #define cursor_y dimensions[3]
-#define sprite_dx sprite_layout.x 
-#define sprite_dy sprite_layout.y
+#define sprite_dx geom[4]
+#define sprite_dy geom[5]
 
 in uvec4 sprite_coords;
 in uvec3 colors;

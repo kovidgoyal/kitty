@@ -552,7 +552,7 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
+enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_sprites, CELL_geom, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
 static GLint cell_uniform_locations[NUM_CELL_UNIFORMS] = {0};
 static GLint cell_uniform_indices[NUM_CELL_UNIFORMS] = {0};
 static GLint cell_color_table_stride = 0, cell_color_table_offset = 0, cell_color_table_size = 0, cell_color_table_block_index = 0;
@@ -567,9 +567,8 @@ init_cell_program() {
         else SET_LOC(color_table)
         else SET_LOC(default_colors)
         else SET_LOC(color_indices)
-        else SET_LOC(steps)
         else SET_LOC(sprites)
-        else SET_LOC(sprite_layout)
+        else SET_LOC(geom)
         else SET_LOC(url_range)
         else { fatal("Unknown uniform in cell program: %s", p->uniforms[i].name); }
     }
@@ -631,7 +630,11 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     bind_program(CELL_PROGRAM); 
     bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
     glUniform4ui(UL(dimensions), screen->columns, screen->lines, cx, cy); check_gl();
-    glUniform4f(UL(steps), xstart, ystart, dx, dy); check_gl();
+    static GLfloat geom[6];
+    unsigned int x, y, z;
+    sprite_map_current_layout(&x, &y, &z);
+    geom[0] = xstart; geom[1] = ystart; geom[2] = dx; geom[3] = dy; geom[4] = 1.0 / (float)x; geom[5] = 1.0 / (float)y;
+    glUniform1fv(UL(geom), sizeof(geom) / sizeof(geom[0]), geom);
     glUniform2i(UL(color_indices), inverted & 1, 1 - (inverted & 1)); check_gl();
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     static GLuint colors[6];
@@ -642,9 +645,6 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     screen_url_range(screen, &start_x, &start_y, &end_x, &end_y);
     glUniform4ui(UL(url_range), start_x, end_x, start_y, end_y); check_gl();
     glUniform1i(UL(sprites), sprite_map_unit);  check_gl();
-    unsigned int x, y, z;
-    sprite_map_current_layout(&x, &y, &z);
-    glUniform2f(UL(sprite_layout), 1.0 / (float)x, 1.0 / (float)y); check_gl();
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
