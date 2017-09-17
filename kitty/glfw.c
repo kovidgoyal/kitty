@@ -31,7 +31,7 @@
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
         if (_pyret == NULL) PyErr_Print(); \
         else Py_DECREF(_pyret); \
-    } 
+    }
 
 #define WINDOW_CALLBACK(name, fmt, ...) \
     CALLBACK(the_window->name, "O" fmt, the_window, __VA_ARGS__);
@@ -48,7 +48,7 @@ typedef struct {
 static WindowWrapper* the_window = NULL;
 update_viewport_size_func update_viewport_size = NULL;
 
-static void 
+static void
 framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
     if (width > 100 && height > 100) {
         update_viewport_size(width, height);
@@ -58,13 +58,13 @@ framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
 }
 
-static void 
+static void
 char_mods_callback(GLFWwindow UNUSED *w, unsigned int codepoint, int mods) {
     global_state.cursor_blink_zero_time = monotonic();
     on_text_input(codepoint, mods);
 }
 
-static void 
+static void
 key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) {
     global_state.cursor_blink_zero_time = monotonic();
     if (key >= 0 && key <= GLFW_KEY_LAST) {
@@ -73,9 +73,9 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
     }
 }
 
-static void 
+static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed[0])) {
@@ -84,9 +84,9 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     }
 }
 
-static void 
+static void
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
@@ -94,15 +94,15 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     mouse_event(-1, 0);
 }
 
-static void 
+static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     scroll_event(xoffset, yoffset);
 }
 
-static void 
+static void
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
     double now = monotonic();
@@ -157,11 +157,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     }
     return (PyObject*)self;
 }
- 
+
 // Global functions {{{
 static PyObject *error_callback = NULL;
 
-static void 
+static void
 cb_error_callback(int error, const char* description) {
     CALLBACK(error_callback, "is", error, description) else fprintf(stderr, "[glfw error]: %s\n", description);
 }
@@ -196,7 +196,7 @@ glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject* 
+PyObject*
 glfw_swap_interval(PyObject UNUSED *self, PyObject *args) {
     int value;
     if (!PyArg_ParseTuple(args, "i", &value)) return NULL;
@@ -408,7 +408,7 @@ current_monitor_dpi(WindowWrapper *self) {
 void
 request_window_attention() {
 #ifdef has_request_attention
-    glfwRequestWindowAttention(the->window);
+    glfwRequestWindowAttention(the_window->window);
 #endif
     glfwPostEmptyEvent();
 }
@@ -453,17 +453,17 @@ static PyMemberDef members[] = {
     {NULL}
 #undef CBE
 };
- 
+
 PyTypeObject WindowWrapper_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.GLFWWindow",
     .tp_basicsize = sizeof(WindowWrapper),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "A GLFW window",
     .tp_methods = methods,
     .tp_members = members,
-    .tp_new = new,                
+    .tp_new = new,
 };
 
 static PyMethodDef module_methods[] = {
@@ -484,9 +484,9 @@ static PyMethodDef module_methods[] = {
 bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
-    if (PyType_Ready(&WindowWrapper_Type) < 0) return false; 
+    if (PyType_Ready(&WindowWrapper_Type) < 0) return false;
     if (PyModule_AddObject(m, "GLFWWindow", (PyObject *)&WindowWrapper_Type) != 0) return 0;
-    Py_INCREF(&WindowWrapper_Type); 
+    Py_INCREF(&WindowWrapper_Type);
     glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
 #ifdef GLFW_X11_WM_CLASS_NAME
