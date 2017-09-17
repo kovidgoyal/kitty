@@ -1,10 +1,9 @@
 #version GLSL_VERSION
-uniform uvec2 dimensions;  // xnum, ynum
+uniform uvec4 dimensions;  // xnum, ynum, cursor.x, cursor.y
 uniform vec4 steps;  // xstart, ystart, dx, dy
 uniform vec2 sprite_layout;  // dx, dy
 uniform ivec2 color_indices;  // which color to use as fg and which as bg
-uniform uvec4 default_colors; // The default colors
-uniform uint url_color;  // The color to use for the URL highlight 
+uniform uint default_colors[6]; // The default colors
 uniform uvec4 url_range; // The range for the currently highlighted URL (start_x, end_x, start_y, end_y)
 uniform ColorTable {
     uint color_table[256]; // The color table
@@ -83,10 +82,18 @@ float in_range(uvec4 range, uint x, uint y) {
     return 0.0;
 }
 
+float is_cursor(uint x, uint y) {
+    if (x == dimensions[2] && y == dimensions[3]) return 1.0;
+    return 0.0;
+}
+
 void main() {
     uint instance_id = uint(gl_InstanceID);
+    // The current cell being rendered
     uint r = instance_id / dimensions.x;
     uint c = instance_id - r * dimensions.x;
+
+    // The position of this vertex, at a corner of the cell
     float left = steps[0] + c * steps[2];
     float top = steps[1] - r * steps[3];
     vec2 xpos = vec2(left, left + steps[2]);
@@ -94,15 +101,23 @@ void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
+    // The character sprite being rendered
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
+
+    // Foreground and background colors
     uint text_attrs = sprite_coords[3];
     int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
     int bg_index = color_indices[1 - fg_index];
     uint resolved_fg = as_color(colors[fg_index], default_colors[fg_index]);
     foreground = apply_selection(color_to_vec(resolved_fg), default_colors[2]);
     background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), default_colors[3]);
+    float cursor = is_cursor(c, r);
+    foreground = cursor * background + (1.0 - cursor) * foreground;
+    background = cursor * color_to_vec(default_colors[4]) + (1.0 - cursor) * background;
+
+    // Underline and strike through (rendered via sprites)
     float in_url = in_range(url_range, c, r);
-    decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
+    decoration_fg = mix_vecs(in_url, color_to_vec(default_colors[5]), to_color(colors[2], resolved_fg));
     underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
 }

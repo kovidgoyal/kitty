@@ -451,9 +451,12 @@ cursor_width(double w, bool vert) {
 extern void cocoa_update_title(PyObject*);
 
 static inline void
-render_cursor(Window *w, double now) {
+collect_cursor_info(CursorRenderInfo *ans, Window *w, double now) {
     ScreenRenderData *rd = &w->render_data;
-    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
+    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) {
+        ans->is_visible = false;
+        return;
+    }
     double time_since_start_blink = now - global_state.cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && global_state.application_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
     bool do_draw_cursor = true;
@@ -466,37 +469,50 @@ render_cursor(Window *w, double now) {
         double delay = (bucket / 1000.0) - time_since_start_blink;
         set_maximum_wait(delay);
     }
-    if (do_draw_cursor) {
-        Cursor *cursor = rd->screen->cursor;
-        double left = rd->xstart + cursor->x * rd->dx;
-        double top = rd->ystart - cursor->y * rd->dy;
-        int shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
-        unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
-        double right = left + (shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
-        double bottom = top - rd->dy;
-        if (shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
-        bool semi_transparent = OPT(cursor_opacity) < 1.0 && shape == CURSOR_BLOCK ? true : false;
-        ColorProfile *cp = rd->screen->color_profile;
-        color_type col = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
-        draw_cursor(semi_transparent, global_state.application_focused, col, OPT(cursor_opacity), left, right, top, bottom);
+    if (!do_draw_cursor) { ans->is_visible = false; return; }
+    ans->is_visible = true;
+    ColorProfile *cp = rd->screen->color_profile;
+    Cursor *cursor = rd->screen->cursor;
+    ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
+    ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
+    if (ans->shape == CURSOR_BLOCK) return;
+    double left = rd->xstart + cursor->x * rd->dx;
+    double top = rd->ystart - cursor->y * rd->dy;
+    unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
+    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
+    double bottom = top - rd->dy;
+    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
+    ans->left = left; ans->right = right; ans->top = top; ans->bottom = bottom;
+}
+
+static inline void
+update_window_title(Window *w) {
+    if (w->title && w->title != global_state.application_title) {
+        global_state.application_title = w->title;
+        glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
+#ifdef __APPLE__
+        cocoa_update_title(w->title);
+#endif
     }
 }
 
 static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
+    static CursorRenderInfo cursor_info;
     if (time_since_last_render < OPT(repaint_delay)) { 
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
 
     draw_borders();
+    cursor_info.is_visible = false;
 #define TD global_state.tab_bar_render_data
-    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen);
+    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, &cursor_info);
 #undef TD
     if (global_state.num_tabs) {
         Tab *tab = global_state.tabs + global_state.active_tab;
-        for (size_t i = 0; i < tab->num_windows; i++) {
+        for (unsigned int i = 0; i < tab->num_windows; i++) {
             Window *w = tab->windows + i;
 #define WD w->render_data
             if (w->visible && WD.screen) {
@@ -508,22 +524,20 @@ render(double now) {
                         } else w->last_drag_scroll_at = 0;
                     } else set_maximum_wait(now - w->last_drag_scroll_at);
                 }
-                draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen);
+                bool is_active_window = i == tab->active_window;
+                if (is_active_window) {
+                    collect_cursor_info(&cursor_info, w, now);
+                    update_window_title(w);
+                } else cursor_info.is_visible = false;
+                draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, &cursor_info);
+                if (is_active_window && cursor_info.is_visible && cursor_info.shape != CURSOR_BLOCK) draw_cursor(&cursor_info);
                 if (WD.screen->start_visual_bell_at != 0) {
                     double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                     set_maximum_wait(bell_left);
                 }
             }
         }
-        Window *w = tab->windows + tab->active_window;
-        if (w->visible && WD.screen) render_cursor(w, now);
-        if (w->title && w->title != global_state.application_title) {
-            global_state.application_title = w->title;
-            glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
-#ifdef __APPLE__
-            cocoa_update_title(w->title);
-#endif
-        }
+        
 #undef WD
     }
     glfwSwapBuffers(glfw_window_id);

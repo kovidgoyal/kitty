@@ -552,33 +552,32 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_color, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
+enum CellUniforms { CELL_dimensions, CELL_default_colors, CELL_color_indices, CELL_steps, CELL_sprites, CELL_sprite_layout, CELL_url_range, CELL_color_table, NUM_CELL_UNIFORMS };
 static GLint cell_uniform_locations[NUM_CELL_UNIFORMS] = {0};
+static GLint cell_uniform_indices[NUM_CELL_UNIFORMS] = {0};
 static GLint cell_color_table_stride = 0, cell_color_table_offset = 0, cell_color_table_size = 0, cell_color_table_block_index = 0;
 
 static void
 init_cell_program() {
     Program *p = programs + CELL_PROGRAM;
     int left = NUM_CELL_UNIFORMS;
-    GLint ctable_idx = 0;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cell_uniform_locations[CELL_##which] = p->uniforms[i].location
-        SET_LOC(dimensions);
-        else SET_LOC(default_colors);
-        else SET_LOC(color_indices);
-        else SET_LOC(steps);
-        else SET_LOC(sprites);
-        else SET_LOC(sprite_layout);
-        else SET_LOC(url_range);
-        else SET_LOC(url_color);
-        else if (strcmp(p->uniforms[i].name, "color_table[0]") == 0) { ctable_idx = i; cell_uniform_locations[CELL_color_table] = p->uniforms[i].location; }
+#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0 || strcmp(p->uniforms[i].name, #which "[0]") == 0) { cell_uniform_locations[CELL_##which] = p->uniforms[i].location; cell_uniform_indices[CELL_##which] = i; }
+        SET_LOC(dimensions)
+        else SET_LOC(color_table)
+        else SET_LOC(default_colors)
+        else SET_LOC(color_indices)
+        else SET_LOC(steps)
+        else SET_LOC(sprites)
+        else SET_LOC(sprite_layout)
+        else SET_LOC(url_range)
         else { fatal("Unknown uniform in cell program: %s", p->uniforms[i].name); }
     }
     if (left) { fatal("Left over uniforms in cell program"); }
     cell_color_table_block_index = block_index(CELL_PROGRAM, "ColorTable");
     cell_color_table_size = block_size(CELL_PROGRAM, cell_color_table_block_index);
     cell_color_table_stride = cell_color_table_size / (256 * sizeof(GLuint));
-    cell_color_table_offset = block_offset(CELL_PROGRAM, ctable_idx);
+    cell_color_table_offset = block_offset(CELL_PROGRAM, cell_uniform_indices[CELL_color_table]);
 #undef SET_LOC
 }
 
@@ -601,10 +600,9 @@ create_cell_vao() {
 #undef A1
 }
 
-static bool cell_constants_sent = false;
 
 static void 
-draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen) {
+draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
     size_t sz;
     void *address;
     bool inverted = screen_invert_colors(screen);
@@ -625,16 +623,20 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
         copy_color_table_to_buffer(screen->color_profile, address, cell_color_table_offset, cell_color_table_stride);
         unmap_vao_buffer(vao_idx, 2);
     }
+    index_type cx = screen->columns, cy = screen->lines;
+    if (cursor->is_visible && cursor->shape == CURSOR_BLOCK) { cx = screen->cursor->x, cy = screen->cursor->y; }
     int sprite_map_unit = bind_sprite_map();
     render_dirty_sprites(render_and_send_dirty_sprites);
 #define UL(name) cell_uniform_locations[CELL_##name]
     bind_program(CELL_PROGRAM); 
     bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
-    glUniform2ui(UL(dimensions), screen->columns, screen->lines); check_gl();
+    glUniform4ui(UL(dimensions), screen->columns, screen->lines, cx, cy); check_gl();
     glUniform4f(UL(steps), xstart, ystart, dx, dy); check_gl();
     glUniform2i(UL(color_indices), inverted & 1, 1 - (inverted & 1)); check_gl();
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
-    glUniform4ui(UL(default_colors), COLOR(default_fg), COLOR(default_bg), COLOR(highlight_fg), COLOR(highlight_bg)); check_gl();
+    static GLuint colors[6];
+    colors[0] = COLOR(default_fg); colors[1] = COLOR(default_bg); colors[2] = COLOR(highlight_fg); colors[3] = COLOR(highlight_bg); colors[4] = cursor->color; colors[5] = OPT(url_color);
+    glUniform1uiv(UL(default_colors), sizeof(colors)/sizeof(colors[0]), colors); check_gl();
 #undef COLOR
     GLuint start_x, start_y, end_x, end_y;
     screen_url_range(screen, &start_x, &start_y, &end_x, &end_y);
@@ -643,10 +645,6 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     unsigned int x, y, z;
     sprite_map_current_layout(&x, &y, &z);
     glUniform2f(UL(sprite_layout), 1.0 / (float)x, 1.0 / (float)y); check_gl();
-    if (!cell_constants_sent) { 
-        glUniform1ui(UL(url_color), OPT(url_color)); check_gl(); 
-        cell_constants_sent = true; 
-    }
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
@@ -657,7 +655,7 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
 // }}}
 
 // Cursor {{{
-enum CursorUniforms { CURSOR_color, CURSOR_xpos, CURSOR_ypos, NUM_CURSOR_UNIFORMS };
+enum CursorUniforms { CURSOR_color, CURSOR_pos, NUM_CURSOR_UNIFORMS };
 static GLint cursor_uniform_locations[NUM_CURSOR_UNIFORMS] = {0};
 static ssize_t cursor_vertex_array;
 
@@ -669,8 +667,7 @@ init_cursor_program() {
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
 #define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].location
         SET_LOC(color);
-        else SET_LOC(xpos);
-        else SET_LOC(ypos);
+        else SET_LOC(pos);
         else { fatal("Unknown uniform in cursor program"); }
     }
     if (left) { fatal("Left over uniforms in cursor program"); }
@@ -678,19 +675,12 @@ init_cursor_program() {
 }
 
 static void 
-draw_cursor_impl(bool semi_transparent, bool is_focused, color_type color, float alpha, float left, float right, float top, float bottom) {
-    if (semi_transparent) { glEnable(GL_BLEND); check_gl(); }
-    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array);
-    glUniform4f(cursor_uniform_locations[CURSOR_color], ((color >> 16) & 0xff) / 255.0, ((color >> 8) & 0xff) / 255.0, (color & 0xff) / 255.0, alpha);
-    check_gl();
-    glUniform2f(cursor_uniform_locations[CURSOR_xpos], left, right);
-    check_gl();
-    glUniform2f(cursor_uniform_locations[CURSOR_ypos], top, bottom);
-    check_gl();
-    glDrawArrays(is_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4);
-    check_gl();
+draw_cursor_impl(CursorRenderInfo *cursor) {
+    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array); check_gl();
+    glUniform3f(cursor_uniform_locations[CURSOR_color], ((cursor->color >> 16) & 0xff) / 255.0, ((cursor->color >> 8) & 0xff) / 255.0, (cursor->color & 0xff) / 255.0); check_gl();
+    glUniform4f(cursor_uniform_locations[CURSOR_pos], cursor->left, cursor->top, cursor->right, cursor->bottom); check_gl();
+    glDrawArrays(global_state.application_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4); check_gl();
     unbind_vertex_array(); unbind_program();
-    if (semi_transparent) { glDisable(GL_BLEND); check_gl(); }
 }
 // }}}
 
@@ -826,14 +816,6 @@ PYWRAP1(map_vao_buffer) {
 }
 
 NO_ARG(init_cursor_program)
-PYWRAP1(draw_cursor) {
-    int semi_transparent, is_focused;
-    unsigned int color;
-    float alpha, left, right, top, bottom;
-    PA("ppIfffff", &semi_transparent, &is_focused, &color, &alpha, &left, &right, &top, &bottom);
-    draw_cursor(semi_transparent, is_focused, color, alpha, left, right, top, bottom);
-    Py_RETURN_NONE;
-}
 
 NO_ARG(init_borders_program)
 PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); Py_RETURN_NONE; }
@@ -841,15 +823,6 @@ TWO_INT(send_borders_rects)
 
 NO_ARG(init_cell_program)
 NO_ARG_INT(create_cell_vao)
-PYWRAP1(draw_cells) { 
-    float xstart, ystart, dx, dy;
-    int vao_idx;
-    Screen *screen;
-
-    PA("iffffO", &vao_idx, &xstart, &ystart, &dx, &dy, &screen); 
-    draw_cells_impl(vao_idx, xstart, ystart, dx, dy, screen);
-    Py_RETURN_NONE;
-}
 NO_ARG(destroy_sprite_map)
 PYWRAP1(layout_sprite_map) {
     unsigned int cell_width, cell_height;
@@ -899,7 +872,6 @@ PYWRAP0(check_for_extensions) {
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
-    {"draw_cells", (PyCFunction)pydraw_cells, METH_VARARGS, NULL},
     M(compile_program, METH_VARARGS),
     MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),
@@ -911,7 +883,6 @@ static PyMethodDef module_methods[] = {
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
     MW(init_cursor_program, METH_NOARGS),
-    MW(draw_cursor, METH_VARARGS),
     MW(init_borders_program, METH_NOARGS),
     MW(add_borders_rect, METH_VARARGS),
     MW(send_borders_rects, METH_VARARGS),

@@ -10,7 +10,7 @@
 #define OPT(name) global_state.opts.name
 
 typedef struct {
-    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, cursor_opacity, wheel_scroll_multiplier;
+    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, wheel_scroll_multiplier;
     bool enable_audio_bell;
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
@@ -77,6 +77,14 @@ typedef struct {
 } GlobalState;
 
 extern GlobalState global_state;
+
+typedef struct {
+    bool is_visible;
+    CursorShape shape;
+    double left, right, top, bottom;
+    color_type color;
+} CursorRenderInfo;
+
 bool drag_scroll(Window *);
 
 #define call_boss(name, ...) { \
@@ -88,6 +96,6 @@ bool drag_scroll(Window *);
 #define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
 #define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
 EXTERNAL_FUNC0(draw_borders, void);
-EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *);
-EXTERNAL_FUNC(draw_cursor, void, bool, bool, color_type, float, float, float, float, float);
+EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
+EXTERNAL_FUNC(draw_cursor, void, CursorRenderInfo *);
 EXTERNAL_FUNC(update_viewport_size, void, int, int);

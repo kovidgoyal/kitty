@@ -47,10 +47,6 @@ def to_bool(x):
     return x.lower() in 'y yes true'.split()
 
 
-def to_opacity(x):
-    return max(0.3, min(float(x), 1))
-
-
 def parse_mods(parts):
 
     def map_mod(m):
@@ -212,7 +208,6 @@ type_map = {
     'font_size': to_font_size,
     'font_size_delta': positive_float,
     'cursor_shape': to_cursor_shape,
-    'cursor_opacity': to_opacity,
     'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': positive_int,
     'input_delay': positive_int,
