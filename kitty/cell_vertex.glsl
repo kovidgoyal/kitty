@@ -91,7 +91,7 @@ vec3 apply_selection(vec3 color, uint which) {
     return is_selected * color_to_vec(which) + (1.0 - is_selected) * color;
 }
 
-vec3 mix_vecs(float q, vec3 a, vec3 b) {
+vec3 choose_color(float q, vec3 a, vec3 b) {
     return q * a + (1.0 - q) * b;
 }
 
@@ -129,13 +129,16 @@ void main() {
     uint resolved_fg = as_color(colors[fg_index], default_colors[fg_index]);
     foreground = apply_selection(color_to_vec(resolved_fg), highlight_fg);
     background = apply_selection(to_color(colors[bg_index], default_colors[bg_index]), highlight_bg);
-    float cursor = is_cursor(c, r);
-    foreground = cursor * background + (1.0 - cursor) * foreground;
-    background = cursor * color_to_vec(cursor_color) + (1.0 - cursor) * background;
 
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(c, r);
-    decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
-    underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
+    decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
+    underline_pos = choose_color(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
+
+    // Block cursor rendering
+    float cursor = is_cursor(c, r);
+    foreground = choose_color(cursor, background, foreground);
+    decoration_fg = choose_color(cursor, background, decoration_fg);
+    background = choose_color(cursor, color_to_vec(cursor_color), background);
 }
