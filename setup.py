@@ -115,7 +115,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-            ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
+            ' -pedantic-errors {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
             optimize, ' '.join(sanitize_args), ('' if debug else 'N'), stack_protector, missing_braces,
             '-march=native' if native_optimizations else '',
@@ -227,7 +227,7 @@ def compile_c_extension(module, incremental, sources, headers):
             run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
+        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest] + ['-L', '/opt/local/lib'])
 
 
 def option_parser():
@@ -305,18 +305,18 @@ def safe_makedirs(path):
 
 def build_test_launcher(args):
     cc, ccver = cc_version()
-    cflags = '-g -Wall -Werror -fpie'.split()
+    cflags = '-g -Wall -fpie'.split()
     pylib = get_python_flags(cflags)
     sanitize_lib = (['-lasan'] if cc == 'gcc' else []) if args.sanitize else []
     cflags.extend(get_sanitize_args(cc, ccver) if args.sanitize else [])
     cmd = [cc] + cflags + [
         'test-launcher.c', '-o', 'test-launcher',
-    ] + sanitize_lib + pylib
+    ] + sanitize_lib + pylib + ['-L', '/opt/local/lib']
     run_tool(cmd)
 
 
 def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
-    cflags = '-Wall -Werror -fpie'.split()
+    cflags = '-Wall -fpie'.split()
     libs = []
     if args.profile:
         cflags.append('-DWITH_PROFILER'), cflags.append('-g')
@@ -330,7 +330,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
     exe = 'kitty-profile' if args.profile else 'kitty'
     cmd = [cc] + cflags + [
         'linux-launcher.c', '-o', os.path.join(launcher_dir, exe)
-    ] + libs + pylib
+    ] + libs + pylib + ['-L', '/opt/local/lib']
     run_tool(cmd)
 
 
@@ -414,10 +414,10 @@ def main():
             sys.executable, sys.executable, os.path.join(base, 'test.py')
         )
     elif args.action == 'linux-package':
-        build(args, native_optimizations=False)
+        build(args)
         package(args)
     elif args.action == 'osx-bundle':
-        build(args, native_optimizations=False)
+        build(args)
         package(args, for_bundle=True)
 
 
