@@ -629,8 +629,8 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     bind_program(CELL_PROGRAM); 
     bind_vao_uniform_buffer(vao_idx, 2, cell_color_table_block_index);
     static GLuint dimensions[8];
-    dimensions[0] = screen->columns; dimensions[1] = screen->lines; dimensions[2] = cx; dimensions[3] = cy;
-    screen_url_range(screen, dimensions + 4);
+    dimensions[0] = screen->columns; dimensions[1] = screen->lines; dimensions[2] = cx; dimensions[3] = cy; dimensions[4] = cx + MAX(1, screen_current_char_width(screen)) - 1;
+    screen_url_range(screen, dimensions + 5);
     glUniform1uiv(UL(dimensions), sizeof(dimensions) / sizeof(dimensions[0]), dimensions);
     static GLfloat geom[6];
     unsigned int x, y, z;

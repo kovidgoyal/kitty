@@ -2,7 +2,7 @@
 uniform float geom[6];
 uniform ivec2 color_indices;  
 uniform uint default_colors[6]; 
-uniform uint dimensions[8];  
+uniform uint dimensions[9];  
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
@@ -18,9 +18,10 @@ uniform ColorTable {
 #define ynum dimensions[1]
 #define cursor_x dimensions[2]
 #define cursor_y dimensions[3]
-#define url_y dimensions[5]
-#define url_xl dimensions[4]
-#define url_xr dimensions[6]
+#define cursor_w dimensions[4]
+#define url_xl dimensions[5]
+#define url_y dimensions[6]
+#define url_xr dimensions[7]
 #define sprite_dx geom[4]
 #define sprite_dy geom[5]
 
@@ -100,7 +101,7 @@ float in_range(uint x, uint y) {
 }
 
 float is_cursor(uint x, uint y) {
-    if (x == cursor_x && y == cursor_y) return 1.0;
+    if (y == cursor_y && (x == cursor_x || x == cursor_w)) return 1.0;
     return 0.0;
 }
 
