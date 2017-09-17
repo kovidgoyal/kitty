@@ -12,7 +12,7 @@ else:
     from .freetype import set_font_family, render_cell as rc, current_cell  # noqa
 
 
-def add_line(buf, cell_width, position, thickness):
+def add_line(buf, cell_width, position, thickness, cell_height):
     y = position - thickness // 2
     while thickness:
         thickness -= 1
@@ -22,15 +22,24 @@ def add_line(buf, cell_width, position, thickness):
         y += 1
 
 
-def add_curl(buf, cell_width, position, thickness):
-    for y in range(position - thickness, position):
-        for x in range(0, cell_width // 2):
-            offset = cell_width * y
-            buf[offset + x] = 255
-    for y in range(position, position + thickness):
-        for x in range(cell_width // 2, cell_width):
-            offset = cell_width * y
-            buf[offset + x] = 255
+def add_curl(buf, cell_width, position, thickness, cell_height):
+    from math import sin, pi, ceil, floor
+    xfactor = 2.0 * pi / cell_width
+    yfactor = thickness
+
+    def clamp_y(y):
+        return max(0, min(int(y), cell_height))
+
+    for x in range(cell_width):
+        y_exact = yfactor * sin(x * xfactor) + position
+        y_below = clamp_y(floor(y_exact))
+        y_above = clamp_y(ceil(y_exact))
+        if y_below == y_above:
+            buf[cell_width * y_below + x] = 255
+            continue
+        for y in (y_below, y_above):
+            intensity = int(255 * (1 - abs(y - y_exact)))
+            buf[cell_width * y + x] = intensity
 
 
 def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=False):
@@ -49,10 +58,10 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
         t = underline_thickness
         if underline == 2:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl(add_curl if underline == 2 else add_line, underline_position, t)
+        dl(add_curl if underline == 2 else add_line, underline_position, t, cell_height)
     if strikethrough:
         pos = int(0.65 * baseline)
-        dl(add_line, pos, underline_thickness)
+        dl(add_line, pos, underline_thickness, cell_height)
 
     return first, second
 
