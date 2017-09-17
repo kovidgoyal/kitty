@@ -292,6 +292,7 @@ def main():
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
+        os.chdir(os.path.expanduser('~'))
         with setup_profiling(args):
             run_app(opts, args)
     finally:
