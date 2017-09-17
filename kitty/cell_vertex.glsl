@@ -1,9 +1,8 @@
 #version GLSL_VERSION
-uniform uvec4 dimensions;  // xnum, ynum, cursor.x, cursor.y
 uniform float geom[6];
-uniform ivec2 color_indices;  // which color to use as fg and which as bg
-uniform uint default_colors[6]; // The default colors
-uniform uvec4 url_range; // The range for the currently highlighted URL (start_x, end_x, start_y, end_y)
+uniform ivec2 color_indices;  
+uniform uint default_colors[6]; 
+uniform uint dimensions[8];  
 uniform ColorTable {
     uint color_table[256]; // The color table
 };
@@ -15,8 +14,13 @@ uniform ColorTable {
 #define highlight_bg default_colors[3]
 #define cursor_color default_colors[4]
 #define url_color default_colors[5]
+#define xnum dimensions[0]
+#define ynum dimensions[1]
 #define cursor_x dimensions[2]
 #define cursor_y dimensions[3]
+#define url_y dimensions[5]
+#define url_xl dimensions[4]
+#define url_xr dimensions[6]
 #define sprite_dx geom[4]
 #define sprite_dy geom[5]
 
@@ -90,8 +94,8 @@ vec3 mix_vecs(float q, vec3 a, vec3 b) {
     return q * a + (1.0 - q) * b;
 }
 
-float in_range(uvec4 range, uint x, uint y) {
-    if (range[2] == y && range[0] <= x && x <= range[1]) return 1.0;
+float in_range(uint x, uint y) {
+    if (url_y == y && url_xl <= x && x <= url_xr) return 1.0;
     return 0.0;
 }
 
@@ -103,8 +107,8 @@ float is_cursor(uint x, uint y) {
 void main() {
     uint instance_id = uint(gl_InstanceID);
     // The current cell being rendered
-    uint r = instance_id / dimensions.x;
-    uint c = instance_id - r * dimensions.x;
+    uint r = instance_id / xnum;
+    uint c = instance_id - r * xnum;
 
     // The position of this vertex, at a corner of the cell
     float left = xstart + c * dx;
@@ -129,7 +133,7 @@ void main() {
     background = cursor * color_to_vec(cursor_color) + (1.0 - cursor) * background;
 
     // Underline and strike through (rendered via sprites)
-    float in_url = in_range(url_range, c, r);
+    float in_url = in_range(c, r);
     decoration_fg = mix_vecs(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
     underline_pos = mix_vecs(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);

@@ -1196,11 +1196,11 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
 }
 
 void
-screen_url_range(Screen *self, unsigned int *start_x, unsigned int *start_y, unsigned int *end_x, unsigned int *end_y) {
+screen_url_range(Screen *self, uint32_t *data) {
     SelectionBoundary start, end;
     selection_limits_(url_range, &start, &end);
-    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *start_y = self->lines; *end_y = self->lines; *start_x = self->columns; *end_x = self->columns; }
-    else { *start_x = start.x; *start_y = start.y; *end_x = end.x; *end_y = end.y; }
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *(data + 1) = self->lines; *(data + 3) = self->lines; *data = self->columns; *(data + 2) = self->columns; }
+    else { *data = start.x; *(data+1) = start.y; *(data + 2) = end.x; *(data + 3) = end.y; }
 }
 
 // }}}
