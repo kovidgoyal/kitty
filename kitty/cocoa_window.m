@@ -26,7 +26,7 @@
 static NSObject* menu_dispatcher = NULL;
 static NSMenuItem* title_menu = NULL;
 
-static NSString* 
+static NSString*
 find_app_name(void) {
     size_t i;
     NSDictionary* infoDictionary = [[NSBundle mainBundle] infoDictionary];
@@ -82,7 +82,7 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
     [[appMenu addItemWithTitle:@"Hide Others"
                        action:@selector(hideOtherApplications:)
                 keyEquivalent:@"h"]
-        setKeyEquivalentModifierMask:NSAlternateKeyMask | NSCommandKeyMask];
+        setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
     [appMenu addItemWithTitle:@"Show All"
                        action:@selector(unhideAllApplications:)
                 keyEquivalent:@""];
@@ -122,7 +122,7 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
     [[windowMenu addItemWithTitle:@"Enter Full Screen"
                            action:@selector(toggleFullScreen:)
                     keyEquivalent:@"f"]
-     setKeyEquivalentModifierMask:NSControlKeyMask | NSCommandKeyMask];
+     setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
 
@@ -148,7 +148,7 @@ cocoa_update_title(PyObject *pytitle) {
 PyObject*
 cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
     NSWindow *window = (NSWindow*)PyLong_AsVoidPtr(window_id);
-    
+
     @try {
         [window setStyleMask:
             [window styleMask] | NSWindowStyleMaskResizable];
@@ -158,7 +158,7 @@ cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
     Py_RETURN_NONE;
 }
 
- 
+
 PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     NSString* locale = nil;
