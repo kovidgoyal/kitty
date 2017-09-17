@@ -51,6 +51,7 @@ on_text_input(unsigned int codepoint, int mods) {
     unsigned int sz = 0;
 
     if (w != NULL) {
+        /*
         Screen *screen = w->render_data.screen;
         bool in_alt_mods = !screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT));
         bool is_text = mods <= GLFW_MOD_SHIFT;
@@ -61,6 +62,8 @@ on_text_input(unsigned int codepoint, int mods) {
                 sz++;
             }
         } else if (is_text) sz = encode_utf8(codepoint, buf);
+        */
+        if (1) sz = encode_utf8(codepoint, buf);
         if (sz) schedule_write_to_child(w->id, buf, sz);
     }
 }
@@ -69,7 +72,7 @@ static inline bool
 is_modifier_key(int key) {
     switch(key) {
         case GLFW_KEY_LEFT_SHIFT:
-        case GLFW_KEY_RIGHT_SHIFT: 
+        case GLFW_KEY_RIGHT_SHIFT:
         case GLFW_KEY_LEFT_ALT:
         case GLFW_KEY_RIGHT_ALT:
         case GLFW_KEY_LEFT_CONTROL:
@@ -191,7 +194,7 @@ PYWRAP1(key_to_bytes) {
 }
 
 static PyMethodDef module_methods[] = {
-    M(key_to_bytes, METH_VARARGS), 
+    M(key_to_bytes, METH_VARARGS),
     {0}
 };
 
