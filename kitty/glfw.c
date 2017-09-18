@@ -16,8 +16,9 @@
 #error "glfw >= 3.2 required"
 #endif
 
-#if GLFW_VERSION_MAJOR > 4 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
+#if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
 #define has_request_attention
+#define has_init_hint_string
 #endif
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -253,7 +254,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
     int hint_id;
     char *hint;
     if (!PyArg_ParseTuple(args, "is", &hint_id, &hint)) return NULL;
-#ifdef glfwInitHintString
+#ifdef has_init_hint_string
     glfwInitHintString(hint_id, hint);
 #endif
     Py_RETURN_NONE;
