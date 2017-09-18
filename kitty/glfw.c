@@ -104,6 +104,7 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
+    if (focused && !global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
