@@ -25,8 +25,6 @@
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
 #endif
 
-#define MAX_WINDOWS 256
-
 #define CALLBACK(name, fmt, ...) \
     if ((name) != NULL) { \
         PyObject *_pyret = PyObject_CallFunction((name), fmt, __VA_ARGS__); \
