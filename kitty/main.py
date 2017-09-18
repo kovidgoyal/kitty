@@ -22,8 +22,8 @@ from .fast_data_types import (
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
     GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
     clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
-    glfw_set_error_callback, glfw_swap_interval, glfw_terminate,
-    glfw_window_hint, set_logical_dpi, set_options
+    glfw_swap_interval, glfw_terminate, glfw_window_hint, set_logical_dpi,
+    set_options
 )
 from .layout import all_layouts
 from .utils import color_as_int, detach, get_logical_dpi, safe_print
@@ -207,15 +207,6 @@ def run_app(opts, args):
     save_cached_values()
 
 
-def on_glfw_error(code, msg):
-    if isinstance(msg, bytes):
-        try:
-            msg = msg.decode('utf-8')
-        except Exception:
-            msg = repr(msg)
-    safe_print('[glfw error] ', msg, file=sys.stderr)
-
-
 def ensure_osx_locale():
     # Ensure the LANG env var is set. See
     # https://github.com/kovidgoyal/kitty/issues/90
@@ -286,7 +277,6 @@ def main():
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
-    glfw_set_error_callback(on_glfw_error)
     if GLFW_X11_WM_CLASS_CLASS is not None:
         glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, opts.cls)
     if not glfw_init():

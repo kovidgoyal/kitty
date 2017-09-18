@@ -158,24 +158,15 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 }
  
 // Global functions {{{
-static PyObject *error_callback = NULL;
-
 static void 
-cb_error_callback(int error, const char* description) {
-    CALLBACK(error_callback, "is", error, description) else fprintf(stderr, "[glfw error]: %s\n", description);
-}
-
-PyObject*
-glfw_set_error_callback(PyObject UNUSED *self, PyObject *callback) {
-    Py_CLEAR(error_callback);
-    error_callback = callback;
-    Py_INCREF(callback);
-    Py_RETURN_NONE;
+error_callback(int error, const char* description) {
+    fprintf(stderr, "[glfw error %d]: %s\n", error, description);
 }
 
 
 PyObject*
 glfw_init(PyObject UNUSED *self) {
+    glfwSetErrorCallback(error_callback);
     PyObject *ans = glfwInit() ? Py_True: Py_False;
     Py_INCREF(ans);
     return ans;
@@ -466,7 +457,6 @@ PyTypeObject WindowWrapper_Type = {
 };
 
 static PyMethodDef module_methods[] = {
-    {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, \
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, \
     {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""}, \
@@ -486,7 +476,6 @@ init_glfw(PyObject *m) {
     if (PyType_Ready(&WindowWrapper_Type) < 0) return false; 
     if (PyModule_AddObject(m, "GLFWWindow", (PyObject *)&WindowWrapper_Type) != 0) return 0;
     Py_INCREF(&WindowWrapper_Type); 
-    glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
 #ifdef GLFW_X11_WM_CLASS_NAME
     ADDC(GLFW_X11_WM_CLASS_NAME)
