@@ -144,6 +144,22 @@ line(HistoryBuf *self, PyObject *val) {
 }
 
 static PyObject*
+__str__(HistoryBuf *self) {
+    PyObject *lines = PyTuple_New(self->ynum);
+    if (lines == NULL) return PyErr_NoMemory();
+    for (index_type i = 0; i < self->count; i++) {
+        init_line(self, index_of(self, i), self->line);
+        PyObject *t = PyObject_Str((PyObject*)self->line);
+        if (t == NULL) { Py_CLEAR(lines); return NULL; }
+        PyTuple_SET_ITEM(lines, i, t);
+    }
+    PyObject *sep = PyUnicode_FromString("\n");
+    PyObject *ans = PyUnicode_Join(sep, lines);
+    Py_CLEAR(lines); Py_CLEAR(sep);
+    return ans;
+}
+
+static PyObject*
 push(HistoryBuf *self, PyObject *args) {
 #define push_doc "Push a line into this buffer, removing the oldest line, if necessary"
     Line *line;
@@ -203,6 +219,7 @@ PyTypeObject HistoryBuf_Type = {
     .tp_doc = "History buffers",
     .tp_methods = methods,
     .tp_members = members,            
+    .tp_str = (reprfunc)__str__,
     .tp_new = new
 };
 

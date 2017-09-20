@@ -367,6 +367,22 @@ linebuf_refresh_sprite_positions(LineBuf *self) {
     }
 }
 
+static PyObject*
+__str__(LineBuf *self) {
+    PyObject *lines = PyTuple_New(self->ynum);
+    if (lines == NULL) return PyErr_NoMemory();
+    for (index_type i = 0; i < self->ynum; i++) {
+        init_line(self, self->line, self->line_map[i]);
+        PyObject *t = PyObject_Str((PyObject*)self->line);
+        if (t == NULL) { Py_CLEAR(lines); return NULL; }
+        PyTuple_SET_ITEM(lines, i, t);
+    }
+    PyObject *sep = PyUnicode_FromString("\n");
+    PyObject *ans = PyUnicode_Join(sep, lines);
+    Py_CLEAR(lines); Py_CLEAR(sep);
+    return ans;
+}
+
 // Boilerplate {{{
 static PyObject*
 copy_old(LineBuf *self, PyObject *y);
@@ -410,6 +426,7 @@ PyTypeObject LineBuf_Type = {
     .tp_doc = "Line buffers",
     .tp_methods = methods,
     .tp_members = members,            
+    .tp_str = (reprfunc)__str__,
     .tp_new = new
 };
 
@@ -437,7 +454,7 @@ copy_old(LineBuf *self, PyObject *y) {
 #include "rewrap.h"
 
 void 
-linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *historybuf) {
+linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf) {
     index_type first, i;
     bool is_empty = true;
 
@@ -446,34 +463,41 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *his
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * sizeof(Cell));
+        *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
         return;
     }
 
     // Find the first line that contains some content
-    for (first = self->ynum - 1; true; first--) {
-        Cell *cells = lineptr(self, first);
+    first = self->ynum;
+    do {
+        first--;
+        Cell *cells = lineptr(self, self->line_map[first]);
         for(i = 0; i < self->xnum; i++) {
             if ((cells[i].ch) != BLANK_CHAR) { is_empty = false; break; }
         }
-        if (!is_empty || !first) break;
+    } while(is_empty && first > 0);
+
+    if (is_empty) {  // All lines are empty
+        *num_content_lines_after = 0; 
+        *num_content_lines_before = 0;
+        return; 
     }
 
-    if (first == 0) { *cursor_y_out = 0; return; }  // All lines are empty
-
     rewrap_inner(self, other, first + 1, historybuf);
-    *cursor_y_out = other->line->ynum;
+    *num_content_lines_after = other->line->ynum + 1;
+    *num_content_lines_before = first + 1;
 }
 
 static PyObject*
 rewrap(LineBuf *self, PyObject *args) {
     LineBuf* other;
     HistoryBuf *historybuf;
-    int cursor_y = -1;
+    unsigned int nclb, ncla;
 
     if (!PyArg_ParseTuple(args, "O!O!", &LineBuf_Type, &other, &HistoryBuf_Type, &historybuf)) return NULL;
-    linebuf_rewrap(self, other, &cursor_y, historybuf);
+    linebuf_rewrap(self, other, &nclb, &ncla, historybuf);
 
-    return Py_BuildValue("i", cursor_y);
+    return Py_BuildValue("II", nclb, ncla);
 }
 
 LineBuf *alloc_linebuf(unsigned int lines, unsigned int columns) {

@@ -257,7 +257,7 @@ class TestDataTypes(BaseTest):
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)
         cy = lb.rewrap(lb2, hb)
-        return hb, cy
+        return hb, cy[1]
 
     def test_rewrap_simple(self):
         ' Same width buffers '
@@ -268,7 +268,7 @@ class TestDataTypes(BaseTest):
             self.ae(lb2.line(i), lb.line(i))
         lb2 = LineBuf(8, 5)
         cy = self.rewrap(lb, lb2)[1]
-        self.ae(cy, 4)
+        self.ae(cy, 5)
         for i in range(lb.ynum):
             self.ae(lb2.line(i), lb.line(i))
         empty = LineBuf(1, lb2.xnum)
@@ -276,7 +276,7 @@ class TestDataTypes(BaseTest):
             self.ae(str(lb2.line(i)), str(empty.line(0)))
         lb2 = LineBuf(3, 5)
         cy = self.rewrap(lb, lb2)[1]
-        self.ae(cy, 2)
+        self.ae(cy, 3)
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
 

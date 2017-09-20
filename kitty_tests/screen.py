@@ -223,14 +223,19 @@ class TestScreen(BaseTest):
         s.resize(5, 1)
         self.ae(str(s.line(0)), '4')
         hb = s.historybuf
-        for i in range(hb.ynum):
-            self.ae(str(hb.line(i)), '4' if i == 0 else '3')
-        s = self.create_screen(scrollback=6)
-        s.draw(''.join([str(i) * s.columns for i in range(s.lines*2)]))
-        self.ae(str(s.line(4)), '9'*5)
+        self.ae(str(hb), '3\n3\n3\n3\n3\n2')
+        s = self.create_screen(scrollback=20)
+        s.draw(''.join(str(i) * s.columns for i in range(s.lines*2)))
+        self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
         s.resize(5, 2)
-        self.ae(str(s.line(3)), '9')
-        self.ae(str(s.line(4)), '')
+        self.ae(str(s.linebuf), '88\n88\n99\n99\n9')
+
+    def test_cursor_after_resize(self):
+        s = self.create_screen()
+        s.draw('123'), s.linefeed(), s.carriage_return(), s.draw('123'), s.linefeed(), s.carriage_return()
+        y_before = s.cursor.y
+        s.resize(s.lines, s.columns-1)
+        self.ae(y_before, s.cursor.y)
 
     def test_tab_stops(self):
         # Taken from vttest/main.c
