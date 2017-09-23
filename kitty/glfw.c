@@ -16,15 +16,14 @@
 #error "glfw >= 3.2 required"
 #endif
 
-#if GLFW_VERSION_MAJOR > 4 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
+#if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
 #define has_request_attention
+#define has_init_hint_string
 #endif
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
 #endif
-
-#define MAX_WINDOWS 256
 
 #define CALLBACK(name, fmt, ...) \
     if ((name) != NULL) { \
@@ -105,6 +104,7 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 static void
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
+    if (focused && !global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
@@ -159,24 +159,15 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 }
 
 // Global functions {{{
-static PyObject *error_callback = NULL;
-
 static void
-cb_error_callback(int error, const char* description) {
-    CALLBACK(error_callback, "is", error, description) else fprintf(stderr, "[glfw error]: %s\n", description);
-}
-
-PyObject*
-glfw_set_error_callback(PyObject UNUSED *self, PyObject *callback) {
-    Py_CLEAR(error_callback);
-    error_callback = callback;
-    Py_INCREF(callback);
-    Py_RETURN_NONE;
+error_callback(int error, const char* description) {
+    fprintf(stderr, "[glfw error %d]: %s\n", error, description);
 }
 
 
 PyObject*
 glfw_init(PyObject UNUSED *self) {
+    glfwSetErrorCallback(error_callback);
     PyObject *ans = glfwInit() ? Py_True: Py_False;
     Py_INCREF(ans);
     return ans;
@@ -253,7 +244,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
     int hint_id;
     char *hint;
     if (!PyArg_ParseTuple(args, "is", &hint_id, &hint)) return NULL;
-#ifdef glfwInitHintString
+#ifdef has_init_hint_string
     glfwInitHintString(hint_id, hint);
 #endif
     Py_RETURN_NONE;
@@ -467,7 +458,6 @@ PyTypeObject WindowWrapper_Type = {
 };
 
 static PyMethodDef module_methods[] = {
-    {"glfw_set_error_callback", (PyCFunction)glfw_set_error_callback, METH_O, ""}, \
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, \
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, \
     {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""}, \
@@ -487,7 +477,6 @@ init_glfw(PyObject *m) {
     if (PyType_Ready(&WindowWrapper_Type) < 0) return false;
     if (PyModule_AddObject(m, "GLFWWindow", (PyObject *)&WindowWrapper_Type) != 0) return 0;
     Py_INCREF(&WindowWrapper_Type);
-    glfwSetErrorCallback(cb_error_callback);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
 #ifdef GLFW_X11_WM_CLASS_NAME
     ADDC(GLFW_X11_WM_CLASS_NAME)

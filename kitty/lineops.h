@@ -78,7 +78,7 @@ void linebuf_clear_line(LineBuf *self, index_type y);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
-void linebuf_rewrap(LineBuf *self, LineBuf *other, int *cursor_y_out, HistoryBuf *);
+void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
 bool historybuf_resize(HistoryBuf *self, index_type lines);

@@ -123,44 +123,40 @@ realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
 }
 
 static inline LineBuf* 
-realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, int *cursor_y, HistoryBuf *hb) {
+realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    linebuf_rewrap(old, ans, cursor_y, hb);
+    linebuf_rewrap(old, ans, nclb, ncla, hb);
     return ans;
+}
+
+static inline void
+adjust_cursor_position_after_resize(Cursor *c, unsigned int lines, unsigned int columns, index_type num_content_lines_before, index_type num_content_lines_after) {
+    if (c->y >= num_content_lines_before - 1) {
+        index_type delta = c->y - (num_content_lines_before - 1);
+        c->y = num_content_lines_after - 1 + delta;
+    }
+    c->y = MIN(lines - 1, c->y); c->x = MIN(columns - 1, c->x);
 }
 
 static bool 
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     lines = MAX(1, lines); columns = MAX(1, columns);
 
-    bool is_main = self->linebuf == self->main_linebuf, is_x_shrink = columns < self->columns;
-    int cursor_y = -1; unsigned int cursor_x = self->cursor->x;
+    bool is_main = self->linebuf == self->main_linebuf;
+    index_type num_content_lines_before, num_content_lines_after;
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &cursor_y, self->historybuf);
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    bool index_after_resize = false;
-    if (is_main) {
-        index_type cy = MIN(self->cursor->y, lines - 1);
-        linebuf_init_line(self->main_linebuf, cy);
-        if (is_x_shrink && (self->main_linebuf->continued_map[cy] || line_length(self->main_linebuf->line) > columns)) {
-            // If the client is in line drawing mode, it will redraw the cursor
-            // line, this can cause rendering artifacts, so ensure that the
-            // cursor is on a new line
-            index_after_resize = true;
-        }
-        self->cursor->y = MAX(0, cursor_y);
-    }
-    cursor_y = -1;
-    n = realloc_lb(self->alt_linebuf, lines, columns, &cursor_y, NULL);
+    if (is_main) adjust_cursor_position_after_resize(self->cursor, lines, columns, num_content_lines_before, num_content_lines_after);
+    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-    if (!is_main) self->cursor->y = MAX(0, cursor_y);
+    if (!is_main) adjust_cursor_position_after_resize(self->cursor, lines, columns, num_content_lines_before, num_content_lines_after);
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
-    if (is_x_shrink && cursor_x >= columns) self->cursor->x = columns - 1;
 
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -175,7 +171,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
     self->url_range = EMPTY_SELECTION;
-    if (index_after_resize) screen_index(self);
 
     return true;
 }
@@ -1196,11 +1191,11 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
 }
 
 void
-screen_url_range(Screen *self, unsigned int *start_x, unsigned int *start_y, unsigned int *end_x, unsigned int *end_y) {
+screen_url_range(Screen *self, uint32_t *data) {
     SelectionBoundary start, end;
     selection_limits_(url_range, &start, &end);
-    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *start_y = self->lines; *end_y = self->lines; *start_x = self->columns; *end_x = self->columns; }
-    else { *start_x = start.x; *start_y = start.y; *end_x = end.x; *end_y = end.y; }
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *(data + 1) = self->lines; *(data + 3) = self->lines; *data = self->columns; *(data + 2) = self->columns; }
+    else { *data = start.x; *(data+1) = start.y; *(data + 2) = end.x; *(data + 3) = end.y; }
 }
 
 // }}}

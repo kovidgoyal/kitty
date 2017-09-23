@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import ctypes
+from math import sin, pi, ceil, floor, sqrt
 
 from kitty.constants import isosx
 from .box_drawing import render_box_char, is_renderable_box_char
@@ -12,7 +13,7 @@ else:
     from .freetype import set_font_family, render_cell as rc, current_cell  # noqa
 
 
-def add_line(buf, cell_width, position, thickness):
+def add_line(buf, cell_width, position, thickness, cell_height):
     y = position - thickness // 2
     while thickness:
         thickness -= 1
@@ -22,15 +23,28 @@ def add_line(buf, cell_width, position, thickness):
         y += 1
 
 
-def add_curl(buf, cell_width, position, thickness):
-    for y in range(position - thickness, position):
-        for x in range(0, cell_width // 2):
-            offset = cell_width * y
-            buf[offset + x] = 255
-    for y in range(position, position + thickness):
-        for x in range(cell_width // 2, cell_width):
-            offset = cell_width * y
-            buf[offset + x] = 255
+def add_curl(buf, cell_width, position, thickness, cell_height):
+    xfactor = 2.0 * pi / cell_width
+    yfactor = thickness
+
+    def clamp_y(y):
+        return max(0, min(int(y), cell_height - 1))
+
+    def clamp_x(x):
+        return max(0, min(int(x), cell_width - 1))
+
+    def add_intensity(x, y, distance):
+        buf[cell_width * y + x] = min(255, buf[cell_width * y + x] + int(255 * (1 - distance)))
+
+    for x_exact in range(cell_width):
+        y_exact = yfactor * sin(x_exact * xfactor) + position
+        y_below = clamp_y(floor(y_exact))
+        y_above = clamp_y(ceil(y_exact))
+        x_before, x_after = map(clamp_x, (x_exact - 1, x_exact + 1))
+        for x in {x_before, x_exact, x_after}:
+            for y in {y_below, y_above}:
+                dist = sqrt((x - x_exact)**2 + (y - y_exact)**2) / 2
+                add_intensity(x, y, dist)
 
 
 def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=False):
@@ -49,10 +63,10 @@ def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=F
         t = underline_thickness
         if underline == 2:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl(add_curl if underline == 2 else add_line, underline_position, t)
+        dl(add_curl if underline == 2 else add_line, underline_position, t, cell_height)
     if strikethrough:
         pos = int(0.65 * baseline)
-        dl(add_line, pos, underline_thickness)
+        dl(add_line, pos, underline_thickness, cell_height)
 
     return first, second
 

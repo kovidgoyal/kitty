@@ -28,7 +28,7 @@
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
-            linebuf_init_line(dest, dest->ynum - 1); \
+            init_dest_line(dest->ynum - 1); \
             historybuf_add_line(historybuf, dest->line); \
         }\
         linebuf_clear_line(dest, dest->ynum - 1); \
