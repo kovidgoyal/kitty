@@ -219,6 +219,8 @@ class TestParser(BaseTest):
         t('a=t,t=f,s=100,z=9', '', c(action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=0))
         t(',s=1', '', ('Malformed graphics control block, invalid key character: 0x2c',))
         t('W=1', '', ('Malformed graphics control block, invalid key character: 0x57',))
+        t('1=1', '', ('Malformed graphics control block, invalid key character: 0x31',))
+        t('a=1,,w=2', '', ('Malformed graphics control block, invalid key character: 0x2c',))
         t('s', '', ('Malformed graphics control block, no = after key',))
         t('s=', '', ('Malformed graphics control block, expecting an integer value',))
         t('s==', '', ('Malformed graphics control block, expecting an integer value',))
