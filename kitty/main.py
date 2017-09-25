@@ -177,8 +177,9 @@ def run_app(opts, args):
         window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
     window.make_context_current()
     if isosx:
-        from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu
+        from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu, cocoa_init
         check_for_extensions()
+        cocoa_init()
         cocoa_create_global_menu()
         if opts.macos_hide_titlebar:
             cocoa_make_window_resizable(window.cocoa_window_id())
