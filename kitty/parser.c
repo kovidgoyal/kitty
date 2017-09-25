@@ -24,7 +24,7 @@ utoi(uint32_t *buf, unsigned int sz) {
         if (*p == '0') { p++; sz--; }
         else break;
     }
-    if (sz < sizeof(pow10)/sizeof(pow10[10])) {
+    if (sz < sizeof(pow10)/sizeof(pow10[0])) {
         for (int i = sz-1, j=0; i >=0; i--, j++) {
             ans += (p[i] - '0') * pow10[j];
         }
@@ -534,7 +534,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 static inline void
 parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     unsigned int pos = 1;
-    enum GR_STATES { KEY, EQUAL, UINT, INT, FLAG, PAYLOAD };
+    enum GR_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
     enum GR_STATES state = KEY, value_state = FLAG;
     enum KEYS { 
         action='a', 
@@ -565,14 +565,9 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
         switch(state) {
 
             case KEY:
-                ch = screen->parser_buf[pos++];
-                switch(ch) {
-                    case ',':
-                        break;
-                    case ';':
-                        state = PAYLOAD;
-                        break;
-#define KS(n, vs) case n: state = EQUAL; value_state = vs; key = ch; break
+                key = screen->parser_buf[pos++];
+                switch(key) {
+#define KS(n, vs) case n: state = EQUAL; value_state = vs; break
 #define U(x) KS(x, UINT)
                     KS(action, FLAG); KS(transmission_type, FLAG); KS(z_index, INT);
                     U(format); U(more); U(id); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
@@ -599,11 +594,12 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                     default:
                         break;
                 }
+                state = AFTER_VALUE;
                 break;
 #undef F
 
 #define READ_UINT \
-                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 5); i++) { \
+                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 7); i++) { \
                     if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
                 } \
                 if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
@@ -618,6 +614,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                     U(z_index);
                     default: break;
                 }
+                state = AFTER_VALUE;
                 break;
 #undef U
             case UINT:
@@ -627,10 +624,24 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                     U(format); U(more); U(id); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
                     default: break; 
                 }
+                state = AFTER_VALUE;
                 break;
 #undef U
 #undef SET_ATTR
 #undef READ_UINT
+            case AFTER_VALUE:
+                ch = screen->parser_buf[pos++];
+                switch (ch) {
+                    case ',':
+                        state = KEY;
+                        break;
+                    case ';':
+                        state = PAYLOAD;
+                        break;
+                    default:
+                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value"); 
+                        return;
+                }
             case PAYLOAD:
                 sz = screen->parser_buf_pos - (pos - 1);
                 err = base64_decode(screen->parser_buf + pos - 1, sz, payload, sizeof(payload), &g.payload_sz);
