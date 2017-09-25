@@ -306,14 +306,6 @@ set_should_close(WindowWrapper *self, PyObject *args) {
 }
 
 static PyObject*
-set_input_mode(WindowWrapper *self, PyObject *args) {
-    int which, value;
-    if (!PyArg_ParseTuple(args, "ii", &which, &value)) return NULL;
-    glfwSetInputMode(self->window, which, value);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 is_key_pressed(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "i", &c)) return NULL;
@@ -428,7 +420,6 @@ static PyMethodDef methods[] = {
     MND(cocoa_window_id, METH_NOARGS),
 #endif
     MND(set_should_close, METH_VARARGS),
-    MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
