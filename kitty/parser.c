@@ -642,6 +642,8 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                         REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value"); 
                         return;
                 }
+                break;
+
             case PAYLOAD:
                 sz = screen->parser_buf_pos - pos;
                 err = base64_decode(screen->parser_buf + pos, sz, payload, sizeof(payload), &g.payload_sz);
