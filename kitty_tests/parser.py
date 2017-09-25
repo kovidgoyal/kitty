@@ -208,6 +208,18 @@ class TestParser(BaseTest):
                 k.setdefault(f, 0)
             return ('graphics_command', k)
 
+        def t(cmd, ps='', *a):
+            pb('\033_G{};{}\033\\'.format(cmd, e(ps)), *a)
+
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        pb('\033_Ga=t,t=f,s=100,v=99;{}\033\\'.format(e('a')), c(action='t', transmission_type='f', data_width=100, data_height=99, payload_sz=1))
+        pb('\033_Gi=12\033\\', c(id=12))
+        t('a=t,t=f,s=100,z=-9', 'X', c(action='t', transmission_type='f', data_width=100, z_index=-9, payload_sz=1))
+        t('a=t,t=f,s=100,z=9', 'payload', c(action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=7))
+        t('a=t,t=f,s=100,z=9', '', c(action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=0))
+        t(',s=1', '', ('Malformed graphics control block, invalid key character: 0x2c',))
+        t('W=1', '', ('Malformed graphics control block, invalid key character: 0x57',))
+        t('s', '', ('Malformed graphics control block, no = after key',))
+        t('s=', '', ('Malformed graphics control block, expecting an integer value',))
+        t('s==', '', ('Malformed graphics control block, expecting an integer value',))
+        t('s=1=', '', ('Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3b',))

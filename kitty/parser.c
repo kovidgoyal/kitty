@@ -563,7 +563,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     size_t sz;
     const char *err;
 
-    while (pos < screen->parser_buf_pos - 1) {
+    while (pos < screen->parser_buf_pos) {
         switch(state) {
 
             case KEY:
