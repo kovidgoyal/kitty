@@ -5,6 +5,8 @@
  */
 
 #pragma once
+#include <stdint.h>
+#include <stddef.h>
 
 typedef struct {
     unsigned char action, transmission_type;

@@ -87,6 +87,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 
 #define GET_MACRO(_1,_2,_3,NAME,...) NAME
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
+#define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", "draw", ch)); PyErr_Clear();
@@ -109,6 +110,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_ERROR(...) fprintf(stderr, "%s ", ERROR_PREFIX); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
 
 #define REPORT_COMMAND(...)
+#define REPORT_VA_COMMAND(...) 
 #define REPORT_DRAW(ch)
 #define REPORT_PARAMS(...)
 #define FLUSH_DRAW
@@ -603,7 +605,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                     if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
                 } \
                 if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
-                code = utoi(screen->parser_buf + pos, i - pos); 
+                code = utoi(screen->parser_buf + pos, i - pos); pos = i;
 
             case INT:
                 is_negative = false;
@@ -638,7 +640,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                         state = PAYLOAD;
                         break;
                     default:
-                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value"); 
+                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x%x", screen->parser_buf[screen->parser_buf_pos - 1]); 
                         return;
                 }
                 break;
@@ -651,6 +653,18 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 break;  
         }
     }
+#define A(x) #x, g.x
+#define U(x) #x, (unsigned int)(g.x)
+#define I(x) #x, (int)(g.x)
+    REPORT_VA_COMMAND("s {sc sc  sI sI sI  sI sI sI sI sI sI sI sI  sI si}", "graphics_command", 
+            A(action), A(transmission_type),
+            U(format), U(more), U(id),
+            U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines),
+            U(payload_sz), I(z_index)
+    );
+#undef U
+#undef A
+#undef I
 }
 
 static inline void

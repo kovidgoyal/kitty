@@ -191,3 +191,23 @@ class TestParser(BaseTest):
         for prefix in '\033^', '\u009e':
             for suffix in '\u009c', '\033\\':
                 pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
+
+    def test_graphics_command(self):
+        from base64 import standard_b64encode
+
+        def e(x):
+            return standard_b64encode(x.encode('utf-8') if isinstance(x, str) else x).decode('ascii')
+
+        def c(**k):
+            for p, v in tuple(k.items()):
+                if isinstance(v, str):
+                    k[p] = v.encode('ascii')
+            for f in 'action transmission_type'.split():
+                k.setdefault(f, b'\0')
+            for f in 'format more id width height x_offset y_offset data_height data_width num_cells num_lines z_index payload_sz'.split():
+                k.setdefault(f, 0)
+            return ('graphics_command', k)
+
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033_Ga=t,t=f,s=100,v=99;{}\033\\'.format(e('a')), c(action='t', transmission_type='f', data_width=100, data_height=99, payload_sz=1))

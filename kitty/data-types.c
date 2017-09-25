@@ -136,6 +136,7 @@ extern bool init_glfw(PyObject *m);
 extern bool init_sprites(PyObject *module);
 extern bool init_state(PyObject *module);
 extern bool init_keys(PyObject *module);
+extern bool init_graphics(PyObject *module);
 extern bool init_shaders(PyObject *module);
 extern bool init_shaders_debug(PyObject *module);
 #ifdef __APPLE__
@@ -166,6 +167,7 @@ PyInit_fast_data_types(void) {
         if (!init_sprites(m)) return NULL;
         if (!init_state(m)) return NULL;
         if (!init_keys(m)) return NULL;
+        if (!init_graphics(m)) return NULL;
         if (PySys_GetObject("debug_gl") == Py_True) {
             if (!init_shaders_debug(m)) return NULL;
         } else { 

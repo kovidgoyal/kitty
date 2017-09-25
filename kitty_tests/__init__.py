@@ -68,6 +68,7 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
 class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
+    maxDiff = 2000
 
     def create_screen(self, cols=5, lines=5, scrollback=5):
         c = Callbacks()
