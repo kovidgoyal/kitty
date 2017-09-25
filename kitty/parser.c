@@ -643,9 +643,10 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                         return;
                 }
             case PAYLOAD:
-                sz = screen->parser_buf_pos - (pos - 1);
-                err = base64_decode(screen->parser_buf + pos - 1, sz, payload, sizeof(payload), &g.payload_sz);
+                sz = screen->parser_buf_pos - pos;
+                err = base64_decode(screen->parser_buf + pos, sz, payload, sizeof(payload), &g.payload_sz);
                 if (err != NULL) { REPORT_ERROR("Failed to parse graphics command payload with error: %s", err); return; }
+                pos = screen->parser_buf_pos;
                 break;  
         }
     }
