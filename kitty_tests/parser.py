@@ -185,6 +185,9 @@ class TestParser(BaseTest):
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        for prefix in '\033_', '\033^', '\u009e', '\u009f':
+        for prefix in '\033_', '\u009f':
             for suffix in '\u009c', '\033\\':
-                pb('a{}+\\++{}bcde'.format(prefix, suffix), 'abcde')
+                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
+        for prefix in '\033^', '\u009e':
+            for suffix in '\u009c', '\033\\':
+                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))

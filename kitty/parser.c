@@ -7,6 +7,7 @@
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
+#include "graphics.h"
 #include <time.h>
 
 // utils {{{
@@ -528,6 +529,140 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 }
 // }}}
 
+// APC mode {{{
+
+static inline void
+parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
+    unsigned int pos = 1;
+    enum GR_STATES { KEY, EQUAL, UINT, INT, FLAG, PAYLOAD };
+    enum GR_STATES state = KEY, value_state = FLAG;
+    enum KEYS { 
+        action='a', 
+        transmission_type='t',
+        format = 'f',
+        more = 'm',
+        id = 'i',
+        width = 'w', 
+        height = 'h',
+        x_offset = 'x',
+        y_offset = 'y',
+        data_height = 'v', 
+        data_width = 's',
+        num_cells = 'c',
+        num_lines = 'r',
+        z_index = 'z'  
+    };
+    enum KEYS key = 'a';
+    static GraphicsCommand g;
+    unsigned int i, code, ch;
+    bool is_negative;
+    memset(&g, 0, sizeof(g));
+
+    while (pos < screen->parser_buf_pos - 1) {
+        switch(state) {
+
+            case KEY:
+                ch = screen->parser_buf[pos++];
+                switch(ch) {
+                    case ',':
+                        break;
+                    case ';':
+                        state = PAYLOAD;
+                        break;
+#define KS(n, vs) case n: state = EQUAL; value_state = vs; key = ch; break
+#define U(x) KS(x, UINT)
+                    KS(action, FLAG); KS(transmission_type, FLAG); KS(z_index, INT);
+                    U(format); U(more); U(id); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
+#undef U
+#undef KS
+                    default:
+                        REPORT_ERROR("Malformed graphics control block, invalid key character: 0x%x", key);
+                        return;
+                }
+                break;
+
+            case EQUAL:
+                if (screen->parser_buf[pos++] != '=') {
+                    REPORT_ERROR("Malformed graphics control block, no = after key");
+                    return;
+                }
+                state = value_state;
+                break;
+
+            case FLAG:
+                switch(key) {
+#define F(a) case a: g.a = screen->parser_buf[pos++]; break
+                    F(action); F(transmission_type);
+                    default:
+                        break;
+                }
+                break;
+#undef F
+
+#define READ_UINT \
+                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 5); i++) { \
+                    if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
+                } \
+                if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
+                code = utoi(screen->parser_buf + pos, i - pos); 
+
+            case INT:
+                is_negative = false;
+                if(screen->parser_buf[pos] == '-') { is_negative = true; pos++; }
+#define U(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
+                READ_UINT; 
+                switch(key) { 
+                    U(z_index);
+                    default: break;
+                }
+                break;
+#undef U
+            case UINT:
+                READ_UINT;
+#define U(x) case x: g.x = code; break
+                switch(key) { 
+                    U(format); U(more); U(id); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
+                    default: break; 
+                }
+                break;
+#undef U
+#undef SET_ATTR
+#undef READ_UINT
+            case PAYLOAD:
+                break;  // TODO
+        }
+    }
+}
+
+static inline void
+dispatch_apc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+    if (screen->parser_buf_pos < 2) return;
+    switch(screen->parser_buf[0]) {
+        case 'G':
+            parse_graphics_code(screen, dump_callback);
+            break;
+        default:
+            REPORT_ERROR("Unrecognized APC code: 0x%x", screen->parser_buf[0]);
+            break;
+    }
+}
+
+// }}}
+
+// PM mode {{{
+static inline void
+dispatch_pm(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+    if (screen->parser_buf_pos < 2) return;
+    switch(screen->parser_buf[0]) {
+        default:
+            REPORT_ERROR("Unrecognized PM code: 0x%x", screen->parser_buf[0]);
+            break;
+    }
+}
+
+
+// }}}
+
 // Parse loop {{{
 
 static inline bool
@@ -689,10 +824,10 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
             if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
             break;
         case APC:
-            if (accumulate_oth(screen, codepoint, dump_callback)) { SET_STATE(0); }
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_apc(screen, dump_callback); SET_STATE(0); }
             break;
         case PM:
-            if (accumulate_oth(screen, codepoint, dump_callback)) { SET_STATE(0); }
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_pm(screen, dump_callback); SET_STATE(0); }
             break;
         case DCS:
             if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }
