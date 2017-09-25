@@ -74,7 +74,7 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
 
 static void 
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed[0])) {
@@ -85,7 +85,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 
 static void 
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
@@ -95,7 +95,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
 
 static void 
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     scroll_event(xoffset, yoffset);
@@ -104,7 +104,6 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 static void 
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
-    if (focused && !global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; } 
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
