@@ -557,6 +557,9 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     unsigned int i, code, ch;
     bool is_negative;
     memset(&g, 0, sizeof(g));
+    static uint8_t payload[4096];
+    size_t sz;
+    const char *err;
 
     while (pos < screen->parser_buf_pos - 1) {
         switch(state) {
@@ -629,7 +632,10 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #undef SET_ATTR
 #undef READ_UINT
             case PAYLOAD:
-                break;  // TODO
+                sz = screen->parser_buf_pos - (pos - 1);
+                err = base64_decode(screen->parser_buf + pos - 1, sz, payload, sizeof(payload), &g.payload_sz);
+                if (err != NULL) { REPORT_ERROR("Failed to parse graphics command payload with error: %s", err); return; }
+                break;  
         }
     }
 }

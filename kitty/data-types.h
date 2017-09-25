@@ -286,6 +286,7 @@ PyTypeObject ChildMonitor_Type;
     }
 
 // Global functions 
+const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);
 Line* alloc_line();
 Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);

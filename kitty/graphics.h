@@ -11,5 +11,5 @@ typedef struct {
     uint32_t format, more, id;
     uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines;
     int32_t z_index;
-    char payload[4096];
+    size_t payload_sz;
 } GraphicsCommand;
