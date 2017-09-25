@@ -554,7 +554,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     };
     enum KEYS key = 'a';
     static GraphicsCommand g;
-    unsigned int i, code, ch;
+    unsigned int i, code;
     bool is_negative;
     memset(&g, 0, sizeof(g));
     static uint8_t payload[4096];
@@ -630,8 +630,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #undef SET_ATTR
 #undef READ_UINT
             case AFTER_VALUE:
-                ch = screen->parser_buf[pos++];
-                switch (ch) {
+                switch (screen->parser_buf[pos++]) {
                     case ',':
                         state = KEY;
                         break;
