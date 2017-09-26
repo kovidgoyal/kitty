@@ -6,8 +6,60 @@
 
 #pragma once
 
+#include "graphics.h"
+
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
+typedef struct {
+    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
+         mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD;
+    MouseTrackingMode mouse_tracking_mode;
+    MouseTrackingProtocol mouse_tracking_protocol;
+} ScreenModes;
+
+typedef struct {
+    unsigned int x, y;
+} SelectionBoundary;
+
+typedef struct {
+    unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
+    bool in_progress;
+} Selection;
+    
+typedef struct {
+    PyObject_HEAD
+
+    unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by, window_id;
+    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
+    Selection selection;
+    SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
+    Selection url_range;
+    bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
+    Cursor *cursor;
+    SavepointBuffer main_savepoints, alt_savepoints;
+    PyObject *callbacks, *test_child;
+    LineBuf *linebuf, *main_linebuf, *alt_linebuf;
+    HistoryBuf *historybuf;
+    unsigned int history_line_added_count;
+    bool *tabstops, *main_tabstops, *alt_tabstops;
+    ScreenModes modes;
+    ColorProfile *color_profile;
+    double start_visual_bell_at;
+
+    uint32_t parser_buf[PARSER_BUF_SZ];
+    unsigned int parser_state, parser_text_start, parser_buf_pos;
+    bool parser_has_pending_text;
+    uint8_t read_buf[READ_BUF_SZ], *write_buf;
+    double new_input_at;
+    size_t read_buf_sz, write_buf_sz, write_buf_used;
+    pthread_mutex_t read_buf_lock, write_buf_lock;
+
+} Screen;
+PyTypeObject Screen_Type;
+
+
+void parse_worker(Screen *screen, PyObject *dump_callback);
+void parse_worker_dump(Screen *screen, PyObject *dump_callback);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

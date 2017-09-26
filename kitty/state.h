@@ -6,6 +6,7 @@
 
 #pragma once
 #include "data-types.h"
+#include "screen.h"
 
 #define OPT(name) global_state.opts.name
 
