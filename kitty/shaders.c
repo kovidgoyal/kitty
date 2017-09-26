@@ -466,12 +466,13 @@ render_cell(PyObject *text, bool bold, bool italic, unsigned int underline, bool
 #undef B
 }
 
-static inline int
+#define SPRITE_MAP_UNIT 0
+
+static inline void
 bind_sprite_map() {
     if (!sprite_map.texture_id) realloc_sprite_texture();
-    glActiveTexture(GL_TEXTURE0); check_gl();
+    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); check_gl();
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); check_gl();
-    return 0;  // corresponds to GL_TEXTURE0
 }
 
 static inline void
@@ -576,6 +577,9 @@ init_cell_program() {
     cell_color_table_size = block_size(CELL_PROGRAM, cell_color_table_block_index);
     cell_color_table_stride = cell_color_table_size / (256 * sizeof(GLuint));
     cell_color_table_offset = block_offset(CELL_PROGRAM, cell_uniform_indices[CELL_color_table]);
+#define UL(name) cell_uniform_locations[CELL_##name]
+    glUniform1i(UL(sprites), SPRITE_MAP_UNIT); check_gl();
+#undef UL
 #undef SET_LOC
 }
 
@@ -623,7 +627,7 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     }
     index_type cx = screen->columns, cy = screen->lines;
     if (cursor->is_visible && cursor->shape == CURSOR_BLOCK) { cx = screen->cursor->x, cy = screen->cursor->y; }
-    int sprite_map_unit = bind_sprite_map();
+    bind_sprite_map();
     render_dirty_sprites(render_and_send_dirty_sprites);
 #define UL(name) cell_uniform_locations[CELL_##name]
     bind_program(CELL_PROGRAM); 
@@ -643,7 +647,6 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     colors[0] = COLOR(default_fg); colors[1] = COLOR(default_bg); colors[2] = COLOR(highlight_fg); colors[3] = COLOR(highlight_bg); colors[4] = cursor->color; colors[5] = OPT(url_color);
     glUniform1uiv(UL(default_colors), sizeof(colors)/sizeof(colors[0]), colors); check_gl();
 #undef COLOR
-    glUniform1i(UL(sprites), sprite_map_unit);  check_gl();
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
