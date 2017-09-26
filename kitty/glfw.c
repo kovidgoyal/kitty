@@ -97,8 +97,8 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
-    global_state.mouse_x = (int)(x * global_state.viewport_x_ratio);
-    global_state.mouse_y = (int)(y * global_state.viewport_y_ratio);
+    global_state.mouse_x = x * global_state.viewport_x_ratio;
+    global_state.mouse_y = y * global_state.viewport_y_ratio;
     mouse_event(-1, 0);
 }
 
