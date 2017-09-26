@@ -70,6 +70,7 @@ typedef struct {
     double mouse_x, mouse_y;
     bool mouse_button_pressed[20];
     int viewport_width, viewport_height;
+    double viewport_x_ratio, viewport_y_ratio;
     unsigned int cell_width, cell_height;
     PyObject *application_title;
     PyObject *boss;

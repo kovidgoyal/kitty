@@ -43,15 +43,23 @@ typedef struct {
     GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
 } WindowWrapper;
 
+static void update_viewport(GLFWwindow *window) {
+    int w, h;
+    glfwGetFramebufferSize(window, &global_state.viewport_width, &global_state.viewport_height);
+    glfwGetWindowSize(window, &w, &h);
+    global_state.viewport_x_ratio = (double)global_state.viewport_width / (double)w;
+    global_state.viewport_y_ratio = (double)global_state.viewport_height / (double)h;
+}
+
 // callbacks {{{
 static WindowWrapper* the_window = NULL;
 update_viewport_size_func update_viewport_size = NULL;
 
 static void 
-framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
+framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (width > 100 && height > 100) {
         update_viewport_size(width, height);
-        global_state.viewport_width = width; global_state.viewport_height = height;
+        update_viewport(w);
         WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
         glfwPostEmptyEvent();
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
@@ -89,7 +97,8 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
-    global_state.mouse_x = x; global_state.mouse_y = y;
+    global_state.mouse_x = (int)(x * global_state.viewport_x_ratio);
+    global_state.mouse_y = (int)(y * global_state.viewport_y_ratio);
     mouse_event(-1, 0);
 }
 
@@ -139,7 +148,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         the_window = self;
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (self->window == NULL) { Py_CLEAR(self); the_window = NULL; PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-        global_state.viewport_width = width; global_state.viewport_height = height;
+        update_viewport(self->window);
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         self->arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
