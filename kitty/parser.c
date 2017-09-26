@@ -591,7 +591,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 
             case FLAG:
                 switch(key) {
-#define F(a) case a: g.a = screen->parser_buf[pos++]; break
+#define F(a) case a: g.a = screen->parser_buf[pos++] & 0xff; break
                     F(action); F(transmission_type);
                     default:
                         break;
@@ -652,6 +652,17 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 pos = screen->parser_buf_pos;
                 break;  
         }
+    }
+    switch(state) {
+        case EQUAL:
+            REPORT_ERROR("Malformed graphics control block, no = after key"); return;
+        case INT:
+        case UINT:
+            REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; 
+        case FLAG:
+            REPORT_ERROR("Malformed graphics control block, expecting a flag value"); return; 
+        default:
+            break;
     }
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)

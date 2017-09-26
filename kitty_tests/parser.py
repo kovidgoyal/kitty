@@ -195,33 +195,38 @@ class TestParser(BaseTest):
     def test_graphics_command(self):
         from base64 import standard_b64encode
 
-        def e(x):
+        def enc(x):
             return standard_b64encode(x.encode('utf-8') if isinstance(x, str) else x).decode('ascii')
 
         def c(**k):
             for p, v in tuple(k.items()):
-                if isinstance(v, str):
+                if isinstance(v, str) and p != 'payload':
                     k[p] = v.encode('ascii')
             for f in 'action transmission_type'.split():
                 k.setdefault(f, b'\0')
-            for f in 'format more id width height x_offset y_offset data_height data_width num_cells num_lines z_index payload_sz'.split():
+            for f in 'format more id width height x_offset y_offset data_height data_width num_cells num_lines z_index'.split():
                 k.setdefault(f, 0)
+            p = k.pop('payload', '').encode('utf-8')
+            k['payload_sz'] = len(p)
             return ('graphics_command', k)
 
-        def t(cmd, ps='', *a):
-            pb('\033_G{};{}\033\\'.format(cmd, e(ps)), *a)
+        def t(cmd, **kw):
+            pb('\033_G{};{}\033\\'.format(cmd, enc(kw.get('payload', ''))), c(**kw))
+
+        def e(cmd, err):
+            pb('\033_G{}\033\\'.format(cmd), (err,))
 
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
         pb('\033_Gi=12\033\\', c(id=12))
-        t('a=t,t=f,s=100,z=-9', 'X', c(action='t', transmission_type='f', data_width=100, z_index=-9, payload_sz=1))
-        t('a=t,t=f,s=100,z=9', 'payload', c(action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=7))
-        t('a=t,t=f,s=100,z=9', '', c(action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=0))
-        t(',s=1', '', ('Malformed graphics control block, invalid key character: 0x2c',))
-        t('W=1', '', ('Malformed graphics control block, invalid key character: 0x57',))
-        t('1=1', '', ('Malformed graphics control block, invalid key character: 0x31',))
-        t('a=1,,w=2', '', ('Malformed graphics control block, invalid key character: 0x2c',))
-        t('s', '', ('Malformed graphics control block, no = after key',))
-        t('s=', '', ('Malformed graphics control block, expecting an integer value',))
-        t('s==', '', ('Malformed graphics control block, expecting an integer value',))
-        t('s=1=', '', ('Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3b',))
+        t('a=t,t=f,s=100,z=-9', payload='X', action='t', transmission_type='f', data_width=100, z_index=-9, payload_sz=1)
+        t('a=t,t=f,s=100,z=9', payload='payload', action='t', transmission_type='f', data_width=100, z_index=9, payload_sz=7)
+        t('a=t,t=f,s=100,z=9', action='t', transmission_type='f', data_width=100, z_index=9)
+        e(',s=1', 'Malformed graphics control block, invalid key character: 0x2c')
+        e('W=1', 'Malformed graphics control block, invalid key character: 0x57')
+        e('1=1', 'Malformed graphics control block, invalid key character: 0x31')
+        e('a=1,,w=2', 'Malformed graphics control block, invalid key character: 0x2c')
+        e('s', 'Malformed graphics control block, no = after key')
+        e('s=', 'Malformed graphics control block, expecting an integer value')
+        e('s==', 'Malformed graphics control block, expecting an integer value')
+        e('s=1=', 'Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3d')
