@@ -208,7 +208,7 @@ class TestParser(BaseTest):
                 k.setdefault(f, 0)
             p = k.pop('payload', '').encode('utf-8')
             k['payload_sz'] = len(p)
-            return ('graphics_command', k)
+            return ('graphics_command', k, p)
 
         def t(cmd, **kw):
             pb('\033_G{};{}\033\\'.format(cmd, enc(kw.get('payload', ''))), c(**kw))

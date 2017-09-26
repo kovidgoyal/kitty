@@ -667,11 +667,12 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)
 #define I(x) #x, (int)(g.x)
-    REPORT_VA_COMMAND("s {sc sc  sI sI sI  sI sI sI sI sI sI sI sI  sI si}", "graphics_command", 
+    REPORT_VA_COMMAND("s {sc sc  sI sI sI  sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
             A(action), A(transmission_type),
             U(format), U(more), U(id),
             U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines),
-            U(payload_sz), I(z_index)
+            U(payload_sz), I(z_index),
+            payload, g.payload_sz
     );
 #undef U
 #undef A
