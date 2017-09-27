@@ -81,8 +81,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
+        self->main_grman = grman_realloc(NULL, lines, columns); self->alt_grman = grman_realloc(NULL, lines, columns);
+        self->grman = self->main_grman;
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->color_profile == NULL) {
+        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
             Py_CLEAR(self); return NULL;
         }
         self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
@@ -97,6 +99,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
+    grman_clear(self->grman);
     self->modes = empty_modes;
 #define RC(name) self->color_profile->overridden.name = 0
     RC(default_fg); RC(default_bg); RC(cursor_color); RC(highlight_fg); RC(highlight_bg);
@@ -137,6 +140,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
     index_type num_content_lines;
+
+    // Resize main linebuf
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
@@ -147,8 +152,17 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
+    GraphicsManager *g = grman_realloc(self->main_grman, lines, columns);
+    if (g == NULL) return false;
+    self->main_grman = g;
+
+    // Resize alt linebuf
+    g = grman_realloc(self->alt_grman, lines, columns);
+    if (g == NULL) return false;
+    self->alt_grman = g;
     if (!is_main) num_content_lines = num_content_lines_after;
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
+    self->grman = is_main ? self->main_grman : self->alt_grman;
 
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -199,6 +213,8 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
+    if (self->main_grman) { self->main_grman = grman_free(self->main_grman); }
+    if (self->alt_grman) { self->alt_grman = grman_free(self->alt_grman); }
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->test_child);
@@ -393,6 +409,10 @@ END_ALLOW_CASE_RANGE
     }
 }
 
+void
+screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
+    grman_handle_command(self->grman, cmd, payload);
+}
 // }}}
 
 // Modes {{{

@@ -39,6 +39,7 @@ typedef struct {
     SavepointBuffer main_savepoints, alt_savepoints;
     PyObject *callbacks, *test_child;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
+    GraphicsManager *grman, *main_grman, *alt_grman;
     HistoryBuf *historybuf;
     unsigned int history_line_added_count;
     bool *tabstops, *main_tabstops, *alt_tabstops;
@@ -127,6 +128,7 @@ Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
 void screen_url_range(Screen *self, uint32_t *);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
+void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

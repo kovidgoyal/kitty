@@ -677,6 +677,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #undef U
 #undef A
 #undef I
+    screen_handle_graphics_command(screen, &g, payload);
 }
 
 static inline void

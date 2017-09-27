@@ -5,8 +5,7 @@
  */
 
 #pragma once
-#include <stdint.h>
-#include <stddef.h>
+#include "data-types.h"
 
 typedef struct {
     unsigned char action, transmission_type;
@@ -15,3 +14,25 @@ typedef struct {
     int32_t z_index;
     size_t payload_sz;
 } GraphicsCommand;
+
+
+typedef struct {
+    uint32_t gl_id, client_id, width, height;
+    size_t internal_id, refcnt;
+} Image;
+
+
+typedef struct {
+    PyObject_HEAD
+
+    index_type lines, columns;
+    size_t image_count, images_capacity;
+    Image *images;
+} GraphicsManager;
+PyTypeObject GraphicsManager_Type;
+
+
+GraphicsManager* grman_realloc(GraphicsManager *, index_type lines, index_type columns);
+void grman_clear(GraphicsManager*);
+GraphicsManager* grman_free(GraphicsManager*);
+void grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload);
