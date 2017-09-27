@@ -127,6 +127,10 @@ img_by_internal_id(GraphicsManager *self, size_t id) {
     return NULL;
 }
 
+static char add_response[512] = {0};
+static bool has_add_respose = false;
+
+#define ABRT(...) { snprintf(add_response, (sizeof(add_response)/sizeof(add_response[0])) - 1, __VA_ARGS__); has_add_respose = true; goto err; }
 static inline bool
 inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
     bool ok = false;
@@ -141,18 +145,9 @@ inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufs
     z.avail_out = img->load_data.data_sz;
     z.next_out = decompressed;
     int ret;
-    if ((ret = inflateInit(&z)) != Z_OK) {
-        REPORT_ERROR("Failed to initialize inflate with error code: %d", ret);
-        goto err;
-    }
-    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) {
-        REPORT_ERROR("Failed to inflate image data with error code: %d", ret);
-        goto err;
-    }
-    if (z.avail_out) {
-        REPORT_ERROR("Failed to inflate image data with error code: %d", ret);
-        goto err;
-    }
+    if ((ret = inflateInit(&z)) != Z_OK) ABRT("Failed to initialize inflate with error code: %d", ret);
+    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) ABRT("Failed to inflate image data with error code: %d", ret);
+    if (z.avail_out) ABRT("Failed to inflate image data with error code: %d", ret);
     free_load_data(&img->load_data);
     img->load_data.buf_capacity = img->load_data.data_sz;
     img->load_data.buf = decompressed;
@@ -238,15 +233,16 @@ err:
     return ok;
 #undef RE
 }
+#undef ABRT
 
 static bool
 add_trim_predicate(Image *img) {
     return !img->data_loaded || (!img->client_id && !img->refcnt);
 }
 
-
-static void
+static bool
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
+#define ABRT(...) { snprintf(add_response, (sizeof(add_response)/sizeof(add_response[0])) - 1, __VA_ARGS__); has_add_respose = true; return false; }
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -255,7 +251,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && (g->more && self->loading_image)) init_img = false;
     if (init_img) {
         size_t sz = g->data_width * g->data_height;
-        if (!sz) return;  // ignore images with zero size
+        if (!sz) return false;  // ignore images with zero size
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
         if (existing) {
@@ -277,8 +273,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
                 break;
             default:
-                REPORT_ERROR("Unknown image format: %u", fmt);
-                return;
+                ABRT("Unknown image format: %u", fmt);
         }
         img->load_data.data_sz = sz;
         if (tt == 'd') {
@@ -292,16 +287,14 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img = img_by_internal_id(self, self->loading_image);
         if (img == NULL) {
             self->loading_image = 0;
-            REPORT_ERROR("%s", "More payload loading refers to non-existent image");
-            return;
+            ABRT("%s", "More payload loading refers to non-existent image");
         }
     }
     int fd;
     switch(tt) {
         case 'd':  // direct
             if (g->payload_sz >= img->load_data.buf_capacity - img->load_data.buf_used) {
-                REPORT_ERROR("%s", "Too much data transmitted");
-                return;
+                ABRT("%s", "Too much data transmitted");
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
             img->load_data.buf_used += g->payload_sz;
@@ -313,8 +306,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             if (tt == 's') fd = shm_open((const char*)payload, O_RDONLY, 0);
             else fd = open((const char*)payload, O_CLOEXEC | O_RDONLY);
             if (fd == -1) {
-                REPORT_ERROR("Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
-                return;
+                ABRT("Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             }
             img->load_data.fd = fd;
             img->data_loaded = mmap_img_file(self, img);
@@ -322,10 +314,9 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             else if (tt == 's') shm_unlink((const char*)payload);
             break;
         default:
-            REPORT_ERROR("Unknown transmission type: %c", g->transmission_type);
-            return;
+            ABRT("Unknown transmission type: %c", g->transmission_type);
     }
-    if (!img->data_loaded) return;
+    if (!img->data_loaded) return false;
     bool needs_processing = g->compressed || fmt == PNG;
     if (needs_processing) {
         uint8_t *buf; size_t bufsz;
@@ -334,20 +325,20 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             case 'z':
                 IB;
                 if (!inflate_zlib(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return;
+                    img->data_loaded = false; return false;
                 }
                 break;
             case 0:
                 break;
             default:
-                REPORT_ERROR("Unknown image compression: %c", g->compressed);
-                img->data_loaded = false; return;
+                ABRT("Unknown image compression: %c", g->compressed);
+                img->data_loaded = false; return false;
         }
         switch(fmt) {
             case PNG:
                 IB;
                 if (!inflate_png(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return;
+                    img->data_loaded = false; return false;
                 }
                 break;
             default: break;
@@ -355,35 +346,50 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 #undef IB
         img->load_data.data = img->load_data.buf;
         if (img->load_data.buf_used < img->load_data.data_sz) {
-            REPORT_ERROR("Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
+            ABRT("Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
             img->data_loaded = false;
         }
     } else {
         if (tt == 'd') {
             if (img->load_data.buf_used < img->load_data.data_sz) {
-                REPORT_ERROR("Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
+                ABRT("Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
                 img->data_loaded = false;
             } else img->load_data.data = img->load_data.buf;
         } else {
             if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
-                REPORT_ERROR("Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
+                ABRT("Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
                 img->data_loaded = false;
             } else img->load_data.data = img->load_data.mapped_file;
         }
     }
+    return img->data_loaded;
+#undef ABRT
 }
 
-void
+const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
+    static char rbuf[sizeof(add_response)/sizeof(add_response[0])];
+    bool data_loaded;
+
     switch(g->action) {
         case 0:
         case 't':
-            handle_add_command(self, g, payload);
+            has_add_respose = false;
+            data_loaded = handle_add_command(self, g, payload);
+            if (g->id) {
+                if (!has_add_respose) {
+                    if (!data_loaded) break;
+                    snprintf(add_response, 10, "OK"); 
+                }
+                snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gq=%u;%s\033\\", g->id, add_response);
+                return rbuf;
+            }
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);
             break;
     }
+    return NULL;
 }
 
 void

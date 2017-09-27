@@ -409,9 +409,18 @@ END_ALLOW_CASE_RANGE
     }
 }
 
+static inline void
+write_to_child(Screen *self, const char *data, size_t sz) {
+    if (self->window_id) schedule_write_to_child(self->window_id, data, sz);
+    if (self->test_child != Py_None) { PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r); }
+}
+
+#define write_str_to_child(s) write_to_child(self, (s), sizeof((s)) - 1)
+
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
-    grman_handle_command(self->grman, cmd, payload);
+    const char *response = grman_handle_command(self->grman, cmd, payload);
+    if (response != NULL) write_to_child(self, response, strlen(response));
 }
 // }}}
 
@@ -972,14 +981,6 @@ screen_bell(Screen UNUSED *self) {
     }
     request_window_attention();
 } 
-
-static inline void
-write_to_child(Screen *self, const char *data, size_t sz) {
-    if (self->window_id) schedule_write_to_child(self->window_id, data, sz);
-    if (self->test_child != Py_None) { PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r); }
-}
-
-#define write_str_to_child(s) write_to_child(self, (s), sizeof((s)) - 1)
 
 void 
 report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {

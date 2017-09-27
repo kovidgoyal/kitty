@@ -50,4 +50,4 @@ PyTypeObject GraphicsManager_Type;
 GraphicsManager* grman_realloc(GraphicsManager *, index_type lines, index_type columns);
 void grman_clear(GraphicsManager*);
 GraphicsManager* grman_free(GraphicsManager*);
-void grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload);
+const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload);

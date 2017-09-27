@@ -218,10 +218,10 @@ escape code will look like:
 ```
 
 Here the `q` value will be the same as was sent by the client in the original
-request.  The payload data will be a base-64 encoded UTF-8 string. The string
-will be `OK` if reading the pixel data succeeded or an error message. Clients 
-can set the width and height to zero to avoid actually drawing anything on
-screen during the test.
+request.  The payload data will be a ASCII encoded string containing only
+printable characters and spaces. The string will be `OK` if reading the pixel
+data succeeded or an error message. Clients can set the width and height to
+zero to avoid actually drawing anything on screen during the test.
 
 
 ===== Remote client
