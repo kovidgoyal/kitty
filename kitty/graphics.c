@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <zlib.h>
+#include <png.h>
 
 #define REPORT_ERROR(fmt, ...) { fprintf(stderr, fmt, __VA_ARGS__); fprintf(stderr, "\n"); }
 
@@ -58,9 +60,7 @@ free_load_data(LoadData *ld) {
 
 static inline void
 free_image(Image *img) {
-    img->data_loaded = false;
     // TODO: free the texture if texture_id is not zero
-    img->texture_id = 0;  
     free_load_data(&(img->load_data));
 }
 
@@ -127,6 +127,117 @@ img_by_internal_id(GraphicsManager *self, size_t id) {
     return NULL;
 }
 
+static inline bool
+inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
+    bool ok = false;
+    z_stream z;
+    uint8_t *decompressed = malloc(img->load_data.data_sz);
+    if (decompressed == NULL) fatal("Out of memory allocating decompression buffer");
+    z.zalloc = Z_NULL;
+    z.zfree = Z_NULL;
+    z.opaque = Z_NULL;
+    z.avail_in = bufsz;
+    z.next_in = (Bytef*)buf;
+    z.avail_out = img->load_data.data_sz;
+    z.next_out = decompressed;
+    int ret;
+    if ((ret = inflateInit(&z)) != Z_OK) {
+        REPORT_ERROR("Failed to initialize inflate with error code: %d", ret);
+        goto err;
+    }
+    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) {
+        REPORT_ERROR("Failed to inflate image data with error code: %d", ret);
+        goto err;
+    }
+    if (z.avail_out) {
+        REPORT_ERROR("Failed to inflate image data with error code: %d", ret);
+        goto err;
+    }
+    free_load_data(&img->load_data);
+    img->load_data.buf_capacity = img->load_data.data_sz;
+    img->load_data.buf = decompressed;
+    img->load_data.buf_used = img->load_data.data_sz - z.avail_out;
+    ok = true;
+err:
+    inflateEnd(&z);
+    if (!ok) free(decompressed);
+    return ok;
+}
+
+struct fake_file { uint8_t *buf; size_t sz, cur; };
+
+static void
+read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
+    struct fake_file *f = png_get_io_ptr(png);
+    if (f) {
+        size_t amt = MIN(length, f->sz - f->cur);
+        memcpy(out, f->buf + f->cur, amt);
+        f->cur += amt;
+    }
+}
+
+static inline bool
+inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
+#define RE(...) { REPORT_ERROR(__VA_ARGS__); goto err; }
+    bool ok = false;
+    uint8_t *decompressed = NULL;
+    png_structp png = NULL;
+    png_infop info = NULL;
+    png_bytep * row_pointers = NULL;
+    struct fake_file f = {.buf = buf, .sz = bufsz};
+
+    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) RE("%s", "Failed to create PNG read structure");
+    info = png_create_info_struct(png);
+    if (!info) RE("%s", "Failed to create PNG info structure");
+
+    if(setjmp(png_jmpbuf(png))) RE("%s", "Invalid PNG data");
+    
+    png_set_read_fn(png, &f, read_png_from_buffer);
+    png_read_info(png, info);
+    int width, height;
+    png_byte color_type, bit_depth;
+    width      = png_get_image_width(png, info);
+    height     = png_get_image_height(png, info);
+    color_type = png_get_color_type(png, info);
+    bit_depth  = png_get_bit_depth(png, info);
+
+    // Ensure we get RGBA data out of libpng
+    if(bit_depth == 16) png_set_strip_16(png);
+    if(color_type == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
+    if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) png_set_expand_gray_1_2_4_to_8(png);
+
+    if(png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+
+    // These color_type don't have an alpha channel then fill it with 0xff.
+    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+
+    if(color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+    png_read_update_info(png, info);
+
+    int rowbytes = png_get_rowbytes(png, info);
+    size_t sz = rowbytes * height * sizeof(png_byte);
+    decompressed = malloc(sz + 16);
+    if (decompressed == NULL) RE("%s", "Out of memory allocating decompression buffer for PNG");
+    row_pointers = malloc(height * sizeof(png_bytep));
+    if (row_pointers == NULL) RE("%s", "Out of memory allocating row_pointers buffer for PNG");
+    for (int i = 0; i < height; i++) row_pointers[height - 1 - i] = decompressed + i * rowbytes;
+    png_read_image(png, row_pointers);
+
+    free_load_data(&img->load_data);
+    img->load_data.buf_capacity = sz; 
+    img->load_data.buf = decompressed;
+    img->load_data.buf_used = sz;
+    img->width = width; img->height = height;
+    ok = true;
+err:
+    if (png) png_destroy_read_struct(&png, info ? &info : NULL, NULL);
+    if (!ok) free(decompressed);
+    free(row_pointers);
+    return ok;
+#undef RE
+}
 
 static bool
 add_trim_predicate(Image *img) {
@@ -156,11 +267,16 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         switch(g->format) {
             case PNG:  
                 sz *= 4;
+                img->load_data.is_4byte_aligned = true;
                 break;
             case RGB:
             case RGBA:
                 sz *= g->format / 8;
+                img->load_data.is_4byte_aligned = g->format == RGBA || (img->width % 4 == 0);
                 break;
+            default:
+                REPORT_ERROR("Unknown image format: %u", g->format);
+                return;
         }
         img->load_data.data_sz = sz;
         if (tt == 'd') {
@@ -207,7 +323,52 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             REPORT_ERROR("Unknown transmission type: %c", g->transmission_type);
             return;
     }
-
+    if (!img->data_loaded) return;
+    bool needs_processing = g->compressed || g->format == PNG;
+    if (needs_processing) {
+        uint8_t *buf; size_t bufsz;
+#define IB { if (img->load_data.buf) { buf = img->load_data.buf; bufsz = img->load_data.buf_used; } else { buf = img->load_data.mapped_file; bufsz = img->load_data.mapped_file_sz; } }
+        switch(g->compressed) {
+            case 'z':
+                IB;
+                if (!inflate_zlib(self, img, buf, bufsz)) {
+                    img->data_loaded = false; return;
+                }
+                break;
+            case 0:
+                break;
+            default:
+                REPORT_ERROR("Unknown image compression: %c", g->compressed);
+                img->data_loaded = false; return;
+        }
+        switch(g->format) {
+            case PNG:
+                IB;
+                if (!inflate_png(self, img, buf, bufsz)) {
+                    img->data_loaded = false; return;
+                }
+                break;
+            default: break;
+        }
+#undef IB
+        img->load_data.data = img->load_data.buf;
+        if (img->load_data.buf_used < img->load_data.data_sz) {
+            REPORT_ERROR("Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
+            img->data_loaded = false;
+        }
+    } else {
+        if (tt == 'd') {
+            if (img->load_data.buf_used < img->load_data.data_sz) {
+                REPORT_ERROR("Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
+                img->data_loaded = false;
+            } else img->load_data.data = img->load_data.buf;
+        } else {
+            if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
+                REPORT_ERROR("Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
+                img->data_loaded = false;
+            } else img->load_data.data = img->load_data.mapped_file;
+        }
+    }
 }
 
 void

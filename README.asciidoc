@@ -81,6 +81,8 @@ the following dependencies are installed first.
 * python >= 3.5
 * glfw   >= 3.2
 * libunistring 
+* zlib
+* libpng
 * glew   >= 2.0 (not needed on macOS)
 * fontconfig (not needed on macOS)
 * xrdb and xsel (only on X11 based systems)

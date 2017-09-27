@@ -153,6 +153,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
             raise SystemExit(
                 'glew >= 2.0.0 is required, found version: ' + ver
             )
+    cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     if not isosx:
         cflags.extend(pkg_config('glew', '--cflags-only-I'))
     if isosx:
@@ -170,7 +171,8 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
         glew_libs = pkg_config('glew', '--libs')
-    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + ['-lunistring']
+    libpng = pkg_config('libpng', '--libs')
+    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + libpng + ['-lunistring']
     if not isosx:
         ldpaths += ['-lrt']
 
