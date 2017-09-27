@@ -8,18 +8,30 @@
 #include "data-types.h"
 
 typedef struct {
-    unsigned char action, transmission_type;
+    unsigned char action, transmission_type, compressed;
     uint32_t format, more, id;
     uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines;
     int32_t z_index;
     size_t payload_sz;
 } GraphicsCommand;
 
+typedef struct {
+    uint8_t *buf;
+    size_t buf_capacity, buf_used;
+
+    int fd;
+    uint8_t *mapped_file;
+    size_t mapped_file_sz;
+
+    size_t max_data_sz;
+} LoadData;
 
 typedef struct {
     uint32_t gl_id, client_id, width, height;
     size_t internal_id, refcnt;
-    uint8_t *load_buf;
+
+    bool data_loaded;
+    LoadData load_data;
 } Image;
 
 
@@ -27,7 +39,7 @@ typedef struct {
     PyObject_HEAD
 
     index_type lines, columns;
-    size_t image_count, images_capacity;
+    size_t image_count, images_capacity, loading_image;
     Image *images;
 } GraphicsManager;
 PyTypeObject GraphicsManager_Type;

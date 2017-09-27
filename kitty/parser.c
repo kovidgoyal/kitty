@@ -541,6 +541,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     enum KEYS { 
         action='a', 
         transmission_type='t',
+        compressed='o',
         format = 'f',
         more = 'm',
         id = 'i',
@@ -671,8 +672,8 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)
 #define I(x) #x, (int)(g.x)
-    REPORT_VA_COMMAND("s {sc sc  sI sI sI  sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
-            A(action), A(transmission_type),
+    REPORT_VA_COMMAND("s {sc sc sc sI sI sI  sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
+            A(action), A(transmission_type), A(compressed),
             U(format), U(more), U(id),
             U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines),
             U(payload_sz), I(z_index),
