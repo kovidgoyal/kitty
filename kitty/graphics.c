@@ -251,8 +251,11 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     enum FORMATS { RGB=24, RGBA=32, PNG=100 };
+    uint32_t fmt = g->format ? g->format : RGBA;
     if (tt == 'd' && (g->more && self->loading_image)) init_img = false;
     if (init_img) {
+        size_t sz = g->data_width * g->data_height;
+        if (!sz) return;  // ignore images with zero size
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
         if (existing) {
@@ -263,25 +266,24 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->client_id = g->id;
         }
         img->width = g->data_width; img->height = g->data_height;
-        size_t sz = img->width * img->height;
-        switch(g->format) {
+        switch(fmt) {
             case PNG:  
                 sz *= 4;
                 img->load_data.is_4byte_aligned = true;
                 break;
             case RGB:
             case RGBA:
-                sz *= g->format / 8;
-                img->load_data.is_4byte_aligned = g->format == RGBA || (img->width % 4 == 0);
+                sz *= fmt / 8;
+                img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
                 break;
             default:
-                REPORT_ERROR("Unknown image format: %u", g->format);
+                REPORT_ERROR("Unknown image format: %u", fmt);
                 return;
         }
         img->load_data.data_sz = sz;
         if (tt == 'd') {
             if (g->more) self->loading_image = img->internal_id;
-            img->load_data.buf_capacity = sz + ((g->compressed || g->format == PNG) ? 1024 : 10);  // compression header
+            img->load_data.buf_capacity = sz + ((g->compressed || fmt == PNG) ? 4096 : 10);  // compression header
             img->load_data.buf = malloc(img->load_data.buf_capacity + 4);
             if (img->load_data.buf == NULL) fatal("Out of memory while allocating image load data buffer");
             img->load_data.buf_used = 0;
@@ -324,7 +326,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             return;
     }
     if (!img->data_loaded) return;
-    bool needs_processing = g->compressed || g->format == PNG;
+    bool needs_processing = g->compressed || fmt == PNG;
     if (needs_processing) {
         uint8_t *buf; size_t bufsz;
 #define IB { if (img->load_data.buf) { buf = img->load_data.buf; bufsz = img->load_data.buf_used; } else { buf = img->load_data.mapped_file; bufsz = img->load_data.mapped_file_sz; } }
@@ -341,7 +343,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 REPORT_ERROR("Unknown image compression: %c", g->compressed);
                 img->data_loaded = false; return;
         }
-        switch(g->format) {
+        switch(fmt) {
             case PNG:
                 IB;
                 if (!inflate_png(self, img, buf, bufsz)) {
