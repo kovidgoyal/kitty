@@ -175,6 +175,8 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + libpng + ['-lunistring']
     if not isosx:
         ldpaths += ['-lrt']
+    if '-lz' not in ldpaths:
+        ldpaths.append('-lz')
 
     try:
         os.mkdir(build_dir)

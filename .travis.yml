@@ -19,6 +19,7 @@ matrix:
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libpng-dev
 
         - os: linux
           dist: trusty
@@ -38,6 +39,7 @@ matrix:
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libpng-dev
 
         - os: linux
           dist: trusty
@@ -57,6 +59,7 @@ matrix:
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libpng-dev
                 - clang
         - os: osx
           language: generic
@@ -82,6 +85,7 @@ install: |
             brew install python3;
             brew install glfw;
             brew install libunistring;
+            brew install libpng;
         else
             mkdir -p $SW;
             curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
