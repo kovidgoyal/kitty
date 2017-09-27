@@ -85,7 +85,6 @@ install: |
             brew install python3;
             brew install glfw;
             brew install libunistring;
-            brew install libpng;
         else
             mkdir -p $SW;
             curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
