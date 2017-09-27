@@ -287,7 +287,6 @@ init_state(PyObject *module) {
     global_state.application_focused = true;
     global_state.cursor_blink_zero_time = now;
     global_state.last_mouse_activity_at = now;
-    global_state.mouse_visible = true;
     global_state.cell_width = 1; global_state.cell_height = 1;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;

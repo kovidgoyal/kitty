@@ -43,15 +43,23 @@ typedef struct {
     GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
 } WindowWrapper;
 
+static void update_viewport(GLFWwindow *window) {
+    int w, h;
+    glfwGetFramebufferSize(window, &global_state.viewport_width, &global_state.viewport_height);
+    glfwGetWindowSize(window, &w, &h);
+    global_state.viewport_x_ratio = (double)global_state.viewport_width / (double)w;
+    global_state.viewport_y_ratio = (double)global_state.viewport_height / (double)h;
+}
+
 // callbacks {{{
 static WindowWrapper* the_window = NULL;
 update_viewport_size_func update_viewport_size = NULL;
 
 static void
-framebuffer_size_callback(GLFWwindow UNUSED *w, int width, int height) {
+framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (width > 100 && height > 100) {
         update_viewport_size(width, height);
-        global_state.viewport_width = width; global_state.viewport_height = height;
+        update_viewport(w);
         WINDOW_CALLBACK(framebuffer_size_callback, "ii", width, height);
         glfwPostEmptyEvent();
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
@@ -74,7 +82,7 @@ key_callback(GLFWwindow UNUSED *w, int key, int scancode, int action, int mods) 
 
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < sizeof(global_state.mouse_button_pressed)/sizeof(global_state.mouse_button_pressed[0])) {
@@ -85,17 +93,18 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 
 static void
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
-    global_state.mouse_x = x; global_state.mouse_y = y;
+    global_state.mouse_x = x * global_state.viewport_x_ratio;
+    global_state.mouse_y = y * global_state.viewport_y_ratio;
     mouse_event(-1, 0);
 }
 
 static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
-    if (!global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     scroll_event(xoffset, yoffset);
@@ -104,7 +113,6 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
 static void
 window_focus_callback(GLFWwindow UNUSED *w, int focused) {
     global_state.application_focused = focused ? true : false;
-    if (focused && !global_state.mouse_visible) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); global_state.mouse_visible = true; }
     double now = monotonic();
     global_state.last_mouse_activity_at = now;
     global_state.cursor_blink_zero_time = now;
@@ -140,7 +148,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         the_window = self;
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (self->window == NULL) { Py_CLEAR(self); the_window = NULL; PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-        global_state.viewport_width = width; global_state.viewport_height = height;
+        update_viewport(self->window);
         self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         self->arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
@@ -306,14 +314,6 @@ set_should_close(WindowWrapper *self, PyObject *args) {
 }
 
 static PyObject*
-set_input_mode(WindowWrapper *self, PyObject *args) {
-    int which, value;
-    if (!PyArg_ParseTuple(args, "ii", &which, &value)) return NULL;
-    glfwSetInputMode(self->window, which, value);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 is_key_pressed(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "i", &c)) return NULL;
@@ -428,7 +428,6 @@ static PyMethodDef methods[] = {
     MND(cocoa_window_id, METH_NOARGS),
 #endif
     MND(set_should_close, METH_VARARGS),
-    MND(set_input_mode, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),

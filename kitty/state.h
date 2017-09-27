@@ -64,12 +64,13 @@ typedef struct {
     Tab tabs[MAX_CHILDREN];
     unsigned int active_tab, num_tabs;
     ScreenRenderData tab_bar_render_data;
-    bool application_focused, mouse_visible;
+    bool application_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
     double logical_dpi_x, logical_dpi_y;
     double mouse_x, mouse_y;
     bool mouse_button_pressed[20];
     int viewport_width, viewport_height;
+    double viewport_x_ratio, viewport_y_ratio;
     unsigned int cell_width, cell_height;
     PyObject *application_title;
     PyObject *boss;

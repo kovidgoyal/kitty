@@ -594,9 +594,8 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
 
 static inline void
 hide_mouse(double now) {
-    if (global_state.mouse_visible && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
+    if (glfwGetInputMode(glfw_window_id, GLFW_CURSOR) == GLFW_CURSOR_NORMAL && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
         glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-        global_state.mouse_visible = false;
     }
 }
 

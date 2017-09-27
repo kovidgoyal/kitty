@@ -15,6 +15,9 @@
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
+#define NSEventModifierFlagOption NSAlternateKeyMask
+#define NSEventModifierFlagCommand NSCommandKeyMask
+#define NSEventModifierFlagControl NSControlKeyMask
 #endif
 
 @interface MenuDispatcher : NSObject
@@ -56,6 +59,16 @@ find_app_name(void) {
 
     // Really shouldn't get here
     return @"kitty";
+}
+
+
+PyObject*
+cocoa_init(PyObject UNUSED *_self) {
+    // Press and Hold prevents some keys from emitting repeated characters
+    // See https://github.com/glfw/glfw/issues/1010
+    NSDictionary* defaults = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], @"ApplePressAndHoldEnabled", nil];
+    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+    Py_RETURN_NONE;
 }
 
 
@@ -177,6 +190,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
     {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
     {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
+    {"cocoa_init", (PyCFunction)cocoa_init, METH_NOARGS, ""}, \
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
