@@ -413,6 +413,36 @@ dealloc(GraphicsManager* self) {
     grman_free(self);
 }
 
+static inline PyObject*
+image_as_dict(Image *img) {
+#define U(x) #x, img->x
+    return Py_BuildValue("{sI sI sI sI sI sI sH sH sN}",
+        U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(data_loaded),
+        "is_4byte_aligned", img->load_data.is_4byte_aligned,
+        "data", Py_BuildValue("y#", img->load_data.data, img->load_data.data_sz)
+    );
+#undef U
+
+}
+
+#define W(x) static PyObject* py##x(GraphicsManager *self, PyObject *args)
+#define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
+
+W(image_for_client_id) {
+    unsigned long id = PyLong_AsUnsignedLong(args);
+    bool existing = false;
+    Image *img = find_or_create_image(self, id, &existing);
+    if (existing) { Py_RETURN_NONE; }
+    return image_as_dict(img);
+}
+
+#define M(x, va) {#x, (PyCFunction)py##x, va, ""}
+
+static PyMethodDef methods[] = {
+    M(image_for_client_id, METH_O),
+    {NULL}  /* Sentinel */
+};
+
 
 PyTypeObject GraphicsManager_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -422,6 +452,7 @@ PyTypeObject GraphicsManager_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,        
     .tp_doc = "GraphicsManager",
     .tp_new = new,                
+    .tp_methods = methods,
 };
 
 bool
