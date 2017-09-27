@@ -35,15 +35,52 @@ grman_free(GraphicsManager* self) {
     return NULL;
 }
 
-/* static size_t internal_id_counter = 1; */
+static size_t internal_id_counter = 1;
+
+static inline void*
+ensure_space(void *array, size_t *capacity, size_t count, size_t item_size, bool initialize) {
+    if (count < *capacity) return array;
+    void *ans = realloc(array, (*capacity) * item_size * 2);
+    if (ans == NULL) fatal("Out of memory re-allocating array.");
+    if (initialize) {
+        memset(((uint8_t*)array) + ((*capacity) * item_size), 0, ((*capacity) * item_size));
+    }
+    *capacity *= 2;
+    return ans;
+}
+
+static inline Image*
+find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
+    if (id) {
+        for (size_t i = 0; i < self->image_count; i++) {
+            if (self->images[i].client_id == id) {
+                *existing = true;
+                return self->images + i;
+            }
+        }
+    }
+    *existing = false;
+    self->images = ensure_space(self->images, &self->images_capacity, self->image_count, sizeof(Image), true);
+    return self->images + self->image_count++;
+}
 
 static void
-handle_add_command(GraphicsManager UNUSED *self, const GraphicsCommand UNUSED *g, const uint8_t UNUSED *payload) {
+handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t UNUSED *payload) {
+    bool existing;
+    Image *img = find_or_create_image(self, g->id, &existing);
+    if (existing) {
+        free(img->load_buf); img->load_buf = NULL;
+    } else {
+        img->internal_id = internal_id_counter++;
+        img->client_id = g->id;
+    }
+    img->width = g->data_width; img->height = g->data_height;
 }
 
 void
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
     switch(g->action) {
+        case 0:
         case 't':
             handle_add_command(self, g, payload);
             break;

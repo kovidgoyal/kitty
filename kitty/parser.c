@@ -664,6 +664,10 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
         default:
             break;
     }
+    if (g.data_width > 10000 || g.data_height > 10000) {
+        REPORT_ERROR("Image too large");
+        return;
+    }
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)
 #define I(x) #x, (int)(g.x)
