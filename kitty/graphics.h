@@ -27,7 +27,7 @@ typedef struct {
 } LoadData;
 
 typedef struct {
-    uint32_t gl_id, client_id, width, height;
+    uint32_t texture_id, client_id, width, height;
     size_t internal_id, refcnt;
 
     bool data_loaded;

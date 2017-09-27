@@ -56,9 +56,17 @@ free_load_data(LoadData *ld) {
     ld->fd = -1; 
 }
 
+static inline void
+free_image(Image *img) {
+    img->data_loaded = false;
+    // TODO: free the texture if texture_id is not zero
+    img->texture_id = 0;  
+    free_load_data(&(img->load_data));
+}
+
 GraphicsManager*
 grman_free(GraphicsManager* self) {
-    for (size_t i = 0; i < self->image_count; i++) free_load_data(&(self->images[i].load_data));
+    for (size_t i = 0; i < self->image_count; i++) free_image(self->images + i);
     free(self->images);
     Py_TYPE(self)->tp_free((PyObject*)self);
     return NULL;
@@ -99,12 +107,6 @@ remove_from_array(void *array, size_t item_size, size_t idx, size_t array_count)
     uint8_t *p = (uint8_t*)array;
     if (num_to_right > 0) memmove(p + (idx * item_size), p + ((idx + 1) * item_size), num_to_right * item_size);  
     memset(p + (item_size * (array_count - 1)), 0, item_size);
-}
-
-static inline void
-free_image(Image *img) {
-    img->data_loaded = false;
-    free_load_data(&(img->load_data));
 }
 
 static inline void
