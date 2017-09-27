@@ -23,7 +23,7 @@ typedef struct {
     uint8_t *mapped_file;
     size_t mapped_file_sz;
 
-    size_t max_data_sz;
+    size_t data_sz;
 } LoadData;
 
 typedef struct {

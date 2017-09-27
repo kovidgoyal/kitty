@@ -137,6 +137,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
+    enum FORMATS { RGB=24, RGBA=32, PNG=100 };
     if (tt == 'd' && (g->more && self->loading_image)) init_img = false;
     if (init_img) {
         remove_images(self, add_trim_predicate);
@@ -151,23 +152,20 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img->width = g->data_width; img->height = g->data_height;
         size_t sz = img->width * img->height;
         switch(g->format) {
-            case 100:  // PNG
-                sz = sz * 4 + 1024;
+            case PNG:  
+                sz *= 4;
                 break;
-            case 8:
-            case 24:
-            case 32:
+            case RGB:
+            case RGBA:
                 sz *= g->format / 8;
                 break;
-            default: break;
         }
-        if (g->compressed) sz += 1024;  // compression header
-        img->load_data.max_data_sz = sz + 10;
+        img->load_data.data_sz = sz;
         if (tt == 'd') {
             if (g->more) self->loading_image = img->internal_id;
-            img->load_data.buf = malloc(img->load_data.max_data_sz + 4);
+            img->load_data.buf_capacity = sz + ((g->compressed || g->format == PNG) ? 1024 : 10);  // compression header
+            img->load_data.buf = malloc(img->load_data.buf_capacity + 4);
             if (img->load_data.buf == NULL) fatal("Out of memory while allocating image load data buffer");
-            img->load_data.buf_capacity = img->load_data.max_data_sz;
             img->load_data.buf_used = 0;
         }
     } else {
