@@ -12,7 +12,7 @@ from kitty.fast_data_types import parse_bytes
 from . import BaseTest
 
 
-def img_path(name):
+def relpath(name):
     base = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, name)
 
@@ -86,3 +86,11 @@ class TestGraphics(BaseTest):
         f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
         sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
         self.assertRaises(FileNotFoundError, f.close)  # check that file was deleted
+
+        # Test loading from POSIX SHM
+        name = '/kitty-test-shm'
+        fd = g.shm_open(name)
+        f = os.fdopen(fd, 'wb')
+        f.write(random_data), f.flush(), f.close()
+        sl(name, s=24, v=32, t='s', expecting_data=random_data)
+        self.assertRaises(FileNotFoundError, g.shm_unlink, name)  # check that file was deleted

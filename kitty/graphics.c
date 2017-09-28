@@ -445,7 +445,7 @@ image_as_dict(Image *img) {
 
 }
 
-#define W(x) static PyObject* py##x(GraphicsManager *self, PyObject *args)
+#define W(x) static PyObject* py##x(GraphicsManager UNUSED *self, PyObject *args)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 
 W(image_for_client_id) {
@@ -456,10 +456,28 @@ W(image_for_client_id) {
     return image_as_dict(img);
 }
 
+W(shm_open) {
+    char *name;
+    PA("s", &name);
+    int fd = shm_open(name, O_CREAT |  O_RDWR, S_IROTH | S_IRUSR | S_IRGRP | S_IWUSR);
+    if (fd == -1) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    return PyLong_FromLong(fd);
+}
+
+W(shm_unlink) {
+    char *name;
+    PA("s", &name);
+    int ret = shm_unlink(name);
+    if (ret == -1) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    Py_RETURN_NONE;
+}
+
 #define M(x, va) {#x, (PyCFunction)py##x, va, ""}
 
 static PyMethodDef methods[] = {
     M(image_for_client_id, METH_O),
+    M(shm_open, METH_VARARGS),
+    M(shm_unlink, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 
