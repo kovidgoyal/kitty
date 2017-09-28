@@ -15,7 +15,7 @@ static unsigned long pow10[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
-static inline uint32_t
+static inline unsigned long
 utoi(uint32_t *buf, unsigned int sz) {
     unsigned long ans = 0;
     uint32_t *p = buf;
@@ -558,6 +558,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     enum KEYS key = 'a';
     static GraphicsCommand g;
     unsigned int i, code;
+    unsigned long lcode;
     bool is_negative;
     memset(&g, 0, sizeof(g));
     static uint8_t payload[4096];
@@ -606,7 +607,9 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                     if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
                 } \
                 if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
-                code = utoi(screen->parser_buf + pos, i - pos); pos = i;
+                lcode = utoi(screen->parser_buf + pos, i - pos); pos = i; \
+                if (lcode > UINT32_MAX) { REPORT_ERROR("id is too large"); return; } \
+                code = lcode;
 
             case INT:
                 is_negative = false;

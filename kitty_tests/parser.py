@@ -220,7 +220,7 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         uint32_max = 2**32 - 1
         t('i=%d' % uint32_max, id=uint32_max)
-        t('i=%d' % (uint32_max + 1), id=0)
+        e('i=%d' % (uint32_max + 1), 'id is too large')
         pb('\033_Gi=12\033\\', c(id=12))
         t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9, payload_sz=1)
         t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9, payload_sz=7)
