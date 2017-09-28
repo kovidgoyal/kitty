@@ -193,7 +193,7 @@ read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
     jmp_buf *jb;
     set_add_response("EBADPNG", msg);
     jb = png_get_error_ptr(png_ptr);
-    if (jb == NULL) fatal("read_png_error_handler: could not retrieve jump_buf");
+    if (jb == NULL) fatal("read_png_error_handler: could not retrieve jmp_buf");
     longjmp(*jb, 1);
 }
 
