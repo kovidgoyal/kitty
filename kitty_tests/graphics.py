@@ -16,6 +16,6 @@ class TestGraphics(BaseTest):
 
     def test_load_images(self):
         s = self.create_screen()
-        c = s.callbacks
+        # c = s.callbacks
         g = s.grman
         print(g)
