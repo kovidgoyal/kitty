@@ -573,7 +573,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 switch(key) {
 #define KS(n, vs) case n: state = EQUAL; value_state = vs; break
 #define U(x) KS(x, UINT)
-                    KS(action, FLAG); KS(transmission_type, FLAG); KS(z_index, INT);
+                    KS(action, FLAG); KS(transmission_type, FLAG); KS(compressed, FLAG); KS(z_index, INT);
                     U(format); U(more); U(id); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
 #undef U
 #undef KS
@@ -594,7 +594,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
             case FLAG:
                 switch(key) {
 #define F(a) case a: g.a = screen->parser_buf[pos++] & 0xff; break
-                    F(action); F(transmission_type);
+                    F(action); F(transmission_type); F(compressed);
                     default:
                         break;
                 }
@@ -602,16 +602,16 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 break;
 #undef F
 
+            case INT:
 #define READ_UINT \
                 for (i = pos; i < MIN(screen->parser_buf_pos, pos + 10); i++) { \
                     if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
                 } \
-                if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
+                if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value for key: %c", key & 0xFF); return; } \
                 lcode = utoi(screen->parser_buf + pos, i - pos); pos = i; \
                 if (lcode > UINT32_MAX) { REPORT_ERROR("id is too large"); return; } \
                 code = lcode;
 
-            case INT:
                 is_negative = false;
                 if(screen->parser_buf[pos] == '-') { is_negative = true; pos++; }
 #define U(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
