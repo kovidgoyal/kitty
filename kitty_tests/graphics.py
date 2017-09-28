@@ -43,7 +43,7 @@ class TestGraphics(BaseTest):
             res = send_command(s, cmd, payload)
             if not res:
                 return
-            return res.decode('ascii').partition(';')[2].partition(':')[0].partition('\033')[0]
+            return res.decode('ascii').partition(';')[2].partition('\033')[0]
 
         def sl(payload, **kw):
             if isinstance(payload, str):
@@ -90,5 +90,5 @@ class TestGraphics(BaseTest):
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
         g.shm_write(name, random_data)
-        sl(name, s=24, v=32, t='s', expecting_data=random_data)
+        sl(name, s=24, v=32, t='s', S=len(random_data), expecting_data=random_data)
         self.assertRaises(FileNotFoundError, g.shm_unlink, name)  # check that file was deleted

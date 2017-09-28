@@ -134,13 +134,16 @@ set_add_response(const char *code, const char *fmt, ...) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
 
 static inline bool
-mmap_img_file(GraphicsManager UNUSED *self, Image *img) {
-    struct stat s;
-    if (fstat(img->load_data.fd, &s) != 0) ABRT(EBADF, "Failed to fstat() SHM file with error: [%d] %s", errno, strerror(errno));
-    void *addr = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, img->load_data.fd, 0);
+mmap_img_file(GraphicsManager UNUSED *self, Image *img, size_t sz, off_t offset) {
+    if (!sz) {
+        struct stat s;
+        if (fstat(img->load_data.fd, &s) != 0) ABRT(EBADF, "Failed to fstat() file with error: [%d] %s", errno, strerror(errno));
+        sz = s.st_size;
+    }
+    void *addr = mmap(0, sz, PROT_READ, MAP_PRIVATE, img->load_data.fd, offset);
     if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file with error: [%d] %s", errno, strerror(errno)); 
     img->load_data.mapped_file = addr;
-    img->load_data.mapped_file_sz = s.st_size;
+    img->load_data.mapped_file_sz = sz;
     return true;
 err:
     return false;
@@ -332,11 +335,10 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
             if (tt == 's') fd = shm_open(fname, O_RDONLY, 0);
             else fd = open(fname, O_CLOEXEC | O_RDONLY);
-            if (fd == -1) {
-                ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
-            }
+            if (fd == -1) ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
             img->load_data.fd = fd;
-            img->data_loaded = mmap_img_file(self, img);
+            if (tt == 's' && !g->data_sz) ABRT(EINVAL, "data size required for shared memory object");
+            img->data_loaded = mmap_img_file(self, img, g->data_sz, g->data_offset);
             if (tt == 't') unlink(fname);
             else if (tt == 's') shm_unlink(fname);
             break;
