@@ -209,7 +209,7 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     struct fake_file f = {.buf = buf, .sz = bufsz};
     png_structp png = NULL;
     png_infop info = NULL;
-    jmp_buf jb = {0};
+    static jmp_buf jb;
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &jb, read_png_error_handler, read_png_warn_handler);
     if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
