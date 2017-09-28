@@ -130,7 +130,18 @@ img_by_internal_id(GraphicsManager *self, size_t id) {
 static char add_response[512] = {0};
 static bool has_add_respose = false;
 
-#define ABRT(...) { snprintf(add_response, (sizeof(add_response)/sizeof(add_response[0])) - 1, __VA_ARGS__); has_add_respose = true; goto err; }
+static inline void
+set_add_response(const char *code, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    size_t sz = sizeof(add_response)/sizeof(add_response[0]);
+    int num = snprintf(add_response, sz, "%s:", code);
+    vsnprintf(add_response + num, sz - num, fmt, args);
+    va_end(args);
+    has_add_respose = true;
+}
+
+#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
 static inline bool
 inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
     bool ok = false;
@@ -145,9 +156,9 @@ inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufs
     z.avail_out = img->load_data.data_sz;
     z.next_out = decompressed;
     int ret;
-    if ((ret = inflateInit(&z)) != Z_OK) ABRT("Failed to initialize inflate with error code: %d", ret);
-    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) ABRT("Failed to inflate image data with error code: %d", ret);
-    if (z.avail_out) ABRT("Failed to inflate image data with error code: %d", ret);
+    if ((ret = inflateInit(&z)) != Z_OK) ABRT(ENOMEM, "Failed to initialize inflate with error code: %d", ret);
+    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) ABRT(EINVAL, "Failed to inflate image data with error code: %d", ret);
+    if (z.avail_out) ABRT(EINVAL, "Image data size post inflation does not match expected size");
     free_load_data(&img->load_data);
     img->load_data.buf_capacity = img->load_data.data_sz;
     img->load_data.buf = decompressed;
@@ -173,7 +184,6 @@ read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
 
 static inline bool
 inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
-#define RE(...) { REPORT_ERROR(__VA_ARGS__); goto err; }
     bool ok = false;
     uint8_t *decompressed = NULL;
     png_structp png = NULL;
@@ -182,11 +192,11 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     struct fake_file f = {.buf = buf, .sz = bufsz};
 
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!png) RE("%s", "Failed to create PNG read structure");
+    if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
-    if (!info) RE("%s", "Failed to create PNG info structure");
+    if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
 
-    if(setjmp(png_jmpbuf(png))) RE("%s", "Invalid PNG data");
+    if(setjmp(png_jmpbuf(png))) ABRT(EINVAL, "Invalid PNG data");
     
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);
@@ -214,9 +224,9 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     int rowbytes = png_get_rowbytes(png, info);
     size_t sz = rowbytes * height * sizeof(png_byte);
     decompressed = malloc(sz + 16);
-    if (decompressed == NULL) RE("%s", "Out of memory allocating decompression buffer for PNG");
+    if (decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
     row_pointers = malloc(height * sizeof(png_bytep));
-    if (row_pointers == NULL) RE("%s", "Out of memory allocating row_pointers buffer for PNG");
+    if (row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
     for (int i = 0; i < height; i++) row_pointers[height - 1 - i] = decompressed + i * rowbytes;
     png_read_image(png, row_pointers);
 
@@ -231,7 +241,6 @@ err:
     if (!ok) free(decompressed);
     free(row_pointers);
     return ok;
-#undef RE
 }
 #undef ABRT
 
@@ -242,7 +251,7 @@ add_trim_predicate(Image *img) {
 
 static bool
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
-#define ABRT(...) { snprintf(add_response, (sizeof(add_response)/sizeof(add_response[0])) - 1, __VA_ARGS__); has_add_respose = true; return false; }
+#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); return false; }
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -251,7 +260,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && (g->more && self->loading_image)) init_img = false;
     if (init_img) {
         size_t sz = g->data_width * g->data_height;
-        if (!sz) return false;  // ignore images with zero size
+        if (!sz) ABRT(EINVAL, "Zero width/height not allowed");
+        if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
         if (existing) {
@@ -273,7 +283,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
                 break;
             default:
-                ABRT("Unknown image format: %u", fmt);
+                ABRT(EINVAL, "Unknown image format: %u", fmt);
         }
         img->load_data.data_sz = sz;
         if (tt == 'd') {
@@ -287,14 +297,14 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img = img_by_internal_id(self, self->loading_image);
         if (img == NULL) {
             self->loading_image = 0;
-            ABRT("%s", "More payload loading refers to non-existent image");
+            ABRT(EILSEQ, "More payload loading refers to non-existent image");
         }
     }
     int fd;
     switch(tt) {
         case 'd':  // direct
             if (g->payload_sz >= img->load_data.buf_capacity - img->load_data.buf_used) {
-                ABRT("%s", "Too much data transmitted");
+                ABRT(EFBIG, "Too much data transmitted");
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
             img->load_data.buf_used += g->payload_sz;
@@ -306,7 +316,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             if (tt == 's') fd = shm_open((const char*)payload, O_RDONLY, 0);
             else fd = open((const char*)payload, O_CLOEXEC | O_RDONLY);
             if (fd == -1) {
-                ABRT("Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
+                ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             }
             img->load_data.fd = fd;
             img->data_loaded = mmap_img_file(self, img);
@@ -314,7 +324,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             else if (tt == 's') shm_unlink((const char*)payload);
             break;
         default:
-            ABRT("Unknown transmission type: %c", g->transmission_type);
+            ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);
     }
     if (!img->data_loaded) return false;
     bool needs_processing = g->compressed || fmt == PNG;
@@ -331,7 +341,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             case 0:
                 break;
             default:
-                ABRT("Unknown image compression: %c", g->compressed);
+                ABRT(EINVAL, "Unknown image compression: %c", g->compressed);
                 img->data_loaded = false; return false;
         }
         switch(fmt) {
@@ -346,18 +356,18 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 #undef IB
         img->load_data.data = img->load_data.buf;
         if (img->load_data.buf_used < img->load_data.data_sz) {
-            ABRT("Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
+            ABRT(ENODATA, "Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
             img->data_loaded = false;
         }
     } else {
         if (tt == 'd') {
             if (img->load_data.buf_used < img->load_data.data_sz) {
-                ABRT("Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
+                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
                 img->data_loaded = false;
             } else img->load_data.data = img->load_data.buf;
         } else {
             if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
-                ABRT("Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
+                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
                 img->data_loaded = false;
             } else img->load_data.data = img->load_data.mapped_file;
         }

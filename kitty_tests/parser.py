@@ -230,5 +230,3 @@ class TestParser(BaseTest):
         e('s=', 'Malformed graphics control block, expecting an integer value')
         e('s==', 'Malformed graphics control block, expecting an integer value')
         e('s=1=', 'Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3d')
-        e('s=20000', 'Image too large')
-        e('v=20000', 'Image too large')
