@@ -17,18 +17,6 @@
 
 #define REPORT_ERROR(fmt, ...) { fprintf(stderr, fmt, __VA_ARGS__); fprintf(stderr, "\n"); }
 
-static inline bool
-mmap_img_file(GraphicsManager UNUSED *self, Image *img) {
-    off_t file_sz = lseek(img->load_data.fd, 0, SEEK_END);
-    if (file_sz == -1) { REPORT_ERROR("Failed to seek in image file with error: [%d] %s", errno, strerror(errno)); return false; }
-    lseek(img->load_data.fd, 0, SEEK_SET);
-    void *addr = mmap(0, file_sz, PROT_READ, MAP_PRIVATE, img->load_data.fd, 0);
-    if (addr == MAP_FAILED) { REPORT_ERROR("Failed to map image file with error: [%d] %s", errno, strerror(errno)); return false; }
-    img->load_data.mapped_file = addr;
-    img->load_data.mapped_file_sz = file_sz;
-    return true;
-}
-
 GraphicsManager*
 grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
@@ -144,6 +132,22 @@ set_add_response(const char *code, const char *fmt, ...) {
 
 // Decode formats {{{
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
+
+static inline bool
+mmap_img_file(GraphicsManager UNUSED *self, Image *img) {
+    struct stat s;
+    if (fstat(img->load_data.fd, &s) != 0) ABRT(EBADF, "Failed to fstat() SHM file with error: [%d] %s", errno, strerror(errno));
+    off_t file_sz = s.st_size;
+    void *addr = mmap(0, file_sz, PROT_READ, MAP_PRIVATE, img->load_data.fd, 0);
+    if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file with error: [%d] %s", errno, strerror(errno)); 
+    img->load_data.mapped_file = addr;
+    img->load_data.mapped_file_sz = file_sz;
+    return true;
+err:
+    return false;
+}
+
+
 static inline bool
 inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
     bool ok = false;
