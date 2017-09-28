@@ -55,7 +55,16 @@ class TestGraphics(BaseTest):
                 self.ae((kw['s'], kw['v']), (img['width'], img['height']))
             return img
 
+        # Test simple load
         for f in 32, 24:
             p = 'abc' + ('d' if f == 32 else '')
             img = sl(p, s=1, v=1, f=f)
             self.ae(bool(img['is_4byte_aligned']), f == 32)
+
+        # Test chuunked load
+        self.assertIsNone(l('abcd', s=2, v=2, m=1))
+        self.assertIsNone(l('efgh', m=1))
+        self.assertIsNone(l('ijkl', m=1))
+        self.ae(l('mnop', m=0), 'OK')
+        img = g.image_for_client_id(1)
+        self.ae(img['data'], b'abcdefghijklmnop')

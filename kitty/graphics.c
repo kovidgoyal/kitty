@@ -260,14 +260,15 @@ add_trim_predicate(Image *img) {
 
 static bool
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
-#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); return false; }
+#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return false; }
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     enum FORMATS { RGB=24, RGBA=32, PNG=100 };
     uint32_t fmt = g->format ? g->format : RGBA;
-    if (tt == 'd' && (g->more && self->loading_image)) init_img = false;
+    if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
+        self->loading_image = 0;
         size_t sz = g->data_width * g->data_height;
         if (!sz) ABRT(EINVAL, "Zero width/height not allowed");
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
@@ -336,6 +337,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);
     }
     if (!img->data_loaded) return false;
+    self->loading_image = 0;
     bool needs_processing = g->compressed || fmt == PNG;
     if (needs_processing) {
         uint8_t *buf; size_t bufsz;
