@@ -522,12 +522,11 @@ layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *r
     global_state.cell_width = sprite_map.cell_width;
     global_state.cell_height = sprite_map.cell_height;
     if (sprite_map.max_texture_size == 0) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size));
-        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers));
-        check_gl();
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); check_gl();
+        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); check_gl();
         sprite_map_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
     }
-    sprite_map_set_layout(cell_width, cell_height);
+    sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height);
     Py_CLEAR(sprite_map.render_cell);
     sprite_map.render_cell = render_cell; Py_INCREF(sprite_map.render_cell);
     if (!sprite_map.texture_id) realloc_sprite_texture();
@@ -577,9 +576,6 @@ init_cell_program() {
     cell_color_table_size = block_size(CELL_PROGRAM, cell_color_table_block_index);
     cell_color_table_stride = cell_color_table_size / (256 * sizeof(GLuint));
     cell_color_table_offset = block_offset(CELL_PROGRAM, cell_uniform_indices[CELL_color_table]);
-#define UL(name) cell_uniform_locations[CELL_##name]
-    glUniform1i(UL(sprites), SPRITE_MAP_UNIT); check_gl();
-#undef UL
 #undef SET_LOC
 }
 
@@ -647,6 +643,8 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     colors[0] = COLOR(default_fg); colors[1] = COLOR(default_bg); colors[2] = COLOR(highlight_fg); colors[3] = COLOR(highlight_bg); colors[4] = cursor->color; colors[5] = OPT(url_color);
     glUniform1uiv(UL(default_colors), sizeof(colors)/sizeof(colors[0]), colors); check_gl();
 #undef COLOR
+    static bool cell_constants_set = false;
+    if (!cell_constants_set) { glUniform1i(UL(sprites), SPRITE_MAP_UNIT); check_gl(); cell_constants_set = true; }
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
