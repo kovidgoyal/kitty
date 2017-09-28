@@ -460,14 +460,14 @@ W(shm_write) {
     const char *name, *data;
     Py_ssize_t sz;
     PA("ss#", &name, &data, &sz);
-    int fd = shm_open(name, O_CREAT |  O_RDWR, S_IROTH | S_IRUSR | S_IRGRP | S_IWUSR);
+    int fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     int ret = ftruncate(fd, sz);
-    if (ret != 0) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    if (ret != 0) { close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     void *addr = mmap(0, sz, PROT_WRITE, MAP_SHARED, fd, 0);
-    if (addr == MAP_FAILED) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    if (addr == MAP_FAILED) { close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     memcpy(addr, data, sz);
-    if (munmap(addr, sz) != 0) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    if (munmap(addr, sz) != 0) { close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     close(fd);
     Py_RETURN_NONE;
 }
