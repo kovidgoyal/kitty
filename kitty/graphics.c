@@ -456,12 +456,20 @@ W(image_for_client_id) {
     return image_as_dict(img);
 }
 
-W(shm_open) {
-    char *name;
-    PA("s", &name);
+W(shm_write) {
+    const char *name, *data;
+    Py_ssize_t sz;
+    PA("ss#", &name, &data, &sz);
     int fd = shm_open(name, O_CREAT |  O_RDWR, S_IROTH | S_IRUSR | S_IRGRP | S_IWUSR);
     if (fd == -1) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
-    return PyLong_FromLong(fd);
+    int ret = ftruncate(fd, sz);
+    if (ret != 0) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    void *addr = mmap(0, sz, PROT_WRITE, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    memcpy(addr, data, sz);
+    if (munmap(addr, sz) != 0) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    close(fd);
+    Py_RETURN_NONE;
 }
 
 W(shm_unlink) {
@@ -476,7 +484,7 @@ W(shm_unlink) {
 
 static PyMethodDef methods[] = {
     M(image_for_client_id, METH_O),
-    M(shm_open, METH_VARARGS),
+    M(shm_write, METH_VARARGS),
     M(shm_unlink, METH_VARARGS),
     {NULL}  /* Sentinel */
 };

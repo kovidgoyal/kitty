@@ -89,8 +89,6 @@ class TestGraphics(BaseTest):
 
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
-        fd = g.shm_open(name)
-        f = os.fdopen(fd, 'wb')
-        f.write(random_data), f.flush(), f.close()
+        g.shm_write(name, random_data)
         sl(name, s=24, v=32, t='s', expecting_data=random_data)
         self.assertRaises(FileNotFoundError, g.shm_unlink, name)  # check that file was deleted
