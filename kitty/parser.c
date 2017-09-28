@@ -11,13 +11,13 @@
 #include <time.h>
 
 // utils {{{
-static unsigned int pow10[10] = {
-    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000
+static unsigned long pow10[] = {
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
-static inline unsigned int 
+static inline uint32_t
 utoi(uint32_t *buf, unsigned int sz) {
-    unsigned int ans = 0;
+    unsigned long ans = 0;
     uint32_t *p = buf;
     // Ignore leading zeros
     while(sz > 0) {
@@ -602,7 +602,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #undef F
 
 #define READ_UINT \
-                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 7); i++) { \
+                for (i = pos; i < MIN(screen->parser_buf_pos, pos + 10); i++) { \
                     if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break; \
                 } \
                 if (i == pos) { REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; } \
