@@ -85,6 +85,10 @@ init_fontconfig_library(PyObject *module) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize the fontconfig library");
         return false;
     }
+    if (Py_AtExit(FcFini) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the fontconfig library at exit handler");
+        return false;
+    }
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }
