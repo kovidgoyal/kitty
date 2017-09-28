@@ -19,7 +19,6 @@ typedef struct {
     uint8_t *buf;
     size_t buf_capacity, buf_used;
 
-    int fd;
     uint8_t *mapped_file;
     size_t mapped_file_sz;
 

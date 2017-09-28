@@ -42,8 +42,6 @@ free_load_data(LoadData *ld) {
 
     if (ld->mapped_file) munmap(ld->mapped_file, ld->mapped_file_sz);
     ld->mapped_file = NULL; ld->mapped_file_sz = 0;
-    if (ld->fd > 0) close(ld->fd);
-    ld->fd = -1; 
 }
 
 static inline void
@@ -134,14 +132,14 @@ set_add_response(const char *code, const char *fmt, ...) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
 
 static inline bool
-mmap_img_file(GraphicsManager UNUSED *self, Image *img, size_t sz, off_t offset) {
+mmap_img_file(GraphicsManager UNUSED *self, Image *img, int fd, size_t sz, off_t offset) {
     if (!sz) {
         struct stat s;
-        if (fstat(img->load_data.fd, &s) != 0) ABRT(EBADF, "Failed to fstat() the fd: %d file with error: [%d] %s", img->load_data.fd, errno, strerror(errno));
+        if (fstat(fd, &s) != 0) ABRT(EBADF, "Failed to fstat() the fd: %d file with error: [%d] %s", fd, errno, strerror(errno));
         sz = s.st_size;
     }
-    void *addr = mmap(0, sz, PROT_READ, MAP_SHARED, img->load_data.fd, offset);
-    if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file fd: %d at offset: %zd with size: %zu with error: [%d] %s", img->load_data.fd, offset, sz, errno, strerror(errno)); 
+    void *addr = mmap(0, sz, PROT_READ, MAP_SHARED, fd, offset);
+    if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, offset, sz, errno, strerror(errno)); 
     img->load_data.mapped_file = addr;
     img->load_data.mapped_file_sz = sz;
     return true;
@@ -336,8 +334,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             if (tt == 's') fd = shm_open(fname, O_RDONLY, 0);
             else fd = open(fname, O_CLOEXEC | O_RDONLY);
             if (fd == -1) ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
-            img->load_data.fd = fd;
-            img->data_loaded = mmap_img_file(self, img, g->data_sz, g->data_offset);
+            img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
+            close(fd);
             if (tt == 't') unlink(fname);
             else if (tt == 's') shm_unlink(fname);
             break;
