@@ -529,7 +529,8 @@ layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *r
     sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height);
     Py_CLEAR(sprite_map.render_cell);
     sprite_map.render_cell = render_cell; Py_INCREF(sprite_map.render_cell);
-    if (!sprite_map.texture_id) realloc_sprite_texture();
+    if (sprite_map.texture_id) { glDeleteTextures(1, &(sprite_map.texture_id)); sprite_map.texture_id = 0; }
+    realloc_sprite_texture();
     // Pre-render the basic cells to ensure they have known sprite numbers
     send_prerendered(0, false);
     send_prerendered(1, false);
