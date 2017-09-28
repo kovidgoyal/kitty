@@ -42,7 +42,7 @@ grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
     } else {
         self->images_capacity = old->images_capacity; self->images = old->images; self->image_count = old->image_count;
         old->images = NULL;
-        grman_free(old);
+        Py_DECREF(old);
     }
     return self;
 }
@@ -64,12 +64,13 @@ free_image(Image *img) {
     free_load_data(&(img->load_data));
 }
 
-GraphicsManager*
-grman_free(GraphicsManager* self) {
-    for (size_t i = 0; i < self->image_count; i++) free_image(self->images + i);
-    free(self->images);
+static void
+dealloc(GraphicsManager* self) {
+    if (self->images) {
+        for (size_t i = 0; i < self->image_count; i++) free_image(self->images + i);
+        free(self->images);
+    }
     Py_TYPE(self)->tp_free((PyObject*)self);
-    return NULL;
 }
 
 static size_t internal_id_counter = 1;
@@ -424,11 +425,6 @@ new(PyTypeObject UNUSED *type, PyObject *args, PyObject UNUSED *kwds) {
     PyObject *ans = (PyObject*)grman_realloc(NULL, lines, columns);
     if (ans == NULL) PyErr_NoMemory();
     return ans;
-}
-
-static void
-dealloc(GraphicsManager* self) {
-    grman_free(self);
 }
 
 static inline PyObject*

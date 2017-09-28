@@ -213,8 +213,7 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
-    if (self->main_grman) { self->main_grman = grman_free(self->main_grman); }
-    if (self->alt_grman) { self->alt_grman = grman_free(self->alt_grman); }
+    Py_CLEAR(self->grman); Py_CLEAR(self->alt_grman);
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->test_child);
