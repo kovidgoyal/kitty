@@ -284,6 +284,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         switch(fmt) {
             case PNG:  
                 if (!g->data_sz) ABRT(EINVAL, "Must provide a data size with the PNG format");
+                if (g->data_sz > 4 * 100000000) ABRT(EINVAL, "PNG data size too large");
                 img->load_data.is_4byte_aligned = true;
                 img->load_data.data_sz = g->data_sz;
                 break;
