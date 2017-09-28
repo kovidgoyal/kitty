@@ -312,6 +312,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         }
     }
     int fd;
+    static char fname[2056] = {0};
     switch(tt) {
         case 'd':  // direct
             if (g->payload_sz >= img->load_data.buf_capacity - img->load_data.buf_used) {
@@ -324,15 +325,17 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         case 'f': // file
         case 't': // temporary file
         case 's': // POSIX shared memory
-            if (tt == 's') fd = shm_open((const char*)payload, O_RDONLY, 0);
-            else fd = open((const char*)payload, O_CLOEXEC | O_RDONLY);
+            if (g->payload_sz > 2048) ABRT(EINVAL, "Filename too long");
+            snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
+            if (tt == 's') fd = shm_open(fname, O_RDONLY, 0);
+            else fd = open(fname, O_CLOEXEC | O_RDONLY);
             if (fd == -1) {
-                ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
+                ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
             }
             img->load_data.fd = fd;
             img->data_loaded = mmap_img_file(self, img);
-            if (tt == 't') unlink((const char*)payload);
-            else if (tt == 's') shm_unlink((const char*)payload);
+            if (tt == 't') unlink(fname);
+            else if (tt == 's') shm_unlink(fname);
             break;
         default:
             ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);

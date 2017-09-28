@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import tempfile
 import zlib
 from base64 import standard_b64encode
 
@@ -45,14 +46,14 @@ class TestGraphics(BaseTest):
             return res.decode('ascii').partition(';')[2].partition(':')[0].partition('\033')[0]
 
         def sl(payload, **kw):
-            pc = kw.pop('payload_check', None)
             if isinstance(payload, str):
                 payload = payload.encode('utf-8')
+            data = kw.pop('expecting_data', payload)
             cid = kw.setdefault('i', 1)
             self.ae('OK', l(payload, **kw))
             img = g.image_for_client_id(cid)
             self.ae(img['client_id'], cid)
-            self.ae(img['data'], payload if pc is None else pc)
+            self.ae(img['data'], data)
             if 's' in kw:
                 self.ae((kw['s'], kw['v']), (img['width'], img['height']))
             self.ae(img['is_4byte_aligned'], kw.get('f') != 24)
@@ -74,4 +75,14 @@ class TestGraphics(BaseTest):
 
         # Test compression
         random_data = os.urandom(3 * 1024)
-        sl(zlib.compress(random_data), s=24, v=32, o='z', payload_check=random_data)
+        compressed_random_data = zlib.compress(random_data)
+        sl(compressed_random_data, s=24, v=32, o='z', expecting_data=random_data)
+
+        # Test loading from file
+        f = tempfile.NamedTemporaryFile()
+        f.write(random_data), f.flush()
+        sl(f.name, s=24, v=32, t='f', expecting_data=random_data)
+        self.assertTrue(os.path.exists(f.name))
+        f.seek(0), f.truncate(), f.write(compressed_random_data), f.flush()
+        sl(f.name, s=24, v=32, t='t', o='z', expecting_data=random_data)
+        self.assertRaises(FileNotFoundError, f.close)  # check that file was deleted
