@@ -188,6 +188,20 @@ read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
     }
 }
 
+static void
+read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
+    jmp_buf *jb;
+    set_add_response("EBADPNG", msg);
+    jb = png_get_error_ptr(png_ptr);
+    if (jb == NULL) fatal("read_png_error_handler: could not retrieve jump_buf");
+    longjmp(*jb, 1);
+}
+
+static void
+read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp UNUSED msg) {
+    // ignore warnings
+}
+
 struct png_jmp_data { uint8_t *decompressed; bool ok; png_bytep *row_pointers; int width, height; size_t sz; };
 
 static void
@@ -195,12 +209,13 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     struct fake_file f = {.buf = buf, .sz = bufsz};
     png_structp png = NULL;
     png_infop info = NULL;
-    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    jmp_buf jb = {0};
+    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &jb, read_png_error_handler, read_png_warn_handler);
     if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
     if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
 
-    if (setjmp(png_jmpbuf(png))) ABRT(EINVAL, "Invalid PNG data");
+    if (setjmp(jb)) goto err;
     
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);

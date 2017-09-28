@@ -139,3 +139,4 @@ class TestGraphics(BaseTest):
         rgba_data = img.convert('RGBA').tobytes()
         data = png('L')
         sl(data, f=100, S=len(data), expecting_data=rgba_data)
+        self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
