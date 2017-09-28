@@ -260,12 +260,20 @@ PyTypeObject Face_Type = {
 
 INIT_TYPE(Face)
 
+static void
+free_freetype() {
+    FT_Done_FreeType(library);
+}
 
 bool 
 init_freetype_library(PyObject *m) {
     int error = FT_Init_FreeType(&library);
     if (error) {
         set_freetype_error("Failed to initialize FreeType library, with error:", error);
+        return false;
+    }
+    if (Py_AtExit(free_freetype) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the freetype library at exit handler");
         return false;
     }
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;
