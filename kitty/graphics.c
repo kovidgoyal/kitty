@@ -141,6 +141,7 @@ set_add_response(const char *code, const char *fmt, ...) {
     has_add_respose = true;
 }
 
+// Decode formats {{{
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
 static inline bool
 inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
@@ -194,7 +195,7 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     info = png_create_info_struct(png);
     if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
 
-    if(setjmp(png_jmpbuf(png))) ABRT(EINVAL, "Invalid PNG data");
+    if (setjmp(png_jmpbuf(png))) ABRT(EINVAL, "Invalid PNG data");
     
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);
@@ -205,17 +206,17 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     bit_depth  = png_get_bit_depth(png, info);
 
     // Ensure we get RGBA data out of libpng
-    if(bit_depth == 16) png_set_strip_16(png);
-    if(color_type == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if (bit_depth == 16) png_set_strip_16(png);
+    if (color_type == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
     // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
-    if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) png_set_expand_gray_1_2_4_to_8(png);
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) png_set_expand_gray_1_2_4_to_8(png);
 
-    if(png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
 
     // These color_type don't have an alpha channel then fill it with 0xff.
-    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
 
-    if(color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
     png_read_update_info(png, info);
 
     int rowbytes = png_get_rowbytes(png, info);
@@ -249,6 +250,7 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     return d.ok;
 }
 #undef ABRT
+// }}}
 
 static bool
 add_trim_predicate(Image *img) {
