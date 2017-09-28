@@ -182,15 +182,13 @@ read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
     }
 }
 
-static inline bool
-inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
-    bool ok = false;
-    uint8_t *decompressed = NULL;
+struct png_jmp_data { uint8_t *decompressed; bool ok; png_bytep *row_pointers; int width, height; size_t sz; };
+
+static void
+inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
+    struct fake_file f = {.buf = buf, .sz = bufsz};
     png_structp png = NULL;
     png_infop info = NULL;
-    png_bytep * row_pointers = NULL;
-    struct fake_file f = {.buf = buf, .sz = bufsz};
-
     png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
     info = png_create_info_struct(png);
@@ -200,10 +198,9 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);
-    int width, height;
     png_byte color_type, bit_depth;
-    width      = png_get_image_width(png, info);
-    height     = png_get_image_height(png, info);
+    d->width      = png_get_image_width(png, info);
+    d->height     = png_get_image_height(png, info);
     color_type = png_get_color_type(png, info);
     bit_depth  = png_get_bit_depth(png, info);
 
@@ -222,25 +219,34 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     png_read_update_info(png, info);
 
     int rowbytes = png_get_rowbytes(png, info);
-    size_t sz = rowbytes * height * sizeof(png_byte);
-    decompressed = malloc(sz + 16);
-    if (decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
-    row_pointers = malloc(height * sizeof(png_bytep));
-    if (row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
-    for (int i = 0; i < height; i++) row_pointers[height - 1 - i] = decompressed + i * rowbytes;
-    png_read_image(png, row_pointers);
+    d->sz = rowbytes * d->height * sizeof(png_byte);
+    d->decompressed = malloc(d->sz + 16);
+    if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
+    d->row_pointers = malloc(d->height * sizeof(png_bytep));
+    if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
+    for (int i = 0; i < d->height; i++) d->row_pointers[d->height - 1 - i] = d->decompressed + i * rowbytes;
+    png_read_image(png, d->row_pointers);
 
-    free_load_data(&img->load_data);
-    img->load_data.buf_capacity = sz; 
-    img->load_data.buf = decompressed;
-    img->load_data.buf_used = sz;
-    img->width = width; img->height = height;
-    ok = true;
+    d->ok = true;
 err:
     if (png) png_destroy_read_struct(&png, info ? &info : NULL, NULL);
-    if (!ok) free(decompressed);
-    free(row_pointers);
-    return ok;
+    return;
+}
+
+static inline bool
+inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
+    struct png_jmp_data d = {0};
+    inflate_png_inner(&d, buf, bufsz);
+    if (d.ok) {
+        free_load_data(&img->load_data);
+        img->load_data.buf_capacity = d.sz; 
+        img->load_data.buf = d.decompressed;
+        img->load_data.buf_used = d.sz;
+        img->width = d.width; img->height = d.height;
+    }
+    else free(d.decompressed);
+    free(d.row_pointers);
+    return d.ok;
 }
 #undef ABRT
 
