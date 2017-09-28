@@ -204,7 +204,7 @@ class TestParser(BaseTest):
                     k[p] = v.encode('ascii')
             for f in 'action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
-            for f in 'format more id width height x_offset y_offset data_height data_width num_cells num_lines z_index'.split():
+            for f in 'format more id data_sz width height x_offset y_offset data_height data_width num_cells num_lines z_index'.split():
                 k.setdefault(f, 0)
             p = k.pop('payload', '').encode('utf-8')
             k['payload_sz'] = len(p)
@@ -231,5 +231,5 @@ class TestParser(BaseTest):
         e('a=t,,w=2', 'Malformed graphics control block, invalid key character: 0x2c')
         e('s', 'Malformed graphics control block, no = after key')
         e('s=', 'Malformed graphics control block, expecting an integer value')
-        e('s==', 'Malformed graphics control block, expecting an integer value')
+        e('s==', 'Malformed graphics control block, expecting an integer value for key: s')
         e('s=1=', 'Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3d')

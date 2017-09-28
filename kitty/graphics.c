@@ -241,9 +241,10 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     inflate_png_inner(&d, buf, bufsz);
     if (d.ok) {
         free_load_data(&img->load_data);
-        img->load_data.buf_capacity = d.sz; 
         img->load_data.buf = d.decompressed;
+        img->load_data.buf_capacity = d.sz; 
         img->load_data.buf_used = d.sz;
+        img->load_data.data_sz = d.sz;
         img->width = d.width; img->height = d.height;
     }
     else free(d.decompressed);
@@ -269,8 +270,6 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
         self->loading_image = 0;
-        size_t sz = g->data_width * g->data_height;
-        if (!sz) ABRT(EINVAL, "Zero width/height not allowed");
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
@@ -284,21 +283,22 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img->width = g->data_width; img->height = g->data_height;
         switch(fmt) {
             case PNG:  
-                sz *= 4;
+                if (!g->data_sz) ABRT(EINVAL, "Must provide a data size with the PNG format");
                 img->load_data.is_4byte_aligned = true;
+                img->load_data.data_sz = g->data_sz;
                 break;
             case RGB:
             case RGBA:
-                sz *= fmt / 8;
+                img->load_data.data_sz = g->data_width * g->data_height * (fmt / 8);
+                if (!img->load_data.data_sz) ABRT(EINVAL, "Zero width/height not allowed");
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
                 break;
             default:
                 ABRT(EINVAL, "Unknown image format: %u", fmt);
         }
-        img->load_data.data_sz = sz;
         if (tt == 'd') {
             if (g->more) self->loading_image = img->internal_id;
-            img->load_data.buf_capacity = sz + ((g->compressed || fmt == PNG) ? 4096 : 10);  // compression header
+            img->load_data.buf_capacity = img->load_data.data_sz + (g->compressed ? 1024 : 10);  // compression header
             img->load_data.buf = malloc(img->load_data.buf_capacity + 4);
             if (img->load_data.buf == NULL) fatal("Out of memory while allocating image load data buffer");
             img->load_data.buf_used = 0;
