@@ -137,11 +137,10 @@ static inline bool
 mmap_img_file(GraphicsManager UNUSED *self, Image *img) {
     struct stat s;
     if (fstat(img->load_data.fd, &s) != 0) ABRT(EBADF, "Failed to fstat() SHM file with error: [%d] %s", errno, strerror(errno));
-    off_t file_sz = s.st_size;
-    void *addr = mmap(0, file_sz, PROT_READ, MAP_PRIVATE, img->load_data.fd, 0);
+    void *addr = mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, img->load_data.fd, 0);
     if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file with error: [%d] %s", errno, strerror(errno)); 
     img->load_data.mapped_file = addr;
-    img->load_data.mapped_file_sz = file_sz;
+    img->load_data.mapped_file_sz = s.st_size;
     return true;
 err:
     return false;
@@ -377,6 +376,10 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (img->load_data.buf_used < img->load_data.data_sz) {
             ABRT(ENODATA, "Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
             img->data_loaded = false;
+        }
+        if (img->load_data.mapped_file) {
+            munmap(img->load_data.mapped_file, img->load_data.mapped_file_sz);
+            img->load_data.mapped_file = NULL; img->load_data.mapped_file_sz = 0;
         }
     } else {
         if (tt == 'd') {
