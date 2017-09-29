@@ -320,6 +320,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->data_loaded = false;
             free_refs_data(img);
             *is_dirty = true;
+            self->layers_dirty = true;
         } else {
             img->internal_id = internal_id_counter++;
             img->client_id = g->id;
@@ -475,6 +476,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         if (img->refs == NULL) { REPORT_ERROR("Out of memory growing image refs array"); img->refcap = 0; return; }
     }
     *is_dirty = true;
+    self->layers_dirty = true;
     ImageRef *ref = NULL;
     for (size_t i=0; i < img->refcnt; i++) {
         if ((unsigned)img->refs[i].start_row == c->x && (unsigned)img->refs[i].start_column == c->y) {
@@ -486,6 +488,19 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
     ref->src_width = MIN(ref->src_width, img->width - (img->width > ref->src_x ? ref->src_x : img->width));
     ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
+    ref->z_index = g->z_index;
+    ref->start_row = c->y; ref->start_column = c->x;
+    uint32_t num_cols = g->num_cells, num_rows = g->num_lines;
+    if (num_cols == 0) {
+        num_cols = ref->src_width / global_state.cell_width;
+        if (ref->src_width > num_cols * global_state.cell_width) num_cols += 1;
+    } 
+    if (num_rows == 0) {
+        num_rows = ref->src_height / global_state.cell_height;
+        if (ref->src_height > num_rows * global_state.cell_height) num_rows += 1;
+    } 
+    ref->end_row = ref->start_row + num_rows;
+    ref->end_column = ref->start_column + num_cols;
 }
 
 // }}}
