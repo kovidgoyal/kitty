@@ -281,6 +281,7 @@ add_trim_predicate(Image *img) {
 static bool
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return false; }
+#define MAX_DATA_SZ (4 * 100000000)
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -302,10 +303,9 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img->width = g->data_width; img->height = g->data_height;
         switch(fmt) {
             case PNG:  
-                if (!g->data_sz) ABRT(EINVAL, "Must provide a data size with the PNG format");
-                if (g->data_sz > 4 * 100000000) ABRT(EINVAL, "PNG data size too large");
+                if (g->data_sz > MAX_DATA_SZ) ABRT(EINVAL, "PNG data size too large");
                 img->load_data.is_4byte_aligned = true;
-                img->load_data.data_sz = g->data_sz;
+                img->load_data.data_sz = g->data_sz ? g->data_sz : 1024 * 100;
                 break;
             case RGB:
             case RGBA:
@@ -319,9 +319,12 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (tt == 'd') {
             if (g->more) self->loading_image = img->internal_id;
             img->load_data.buf_capacity = img->load_data.data_sz + (g->compressed ? 1024 : 10);  // compression header
-            img->load_data.buf = malloc(img->load_data.buf_capacity + 4);
-            if (img->load_data.buf == NULL) fatal("Out of memory while allocating image load data buffer");
+            img->load_data.buf = malloc(img->load_data.buf_capacity);
             img->load_data.buf_used = 0;
+            if (img->load_data.buf == NULL) {
+                ABRT(ENOMEM, "Out of memory");
+                img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
+            }
         }
     } else {
         img = img_by_internal_id(self, self->loading_image);
@@ -334,8 +337,14 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     static char fname[2056] = {0};
     switch(tt) {
         case 'd':  // direct
-            if (g->payload_sz >= img->load_data.buf_capacity - img->load_data.buf_used) {
-                ABRT(EFBIG, "Too much data transmitted");
+            if (img->load_data.buf_capacity - img->load_data.buf_used < g->payload_sz) {
+                if (img->load_data.buf_used + g->payload_sz > MAX_DATA_SZ || fmt != PNG) ABRT(EFBIG, "Too much data");
+                img->load_data.buf_capacity = MIN(2 * img->load_data.buf_capacity, MAX_DATA_SZ);
+                img->load_data.buf = realloc(img->load_data.buf, img->load_data.buf_capacity);
+                if (img->load_data.buf == NULL) {
+                    ABRT(ENOMEM, "Out of memory");
+                    img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
+                }
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
             img->load_data.buf_used += g->payload_sz;
@@ -409,6 +418,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         }
     }
     return img->data_loaded;
+#undef MAX_DATA_SZ
 #undef ABRT
 }
 

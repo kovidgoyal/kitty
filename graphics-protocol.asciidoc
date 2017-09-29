@@ -79,17 +79,15 @@ bytes.
 
 === PNG data
 
-In this format any PNG image can be transmitted directly. The size of the PNG data
-**must** be specified in the control data. For example:
+In this format any PNG image can be transmitted directly.  For example:
 
 ```
-<ESC>_Gf=100,S=4897;<payload><ESC>\
+<ESC>_Gf=100;<payload><ESC>\
 
 ```
 
-Here the size (in bytes) of the PNG file is specified using the `S` key and the
-PNG format is specified using the `f` key. The pixel data must therefore be
-`S=4897` bytes.
+The PNG format is specified using the `f=100` key. The width and height of
+the image will be read from the PNG data itself.
 
 
 === Compression
@@ -127,7 +125,7 @@ and can take the values:
 First let us consider the local client techniques (files and shared memory). Some examples:
 
 ```
-<ESC>_Gf=100,S=3567,t=f;<encoded /path/to/file.png><ESC>\
+<ESC>_Gf=100,t=f;<encoded /path/to/file.png><ESC>\
 ```
 
 Here we tell the terminal emulator to read PNG data from the specified file of
