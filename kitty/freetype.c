@@ -18,6 +18,7 @@ typedef struct {
     bool is_scalable;
 } Face;
 
+static PyObject* FreeType_Exception = NULL;
 
 void 
 set_freetype_error(const char* prefix, int err_code) {
@@ -41,12 +42,12 @@ set_freetype_error(const char* prefix, int err_code) {
 
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
-            PyErr_Format(PyExc_ValueError, "%s %s", prefix, ft_errors[i].err_msg);
+            PyErr_Format(FreeType_Exception, "%s %s", prefix, ft_errors[i].err_msg);
             return;
         }
         i++;
     }
-    PyErr_Format(PyExc_ValueError, "%s (error code: %d)", prefix, err_code);
+    PyErr_Format(FreeType_Exception, "%s (error code: %d)", prefix, err_code);
 }
 
 static FT_Library  library;
@@ -190,7 +191,7 @@ trim_to_width(Face UNUSED *self, PyObject *args) {
     rows = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 0));
     width = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 1));
     extra = width - cell_width;
-    if (extra >= cell_width) { PyErr_SetString(PyExc_ValueError, "Too large for trimming"); return NULL; }
+    if (extra >= cell_width) { PyErr_SetString(FreeType_Exception, "Too large for trimming"); return NULL; }
     PyObject *ans = PyStructSequence_New(&BitmapType);
     if (ans == NULL) return PyErr_NoMemory();
     src = (unsigned char*)PyByteArray_AS_STRING(PyStructSequence_GET_ITEM(bitmap, 3));
@@ -267,13 +268,16 @@ free_freetype() {
 
 bool 
 init_freetype_library(PyObject *m) {
+    FreeType_Exception = PyErr_NewException("fast_data_types.FreeTypeError", NULL, NULL);
+    if (FreeType_Exception == NULL) return false;
+    if (PyModule_AddObject(m, "FreeTypeError", FreeType_Exception) != 0) return false;
     int error = FT_Init_FreeType(&library);
     if (error) {
         set_freetype_error("Failed to initialize FreeType library, with error:", error);
         return false;
     }
     if (Py_AtExit(free_freetype) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the freetype library at exit handler");
+        PyErr_SetString(FreeType_Exception, "Failed to register the freetype library at exit handler");
         return false;
     }
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;

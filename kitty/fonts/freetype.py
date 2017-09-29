@@ -8,7 +8,7 @@ from collections import namedtuple
 from functools import lru_cache
 from itertools import chain
 
-from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face
+from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face, FreeTypeError
 from kitty.fonts.box_drawing import render_missing_glyph
 from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth, adjust_line_height
 
@@ -257,6 +257,9 @@ def render_cell(text=' ', bold=False, italic=False):
         bitmap_char = render_char(text, bold, italic, width)
     except FontNotFound as err:
         safe_print('ERROR:', err, file=sys.stderr)
+        return missing_glyph(width)
+    except FreeTypeError as err:
+        safe_print('Failed to render text:', repr(text), 'with error:', err, file=sys.stderr)
         return missing_glyph(width)
     second = None
     if width == 2:
