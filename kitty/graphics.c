@@ -114,6 +114,8 @@ img_by_internal_id(GraphicsManager *self, size_t id) {
     return NULL;
 }
 
+// Loading image data {{{
+
 static char add_response[512] = {0};
 static bool has_add_respose = false;
 
@@ -282,6 +284,7 @@ static bool
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return false; }
 #define MAX_DATA_SZ (4 * 100000000)
+    has_add_respose = false;
     bool existing, init_img = true;
     Image *img;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -422,25 +425,31 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 #undef ABRT
 }
 
+static inline const char*
+create_add_response(GraphicsManager UNUSED *self, const GraphicsCommand *g, bool data_loaded) {
+    static char rbuf[sizeof(add_response)/sizeof(add_response[0])];
+    if (g->id) {
+        if (!has_add_respose) {
+            if (!data_loaded) return NULL;
+            snprintf(add_response, 10, "OK"); 
+        }
+        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", g->id, add_response);
+        return rbuf;
+    }
+    return NULL;
+}
+
+// }}}
+
 const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
-    static char rbuf[sizeof(add_response)/sizeof(add_response[0])];
     bool data_loaded;
 
     switch(g->action) {
         case 0:
         case 't':
-            has_add_respose = false;
             data_loaded = handle_add_command(self, g, payload);
-            if (g->id) {
-                if (!has_add_respose) {
-                    if (!data_loaded) break;
-                    snprintf(add_response, 10, "OK"); 
-                }
-                snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", g->id, add_response);
-                return rbuf;
-            }
-            break;
+            return create_add_response(self, g, data_loaded);
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);
             break;
