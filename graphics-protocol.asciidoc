@@ -1,0 +1,222 @@
+= The terminal graphics protocol
+
+The goal of this specification is to create a flexible and performant protocol
+that allows the program running in the terminal, hereafter called the _client_,
+to render arbitrary pixel (raster) graphics to the screen of the terminal
+emulator. The major design goals are
+
+ * Should not require terminal emulators to understand image formats.
+ * Should allow specifying graphics to be drawn at individual pixel positions. 
+ * The graphics should integrate with the text, in particular it should be possible to draw graphics
+   below as well as above the text, with alpha blending.
+ * Should use optimizations when the client is running on the same computer as the terminal emulator.
+
+For some discussion regarding the design choices, see link:../../issues/33[#33].
+
+toc::[]
+
+== Getting the window size
+
+In order to know what size of images to display and how to position them, the client must be able to get the
+window size in pixels and the number of cells per row and column. This can be done by using the `TIOCGWINSZ` ioctl.
+Some C code to demonstrate its use
+
+```C
+struct ttysize ts; 
+ioctl(0, TIOCGWINSZ, &ts);
+printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
+```
+
+Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
+Examples of terminals that return correct values: `kitty, xterm`
+
+== The graphics escape code
+
+All graphics escape codes are of the form:
+
+```
+<ESC>_G<control data>;<payload><ESC>\
+```
+
+This is a so-called _Application Programming Command (APC)_. Most terminal
+emulators ignore APC codes, making it safe to use.  
+
+The control data is a comma-separated list of `key=value` pairs.  The payload
+is arbitrary binary data, base64-encoded to prevent interoperation problems
+with legacy terminals that get confused by control codes within an APC code.
+The meaning of the payload is interpreted based on the control data.
+
+The first step is to transmit the actual image data.
+
+== Transferring pixel data
+
+The first consideration when transferring data between the client and the
+terminal emulator is the format in which to do so. Since there is a vast and
+growing number of image formats in existence, it does not make sense to have
+every terminal emulator implement support for them. Instead, the client should
+send simple pixel data to the terminal emulator. The obvious downside to this
+is performance, especially when the client is running on a remote machine.
+Techniques for remedying this limitation are discussed later. The terminal
+emulator must understand pixel data in three formats, 24-bit RGB, 32-bit RGBA and
+PNG. This is specified using the `f` key in the control data. `f=32` (which is the
+default) indicates 32-bit RGBA data and `f=24` indicates 24-bit RGB data and `f=100`
+indicates PNG data. The PNG format is supported for convenience and a compact way
+of transmitting paletted images.
+
+=== RGB and RGBA data
+
+In these formats the pixel data is stored directly ans 3 or 4 bytes per pixel, respectively.
+When specifying images in this format, the image dimensions **must** be sent in the control data.
+For example:
+
+```
+<ESC>_Gf=24,s=10,v=20;<payload><ESC>\
+```
+
+Here the width and height are specified using the `s` and `v` keys respectively. Since
+`f=24` there are three bytes per pixel and therefore the pixel data must be `3 * 10 * 20 = 600`
+bytes.
+
+=== PNG data
+
+In this format any PNG image can be transmitted directly. The size of the PNG data
+**must** be specified in the control data. For example:
+
+```
+<ESC>_Gf=100,S=4897;<payload><ESC>\
+
+```
+
+Here the size (in bytes) of the PNG file is specified using the `S` key and the
+PNG format is specified using the `f` key. The pixel data must therefore be
+`S=4897` bytes.
+
+
+=== Compression
+
+The client can send compressed image data to the terminal emulator, by specifying the
+`o` key. Currently, only zlib based deflate compression is supported, which is specified using
+`o=z`. For example,
+
+```
+<ESC>_Gf=24,s=10,v=20,o=z;<payload><ESC>\
+```
+
+This is the same as the example from the RGB data section, except that the
+payload is now compressed using deflate. The terminal emulator will decompress
+it before rendering. You can specify compression for any format. The terminal
+emulator will decompress before interpreting the pixel data.
+
+
+=== The transmission medium
+
+The transmission medium is specified using the `t` key. The `t` key defaults to `d`
+and can take the values:
+
+|===
+| Value of `t` | Meaning 
+
+| d | Direct (the data is transmitted within the escape code itself)
+| f | A simple file
+| t | A temporary file, the terminal emulator will delete the file after reading the pixel data
+| s | A http://man7.org/linux/man-pages/man7/shm_overview.7.html[POSIX shared memory object]. The terminal emulator will delete it after reading the pixel data 
+|===
+
+==== Local client
+
+First let us consider the local client techniques (files and shared memory). Some examples:
+
+```
+<ESC>_Gf=100,S=3567,t=f;<encoded /path/to/file.png><ESC>\
+```
+
+Here we tell the terminal emulator to read PNG data from the specified file of
+the specified size.
+
+```
+<ESC>_Gs=10,v=2,t=s,o=z;<encoded /some-shared-memory-name><ESC>\
+```
+
+Here we tell the terminal emulator to read compressed image data from
+the specified shared memory object.
+
+The client can also specify a size and offset to tell the terminal emulator
+to only read a part of the specified file. The is done using the `S` and `O`
+keys respectively. For example:
+
+```
+<ESC>_Gs=10,v=2,t=s,S=80,O=10;<encoded /some-shared-memory-name><ESC>\
+```
+
+This tells the terminal emulator to read `80` bytes starting from the offset `10`
+inside the specified shared memory buffer.
+
+
+==== Remote client
+
+Remote clients, those that are unable to use the filesystem/shared memory to
+transmit data, must send the pixel data directly using escape codes. Since
+escape codes are of limited maximum length, the data will need to be chunked up
+for transfer. This is done using the `m` key. The pixel data must first be
+base64 encoded then chunked up into chunks no larger than `4096` bytes. The client
+then sends the graphics escape code as usual, with the addition of an `m` key that
+must have the value `1` for all but the last chunk, where it must be `0`. For example,
+if the data is split into three chunks, the client would send the following
+sequence of escape codes to the terminal emulator:
+
+```
+<ESC>_Gs=100,v=30,m=1;<encoded pixel data first chunk><ESC>\                  
+<ESC>_Gm=1;<encoded pixel data second chunk><ESC>\                  
+<ESC>_Gm=0;<encoded pixel data last chunk><ESC>\                  
+```
+
+Note that only the first escape code needs to have the full set of control
+codes such as width, height, format etc. Subsequent chunks must have
+only the `m` key. The client **must** finish sending all chunks for a single image
+before sending any other graphics related escape codes.
+
+
+=== Detecting available transmission mediums
+
+Since a client has no a-priori knowledge of whether it shares a filesystem/shared emmory
+with the terminal emulator, it can send an id with the control data, using the `i` key 
+(which can be an arbitrary positive integer up to 4294967295, it must not be zero).
+If it does so, the terminal emulator will reply after trying to load the image, saying
+whether loading was successful or not. For example:
+
+```
+<ESC>_Gi=31,s=10,v=2,t=s;<encoded /some-shared-memory-name><ESC>\
+```
+
+to which the terminal emulator will reply (after trying to load the data):
+
+```
+<ESC>_Gi=31;error message or OK<ESC>\
+```
+
+Here the `i` value will be the same as was sent by the client in the original
+request.  The message data will be a ASCII encoded string containing only
+printable characters and spaces. The string will be `OK` if reading the pixel
+data succeeded or an error message. 
+
+
+== Control data reference
+
+The table below shows all the control data keys as well as what values they can
+take, and the default value they take when missing.
+
+|===
+|Key | Value | Default | Description
+
+| `a` | Single character. `(t, T, q, p)` | `t` | The overall action this graphics command is performing.
+| `f` | Positive integer. `(24, 32, 100)`. | `32` | The format in which the image data is sent.
+| `t` | Single character. `(d, f, t, s)`. | `d` | The transmission medium used.
+| `s` | Positive integer. | `0` | The width of the image being sent.
+| `v` | Positive integer. | `0` | The height of the image being sent.
+| `S` | Positive integer. | `0` | The size of data to read from a file.
+| `O` | Positive integer. | `0` | The offset from which to read data from a file.
+| `i` | Positive integer. `(0 - 4294967295)` | `0` | The image id
+| `o` | Single character. `only z` | - | The type of data compression.
+| `m` | zero or one | `0` | Whether there is more chunked data available.
+
+|===

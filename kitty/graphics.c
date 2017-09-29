@@ -427,7 +427,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                     if (!data_loaded) break;
                     snprintf(add_response, 10, "OK"); 
                 }
-                snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gq=%u;%s\033\\", g->id, add_response);
+                snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", g->id, add_response);
                 return rbuf;
             }
             break;
