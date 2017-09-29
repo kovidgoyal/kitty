@@ -44,9 +44,11 @@ free_load_data(LoadData *ld) {
     ld->mapped_file = NULL; ld->mapped_file_sz = 0;
 }
 
+free_texture_func free_texture = NULL;
+
 static inline void
 free_image(Image *img) {
-    // TODO: free the texture if texture_id is not zero
+    if (img->texture_id) free_texture(&img->texture_id);
     free_load_data(&(img->load_data));
 }
 

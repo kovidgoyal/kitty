@@ -560,6 +560,7 @@ init_shaders(PyObject *module) {
     draw_borders = &draw_borders_impl;
     draw_cells = &draw_cells_impl;
     draw_cursor = &draw_cursor_impl;
+    free_texture = &free_texture_impl;
     return true;
 }
 // }}}

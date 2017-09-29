@@ -90,6 +90,13 @@ static void
 update_viewport_size_impl(int w, int h) {
     glViewport(0, 0, w, h); check_gl();
 }
+
+static void
+free_texture_impl(GLuint *tex_id) {
+    glDeleteTextures(1, tex_id); check_gl();
+    *tex_id = 0;
+}
+
 // }}}
 
 // Programs {{{

@@ -101,3 +101,4 @@ EXTERNAL_FUNC0(draw_borders, void);
 EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
 EXTERNAL_FUNC(draw_cursor, void, CursorRenderInfo *);
 EXTERNAL_FUNC(update_viewport_size, void, int, int);
+EXTERNAL_FUNC(free_texture, void, uint32_t*);
