@@ -418,7 +418,7 @@ write_to_child(Screen *self, const char *data, size_t sz) {
 
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
-    const char *response = grman_handle_command(self->grman, cmd, payload);
+    const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty);
     if (response != NULL) write_to_child(self, response, strlen(response));
 }
 // }}}

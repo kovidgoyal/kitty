@@ -28,11 +28,21 @@ typedef struct {
 } LoadData;
 
 typedef struct {
+    uint32_t src_width, src_height, src_x, src_y;
+    uint32_t dest_x_offset, dest_y_offset;
+    int start_row, start_column, end_row, end_column;
+} ImageRef;
+
+
+typedef struct {
     uint32_t texture_id, client_id, width, height;
-    size_t internal_id, refcnt;
+    size_t internal_id;
 
     bool data_loaded;
     LoadData load_data;
+
+    ImageRef *refs;
+    size_t refcnt, refcap;
 } Image;
 
 
@@ -48,4 +58,4 @@ PyTypeObject GraphicsManager_Type;
 
 GraphicsManager* grman_realloc(GraphicsManager *, index_type lines, index_type columns);
 void grman_clear(GraphicsManager*);
-const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload);
+const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty);

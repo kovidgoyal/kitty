@@ -15,7 +15,7 @@
 #include <zlib.h>
 #include <png.h>
 
-#define REPORT_ERROR(fmt, ...) { fprintf(stderr, fmt, __VA_ARGS__); fprintf(stderr, "\n"); }
+#define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
 GraphicsManager*
 grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
@@ -36,6 +36,12 @@ grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
 }
 
 static inline void
+free_refs_data(Image *img) {
+    free(img->refs); img->refs = NULL;
+    img->refcnt = 0; img->refcap = 0;
+}
+
+static inline void
 free_load_data(LoadData *ld) {
     free(ld->buf); ld->buf_used = 0; ld->buf_capacity = 0;
     ld->buf = NULL;
@@ -49,6 +55,7 @@ free_texture_func free_texture = NULL;
 static inline void
 free_image(Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
+    free_refs_data(img);
     free_load_data(&(img->load_data));
 }
 
@@ -75,37 +82,12 @@ ensure_space(void *array, size_t *capacity, size_t count, size_t item_size, bool
     return ans;
 }
 
-static inline Image*
-find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
-    if (id) {
-        for (size_t i = 0; i < self->image_count; i++) {
-            if (self->images[i].client_id == id) {
-                *existing = true;
-                return self->images + i;
-            }
-        }
-    }
-    *existing = false;
-    self->images = ensure_space(self->images, &self->images_capacity, self->image_count, sizeof(Image), true);
-    return self->images + self->image_count++;
-}
-
 static inline void
 remove_from_array(void *array, size_t item_size, size_t idx, size_t array_count) {
     size_t num_to_right = array_count - 1 - idx;
     uint8_t *p = (uint8_t*)array;
     if (num_to_right > 0) memmove(p + (idx * item_size), p + ((idx + 1) * item_size), num_to_right * item_size);  
     memset(p + (item_size * (array_count - 1)), 0, item_size);
-}
-
-static inline void
-remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
-    for (size_t i = self->image_count; i-- > 0;) {
-        if (predicate(self->images + i)) {
-            free_image(self->images + i);
-            remove_from_array(self->images, sizeof(Image), i, self->image_count--);
-        }
-    }
 }
 
 static inline Image*
@@ -115,6 +97,15 @@ img_by_internal_id(GraphicsManager *self, size_t id) {
     }
     return NULL;
 }
+
+static inline Image*
+img_by_client_id(GraphicsManager *self, uint32_t id) {
+    for (size_t i = 0; i < self->image_count; i++) {
+        if (self->images[i].client_id == id) return self->images + i;
+    }
+    return NULL;
+}
+
 
 // Loading image data {{{
 
@@ -282,9 +273,35 @@ add_trim_predicate(Image *img) {
     return !img->data_loaded || (!img->client_id && !img->refcnt);
 }
 
-static bool
-handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
-#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return false; }
+static inline Image*
+find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
+    if (id) {
+        for (size_t i = 0; i < self->image_count; i++) {
+            if (self->images[i].client_id == id) {
+                *existing = true;
+                return self->images + i;
+            }
+        }
+    }
+    *existing = false;
+    self->images = ensure_space(self->images, &self->images_capacity, self->image_count, sizeof(Image), true);
+    return self->images + self->image_count++;
+}
+
+static inline void
+remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
+    for (size_t i = self->image_count; i-- > 0;) {
+        if (predicate(self->images + i)) {
+            free_image(self->images + i);
+            remove_from_array(self->images, sizeof(Image), i, self->image_count--);
+        }
+    }
+}
+
+
+static Image*
+handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty) {
+#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return NULL; }
 #define MAX_DATA_SZ (4 * 100000000)
     has_add_respose = false;
     bool existing, init_img = true;
@@ -301,6 +318,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (existing) {
             free_load_data(&img->load_data);
             img->data_loaded = false;
+            free_refs_data(img);
+            *is_dirty = true;
         } else {
             img->internal_id = internal_id_counter++;
             img->client_id = g->id;
@@ -371,7 +390,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         default:
             ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);
     }
-    if (!img->data_loaded) return false;
+    if (!img->data_loaded) return NULL;
     self->loading_image = 0;
     bool needs_processing = g->compressed || fmt == PNG;
     if (needs_processing) {
@@ -381,20 +400,20 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             case 'z':
                 IB;
                 if (!inflate_zlib(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return false;
+                    img->data_loaded = false; return NULL;
                 }
                 break;
             case 0:
                 break;
             default:
                 ABRT(EINVAL, "Unknown image compression: %c", g->compressed);
-                img->data_loaded = false; return false;
+                img->data_loaded = false; return NULL;
         }
         switch(fmt) {
             case PNG:
                 IB;
                 if (!inflate_png(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return false;
+                    img->data_loaded = false; return NULL;
                 }
                 break;
             default: break;
@@ -422,7 +441,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             } else img->load_data.data = img->load_data.mapped_file;
         }
     }
-    return img->data_loaded;
+    return img;
 #undef MAX_DATA_SZ
 #undef ABRT
 }
@@ -443,20 +462,59 @@ create_add_response(GraphicsManager UNUSED *self, const GraphicsCommand *g, bool
 
 // }}}
 
+// Displaying images {{{
+
+static void 
+handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
+    if (img == NULL) img = img_by_client_id(self, g->id);
+    if (img == NULL) { REPORT_ERROR("Put command refers to non-existent image with id: %u", g->id); return; }
+    if (!img->data_loaded) { REPORT_ERROR("Put command refers to image with id: %u that could not load its data", g->id); return; }
+    if (img->refcnt >= img->refcap) {
+        img->refcap = MAX(10, img->refcap * 2);
+        img->refs = realloc(img->refs, img->refcap * sizeof(ImageRef));
+        if (img->refs == NULL) { REPORT_ERROR("Out of memory growing image refs array"); img->refcap = 0; return; }
+    }
+    *is_dirty = true;
+    ImageRef *ref = NULL;
+    for (size_t i=0; i < img->refcnt; i++) {
+        if ((unsigned)img->refs[i].start_row == c->x && (unsigned)img->refs[i].start_column == c->y) {
+            ref = img->refs + i;
+            break;
+        }
+    }
+    if (ref == NULL) ref = img->refs + img->refcnt++;
+    ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
+    ref->src_width = MIN(ref->src_width, img->width - (img->width > ref->src_x ? ref->src_x : img->width));
+    ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
+}
+
+// }}}
+
 const char*
-grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload) {
-    bool data_loaded;
+grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty) {
+    Image *image;
+    const char *ret = NULL;
 
     switch(g->action) {
         case 0:
         case 't':
-            data_loaded = handle_add_command(self, g, payload);
-            return create_add_response(self, g, data_loaded);
+        case 'T':
+            image = handle_add_command(self, g, payload, is_dirty);
+            ret = create_add_response(self, g, image != NULL);
+            if (g->action == 'T') handle_put_command(self, g, c, is_dirty, image);
+            break;
+        case 'p':
+            if (!g->id) {
+                REPORT_ERROR("%s", "Put graphics command without image id");
+                break;
+            }
+            handle_put_command(self, g, c, is_dirty, NULL);
+            break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);
             break;
     }
-    return NULL;
+    return ret;
 }
 
 void
