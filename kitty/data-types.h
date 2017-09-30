@@ -310,7 +310,7 @@ bool schedule_write_to_child(unsigned long id, const char *data, size_t sz);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
-void copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, size_t stride);
+void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
 
 unsigned int safe_wcwidth(uint32_t ch);
 void change_wcwidth(bool use9);

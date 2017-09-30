@@ -167,9 +167,8 @@ set_configured_colors(ColorProfile *self, PyObject *args) {
 }
 
 void
-copy_color_table_to_buffer(ColorProfile *self, void *address, int offset, size_t stride) {
+copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size_t stride) {
     size_t i;
-    color_type *buf = address;
     stride = MAX(1, stride);
     for (i = 0, buf = buf + offset; i < sizeof(self->color_table)/sizeof(self->color_table[0]); i++, buf += stride) {
         *buf = self->color_table[i];

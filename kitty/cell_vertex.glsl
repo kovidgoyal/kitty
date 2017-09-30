@@ -1,29 +1,15 @@
 #version GLSL_VERSION
-uniform float geom[6];
-uniform ivec2 color_indices;  
-uniform uint default_colors[6]; 
-uniform uint dimensions[9];  
-uniform ColorTable {
-    uint color_table[256]; // The color table
+layout(std140) uniform CellRenderData {
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy;
+
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
+
+    int color1, color2;
+
+    uint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
+
+    uint color_table[256]; 
 };
-#define xstart geom[0]
-#define ystart geom[1]
-#define dx geom[2]
-#define dy geom[3]
-#define highlight_fg default_colors[2]
-#define highlight_bg default_colors[3]
-#define cursor_color default_colors[4]
-#define url_color default_colors[5]
-#define xnum dimensions[0]
-#define ynum dimensions[1]
-#define cursor_x dimensions[2]
-#define cursor_y dimensions[3]
-#define cursor_w dimensions[4]
-#define url_xl dimensions[5]
-#define url_y dimensions[6]
-#define url_xr dimensions[7]
-#define sprite_dx geom[4]
-#define sprite_dy geom[5]
 
 in uvec4 sprite_coords;
 in uvec3 colors;
@@ -93,7 +79,7 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
 }
 
 float in_range(uint x, uint y) {
-    if (url_y == y && url_xl <= x && x <= url_xr) return 1.0;
+    if (url_yl == y && url_xl <= x && x <= url_xr) return 1.0;
     return 0.0;
 }
 
@@ -114,6 +100,8 @@ void main() {
     vec2 xpos = vec2(left, left + dx);
     vec2 ypos = vec2(top, top - dy);
     uvec2 pos = pos_map[gl_VertexID];
+    uvec2 default_colors = uvec2(default_fg, default_bg);
+    ivec2 color_indices = ivec2(color1, color2);
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
     // The character sprite being rendered
