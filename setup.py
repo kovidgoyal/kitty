@@ -212,22 +212,21 @@ def newer(dest, *sources):
 def dependecies_for(src, obj, all_headers):
     dep_file = obj.rpartition('.')[0] + '.d'
     try:
-        deps = open(dep_file).read().splitlines()
+        deps = open(dep_file).read()
     except FileNotFoundError:
         yield src
         yield from iter(all_headers)
     else:
-        for line in deps:
-            if ':' in line:
-                continue
-            line = line.rstrip('\\')
-            parts = line.split(' ')
-            for part in parts:
-                part = part.strip()
-                if part:
-                    path = os.path.abspath(part.strip())
-                    if path.startswith(base):
-                        yield path
+        RE_INC = re.compile(r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE)
+        SPACE_TOK = '\x1B'
+
+        text = deps.replace('\\\n', ' ').replace('\\ ', SPACE_TOK)
+        for match in RE_INC.finditer(text):
+            files = (f.replace(SPACE_TOK, ' ') for f in match.group('deps').split())
+            for path in files:
+                path = os.path.abspath(path)
+                if path.startswith(base):
+                    yield path
 
 
 def compile_c_extension(module, incremental, sources, headers):
