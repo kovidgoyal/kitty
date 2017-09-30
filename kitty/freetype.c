@@ -16,6 +16,7 @@ typedef struct {
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
     bool is_scalable;
+    PyObject *path;
 } Face;
 
 static PyObject* FreeType_Exception = NULL;
@@ -64,6 +65,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
+        self->path = PyTuple_GET_ITEM(args, 0);
+        Py_INCREF(self->path);
         error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;
@@ -77,8 +80,19 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Face* self) {
     FT_Done_Face(self->face);
+    Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
+
+static PyObject *
+repr(Face *self) {
+    return PyUnicode_FromFormat(
+        "Face(path=%S, is_scalable=%S, units_per_EM=%u, ascender=%i, descender=%i, height=%i, max_advance_width=%i max_advance_height=%i, underline_position=%i, underline_thickness=%i)",
+        self->path, self->is_scalable ? Py_True : Py_False, 
+        self->ascender, self->descender, self->height, self->max_advance_width, self->max_advance_height, self->underline_position, self->underline_thickness
+    );
+}
+
 
 static PyObject*
 set_char_size(Face *self, PyObject *args) {
@@ -233,6 +247,7 @@ static PyMemberDef members[] = {
     MEM(underline_position, T_INT),
     MEM(underline_thickness, T_INT),
     MEM(is_scalable, T_BOOL),
+    MEM(path, T_OBJECT_EX),
     {NULL}  /* Sentinel */
 };
 
@@ -257,6 +272,7 @@ PyTypeObject Face_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_new = new,                
+    .tp_repr = (reprfunc)repr,
 };
 
 INIT_TYPE(Face)
