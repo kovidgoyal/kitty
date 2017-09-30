@@ -29,14 +29,14 @@ typedef struct {
 
 typedef struct {
     float left, top, right, bottom;
-} Rect;
+} ImageRect;
 
 typedef struct {
     uint32_t src_width, src_height, src_x, src_y;
     uint32_t dest_x_offset, dest_y_offset, cell_x_offset, cell_y_offset;
     int32_t z_index;
     int32_t start_row, start_column, end_row, end_column;
-    Rect src_rect;
+    ImageRect src_rect;
 } ImageRef;
 
 
@@ -52,7 +52,7 @@ typedef struct {
 } Image;
 
 typedef struct {
-    Rect src_rect, dest_rect;
+    ImageRect src_rect, dest_rect;
     uint32_t texture_id, group_count;
     int z_index;
     size_t image_id;
