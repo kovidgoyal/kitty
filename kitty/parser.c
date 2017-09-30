@@ -555,6 +555,8 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
         data_offset = 'O',
         num_cells = 'c',
         num_lines = 'r',
+        cell_x_offset = 'X',
+        cell_y_offset = 'Y',
         z_index = 'z'  
     };
     enum KEYS key = 'a';
@@ -576,7 +578,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #define KS(n, vs) case n: state = EQUAL; value_state = vs; break
 #define U(x) KS(x, UINT)
                     KS(action, FLAG); KS(transmission_type, FLAG); KS(compressed, FLAG); KS(z_index, INT);
-                    U(format); U(more); U(id); U(data_sz); U(data_offset); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
+                    U(format); U(more); U(id); U(data_sz); U(data_offset); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines); U(cell_x_offset); U(cell_y_offset);
 #undef U
 #undef KS
                     default:
@@ -629,7 +631,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 READ_UINT;
 #define U(x) case x: g.x = code; break
                 switch(key) { 
-                    U(format); U(more); U(id); U(data_sz); U(data_offset); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines);
+                    U(format); U(more); U(id); U(data_sz); U(data_offset); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines); U(cell_x_offset); U(cell_y_offset);
                     default: break; 
                 }
                 state = AFTER_VALUE;
@@ -673,10 +675,10 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)
 #define I(x) #x, (int)(g.x)
-    REPORT_VA_COMMAND("s {sc sc sc  sI sI sI sI sI  sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
+    REPORT_VA_COMMAND("s {sc sc sc  sI sI sI sI sI  sI sI sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
             A(action), A(transmission_type), A(compressed),
             U(format), U(more), U(id), U(data_sz), U(data_offset),
-            U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines),
+            U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines), U(cell_x_offset), U(cell_y_offset),
             U(payload_sz), I(z_index),
             payload, g.payload_sz
     );

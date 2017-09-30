@@ -12,6 +12,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdlib.h>
+
 #include <zlib.h>
 #include <png.h>
 
@@ -61,10 +63,12 @@ free_image(Image *img) {
 
 static void
 dealloc(GraphicsManager* self) {
+    size_t i;
     if (self->images) {
-        for (size_t i = 0; i < self->image_count; i++) free_image(self->images + i);
+        for (i = 0; i < self->image_count; i++) free_image(self->images + i);
         free(self->images);
     }
+    free(self->render_pointers); free(self->render_data);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -294,6 +298,7 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
         if (predicate(self->images + i)) {
             free_image(self->images + i);
             remove_from_array(self->images, sizeof(Image), i, self->image_count--);
+            self->layers_dirty = true;
         }
     }
 }
@@ -490,17 +495,71 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
     ref->z_index = g->z_index;
     ref->start_row = c->y; ref->start_column = c->x;
+    ref->cell_x_offset = MIN(g->cell_x_offset, global_state.cell_width - 1);
+    ref->cell_y_offset = MIN(g->cell_y_offset, global_state.cell_height - 1);
     uint32_t num_cols = g->num_cells, num_rows = g->num_lines;
     if (num_cols == 0) {
-        num_cols = ref->src_width / global_state.cell_width;
+        num_cols = (ref->src_width + ref->cell_x_offset) / global_state.cell_width;
         if (ref->src_width > num_cols * global_state.cell_width) num_cols += 1;
     } 
     if (num_rows == 0) {
-        num_rows = ref->src_height / global_state.cell_height;
+        num_rows = (ref->src_height + ref->cell_y_offset) / global_state.cell_height;
         if (ref->src_height > num_rows * global_state.cell_height) num_rows += 1;
     } 
     ref->end_row = ref->start_row + num_rows;
     ref->end_column = ref->start_column + num_cols;
+
+    // The src rect in OpenGL co-ords [0, 1] with origin at top-left corner of image
+    ref->src_rect.left = (float)ref->src_x / (float)img->width;
+    ref->src_rect.right = (float)(ref->src_x + ref->src_width) / (float)img->width;
+    ref->src_rect.top = (float)ref->src_y / (float)img->height;
+    ref->src_rect.bottom = (float)(ref->src_y + ref->src_height) / (float)img->height;
+
+    // Move the cursor, the screen will take care of ensuring it is in bounds
+    c->x += num_cols; c->y += num_rows;
+}
+
+#define ensure_space_for(base, array, type, num, capacity) \
+    if (base->capacity < num) { \
+        base->capacity = MAX(100, MAX(2 * base->capacity, num)); \
+        base->array = realloc(base->array, sizeof(type) * base->capacity); \
+        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
+    }
+
+static int 
+cmp_by_zindex_and_image(const void *a_, const void *b_) { 
+    const ImageRenderData *a = (const ImageRenderData*)a_, *b = (const ImageRenderData*)b_;
+    int ans = a->z_index - b->z_index;
+    if (ans == 0) ans = a->image_id - b->image_id;
+    return ans; 
+}
+
+void
+grman_update_layers(GraphicsManager *self, unsigned int scrolled_by) {
+    if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
+    self->last_scrolled_by = scrolled_by;
+    if (!self->layers_dirty) return;
+    self->layers_dirty = false;
+    size_t i, j;
+    self->num_of_negative_refs = 0; self->num_of_positive_refs = 0;
+    Image *img; ImageRef *ref;
+
+    // Iterate over all visible refs and create render data
+    self->count = 0;
+    for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
+        /* TODO: calculate geometry and ignore refs outside of current viewport */
+        if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
+        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity);
+        ImageRenderData *rd = self->render_data + self->count;
+        self->count++;
+        rd->z_index = ref->z_index; rd->image_id = img->internal_id;
+        rd->src_rect = ref->src_rect;
+    }}
+    if (!self->count) return;
+    // Sort visible refs in draw order (z-index, img)
+    ensure_space_for(self, render_pointers, ImageRenderData*, self->count, rp_capacity);
+    for (i = 0; i < self->count; i++) self->render_pointers[i] = self->render_data + i;
+    qsort(self->render_pointers, self->count, sizeof(ImageRenderData*), cmp_by_zindex_and_image);
 }
 
 // }}}

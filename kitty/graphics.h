@@ -10,11 +10,9 @@
 typedef struct {
     unsigned char action, transmission_type, compressed;
     uint32_t format, more, id, data_sz, data_offset;
-    uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines;
+    uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines, cell_x_offset, cell_y_offset;
     int32_t z_index;
     size_t payload_sz;
-
-    bool layers_dirty;
 } GraphicsCommand;
 
 typedef struct {
@@ -30,10 +28,15 @@ typedef struct {
 } LoadData;
 
 typedef struct {
+    float left, top, right, bottom;
+} Rect;
+
+typedef struct {
     uint32_t src_width, src_height, src_x, src_y;
-    uint32_t dest_x_offset, dest_y_offset;
-    int z_index;
-    int start_row, start_column, end_row, end_column;
+    uint32_t dest_x_offset, dest_y_offset, cell_x_offset, cell_y_offset;
+    int32_t z_index;
+    int32_t start_row, start_column, end_row, end_column;
+    Rect src_rect;
 } ImageRef;
 
 
@@ -48,6 +51,12 @@ typedef struct {
     size_t refcnt, refcap;
 } Image;
 
+typedef struct {
+    Rect src_rect, dest_rect;
+    uint32_t texture_id, group_count;
+    int z_index;
+    size_t image_id;
+} ImageRenderData;
 
 typedef struct {
     PyObject_HEAD
@@ -55,6 +64,11 @@ typedef struct {
     index_type lines, columns;
     size_t image_count, images_capacity, loading_image;
     Image *images;
+    size_t count, capacity, rp_capacity;
+    ImageRenderData *render_data, **render_pointers;
+    bool layers_dirty;
+    size_t num_of_negative_refs, num_of_positive_refs;
+    unsigned int last_scrolled_by;
 } GraphicsManager;
 PyTypeObject GraphicsManager_Type;
 
