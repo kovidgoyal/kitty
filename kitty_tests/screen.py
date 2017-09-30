@@ -217,18 +217,18 @@ class TestScreen(BaseTest):
         s = self.create_screen(scrollback=6)
         s.draw(''.join([str(i) * s.columns for i in range(s.lines)]))
         s.resize(3, 10)
-        self.ae(str(s.line(0)), '0'*5 + '1'*5)
-        self.ae(str(s.line(1)), '2'*5 + '3'*5)
-        self.ae(str(s.line(2)), '4'*5)
+        self.ae(str(s.line(0)), '2'*5 + '3'*5)
+        self.ae(str(s.line(1)), '4'*5)
+        self.ae(str(s.line(2)), ''*5)
         s.resize(5, 1)
         self.ae(str(s.line(0)), '4')
         hb = s.historybuf
-        self.ae(str(hb), '3\n3\n3\n3\n3\n2')
+        self.ae(str(hb), '4\n3\n3\n3\n3\n3')
         s = self.create_screen(scrollback=20)
         s.draw(''.join(str(i) * s.columns for i in range(s.lines*2)))
         self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
         s.resize(5, 2)
-        self.ae(str(s.linebuf), '88\n88\n99\n99\n9')
+        self.ae(str(s.linebuf), '88\n99\n99\n9\n')
 
     def test_cursor_after_resize(self):
         s = self.create_screen()
