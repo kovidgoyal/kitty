@@ -212,21 +212,15 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     size_t sz;
     void *address;
     bool inverted = screen_invert_colors(screen);
-#define int GLint
-#define float GLfloat
-#define uint GLuint
     struct CellRenderData {
-        float xstart, ystart, dx, dy, sprite_dx, sprite_dy;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy;
 
-        uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
+        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
 
-        int color1, color2;
+        GLint color1, color2;
 
-        uint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
+        GLuint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
     };
-#undef int
-#undef float
-#undef uint
     enum { cell_data_buffer, selection_buffer, uniform_buffer };
     static struct CellRenderData *rd;
 
