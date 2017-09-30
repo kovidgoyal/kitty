@@ -209,6 +209,27 @@ def newer(dest, *sources):
     return False
 
 
+def dependecies_for(src, obj, all_headers):
+    dep_file = obj.rpartition('.')[0] + '.d'
+    try:
+        deps = open(dep_file).read().splitlines()
+    except FileNotFoundError:
+        yield src
+        yield from iter(all_headers)
+    else:
+        for line in deps:
+            if ':' in line:
+                continue
+            line = line.rstrip('\\')
+            parts = line.split(' ')
+            for part in parts:
+                part = part.strip()
+                if part:
+                    path = os.path.abspath(part.strip())
+                    if path.startswith(base):
+                        yield path
+
+
 def compile_c_extension(module, incremental, sources, headers):
     prefix = os.path.basename(module)
     objects = [
@@ -223,8 +244,8 @@ def compile_c_extension(module, incremental, sources, headers):
             cflgs.extend(map(define, defines))
 
         src = os.path.join(base, src)
-        if not incremental or newer(dest, src, *headers):
-            run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
+        if not incremental or newer(dest, *dependecies_for(src, dest, headers)):
+            run_tool([cc, '-MMD'] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
         run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
