@@ -16,8 +16,10 @@ typedef struct {
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
     bool is_scalable;
+    PyObject *path;
 } Face;
 
+static PyObject* FreeType_Exception = NULL;
 
 void 
 set_freetype_error(const char* prefix, int err_code) {
@@ -41,12 +43,12 @@ set_freetype_error(const char* prefix, int err_code) {
 
     while(ft_errors[i].err_msg != NULL) {
         if (ft_errors[i].err_code == err_code) {
-            PyErr_Format(PyExc_ValueError, "%s %s", prefix, ft_errors[i].err_msg);
+            PyErr_Format(FreeType_Exception, "%s %s", prefix, ft_errors[i].err_msg);
             return;
         }
         i++;
     }
-    PyErr_Format(PyExc_ValueError, "%s (error code: %d)", prefix, err_code);
+    PyErr_Format(FreeType_Exception, "%s (error code: %d)", prefix, err_code);
 }
 
 static FT_Library  library;
@@ -63,6 +65,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
+        self->path = PyTuple_GET_ITEM(args, 0);
+        Py_INCREF(self->path);
         error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
 #define CPY(n) self->n = self->face->n;
@@ -76,8 +80,19 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Face* self) {
     FT_Done_Face(self->face);
+    Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
+
+static PyObject *
+repr(Face *self) {
+    return PyUnicode_FromFormat(
+        "Face(path=%S, is_scalable=%S, units_per_EM=%u, ascender=%i, descender=%i, height=%i, max_advance_width=%i max_advance_height=%i, underline_position=%i, underline_thickness=%i)",
+        self->path, self->is_scalable ? Py_True : Py_False, 
+        self->ascender, self->descender, self->height, self->max_advance_width, self->max_advance_height, self->underline_position, self->underline_thickness
+    );
+}
+
 
 static PyObject*
 set_char_size(Face *self, PyObject *args) {
@@ -190,7 +205,7 @@ trim_to_width(Face UNUSED *self, PyObject *args) {
     rows = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 0));
     width = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 1));
     extra = width - cell_width;
-    if (extra >= cell_width) { PyErr_SetString(PyExc_ValueError, "Too large for trimming"); return NULL; }
+    if (extra >= cell_width) { PyErr_SetString(FreeType_Exception, "Too large for trimming"); return NULL; }
     PyObject *ans = PyStructSequence_New(&BitmapType);
     if (ans == NULL) return PyErr_NoMemory();
     src = (unsigned char*)PyByteArray_AS_STRING(PyStructSequence_GET_ITEM(bitmap, 3));
@@ -232,6 +247,7 @@ static PyMemberDef members[] = {
     MEM(underline_position, T_INT),
     MEM(underline_thickness, T_INT),
     MEM(is_scalable, T_BOOL),
+    MEM(path, T_OBJECT_EX),
     {NULL}  /* Sentinel */
 };
 
@@ -256,6 +272,7 @@ PyTypeObject Face_Type = {
     .tp_methods = methods,
     .tp_members = members,
     .tp_new = new,                
+    .tp_repr = (reprfunc)repr,
 };
 
 INIT_TYPE(Face)
@@ -267,13 +284,16 @@ free_freetype() {
 
 bool 
 init_freetype_library(PyObject *m) {
+    FreeType_Exception = PyErr_NewException("fast_data_types.FreeTypeError", NULL, NULL);
+    if (FreeType_Exception == NULL) return false;
+    if (PyModule_AddObject(m, "FreeTypeError", FreeType_Exception) != 0) return false;
     int error = FT_Init_FreeType(&library);
     if (error) {
         set_freetype_error("Failed to initialize FreeType library, with error:", error);
         return false;
     }
     if (Py_AtExit(free_freetype) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the freetype library at exit handler");
+        PyErr_SetString(FreeType_Exception, "Failed to register the freetype library at exit handler");
         return false;
     }
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;

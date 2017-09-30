@@ -130,32 +130,24 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
     return ans;
 }
 
-static inline void
-adjust_cursor_position_after_resize(Cursor *c, unsigned int lines, unsigned int columns, index_type num_content_lines_before, index_type num_content_lines_after) {
-    if (c->y >= num_content_lines_before - 1) {
-        index_type delta = c->y - (num_content_lines_before - 1);
-        c->y = num_content_lines_after - 1 + delta;
-    }
-    c->y = MIN(lines - 1, c->y); c->x = MIN(columns - 1, c->x);
-}
-
 static bool 
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     lines = MAX(1, lines); columns = MAX(1, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
+    index_type num_content_lines;
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    if (is_main) adjust_cursor_position_after_resize(self->cursor, lines, columns, num_content_lines_before, num_content_lines_after);
+    if (is_main) num_content_lines = num_content_lines_after;
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-    if (!is_main) adjust_cursor_position_after_resize(self->cursor, lines, columns, num_content_lines_before, num_content_lines_after);
+    if (!is_main) num_content_lines = num_content_lines_after;
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
 
     self->lines = lines; self->columns = columns;
@@ -171,6 +163,11 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
     self->url_range = EMPTY_SELECTION;
+
+    // Ensure cursor is on a blank line
+    self->cursor->x = 0;
+    self->cursor->y = MIN(self->lines - 1, num_content_lines); 
+    if (num_content_lines >= self->lines) screen_index(self);
 
     return true;
 }

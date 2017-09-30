@@ -209,6 +209,26 @@ def newer(dest, *sources):
     return False
 
 
+def dependecies_for(src, obj, all_headers):
+    dep_file = obj.rpartition('.')[0] + '.d'
+    try:
+        deps = open(dep_file).read()
+    except FileNotFoundError:
+        yield src
+        yield from iter(all_headers)
+    else:
+        RE_INC = re.compile(r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE)
+        SPACE_TOK = '\x1B'
+
+        text = deps.replace('\\\n', ' ').replace('\\ ', SPACE_TOK)
+        for match in RE_INC.finditer(text):
+            files = (f.replace(SPACE_TOK, ' ') for f in match.group('deps').split())
+            for path in files:
+                path = os.path.abspath(path)
+                if path.startswith(base):
+                    yield path
+
+
 def compile_c_extension(module, incremental, sources, headers):
     prefix = os.path.basename(module)
     objects = [
@@ -223,8 +243,8 @@ def compile_c_extension(module, incremental, sources, headers):
             cflgs.extend(map(define, defines))
 
         src = os.path.join(base, src)
-        if not incremental or newer(dest, src, *headers):
-            run_tool([cc] + cflgs + ['-c', src] + ['-o', dest])
+        if not incremental or newer(dest, *dependecies_for(src, dest, headers)):
+            run_tool([cc, '-MMD'] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
         run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest] + ['-L', '/opt/local/lib'])
