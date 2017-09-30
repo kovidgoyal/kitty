@@ -466,18 +466,17 @@ render_cell(PyObject *text, bool bold, bool italic, unsigned int underline, bool
 #undef B
 }
 
-#define SPRITE_MAP_UNIT 0
+enum {SPRITE_MAP_UNIT};
 
 static inline void
-bind_sprite_map() {
+ensure_sprite_map() {
+    static GLuint bound_texture_id = 0;
     if (!sprite_map.texture_id) realloc_sprite_texture();
-    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); check_gl();
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); check_gl();
-}
-
-static inline void
-unbind_sprite_map() {
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0); check_gl();
+    if (bound_texture_id != sprite_map.texture_id) {
+        glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); check_gl();
+        glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); check_gl();
+        bound_texture_id = sprite_map.texture_id;
+    }
 }
 
 static void 
@@ -624,7 +623,7 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     }
     index_type cx = screen->columns, cy = screen->lines;
     if (cursor->is_visible && cursor->shape == CURSOR_BLOCK) { cx = screen->cursor->x, cy = screen->cursor->y; }
-    bind_sprite_map();
+    ensure_sprite_map();
     render_dirty_sprites(render_and_send_dirty_sprites);
 #define UL(name) cell_uniform_locations[CELL_##name]
     bind_program(CELL_PROGRAM); 
@@ -650,7 +649,6 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
     unbind_vertex_array();
     unbind_program();
-    unbind_sprite_map();
 #undef UL
 }
 // }}}
