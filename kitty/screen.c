@@ -422,7 +422,8 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty);
     if (response != NULL) write_to_child(self, response, strlen(response));
     if (x != self->cursor->x || y != self->cursor->y) {
-        fatal("TODO: Scroll the screen if needed and ensure cursor is in bounds, taking into account the margins");
+        if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
+        if (self->cursor->y >= self->lines) { screen_scroll(self, self->lines - (self->cursor->y - 1)); }
     }
 }
 // }}}
