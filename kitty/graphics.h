@@ -25,7 +25,7 @@ typedef struct {
     size_t data_sz;
     uint8_t *data;
     bool is_4byte_aligned;
-    bool is_rgb;
+    bool is_opaque;
 } LoadData;
 
 typedef struct {

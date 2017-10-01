@@ -102,4 +102,4 @@ EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *, C
 EXTERNAL_FUNC(draw_cursor, void, CursorRenderInfo *);
 EXTERNAL_FUNC(update_viewport_size, void, int, int);
 EXTERNAL_FUNC(free_texture, void, uint32_t*);
-EXTERNAL_FUNC(send_image_to_gpu, void, uint32_t*, const void*, int32_t width, int32_t height, bool is_rgba, bool is_4byte_aligned);
+EXTERNAL_FUNC(send_image_to_gpu, void, uint32_t*, const void*, int32_t, int32_t, bool, bool);

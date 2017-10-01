@@ -338,7 +338,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             case PNG:  
                 if (g->data_sz > MAX_DATA_SZ) ABRT(EINVAL, "PNG data size too large");
                 img->load_data.is_4byte_aligned = true;
-                img->load_data.is_rgb = false;
+                img->load_data.is_opaque = false;
                 img->load_data.data_sz = g->data_sz ? g->data_sz : 1024 * 100;
                 break;
             case RGB:
@@ -346,7 +346,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 img->load_data.data_sz = g->data_width * g->data_height * (fmt / 8);
                 if (!img->load_data.data_sz) ABRT(EINVAL, "Zero width/height not allowed");
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
-                img->load_data.is_rgb = fmt == RGB;
+                img->load_data.is_opaque = fmt == RGB;
                 break;
             default:
                 ABRT(EINVAL, "Unknown image format: %u", fmt);
@@ -448,10 +448,10 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             } else img->load_data.data = img->load_data.mapped_file;
         }
     }
-    size_t required_sz = (img->load_data.is_rgb ? 3 : 4) * img->width * img->height;
+    size_t required_sz = (img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
     if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
     if (LIKELY(img->data_loaded && send_to_gpu)) {
-        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_rgb, img->load_data.is_4byte_aligned);
+        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned);
         free_load_data(&img->load_data);
     }
     return img;
