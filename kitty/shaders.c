@@ -561,6 +561,7 @@ init_shaders(PyObject *module) {
     draw_cells = &draw_cells_impl;
     draw_cursor = &draw_cursor_impl;
     free_texture = &free_texture_impl;
+    send_image_to_gpu = &send_image_to_gpu_impl;
     return true;
 }
 // }}}

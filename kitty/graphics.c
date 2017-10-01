@@ -19,6 +19,8 @@
 
 #define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
+static bool send_to_gpu = true;
+
 GraphicsManager*
 grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
@@ -53,6 +55,7 @@ free_load_data(LoadData *ld) {
 }
 
 free_texture_func free_texture = NULL;
+send_image_to_gpu_func send_image_to_gpu = NULL;
 
 static inline void
 free_image(Image *img) {
@@ -306,11 +309,11 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
 
 static Image*
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty) {
-#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; return NULL; }
+#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
 #define MAX_DATA_SZ (4 * 100000000)
     has_add_respose = false;
     bool existing, init_img = true;
-    Image *img;
+    Image *img = NULL;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     enum FORMATS { RGB=24, RGBA=32, PNG=100 };
     uint32_t fmt = g->format ? g->format : RGBA;
@@ -335,6 +338,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             case PNG:  
                 if (g->data_sz > MAX_DATA_SZ) ABRT(EINVAL, "PNG data size too large");
                 img->load_data.is_4byte_aligned = true;
+                img->load_data.is_rgb = false;
                 img->load_data.data_sz = g->data_sz ? g->data_sz : 1024 * 100;
                 break;
             case RGB:
@@ -342,6 +346,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 img->load_data.data_sz = g->data_width * g->data_height * (fmt / 8);
                 if (!img->load_data.data_sz) ABRT(EINVAL, "Zero width/height not allowed");
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
+                img->load_data.is_rgb = fmt == RGB;
                 break;
             default:
                 ABRT(EINVAL, "Unknown image format: %u", fmt);
@@ -413,7 +418,6 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 break;
             default:
                 ABRT(EINVAL, "Unknown image compression: %c", g->compressed);
-                img->data_loaded = false; return NULL;
         }
         switch(fmt) {
             case PNG:
@@ -428,7 +432,6 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img->load_data.data = img->load_data.buf;
         if (img->load_data.buf_used < img->load_data.data_sz) {
             ABRT(ENODATA, "Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
-            img->data_loaded = false;
         }
         if (img->load_data.mapped_file) {
             munmap(img->load_data.mapped_file, img->load_data.mapped_file_sz);
@@ -438,14 +441,18 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (tt == 'd') {
             if (img->load_data.buf_used < img->load_data.data_sz) {
                 ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
-                img->data_loaded = false;
             } else img->load_data.data = img->load_data.buf;
         } else {
             if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
                 ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
-                img->data_loaded = false;
             } else img->load_data.data = img->load_data.mapped_file;
         }
+    }
+    size_t required_sz = (img->load_data.is_rgb ? 3 : 4) * img->width * img->height;
+    if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
+    if (LIKELY(img->data_loaded && send_to_gpu)) {
+        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_rgb, img->load_data.is_4byte_aligned);
+        free_load_data(&img->load_data);
     }
     return img;
 #undef MAX_DATA_SZ
@@ -470,16 +477,20 @@ create_add_response(GraphicsManager UNUSED *self, const GraphicsCommand *g, bool
 
 // Displaying images {{{
 
+#define ensure_space_for(base, array, type, num, capacity, initial_cap) \
+    if (base->capacity < num) { \
+        base->capacity = MAX(initial_cap, MAX(2 * base->capacity, num)); \
+        base->array = realloc(base->array, sizeof(type) * base->capacity); \
+        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
+    }
+
+
 static void 
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
     if (img == NULL) img = img_by_client_id(self, g->id);
     if (img == NULL) { REPORT_ERROR("Put command refers to non-existent image with id: %u", g->id); return; }
     if (!img->data_loaded) { REPORT_ERROR("Put command refers to image with id: %u that could not load its data", g->id); return; }
-    if (img->refcnt >= img->refcap) {
-        img->refcap = MAX(10, img->refcap * 2);
-        img->refs = realloc(img->refs, img->refcap * sizeof(ImageRef));
-        if (img->refs == NULL) { REPORT_ERROR("Out of memory growing image refs array"); img->refcap = 0; return; }
-    }
+    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 10);
     *is_dirty = true;
     self->layers_dirty = true;
     ImageRef *ref = NULL;
@@ -519,13 +530,6 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     c->x += num_cols; c->y += num_rows;
 }
 
-#define ensure_space_for(base, array, type, num, capacity) \
-    if (base->capacity < num) { \
-        base->capacity = MAX(100, MAX(2 * base->capacity, num)); \
-        base->array = realloc(base->array, sizeof(type) * base->capacity); \
-        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
-    }
-
 static int 
 cmp_by_zindex_and_image(const void *a_, const void *b_) { 
     const ImageRenderData *a = (const ImageRenderData*)a_, *b = (const ImageRenderData*)b_;
@@ -549,7 +553,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by) {
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
         /* TODO: calculate geometry and ignore refs outside of current viewport */
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
-        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity);
+        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 100);
         ImageRenderData *rd = self->render_data + self->count;
         self->count++;
         rd->z_index = ref->z_index; rd->image_id = img->internal_id;
@@ -557,7 +561,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by) {
     }}
     if (!self->count) return;
     // Sort visible refs in draw order (z-index, img)
-    ensure_space_for(self, render_pointers, ImageRenderData*, self->count, rp_capacity);
+    ensure_space_for(self, render_pointers, ImageRenderData*, self->count, rp_capacity, 100);
     for (i = 0; i < self->count; i++) self->render_pointers[i] = self->render_data + i;
     qsort(self->render_pointers, self->count, sizeof(ImageRenderData*), cmp_by_zindex_and_image);
 }
@@ -654,12 +658,15 @@ W(shm_unlink) {
     Py_RETURN_NONE;
 }
 
+W(set_send_to_gpu) {
+    send_to_gpu = PyObject_IsTrue(args) ? true : false;
+    Py_RETURN_NONE;
+}
+
 #define M(x, va) {#x, (PyCFunction)py##x, va, ""}
 
 static PyMethodDef methods[] = {
     M(image_for_client_id, METH_O),
-    M(shm_write, METH_VARARGS),
-    M(shm_unlink, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 
@@ -675,10 +682,19 @@ PyTypeObject GraphicsManager_Type = {
     .tp_methods = methods,
 };
 
+static PyMethodDef module_methods[] = {
+    M(shm_write, METH_VARARGS),
+    M(shm_unlink, METH_VARARGS),
+    M(set_send_to_gpu, METH_O),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+
 bool
 init_graphics(PyObject *module) {
     if (PyType_Ready(&GraphicsManager_Type) < 0) return false;
     if (PyModule_AddObject(module, "GraphicsManager", (PyObject *)&GraphicsManager_Type) != 0) return false; 
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     Py_INCREF(&GraphicsManager_Type);
     return true;
 }

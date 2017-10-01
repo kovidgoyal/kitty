@@ -9,7 +9,7 @@ import zlib
 from base64 import standard_b64encode
 from io import BytesIO
 
-from kitty.fast_data_types import parse_bytes
+from kitty.fast_data_types import parse_bytes, shm_write, shm_unlink, set_send_to_gpu
 
 from . import BaseTest
 
@@ -17,6 +17,8 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
+
+set_send_to_gpu(False)
 
 
 def relpath(name):
@@ -110,10 +112,10 @@ class TestGraphics(BaseTest):
 
         # Test loading from POSIX SHM
         name = '/kitty-test-shm'
-        g.shm_write(name, random_data)
+        shm_write(name, random_data)
         sl(name, s=24, v=32, t='s', expecting_data=random_data)
         self.assertRaises(
-            FileNotFoundError, g.shm_unlink, name
+            FileNotFoundError, shm_unlink, name
         )  # check that file was deleted
 
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
