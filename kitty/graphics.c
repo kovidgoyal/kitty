@@ -567,6 +567,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float xstar
         self->count++;
         rd->z_index = ref->z_index; rd->image_id = img->internal_id;
         rd->src_rect = ref->src_rect; rd->dest_rect = r;
+        rd->texture_id = img->texture_id;
     }}
     if (!self->count) return;
     // Sort visible refs in draw order (z-index, img)
@@ -680,10 +681,27 @@ W(set_send_to_gpu) {
     Py_RETURN_NONE;
 }
 
+W(update_layers) {
+    unsigned int scrolled_by; float xstart, ystart, dx, dy;
+    PA("Iffff", &scrolled_by, &xstart, &ystart, &dx, &dy);
+    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy);
+    PyObject *ans = PyTuple_New(self->count);
+    for (size_t i = 0; i < self->count; i++) {
+        ImageRenderData *r = self->render_pointers[i];
+#define R(attr) Py_BuildValue("{sf sf sf sf}", "left", r->attr.left, "top", r->attr.top, "right", r->attr.right, "bottom", r->attr.bottom)
+        PyTuple_SET_ITEM(ans, i, 
+            Py_BuildValue("{sN sN sI si sI}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+        );
+#undef R
+    }
+    return ans;
+}
+
 #define M(x, va) {#x, (PyCFunction)py##x, va, ""}
 
 static PyMethodDef methods[] = {
     M(image_for_client_id, METH_O),
+    M(update_layers, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 

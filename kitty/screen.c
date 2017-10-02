@@ -324,7 +324,7 @@ screen_align(Screen *self) {
 void screen_alignment_display(Screen *self) {
     // http://www.vt100.net/docs/vt510-rm/DECALN.html 
     screen_cursor_position(self, 1, 1);
-    self->margin_top = 0; self->margin_bottom = self->columns - 1;
+    self->margin_top = 0; self->margin_bottom = self->lines - 1;
     for (unsigned int y = 0; y < self->linebuf->ynum; y++) {
         linebuf_init_line(self->linebuf, y);
         line_clear_text(self->linebuf->line, 0, self->linebuf->xnum, 'E');
@@ -423,7 +423,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     if (response != NULL) write_to_child(self, response, strlen(response));
     if (x != self->cursor->x || y != self->cursor->y) {
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
-        if (self->cursor->y >= self->lines) { screen_scroll(self, self->lines - (self->cursor->y - 1)); }
+        if (self->cursor->y > self->margin_bottom) { screen_scroll(self, self->cursor->y - self->margin_bottom); }
     }
 }
 // }}}
