@@ -9,7 +9,9 @@ import zlib
 from base64 import standard_b64encode
 from io import BytesIO
 
-from kitty.fast_data_types import parse_bytes, shm_write, shm_unlink, set_send_to_gpu
+from kitty.fast_data_types import (
+    parse_bytes, set_display_state, set_send_to_gpu, shm_unlink, shm_write
+)
 
 from . import BaseTest
 
@@ -40,7 +42,7 @@ def send_command(screen, cmd, payload=b''):
     return c.wtcbuf
 
 
-def helpers(self):
+def load_helpers(self):
     s = self.create_screen()
     g = s.grman
 
@@ -72,7 +74,7 @@ def helpers(self):
 class TestGraphics(BaseTest):
 
     def test_load_images(self):
-        s, g, l, sl = helpers(self)
+        s, g, l, sl = load_helpers(self)
 
         # Test simple load
         for f in 32, 24:
@@ -120,7 +122,7 @@ class TestGraphics(BaseTest):
 
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_load_png(self):
-        s, g, l, sl = helpers(self)
+        s, g, l, sl = load_helpers(self)
         w, h = 5, 3
         img = Image.new('RGBA', (w, h), 'red')
         rgba_data = img.tobytes()
@@ -142,3 +144,55 @@ class TestGraphics(BaseTest):
         data = png('L')
         sl(data, f=100, expecting_data=rgba_data)
         self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
+
+    def test_image_put(self):
+        cw, ch = 10, 20
+        iid = 0
+
+        def create_screen():
+            s = self.create_screen(10, 5)
+            set_display_state(s.columns * cw, s.lines * ch, cw, ch)
+            return s, 2 / s.columns, 2 / s.lines
+
+        def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0):
+            return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d' % (z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off)
+
+        def put_image(screen, w, h, **kw):
+            nonlocal iid
+            iid += 1
+            cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
+            data = b'x' * w * h * 3
+            send_command(screen, cmd, data)
+
+        def put_ref(screen, iid, **kw):
+            cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
+            send_command(screen, cmd)
+
+        def layers(screen, scrolled_by=0, xstart=0, ystart=0):
+            dx, dy = (2 - xstart) / s.columns, (2 - ystart) / s.lines
+            return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines)
+
+        def rect_eq(r, left, top, right, bottom):
+            for side in 'left top right bottom'.split():
+                a, b = r[side], locals()[side]
+                if abs(a - b) > 0.0001:
+                    self.ae(a, b, 'the %s side is not equal' % side)
+
+        s, dx, dy = create_screen()
+        put_image(s, 10, 20)
+        l = layers(s)
+        self.ae(len(l), 1)
+        rect_eq(l[0]['src_rect'], 0, 0, 1, 1)
+        rect_eq(l[0]['dest_rect'], 0, 0, dx, dy)
+        self.ae(l[0]['group_count'], 1)
+        self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
+        put_ref(s, iid, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1)
+        l = layers(s)
+        self.ae(len(l), 2)
+        rect_eq(l[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)
+        left, top = dx + 3 * dx / cw, 1 * dy / ch
+        rect_eq(l[0]['dest_rect'], left, top, (1 + s.columns) * dx, top + dy * 5 / ch)
+        rect_eq(l[1]['src_rect'], 0, 0, 1, 1)
+        rect_eq(l[1]['dest_rect'], 0, 0, dx, dy)
+        self.ae(l[0]['group_count'], 1), self.ae(l[1]['group_count'], 1)
+        self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)

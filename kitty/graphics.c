@@ -71,7 +71,7 @@ dealloc(GraphicsManager* self) {
         for (i = 0; i < self->image_count; i++) free_image(self->images + i);
         free(self->images);
     }
-    free(self->render_pointers); free(self->render_data);
+    free(self->render_data);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -528,7 +528,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         num_rows = t / global_state.cell_height;
         if (t > num_rows * global_state.cell_height) num_rows += 1;
     } 
-    c->x += num_cols; c->y += num_rows;
+    c->x += num_cols; c->y += num_rows - 1;
 }
 
 static int 
@@ -540,7 +540,7 @@ cmp_by_zindex_and_image(const void *a_, const void *b_) {
 }
 
 void
-grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float xstart, float ystart, float dx, float dy) {
+grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
     self->last_scrolled_by = scrolled_by;
     if (!self->layers_dirty) return;
@@ -549,17 +549,22 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float xstar
     self->num_of_negative_refs = 0; self->num_of_positive_refs = 0;
     Image *img; ImageRef *ref;
     ImageRect r;
+    float screen_width = dx * num_cols, screen_height = dy * num_rows;
+    float screen_bottom = screen_top + screen_height;
+    float screen_width_px = num_cols * global_state.cell_width;
+    float screen_height_px = num_rows * global_state.cell_height;
 
     // Iterate over all visible refs and create render data
     self->count = 0;
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-        r.top = ystart + (scrolled_by + ref->start_row) * dy + dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
-        if (ref->num_rows) r.bottom = ystart + (scrolled_by + ref->start_row + ref->num_rows) * dy;
-        else r.bottom = r.top + 2.0f * (float)ref->src_height / (float)global_state.viewport_height;
-        if (r.top > 1.0f || r.bottom < -1.0f) continue;  // not visible
-        r.left = xstart + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
-        if (ref->num_cols) r.right = xstart + (ref->start_column + ref->num_cols) * dx;
-        else r.right = r.left + 2.0f * (float)ref->src_width / (float)global_state.viewport_width;
+        r.top = screen_top + (scrolled_by + ref->start_row) * dy + dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
+        if (ref->num_rows) r.bottom = screen_top + (scrolled_by + ref->start_row + ref->num_rows) * dy;
+        else r.bottom = r.top + screen_height * (float)ref->src_height / screen_height_px;
+        if (r.top > screen_bottom || r.bottom < screen_top) continue;  // not visible
+
+        r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
+        if (ref->num_cols) r.right = screen_left + (ref->start_column + ref->num_cols) * dx;
+        else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 100);
@@ -571,16 +576,16 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float xstar
     }}
     if (!self->count) return;
     // Sort visible refs in draw order (z-index, img)
-    ensure_space_for(self, render_pointers, ImageRenderData*, self->count, rp_capacity, 100);
-    for (i = 0; i < self->count; i++) self->render_pointers[i] = self->render_data + i;
-    qsort(self->render_pointers, self->count, sizeof(ImageRenderData*), cmp_by_zindex_and_image);
+    qsort(self->render_data, self->count, sizeof(ImageRenderData), cmp_by_zindex_and_image);
     // Calculate the group counts
     i = 0;
     while (i < self->count) {
-        size_t image_id = self->render_pointers[i]->image_id, start;
-        start = i;
-        while (i < self->count - 1 && self->render_pointers[++i]->image_id == image_id) {}
-        self->render_pointers[start]->group_count = i - start;
+        size_t image_id = self->render_data[i].image_id, start = i;
+        if (start == self->count - 1) i = self->count;
+        else {
+            while (i < self->count - 1 && self->render_data[++i].image_id == image_id) {}
+        }
+        self->render_data[start].group_count = i - start;
     }
 }
 
@@ -682,12 +687,12 @@ W(set_send_to_gpu) {
 }
 
 W(update_layers) {
-    unsigned int scrolled_by; float xstart, ystart, dx, dy;
-    PA("Iffff", &scrolled_by, &xstart, &ystart, &dx, &dy);
-    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy);
+    unsigned int scrolled_by, sx, sy; float xstart, ystart, dx, dy;
+    PA("IffffII", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy);
+    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy, sx, sy);
     PyObject *ans = PyTuple_New(self->count);
     for (size_t i = 0; i < self->count; i++) {
-        ImageRenderData *r = self->render_pointers[i];
+        ImageRenderData *r = self->render_data + i;
 #define R(attr) Py_BuildValue("{sf sf sf sf}", "left", r->attr.left, "top", r->attr.top, "right", r->attr.right, "bottom", r->attr.bottom)
         PyTuple_SET_ITEM(ans, i, 
             Py_BuildValue("{sN sN sI si sI}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)

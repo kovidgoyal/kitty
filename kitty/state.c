@@ -238,6 +238,11 @@ PYWRAP0(destroy_global_data) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_display_state) {
+    PA("iiII", &global_state.viewport_width, &global_state.viewport_height, &global_state.cell_width, &global_state.cell_height);
+    Py_RETURN_NONE;
+}
+
 #define WF(name) PYWRAP1(name) { \
     unsigned int tab_id, window_id; \
     PyObject *title; \
@@ -275,6 +280,7 @@ static PyMethodDef module_methods[] = {
     MW(set_window_render_data, METH_VARARGS),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
+    MW(set_display_state, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

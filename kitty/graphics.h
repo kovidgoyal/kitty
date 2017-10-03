@@ -66,7 +66,7 @@ typedef struct {
     size_t image_count, images_capacity, loading_image;
     Image *images;
     size_t count, capacity, rp_capacity;
-    ImageRenderData *render_data, **render_pointers;
+    ImageRenderData *render_data;
     bool layers_dirty;
     size_t num_of_negative_refs, num_of_positive_refs;
     unsigned int last_scrolled_by;

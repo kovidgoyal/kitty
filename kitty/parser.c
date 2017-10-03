@@ -589,7 +589,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
 
             case EQUAL:
                 if (screen->parser_buf[pos++] != '=') {
-                    REPORT_ERROR("Malformed graphics control block, no = after key");
+                    REPORT_ERROR("Malformed graphics control block, no = after key, found: 0x%x instead", screen->parser_buf[pos-1]);
                     return;
                 }
                 state = value_state;
