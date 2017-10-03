@@ -124,11 +124,14 @@ def show(data, mode, width, height):
 
 def convert_svg(path):
     try:
-        return subprocess.check_output(['rsvg-convert', '-f', 'png', path])
+        with open(os.devnull, 'wb') as null:
+            return subprocess.check_output(['rsvg-convert', '-f', 'png', path], stderr=null)
     except OSError:
         raise SystemExit(
             'Could not find the program rsvg-convert, needed to display svg files'
         )
+    except subprocess.CalledProcessError:
+        raise OpenFailed(path, 'rsvg-convert could not process the image')
 
 
 def process(path, mt):
