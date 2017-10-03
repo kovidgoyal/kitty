@@ -16,9 +16,10 @@ from collections import namedtuple
 from gettext import gettext as _
 from math import ceil, floor
 
-from kitty.constants import appname
-
-# from kitty.fast_data_types import shm_write, shm_unlink
+try:
+    from kitty.constants import appname
+except ImportError:
+    appname = ''
 
 
 class OpenFailed(ValueError):
@@ -32,7 +33,7 @@ class OpenFailed(ValueError):
 
 def option_parser():
     parser = argparse.ArgumentParser(
-        prog=appname + ' icat',
+        prog=appname + '-icat' if appname else 'icat',
         description=_('Display images in the terminal')
     )
     a = parser.add_argument
