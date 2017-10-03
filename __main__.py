@@ -5,5 +5,9 @@
 import sys
 sys.debug_gl = '--debug-kitty-gl' in sys.argv
 
-from kitty.main import main  # noqa
-main()
+if len(sys.argv) > 1 and sys.argv[1] == 'icat':
+    from kitty.icat import main
+    main()
+else:
+    from kitty.main import main
+    main()
