@@ -64,6 +64,7 @@ typedef struct {
 
     index_type lines, columns;
     size_t image_count, images_capacity, loading_image;
+    char last_init_img_action;
     Image *images;
     size_t count, capacity, rp_capacity;
     ImageRenderData *render_data;

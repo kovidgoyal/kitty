@@ -320,6 +320,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
         self->loading_image = 0;
+        self->last_init_img_action = g->action;
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
@@ -602,7 +603,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         case 'T':
             image = handle_add_command(self, g, payload, is_dirty);
             ret = create_add_response(self, g, image != NULL);
-            if (g->action == 'T') handle_put_command(self, g, c, is_dirty, image);
+            if (self->last_init_img_action == 'T') handle_put_command(self, g, c, is_dirty, image);
             break;
         case 'p':
             if (!g->id) {
