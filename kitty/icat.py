@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
@@ -59,15 +59,16 @@ def screen_size():
 
 
 def write_gr_cmd(cmd, payload):
-    sys.stdout.write('\033_G{};{}\033\\'.format(cmd, payload).encode('ascii'))
+    cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
+    w = sys.stdout.buffer.write
+    w(b'\033_G'), w(cmd.encode('ascii')), w(b';'), w(payload), w(b'\033\\')
     sys.stdout.flush()
 
 
 def add_format_code(cmd, mode, width, height):
-    cmd += ',f=' + {'RGB': '24', 'RGBA': '32', 'PNG': '100'}[mode]
+    cmd['f'] = {'RGB': '24', 'RGBA': '32', 'PNG': '100'}[mode]
     if mode != 'PNG':
-        cmd += ',s={},v={}'.format(width, height)
-    return cmd
+        cmd['s'], cmd['v'] = width, height
 
 
 def fit_image(width, height, pwidth, pheight):
@@ -93,30 +94,27 @@ def set_cursor(cmd, width, height):
         ch = int(ss.height / ss.rows)
         num_of_rows_needed = int(ceil(height / ch))
         y_off = height % ch
-        cmd += 'c={},r={},Y={}'.format(ss.cols, num_of_rows_needed, y_off)
+        cmd['c'], cmd['r'] = ss.cols, num_of_rows_needed
+        cmd['Y'] = y_off
     else:
         x_off = width % cw
-        cmd += 'c={},X={}'.format(num_of_cells_needed, x_off)
+        cmd['c'], cmd['X'] = num_of_cells_needed, x_off
         extra_cells = (ss.cols - num_of_cells_needed) // 2
         if extra_cells:
-            sys.stdout.write(b' ' * extra_cells)
-    return cmd
+            sys.stdout.buffer.write(b' ' * extra_cells)
 
 
 def write_chunked(data, mode, width, height):
     data = standard_b64encode(zlib.compress(data))
-    cmd = add_format_code('a=T,o=z', mode, width, height)
-    cmd = set_cursor(cmd, width, height)
-    i = -1
+    cmd = {'a': 'T', 'o': 'z'}
+    add_format_code(cmd, mode, width, height)
+    set_cursor(cmd, width, height)
     while data:
-        i += 1
         chunk, data = data[:4096], data[4096:]
         m = 1 if data else 0
-        if i == 0:
-            c = cmd + ',' + 'm={}'.format(m)
-        else:
-            c = 'm={}'.format(m)
-        write_gr_cmd(c, chunk)
+        cmd['m'] = m
+        write_gr_cmd(cmd, chunk)
+        cmd.clear()
 
 
 def show(data, mode, width, height):
@@ -126,7 +124,8 @@ def show(data, mode, width, height):
 def convert_svg(path):
     try:
         with open(os.devnull, 'wb') as null:
-            return subprocess.check_output(['rsvg-convert', '-f', 'png', path], stderr=null)
+            return subprocess.check_output(['rsvg-convert', '-f', 'png', path],
+                                           stderr=null)
     except OSError:
         raise SystemExit(
             'Could not find the program rsvg-convert, needed to display svg files'
@@ -198,3 +197,7 @@ def main():
     for err in errors:
         print(err, file=sys.stderr)
     raise SystemExit(1)
+
+
+if __name__ == '__main__':
+    main()
