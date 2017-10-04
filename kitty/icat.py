@@ -106,8 +106,13 @@ def set_cursor(cmd, width, height):
 
 
 def write_chunked(data, mode, width, height):
-    data = standard_b64encode(zlib.compress(data))
-    cmd = {'a': 'T', 'o': 'z'}
+    cmd = {'a': 'T'}
+    if mode == 'PNG':
+        cmd['S'] = len(data)
+    else:
+        data = zlib.compress(data)
+        cmd['o'] = 'z'
+    data = standard_b64encode(data)
     add_format_code(cmd, mode, width, height)
     set_cursor(cmd, width, height)
     while data:
