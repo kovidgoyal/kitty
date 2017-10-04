@@ -300,10 +300,21 @@ draw_all_cells(Screen *screen) {
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
 }
 
+static void
+draw_cells_interleaved(Screen *screen) {
+    bind_program(CELL_BACKGROUND_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    bind_program(CELL_SPECIAL_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    bind_program(CELL_FOREGROUND_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+}
+
 static void 
 draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
     cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
-    draw_all_cells(screen);
+    if (false) draw_cells_interleaved(screen);
+    else draw_all_cells(screen);
 
 }
 // }}}

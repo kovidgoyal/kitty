@@ -24,6 +24,9 @@ out vec3 foreground;
 out vec3 decoration_fg;
 #endif
 out vec3 background;
+#ifdef SPECIAL
+out vec4 special_bg;
+#endif
 
 const uvec2 pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
@@ -113,6 +116,7 @@ void main() {
     int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
     int bg_index = color_indices[1 - fg_index];
     background = to_color(colors[bg_index], default_colors[bg_index]);
+
 #if defined(FOREGROUND) || defined(ALL)
     // The character sprite being rendered
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
@@ -131,13 +135,16 @@ void main() {
     cursor = is_cursor(c, r);
     foreground = choose_color(cursor, background, foreground);
     decoration_fg = choose_color(cursor, background, decoration_fg);
-#if defined(SPECIAL) || defined(ALL)
-#ifdef SPECIAL
-    cursor = is_cursor(c, r);
 #endif
+
+#if defined(ALL)
     // Selection and cursor
     background = choose_color(is_selected, color_to_vec(highlight_bg), background);
     background = choose_color(cursor, color_to_vec(cursor_color), background);
-#endif
+#elif defined(SPECIAL)
+    cursor = is_cursor(c, r);
+    background = choose_color(is_selected, color_to_vec(highlight_bg), background);
+    background = choose_color(cursor, color_to_vec(cursor_color), background);
+    special_bg = vec4(background, max(cursor, is_selected));
 #endif
 }

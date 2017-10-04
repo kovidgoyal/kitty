@@ -9,6 +9,9 @@ in vec3 foreground;
 in vec3 decoration_fg;
 #endif
 in vec3 background;
+#ifdef SPECIAL
+in vec4 special_bg;
+#endif
 
 out vec4 final_color;
 
@@ -27,6 +30,7 @@ void main() {
     vec3 decoration = blend(underline_alpha, underline, strike);
     vec3 combined_fg = blend(text_alpha, fg, decoration);
     float combined_alpha = max(max(underline_alpha, strike_alpha), text_alpha);
+
 #ifdef ALL
     final_color = vec4(blend(combined_alpha, combined_fg, background), 1);
 #else
@@ -34,6 +38,12 @@ void main() {
 #endif
 
 #else
+
+#ifdef SPECIAL
+    final_color = special_bg;
+#else
     final_color = vec4(background, 1);
+#endif
+
 #endif
 }
