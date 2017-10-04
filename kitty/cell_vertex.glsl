@@ -23,6 +23,9 @@ out vec3 strike_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
 #endif
+#if defined SPECIAL
+in float is_selected;
+#endif
 out vec3 background;
 
 const uvec2 pos_map[] = uvec2[4](

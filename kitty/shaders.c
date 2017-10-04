@@ -7,7 +7,7 @@
 
 #include "gl.h"
 
-enum { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
 // Sprites {{{
 typedef struct {
@@ -175,17 +175,22 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-static UniformBlock cell_render_data;
-static ArrayInformation cell_color_table;
+typedef struct {
+    UniformBlock render_data;
+    ArrayInformation color_table;
+} CellProgramLayout;
+
+static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 
 static void
 init_cell_program() {
-    cell_render_data.index = block_index(CELL_PROGRAM, "CellRenderData");
-    cell_render_data.size = block_size(CELL_PROGRAM, cell_render_data.index);
-    cell_color_table.size = get_uniform_information(CELL_PROGRAM, "color_table[0]", GL_UNIFORM_SIZE);
-    cell_color_table.offset = get_uniform_information(CELL_PROGRAM, "color_table[0]", GL_UNIFORM_OFFSET);
-    cell_color_table.stride = get_uniform_information(CELL_PROGRAM, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
-#undef SET_LOC
+    for (int i = CELL_PROGRAM; i <= CELL_FOREGROUND_PROGRAM; i++) {
+        cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
+        cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
+        cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
+        cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
+        cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
+    }
 }
 
 static ssize_t
@@ -202,7 +207,7 @@ create_cell_vao() {
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A(is_selected, 1, GL_FLOAT, NULL, 0);
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, cell_render_data.size, bufnum, GL_STREAM_DRAW);
+    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
     return vao_idx;
 #undef A
 #undef A1
@@ -225,7 +230,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     // Send the uniform data
     rd = (struct CellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     if (UNLIKELY(screen->color_profile->dirty)) {
-        copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_color_table.offset / sizeof(GLuint), cell_color_table.stride / sizeof(GLuint));
+        copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
     // Cursor position
     if (cursor->is_visible && cursor->shape == CURSOR_BLOCK) { 
@@ -287,7 +292,7 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
         glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT); check_gl(); 
         cell_constants_set = true; 
     }
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_render_data.index);
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
 }
@@ -534,7 +539,7 @@ init_shaders_debug(PyObject *module) {
 init_shaders(PyObject *module) {
 #endif
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BACKGROUND_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FOREGROUND_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

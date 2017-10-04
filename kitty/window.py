@@ -14,9 +14,10 @@ from .constants import (
     viewport_size, wakeup
 )
 from .fast_data_types import (
-    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_PROGRAM, CURSOR_PROGRAM,
-    SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen, compile_program,
-    create_cell_vao, glfw_post_empty_event, init_cell_program,
+    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
+    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
+    CURSOR_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
+    compile_program, create_cell_vao, glfw_post_empty_event, init_cell_program,
     init_cursor_program, remove_vao, set_window_render_data,
     update_window_title, update_window_visibility
 )
@@ -52,8 +53,12 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 def load_shader_programs():
     v, f = load_shaders('cell')
-    v, f = v.replace('WHICH_PROGRAM', 'ALL'), f.replace('WHICH_PROGRAM', 'ALL')
-    compile_program(CELL_PROGRAM, v, f)
+    for which, p in {
+            'ALL': CELL_PROGRAM, 'BACKGROUND': CELL_BACKGROUND_PROGRAM, 'SPECIAL': CELL_SPECIAL_PROGRAM,
+            'FOREGROUND': CELL_FOREGROUND_PROGRAM
+    }.items():
+        vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
+        compile_program(p, vv, ff)
     init_cell_program()
     compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
     init_cursor_program()
