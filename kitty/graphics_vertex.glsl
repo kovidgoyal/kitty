@@ -1,7 +1,7 @@
 #version 330
 
-layout(location=8) in vec4 src;
-layout(location=9) in vec4 position;
+layout(location=0) in vec4 src;
+layout(location=1) in vec4 position;
 out vec2 texcoord;
 
 const uvec2 pos_map[] = uvec2[4](
