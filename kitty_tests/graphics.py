@@ -131,8 +131,9 @@ class TestGraphics(BaseTest):
     def test_load_png(self):
         s, g, l, sl = load_helpers(self)
         w, h = 5, 3
-        img = Image.new('RGBA', (w, h), 'red')
-        rgba_data = img.tobytes()
+        rgba_data = os.urandom(w * h * 4)
+        img = Image.frombytes('RGBA', (w, h), rgba_data)
+        rgb_data = img.convert('RGB').convert('RGBA').tobytes()
 
         def png(mode='RGBA'):
             buf = BytesIO()
@@ -142,9 +143,9 @@ class TestGraphics(BaseTest):
             i.save(buf, 'PNG')
             return buf.getvalue()
 
-        for mode in 'RGBA RGB P'.split():
+        for mode in 'RGBA P RGB'.split():
             data = png(mode)
-            sl(data, f=100, expecting_data=rgba_data)
+            sl(data, f=100, expecting_data=rgb_data if mode == 'RGB' else rgba_data)
 
         img = img.convert('L')
         rgba_data = img.convert('RGBA').tobytes()

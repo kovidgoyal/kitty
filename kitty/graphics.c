@@ -266,7 +266,7 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
     d->row_pointers = malloc(d->height * sizeof(png_bytep));
     if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
-    for (int i = 0; i < d->height; i++) d->row_pointers[d->height - 1 - i] = d->decompressed + i * rowbytes;
+    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes;
     png_read_image(png, d->row_pointers);
 
     d->ok = true;
