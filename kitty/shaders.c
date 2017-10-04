@@ -285,10 +285,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
     bind_vertex_array(vao_idx);
 }
 
-static void 
-draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
-    cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
-
+static void
+draw_all_cells(Screen *screen) {
     bind_program(CELL_PROGRAM); 
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
@@ -296,6 +294,13 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
         cell_constants_set = true; 
     }
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+}
+
+static void 
+draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
+    cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
+    draw_all_cells(screen);
+
 }
 // }}}
 
