@@ -564,11 +564,11 @@ cmp_by_zindex_and_image(const void *a_, const void *b_) {
     return ans; 
 }
 
-void
+bool
 grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
     self->last_scrolled_by = scrolled_by;
-    if (!self->layers_dirty) return;
+    if (!self->layers_dirty) return false;
     self->layers_dirty = false;
     size_t i, j;
     self->num_of_negative_refs = 0; self->num_of_positive_refs = 0;
@@ -599,7 +599,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         rd->src_rect = ref->src_rect; rd->dest_rect = r;
         rd->texture_id = img->texture_id;
     }}
-    if (!self->count) return;
+    if (!self->count) return false;
     // Sort visible refs in draw order (z-index, img)
     qsort(self->render_data, self->count, sizeof(ImageRenderData), cmp_by_zindex_and_image);
     // Calculate the group counts
@@ -612,6 +612,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         }
         self->render_data[start].group_count = i - start;
     }
+    return true;
 }
 
 // }}}

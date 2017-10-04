@@ -287,7 +287,12 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
     }
 
-    grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines);
+    if (grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
+        sz = sizeof(ImageRenderData) * screen->grman->count;
+        address = alloc_and_map_vao_buffer(vao_idx, sz, graphics_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        memcpy(address, screen->grman->render_data, sz);
+        unmap_vao_buffer(vao_idx, graphics_buffer); address = NULL;
+    }
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
 
