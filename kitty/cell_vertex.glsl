@@ -12,19 +12,16 @@ layout(std140) uniform CellRenderData {
     uint color_table[256]; 
 };
 
-in uvec3 colors;
-in uvec4 sprite_coords;
+layout(location=0) in uvec3 colors;
+layout(location=1) in uvec4 sprite_coords;
+layout(location=2) in float is_selected;
 #if defined(FOREGROUND) || defined(ALL)
-in float is_selected;
 
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
-#endif
-#if defined SPECIAL
-in float is_selected;
 #endif
 out vec3 background;
 
