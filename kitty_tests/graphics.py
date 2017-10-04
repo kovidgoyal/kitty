@@ -101,6 +101,13 @@ class TestGraphics(BaseTest):
             expecting_data=random_data
         )
 
+        # Test chunked + compressed
+        b = len(compressed_random_data) // 2
+        self.assertIsNone(l(compressed_random_data[:b], s=24, v=32, o='z', m=1))
+        self.ae(l(compressed_random_data[b:], m=0), 'OK')
+        img = g.image_for_client_id(1)
+        self.ae(img['data'], random_data)
+
         # Test loading from file
         f = tempfile.NamedTemporaryFile()
         f.write(random_data), f.flush()

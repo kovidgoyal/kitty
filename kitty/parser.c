@@ -648,7 +648,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                         state = PAYLOAD;
                         break;
                     default:
-                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x%x", screen->parser_buf[screen->parser_buf_pos - 1]); 
+                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x%x", screen->parser_buf[pos - 1]); 
                         return;
                 }
                 break;

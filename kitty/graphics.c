@@ -150,6 +150,25 @@ err:
 }
 
 
+static inline const char*
+zlib_strerror(int ret) {
+#define Z(x) case x: return #x;
+    static char buf[128];
+    switch(ret) {
+        case Z_ERRNO:
+            return strerror(errno);
+        default:
+            snprintf(buf, sizeof(buf)/sizeof(buf[0]), "Unknown error: %d", ret);
+            return buf;
+        Z(Z_STREAM_ERROR);
+        Z(Z_DATA_ERROR);
+        Z(Z_MEM_ERROR);
+        Z(Z_BUF_ERROR);
+        Z(Z_VERSION_ERROR);
+    }
+#undef Z
+}
+
 static inline bool
 inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
     bool ok = false;
@@ -164,13 +183,13 @@ inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufs
     z.avail_out = img->load_data.data_sz;
     z.next_out = decompressed;
     int ret;
-    if ((ret = inflateInit(&z)) != Z_OK) ABRT(ENOMEM, "Failed to initialize inflate with error code: %d", ret);
-    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) ABRT(EINVAL, "Failed to inflate image data with error code: %d", ret);
+    if ((ret = inflateInit(&z)) != Z_OK) ABRT(ENOMEM, "Failed to initialize inflate with error: %s", zlib_strerror(ret));
+    if ((ret = inflate(&z, Z_FINISH)) != Z_STREAM_END) ABRT(EINVAL, "Failed to inflate image data with error: %s", zlib_strerror(ret));
     if (z.avail_out) ABRT(EINVAL, "Image data size post inflation does not match expected size");
     free_load_data(&img->load_data);
     img->load_data.buf_capacity = img->load_data.data_sz;
     img->load_data.buf = decompressed;
-    img->load_data.buf_used = img->load_data.data_sz - z.avail_out;
+    img->load_data.buf_used = img->load_data.data_sz;
     ok = true;
 err:
     inflateEnd(&z);
@@ -319,8 +338,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     uint32_t fmt = g->format ? g->format : RGBA;
     if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
+        self->last_init_graphics_command = *g;
         self->loading_image = 0;
-        self->last_init_img_action = g->action;
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate);
         img = find_or_create_image(self, g->id, &existing);
@@ -363,6 +382,11 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             }
         }
     } else {
+        self->last_init_graphics_command.more = g->more;
+        self->last_init_graphics_command.payload_sz = g->payload_sz;
+        g = &self->last_init_graphics_command;
+        tt = g->transmission_type ? g->transmission_type : 'd';
+        fmt = g->format ? g->format : RGBA;
         img = img_by_internal_id(self, self->loading_image);
         if (img == NULL) {
             self->loading_image = 0;
@@ -602,8 +626,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         case 't':
         case 'T':
             image = handle_add_command(self, g, payload, is_dirty);
-            ret = create_add_response(self, g, image != NULL);
-            if (self->last_init_img_action == 'T') handle_put_command(self, g, c, is_dirty, image);
+            ret = create_add_response(self, &self->last_init_graphics_command, image != NULL);
+            if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image);
             break;
         case 'p':
             if (!g->id) {
