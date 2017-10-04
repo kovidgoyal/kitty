@@ -83,6 +83,7 @@ glew_init(PyObject UNUSED *self) {
 #undef ARB_TEST
 #endif
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
     Py_RETURN_NONE;
 }
 
@@ -113,7 +114,6 @@ send_image_to_gpu_impl(GLuint *tex_id, const void* data, GLsizei width, GLsizei 
 // }}}
 
 // Programs {{{
-enum ProgramNames { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
 typedef struct {
     GLint size, index;
@@ -135,7 +135,7 @@ typedef struct {
     GLint num_of_uniforms;
 } Program;
 
-static Program programs[NUM_PROGRAMS] = {{0}};
+static Program programs[64] = {{0}};
 
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {

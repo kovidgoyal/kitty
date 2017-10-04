@@ -7,6 +7,8 @@
 
 #include "gl.h"
 
+enum { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
+
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
@@ -393,7 +395,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     int which;
     GLuint vertex_shader_id = 0, fragment_shader_id = 0;
     if (!PyArg_ParseTuple(args, "iss", &which, &vertex_shader, &fragment_shader)) return NULL;
-    if (which < CELL_PROGRAM || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
+    if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
     programs[which].id = glCreateProgram();
     check_gl();

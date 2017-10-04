@@ -1,4 +1,5 @@
 #version GLSL_VERSION
+#define WHICH_PROGRAM
 layout(std140) uniform CellRenderData {
     float xstart, ystart, dx, dy, sprite_dx, sprite_dy;
 
@@ -11,16 +12,18 @@ layout(std140) uniform CellRenderData {
     uint color_table[256]; 
 };
 
-in uvec4 sprite_coords;
 in uvec3 colors;
+in uvec4 sprite_coords;
+#if defined(FOREGROUND) || defined(ALL)
 in float is_selected;
 
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
 out vec3 foreground;
-out vec3 background;
 out vec3 decoration_fg;
+#endif
+out vec3 background;
 
 const uvec2 pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
@@ -89,6 +92,7 @@ float is_cursor(uint x, uint y) {
 }
 
 void main() {
+    float cursor;
     uint instance_id = uint(gl_InstanceID);
     // The current cell being rendered
     uint r = instance_id / xnum;
@@ -100,34 +104,40 @@ void main() {
     vec2 xpos = vec2(left, left + dx);
     vec2 ypos = vec2(top, top - dy);
     uvec2 pos = pos_map[gl_VertexID];
-    uvec2 default_colors = uvec2(default_fg, default_bg);
-    ivec2 color_indices = ivec2(color1, color2);
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
+    uvec2 default_colors = uvec2(default_fg, default_bg);
+    ivec2 color_indices = ivec2(color1, color2);
+
+    uint text_attrs = sprite_coords[3];
+    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
+    int bg_index = color_indices[1 - fg_index];
+    background = to_color(colors[bg_index], default_colors[bg_index]);
+#if defined(FOREGROUND) || defined(ALL)
     // The character sprite being rendered
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
 
     // Foreground and background colors
-    uint text_attrs = sprite_coords[3];
-    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
-    int bg_index = color_indices[1 - fg_index];
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
     foreground = color_to_vec(resolved_fg);
-    background = to_color(colors[bg_index], default_colors[bg_index]);
-
     // Selection
     foreground = choose_color(is_selected, color_to_vec(highlight_fg), foreground);
-    background = choose_color(is_selected, color_to_vec(highlight_bg), background);
-
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(c, r);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
     underline_pos = choose_color(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
-
     // Block cursor rendering
-    float cursor = is_cursor(c, r);
+    cursor = is_cursor(c, r);
     foreground = choose_color(cursor, background, foreground);
     decoration_fg = choose_color(cursor, background, decoration_fg);
+#if defined(SPECIAL) || defined(ALL)
+#ifdef SPECIAL
+    cursor = is_cursor(c, r);
+#endif
+    // Selection and cursor
+    background = choose_color(is_selected, color_to_vec(highlight_bg), background);
     background = choose_color(cursor, color_to_vec(cursor_color), background);
+#endif
+#endif
 }
