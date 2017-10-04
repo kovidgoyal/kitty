@@ -338,11 +338,9 @@ add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
 }
 
 static void
-add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
     VAO *vao = vaos + vao_idx;
-    if (!vao->num_buffers) { fatal("You must create a buffer for this attribute first"); return; }
-    GLint aloc = attrib_location(p, name);
-    if (aloc == -1) { fatal("No attribute named: %s found in this program", name); return; }
+    if (!vao->num_buffers) fatal("You must create a buffer for this attribute first"); 
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
@@ -366,7 +364,14 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
         check_gl();
     }
     unbind_buffer(buf);
-    return;
+}
+
+
+static inline void
+add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+    GLint aloc = attrib_location(p, name);
+    if (aloc == -1) fatal("No attribute named: %s found in this program", name); 
+    add_located_attribute_to_vao(vao_idx, aloc, size, data_type, stride, offset, divisor);
 }
 
 static void

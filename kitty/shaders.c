@@ -7,7 +7,7 @@
 
 #include "gl.h"
 
-enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
 
 // Sprites {{{
 typedef struct {
@@ -175,8 +175,6 @@ destroy_sprite_map() {
 
 // Cell {{{
 
-#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
-
 typedef struct {
     UniformBlock render_data;
     ArrayInformation color_table;
@@ -195,6 +193,8 @@ init_cell_program() {
     }
 }
 
+#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, graphics_buffer };
+
 static ssize_t
 create_cell_vao() {
     ssize_t vao_idx = create_vao();
@@ -202,17 +202,26 @@ create_cell_vao() {
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
+#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, (void*)offset, 1); }
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
     A1(colors, 3, GL_UNSIGNED_INT, fg);
+
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A(is_selected, 1, GL_FLOAT, NULL, 0);
+
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
+
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, 0, sizeof(ImageRenderData));
+    AL(GRAPHICS_PROGRAM, "position", 4, GL_FLOAT, offsetof(ImageRenderData, dest_rect), sizeof(ImageRenderData));
+
     return vao_idx;
 #undef A
 #undef A1
+#undef AL
 }
 
 static inline void
@@ -560,7 +569,7 @@ init_shaders_debug(PyObject *module) {
 init_shaders(PyObject *module) {
 #endif
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BACKGROUND_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FOREGROUND_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BACKGROUND_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FOREGROUND_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

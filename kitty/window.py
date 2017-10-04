@@ -16,9 +16,9 @@ from .constants import (
 from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
     CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
-    CURSOR_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
-    compile_program, create_cell_vao, glfw_post_empty_event, init_cell_program,
-    init_cursor_program, remove_vao, set_window_render_data,
+    CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
+    Screen, compile_program, create_cell_vao, glfw_post_empty_event,
+    init_cell_program, init_cursor_program, remove_vao, set_window_render_data,
     update_window_title, update_window_visibility
 )
 from .rgb import to_color
@@ -62,6 +62,7 @@ def load_shader_programs():
     init_cell_program()
     compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
     init_cursor_program()
+    compile_program(GRAPHICS_PROGRAM, *load_shaders('graphics'))
 
 
 class Window:
