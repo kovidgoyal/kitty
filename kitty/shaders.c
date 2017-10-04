@@ -206,12 +206,8 @@ create_cell_vao() {
 #undef A1
 }
 
-
-static void 
-draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
-    size_t sz;
-    void *address;
-    bool inverted = screen_invert_colors(screen);
+static inline void
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor) {
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy;
 
@@ -221,23 +217,9 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
 
         GLuint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
     };
-    enum { cell_data_buffer, selection_buffer, uniform_buffer };
     static struct CellRenderData *rd;
 
-    if (screen->scroll_changed || screen->is_dirty) {
-        sz = sizeof(Cell) * screen->lines * screen->columns;
-        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        screen_update_cell_data(screen, address, sz);
-        unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
-    }
-
-    if (screen_is_selection_dirty(screen)) {
-        sz = sizeof(GLfloat) * screen->lines * screen->columns;
-        address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        screen_apply_selection(screen, address, sz);
-        unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
-    }
-
+    bool inverted = screen_invert_colors(screen);
     // Send the uniform data
     rd = (struct CellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     if (UNLIKELY(screen->color_profile->dirty)) {
@@ -266,9 +248,36 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     rd->cursor_color = cursor->color; rd->url_color = OPT(url_color);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
+}
 
+static inline int
+cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor) {
+    size_t sz;
+    void *address;
+    enum { cell_data_buffer, selection_buffer, uniform_buffer };
+    if (screen->scroll_changed || screen->is_dirty) {
+        sz = sizeof(Cell) * screen->lines * screen->columns;
+        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        screen_update_cell_data(screen, address, sz);
+        unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
+    }
+
+    if (screen_is_selection_dirty(screen)) {
+        sz = sizeof(GLfloat) * screen->lines * screen->columns;
+        address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        screen_apply_selection(screen, address, sz);
+        unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
+    }
+
+    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
     ensure_sprite_map();
     render_dirty_sprites(render_and_send_dirty_sprites);
+    return uniform_buffer;
+}
+
+static void 
+draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
+    int uniform_buffer = cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
 
     bind_program(CELL_PROGRAM); 
     static bool cell_constants_set = false;
@@ -279,8 +288,6 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_render_data.index);
     bind_vertex_array(vao_idx);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
-    unbind_vertex_array();
-    unbind_program();
 }
 // }}}
 
