@@ -278,9 +278,13 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
     }
 
+    grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines);
+
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
+
     ensure_sprite_map();
     render_dirty_sprites(render_and_send_dirty_sprites);
+
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
 }
