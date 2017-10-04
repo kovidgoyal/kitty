@@ -6,6 +6,7 @@ import argparse
 import fcntl
 import mimetypes
 import os
+import signal
 import struct
 import subprocess
 import sys
@@ -47,11 +48,11 @@ def option_parser():
     return parser
 
 
-Size = namedtuple('Size', 'cols rows width height')
+Size = namedtuple('Size', 'rows cols width height')
 
 
-def screen_size():
-    if getattr(screen_size, 'ans', None) is None:
+def screen_size(refresh=False):
+    if refresh or getattr(screen_size, 'ans', None) is None:
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         screen_size.ans = Size(*struct.unpack('HHHH', x))
@@ -98,7 +99,7 @@ def set_cursor(cmd, width, height):
         cmd['Y'] = y_off
     else:
         x_off = width % cw
-        cmd['c'], cmd['X'] = num_of_cells_needed, x_off
+        cmd['X'] = x_off
         extra_cells = (ss.cols - num_of_cells_needed) // 2
         if extra_cells:
             sys.stdout.buffer.write(b' ' * extra_cells)
@@ -168,6 +169,7 @@ def scan(d):
 
 
 def main():
+    signal.signal(signal.SIGWINCH, lambda: screen_size(refresh=True))
     if not sys.stdout.isatty():
         raise SystemExit(
             'Must be run in a terminal, stdout is currently not a terminal'
