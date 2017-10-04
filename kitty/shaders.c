@@ -312,7 +312,7 @@ draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
     }
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); check_gl();
 
-    GLuint base = start;
+    GLuint base = 4 * start;
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
         glBindTexture(GL_TEXTURE_2D, rd->texture_id); check_gl();
