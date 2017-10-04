@@ -8,6 +8,8 @@
 #include "gl.h"
 
 enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
+enum {SPRITE_MAP_UNIT, GRAPHICS_UNIT};
+
 
 // Sprites {{{
 typedef struct {
@@ -88,8 +90,6 @@ render_cell(PyObject *text, bool bold, bool italic, unsigned int underline, bool
     return ret;
 #undef B
 }
-
-enum {SPRITE_MAP_UNIT};
 
 static inline void
 ensure_sprite_map() {
@@ -304,6 +304,27 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 static void
+draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
+    bind_program(GRAPHICS_PROGRAM);
+    static bool graphics_constants_set = false;
+    if (!graphics_constants_set) { 
+        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT); check_gl(); 
+        graphics_constants_set = true; 
+    }
+    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); check_gl();
+
+    GLuint base = start;
+    for (GLuint i=0; i < count;) {
+        ImageRenderData *rd = data + start + i;
+        glBindTexture(GL_TEXTURE_2D, rd->texture_id); check_gl();
+        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_FAN, 0, 4, rd->group_count, base);
+        base += rd->group_count;
+        i += rd->group_count;
+    }
+
+}
+
+static void
 draw_all_cells(Screen *screen) {
     bind_program(CELL_PROGRAM); 
     static bool cell_constants_set = false;
@@ -312,22 +333,29 @@ draw_all_cells(Screen *screen) {
         cell_constants_set = true; 
     }
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    if (screen->grman->count) draw_graphics(screen->grman->render_data, 0, screen->grman->count);
 }
 
 static void
 draw_cells_interleaved(Screen *screen) {
     bind_program(CELL_BACKGROUND_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+
+    draw_graphics(screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+
     bind_program(CELL_SPECIAL_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+
     bind_program(CELL_FOREGROUND_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+
+    if (screen->grman->num_of_positive_refs) draw_graphics(screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
 }
 
 static void 
 draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
     cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
-    if (false) draw_cells_interleaved(screen);
+    if (screen->grman->num_of_negative_refs) draw_cells_interleaved(screen);
     else draw_all_cells(screen);
 
 }
