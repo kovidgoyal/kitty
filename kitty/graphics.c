@@ -575,17 +575,17 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     Image *img; ImageRef *ref;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
-    float screen_bottom = screen_top + screen_height;
+    float screen_bottom = screen_top - screen_height;
     float screen_width_px = num_cols * global_state.cell_width;
     float screen_height_px = num_rows * global_state.cell_height;
 
     // Iterate over all visible refs and create render data
     self->count = 0;
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-        r.top = screen_top + (scrolled_by + ref->start_row) * dy + dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
-        if (ref->num_rows) r.bottom = screen_top + (scrolled_by + ref->start_row + ref->num_rows) * dy;
-        else r.bottom = r.top + screen_height * (float)ref->src_height / screen_height_px;
-        if (r.top > screen_bottom || r.bottom < screen_top) continue;  // not visible
+        r.top = screen_top - (scrolled_by + ref->start_row) * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
+        if (ref->num_rows) r.bottom = screen_top - (scrolled_by + ref->start_row + ref->num_rows) * dy;
+        else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
+        if (r.top < screen_bottom || r.bottom > screen_top) continue;  // not visible
 
         r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
         if (ref->num_cols) r.right = screen_left + (ref->start_column + ref->num_cols) * dx;
