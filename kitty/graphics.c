@@ -578,12 +578,13 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     float screen_bottom = screen_top - screen_height;
     float screen_width_px = num_cols * global_state.cell_width;
     float screen_height_px = num_rows * global_state.cell_height;
+    float y0 = screen_top - dy * scrolled_by;
 
     // Iterate over all visible refs and create render data
     self->count = 0;
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-        r.top = screen_top - (scrolled_by + ref->start_row) * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
-        if (ref->num_rows) r.bottom = screen_top - (scrolled_by + ref->start_row + ref->num_rows) * dy;
+        r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
+        if (ref->num_rows) r.bottom = y0 - (ref->start_row + ref->num_rows) * dy;
         else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
         if (r.top < screen_bottom || r.bottom > screen_top) continue;  // not visible
 
