@@ -53,7 +53,7 @@ typedef struct {
 } Image;
 
 typedef struct {
-    ImageRect src_rect, dest_rect;
+    float vertices[16];
     uint32_t texture_id, group_count;
     int z_index;
     size_t image_id;

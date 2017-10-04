@@ -202,7 +202,7 @@ create_cell_vao() {
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
-#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, (void*)offset, 1); }
+#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, offset, 0); }
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
@@ -215,8 +215,7 @@ create_cell_vao() {
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, 0, sizeof(ImageRenderData));
-    AL(GRAPHICS_PROGRAM, "position", 4, GL_FLOAT, offsetof(ImageRenderData, dest_rect), sizeof(ImageRenderData));
+    AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, NULL, 0);
 
     return vao_idx;
 #undef A
@@ -288,10 +287,10 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
     }
 
     if (grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
-        sz = sizeof(ImageRenderData) * screen->grman->count;
-        address = alloc_and_map_vao_buffer(vao_idx, sz, graphics_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        memcpy(address, screen->grman->render_data, sz);
-        unmap_vao_buffer(vao_idx, graphics_buffer); address = NULL;
+        sz = sizeof(GLfloat) * 16 * screen->grman->count;
+        GLfloat *a = alloc_and_map_vao_buffer(vao_idx, sz, graphics_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        for (size_t i = 0; i < screen->grman->count; i++, a += 16) memcpy(a, screen->grman->render_data[i].vertices, sizeof(screen->grman->render_data[0].vertices));
+        unmap_vao_buffer(vao_idx, graphics_buffer); a = NULL;
     }
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
@@ -317,9 +316,10 @@ draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
         glBindTexture(GL_TEXTURE_2D, rd->texture_id); check_gl();
-        glDrawArraysInstancedBaseInstance(GL_TRIANGLE_FAN, 0, 4, rd->group_count, base);
-        base += rd->group_count;
-        i += rd->group_count;
+        // You could reduce the number of draw calls by using
+        // glDrawArraysInstancedBaseInstance but Apple chose to abandon OpenGL
+        // before implementing it.
+        for (GLuint k=0; k < rd->group_count; k++, base += 4, i++) glDrawArrays(GL_TRIANGLE_FAN, base, 4);
     }
 
 }

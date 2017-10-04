@@ -595,9 +595,11 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 100);
         ImageRenderData *rd = self->render_data + self->count;
+#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = r.a; rd->vertices[n*4 + 3] = r.b;
+        R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
+#undef R
         self->count++;
         rd->z_index = ref->z_index; rd->image_id = img->internal_id;
-        rd->src_rect = ref->src_rect; rd->dest_rect = r;
         rd->texture_id = img->texture_id;
     }}
     if (!self->count) return false;
@@ -720,9 +722,9 @@ W(update_layers) {
     PyObject *ans = PyTuple_New(self->count);
     for (size_t i = 0; i < self->count; i++) {
         ImageRenderData *r = self->render_data + i;
-#define R(attr) Py_BuildValue("{sf sf sf sf}", "left", r->attr.left, "top", r->attr.top, "right", r->attr.right, "bottom", r->attr.bottom)
+#define R(offset) Py_BuildValue("{sf sf sf sf}", "left", r->vertices[offset + 8], "top", r->vertices[offset + 1], "right", r->vertices[offset], "bottom", r->vertices[offset + 5])
         PyTuple_SET_ITEM(ans, i, 
-            Py_BuildValue("{sN sN sI si sI}", "src_rect", R(src_rect), "dest_rect", R(dest_rect), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+            Py_BuildValue("{sN sN sI si sI}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
         );
 #undef R
     }
