@@ -87,7 +87,8 @@ In this format any PNG image can be transmitted directly.  For example:
 ```
 
 The PNG format is specified using the `f=100` key. The width and height of
-the image will be read from the PNG data itself.
+the image will be read from the PNG data itself. Note that if you use both PNG and
+compression, then you must provide the `S` key with the size of the PNG data.
 
 
 === Compression
