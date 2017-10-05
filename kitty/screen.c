@@ -436,6 +436,7 @@ screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
     if (to_alt) {
         linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+        grman_clear(self->alt_grman);
         screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
