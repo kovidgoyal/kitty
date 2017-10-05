@@ -242,7 +242,7 @@ take, and the default value they take when missing.
 
 | `a` | Single character. `(t, T, p)` | `t` | The overall action this graphics command is performing.
 
-4+^h| Keys for image transmission
+4+^.^h| Keys for image transmission
 
 | `f` | Positive integer. `(24, 32, 100)`. | `32` | The format in which the image data is sent.
 | `t` | Single character. `(d, f, t, s)`. | `d` | The transmission medium used.
@@ -251,10 +251,10 @@ take, and the default value they take when missing.
 | `S` | Positive integer. | `0` | The size of data to read from a file.
 | `O` | Positive integer. | `0` | The offset from which to read data from a file.
 | `i` | Positive integer. `(0 - 4294967295)` | `0` | The image id
-| `o` | Single character. `only z` | null | The type of data compression.
+| `o` | Single character. `only z` | `null` | The type of data compression.
 | `m` | zero or one | `0` | Whether there is more chunked data available.
 
-4+^h| Keys for image display
+4+^.^h| Keys for image display
 
 | `x` | Positive integer | `0` | The left edge (in pixels) of the image area to display
 | `y` | Positive integer | `0` | The top edge (in pixels) of the image area to display
