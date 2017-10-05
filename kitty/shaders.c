@@ -341,7 +341,7 @@ draw_cells_interleaved(Screen *screen) {
     bind_program(CELL_BACKGROUND_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
 
-    draw_graphics(screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+    if (screen->grman->num_of_negative_refs) draw_graphics(screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
     bind_program(CELL_SPECIAL_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
