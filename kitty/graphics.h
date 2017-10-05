@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
     uint32_t src_width, src_height, src_x, src_y;
-    uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows;
+    uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows;
     int32_t z_index;
     int32_t start_row, start_column;
     ImageRect src_rect;

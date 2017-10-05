@@ -71,6 +71,41 @@ def load_helpers(self):
     return s, g, l, sl
 
 
+def put_helpers(self, cw, ch):
+    iid = 0
+
+    def create_screen():
+        s = self.create_screen(10, 5)
+        set_display_state(s.columns * cw, s.lines * ch, cw, ch)
+        return s, 2 / s.columns, 2 / s.lines
+
+    def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0):
+        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d' % (z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off)
+
+    def put_image(screen, w, h, **kw):
+        nonlocal iid
+        iid += 1
+        cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
+        data = b'x' * w * h * 3
+        send_command(screen, cmd, data)
+
+    def put_ref(screen, **kw):
+        cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
+        send_command(screen, cmd)
+
+    def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
+        return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines)
+
+    def rect_eq(r, left, top, right, bottom):
+        for side in 'left top right bottom'.split():
+            a, b = r[side], locals()[side]
+            if abs(a - b) > 0.0001:
+                self.ae(a, b, 'the %s side is not equal' % side)
+
+    s, dx, dy = create_screen()
+    return s, dx, dy, put_image, put_ref, layers, rect_eq
+
+
 class TestGraphics(BaseTest):
 
     def test_load_images(self):
@@ -155,38 +190,7 @@ class TestGraphics(BaseTest):
 
     def test_image_put(self):
         cw, ch = 10, 20
-        iid = 0
-
-        def create_screen():
-            s = self.create_screen(10, 5)
-            set_display_state(s.columns * cw, s.lines * ch, cw, ch)
-            return s, 2 / s.columns, 2 / s.lines
-
-        def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0):
-            return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d' % (z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off)
-
-        def put_image(screen, w, h, **kw):
-            nonlocal iid
-            iid += 1
-            cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
-            data = b'x' * w * h * 3
-            send_command(screen, cmd, data)
-
-        def put_ref(screen, iid, **kw):
-            cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
-            send_command(screen, cmd)
-
-        def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
-            dx, dy = 2 / s.columns, 2 / s.lines
-            return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines)
-
-        def rect_eq(r, left, top, right, bottom):
-            for side in 'left top right bottom'.split():
-                a, b = r[side], locals()[side]
-                if abs(a - b) > 0.0001:
-                    self.ae(a, b, 'the %s side is not equal' % side)
-
-        s, dx, dy = create_screen()
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
         put_image(s, 10, 20)
         l = layers(s)
         self.ae(len(l), 1)
@@ -194,7 +198,7 @@ class TestGraphics(BaseTest):
         rect_eq(l[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
-        put_ref(s, iid, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1)
+        put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1)
         l = layers(s)
         self.ae(len(l), 2)
         rect_eq(l[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)

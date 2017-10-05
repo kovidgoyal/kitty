@@ -554,6 +554,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         if (t > num_rows * global_state.cell_height) num_rows += 1;
     } 
     c->x += num_cols; c->y += num_rows - 1;
+    ref->effective_num_rows = num_rows;
 }
 
 static int 
@@ -628,12 +629,20 @@ grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
     size_t i, j;
 
     if (self->image_count) {
-        for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-            ref->start_row += amt;
-            if (ref->start_row < limit) {
-                // TODO: remove refs that have scrolled beyond limit
+        for (i = self->image_count; i-- > 0; i--) { 
+            img = self->images + i;
+            for (j = img->refcnt; j-- > 0; j--) { 
+                ref = img->refs + j;
+                ref->start_row += amt;
+                if (ref->start_row + (int32_t)ref->effective_num_rows < limit) {
+                    remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
+                }
             }
-        }}
+            if (img->refcnt == 0) {
+                free_image(img);
+                remove_from_array(self->images, sizeof(Image), i, self->image_count--);
+            }
+        }
         self->layers_dirty = true;
     }
 }
