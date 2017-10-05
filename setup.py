@@ -129,6 +129,8 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
+    if not debug:
+        cflags.append('-flto'), ldflags.append('-flto')
 
     if profile:
         cflags.append('-DWITH_PROFILER')
