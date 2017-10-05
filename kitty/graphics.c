@@ -620,6 +620,31 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 // }}}
 
+// Image lifetime/scrolling {{{
+
+void 
+grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
+    Image *img; ImageRef *ref;
+    size_t i, j;
+
+    if (self->image_count) {
+        for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
+            ref->start_row += amt;
+            if (ref->start_row < limit) {
+                // TODO: remove refs that have scrolled beyond limit
+            }
+        }}
+        self->layers_dirty = true;
+    }
+}
+
+void
+grman_clear(GraphicsManager UNUSED *self) {
+    // TODO: Implement this
+}
+
+// }}}
+
 const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty) {
     Image *image;
@@ -645,11 +670,6 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             break;
     }
     return ret;
-}
-
-void
-grman_clear(GraphicsManager UNUSED *self) {
-    // TODO: Implement this
 }
 
 

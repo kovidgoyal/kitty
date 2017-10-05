@@ -654,6 +654,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 
 #define INDEX_UP \
     linebuf_index(self->linebuf, top, bottom); \
+    grman_scroll_images(self->grman, -1, self->linebuf == self->main_linebuf ? -self->historybuf->ynum : 0); \
     if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
         /* Only add to history when no page margins have been set */ \
         linebuf_init_line(self->linebuf, bottom); \

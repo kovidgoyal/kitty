@@ -79,3 +79,4 @@ GraphicsManager* grman_realloc(GraphicsManager *, index_type lines, index_type c
 void grman_clear(GraphicsManager*);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty);
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows);
+void grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit);
