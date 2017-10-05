@@ -40,7 +40,7 @@ def option_parser():
     a = parser.add_argument
     a(
         'items',
-        nargs=argparse.REMAINDER,
+        nargs='+',
         help=_(
             'Image files or directories. Directories are scanned recursively.'
         )
@@ -173,7 +173,7 @@ def scan(d):
                 yield os.path.join(dirpath, f), mt
 
 
-def main():
+def main(args=sys.argv):
     signal.signal(signal.SIGWINCH, lambda: screen_size(refresh=True))
     if not sys.stdout.isatty():
         raise SystemExit(
@@ -183,7 +183,7 @@ def main():
         raise SystemExit(
             'Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl'
         )
-    args = option_parser().parse_args()
+    args = option_parser().parse_args(args[1:])
     if not args.items:
         raise SystemExit('You must specify at least one file to cat')
     errors = []
