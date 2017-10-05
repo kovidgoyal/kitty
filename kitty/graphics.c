@@ -16,6 +16,7 @@
 
 #include <zlib.h>
 #include <png.h>
+#include <structmember.h>
 
 #define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
@@ -629,9 +630,9 @@ grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
     size_t i, j;
 
     if (self->image_count) {
-        for (i = self->image_count; i-- > 0; i--) { 
+        for (i = self->image_count; i-- > 0;) { 
             img = self->images + i;
-            for (j = img->refcnt; j-- > 0; j--) { 
+            for (j = img->refcnt; j-- > 0;) { 
                 ref = img->refs + j;
                 ref->start_row += amt;
                 if (ref->start_row + (int32_t)ref->effective_num_rows < limit) {
@@ -768,6 +769,10 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
+static PyMemberDef members[] = {
+    {"image_count", T_UINT, offsetof(GraphicsManager, image_count), 0, "image_count"},
+    {NULL},
+};
 
 PyTypeObject GraphicsManager_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -778,6 +783,7 @@ PyTypeObject GraphicsManager_Type = {
     .tp_doc = "GraphicsManager",
     .tp_new = new,                
     .tp_methods = methods,
+    .tp_members = members,
 };
 
 static PyMethodDef module_methods[] = {
