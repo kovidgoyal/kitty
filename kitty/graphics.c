@@ -588,7 +588,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
         if (ref->num_rows) r.bottom = y0 - (ref->start_row + ref->num_rows) * dy;
         else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
-        if (r.top < screen_bottom || r.bottom > screen_top) continue;  // not visible
+        if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
         r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
         if (ref->num_cols) r.right = screen_left + (ref->start_column + ref->num_cols) * dx;
@@ -624,8 +624,8 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 // Image lifetime/scrolling {{{
 
-void 
-grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
+static inline void
+filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, const void*)) {
     Image *img; ImageRef *ref;
     size_t i, j;
 
@@ -634,8 +634,7 @@ grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
             img = self->images + i;
             for (j = img->refcnt; j-- > 0;) { 
                 ref = img->refs + j;
-                ref->start_row += amt;
-                if (ref->start_row + (int32_t)ref->effective_num_rows < limit) {
+                if (filter_func(ref, data)) {
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
                 }
             }
@@ -648,9 +647,28 @@ grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
     }
 }
 
+static inline bool
+scroll_filter_func(ImageRef *ref, const void* data) {
+    int32_t *d = (int32_t*)data, amt = d[0], limit = d[1];
+    ref->start_row += amt;
+    return ref->start_row + (int32_t)ref->effective_num_rows <= limit;
+}
+
+void 
+grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
+    int32_t data[2];
+    data[0] = amt; data[1] = limit;
+    filter_refs(self, data, scroll_filter_func);
+}
+
+static inline bool
+clear_filter_func(ImageRef *ref, const void UNUSED *data) {
+    return ref->start_row + (int32_t)ref->effective_num_rows > 0;
+}
+
 void
-grman_clear(GraphicsManager UNUSED *self) {
-    // TODO: Implement this
+grman_clear(GraphicsManager *self) {
+    filter_refs(self, NULL, clear_filter_func);
 }
 
 // }}}

@@ -216,11 +216,23 @@ class TestGraphics(BaseTest):
         self.ae(len(layers(s)), 1)
         for i in range(s.lines):
             s.index()
-        self.ae(len(layers(s)), 1), self.ae(s.grman.image_count, 1)
-        s.index()
         self.ae(len(layers(s)), 0), self.ae(s.grman.image_count, 1)
         for i in range(s.historybuf.ynum - 1):
             s.index()
-            self.ae(s.grman.image_count, 1)
+            self.ae(len(layers(s)), 0), self.ae(s.grman.image_count, 1)
         s.index()
         self.ae(s.grman.image_count, 0)
+
+    def test_gr_reset(self):
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        put_image(s, 10, 20)  # a one cell image at (0, 0)
+        self.ae(len(layers(s)), 1)
+        s.reset()
+        self.ae(s.grman.image_count, 0)
+        put_image(s, 10, 20)  # a one cell image at (0, 0)
+        self.ae(s.grman.image_count, 1)
+        for i in range(s.lines):
+            s.index()
+        s.reset()
+        self.ae(s.grman.image_count, 1)
