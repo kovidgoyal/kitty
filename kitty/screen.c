@@ -653,9 +653,18 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
+#define INDEX_GRAPHICS(amtv) { \
+    bool is_main = self->linebuf == self->main_linebuf; \
+    static ScrollData s; \
+    s.amt = amtv; s.limit = is_main ? -self->historybuf->ynum : 0; \
+    s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
+    s.margin_top = top; s.margin_bottom = bottom; \
+    grman_scroll_images(self->grman, &s); \
+}
+
 #define INDEX_UP \
     linebuf_index(self->linebuf, top, bottom); \
-    grman_scroll_images(self->grman, -1, self->linebuf == self->main_linebuf ? -self->historybuf->ynum : 0); \
+    INDEX_GRAPHICS(-1) \
     if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
         /* Only add to history when no page margins have been set */ \
         linebuf_init_line(self->linebuf, bottom); \
@@ -688,6 +697,7 @@ screen_scroll(Screen *self, unsigned int count) {
 #define INDEX_DOWN \
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top); \
+    INDEX_GRAPHICS(1) \
     self->is_dirty = true;
 
 void 

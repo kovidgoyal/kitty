@@ -510,6 +510,14 @@ create_add_response(GraphicsManager UNUSED *self, const GraphicsCommand *g, bool
         if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
     }
 
+static inline void
+update_src_rect(ImageRef *ref, Image *img) {
+    // The src rect in OpenGL co-ords [0, 1] with origin at top-left corner of image
+    ref->src_rect.left = (float)ref->src_x / (float)img->width;
+    ref->src_rect.right = (float)(ref->src_x + ref->src_width) / (float)img->width;
+    ref->src_rect.top = (float)ref->src_y / (float)img->height;
+    ref->src_rect.bottom = (float)(ref->src_y + ref->src_height) / (float)img->height;
+}
 
 static void 
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
@@ -535,12 +543,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->cell_x_offset = MIN(g->cell_x_offset, global_state.cell_width - 1);
     ref->cell_y_offset = MIN(g->cell_y_offset, global_state.cell_height - 1);
     ref->num_cols = g->num_cells; ref->num_rows = g->num_lines;
-
-    // The src rect in OpenGL co-ords [0, 1] with origin at top-left corner of image
-    ref->src_rect.left = (float)ref->src_x / (float)img->width;
-    ref->src_rect.right = (float)(ref->src_x + ref->src_width) / (float)img->width;
-    ref->src_rect.top = (float)ref->src_y / (float)img->height;
-    ref->src_rect.bottom = (float)(ref->src_y + ref->src_height) / (float)img->height;
+    update_src_rect(ref, img);
 
     // Move the cursor, the screen will take care of ensuring it is in bounds
     uint32_t num_cols = g->num_cells, num_rows = g->num_lines, t;
@@ -625,7 +628,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 // Image lifetime/scrolling {{{
 
 static inline void
-filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, const void*)) {
+filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, Image*, const void*)) {
     Image *img; ImageRef *ref;
     size_t i, j;
 
@@ -634,7 +637,7 @@ filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRe
             img = self->images + i;
             for (j = img->refcnt; j-- > 0;) { 
                 ref = img->refs + j;
-                if (filter_func(ref, data)) {
+                if (filter_func(ref, img, data)) {
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
                 }
             }
@@ -648,21 +651,60 @@ filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRe
 }
 
 static inline bool
-scroll_filter_func(ImageRef *ref, const void* data) {
-    int32_t *d = (int32_t*)data, amt = d[0], limit = d[1];
-    ref->start_row += amt;
-    return ref->start_row + (int32_t)ref->effective_num_rows <= limit;
-}
-
-void 
-grman_scroll_images(GraphicsManager *self, int32_t amt, int32_t limit) {
-    int32_t data[2];
-    data[0] = amt; data[1] = limit;
-    filter_refs(self, data, scroll_filter_func);
+scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+    ScrollData *d = (ScrollData*)data;
+    ref->start_row += d->amt;
+    return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
 }
 
 static inline bool
-clear_filter_func(ImageRef *ref, const void UNUSED *data) {
+ref_within_region(ImageRef *ref, index_type margin_top, index_type margin_bottom) {
+    return ref->start_row >= (int32_t)margin_top && ref->start_row + ref->effective_num_rows <= margin_bottom;
+}
+
+static inline bool
+ref_outside_region(ImageRef *ref, index_type margin_top, index_type margin_bottom) {
+    return ref->start_row + ref->effective_num_rows <= margin_top || ref->start_row > (int32_t)margin_bottom;
+}
+
+static inline bool
+scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
+    ScrollData *d = (ScrollData*)data;
+    if (ref_within_region(ref, d->margin_top, d->margin_bottom)) {
+        ref->start_row += d->amt;
+        if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;
+        // Clip the image if scrolling has resulted in part of it being outside the page area
+        uint32_t clip_amt, clipped_rows;
+        if (ref->start_row < (int32_t)d->margin_top) {
+            // image moved up
+            clipped_rows = d->margin_top - ref->start_row;
+            clip_amt = global_state.cell_height * clipped_rows;
+            if (ref->src_height <= clip_amt) return true;
+            ref->src_y += clip_amt; ref->src_height -= clip_amt;
+            ref->effective_num_rows -= clipped_rows;
+            update_src_rect(ref, img);
+            ref->start_row += clipped_rows;
+        } else if (ref->start_row + ref->effective_num_rows > d->margin_bottom) {
+            // image moved down
+            clipped_rows = ref->start_row + ref->effective_num_rows - d->margin_bottom;
+            clip_amt = global_state.cell_height * clipped_rows;
+            if (ref->src_height <= clip_amt) return true;
+            ref->src_height -= clip_amt;
+            ref->effective_num_rows -= clipped_rows;
+            update_src_rect(ref, img);
+        }
+        return ref_outside_region(ref, d->margin_top, d->margin_bottom);
+    }
+    return false;
+}
+
+void 
+grman_scroll_images(GraphicsManager *self, const ScrollData *data) {
+    filter_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func);
+}
+
+static inline bool
+clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data) {
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 

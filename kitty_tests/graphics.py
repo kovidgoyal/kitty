@@ -88,6 +88,7 @@ def put_helpers(self, cw, ch):
         cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
         data = b'x' * w * h * 3
         send_command(screen, cmd, data)
+        return iid
 
     def put_ref(screen, **kw):
         cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
@@ -223,14 +224,51 @@ class TestGraphics(BaseTest):
         s.index()
         self.ae(s.grman.image_count, 0)
 
+        # Now test with margins
+        s.reset()
+        # Test images outside page area untouched
+        put_image(s, cw, ch)  # a one cell image at (0, 0)
+        for i in range(s.lines - 1):
+            s.index()
+        put_image(s, cw, ch)  # a one cell image at (0, bottom)
+        s.set_margins(2, 4)  # 1-based indexing
+        self.ae(s.grman.image_count, 2)
+        for i in range(s.lines + s.historybuf.ynum):
+            s.index()
+            self.ae(s.grman.image_count, 2)
+        for i in range(s.lines):  # ensure cursor is at top margin
+            s.reverse_index()
+        # Test clipped scrolling during index
+        put_image(s, cw, 2*ch, z=-1)  # 1x2 cell image
+        self.ae(s.grman.image_count, 3)
+        self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+        s.index(), s.index()
+        l = layers(s)
+        self.ae(len(l), 3)
+        self.ae(layers(s)[0]['src_rect'],  {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        s.index()
+        self.ae(s.grman.image_count, 2)
+        # Test clipped scrolling during reverse_index
+        for i in range(s.lines):
+            s.reverse_index()
+        put_image(s, cw, 2*ch, z=-1)  # 1x2 cell image
+        self.ae(s.grman.image_count, 3)
+        self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+        while s.cursor.y != 1:
+            s.reverse_index()
+        s.reverse_index()
+        self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
+        s.reverse_index()
+        self.ae(s.grman.image_count, 2)
+
     def test_gr_reset(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
-        put_image(s, 10, 20)  # a one cell image at (0, 0)
+        put_image(s, cw, ch)  # a one cell image at (0, 0)
         self.ae(len(layers(s)), 1)
         s.reset()
         self.ae(s.grman.image_count, 0)
-        put_image(s, 10, 20)  # a one cell image at (0, 0)
+        put_image(s, cw, ch)  # a one cell image at (0, 0)
         self.ae(s.grman.image_count, 1)
         for i in range(s.lines):
             s.index()
