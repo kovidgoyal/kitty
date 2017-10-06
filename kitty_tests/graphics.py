@@ -48,6 +48,14 @@ def parse_response(res):
     return res.decode('ascii').partition(';')[2].partition('\033')[0]
 
 
+all_bytes = bytes(bytearray(range(256)))
+
+
+def byte_block(sz):
+    d, m = divmod(sz, len(all_bytes))
+    return (all_bytes * d) + all_bytes[:m]
+
+
 def load_helpers(self):
     s = self.create_screen()
     g = s.grman
@@ -131,7 +139,7 @@ class TestGraphics(BaseTest):
         self.ae(img['data'], b'abcdefghijklmnop')
 
         # Test compression
-        random_data = os.urandom(3 * 1024)
+        random_data = byte_block(3 * 1024)
         compressed_random_data = zlib.compress(random_data)
         sl(
             compressed_random_data,
@@ -171,7 +179,7 @@ class TestGraphics(BaseTest):
     def test_load_png(self):
         s, g, l, sl = load_helpers(self)
         w, h = 5, 3
-        rgba_data = os.urandom(w * h * 4)
+        rgba_data = byte_block(w * h * 4)
         img = Image.frombytes('RGBA', (w, h), rgba_data)
         rgb_data = img.convert('RGB').convert('RGBA').tobytes()
 
@@ -183,14 +191,16 @@ class TestGraphics(BaseTest):
             i.save(buf, 'PNG')
             return buf.getvalue()
 
-        for mode in 'RGBA P RGB'.split():
+        for mode in 'RGBA RGB'.split():
             data = png(mode)
             sl(data, f=100, expecting_data=rgb_data if mode == 'RGB' else rgba_data)
 
-        img = img.convert('L')
-        rgba_data = img.convert('RGBA').tobytes()
-        data = png('L')
+        for m in 'LP':
+            img = img.convert(m)
+            rgba_data = img.convert('RGBA').tobytes()
+            data = png(m)
         sl(data, f=100, expecting_data=rgba_data)
+
         self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
 
     def test_image_put(self):
