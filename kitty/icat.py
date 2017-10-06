@@ -105,16 +105,11 @@ def set_cursor(cmd, width, height):
             sys.stdout.buffer.write(b' ' * extra_cells)
 
 
-def write_chunked(data, mode, width, height):
-    cmd = {'a': 'T'}
-    if mode == 'PNG':
-        cmd['S'] = len(data)
-    else:
+def write_chunked(mode, cmd, data):
+    if mode != 'PNG':
         data = zlib.compress(data)
         cmd['o'] = 'z'
     data = standard_b64encode(data)
-    add_format_code(cmd, mode, width, height)
-    set_cursor(cmd, width, height)
     while data:
         chunk, data = data[:4096], data[4096:]
         m = 1 if data else 0
@@ -124,7 +119,12 @@ def write_chunked(data, mode, width, height):
 
 
 def show(data, mode, width, height):
-    write_chunked(data, mode, width, height)
+    cmd = {'a': 'T'}
+    if mode == 'PNG':
+        cmd['S'] = len(data)
+    add_format_code(cmd, mode, width, height)
+    set_cursor(cmd, width, height)
+    write_chunked(mode, cmd, data)
 
 
 def convert_svg(path):
