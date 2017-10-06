@@ -8,7 +8,7 @@ emulator. The major design goals are
  * Should not require terminal emulators to understand image formats.
  * Should allow specifying graphics to be drawn at individual pixel positions. 
  * The graphics should integrate with the text, in particular it should be possible to draw graphics
-   below as well as above the text, with alpha blending.
+   below as well as above the text, with alpha blending. The graphics should also scroll with the text, automatically.
  * Should use optimizations when the client is running on the same computer as the terminal emulator.
 
 For some discussion regarding the design choices, see link:../../issues/33[#33].
