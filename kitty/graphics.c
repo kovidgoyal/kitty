@@ -580,7 +580,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     Image *img; ImageRef *ref;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
-    float screen_bottom = screen_top - screen_height;
+    float screen_bottom = screen_top - screen_height, screen_right = screen_left + screen_width;
     float screen_width_px = num_cols * global_state.cell_width;
     float screen_height_px = num_rows * global_state.cell_height;
     float y0 = screen_top - dy * scrolled_by;
@@ -596,6 +596,12 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
         if (ref->num_cols) r.right = screen_left + (ref->start_column + ref->num_cols) * dx;
         else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
+
+        // Clip image to screen boundaries
+        if (r.top > screen_top) r.top = screen_top;
+        if (r.bottom < screen_bottom) r.bottom = screen_bottom;
+        if (r.left < screen_left) r.left = screen_left;
+        if (r.right > screen_right) r.right = screen_right;
 
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 100);
