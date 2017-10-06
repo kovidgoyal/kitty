@@ -200,6 +200,13 @@ request.  The message data will be a ASCII encoded string containing only
 printable characters and spaces. The string will be `OK` if reading the pixel
 data succeeded or an error message. 
 
+Sometimes, using an id is not appropriate, for example, if you do not want to
+replace a previously sent image with the same id, or if you are sending a dummy
+image and do not want it stored by the terminal emulator. In that case, you can
+use the *query action*, set `a=q`. Then the terminal emulator will try to load
+the image and respond with either OK or an error, as above, but it will not
+replace an existing image with the same id, nor will it store the image.
+
 
 == Display images on screen
 
@@ -258,7 +265,7 @@ take, and the default value they take when missing. All integers are 32-bit.
 |===
 |Key | Value | Default | Description
 
-| `a` | Single character. `(t, T, p)` | `t` | The overall action this graphics command is performing.
+| `a` | Single character. `(t, T, q, p)` | `t` | The overall action this graphics command is performing.
 
 4+^.^h| Keys for image transmission
 

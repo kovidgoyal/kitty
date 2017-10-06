@@ -124,6 +124,10 @@ class TestGraphics(BaseTest):
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
 
+        # Test load query
+        self.ae(l('abcd', s=1, v=1, a='q'), 'OK')
+        self.ae(g.image_count, 0)
+
         # Test simple load
         for f in 32, 24:
             p = 'abc' + ('d' if f == 32 else '')

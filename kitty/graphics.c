@@ -328,7 +328,7 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
 
 
 static Image*
-handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty) {
+handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
 #define MAX_DATA_SZ (4 * 100000000)
     has_add_respose = false;
@@ -340,10 +340,11 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
         self->last_init_graphics_command = *g;
+        self->last_init_graphics_command.id = iid;
         self->loading_image = 0;
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate);
-        img = find_or_create_image(self, g->id, &existing);
+        img = find_or_create_image(self, iid, &existing);
         if (existing) {
             free_load_data(&img->load_data);
             img->data_loaded = false;
@@ -352,7 +353,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             self->layers_dirty = true;
         } else {
             img->internal_id = internal_id_counter++;
-            img->client_id = g->id;
+            img->client_id = iid;
         }
         img->width = g->data_width; img->height = g->data_height;
         switch(fmt) {
@@ -486,14 +487,14 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 }
 
 static inline const char*
-create_add_response(GraphicsManager UNUSED *self, const GraphicsCommand *g, bool data_loaded) {
+create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid) {
     static char rbuf[sizeof(add_response)/sizeof(add_response[0])];
-    if (g->id) {
+    if (iid) {
         if (!has_add_respose) {
             if (!data_loaded) return NULL;
             snprintf(add_response, 10, "OK"); 
         }
-        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", g->id, add_response);
+        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", iid, add_response);
         return rbuf;
     }
     return NULL;
@@ -726,14 +727,19 @@ const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty) {
     Image *image;
     const char *ret = NULL;
+    uint32_t iid, q_iid;
 
     switch(g->action) {
         case 0:
         case 't':
         case 'T':
-            image = handle_add_command(self, g, payload, is_dirty);
-            ret = create_add_response(self, &self->last_init_graphics_command, image != NULL);
+        case 'q':
+            iid = g->id;
+            if (g->action == 'q') { q_iid = iid; iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
+            image = handle_add_command(self, g, payload, is_dirty, iid);
+            ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image);
+            if (g->action == 'q') remove_images(self, add_trim_predicate);
             break;
         case 'p':
             if (!g->id) {
@@ -741,7 +747,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL);
-            ret = create_add_response(self, g, true);
+            ret = create_add_response(self, true, g->id);
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);
