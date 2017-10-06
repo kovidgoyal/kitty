@@ -1,4 +1,6 @@
 = The terminal graphics protocol
+:toc:
+:toc-placement!:
 
 The goal of this specification is to create a flexible and performant protocol
 that allows the program running in the terminal, hereafter called the _client_,
