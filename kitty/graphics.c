@@ -521,9 +521,10 @@ update_src_rect(ImageRef *ref, Image *img) {
 
 static void 
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
+    has_add_respose = false;
     if (img == NULL) img = img_by_client_id(self, g->id);
-    if (img == NULL) { REPORT_ERROR("Put command refers to non-existent image with id: %u", g->id); return; }
-    if (!img->data_loaded) { REPORT_ERROR("Put command refers to image with id: %u that could not load its data", g->id); return; }
+    if (img == NULL) { set_add_response("ENOENT", "Put command refers to non-existent image with id: %u", g->id); return; }
+    if (!img->data_loaded) { set_add_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return; }
     ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 10);
     *is_dirty = true;
     self->layers_dirty = true;
@@ -740,6 +741,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL);
+            ret = create_add_response(self, g, true);
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);

@@ -42,6 +42,12 @@ def send_command(screen, cmd, payload=b''):
     return c.wtcbuf
 
 
+def parse_response(res):
+    if not res:
+        return
+    return res.decode('ascii').partition(';')[2].partition('\033')[0]
+
+
 def load_helpers(self):
     s = self.create_screen()
     g = s.grman
@@ -50,9 +56,7 @@ def load_helpers(self):
         kw.setdefault('i', 1)
         cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
         res = send_command(s, cmd, payload)
-        if not res:
-            return
-        return res.decode('ascii').partition(';')[2].partition('\033')[0]
+        return parse_response(res)
 
     def sl(payload, **kw):
         if isinstance(payload, str):
@@ -87,8 +91,8 @@ def put_helpers(self, cw, ch):
         iid += 1
         cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
         data = b'x' * w * h * 3
-        send_command(screen, cmd, data)
-        return iid
+        res = send_command(screen, cmd, data)
+        return iid, parse_response(res)
 
     def put_ref(screen, **kw):
         cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
@@ -192,7 +196,7 @@ class TestGraphics(BaseTest):
     def test_image_put(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
-        put_image(s, 10, 20)
+        self.ae(put_image(s, 10, 20)[1], 'OK')
         l = layers(s)
         self.ae(len(l), 1)
         rect_eq(l[0]['src_rect'], 0, 0, 1, 1)

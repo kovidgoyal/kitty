@@ -177,7 +177,7 @@ before sending any other graphics related escape codes.
 
 === Detecting available transmission mediums
 
-Since a client has no a-priori knowledge of whether it shares a filesystem/shared emmory
+Since a client has no a-priori knowledge of whether it shares a filesystem/shared memory
 with the terminal emulator, it can send an id with the control data, using the `i` key 
 (which can be an arbitrary positive integer up to 4294967295, it must not be zero).
 If it does so, the terminal emulator will reply after trying to load the image, saying
@@ -206,7 +206,23 @@ screen, in different locations, using different parts of the source image, as
 needed. You can either simultaneously transmit and display an image using the
 action `a=T`, or first transmit the image with a id, such as `i=10` and then display
 it with `a=p,i=10` which will display the previously transmitted image at the current
-cursor position.
+cursor position. When specifying an image id, the terminal emulator will reply with an
+acknowledgement code, which will be either:
+
+```
+<ESC>_Gi=<id>;OK<ESC>\
+```
+
+when the image referred to by id was found, or
+
+```
+<ESC>_Gi=<id>;ENOENT:<some detailed error msg><ESC>\
+```
+
+when the image with the specified id was not found. This is similar to the
+scheme described above for querying available transmission media, except that
+here we are querying if the image with the specified id is available or needs to
+be re-transmitted.
 
 === Controlling displayed image layout
 
