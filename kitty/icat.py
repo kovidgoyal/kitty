@@ -71,12 +71,6 @@ def write_gr_cmd(cmd, payload):
     sys.stdout.flush()
 
 
-def add_format_code(cmd, mode, width, height):
-    cmd['f'] = {'RGB': '24', 'RGBA': '32', 'PNG': '100'}[mode]
-    if mode != 'PNG':
-        cmd['s'], cmd['v'] = width, height
-
-
 def fit_image(width, height, pwidth, pheight):
     if height > pheight:
         corrf = pheight / float(height)
@@ -110,8 +104,8 @@ def set_cursor(cmd, width, height):
             sys.stdout.buffer.write(b' ' * extra_cells)
 
 
-def write_chunked(mode, cmd, data):
-    if mode != 'PNG':
+def write_chunked(cmd, data):
+    if cmd['f'] != 100:
         data = zlib.compress(data)
         cmd['o'] = 'z'
     data = standard_b64encode(data)
@@ -123,50 +117,65 @@ def write_chunked(mode, cmd, data):
         cmd.clear()
 
 
-def show(data, mode, width, height):
-    cmd = {'a': 'T'}
-    if mode == 'PNG':
-        cmd['S'] = len(data)
-    add_format_code(cmd, mode, width, height)
+def show(outfile, width, height, fmt, transmit_mode):
+    cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height}
     set_cursor(cmd, width, height)
-    write_chunked(mode, cmd, data)
-
-
-def convert_svg(path):
-    try:
-        with open(os.devnull, 'wb') as null:
-            return subprocess.check_output(['rsvg-convert', '-f', 'png', path],
-                                           stderr=null)
-    except OSError:
-        raise SystemExit(
-            'Could not find the program rsvg-convert, needed to display svg files'
-        )
-    except subprocess.CalledProcessError:
-        raise OpenFailed(path, 'rsvg-convert could not process the image')
-
-
-def process(path, mt):
-    if mt == 'image/svg+xml':
-        data = convert_svg(path)
-        width = height = 0
-        mode = 'PNG'
+    if detect_support.has_files:
+        cmd['t'] = transmit_mode
+        write_gr_cmd(cmd, standard_b64encode(outfile.encode(sys.getfilesystemencoding() or 'utf-8')))
     else:
-        try:
-            from PIL import Image
-        except ImportError:
-            raise SystemExit(
-                'You need to install the python-pillow package for image support'
-            )
-        try:
-            im = Image.open(path)
-        except Exception as e:
-            raise OpenFailed(path, str(e))
-        if im.mode not in ('RGB', 'RGBA'):
-            im = im.convert('RGBA')
-        data = im.tobytes()
-        width, height = im.size
-        mode = im.mode
-    show(data, mode, width, height)
+        with open(outfile, 'rb') as f:
+            data = f.read()
+        if fmt == 100:
+            cmd['S'] = len(data)
+        write_chunked(cmd, data)
+
+
+ImageData = namedtuple('ImageData', 'fmt width height mode')
+
+
+def run_imagemagick(path, cmd, keep_stdout=True):
+    try:
+        p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        raise SystemExit('ImageMagick is required to cat images')
+    if p.returncode != 0:
+        raise OpenFailed(path, p.stderr.decode('utf-8'))
+    return p
+
+
+def identify(path):
+    p = run_imagemagick(path, ['identify', '-format', '%m %w %h %A', path])
+    parts = tuple(filter(None, p.stdout.decode('utf-8').split()))
+    mode = 'rgb' if parts[3].lower() == 'false' else 'rgba'
+    return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
+
+
+def convert(path, m, ss):
+    width, height = m.width, m.height
+    cmd = ['convert', '-background', 'none', path]
+    if width > ss.width:
+        width, height = fit_image(width, height, ss.width, height)
+        cmd += ['-resize', '{}x{}'.format(width, height)]
+    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False) as outfile:
+        run_imagemagick(path, cmd + [outfile.name])
+    return outfile.name, width, height
+
+
+def process(path):
+    m = identify(path)
+    ss = screen_size()
+    needs_scaling = m.width > ss.width
+    if m.fmt == 'png' and not needs_scaling:
+        outfile = path
+        transmit_mode = 'f'
+        fmt = 100
+        width, height = m.width, m.height
+    else:
+        fmt = 24 if m.mode == 'rgb' else 32
+        transmit_mode = 't'
+        outfile, width, height = convert(path, m, ss)
+    show(outfile, width, height, fmt, transmit_mode)
     print()  # ensure cursor is on a new line
 
 
@@ -244,13 +253,10 @@ def main(args=sys.argv):
     for item in args.items:
         try:
             if os.path.isdir(item):
-                for x, mt in scan(item):
-                    process(item, mt)
+                for x in scan(item):
+                    process(item)
             else:
-                process(
-                    item,
-                    mimetypes.guess_type(item)[0] or 'application/octet-stream'
-                )
+                process(item)
         except OpenFailed as e:
             errors.append(e)
     if not errors:
