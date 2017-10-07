@@ -86,6 +86,7 @@ the following dependencies are installed first.
 * glew   >= 2.0 (not needed on macOS)
 * fontconfig (not needed on macOS)
 * xrdb and xsel (only on X11 based systems)
+* ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
 
