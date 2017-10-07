@@ -313,6 +313,7 @@ draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); check_gl();
 
     GLuint base = 4 * start;
+    glEnable(GL_SCISSOR_TEST);
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
         glBindTexture(GL_TEXTURE_2D, rd->texture_id); check_gl();
@@ -321,6 +322,7 @@ draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
         // before implementing it.
         for (GLuint k=0; k < rd->group_count; k++, base += 4, i++) glDrawArrays(GL_TRIANGLE_FAN, base, 4);
     }
+    glDisable(GL_SCISSOR_TEST);
 
 }
 
@@ -354,6 +356,15 @@ draw_cells_interleaved(Screen *screen) {
 
 static void 
 draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
+    GLfloat h = (GLfloat)screen->lines * dy;
+#define SCALE(w, x) ((GLfloat)(global_state.viewport_##w) * (GLfloat)(x))
+    glScissor(
+            (GLint)(SCALE(width, (xstart + 1.0f) / 2.0f)), 
+            (GLint)(SCALE(height, ((ystart - h) + 1.0f) / 2.0f)),
+            (GLsizei)(ceilf(SCALE(width, (float)screen->columns * dx / 2.0f))),
+            (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
+    );
+#undef SCALE
     cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
     if (screen->grman->num_of_negative_refs) draw_cells_interleaved(screen);
     else draw_all_cells(screen);

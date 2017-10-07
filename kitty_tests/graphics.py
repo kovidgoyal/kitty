@@ -222,7 +222,7 @@ class TestGraphics(BaseTest):
         self.ae(len(l), 2)
         rect_eq(l[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)
         left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
-        rect_eq(l[0]['dest_rect'], left, top, min(1, -1 + (1 + s.columns) * dx), max(-1, top - dy * 5 / ch))
+        rect_eq(l[0]['dest_rect'], left, top, -1 + (1 + s.columns) * dx, top - dy * 5 / ch)
         rect_eq(l[1]['src_rect'], 0, 0, 1, 1)
         rect_eq(l[1]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l[0]['group_count'], 1), self.ae(l[1]['group_count'], 1)
