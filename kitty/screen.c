@@ -440,12 +440,14 @@ screen_toggle_screen_buffer(Screen *self) {
         screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
+        self->grman = self->alt_grman;
         screen_cursor_position(self, 1, 1);
         cursor_reset(self->cursor);
     } else {
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
         screen_restore_cursor(self);
+        self->grman = self->main_grman;
     }
     screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
