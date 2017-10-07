@@ -298,10 +298,11 @@ take, and the default value they take when missing. All integers are 32-bit.
 When resetting the terminal, all images that are visible on the screen must be
 cleared.  When switching from the main screen to the alternate screen buffer
 (1049 private mode) all images in the alternate screen must be cleared, just as
-all text is cleared.
+all text is cleared. The clear command (usually `<ESC>[H<ESC>[2J`) should also
+clear all images. This is so that the clear command works.
 
-The commands to clear the screen and erase text must have no effect on
-graphics. The dedicated delete graphics commands must be used for those.
+The other commands to erase text must have no effect on graphics.
+The dedicated delete graphics commands must be used for those.
 
 When scrolling the screen (such as when using index cursor movement commands,
 or scrolling through the history buffer), images must be scrolled along with

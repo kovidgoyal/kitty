@@ -882,6 +882,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         case 1:
             a = 0; b = self->cursor->y; break;
         case 2:
+            grman_clear(self->grman);
             a = 0; b = self->lines; break;
         default:
             return;
