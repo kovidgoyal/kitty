@@ -434,9 +434,9 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 void 
 screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
+    grman_clear(self->alt_grman);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
         linebuf_clear(self->alt_linebuf, BLANK_CHAR);
-        grman_clear(self->alt_grman);
         screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
