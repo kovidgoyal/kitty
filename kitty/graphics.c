@@ -561,6 +561,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     } 
     c->x += num_cols; c->y += num_rows - 1;
     ref->effective_num_rows = num_rows;
+    ref->effective_num_cols = num_cols;
 }
 
 static int 
@@ -630,7 +631,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 // Image lifetime/scrolling {{{
 
 static inline void
-filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, Image*, const void*)) {
+filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*)) {
     Image *img; ImageRef *ref;
     size_t i, j;
 
@@ -643,7 +644,7 @@ filter_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRe
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
                 }
             }
-            if (img->refcnt == 0) {
+            if (img->refcnt == 0 && (free_images || img->client_id == 0)) {
                 free_image(img);
                 remove_from_array(self->images, sizeof(Image), i, self->image_count--);
             }
@@ -702,7 +703,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
 
 void 
 grman_scroll_images(GraphicsManager *self, const ScrollData *data) {
-    filter_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func);
+    filter_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func);
 }
 
 static inline bool
@@ -712,7 +713,71 @@ clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data) {
 
 void
 grman_clear(GraphicsManager *self) {
-    filter_refs(self, NULL, clear_filter_func);
+    filter_refs(self, NULL, true, clear_filter_func);
+}
+
+static inline bool
+id_filter_func(ImageRef UNUSED *ref, Image *img, const void *data) {
+    uint32_t iid = *(uint32_t*)data;
+    return img->client_id == iid;
+}
+
+static inline bool
+x_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+    const GraphicsCommand *g = data;
+    return ref->start_column <= (int32_t)g->x_offset - 1 && ((int32_t)g->x_offset - 1) < ((int32_t)(ref->start_column + ref->effective_num_cols));
+}
+
+static inline bool
+y_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+    const GraphicsCommand *g = data;
+    return ref->start_row <= (int32_t)g->y_offset - 1 && ((int32_t)(g->y_offset - 1 < ref->start_row + ref->effective_num_rows));
+}
+
+static inline bool
+z_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+    const GraphicsCommand *g = data;
+    return ref->z_index == g->z_index;
+}
+
+
+static inline bool
+point_filter_func(ImageRef *ref, Image *img, const void *data) {
+    return x_filter_func(ref, img, data) && y_filter_func(ref, img, data);
+}
+
+static inline bool
+point3d_filter_func(ImageRef *ref, Image *img, const void *data) {
+    return z_filter_func(ref, img, data) && point_filter_func(ref, img, data);
+}
+
+
+static void
+handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty) {
+    static GraphicsCommand d;
+    switch (g->delete_action) {
+#define I(u, data, func) filter_refs(self, data, g->delete_action == u, func); *is_dirty = true; break
+#define D(l, u, data, func) case l: case u: I(u, data, func)
+#define G(l, u, func) D(l, u, g, func)
+        case 0:
+        D('a', 'A', NULL, clear_filter_func);
+        D('i', 'I', &g->id, id_filter_func);
+        G('p', 'P', point_filter_func);
+        G('q', 'Q', point3d_filter_func);
+        G('x', 'X', x_filter_func);
+        G('y', 'Y', y_filter_func);
+        G('z', 'Z', z_filter_func);
+        case 'c':
+        case 'C':
+            d.x_offset = c->x + 1; d.y_offset = c->y + 1;
+            I('C', &d, point_filter_func);
+        default:
+            REPORT_ERROR("Unknown graphics command delete action: %c", g->delete_action);
+            break;
+#undef G
+#undef D
+#undef I
+    }
 }
 
 // }}}
@@ -737,11 +802,14 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             break;
         case 'p':
             if (!g->id) {
-                REPORT_ERROR("%s", "Put graphics command without image id");
+                REPORT_ERROR("Put graphics command without image id");
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL);
             ret = create_add_response(self, true, g->id);
+            break;
+        case 'd':
+            handle_delete_command(self, g, c, is_dirty);
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);

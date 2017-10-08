@@ -256,6 +256,40 @@ they are semi-transparent. You can specify z-index values using the `z` key.
 Negative z-index values mean that the images will be drawn under the text. This
 allows rendering of text on top of images.
 
+== Deleting images
+
+Images can be deleted by using the delete action `a=d`. If specified without any
+other keys, it will delete all images visible on screen. To delete specific images,
+use the `d` key as described in the table below. Note that each value of d has 
+both a lowercase and an uppercase variant. The lowercase variant only deletes the
+images without necessarily freeing up the stored image data, so that the images can be
+re-displayed without needing to resend the data. The uppercase variants will delete
+the image data as well, provided that the image is not referenced elsewhere, such as in the
+scrollback buffer. The values of the `x` and `y` keys are the same as cursor positions (i.e.
+x=1, y=1 is the top left cell).
+
+|===
+| Value of `d` | Meaning 
+
+| `a` or `A` | Delete all images visible on screen
+| `i` or `I` | Delete all images with the specified id, specified using the `i` key.
+| `c` or `C` | Delete all images that intersect with the current cursor position.
+| `p` or `P` | Delete all images that intersect a specific cell, the cell is specified using the `x` and `y` keys
+| `q` or `Q` | Delete all images that intersect a specific cell having a specific z-index. The cell and z-index is specified using the `x`, `y` and `z` keys.
+| `x` or `X` | Delete all images that intersect the specified column, specified using the `x` key.
+| `y` or `Y` | Delete all images that intersect the specified row, specified using the `y` key.
+| `z` or `Z` | Delete all images that have the specified z-index, specified using the `z` key.
+
+Some examples:
+
+```
+<ESC>_Ga=d<ESC>\   # delete all visible images
+<ESC>_Ga=d,i=10<ESC>\   # delete the image with id=10
+<ESC>_Ga=Z,z=-1<ESC>\   # delete the images with z-index -1, also freeing up image data
+<ESC>_Ga=P,x=3,y=4<ESC>\   # delete all images that intersect the cell at (3, 4)
+```
+|===
+
 == Control data reference
 
 The table below shows all the control data keys as well as what values they can
@@ -265,7 +299,7 @@ take, and the default value they take when missing. All integers are 32-bit.
 |===
 |Key | Value | Default | Description
 
-| `a` | Single character. `(t, T, q, p)` | `t` | The overall action this graphics command is performing.
+| `a` | Single character. `(t, T, q, p, d)` | `t` | The overall action this graphics command is performing.
 
 4+^.^h| Keys for image transmission
 
@@ -290,6 +324,11 @@ take, and the default value they take when missing. All integers are 32-bit.
 | `c` | Positive integer | `0` | The number of columns to display the image over
 | `r` | Positive integer | `0` | The number of rows to display the image over
 | `z` | Integer          | `0` | The *z-index* vertical stacking order of the image
+
+4+^.^h| Keys for deleting images
+
+| `d` | Single character. `(a, A, c, C, p, P, q, Q, x, X, y, Y, z, Z)`. | `a` | What to delete.
+
 |===
 
 
@@ -298,7 +337,7 @@ take, and the default value they take when missing. All integers are 32-bit.
 When resetting the terminal, all images that are visible on the screen must be
 cleared.  When switching from the main screen to the alternate screen buffer
 (1049 private mode) all images in the alternate screen must be cleared, just as
-all text is cleared. The clear command (usually `<ESC>[H<ESC>[2J`) should also
+all text is cleared. The clear screen escape code (usually `<ESC>[2J`) should also
 clear all images. This is so that the clear command works.
 
 The other commands to erase text must have no effect on graphics.

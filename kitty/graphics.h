@@ -8,7 +8,7 @@
 #include "data-types.h"
 
 typedef struct {
-    unsigned char action, transmission_type, compressed;
+    unsigned char action, transmission_type, compressed, delete_action;
     uint32_t format, more, id, data_sz, data_offset;
     uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines, cell_x_offset, cell_y_offset;
     int32_t z_index;
@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
     uint32_t src_width, src_height, src_x, src_y;
-    uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows;
+    uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows, effective_num_cols;
     int32_t z_index;
     int32_t start_row, start_column;
     ImageRect src_rect;

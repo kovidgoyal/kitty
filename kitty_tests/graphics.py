@@ -292,3 +292,37 @@ class TestGraphics(BaseTest):
             s.index()
         s.reset()
         self.ae(s.grman.image_count, 1)
+
+    def test_gr_delete(self):
+        cw, ch = 10, 20
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+
+        def delete(ac=None, **kw):
+            cmd = 'a=d'
+            if ac:
+                cmd += ',d={}'.format(ac)
+            if kw:
+                cmd += ',' + ','.join('{}={}'.format(k, v) for k, v in kw.items())
+            send_command(s, cmd)
+
+        put_image(s, cw, ch)
+        delete()
+        self.ae(len(layers(s)), 0), self.ae(s.grman.image_count, 1)
+        delete('A')
+        self.ae(s.grman.image_count, 0)
+        iid = put_image(s, cw, ch)[0]
+        delete('I', i=iid)
+        self.ae(s.grman.image_count, 0)
+        s.reset()
+        put_image(s, cw, ch)
+        put_image(s, cw, ch)
+        delete('C')
+        self.ae(s.grman.image_count, 2)
+        s.cursor_position(1, 1)
+        delete('C')
+        self.ae(s.grman.image_count, 1)
+        delete('P', x=2, y=1)
+        self.ae(s.grman.image_count, 0)
+        put_image(s, cw, ch, z=9)
+        delete('Z', z=9)
+        self.ae(s.grman.image_count, 0)

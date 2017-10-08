@@ -202,7 +202,7 @@ class TestParser(BaseTest):
             for p, v in tuple(k.items()):
                 if isinstance(v, str) and p != 'payload':
                     k[p] = v.encode('ascii')
-            for f in 'action transmission_type compressed'.split():
+            for f in 'action delete_action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
             for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width'
                       ' num_cells num_lines cell_x_offset cell_y_offset z_index').split():
