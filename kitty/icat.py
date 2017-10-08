@@ -122,7 +122,7 @@ def show(outfile, width, height, fmt, transmit_mode):
     set_cursor(cmd, width, height)
     if detect_support.has_files:
         cmd['t'] = transmit_mode
-        write_gr_cmd(cmd, standard_b64encode(outfile.encode(sys.getfilesystemencoding() or 'utf-8')))
+        write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(sys.getfilesystemencoding() or 'utf-8')))
     else:
         with open(outfile, 'rb') as f:
             data = f.read()
