@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import codecs
 import fcntl
 import mimetypes
 import os
@@ -26,6 +27,12 @@ try:
     from kitty.constants import appname
 except ImportError:
     appname = ''
+
+try:
+    fsenc = sys.getfilesystemencoding() or 'utf-8'
+    codecs.lookup(fsenc)
+except Exception:
+    fsenc = 'utf-8'
 
 
 class OpenFailed(ValueError):
@@ -122,7 +129,7 @@ def show(outfile, width, height, fmt, transmit_mode):
     set_cursor(cmd, width, height)
     if detect_support.has_files:
         cmd['t'] = transmit_mode
-        write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(sys.getfilesystemencoding() or 'utf-8')))
+        write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(fsenc)))
     else:
         with open(outfile, 'rb') as f:
             data = f.read()
@@ -220,7 +227,7 @@ def detect_support(wait_for=10):
         with NamedTemporaryFile() as f:
             f.write(b'abcd'), f.flush()
             write_gr_cmd(dict(a='q', s=1, v=1, i=1), standard_b64encode(b'abcd'))
-            write_gr_cmd(dict(a='q', s=1, v=1, i=2, t='f'), standard_b64encode(f.name.encode(sys.getfilesystemencoding() or 'utf-8')))
+            write_gr_cmd(dict(a='q', s=1, v=1, i=2, t='f'), standard_b64encode(f.name.encode(fsenc)))
             sel = selectors.DefaultSelector()
             sel.register(sys.stdin, selectors.EVENT_READ, read)
             while monotonic() - start_time < wait_for and 1 not in responses and 2 not in responses:
