@@ -22,7 +22,7 @@ kitty icat path/to/some/image.png
 ```
 
 You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics here:
-link:https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100
+https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100
 
 toc::[]
 
