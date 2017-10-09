@@ -15,6 +15,15 @@ emulator. The major design goals are
 
 For some discussion regarding the design choices, see link:../../issues/33[#33].
 
+To see a quick demo, inside a kitty terminal run:
+
+```
+kitty icat path/to/some/image.png
+```
+
+You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics here:
+link:https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100
+
 toc::[]
 
 == Getting the window size

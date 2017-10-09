@@ -71,7 +71,7 @@ link:http://vt100.net/docs/vt510-rm/DECRPM[DECRPM]
 == Graphics rendering
 
 See link:graphics-protocol.asciidoc[Graphics Protocol] for a description
-of this protocol to enable drawing of arbitrary easter images in the terminal.
+of this protocol to enable drawing of arbitrary raster images in the terminal.
 
 
 == Keyboard handling

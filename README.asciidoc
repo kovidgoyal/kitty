@@ -48,7 +48,7 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 * Supports tiling multiple terminal windows side by side in different
 layouts without needing to use an extra program like tmux
 
-* Supports all modern terminal features: unicode, true-color, mouse
+* Supports all modern terminal features: graphics, unicode, true-color, mouse
 protocol, focus tracking, bracketed paste and so on.
 
 * Allows you to view the scrollback buffer in a separate window
