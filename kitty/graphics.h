@@ -50,6 +50,8 @@ typedef struct {
 
     ImageRef *refs;
     size_t refcnt, refcap;
+    double atime;
+    size_t used_storage;
 } Image;
 
 typedef struct {
@@ -71,6 +73,7 @@ typedef struct {
     bool layers_dirty;
     size_t num_of_negative_refs, num_of_positive_refs;
     unsigned int last_scrolled_by;
+    size_t used_storage;
 } GraphicsManager;
 PyTypeObject GraphicsManager_Type;
 

@@ -280,6 +280,9 @@ x=1, y=1 is the top left cell).
 | `y` or `Y` | Delete all images that intersect the specified row, specified using the `y` key.
 | `z` or `Z` | Delete all images that have the specified z-index, specified using the `z` key.
 
+|===
+
+
 Some examples:
 
 ```
@@ -288,7 +291,15 @@ Some examples:
 <ESC>_Ga=Z,z=-1<ESC>\   # delete the images with z-index -1, also freeing up image data
 <ESC>_Ga=P,x=3,y=4<ESC>\   # delete all images that intersect the cell at (3, 4)
 ```
-|===
+
+=== Image persistence and storage quotas
+
+In order to avoid *Denial-of-Service* attacks, terminal emulators should have a
+maximum storage quota for image data. It should allow at least a few full
+screen images.  For example the quota in kitty is 320MB per buffer. When adding
+a new image, if the total size exceeds the quota, the terminal emulator should
+delete older images to make space for the new one.
+
 
 == Control data reference
 

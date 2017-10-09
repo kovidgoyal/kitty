@@ -18,6 +18,8 @@
 #include <png.h>
 #include <structmember.h>
 
+#define STORAGE_LIMIT (320 * (1024 * 1024))
+
 #define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
 static bool send_to_gpu = true;
@@ -59,17 +61,19 @@ free_texture_func free_texture = NULL;
 send_image_to_gpu_func send_image_to_gpu = NULL;
 
 static inline void
-free_image(Image *img) {
+free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
     free_refs_data(img);
     free_load_data(&(img->load_data));
+    self->used_storage -= img->used_storage;
 }
+
 
 static void
 dealloc(GraphicsManager* self) {
     size_t i;
     if (self->images) {
-        for (i = 0; i < self->image_count; i++) free_image(self->images + i);
+        for (i = 0; i < self->image_count; i++) free_image(self, self->images + i);
         free(self->images);
     }
     free(self->render_data);
@@ -114,8 +118,50 @@ img_by_client_id(GraphicsManager *self, uint32_t id) {
     return NULL;
 }
 
+static inline void
+remove_image(GraphicsManager *self, size_t idx) {
+    free_image(self, self->images + idx);
+    remove_from_array(self->images, sizeof(Image), idx, self->image_count--);
+    self->layers_dirty = true;
+}
+
+static inline void
+remove_images(GraphicsManager *self, bool(*predicate)(Image*), Image* skip_image) {
+    for (size_t i = self->image_count; i-- > 0;) {
+        Image *img = self->images + i;
+        if (img != skip_image && predicate(img)) {
+            remove_image(self, i);
+        }
+    }
+}
+
 
 // Loading image data {{{
+
+static bool
+trim_predicate(Image *img) {
+    return !img->data_loaded || !img->refcnt;
+}
+
+
+static int
+oldest_last(const void* a, const void *b) {
+    double ans = ((Image*)(b))->atime - ((Image*)(a))->atime;
+    return ans < 0 ? -1 : (ans == 0 ? 0 : 1); 
+}
+
+static inline void
+apply_storage_quota(GraphicsManager *self, size_t storage_limit, Image *currently_added_image) {
+    // First remove unreferenced images, even if they have an id
+    remove_images(self, trim_predicate, currently_added_image);
+    if (self->used_storage < storage_limit) return;
+
+    qsort(self->images, self->image_count, sizeof(Image), oldest_last);
+    while (self->used_storage > storage_limit && self->image_count > 0) {
+        remove_image(self, self->image_count - 1);
+    }
+    if (!self->image_count) self->used_storage = 0;  // sanity check
+}
 
 static char add_response[512] = {0};
 static bool has_add_respose = false;
@@ -315,17 +361,6 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     return self->images + self->image_count++;
 }
 
-static inline void
-remove_images(GraphicsManager *self, bool(*predicate)(Image*)) {
-    for (size_t i = self->image_count; i-- > 0;) {
-        if (predicate(self->images + i)) {
-            free_image(self->images + i);
-            remove_from_array(self->images, sizeof(Image), i, self->image_count--);
-            self->layers_dirty = true;
-        }
-    }
-}
-
 
 static Image*
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
@@ -343,7 +378,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         self->last_init_graphics_command.id = iid;
         self->loading_image = 0;
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
-        remove_images(self, add_trim_predicate);
+        remove_images(self, add_trim_predicate, NULL);
         img = find_or_create_image(self, iid, &existing);
         if (existing) {
             free_load_data(&img->load_data);
@@ -355,6 +390,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->internal_id = internal_id_counter++;
             img->client_id = iid;
         }
+        img->atime = monotonic(); img->used_storage = 0;
         img->width = g->data_width; img->height = g->data_height;
         switch(fmt) {
             case PNG:  
@@ -480,6 +516,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (LIKELY(img->data_loaded && send_to_gpu)) {
         send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned);
         free_load_data(&img->load_data);
+        self->used_storage += required_sz;
+        img->used_storage = required_sz;
     }
     return img;
 #undef MAX_DATA_SZ
@@ -537,6 +575,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         }
     }
     if (ref == NULL) ref = img->refs + img->refcnt++;
+    img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
     ref->src_width = MIN(ref->src_width, img->width - (img->width > ref->src_x ? ref->src_x : img->width));
     ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
@@ -644,10 +683,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
                 }
             }
-            if (img->refcnt == 0 && (free_images || img->client_id == 0)) {
-                free_image(img);
-                remove_from_array(self->images, sizeof(Image), i, self->image_count--);
-            }
+            if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
         }
         self->layers_dirty = true;
     }
@@ -798,7 +834,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             image = handle_add_command(self, g, payload, is_dirty, iid);
             ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image);
-            if (g->action == 'q') remove_images(self, add_trim_predicate);
+            if (g->action == 'q') remove_images(self, add_trim_predicate, NULL);
+            if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, image);
             break;
         case 'p':
             if (!g->id) {
