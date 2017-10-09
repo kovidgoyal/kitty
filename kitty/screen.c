@@ -149,14 +149,16 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) num_content_lines = num_content_lines_after;
+    grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
+
+    // Resize alt linebuf
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-
-    // Resize alt linebuf
     if (!is_main) num_content_lines = num_content_lines_after;
-    self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
+    grman_resize(self->alt_grman, self->lines, lines, self->columns, columns);
 
+    self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
 

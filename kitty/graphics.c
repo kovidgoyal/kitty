@@ -814,6 +814,11 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 
 // }}}
 
+void 
+grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUSED lines, index_type UNUSED old_columns, index_type UNUSED columns) {
+    self->layers_dirty = true;
+}
+
 const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty) {
     Image *image;
