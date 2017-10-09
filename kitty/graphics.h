@@ -89,3 +89,4 @@ const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows);
 void grman_scroll_images(GraphicsManager *self, const ScrollData*);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type);
+void grman_rescale(GraphicsManager *self, unsigned int old_cell_width, unsigned int old_cell_height);

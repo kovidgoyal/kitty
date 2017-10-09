@@ -554,6 +554,24 @@ update_src_rect(ImageRef *ref, Image *img) {
     ref->src_rect.bottom = (float)(ref->src_y + ref->src_height) / (float)img->height;
 }
 
+static inline void
+update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows) {
+    uint32_t t;
+    if (num_cols == 0) {
+        t = ref->src_width + ref->cell_x_offset;
+        num_cols = t / global_state.cell_width;
+        if (t > num_cols * global_state.cell_width) num_cols += 1;
+    } 
+    if (num_rows == 0) {
+        t = ref->src_height + ref->cell_y_offset;
+        num_rows = t / global_state.cell_height;
+        if (t > num_rows * global_state.cell_height) num_rows += 1;
+    } 
+    ref->effective_num_rows = num_rows;
+    ref->effective_num_cols = num_cols;
+}
+
+
 static void 
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
     has_add_respose = false;
@@ -581,22 +599,9 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->cell_y_offset = MIN(g->cell_y_offset, global_state.cell_height - 1);
     ref->num_cols = g->num_cells; ref->num_rows = g->num_lines;
     update_src_rect(ref, img);
-
+    update_dest_rect(ref, g->num_cells, g->num_lines);
     // Move the cursor, the screen will take care of ensuring it is in bounds
-    uint32_t num_cols = g->num_cells, num_rows = g->num_lines, t;
-    if (num_cols == 0) {
-        t = ref->src_width + ref->cell_x_offset;
-        num_cols = t / global_state.cell_width;
-        if (t > num_cols * global_state.cell_width) num_cols += 1;
-    } 
-    if (num_rows == 0) {
-        t = ref->src_height + ref->cell_y_offset;
-        num_rows = t / global_state.cell_height;
-        if (t > num_rows * global_state.cell_height) num_rows += 1;
-    } 
-    c->x += num_cols; c->y += num_rows - 1;
-    ref->effective_num_rows = num_rows;
-    ref->effective_num_cols = num_cols;
+    c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
 }
 
 static int 
@@ -817,6 +822,21 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 void 
 grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUSED lines, index_type UNUSED old_columns, index_type UNUSED columns) {
     self->layers_dirty = true;
+}
+
+void 
+grman_rescale(GraphicsManager *self, unsigned int UNUSED old_cell_width, unsigned int UNUSED old_cell_height) {
+    ImageRef *ref; Image *img;
+    self->layers_dirty = true;
+    for (size_t i = self->image_count; i-- > 0;) { 
+        img = self->images + i;
+        for (size_t j = img->refcnt; j-- > 0;) { 
+            ref = img->refs + j;
+            ref->cell_x_offset = MIN(ref->cell_x_offset, global_state.cell_width - 1);
+            ref->cell_y_offset = MIN(ref->cell_y_offset, global_state.cell_height - 1);
+            update_dest_rect(ref, ref->num_cols, ref->num_rows);
+        }
+    }
 }
 
 const char*

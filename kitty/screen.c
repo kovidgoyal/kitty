@@ -181,6 +181,11 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     return true;
 }
 
+static void
+screen_rescale_images(Screen *self, unsigned int old_cell_width, unsigned int old_cell_height) {
+    grman_rescale(self->main_grman, old_cell_width, old_cell_height);
+    grman_rescale(self->alt_grman, old_cell_width, old_cell_height);
+}
 
 static void
 screen_refresh_sprite_positions(Screen *self) {
@@ -1346,6 +1351,7 @@ WRAP0(linefeed)
 WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
+WRAP2(rescale_images, 1, 1)
 
 static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
@@ -1557,6 +1563,7 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
+    MND(rescale_images, METH_VARARGS)
     MND(text_for_selection, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)

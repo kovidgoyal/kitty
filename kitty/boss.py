@@ -135,13 +135,16 @@ class Boss:
         if new_size == self.current_font_size:
             return
         self.current_font_size = new_size
+        w, h = cell_size.width, cell_size.height
+        windows = tuple(filter(None, self.window_id_map.values()))
         cell_size.width, cell_size.height = set_font_family(
             self.opts, override_font_size=self.current_font_size)
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
+        for window in windows:
+            window.screen.rescale_images(w, h)
         self.resize_windows_after_font_size_change()
-        for window in self.window_id_map.values():
-            if window is not None:
-                window.screen.refresh_sprite_positions()
+        for window in windows:
+            window.screen.refresh_sprite_positions()
         self.tab_manager.refresh_sprite_positions()
 
     def resize_windows_after_font_size_change(self):
