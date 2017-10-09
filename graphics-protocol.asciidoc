@@ -21,8 +21,8 @@ To see a quick demo, inside a kitty terminal run:
 kitty icat path/to/some/image.png
 ```
 
-You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics here:
-https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100
+You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics 
+link:https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100[here].
 
 toc::[]
 
