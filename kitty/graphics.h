@@ -64,11 +64,10 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    index_type lines, columns;
     size_t image_count, images_capacity, loading_image;
     GraphicsCommand last_init_graphics_command;
     Image *images;
-    size_t count, capacity, rp_capacity;
+    size_t count, capacity;
     ImageRenderData *render_data;
     bool layers_dirty;
     size_t num_of_negative_refs, num_of_positive_refs;
@@ -84,7 +83,7 @@ typedef struct {
     bool has_margins;
 } ScrollData;
 
-GraphicsManager* grman_realloc(GraphicsManager *, index_type lines, index_type columns);
+GraphicsManager* grman_alloc();
 void grman_clear(GraphicsManager*);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty);
 bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows);

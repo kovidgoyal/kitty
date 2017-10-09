@@ -81,7 +81,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
-        self->main_grman = grman_realloc(NULL, lines, columns); self->alt_grman = grman_realloc(NULL, lines, columns);
+        self->main_grman = grman_alloc(); self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
@@ -152,17 +152,10 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-    GraphicsManager *g = grman_realloc(self->main_grman, lines, columns);
-    if (g == NULL) return false;
-    self->main_grman = g;
 
     // Resize alt linebuf
-    g = grman_realloc(self->alt_grman, lines, columns);
-    if (g == NULL) return false;
-    self->alt_grman = g;
     if (!is_main) num_content_lines = num_content_lines_after;
     self->linebuf = is_main ? self->main_linebuf : self->alt_linebuf;
-    self->grman = is_main ? self->main_grman : self->alt_grman;
 
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;

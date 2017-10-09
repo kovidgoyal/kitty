@@ -25,19 +25,15 @@
 static bool send_to_gpu = true;
 
 GraphicsManager*
-grman_realloc(GraphicsManager *old, index_type lines, index_type columns) {
+grman_alloc() {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
-    self->lines = lines; self->columns = columns;
-    if (old == NULL) {
-        self->images_capacity = 64;
-        self->images = calloc(self->images_capacity, sizeof(Image));
-        if (self->images == NULL) {
-            Py_CLEAR(self); return NULL;
-        }
-    } else {
-        self->images_capacity = old->images_capacity; self->images = old->images; self->image_count = old->image_count;
-        old->images = NULL;
-        Py_DECREF(old);
+    self->images_capacity = 64;
+    self->images = calloc(self->images_capacity, sizeof(Image));
+    self->capacity = 64;
+    self->render_data = calloc(self->capacity, sizeof(ImageRenderData));
+    if (self->images == NULL || self->render_data == NULL) {
+        PyErr_NoMemory();
+        Py_CLEAR(self); return NULL;
     }
     return self;
 }
@@ -858,10 +854,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
 
 // Boilerplate {{{
 static PyObject *
-new(PyTypeObject UNUSED *type, PyObject *args, PyObject UNUSED *kwds) {
-    unsigned int lines, columns;
-    if (!PyArg_ParseTuple(args, "II", &lines, &columns)) return NULL;
-    PyObject *ans = (PyObject*)grman_realloc(NULL, lines, columns);
+new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+    PyObject *ans = (PyObject*)grman_alloc();
     if (ans == NULL) PyErr_NoMemory();
     return ans;
 }
