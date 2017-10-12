@@ -1,4 +1,4 @@
-#version 330
+#version GLSL_VERSION
 
 layout(location=3) in vec4 src;
 out vec2 texcoord;

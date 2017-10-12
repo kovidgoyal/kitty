@@ -1,4 +1,4 @@
-#version 330
+#version GLSL_VERSION
 
 uniform sampler2D image;
 
