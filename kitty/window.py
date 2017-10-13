@@ -53,6 +53,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 def load_shader_programs():
     v, f = load_shaders('cell')
+    compile_program(GRAPHICS_PROGRAM, *load_shaders('graphics'))
     for which, p in {
             'ALL': CELL_PROGRAM, 'BACKGROUND': CELL_BACKGROUND_PROGRAM, 'SPECIAL': CELL_SPECIAL_PROGRAM,
             'FOREGROUND': CELL_FOREGROUND_PROGRAM
@@ -62,7 +63,6 @@ def load_shader_programs():
     init_cell_program()
     compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
     init_cursor_program()
-    compile_program(GRAPHICS_PROGRAM, *load_shaders('graphics'))
 
 
 class Window:

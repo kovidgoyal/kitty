@@ -191,6 +191,14 @@ init_cell_program() {
         cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
         cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
     }
+    // Sanity check to ensure the attribute location binding worked
+#define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
+    for (int p = CELL_PROGRAM; p <= CELL_FOREGROUND_PROGRAM; p++) {
+        C(p, colors, 1); C(p, sprite_coords, 2); C(p, is_selected, 3);
+    }
+    C(GRAPHICS_PROGRAM, src, 0);
+#undef C
+
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, graphics_buffer };
