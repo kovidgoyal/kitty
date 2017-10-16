@@ -7,9 +7,7 @@ import zlib
 import subprocess
 from base64 import standard_b64encode
 
-
-def write(data):
-    sys.stdout.buffer.write(data)
+write = getattr(sys.stdout, 'buffer', sys.stdout).write
 
 
 def clear_screen():
@@ -22,7 +20,7 @@ def move_cursor(x, y):
 
 def write_gr_cmd(cmd, payload):
     cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
-    w = sys.stdout.buffer.write
+    w = write
     w(b'\033_G'), w(cmd.encode('ascii')), w(b';'), w(payload), w(b'\033\\')
     sys.stdout.flush()
 
