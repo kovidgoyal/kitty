@@ -6,10 +6,29 @@
  */
 
 #include "gl.h"
+#include <sys/sysctl.h>
 
 enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
 enum {SPRITE_MAP_UNIT, GRAPHICS_UNIT};
 
+static bool broken_multi_vao = false;
+
+static inline void
+detect_broken_multi_vao() {
+#ifdef __APPLE__
+    char str[256] = {0};
+    size_t size = sizeof(str);
+    int mv = 0;
+    if (sysctlbyname("kern.osrelease", str, &size, NULL, 0) != 0) broken_multi_vao = true;
+    else {
+        mv = atoi(str);
+        broken_multi_vao = mv < 17;
+    }
+    if (broken_multi_vao) {
+        fprintf(stderr, "WARNING: Old macOS version: %d detected, disabling graphics support!\n", mv);
+    }
+#endif
+}
 
 // Sprites {{{
 typedef struct {
@@ -210,7 +229,7 @@ create_cell_vao() {
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
-#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, offset, 0); }
+#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, #name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", #name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, offset, 0); }
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
@@ -222,8 +241,10 @@ create_cell_vao() {
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, NULL, 0);
+    if (!broken_multi_vao) {
+        add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+        AL(GRAPHICS_PROGRAM, src, 4, GL_FLOAT, NULL, 0);
+    }
 
     return vao_idx;
 #undef A
@@ -658,6 +679,7 @@ init_shaders(PyObject *module) {
     draw_cursor = &draw_cursor_impl;
     free_texture = &free_texture_impl;
     send_image_to_gpu = &send_image_to_gpu_impl;
+    detect_broken_multi_vao();
     return true;
 }
 // }}}
