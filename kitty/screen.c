@@ -28,7 +28,7 @@ static inline void
 init_tabstops(bool *tabstops, index_type count) {
     // In terminfo we specify the number of initial tabstops (it) as 8
     for (unsigned int t=0; t < count; t++) {
-        tabstops[t] = (t+1) % 8 == 0 ? true : false;
+        tabstops[t] = t % 8 == 0 ? true : false;
     }
 }
 
