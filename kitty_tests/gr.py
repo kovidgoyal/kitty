@@ -2,9 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import subprocess
 import sys
 import zlib
-import subprocess
 from base64 import standard_b64encode
 
 write = getattr(sys.stdout, 'buffer', sys.stdout).write
@@ -47,9 +48,13 @@ def main():
     move_cursor(5, 8)
     print('kitty is \033[3m\033[32mawesome\033[m!')
     move_cursor(0, 21)
-    print('Lenna...')
-    subprocess.check_call('python3 kitty/icat.py /t/Lenna.png'.split())
-    input()
+    if os.path.exists('/t/Lenna.png'):
+        print('Lenna...')
+        subprocess.check_call('python3 kitty/icat.py /t/Lenna.png'.split())
+    try:
+        raw_input()
+    except NameError:
+        input()
 
 
 if __name__ == '__main__':
