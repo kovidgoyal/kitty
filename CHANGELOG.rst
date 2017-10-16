@@ -8,7 +8,7 @@ version 0.4.0 [future]
   new graphics protocol. kitty can draw images with full 32-bit color over both
   ssh connections and files/shared memory (when available) for better
   performance. The drawing primitives support alpha blending and z-index.
-  Images can be draw both above and below text. See
+  Images can be drawn both above and below text. See
   https://github.com/kovidgoyal/kitty/blob/master/graphics-protocol.asciidoc
   for details. Note that on macOS graphics only work for macOS High Sierra and
   newer.
