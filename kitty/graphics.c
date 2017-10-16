@@ -632,12 +632,12 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     self->count = 0;
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
         r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
-        if (ref->num_rows) r.bottom = y0 - (ref->start_row + ref->num_rows) * dy;
+        if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
         else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
         if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
         r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
-        if (ref->num_cols) r.right = screen_left + (ref->start_column + ref->num_cols) * dx;
+        if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
         else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
