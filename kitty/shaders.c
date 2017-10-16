@@ -194,9 +194,9 @@ init_cell_program() {
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
     for (int p = CELL_PROGRAM; p <= CELL_FOREGROUND_PROGRAM; p++) {
-        C(p, colors, 1); C(p, sprite_coords, 2); C(p, is_selected, 3);
+        C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
-    C(GRAPHICS_PROGRAM, src, 0);
+    C(GRAPHICS_PROGRAM, src, 3);
 #undef C
 
 }
