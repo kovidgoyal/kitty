@@ -222,8 +222,8 @@ create_cell_vao() {
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
 
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, NULL, 0);
+    //add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    //AL(GRAPHICS_PROGRAM, "src", 4, GL_FLOAT, NULL, 0);
 
     return vao_idx;
 #undef A
