@@ -279,7 +279,7 @@ def main():
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     if GLFW_X11_WM_CLASS_CLASS is not None:
-        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, opts.cls)
+        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, args.cls)
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:
