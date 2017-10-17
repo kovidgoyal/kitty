@@ -71,7 +71,7 @@ glew_init(PyObject UNUSED *self) {
 #ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
+        PyErr_Format(PyExc_RuntimeError, "GLEW init failed: [%d] %s", err, glewGetErrorString(err));
         return NULL;
     }
 #define ARB_TEST(name) \
