@@ -1,7 +1,6 @@
-*.js
-*.pyj-cached
 *.so
-.build-cache
+*.pyc
+*.pyo
 tags
 build
 linux-package
@@ -9,3 +8,4 @@ logo/*.iconset
 test-launcher
 kitty-profile
 dev
+__pycache__
