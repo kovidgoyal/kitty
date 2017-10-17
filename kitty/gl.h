@@ -82,7 +82,6 @@ glew_init(PyObject UNUSED *self) {
     ARB_TEST(texture_storage);
 #undef ARB_TEST
 #endif
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
     Py_RETURN_NONE;
 }
