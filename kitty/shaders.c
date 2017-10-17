@@ -9,26 +9,7 @@
 #include <sys/sysctl.h>
 
 enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
-enum {SPRITE_MAP_UNIT, GRAPHICS_UNIT};
-
-static bool broken_multi_vao = false;
-
-static inline void
-detect_broken_multi_vao() {
-#ifdef __APPLE__
-    char str[256] = {0};
-    size_t size = sizeof(str);
-    int mv = 0;
-    if (sysctlbyname("kern.osrelease", str, &size, NULL, 0) != 0) broken_multi_vao = true;
-    else {
-        mv = atoi(str);
-        broken_multi_vao = mv < 17;
-    }
-    if (broken_multi_vao) {
-        fprintf(stderr, "WARNING: Old macOS version: %d detected, disabling graphics support!\n", mv);
-    }
-#endif
-}
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -215,12 +196,11 @@ init_cell_program() {
     for (int p = CELL_PROGRAM; p <= CELL_FOREGROUND_PROGRAM; p++) {
         C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
-    C(GRAPHICS_PROGRAM, src, 3);
 #undef C
 
 }
 
-#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, graphics_buffer };
+#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
 
 static ssize_t
 create_cell_vao() {
@@ -229,7 +209,6 @@ create_cell_vao() {
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
-#define AL(p, name, size, dtype, offset, stride) { GLint aloc = attrib_location(p, #name); if (aloc == -1 ) fatal("No attribute named: %s found in this program", #name); add_located_attribute_to_vao(vao_idx, aloc, size, dtype, stride, offset, 0); }
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
@@ -241,15 +220,17 @@ create_cell_vao() {
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
 
-    if (!broken_multi_vao) {
-        add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-        AL(GRAPHICS_PROGRAM, src, 4, GL_FLOAT, NULL, 0);
-    }
-
     return vao_idx;
 #undef A
 #undef A1
-#undef AL
+}
+
+static ssize_t
+create_graphics_vao() {
+    ssize_t vao_idx = create_vao();
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    add_attribute_to_vao(GRAPHICS_PROGRAM, vao_idx, "src", 4, GL_FLOAT, 0, NULL, 0);
+    return vao_idx;
 }
 
 static inline void
@@ -297,7 +278,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 }
 
 static inline void
-cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor) {
+cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor) {
     size_t sz;
     CELL_BUFFERS;
     void *address;
@@ -315,11 +296,11 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
     }
 
-    if (grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
+    if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
         sz = sizeof(GLfloat) * 16 * screen->grman->count;
-        GLfloat *a = alloc_and_map_vao_buffer(vao_idx, sz, graphics_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
+        GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
         for (size_t i = 0; i < screen->grman->count; i++, a += 16) memcpy(a, screen->grman->render_data[i].vertices, sizeof(screen->grman->render_data[0].vertices));
-        unmap_vao_buffer(vao_idx, graphics_buffer); a = NULL;
+        unmap_vao_buffer(gvao_idx, 0); a = NULL;
     }
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
@@ -332,7 +313,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, GLfloat xstart, GLfloat 
 }
 
 static void
-draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
+draw_graphics(ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
+    bind_vertex_array(gvao_idx);
     bind_program(GRAPHICS_PROGRAM);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     static bool graphics_constants_set = false;
@@ -353,11 +335,11 @@ draw_graphics(ImageRenderData *data, GLuint start, GLuint count) {
         for (GLuint k=0; k < rd->group_count; k++, base += 4, i++) glDrawArrays(GL_TRIANGLE_FAN, base, 4);
     }
     glDisable(GL_SCISSOR_TEST);
-
+    bind_vertex_array(vao_idx);
 }
 
 static void
-draw_all_cells(Screen *screen) {
+draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_PROGRAM); 
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
@@ -365,15 +347,15 @@ draw_all_cells(Screen *screen) {
         cell_constants_set = true; 
     }
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
-    if (screen->grman->count) draw_graphics(screen->grman->render_data, 0, screen->grman->count);
+    if (screen->grman->count) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
 }
 
 static void
-draw_cells_interleaved(Screen *screen) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_BACKGROUND_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
 
-    if (screen->grman->num_of_negative_refs) draw_graphics(screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+    if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
     bind_program(CELL_SPECIAL_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
@@ -382,11 +364,11 @@ draw_cells_interleaved(Screen *screen) {
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
 
-    if (screen->grman->num_of_positive_refs) draw_graphics(screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
+    if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
 }
 
 static void 
-draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
+draw_cells_impl(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
     GLfloat h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(global_state.viewport_##w) * (GLfloat)(x))
     glScissor(
@@ -396,10 +378,9 @@ draw_cells_impl(ssize_t vao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLf
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
-    cell_prepare_to_render(vao_idx, screen, xstart, ystart, dx, dy, cursor);
-    if (screen->grman->num_of_negative_refs) draw_cells_interleaved(screen);
-    else draw_all_cells(screen);
-
+    cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy, cursor);
+    if (screen->grman->num_of_negative_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
+    else draw_all_cells(vao_idx, gvao_idx, screen);
 }
 // }}}
 
@@ -566,6 +547,7 @@ TWO_INT(send_borders_rects)
 
 NO_ARG(init_cell_program)
 NO_ARG_INT(create_cell_vao)
+NO_ARG_INT(create_graphics_vao)
 NO_ARG(destroy_sprite_map)
 PYWRAP1(layout_sprite_map) {
     unsigned int cell_width, cell_height;
@@ -630,6 +612,7 @@ static PyMethodDef module_methods[] = {
     MW(send_borders_rects, METH_VARARGS),
     MW(init_cell_program, METH_NOARGS),
     MW(create_cell_vao, METH_NOARGS),
+    MW(create_graphics_vao, METH_NOARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
     MW(clear_buffers, METH_VARARGS),
@@ -681,7 +664,6 @@ init_shaders(PyObject *module) {
     draw_cursor = &draw_cursor_impl;
     free_texture = &free_texture_impl;
     send_image_to_gpu = &send_image_to_gpu_impl;
-    detect_broken_multi_vao();
     return true;
 }
 // }}}

@@ -21,7 +21,7 @@ typedef struct {
 } Options;
 
 typedef struct {
-    ssize_t vao_idx;
+    ssize_t vao_idx, gvao_idx;
     float xstart, ystart, dx, dy;
     Screen *screen;
 } ScreenRenderData;
@@ -98,7 +98,7 @@ bool drag_scroll(Window *);
 #define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
 #define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
 EXTERNAL_FUNC0(draw_borders, void);
-EXTERNAL_FUNC(draw_cells, void, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
+EXTERNAL_FUNC(draw_cells, void, ssize_t, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
 EXTERNAL_FUNC(draw_cursor, void, CursorRenderInfo *);
 EXTERNAL_FUNC(update_viewport_size, void, int, int);
 EXTERNAL_FUNC(free_texture, void, uint32_t*);

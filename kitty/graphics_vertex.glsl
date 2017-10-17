@@ -1,6 +1,6 @@
 #version GLSL_VERSION
 
-layout(location=3) in vec4 src;
+in vec4 src;
 out vec2 texcoord;
 
 void main() {

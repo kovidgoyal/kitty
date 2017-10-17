@@ -13,7 +13,6 @@ layout(std140) uniform CellRenderData {
 };
 
 // Have to use fixed locations here as all variants of the cell program share the same VAO
-// location 3 is used in the graphics program which uses the same VAO
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec4 sprite_coords;
 layout(location=2) in float is_selected;

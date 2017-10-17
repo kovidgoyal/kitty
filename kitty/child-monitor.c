@@ -508,7 +508,7 @@ render(double now) {
     draw_borders();
     cursor_info.is_visible = false;
 #define TD global_state.tab_bar_render_data
-    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, &cursor_info);
+    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, &cursor_info);
 #undef TD
     if (global_state.num_tabs) {
         Tab *tab = global_state.tabs + global_state.active_tab;
@@ -529,7 +529,7 @@ render(double now) {
                     collect_cursor_info(&cursor_info, w, now);
                     update_window_title(w);
                 } else cursor_info.is_visible = false;
-                draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, &cursor_info);
+                draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, &cursor_info);
                 if (is_active_window && cursor_info.is_visible && cursor_info.shape != CURSOR_BLOCK) draw_cursor(&cursor_info);
                 if (WD.screen->start_visual_bell_at != 0) {
                     double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
