@@ -42,6 +42,7 @@ static PyMethodDef sel_methods[] = {
 
 bool 
 init_x11_funcs(PyObject *module) { 
+    (void)(module);
 #ifdef HAS_X11_SELECTION
     if (PyModule_AddFunctions(module, sel_methods) != 0) return false;
 #endif
