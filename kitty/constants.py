@@ -75,3 +75,47 @@ if ctypes.sizeof(GLfloat) != 4:
     raise RuntimeError('float size is not 4')
 if ctypes.sizeof(GLint) != 4:
     raise RuntimeError('int size is not 4')
+
+
+def get_glfw_lib_name():
+    try:
+        for line in open('/proc/{}/maps'.format(os.getpid())):
+            lib = line.split()[-1]
+            if '/libglfw.so' in lib:
+                return lib
+    except Exception as err:
+        try:
+            print(str(err), file=sys.stderr)
+        except Exception:
+            pass
+    return 'libglfw.so.3'
+
+
+def glfw_lib():
+    ans = getattr(glfw_lib, 'ans', None)
+    if ans is None:
+        ans = glfw_lib.ans = ctypes.CDLL('libglfw.3.dylib' if isosx else get_glfw_lib_name())
+    return ans
+
+
+def selection_clipboard_funcs():
+    ans = getattr(selection_clipboard_funcs, 'ans', None)
+    if ans is None:
+        lib = glfw_lib()
+        if hasattr(lib, 'glfwGetX11SelectionString'):
+            g = lib.glfwGetX11SelectionString
+            g.restype = ctypes.c_char_p
+            g.argtypes = []
+            s = lib.glfwSetX11SelectionString
+            s.restype = None
+            s.argtypes = [ctypes.c_char_p]
+            ans = g, s
+        else:
+            ans = None, None
+        selection_clipboard_funcs.ans = ans
+    return ans
+
+
+iswayland = False
+if not isosx:
+    iswayland = selection_clipboard_funcs()[0] is None

@@ -12,8 +12,11 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import isosx
-from .fast_data_types import glfw_get_physical_dpi, wcwidth as wcwidth_impl, redirect_std_streams, GLSL_VERSION
+from .constants import isosx, iswayland, selection_clipboard_funcs
+from .fast_data_types import (
+    GLSL_VERSION, glfw_get_physical_dpi, redirect_std_streams,
+    wcwidth as wcwidth_impl
+)
 from .rgb import Color, to_color
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -118,8 +121,8 @@ def x11_dpi():
 
 def get_logical_dpi():
     if not hasattr(get_logical_dpi, 'ans'):
-        if isosx:
-            # TODO: Investigate if this needs a different implementation on OS X
+        if isosx or iswayland:
+            # TODO: Investigate if this needs a different implementation on OS X or Wayland
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
             # See https://github.com/glfw/glfw/issues/1019 for why we cant use
@@ -160,17 +163,31 @@ def parse_color_set(raw):
             continue
 
 
+def set_primary_selection(text):
+    if isosx:
+        return  # There is no primary selection on OS X
+    if isinstance(text, str):
+        text = text.encode('utf-8')
+    s = selection_clipboard_funcs()[1]
+    if s is None:
+        p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=open(os.devnull, 'wb'), stderr=subprocess.STDOUT)
+        p.stdin.write(text), p.stdin.close()
+        p.wait()
+    else:
+        s(text)
+
+
 def get_primary_selection():
     if isosx:
         return ''  # There is no primary selection on OS X
-    try:
-        from .fast_data_types import get_selection_x11
-        ans = (get_selection_x11() or b'').decode('utf-8', 'replace')
-    except ImportError:
+    g = selection_clipboard_funcs()[0]
+    if g is None:
         ans = subprocess.check_output(['xsel', '-p'], stderr=open(os.devnull, 'wb'), stdin=open(os.devnull, 'rb')).decode('utf-8')
         if ans:
             # Without this for some reason repeated pastes dont work
             set_primary_selection(ans)
+    else:
+        ans = (g() or b'').decode('utf-8', 'replace')
     return ans
 
 
@@ -186,20 +203,6 @@ def base64_encode(
         if integer == 0:
             break
     return ans
-
-
-def set_primary_selection(text):
-    if isosx:
-        return  # There is no primary selection on OS X
-    if isinstance(text, str):
-        text = text.encode('utf-8')
-    try:
-        from .fast_data_types import set_selection_x11
-        set_selection_x11(text)
-    except ImportError:
-        p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=open(os.devnull, 'wb'), stderr=subprocess.STDOUT)
-        p.stdin.write(text), p.stdin.close()
-        p.wait()
 
 
 def open_url(url, program='default'):

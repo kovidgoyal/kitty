@@ -139,7 +139,6 @@ extern bool init_keys(PyObject *module);
 extern bool init_graphics(PyObject *module);
 extern bool init_shaders(PyObject *module);
 extern bool init_shaders_debug(PyObject *module);
-extern bool init_x11_funcs(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -181,7 +180,6 @@ PyInit_fast_data_types(void) {
         if (!init_Face(m)) return NULL;
         if (!init_freetype_library(m)) return NULL;
         if (!init_fontconfig_library(m)) return NULL;
-        if (!init_x11_funcs(m)) return NULL;
 #endif
 
 #define OOF(n) #n, offsetof(Cell, n)
