@@ -116,6 +116,4 @@ def selection_clipboard_funcs():
     return ans
 
 
-iswayland = False
-if not isosx:
-    iswayland = hasattr(glfw_lib(), 'glfwGetWaylandDisplay')
+iswayland = not isosx and hasattr(glfw_lib(), 'glfwGetWaylandDisplay')
