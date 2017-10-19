@@ -97,6 +97,13 @@ class Tab:  # {{{
         borders(self.windows, self.active_window, self.current_layout, tm.blank_rects,
                 self.current_layout.needs_window_borders and len(self.windows) > 1)
 
+    def pipe_selection_to_new_tab(self, args):
+        text = self.active_window.text_for_selection()
+        if text:
+          get_boss().tab_manager.new_tab(
+              special_window=SpecialWindow(
+                  cmd=args, stdin=text.encode('utf-8')))
+        
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
             try:
