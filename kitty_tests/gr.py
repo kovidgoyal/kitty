@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 import zlib
-import subprocess
 from base64 import standard_b64encode
 
-
-def write(data):
-    sys.stdout.buffer.write(data)
+write = getattr(sys.stdout, 'buffer', sys.stdout).write
 
 
 def clear_screen():
@@ -22,7 +20,7 @@ def move_cursor(x, y):
 
 def write_gr_cmd(cmd, payload):
     cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
-    w = sys.stdout.buffer.write
+    w = write
     w(b'\033_G'), w(cmd.encode('ascii')), w(b';'), w(payload), w(b'\033\\')
     sys.stdout.flush()
 
@@ -41,6 +39,15 @@ def display(data, width, height, x, y, z, ncols=0, nrows=0):
         cmd.clear()
 
 
+def display_png_file(path):
+    cmd = {'a': 'T', 't': 'f', 'f': '100'}
+    path = os.path.abspath(path)
+    if not isinstance(path, bytes):
+        path = path.encode(sys.getfilesystemencoding() or 'utf-8')
+    data = standard_b64encode(path)
+    write_gr_cmd(cmd, data)
+
+
 def main():
     clear_screen()
     display(b'\xdd\xdd\xdd\xff', 1, 1, 0, 0, -10, 40, 20)
@@ -50,9 +57,16 @@ def main():
     print('kitty is \033[3m\033[32mawesome\033[m!')
     move_cursor(0, 21)
     print('Lenna...')
-    subprocess.check_call('python3 kitty/icat.py /t/Lenna.png'.split())
-    input()
+    display_png_file('kitty_tests/Lenna.png')
+    try:
+        try:
+            raw_input()
+        except NameError:
+            input()
+    except (EOFError, KeyboardInterrupt):
+        pass
 
 
 if __name__ == '__main__':
+    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
     main()

@@ -14,7 +14,8 @@ from .config import (
     cached_values, load_cached_values, load_config, save_cached_values
 )
 from .constants import (
-    appname, config_dir, isosx, logo_data_file, str_version, viewport_size
+    appname, config_dir, isosx, iswayland, logo_data_file, str_version,
+    viewport_size
 )
 from .fast_data_types import (
     GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
@@ -183,7 +184,7 @@ def run_app(opts, args):
         cocoa_create_global_menu()
         if opts.macos_hide_titlebar:
             cocoa_make_window_resizable(window.cocoa_window_id())
-    else:
+    elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
     set_logical_dpi(*get_logical_dpi())
@@ -279,7 +280,7 @@ def main():
     opts = load_config(*config, overrides=overrides)
     change_wcwidth(not opts.use_system_wcwidth)
     if GLFW_X11_WM_CLASS_CLASS is not None:
-        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, opts.cls)
+        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, args.cls)
     if not glfw_init():
         raise SystemExit('GLFW initialization failed')
     try:

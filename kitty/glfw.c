@@ -399,7 +399,7 @@ current_monitor_dpi(WindowWrapper *self) {
 void
 request_window_attention() {
 #ifdef has_request_attention
-    glfwRequestWindowAttention(the->window);
+    glfwRequestWindowAttention(the_window->window);
 #endif
     glfwPostEmptyEvent();
 }

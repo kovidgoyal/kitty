@@ -264,7 +264,7 @@ def option_parser():
         'action',
         nargs='?',
         default='build',
-        choices='build test linux-package osx-bundle'.split(),
+        choices='build test linux-package osx-bundle clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -425,6 +425,15 @@ Categories=System;
     # }}}
 
 
+def clean():
+    for f in subprocess.check_output('git ls-files --others --ignored --exclude-from=.gitignore'.split()).decode('utf-8').splitlines():
+        if f.startswith('logo/kitty.iconset') or f.startswith('dev/'):
+            continue
+        os.unlink(f)
+        if os.sep in f and not os.listdir(os.path.dirname(f)):
+            os.rmdir(os.path.dirname(f))
+
+
 def main():
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
@@ -447,6 +456,8 @@ def main():
     elif args.action == 'osx-bundle':
         build(args, native_optimizations=False)
         package(args, for_bundle=True)
+    elif args.action == 'clean':
+        clean()
 
 
 if __name__ == '__main__':

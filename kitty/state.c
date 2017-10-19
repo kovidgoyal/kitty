@@ -197,7 +197,7 @@ PYWRAP1(set_window_render_data) {
     unsigned int window_idx, tab_id;
     static ScreenRenderData d = {0};
     static WindowGeometry g = {0};
-    PA("IIiffffOIIII", &tab_id, &window_idx, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    PA("IIiiffffOIIII", &tab_id, &window_idx, A(vao_idx), A(gvao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_TAB(tab_id);
     Py_CLEAR(tab->windows[window_idx].render_data.screen);

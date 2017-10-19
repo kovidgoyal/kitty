@@ -17,9 +17,9 @@ from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
     CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
     CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    Screen, compile_program, create_cell_vao, glfw_post_empty_event,
-    init_cell_program, init_cursor_program, remove_vao, set_window_render_data,
-    update_window_title, update_window_visibility
+    Screen, compile_program, create_cell_vao, create_graphics_vao,
+    glfw_post_empty_event, init_cell_program, init_cursor_program, remove_vao,
+    set_window_render_data, update_window_title, update_window_visibility
 )
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -70,6 +70,7 @@ class Window:
     def __init__(self, tab, child, opts, args):
         self.id = next(window_counter)
         self.vao_id = create_cell_vao()
+        self.gvao_id = create_graphics_vao()
         self.tab_id = tab.id
         self.tabref = weakref.ref(tab)
         self.override_title = None
@@ -120,7 +121,7 @@ class Window:
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
-        set_window_render_data(self.tab_id, window_idx, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.tab_id, window_idx, self.vao_id, self.gvao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
 
     def contains(self, x, y):
         g = self.geometry
@@ -230,7 +231,8 @@ class Window:
     def destroy(self):
         if self.vao_id is not None:
             remove_vao(self.vao_id)
-            self.vao_id = None
+            remove_vao(self.gvao_id)
+            self.vao_id = self.gvao_id = None
 
     # actions {{{
 
