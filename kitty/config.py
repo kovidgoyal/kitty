@@ -94,6 +94,7 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
+shlex_actions = {'pass_selection_to_program'}
 
 
 def parse_key_action(action):
@@ -106,6 +107,8 @@ def parse_key_action(action):
         sep, rest = rest.split(' ', 1)
         parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
         args = tuple(map(parse_key_action, filter(None, parts)))
+    elif func in shlex_actions:
+        args = shlex.split(rest)
     return KeyAction(func, args)
 
 

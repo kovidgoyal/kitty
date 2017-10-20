@@ -1,6 +1,8 @@
 Changelog
 ==============
 
+kitty is a modern, hackable, OpenGL based terminal emulator.
+
 version 0.4.0 [future]
 -----------------------
 
@@ -31,3 +33,5 @@ version 0.4.0 [future]
   the background color, for enhanced visibility.
 
 - Allow combining multiple independent actions into a single shortcut
+
+- Add a new shortcut to pass the current selection to an external program

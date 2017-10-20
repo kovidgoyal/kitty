@@ -23,7 +23,7 @@ from .fast_data_types import (
 )
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .utils import color_as_int, load_shaders, parse_color_set, sanitize_title
+from .utils import color_as_int, load_shaders, parse_color_set, sanitize_title, open_url, open_cmd
 
 
 class DynamicColor(Enum):
@@ -255,6 +255,14 @@ class Window:
         text = self.text_for_selection()
         if text:
             get_boss().glfw_window.set_clipboard_string(text)
+
+    def pass_selection_to_program(self, *args):
+        text = self.text_for_selection()
+        if text:
+            if args:
+                open_cmd(args, text)
+            else:
+                open_url(text)
 
     def scroll_line_up(self):
         if self.screen.is_main_linebuf():
