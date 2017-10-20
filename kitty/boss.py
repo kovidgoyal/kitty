@@ -50,8 +50,6 @@ class DumpCommands:  # {{{
 
 class Boss:
 
-    daemon = True
-
     def __init__(self, glfw_window, opts, args):
         self.window_id_map = WeakValueDictionary()
         startup_session = create_session(opts, args)
