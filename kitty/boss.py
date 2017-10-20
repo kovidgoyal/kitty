@@ -168,11 +168,15 @@ class Boss:
 
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        action = get_shortcut(self.opts.keymap, mods, key, scancode)
-        if action is not None:
-            f = getattr(self, action.func, None)
+        key_action = get_shortcut(self.opts.keymap, mods, key, scancode)
+        self.current_key_press_info = key, scancode, action, mods
+        return self.dispatch_action(key_action)
+
+    def dispatch_action(self, key_action):
+        if key_action is not None:
+            f = getattr(self, key_action.func, None)
             if f is not None:
-                passthrough = f(*action.args)
+                passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
         tab = self.active_tab
@@ -181,12 +185,13 @@ class Boss:
         window = self.active_window
         if window is None:
             return False
-        if action is not None:
-            f = getattr(tab, action.func, getattr(window, action.func, None))
+        if key_action is not None:
+            f = getattr(tab, key_action.func, getattr(window, key_action.func, None))
             if f is not None:
-                passthrough = f(*action.args)
+                passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
+        key, scancode, action, mods = self.current_key_press_info
         data = get_sent_data(
             self.opts.send_text_map, key, scancode, mods, window, action
         )
@@ -194,6 +199,10 @@ class Boss:
             window.write_to_child(data)
             return True
         return False
+
+    def combine(self, *actions):
+        for key_action in actions:
+            self.dispatch_action(key_action)
 
     def on_focus(self, window, focused):
         self.window_is_focused = focused

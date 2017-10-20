@@ -98,12 +98,15 @@ KeyAction = namedtuple('KeyAction', 'func args')
 
 def parse_key_action(action):
     parts = action.split(' ', 1)
+    func = parts[0]
     if len(parts) == 1:
-        return KeyAction(parts[0], ())
-    safe_print(
-        'Invalid shortcut action: {}. Ignoring.'.format(action),
-        file=sys.stderr
-    )
+        return KeyAction(func, ())
+    rest = parts[1]
+    if func == 'combine':
+        sep, rest = rest.split(' ', 1)
+        parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
+        args = tuple(map(parse_key_action, parts))
+    return KeyAction(func, args)
 
 
 def parse_key(val, keymap):
@@ -118,9 +121,16 @@ def parse_key(val, keymap):
             file=sys.stderr
         )
         return
-    paction = parse_key_action(action)
-    if paction is not None:
-        keymap[(mods, key)] = paction
+    try:
+        paction = parse_key_action(action)
+    except Exception:
+        safe_print(
+            'Invalid shortcut action: {}. Ignoring.'.format(action),
+            file=sys.stderr
+        )
+    else:
+        if paction is not None:
+            keymap[(mods, key)] = paction
 
 
 def parse_symbol_map(val):

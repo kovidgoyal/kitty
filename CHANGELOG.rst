@@ -29,3 +29,5 @@ version 0.4.0 [future]
 
 - The block cursor in now fully opaque but renders the character under it in
   the background color, for enhanced visibility.
+
+- Allow combining multiple independent actions into a single shortcut
