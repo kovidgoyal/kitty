@@ -105,7 +105,7 @@ def parse_key_action(action):
     if func == 'combine':
         sep, rest = rest.split(' ', 1)
         parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
-        args = tuple(map(parse_key_action, parts))
+        args = tuple(map(parse_key_action, filter(None, parts)))
     return KeyAction(func, args)
 
 
