@@ -113,7 +113,7 @@ def x11_dpi():
     except Exception:
         pass
     try:
-        raw = subprocess.check_output(['xrdb', '-query'])
+        raw = subprocess.check_output(['xrdb', '-query'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         return parse_xrdb(raw)
     except Exception:
         pass
@@ -170,7 +170,7 @@ def set_primary_selection(text):
         text = text.encode('utf-8')
     s = selection_clipboard_funcs()[1]
     if s is None:
-        p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=open(os.devnull, 'wb'), stderr=subprocess.STDOUT)
+        p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         p.stdin.write(text), p.stdin.close()
         p.wait()
     else:
@@ -182,7 +182,7 @@ def get_primary_selection():
         return ''  # There is no primary selection on OS X
     g = selection_clipboard_funcs()[0]
     if g is None:
-        ans = subprocess.check_output(['xsel', '-p'], stderr=open(os.devnull, 'wb'), stdin=open(os.devnull, 'rb')).decode('utf-8')
+        ans = subprocess.check_output(['xsel', '-p'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL).decode('utf-8')
         if ans:
             # Without this for some reason repeated pastes dont work
             set_primary_selection(ans)
@@ -205,13 +205,19 @@ def base64_encode(
     return ans
 
 
+def open_cmd(cmd, arg=None):
+    if arg is not None:
+        cmd = list(cmd)
+        cmd.append(arg)
+    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).wait()
+
+
 def open_url(url, program='default'):
     if program == 'default':
         cmd = ['open'] if isosx else ['xdg-open']
     else:
         cmd = shlex.split(program)
-    cmd.append(url)
-    subprocess.Popen(cmd).wait()
+    return open_cmd(cmd, url)
 
 
 def detach(fork=True, setsid=True, redirect=True):
