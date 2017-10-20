@@ -168,11 +168,11 @@ class Boss:
 
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        func = get_shortcut(self.opts.keymap, mods, key, scancode)
-        if func is not None:
-            f = getattr(self, func, None)
+        action = get_shortcut(self.opts.keymap, mods, key, scancode)
+        if action is not None:
+            f = getattr(self, action.func, None)
             if f is not None:
-                passthrough = f()
+                passthrough = f(*action.args)
                 if passthrough is not True:
                     return True
         tab = self.active_tab
@@ -181,10 +181,10 @@ class Boss:
         window = self.active_window
         if window is None:
             return False
-        if func is not None:
-            f = getattr(tab, func, getattr(window, func, None))
+        if action is not None:
+            f = getattr(tab, action.func, getattr(window, action.func, None))
             if f is not None:
-                passthrough = f()
+                passthrough = f(*action.args)
                 if passthrough is not True:
                     return True
         data = get_sent_data(

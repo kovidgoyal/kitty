@@ -38,8 +38,9 @@ def to_cursor_shape(x):
         return cshapes[x.lower()]
     except KeyError:
         raise ValueError(
-            'Invalid cursor shape: {} allowed values are {}'.
-            format(x, ', '.join(cshapes))
+            'Invalid cursor shape: {} allowed values are {}'.format(
+                x, ', '.join(cshapes)
+            )
         )
 
 
@@ -58,8 +59,9 @@ def parse_mods(parts):
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
             safe_print(
-                'Shortcut: {} has an unknown modifier, ignoring'.
-                format(parts.join('+')),
+                'Shortcut: {} has an unknown modifier, ignoring'.format(
+                    parts.join('+')
+                ),
                 file=sys.stderr
             )
             return
@@ -91,6 +93,19 @@ def parse_shortcut(sc):
     return None, None
 
 
+KeyAction = namedtuple('KeyAction', 'func args')
+
+
+def parse_key_action(action):
+    parts = action.split(' ', 1)
+    if len(parts) == 1:
+        return KeyAction(parts[0], ())
+    safe_print(
+        'Invalid shortcut action: {}. Ignoring.'.format(action),
+        file=sys.stderr
+    )
+
+
 def parse_key(val, keymap):
     sc, action = val.partition(' ')[::2]
     sc, action = sc.strip(), action.strip()
@@ -103,7 +118,9 @@ def parse_key(val, keymap):
             file=sys.stderr
         )
         return
-    keymap[(mods, key)] = action
+    paction = parse_key_action(action)
+    if paction is not None:
+        keymap[(mods, key)] = paction
 
 
 def parse_symbol_map(val):
@@ -145,7 +162,8 @@ def parse_send_text(val):
 
     def abort(msg):
         safe_print(
-            'Send text: {} is invalid ({}), ignoring'.format(val, msg), file=sys.stderr
+            'Send text: {} is invalid ({}), ignoring'.format(val, msg),
+            file=sys.stderr
         )
         return {}
 
@@ -164,7 +182,9 @@ def parse_send_text(val):
     if mode in ('all', '*'):
         modes = parse_send_text.all_modes
     else:
-        modes = frozenset(mode.split(',')).intersection(parse_send_text.all_modes)
+        modes = frozenset(mode.split(',')).intersection(
+            parse_send_text.all_modes
+        )
         if not modes:
             return abort('Invalid keyboard modes')
     return {mode: {(mods, key): text} for mode in modes}
@@ -242,7 +262,15 @@ for a in ('active', 'inactive'):
 
 
 def parse_config(lines, check_keys=True):
-    ans = {'keymap': {}, 'symbol_map': {}, 'send_text_map': {'kitty': {}, 'normal': {}, 'application': {}}}
+    ans = {
+        'keymap': {},
+        'symbol_map': {},
+        'send_text_map': {
+            'kitty': {},
+            'normal': {},
+            'application': {}
+        }
+    }
     if check_keys:
         all_keys = defaults._asdict()
     for line in lines:
@@ -265,7 +293,10 @@ def parse_config(lines, check_keys=True):
                 continue
             if check_keys:
                 if key not in all_keys:
-                    safe_print('Ignoring unknown config key: {}'.format(key), file=sys.stderr)
+                    safe_print(
+                        'Ignoring unknown config key: {}'.format(key),
+                        file=sys.stderr
+                    )
                     continue
             tm = type_map.get(key)
             if tm is not None:
@@ -280,7 +311,7 @@ with open(
     defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(defaults.keymap.values())
+actions = frozenset(a.func for a in defaults.keymap.values())
 
 
 def merge_keymaps(defaults, newvals):
@@ -308,7 +339,10 @@ def merge_configs(defaults, vals):
             if k == 'keymap':
                 ans['keymap'] = merge_keymaps(v, newvals)
             elif k == 'send_text_map':
-                ans[k] = {m: merge_dicts(mm, newvals.get(m, {})) for m, mm in v.items()}
+                ans[k] = {
+                    m: merge_dicts(mm, newvals.get(m, {}))
+                    for m, mm in v.items()
+                }
             else:
                 ans[k] = merge_dicts(v, newvals)
         else:
@@ -334,7 +368,7 @@ def load_config(*paths, overrides=None) -> Options:
     return Options(**ans)
 
 
-def build_ansi_color_table(opts: Options=defaults):
+def build_ansi_color_table(opts: Options = defaults):
 
     def as_int(x):
         return (x[0] << 16) | (x[1] << 8) | x[2]
