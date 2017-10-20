@@ -79,7 +79,7 @@ if ctypes.sizeof(GLint) != 4:
 
 def get_glfw_lib_name():
     try:
-        for line in open('/proc/{}/maps'.format(os.getpid())):
+        for line in open('/proc/self/maps'):
             lib = line.split()[-1]
             if '/libglfw.so' in lib:
                 return lib
