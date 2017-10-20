@@ -1,7 +1,7 @@
 Changelog
 ==============
 
-kitty is a feature full, hackable, OpenGL based terminal emulator.
+kitty is a feature full, cross-platform, *fast*, OpenGL based terminal emulator.
 
 version 0.4.0 [future]
 -----------------------

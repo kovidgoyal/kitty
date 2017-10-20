@@ -48,23 +48,25 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 * Supports tiling multiple terminal windows side by side in different
 layouts without needing to use an extra program like tmux
 
-* Supports all modern terminal features: graphics, unicode, true-color, mouse
-protocol, focus tracking, bracketed paste and so on.
+* Supports all modern terminal features: graphics (images), unicode,
+true-color, mouse protocol, focus tracking, bracketed paste and so on.
 
-* Allows you to view the scrollback buffer in a separate window
-using your favorite pager program such as less
-
-* Support startup sessions which allow you to specify the window/tab layout,
+* Supports startup sessions which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
+
+* Uses OpenGL for rendering, offloads rendering to the GPU for lower system
+load and buttery smooth scrolling. Uses threaded rendering to minimize input
+latency.
+
+* Cross-platform support: kitty currently works on Linux and macOS, but because
+it uses only OpenGL for rendering, it should be trivial to port to other
+platforms. 
+
+* Allows you to view the scrollback buffer in a separate window using your
+favorite pager program such as less
 
 * Easily hackable (UI layer written in python, inner loops in C for
 speed). Less than fifteen thousand lines of code.
-
-* Uses OpenGL for rendering, offloads rendering work to the GPU for lower system load.
-
-* Cross-platform support: kitty currently works on Linux and macOS, but because it
-uses only OpenGL for rendering, it should be trivial to port to
-other platforms. 
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
