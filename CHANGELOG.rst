@@ -1,13 +1,13 @@
 Changelog
 ==============
 
-kitty is a modern, hackable, OpenGL based terminal emulator.
+kitty is a feature full, hackable, OpenGL based terminal emulator.
 
 version 0.4.0 [future]
 -----------------------
 
 - Support for drawing arbitrary raster graphics (images) in the terminal via a
-  new graphics protocol. kitty can draw images with full 32-bit color over both
+  new graphics protocol. kitty can draw images with full 32-bit color using both
   ssh connections and files/shared memory (when available) for better
   performance. The drawing primitives support alpha blending and z-index.
   Images can be drawn both above and below text. See
