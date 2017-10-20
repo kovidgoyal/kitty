@@ -289,8 +289,7 @@ def merge_keymaps(defaults, newvals):
         if v in {'noop', 'no-op', 'no_op'}:
             ans.pop(k, None)
             continue
-        if v in actions:
-            ans[k] = v
+        ans[k] = v
     return ans
 
 

@@ -170,7 +170,9 @@ class Boss:
 
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        func = get_shortcut(self.opts.keymap, mods, key, scancode)
+        funcargs = get_shortcut(self.opts.keymap, mods, key, scancode)
+        func = funcargs.partition(' ')[::2][0]
+        args = funcargs.partition(' ')[::2][1:]
         if func is not None:
             f = getattr(self, func, None)
             if f is not None:
@@ -185,7 +187,11 @@ class Boss:
             return False
         if func is not None:
             f = getattr(tab, func, getattr(window, func, None))
-            if f is not None:
+            if func == 'pipe_selection_to_new_tab':
+                passthrough = f(args)
+                if passthrough is not True:
+                    return True
+            elif f is not None:
                 passthrough = f()
                 if passthrough is not True:
                     return True

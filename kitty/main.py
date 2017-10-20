@@ -92,13 +92,12 @@ def option_parser():
         default=False,
         help=_('Output commands received from child process to stdout')
     )
-    if not isosx:
-        a(
-            '--detach',
-            action='store_true',
-            default=False,
-            help=_('Detach from the controlling terminal, if any')
-        )
+    a(
+        '--detach',
+        action='store_true',
+        default=False,
+        help=_('Detach from the controlling terminal, if any')
+    )
     a(
         '--replay-commands',
         default=None,
