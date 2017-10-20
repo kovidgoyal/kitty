@@ -307,7 +307,9 @@ class Boss:
                 return w.buffer_as_text()
 
         if args[0].startswith('@'):
-            stdin = data_for_at(args[0]).encode('utf-8')
+            stdin = data_for_at(args[0]) or None
+            if stdin is not None:
+                stdin = stdin.encode('utf-8')
             del args[0]
 
         cmd = []
