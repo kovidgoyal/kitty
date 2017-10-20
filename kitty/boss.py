@@ -303,7 +303,7 @@ class Boss:
                 return w.text_for_selection()
             if arg == '@ansi':
                 return w.buffer_as_ansi()
-            elif arg == '@text':
+            if arg == '@text':
                 return w.buffer_as_text()
 
         if args[0].startswith('@'):
