@@ -234,14 +234,19 @@ class Window:
             remove_vao(self.gvao_id)
             self.vao_id = self.gvao_id = None
 
-    # actions {{{
-
-    def show_scrollback(self):
+    def buffer_as_ansi(self):
         data = []
         self.screen.historybuf.as_ansi(data.append)
         self.screen.linebuf.as_ansi(data.append)
-        data = ''.join(data).encode('utf-8')
-        get_boss().display_scrollback(data)
+        return ''.join(data)
+
+    def buffer_as_text(self):
+        return str(self.screen.historybuf) + '\n' + str(self.screen.linebuf)
+
+    # actions {{{
+
+    def show_scrollback(self):
+        get_boss().display_scrollback(self.buffer_as_ansi().encode('utf-8'))
 
     def paste(self, text):
         if text and not self.destroyed:

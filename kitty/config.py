@@ -94,7 +94,7 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
-shlex_actions = {'pass_selection_to_program'}
+shlex_actions = {'pass_selection_to_program', 'new_window', 'new_tab'}
 
 
 def parse_key_action(action):

@@ -35,3 +35,7 @@ version 0.4.0 [future]
 - Allow combining multiple independent actions into a single shortcut
 
 - Add a new shortcut to pass the current selection to an external program
+
+- Allow creating shortcuts to open new windows running arbitrary commands. You
+  can also pass the current selection to the command as an arguments and the
+  contents of the screen + scrollback buffer as stdin to the command.

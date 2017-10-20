@@ -293,8 +293,45 @@ class Boss:
     def previous_tab(self):
         self.tab_manager.next_tab(-1)
 
-    def new_tab(self):
-        self.tab_manager.new_tab()
+    def args_to_special_window(self, args):
+        args = list(args)
+        stdin = None
+        w = self.active_window
+
+        def data_for_at(arg):
+            if arg == '@selection':
+                return w.text_for_selection()
+            if arg == '@ansi':
+                return w.buffer_as_ansi()
+            elif arg == '@text':
+                return w.buffer_as_text()
+
+        if args[0].startswith('@'):
+            stdin = data_for_at(args[0]).encode('utf-8')
+            del args[0]
+
+        cmd = []
+        for arg in args:
+            if arg == '@selection':
+                arg = data_for_at(arg)
+                if not arg:
+                    continue
+            cmd.append(arg)
+        return SpecialWindow(cmd, stdin)
+
+    def new_tab(self, *args):
+        special_window = None
+        if args:
+            special_window = self.args_to_special_window(args)
+        self.tab_manager.new_tab(special_window=special_window)
+
+    def new_window(self, *args):
+        tab = self.active_tab
+        if tab is not None:
+            if args:
+                tab.new_special_window(self.args_to_special_window(args))
+            else:
+                tab.new_window()
 
     def move_tab_forward(self):
         self.tab_manager.move_tab(1)
