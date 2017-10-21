@@ -21,6 +21,11 @@ from .utils import (
 from .window import load_shader_programs
 
 
+def initialize_renderer():
+    load_shader_programs()
+    layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
+
+
 class DumpCommands:  # {{{
 
     def __init__(self, args):
@@ -68,11 +73,10 @@ class Boss:
         self.glfw_window = glfw_window
         glfw_window.framebuffer_size_callback = self.on_window_resize
         glfw_window.window_focus_callback = self.on_focus
-        load_shader_programs()
+        initialize_renderer()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
         self.activate_tab_at = self.tab_manager.activate_tab_at
-        layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
 
     @property
     def current_tab_bar_height(self):
