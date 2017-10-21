@@ -65,6 +65,12 @@ def load_shader_programs():
     init_cursor_program()
 
 
+def setup_colors(screen, opts):
+    screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+    screen.color_profile.set_configured_colors(*map(color_as_int, (
+        opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
+
+
 class Window:
 
     def __init__(self, tab, child, opts, args):
@@ -83,9 +89,7 @@ class Window:
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id)
-        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-        self.screen.color_profile.set_configured_colors(*map(color_as_int, (
-            opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
+        setup_colors(self.screen, opts)
 
     def __repr__(self):
         return 'Window(title={}, id={})'.format(self.title, self.id)
