@@ -413,6 +413,13 @@ cocoa_window_id(WindowWrapper *self) {
 }
 #endif
 
+static PyObject*
+primary_monitor_size(PyObject UNUSED *self) {
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    return Py_BuildValue("ii", mode->width, mode->height);
+}
+
 // Boilerplate {{{
 #define MND(name, args) {#name, (PyCFunction)name, args, ""}
 
@@ -466,6 +473,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, \
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, \
     {"glfw_init_hint_string", (PyCFunction)glfw_init_hint_string, METH_VARARGS, ""}, \
+    {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""}, \
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
