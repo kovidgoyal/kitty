@@ -14,7 +14,7 @@ from .config import (
     cached_values, load_cached_values, load_config, save_cached_values
 )
 from .constants import (
-    appname, config_dir, isosx, iswayland, logo_data_file, str_version,
+    appname, defconf, isosx, iswayland, logo_data_file, str_version,
     viewport_size
 )
 from .fast_data_types import (
@@ -33,9 +33,6 @@ try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
 except ImportError:
     GLFW_X11_WM_CLASS_NAME = GLFW_X11_WM_CLASS_CLASS = None
-
-
-defconf = os.path.join(config_dir, 'kitty.conf')
 
 
 def option_parser():
@@ -154,6 +151,20 @@ def setup_opengl(opts):
         glfw_window_hint(GLFW_STENCIL_BITS, 8)
 
 
+def initialize_window(window, opts):
+    set_logical_dpi(*get_logical_dpi())
+    viewport_size.width, viewport_size.height = window.get_framebuffer_size()
+    w, h = window.get_window_size()
+    viewport_size.x_ratio = viewport_size.width / float(w)
+    viewport_size.y_ratio = viewport_size.height / float(h)
+    glewInit()
+    glfw_swap_interval(0)
+    clear_buffers(window.swap_buffers, color_as_int(opts.background))
+    # We dont turn this on as it causes rendering performance to be much worse,
+    # for example, dragging the mouse to select is laggy
+    # glfw_swap_interval(1)
+
+
 def run_app(opts, args):
     set_options(opts)
     setup_opengl(opts)
@@ -187,19 +198,9 @@ def run_app(opts, args):
     elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
-    set_logical_dpi(*get_logical_dpi())
-    viewport_size.width, viewport_size.height = window.get_framebuffer_size()
-    w, h = window.get_window_size()
-    viewport_size.x_ratio = viewport_size.width / float(w)
-    viewport_size.y_ratio = viewport_size.height / float(h)
-    glewInit()
+    initialize_window(window, opts)
     boss = Boss(window, opts, args)
     boss.start()
-    glfw_swap_interval(0)
-    clear_buffers(window.swap_buffers, color_as_int(opts.background))
-    # We dont turn this on as it causes rendering performance to be much worse,
-    # for example, dragging the mouse to select is laggy
-    # glfw_swap_interval(1)
     try:
         boss.child_monitor.main_loop()
     finally:

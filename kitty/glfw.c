@@ -287,6 +287,18 @@ window_id(WindowWrapper *self) {
 }
 
 static PyObject*
+show(WindowWrapper *self) {
+    glfwShowWindow(self->window);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+hide(WindowWrapper *self) {
+    glfwHideWindow(self->window);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 should_close(WindowWrapper *self) {
     PyObject *ans = glfwWindowShouldClose(self->window) ? Py_True : Py_False;
     Py_INCREF(ans);
@@ -310,6 +322,14 @@ set_should_close(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
     glfwSetWindowShouldClose(self->window, c);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+set_pos(WindowWrapper *self, PyObject *args) {
+    int x, y;
+    if (!PyArg_ParseTuple(args, "ii", &x, &y)) return NULL;
+    glfwSetWindowPos(self->window, x, y);
     Py_RETURN_NONE;
 }
 
@@ -436,9 +456,12 @@ static PyMethodDef methods[] = {
 #endif
     MND(set_should_close, METH_VARARGS),
     MND(is_key_pressed, METH_VARARGS),
+    MND(set_pos, METH_VARARGS),
     MND(set_clipboard_string, METH_VARARGS),
     MND(make_context_current, METH_NOARGS),
     MND(window_id, METH_NOARGS),
+    MND(show, METH_NOARGS),
+    MND(hide, METH_NOARGS),
     {"set_icon", (PyCFunction)set_window_icon, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

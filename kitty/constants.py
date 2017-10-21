@@ -34,6 +34,7 @@ def _get_config_dir():
 
 config_dir = _get_config_dir()
 del _get_config_dir
+defconf = os.path.join(config_dir, 'kitty.conf')
 
 
 class ViewportSize:
@@ -114,6 +115,13 @@ def selection_clipboard_funcs():
             ans = None, None
         selection_clipboard_funcs.ans = ans
     return ans
+
+
+def x11_window_id(window):
+    lib = glfw_lib()
+    lib.glfwGetX11Window.restype = ctypes.c_int32
+    lib.glfwGetX11Window.argtypes = [ctypes.c_void_p]
+    return lib.glfwGetX11Window(window.window_id())
 
 
 iswayland = not isosx and hasattr(glfw_lib(), 'glfwGetWaylandDisplay')
