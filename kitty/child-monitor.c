@@ -496,6 +496,18 @@ update_window_title(Window *w) {
     }
 }
 
+static PyObject*
+simple_render_screen(PyObject UNUSED *self, PyObject *args) {
+#define simple_render_screen_doc "Render a Screen object, with no cursor"
+    Screen *screen; 
+    ssize_t vao_idx, gvao_idx;
+    float xstart, ystart, dx, dy;
+    if (!PyArg_ParseTuple(args, "O!nnffff", &Screen_Type, &screen, &vao_idx, &gvao_idx, &xstart, &ystart, &dx, &dy)) return NULL;
+    static CursorRenderInfo cursor_info = {0};
+    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, &cursor_info);
+    Py_RETURN_NONE;
+}
+
 static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
@@ -882,7 +894,19 @@ PyTypeObject ChildMonitor_Type = {
     .tp_new = new,                
 };
 
+static PyMethodDef module_methods[] = {
+    METHOD(simple_render_screen, METH_VARARGS)
+    {NULL}  /* Sentinel */
+};
 
-INIT_TYPE(ChildMonitor)
+bool
+init_child_monitor(PyObject *module) {
+    if (PyType_Ready(&ChildMonitor_Type) < 0) return false;
+    if (PyModule_AddObject(module, "ChildMonitor", (PyObject *)&ChildMonitor_Type) != 0) return false;
+    Py_INCREF(&ChildMonitor_Type); 
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
+}
+
 // }}}
 
