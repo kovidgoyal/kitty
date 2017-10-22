@@ -124,4 +124,12 @@ def x11_window_id(window):
     return lib.glfwGetX11Window(window.window_id())
 
 
+def x11_display():
+    lib = glfw_lib()
+    ans = lib.glfwGetX11Display
+    ans.restype = ctypes.c_void_p
+    ans.argtypes = []
+    return ans()
+
+
 iswayland = not isosx and hasattr(glfw_lib(), 'glfwGetWaylandDisplay')

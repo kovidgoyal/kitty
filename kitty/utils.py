@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import isosx, iswayland, selection_clipboard_funcs
+from .constants import isosx, iswayland, selection_clipboard_funcs, x11_display
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, redirect_std_streams,
     wcwidth as wcwidth_impl
@@ -72,7 +72,6 @@ def load_libx11():
     import ctypes
     from ctypes.util import find_library
     libx11 = ctypes.CDLL(find_library('X11'))
-    ans = []
 
     def cdef(name, restype, *argtypes):
         f = getattr(libx11, name)
@@ -80,12 +79,9 @@ def load_libx11():
             f.restype = restype
         if argtypes:
             f.argtypes = argtypes
-        ans.append(f)
+        return f
 
-    cdef('XOpenDisplay', ctypes.c_void_p, ctypes.c_char_p)
-    cdef('XCloseDisplay', ctypes.c_int, ctypes.c_void_p)
-    cdef('XResourceManagerString', ctypes.c_char_p, ctypes.c_void_p)
-    return ans
+    return cdef('XResourceManagerString', ctypes.c_char_p, ctypes.c_void_p)
 
 
 def parse_xrdb(raw):
@@ -95,28 +91,11 @@ def parse_xrdb(raw):
             return float(line[len(q):])
 
 
-def x11_dpi_native():
-    XOpenDisplay, XCloseDisplay, XResourceManagerString = load_libx11()
-    display = XOpenDisplay(None)
-    if display is None:
-        raise RuntimeError('Could not connect to the X server')
-    try:
-        raw = XResourceManagerString(display)
-        return parse_xrdb(raw)
-    finally:
-        XCloseDisplay(display)
-
-
 def x11_dpi():
-    try:
-        return x11_dpi_native()
-    except Exception:
-        pass
-    try:
-        raw = subprocess.check_output(['xrdb', '-query'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
-        return parse_xrdb(raw)
-    except Exception:
-        pass
+    XResourceManagerString = load_libx11()
+    display = x11_display()
+    raw = XResourceManagerString(display)
+    return parse_xrdb(raw)
 
 
 def get_logical_dpi():
