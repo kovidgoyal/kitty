@@ -1247,6 +1247,16 @@ screen_url_range(Screen *self, uint32_t *data) {
 #define WRAP2(name, defval1, defval2) static PyObject* name(Screen *self, PyObject *args) { unsigned int a=defval1, b=defval2; if(!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL; screen_##name(self, a, b); Py_RETURN_NONE; }
 
 static PyObject*
+screen_wcswidth(Screen UNUSED *self, PyObject *str) {
+    if (PyUnicode_READY(str) != 0) return NULL;
+    int kind = PyUnicode_KIND(str);
+    void *data = PyUnicode_DATA(str);
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str), ans = 0, i;
+    for (i = 0; i < len; i++) ans += wcwidth_impl(PyUnicode_READ(kind, data, i));
+    return PyLong_FromSsize_t(ans);
+}
+
+static PyObject*
 line(Screen *self, PyObject *val) {
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->lines) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
@@ -1551,6 +1561,7 @@ static PyMethodDef methods[] = {
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
+    {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
