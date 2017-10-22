@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import errno
 import locale
 import os
 import signal
@@ -249,6 +250,9 @@ def reap_zombies(*a):
         try:
             pid, status = os.waitpid(-1, os.WNOHANG)
             if pid == 0:
+                break
+        except OSError as err:
+            if err.errno != errno.EINTR:
                 break
         except Exception:
             break
