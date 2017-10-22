@@ -4,7 +4,6 @@
 
 import os
 import re
-import subprocess
 from collections import namedtuple
 
 from kitty.fast_data_types import Face, get_fontconfig_font
@@ -33,50 +32,6 @@ def font_not_found(err, char):
     if char is not None:
         msg = 'Failed to find font for character U+{:X}, error from fontconfig: {}'.  format(ord(char[0]), err)
     return FontNotFound(msg)
-
-
-def get_font_subprocess(
-    family='monospace',
-    bold=False,
-    italic=False,
-    allow_bitmaped_fonts=False,
-    size_in_pts=None,
-    character=None,
-    dpi=None
-):
-    query = escape_family_name(family)
-    if character is not None:
-        query += ':charset={:x}'.format(ord(character[0]))
-    if not allow_bitmaped_fonts:
-        query += ':scalable=true:outline=true'
-    if size_in_pts is not None:
-        query += ':size={:.1f}'.format(size_in_pts)
-    if dpi is not None:
-        query += ':dpi={:.1f}'.format(dpi)
-    if bold:
-        query += ':weight=200'
-    if italic:
-        query += ':slant=100'
-    try:
-        raw = subprocess.check_output([
-            'fc-match', query, '-f',
-            '%{file}\x1e%{hinting}\x1e%{hintstyle}\x1e%{scalable}\x1e%{outline}\x1e%{weight}\x1e%{slant}\x1e%{index}'
-        ]).decode('utf-8')
-    except subprocess.CalledProcessError as err:
-        raise font_not_found(err, character)
-    parts = raw.split('\x1e')
-    try:
-        path, hinting, hintstyle, scalable, outline, weight, slant, index = parts
-    except ValueError:
-        path = parts[0]
-        hintstyle, hinting, scalable, outline, weight, slant, index = 1, 'True', 'True', 'True', 100, 0, 0
-    return Font(
-        path,
-        to_bool(hinting),
-        int(hintstyle), bold, italic,
-        to_bool(scalable),
-        to_bool(outline), int(weight), int(slant), int(index)
-    )
 
 
 def get_font_lib(
