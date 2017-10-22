@@ -662,37 +662,11 @@ hangup(pid_t pid) {
     }
 }
 
-static pid_t pid_buf[MAX_CHILDREN] = {0};
-static size_t pid_buf_pos = 0;
-static pthread_t reap_thread;
-
-
-static void*
-reap(void *pid_p) {
-    set_thread_name("KittyReapChild");
-    pid_t pid = *((pid_t*)pid_p);
-    while(true) {
-        pid_t ret = waitpid(pid, NULL, 0);
-        if (ret != pid) {
-            if (errno == EINTR) continue;
-            fprintf(stderr, "Failed to reap child process with pid: %d with error: %s\n", pid, strerror(errno));
-        }
-        break;
-    }
-    return 0;
-}
 
 static inline void
 cleanup_child(ssize_t i) {
     close(children[i].fd);
     hangup(children[i].pid);
-    pid_buf[pid_buf_pos] = children[i].pid;
-    if (waitpid(pid_buf[pid_buf_pos], NULL, WNOHANG) != pid_buf[pid_buf_pos]) {
-        errno = 0;
-        int ret = pthread_create(&reap_thread, NULL, reap, pid_buf + pid_buf_pos);
-        if (ret != 0) perror("Failed to create thread to reap child");
-    }
-    pid_buf_pos = (pid_buf_pos + 1) % MAX_CHILDREN;
 }
 
 

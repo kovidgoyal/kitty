@@ -165,7 +165,8 @@ def get_primary_selection():
         return ''  # There is no primary selection on OS X
     g = selection_clipboard_funcs()[0]
     if g is None:
-        ans = subprocess.check_output(['xsel', '-p'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL).decode('utf-8')
+        # We cannot use check_output as we set SIGCHLD to SIG_IGN
+        ans = subprocess.Popen(['xsel', '-p'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE).stdout.read().decode('utf-8')
         if ans:
             # Without this for some reason repeated pastes dont work
             set_primary_selection(ans)
@@ -192,7 +193,7 @@ def open_cmd(cmd, arg=None):
     if arg is not None:
         cmd = list(cmd)
         cmd.append(arg)
-    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).wait()
+    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def open_url(url, program='default'):

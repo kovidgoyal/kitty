@@ -5,6 +5,7 @@
 import argparse
 import locale
 import os
+import signal
 import sys
 from contextlib import contextmanager
 from gettext import gettext as _
@@ -235,11 +236,11 @@ def setup_profiling(args):
         exe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'kitty-profile')
         cg = '/tmp/kitty-profile.callgrind'
         print('Post processing profile data for', exe, '...')
-        subprocess.check_call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=open(cg, 'wb'))
+        subprocess.call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=open(cg, 'wb'))
         try:
             subprocess.Popen(['kcachegrind', cg])
         except FileNotFoundError:
-            subprocess.check_call(['pprof', '--text', exe, '/tmp/kitty-profile.log'])
+            subprocess.call(['pprof', '--text', exe, '/tmp/kitty-profile.log'])
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
@@ -286,6 +287,9 @@ def main():
         raise SystemExit('GLFW initialization failed')
     try:
         with setup_profiling(args):
+            # Let the kernel take care of reaping zombie child processes
+            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
             run_app(opts, args)
+            signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     finally:
         glfw_terminate()
