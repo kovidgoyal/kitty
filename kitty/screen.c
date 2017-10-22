@@ -1251,9 +1251,10 @@ screen_wcswidth(Screen UNUSED *self, PyObject *str) {
     if (PyUnicode_READY(str) != 0) return NULL;
     int kind = PyUnicode_KIND(str);
     void *data = PyUnicode_DATA(str);
-    Py_ssize_t len = PyUnicode_GET_LENGTH(str), ans = 0, i;
-    for (i = 0; i < len; i++) ans += wcwidth_impl(PyUnicode_READ(kind, data, i));
-    return PyLong_FromSsize_t(ans);
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str), i;
+    unsigned long ans = 0;
+    for (i = 0; i < len; i++) ans += safe_wcwidth(PyUnicode_READ(kind, data, i));
+    return PyLong_FromUnsignedLong(ans);
 }
 
 static PyObject*
