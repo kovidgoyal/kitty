@@ -244,6 +244,14 @@ def setup_profiling(args):
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
+def reap_zombies(*a):
+    while True:
+        try:
+            os.waitpid(-1, os.WNOHANG)
+        except OSError:
+            break
+
+
 def main():
     try:
         sys.setswitchinterval(1000.0)  # we have only a single python thread
@@ -287,8 +295,8 @@ def main():
         raise SystemExit('GLFW initialization failed')
     try:
         with setup_profiling(args):
-            # Let the kernel take care of reaping zombie child processes
-            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+            # Avoid needing to launch threads to reap zombies
+            signal.signal(signal.SIGCHLD, reap_zombies)
             run_app(opts, args)
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     finally:

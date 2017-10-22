@@ -165,7 +165,7 @@ def get_primary_selection():
         return ''  # There is no primary selection on OS X
     g = selection_clipboard_funcs()[0]
     if g is None:
-        # We cannot use check_output as we set SIGCHLD to SIG_IGN
+        # We cannot use check_output as we set a SIGCHLD handler to reap zombies
         ans = subprocess.Popen(['xsel', '-p'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE).stdout.read().decode('utf-8')
         if ans:
             # Without this for some reason repeated pastes dont work
