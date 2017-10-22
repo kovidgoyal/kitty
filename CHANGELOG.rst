@@ -3,8 +3,8 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, OpenGL based terminal emulator.
 
-version 0.4.0 [future]
------------------------
+version 0.4.0 [2017-10-22]
+---------------------------
 
 - Support for drawing arbitrary raster graphics (images) in the terminal via a
   new graphics protocol. kitty can draw images with full 32-bit color using both
