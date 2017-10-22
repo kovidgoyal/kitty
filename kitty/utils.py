@@ -86,7 +86,7 @@ def load_libx11():
 
 def parse_xrdb(raw):
     q = 'Xft.dpi:\t'
-    for line in raw.decode('utf-8').splitlines():
+    for line in raw.decode('utf-8', 'replace').splitlines():
         if line.startswith(q):
             return float(line[len(q):])
 
@@ -94,8 +94,12 @@ def parse_xrdb(raw):
 def x11_dpi():
     XResourceManagerString = load_libx11()
     display = x11_display()
-    raw = XResourceManagerString(display)
-    return parse_xrdb(raw)
+    if display:
+        try:
+            raw = XResourceManagerString(display)
+            return parse_xrdb(raw)
+        except Exception:
+            pass
 
 
 def get_logical_dpi():
