@@ -247,8 +247,10 @@ def setup_profiling(args):
 def reap_zombies(*a):
     while True:
         try:
-            os.waitpid(-1, os.WNOHANG)
-        except OSError:
+            pid, status = os.waitpid(-1, os.WNOHANG)
+            if pid == 0:
+                break
+        except Exception:
             break
 
 
