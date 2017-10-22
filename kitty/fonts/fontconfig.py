@@ -34,7 +34,7 @@ def font_not_found(err, char):
     return FontNotFound(msg)
 
 
-def get_font_lib(
+def get_font(
     family='monospace',
     bold=False,
     italic=False,
@@ -55,9 +55,6 @@ def get_font_lib(
         path, hinting, hintstyle, bold, italic, scalable, outline, weight,
         slant, index
     )
-
-
-get_font = get_font_lib
 
 
 def find_font_for_character(
