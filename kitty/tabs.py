@@ -57,8 +57,8 @@ class Tab:  # {{{
                 self.new_special_window(special_window)
         else:
             self.cwd = session_tab.cwd or args.directory
-            l = session_tab.layout
-            self.current_layout = all_layouts[l](opts, borders.border_width, self.windows)
+            l0 = session_tab.layout
+            self.current_layout = all_layouts[l0](opts, borders.border_width, self.windows)
             self.startup(session_tab)
 
     def startup(self, session_tab):

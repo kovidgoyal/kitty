@@ -19,10 +19,10 @@ def create_lbuf(*lines):
     maxw = max(map(len, lines))
     ans = LineBuf(len(lines), maxw)
     prev_full_length = False
-    for i, l in enumerate(lines):
-        ans.line(i).set_text(l, 0, len(l), C())
+    for i, l0 in enumerate(lines):
+        ans.line(i).set_text(l0, 0, len(l0), C())
         ans.set_continued(i, prev_full_length)
-        prev_full_length = len(l) == maxw
+        prev_full_length = len(l0) == maxw
     return ans
 
 
@@ -38,8 +38,8 @@ class TestDataTypes(BaseTest):
         old.set_attribute(REVERSE, False)
         for y in range(old.ynum):
             for x in range(old.xnum):
-                l = old.line(y)
-                c = l.cursor_from(x)
+                l0 = old.line(y)
+                c = l0.cursor_from(x)
                 self.assertFalse(c.reverse)
                 self.assertTrue(c.bold)
         self.assertFalse(old.is_continued(0))
@@ -147,23 +147,23 @@ class TestDataTypes(BaseTest):
             lb.line(lb.ynum)
         with self.assertRaises(IndexError):
             lb.line(0)[lb.xnum]
-        l = lb.line(0)
-        l.set_text(' ', 0, len(' '), C())
-        l.add_combining_char(0, '1')
-        self.ae(l[0], ' 1')
-        l.add_combining_char(0, '2')
-        self.ae(l[0], ' 12')
-        l.add_combining_char(0, '3')
-        self.ae(l[0], ' 13')
-        self.ae(l[1], '\0')
-        self.ae(str(l), ' 13')
+        l0 = lb.line(0)
+        l0.set_text(' ', 0, len(' '), C())
+        l0.add_combining_char(0, '1')
+        self.ae(l0[0], ' 1')
+        l0.add_combining_char(0, '2')
+        self.ae(l0[0], ' 12')
+        l0.add_combining_char(0, '3')
+        self.ae(l0[0], ' 13')
+        self.ae(l0[1], '\0')
+        self.ae(str(l0), ' 13')
         t = 'Testing with simple text'
         lb = LineBuf(2, len(t))
-        l = lb.line(0)
-        l.set_text(t, 0, len(t), C())
-        self.ae(str(l), t)
-        l.set_text('a', 0, 1, C())
-        self.assertEqual(str(l), 'a' + t[1:])
+        l0 = lb.line(0)
+        l0.set_text(t, 0, len(t), C())
+        self.ae(str(l0), t)
+        l0.set_text('a', 0, 1, C())
+        self.assertEqual(str(l0), 'a' + t[1:])
 
         c = C(3, 5)
         c.bold = c.italic = c.reverse = c.strikethrough = True
@@ -174,16 +174,16 @@ class TestDataTypes(BaseTest):
         self.ae(c, c2)
         c2.bold = False
         self.assertNotEqual(c, c2)
-        l.set_text(t, 0, len(t), C())
-        l.apply_cursor(c2, 3)
-        self.assertEqualAttributes(c2, l.cursor_from(3))
-        l.apply_cursor(c2, 0, len(l))
-        for i in range(len(l)):
-            self.assertEqualAttributes(c2, l.cursor_from(i))
-        l.apply_cursor(c3, 0)
-        self.assertEqualAttributes(c3, l.cursor_from(0))
-        l.copy_char(0, l, 1)
-        self.assertEqualAttributes(c3, l.cursor_from(1))
+        l0.set_text(t, 0, len(t), C())
+        l0.apply_cursor(c2, 3)
+        self.assertEqualAttributes(c2, l0.cursor_from(3))
+        l0.apply_cursor(c2, 0, len(l0))
+        for i in range(len(l0)):
+            self.assertEqualAttributes(c2, l0.cursor_from(i))
+        l0.apply_cursor(c3, 0)
+        self.assertEqualAttributes(c3, l0.cursor_from(0))
+        l0.copy_char(0, l0, 1)
+        self.assertEqualAttributes(c3, l0.cursor_from(1))
 
         t = '0123456789'
         lb = LineBuf(1, len(t))
@@ -225,8 +225,8 @@ class TestDataTypes(BaseTest):
         for trail in '.,]>)\\':
             lx = create("http://xyz.com" + trail)
             self.ae(lx.url_end_at(0), len(lx) - 2)
-        l = create("ftp://abc/")
-        self.ae(l.url_end_at(0), len(l) - 1)
+        l0 = create("ftp://abc/")
+        self.ae(l0.url_end_at(0), len(l0) - 1)
         l2 = create("http://-abcd] ")
         self.ae(l2.url_end_at(0), len(l2) - 3)
 
@@ -281,9 +281,9 @@ class TestDataTypes(BaseTest):
             self.ae(lb2.line(i), lb.line(i + 2))
 
     def line_comparison(self, buf, *lines):
-        for i, l in enumerate(lines):
+        for i, l0 in enumerate(lines):
             l2 = buf.line(i)
-            self.ae(l, str(l2))
+            self.ae(l0, str(l2))
 
     def line_comparison_rewrap(self, lb, *lines):
         lb2 = LineBuf(len(lines), max(map(len, lines)))
@@ -382,8 +382,8 @@ class TestDataTypes(BaseTest):
 
     def test_ansi_repr(self):
         lb = filled_line_buf()
-        l = lb.line(0)
-        self.ae(l.as_ansi(), '\x1b[0m00000')
+        l0 = lb.line(0)
+        self.ae(l0.as_ansi(), '\x1b[0m00000')
         a = []
         lb.as_ansi(a.append)
         self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
