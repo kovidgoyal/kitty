@@ -106,6 +106,7 @@ get_localized_key(int key, int scancode) {
         K('O', O); K('o', O);
         K('P', P); K('p', P);
         K('Q', Q); K('q', Q);
+        K('R', R); K('r', R);
         K('S', S); K('s', S);
         K('T', T); K('t', T);
         K('U', U); K('u', U);
