@@ -85,7 +85,6 @@ is_modifier_key(int key) {
 static inline int
 get_localized_key(int key, int scancode) {
     const char *name = glfwGetKeyName(key, scancode);
-    if (name != NULL) printf("key name: %s\n", name);
     if (name == NULL || name[1] != 0) return key;
     switch(name[0]) {
 #define K(ch, name) case ch: return GLFW_KEY_##name
