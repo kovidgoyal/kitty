@@ -11,7 +11,7 @@ from collections import namedtuple
 from .fast_data_types import set_boss as set_c_boss
 
 appname = 'kitty'
-version = (0, 4, 1)
+version = (0, 4, 2)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
