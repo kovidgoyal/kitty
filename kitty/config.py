@@ -324,7 +324,7 @@ with open(
     defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(a.func for a in defaults.keymap.values())
+actions = frozenset(a for a in defaults.keymap.values())
 
 
 def merge_keymaps(defaults, newvals):
