@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
-import errno
 import locale
 import os
 import signal
@@ -25,8 +24,8 @@ from .fast_data_types import (
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
     GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
     clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
-    glfw_swap_interval, glfw_terminate, glfw_window_hint, set_logical_dpi,
-    set_options
+    glfw_swap_interval, glfw_terminate, glfw_window_hint,
+    install_sigchld_handler, set_logical_dpi, set_options
 )
 from .layout import all_layouts
 from .utils import color_as_int, detach, get_logical_dpi, safe_print
@@ -245,19 +244,6 @@ def setup_profiling(args):
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def reap_zombies(*a):
-    while True:
-        try:
-            pid, status = os.waitpid(-1, os.WNOHANG)
-            if pid == 0:
-                break
-        except OSError as err:
-            if err.errno != errno.EINTR:
-                break
-        except Exception:
-            break
-
-
 def main():
     try:
         sys.setswitchinterval(1000.0)  # we have only a single python thread
@@ -302,7 +288,7 @@ def main():
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies
-            signal.signal(signal.SIGCHLD, reap_zombies)
+            install_sigchld_handler()
             run_app(opts, args)
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     finally:
