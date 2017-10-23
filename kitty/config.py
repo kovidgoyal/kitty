@@ -324,16 +324,18 @@ with open(
     defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(a for a in defaults.keymap.values())
+actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine'})
+no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
 def merge_keymaps(defaults, newvals):
     ans = defaults.copy()
     for k, v in newvals.items():
-        if v in {'noop', 'no-op', 'no_op'}:
+        f = v.func
+        if f in no_op_actions:
             ans.pop(k, None)
             continue
-        if v in actions:
+        if f in actions:
             ans[k] = v
     return ans
 
