@@ -3,6 +3,16 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, OpenGL based terminal emulator.
 
+
+version 0.4.1 [2017-10-23]
+---------------------------
+
+- Fix a regression in 0.4.0 that broke custom key mappings
+
+- Avoid using threads to reap zombie child processes. Also prevent kitty from
+  hanging if the open program hangs when clicking on a URL.
+
+
 version 0.4.0 [2017-10-22]
 ---------------------------
 
