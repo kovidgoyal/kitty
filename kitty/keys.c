@@ -85,35 +85,36 @@ is_modifier_key(int key) {
 static inline int
 get_localized_key(int key, int scancode) {
     const char *name = glfwGetKeyName(key, scancode);
+    if (name != NULL) printf("key name: %s\n", name);
     if (name == NULL || name[1] != 0) return key;
     switch(name[0]) {
 #define K(ch, name) case ch: return GLFW_KEY_##name
         // key names {{{
-        K('A', A);
-        K('B', B);
-        K('C', C);
-        K('D', D);
-        K('E', E);
-        K('F', F);
-        K('G', G);
-        K('H', H);
-        K('I', I);
-        K('J', J);
-        K('K', K);
-        K('L', L);
-        K('M', M);
-        K('N', N);
-        K('O', O);
-        K('P', P);
-        K('Q', Q);
-        K('S', S);
-        K('T', T);
-        K('U', U);
-        K('V', V);
-        K('W', W);
-        K('X', X);
-        K('Y', Y);
-        K('Z', Z);
+        K('A', A); K('a', A);
+        K('B', B); K('b', B);
+        K('C', C); K('c', C); 
+        K('D', D); K('d', D);
+        K('E', E); K('e', E);
+        K('F', F); K('f', F);
+        K('G', G); K('g', G);
+        K('H', H); K('h', H);
+        K('I', I); K('i', I);
+        K('J', J); K('j', J);
+        K('K', K); K('k', K);
+        K('L', L); K('l', L);
+        K('M', M); K('m', M);
+        K('N', N); K('n', N);
+        K('O', O); K('o', O);
+        K('P', P); K('p', P);
+        K('Q', Q); K('q', Q);
+        K('S', S); K('s', S);
+        K('T', T); K('t', T);
+        K('U', U); K('u', U);
+        K('V', V); K('v', V);
+        K('W', W); K('w', W);
+        K('X', X); K('x', X);
+        K('Y', Y); K('y', Y);
+        K('Z', Z); K('z', Z);
         K('0', 0);
         K('1', 1);
         K('2', 2);
