@@ -163,6 +163,8 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     else:
         cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
         font_libs = pkg_config('fontconfig', '--libs')
+        cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
+        font_libs.extend(pkg_config('harfbuzz', '--libs'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     ldflags.append('-shared')
     pylib = get_python_flags(cflags)

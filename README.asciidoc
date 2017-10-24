@@ -87,6 +87,7 @@ the following dependencies are installed first.
 * libpng
 * glew   >= 2.0 (not needed on macOS)
 * fontconfig (not needed on macOS)
+* harfbuzz (not needed on macOS)
 * xrdb (only on X11 based systems)
 * xsel (only on X11 systems with glfw < 3.3)
 * ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
