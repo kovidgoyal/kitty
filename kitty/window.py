@@ -80,7 +80,6 @@ class Window:
         self.tab_id = tab.id
         self.tabref = weakref.ref(tab)
         self.override_title = None
-        self.last_mouse_cursor_pos = 0, 0
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)

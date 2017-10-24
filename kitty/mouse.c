@@ -164,6 +164,12 @@ detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
 
 HANDLER(handle_move_event) {
     unsigned int x, y;
+    if (OPT(focus_follows_mouse)) {
+        Tab *t = global_state.tabs + global_state.active_tab;
+        if (window_idx != t->active_window) {
+            call_boss(switch_focus_to, "I", window_idx);
+        }
+    }
     if (!cell_for_pos(w, &x, &y)) return;
     Screen *screen = w->render_data.screen;
     detect_url(w, screen, x, y);

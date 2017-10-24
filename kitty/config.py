@@ -240,6 +240,7 @@ type_map = {
     'scrollback_in_new_tab': to_bool,
     'font_size': to_font_size,
     'font_size_delta': positive_float,
+    'focus_follows_mouse': to_bool,
     'cursor_shape': to_cursor_shape,
     'open_url_modifiers': to_open_url_modifiers,
     'repaint_delay': positive_int,
