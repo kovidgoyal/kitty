@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+# vim:fileencoding=utf-8
+# License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
+
+import os
+import shlex
+import subprocess
+import sys
+
+base = os.path.dirname(os.path.abspath(__file__))
+if True:
+    sys.path.insert(0, base)
+    from kitty.constants import str_version
+
+dmg = f'kitty-{str_version}.dmg'
+
+
+def run(what):
+    ret = subprocess.run(shlex.split(what))
+    if ret.returncode != 0:
+        raise SystemExit(ret.returncode)
+
+
+os.chdir(os.path.expanduser('~/work/build-kitty'))
+run('./osx kitty')
+run(f'scp build/osx/dist/{dmg} ox:/tmp')
+run(f'ssh ox /Users/kovid/install-dmg /tmp/{dmg}')
