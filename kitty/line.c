@@ -35,22 +35,15 @@ line_length(Line *self) {
 PyObject* 
 line_text_at(char_type ch, combining_type cc) {
     PyObject *ans;
-    if (cc == 0) {
-        ans = PyUnicode_New(1, ch);
-        if (ans == NULL) return PyErr_NoMemory();
-        PyUnicode_WriteChar(ans, 0, ch);
+    if (LIKELY(cc == 0)) {
+        ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &ch, 1);
     } else {
-        Py_UCS4 cc1 = cc & CC_MASK, cc2 = cc >> 16;
-        Py_UCS4 normalized = normalize(ch, cc1, cc2);
-        if (normalized) { return line_text_at(normalized, 0); }
-        Py_UCS4 maxc = (ch > cc1) ? MAX(ch, cc2) : MAX(cc1, cc2);
-        ans = PyUnicode_New(cc2 ? 3 : 2, maxc);
-        if (ans == NULL) return PyErr_NoMemory();
-        PyUnicode_WriteChar(ans, 0, ch);
-        PyUnicode_WriteChar(ans, 1, cc1);
-        if (cc2) PyUnicode_WriteChar(ans, 2, cc2);
+        Py_UCS4 buf[3];
+        buf[0] = ch; buf[1] = cc & CC_MASK; buf[2] = cc >> 16;
+        Py_UCS4 normalized = normalize(ch, buf[1], buf[2]);
+        if (normalized) ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &normalized, 1);
+        else ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, buf[2] ? 3 : 2);
     }
-
     return ans;
 }
 
