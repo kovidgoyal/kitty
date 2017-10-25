@@ -27,7 +27,7 @@ def set_char_size(face, width=0, height=0, hres=0, vres=0):
 
 
 def load_char(font, face, text):
-    face.load_char(text, font.hinting, font.hintstyle)
+    face.load_char(ord(text[0]))
 
 
 def calc_cell_width(font, face):
@@ -178,7 +178,7 @@ def face_for_text(text, bold=False, italic=False):
                 )
             face = alt_face_cache.get(font)
             if face is None:
-                face = alt_face_cache[font] = Face(font.face, font.index)
+                face = alt_face_cache[font] = Face(font.face, font.index, font.hinting, font.hintstyle)
                 if face.is_scalable:
                     set_char_size(face, **cff_size)
     else:
@@ -194,7 +194,7 @@ def render_char(text, bold=False, italic=False, width=1):
 def render_complex_char(text, bold=False, italic=False, width=1):
     font, face = face_for_text(text, bold, italic)
     import pprint
-    pprint.pprint(face.shape(text, font.hinting, font.hintstyle))
+    pprint.pprint(face.shape(text))
 
 
 def place_char_in_cell(bitmap_char):

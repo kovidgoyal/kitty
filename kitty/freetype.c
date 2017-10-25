@@ -25,6 +25,7 @@ typedef struct {
     FT_Face face;
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
+    int hinting, hintstyle;
     bool is_scalable;
     PyObject *path;
     hb_buffer_t *harfbuzz_buffer;
@@ -70,10 +71,10 @@ static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
     char *path;
-    int error;
+    int error, hinting, hintstyle;
     long index;
     /* unsigned int columns=80, lines=24, scrollback=0; */
-    if (!PyArg_ParseTuple(args, "sl", &path, &index)) return NULL;
+    if (!PyArg_ParseTuple(args, "slii", &path, &index, &hinting, &hintstyle)) return NULL;
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -86,6 +87,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 #undef CPY
         self->is_scalable = FT_IS_SCALABLE(self->face);
         self->harfbuzz_buffer = hb_buffer_create();
+        self->hinting = hinting; self->hintstyle = hintstyle;
         if (self->harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(self->harfbuzz_buffer) || !hb_buffer_pre_allocate(self->harfbuzz_buffer, 20)) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
         if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
@@ -138,13 +140,12 @@ get_load_flags(int hinting, int hintstyle, int base) {
 }
 
 static PyObject*
-load_char(Face *self, PyObject *args) {
-#define load_char_doc "load_char(char, hinting, hintstyle)"
-    int char_code, hinting, hintstyle, error;
-    if (!PyArg_ParseTuple(args, "Cpp", &char_code, &hinting, &hintstyle)) return NULL;
-    int flags = get_load_flags(hinting, hintstyle, FT_LOAD_RENDER);
+load_char(Face *self, PyObject *ch) {
+#define load_char_doc "load_char(char)"
+    int char_code = (int)PyLong_AsLong(ch);
+    int flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
     int glyph_index = FT_Get_Char_Index(self->face, char_code);
-    error = FT_Load_Glyph(self->face, glyph_index, flags);
+    int error = FT_Load_Glyph(self->face, glyph_index, flags);
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
 }
@@ -256,10 +257,10 @@ typedef struct {
 
 
 static inline void
-_shape(Face *self, const char *string, int len, int UNUSED hinting, int UNUSED hintstyle, ShapeData *ans) {
+_shape(Face *self, const char *string, int len, ShapeData *ans) {
     hb_buffer_clear_contents(self->harfbuzz_buffer);
 #ifdef HARBUZZ_HAS_LOAD_FLAGS
-    hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(hinting, hintstyle, FT_LOAD_DEFAULT));
+    hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
 #endif
     hb_buffer_add_utf8(self->harfbuzz_buffer, string, len, 0, len);
     hb_buffer_guess_segment_properties(self->harfbuzz_buffer);
@@ -274,13 +275,13 @@ _shape(Face *self, const char *string, int len, int UNUSED hinting, int UNUSED h
 
 static PyObject*
 shape(Face *self, PyObject *args) {
-#define shape_doc "shape(text, hinting, hintstyle)"
+#define shape_doc "shape(text)"
     const char *string;
-    int hinting, hintstyle, len;
-    if (!PyArg_ParseTuple(args, "s#ii", &string, &len, &hinting, &hintstyle)) return NULL;
+    int len;
+    if (!PyArg_ParseTuple(args, "s#", &string, &len)) return NULL;
 
     ShapeData sd;
-    _shape(self, string, len, hinting, hintstyle, &sd);
+    _shape(self, string, len, &sd);
     PyObject *ans = PyTuple_New(sd.length);
     if (ans == NULL) return NULL;
     for (unsigned int i = 0; i < sd.length; i++) {
@@ -351,7 +352,7 @@ static PyMemberDef members[] = {
 
 static PyMethodDef methods[] = {
     METHOD(set_char_size, METH_VARARGS)
-    METHOD(load_char, METH_VARARGS)
+    METHOD(load_char, METH_O)
     METHOD(shape, METH_VARARGS)
     METHOD(get_char_index, METH_VARARGS)
     METHOD(glyph_metrics, METH_NOARGS)

@@ -102,7 +102,7 @@ def get_font_files(opts):
         return ans
 
     n = get_font_information(get_family())
-    ans['regular'] = n._replace(face=Face(n.face, n.index))
+    ans['regular'] = n._replace(face=Face(n.face, n.index, n.hinting, n.hintstyle))
 
     def do(key):
         b = get_font_information(
@@ -111,7 +111,7 @@ def get_font_files(opts):
             italic=key in ('italic', 'bi')
         )
         if b.face != n.face:
-            ans[key] = b._replace(face=Face(b.face, b.index))
+            ans[key] = b._replace(face=Face(b.face, b.index, b.hinting, b.hintstyle))
 
     do('bold'), do('italic'), do('bi')
     return ans
@@ -119,4 +119,4 @@ def get_font_files(opts):
 
 def font_for_family(family):
     ans = get_font_information(family)
-    return ans._replace(face=Face(ans.face, ans.index))
+    return ans._replace(face=Face(ans.face, ans.index, ans.hinting, ans.hintstyle))
