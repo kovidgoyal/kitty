@@ -106,20 +106,39 @@ def display_bitmap(data, w, h):
     img.show()
 
 
-def render_string(text='\'Qing👁a⧽'):
+def render_string(text='\'Qing👁a⧽', underline=2, strikethrough=True):
+    import unicodedata
     cells = []
-    for c in text:
-        f, s = render_cell(c, underline=2, strikethrough=True)
+    current_text = ''
+
+    def render_one(c):
+        f, s = render_cell(c, underline=underline, strikethrough=strikethrough)
         cells.append(f)
         if s is not None:
             cells.append(s)
+
+    for c in text:
+        if unicodedata.combining(c):
+            current_text += c
+        else:
+            if current_text:
+                render_one(current_text)
+            current_text = c
+    if current_text:
+        render_one(current_text)
     cell_width, cell_height = current_cell()[1:3]
     char_data = join_cells(cell_width, cell_height, *cells)
     return char_data, cell_width * len(cells), cell_height
 
 
-def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace'):
+def test_rendering(text='\'Ping👁a⧽', sz=144, family='monospace', underline=2, strikethrough=True):
     from kitty.config import defaults
-    opts = defaults._replace(font_family=family, font_size=sz)
-    set_font_family(opts)
-    display_bitmap(*render_string(text))
+    from kitty.fast_data_types import glfw_init, glfw_terminate
+    if not glfw_init():
+        raise SystemExit('Failed to initialize glfw')
+    try:
+        opts = defaults._replace(font_family=family, font_size=sz)
+        set_font_family(opts)
+        display_bitmap(*render_string(text, underline=underline, strikethrough=strikethrough))
+    finally:
+        glfw_terminate()
