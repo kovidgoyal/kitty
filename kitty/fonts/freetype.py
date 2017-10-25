@@ -13,7 +13,7 @@ from kitty.fonts.box_drawing import render_missing_glyph
 from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth, adjust_line_height
 
 from .fontconfig import (
-    FontNotFound, find_font_for_character, font_for_family, get_font_files
+    FontNotFound, find_font_for_characters, font_for_family, get_font_files
 )
 
 current_font_family = current_font_family_name = cff_size = cell_width = cell_height = baseline = None
@@ -41,9 +41,9 @@ def calc_cell_width(font, face):
 
 
 @lru_cache(maxsize=2**10)
-def font_for_char(char, bold=False, italic=False, allow_bitmaped_fonts=False):
+def font_for_text(char, bold=False, italic=False, allow_bitmaped_fonts=False):
     if allow_bitmaped_fonts:
-        return find_font_for_character(
+        return find_font_for_characters(
             current_font_family_name,
             char,
             bold,
@@ -52,7 +52,7 @@ def font_for_char(char, bold=False, italic=False, allow_bitmaped_fonts=False):
             size_in_pts=cff_size['width'] / 64,
             dpi=(cff_size['hres'] + cff_size['vres']) / 2
         )
-    return find_font_for_character(
+    return find_font_for_characters(
         current_font_family_name, char, bold, italic
     )
 
@@ -104,7 +104,7 @@ def set_font_family(opts, override_font_size=None):
         face.underline_thickness, face.units_per_EM, size_in_pts, dpi[1]
     )
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-    font_for_char.cache_clear()
+    font_for_text.cache_clear()
     alt_face_cache.clear()
     return cell_width, cell_height
 
@@ -152,22 +152,29 @@ def render_using_face(font, face, text, width, italic, bold):
     )
 
 
-def face_for_char(ch, bold=False, italic=False):
+def font_has_text(font, text):
+    for c in text:
+        if not font.face.get_char_index(c):
+            return False
+    return True
+
+
+def face_for_text(text, bold=False, italic=False):
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
     elif italic:
         key = 'italic'
-    font = symbol_map.get(ch)
-    if font is None or not font.face.get_char_index(ch):
+    font = symbol_map.get(text[0])
+    if font is None or not font_has_text(font, text):
         font = current_font_family.get(key) or current_font_family['regular']
         face = font.face
-        if not face.get_char_index(ch):
+        if not font_has_text(font, text):
             try:
-                font = font_for_char(ch, bold, italic)
+                font = font_for_text(text, bold, italic)
             except FontNotFound:
-                font = font_for_char(
-                    ch, bold, italic, allow_bitmaped_fonts=True
+                font = font_for_text(
+                    text, bold, italic, allow_bitmaped_fonts=True
                 )
             face = alt_face_cache.get(font)
             if face is None:
@@ -180,12 +187,12 @@ def face_for_char(ch, bold=False, italic=False):
 
 
 def render_char(text, bold=False, italic=False, width=1):
-    font, face = face_for_char(text[0], bold, italic)
+    font, face = face_for_text(text[0], bold, italic)
     return render_using_face(font, face, text, width, italic, bold)
 
 
 def render_complex_char(text, bold=False, italic=False, width=1):
-    font, face = face_for_char(text[0], bold, italic)
+    font, face = face_for_text(text, bold, italic)
     import pprint
     pprint.pprint(face.shape(text, font.hinting, font.hintstyle))
 

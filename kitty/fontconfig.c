@@ -13,7 +13,7 @@ get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
     char *family;
     int bold, italic, allow_bitmapped_fonts, index = 0, hint_style=0, weight=0, slant=0;
     double size_in_pts, dpi;
-    unsigned int character;
+    PyObject *characters;
     FcBool hinting, scalable, outline;
     FcChar8 *path = NULL;
     FcPattern *pat = NULL, *match = NULL;
@@ -21,7 +21,8 @@ get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
     FcCharSet *charset = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "spppdId", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &character, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "spppdO!d", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &PyUnicode_Type, &characters, &dpi)) return NULL;
+    if (PyUnicode_READY(characters) != 0) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
 
@@ -35,10 +36,16 @@ get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
     if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
     if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (character > 0) {
+    if (PyUnicode_GET_LENGTH(characters) > 0) {
         charset = FcCharSetCreate();
         if (charset == NULL) { PyErr_NoMemory(); goto end; }
-        if (!FcCharSetAddChar(charset, character)) { PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset"); goto end; }
+        int kind = PyUnicode_KIND(characters); void *data = PyUnicode_DATA(characters);
+        for (int i = 0; i < PyUnicode_GET_LENGTH(characters); i++) {
+            if (!FcCharSetAddChar(charset, PyUnicode_READ(kind, data, i))) { 
+                PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset"); 
+                goto end; 
+            }
+        }
         AP(FcPatternAddCharSet, FC_CHARSET, charset, "charset");
     }
 #undef AP

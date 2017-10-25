@@ -27,10 +27,11 @@ def to_bool(x):
     return x.lower() == 'true'
 
 
-def font_not_found(err, char):
+def font_not_found(err, chars):
     msg = 'Failed to find font'
-    if char is not None:
-        msg = 'Failed to find font for character U+{:X}, error from fontconfig: {}'.  format(ord(char[0]), err)
+    if chars:
+        chars = ', '.join('U+{:X}'.format(ord(c)) for c in chars)
+        msg = 'Failed to find font for characters U+{:X}, error from fontconfig: {}'.  format(chars, err)
     return FontNotFound(msg)
 
 
@@ -40,16 +41,16 @@ def get_font(
     italic=False,
     allow_bitmaped_fonts=False,
     size_in_pts=None,
-    character=None,
+    characters='',
     dpi=None
 ):
     try:
         path, index, hintstyle, hinting, scalable, outline, weight, slant = get_fontconfig_font(
             family, bold, italic, allow_bitmaped_fonts, size_in_pts or 0,
-            0 if character is None else ord(character[0]), dpi or 0
+            characters or '', dpi or 0
         )
     except KeyError as err:
-        raise font_not_found(err, character)
+        raise font_not_found(err, characters)
 
     return Font(
         path, hinting, hintstyle, bold, italic, scalable, outline, weight,
@@ -57,9 +58,9 @@ def get_font(
     )
 
 
-def find_font_for_character(
+def find_font_for_characters(
     family,
-    char,
+    chars,
     bold=False,
     italic=False,
     allow_bitmaped_fonts=False,
@@ -70,14 +71,14 @@ def find_font_for_character(
         family,
         bold,
         italic,
-        character=char,
+        characters=chars,
         allow_bitmaped_fonts=allow_bitmaped_fonts,
         size_in_pts=size_in_pts,
         dpi=dpi
     )
     if not ans.face or not os.path.exists(ans.face):
         raise FontNotFound(
-            'Failed to find font for character U+{:X}'.format(ord(char[0]))
+            'Failed to find font for characters: {!r}'.format(chars)
         )
     return ans
 
