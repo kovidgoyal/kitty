@@ -256,7 +256,7 @@ typedef struct {
 
 
 static inline void
-_shape(Face *self, const char *string, int len, int hinting, int hintstyle, ShapeData *ans) {
+_shape(Face *self, const char *string, int len, int UNUSED hinting, int UNUSED hintstyle, ShapeData *ans) {
     hb_buffer_clear_contents(self->harfbuzz_buffer);
 #ifdef HARBUZZ_HAS_LOAD_FLAGS
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(hinting, hintstyle, FT_LOAD_DEFAULT));
