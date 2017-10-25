@@ -596,7 +596,7 @@ PYWRAP0(check_for_extensions) {
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
-    {"glewInit", (PyCFunction)glew_init, METH_NOARGS, NULL}, 
+    {"glewInit", (PyCFunction)glew_init, METH_O, NULL}, 
     M(compile_program, METH_VARARGS),
     MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),

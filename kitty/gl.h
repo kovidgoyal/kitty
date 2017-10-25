@@ -67,17 +67,17 @@ check_for_gl_error(int line) {
 #endif
 
 static PyObject* 
-glew_init(PyObject UNUSED *self) {
+glew_init(PyObject UNUSED *self, PyObject *is_wayland) {
 #ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        PyErr_Format(PyExc_RuntimeError, "GLEW init failed: [%d] %s", err, glewGetErrorString(err));
-        return NULL;
+        if (PyObject_IsTrue(is_wayland)) {
+            fatal("GLEW init failed: [%d] %s. On Wayland, GLEW must be compiled with the EGL backend instead of the GLX backend.", err, glewGetErrorString(err));
+        } else fatal("GLEW init failed: [%d] %s", err, glewGetErrorString(err));
     }
 #define ARB_TEST(name) \
     if (!GLEW_ARB_##name) { \
-        PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
-        return NULL; \
+        fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
     }
     ARB_TEST(texture_storage);
 #undef ARB_TEST

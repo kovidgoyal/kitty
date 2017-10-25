@@ -158,7 +158,7 @@ def initialize_window(window, opts):
     w, h = window.get_window_size()
     viewport_size.x_ratio = viewport_size.width / float(w)
     viewport_size.y_ratio = viewport_size.height / float(h)
-    glewInit()
+    glewInit(iswayland)
     glfw_swap_interval(0)
     clear_buffers(window.swap_buffers, color_as_int(opts.background))
     # We dont turn this on as it causes rendering performance to be much worse,
