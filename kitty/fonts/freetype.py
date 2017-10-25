@@ -152,13 +152,12 @@ def render_using_face(font, face, text, width, italic, bold):
     )
 
 
-def render_char(text, bold=False, italic=False, width=1):
+def face_for_char(ch, bold=False, italic=False):
     key = 'regular'
     if bold:
         key = 'bi' if italic else 'bold'
     elif italic:
         key = 'italic'
-    ch = text[0]
     font = symbol_map.get(ch)
     if font is None or not font.face.get_char_index(ch):
         font = current_font_family.get(key) or current_font_family['regular']
@@ -177,7 +176,18 @@ def render_char(text, bold=False, italic=False, width=1):
                     set_char_size(face, **cff_size)
     else:
         face = font.face
+    return font, face
+
+
+def render_char(text, bold=False, italic=False, width=1):
+    font, face = face_for_char(text[0], bold, italic)
     return render_using_face(font, face, text, width, italic, bold)
+
+
+def render_complex_char(text, bold=False, italic=False, width=1):
+    font, face = face_for_char(text[0], bold, italic)
+    import pprint
+    pprint.pprint(face.shape(text, font.hinting, font.hintstyle))
 
 
 def place_char_in_cell(bitmap_char):
@@ -249,12 +259,13 @@ def missing_glyph(width):
 
 
 def render_cell(text=' ', bold=False, italic=False):
-    # TODO: Handle non-normalizable combining chars. Probably need to use
-    # harfbuzz for that
-    text = text[0]
-    width = wcwidth(text)
+    width = wcwidth(text[0])
+
     try:
-        bitmap_char = render_char(text, bold, italic, width)
+        if len(text) > 1:
+            bitmap_char = render_complex_char(text, bold, italic, width)
+        else:
+            bitmap_char = render_char(text, bold, italic, width)
     except FontNotFound as err:
         safe_print('ERROR:', err, file=sys.stderr)
         return missing_glyph(width)

@@ -8,6 +8,11 @@
 #include "data-types.h"
 #include <structmember.h>
 #include <ft2build.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#include <hb.h>
+#pragma GCC diagnostic pop
+#include <hb-ft.h>
 #include FT_FREETYPE_H
 typedef struct {
     PyObject_HEAD
@@ -17,6 +22,8 @@ typedef struct {
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
     bool is_scalable;
     PyObject *path;
+    hb_buffer_t *harfbuzz_buffer;
+    hb_font_t *harfbuzz_font;
 } Face;
 
 static PyObject* FreeType_Exception = NULL;
@@ -73,13 +80,19 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
         self->is_scalable = FT_IS_SCALABLE(self->face);
+        self->harfbuzz_buffer = hb_buffer_create();
+        if (self->harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(self->harfbuzz_buffer) || !hb_buffer_pre_allocate(self->harfbuzz_buffer, 20)) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
+        if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
     }
     return (PyObject*)self;
 }
  
 static void
 dealloc(Face* self) {
-    FT_Done_Face(self->face);
+    if (self->harfbuzz_buffer) hb_buffer_destroy(self->harfbuzz_buffer);
+    if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
+    if (self->face) FT_Done_Face(self->face);
     Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -103,7 +116,20 @@ set_char_size(Face *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "llII", &char_width, &char_height, &xdpi, &ydpi)) return NULL;
     error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
     if (error) { set_freetype_error("Failed to set char size, with error:", error); Py_CLEAR(self); return NULL; }
+    if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
+    self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
+    if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
     Py_RETURN_NONE;
+}
+
+static inline int
+get_load_flags(int hinting, int hintstyle, int base) {
+    int flags = base;
+    if (hinting) {
+        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
+        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+    } else flags |= FT_LOAD_NO_HINTING;
+    return flags;
 }
 
 static PyObject*
@@ -111,13 +137,8 @@ load_char(Face *self, PyObject *args) {
 #define load_char_doc "load_char(char, hinting, hintstyle)"
     int char_code, hinting, hintstyle, error;
     if (!PyArg_ParseTuple(args, "Cpp", &char_code, &hinting, &hintstyle)) return NULL;
-
+    int flags = get_load_flags(hinting, hintstyle, FT_LOAD_RENDER);
     int glyph_index = FT_Get_Char_Index(self->face, char_code);
-    int flags = FT_LOAD_RENDER;
-    if (hinting) {
-        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
-        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
-    } else flags |= FT_LOAD_NO_HINTING;
     error = FT_Load_Glyph(self->face, glyph_index, flags);
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return NULL; }
     Py_RETURN_NONE;
@@ -194,6 +215,76 @@ bitmap(Face *self) {
     return ans;
 }
  
+static PyStructSequence_Field shape_fields[] = {
+    {"glyph_id", NULL},
+    {"cluster", NULL},
+    {"mask", NULL},
+    {"x_offset", NULL},
+    {"y_offset", NULL},
+    {"x_advance", NULL},
+    {"y_advance", NULL},
+    {NULL}
+};
+static PyStructSequence_Desc shape_fields_desc = {"Shape", NULL, shape_fields, 7};
+static PyTypeObject ShapeFieldsType = {{{0}}};
+
+static inline PyObject*
+shape_to_py(unsigned int i, hb_glyph_info_t *info, hb_glyph_position_t *pos) {
+    PyObject *ans = PyStructSequence_New(&ShapeFieldsType);
+    if (ans == NULL) return NULL;
+#define SI(num, src, attr, conv, func, div) PyStructSequence_SET_ITEM(ans, num, func(((conv)src[i].attr) / div)); if (PyStructSequence_GET_ITEM(ans, num) == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
+#define INFO(num, attr) SI(num, info, attr, unsigned long, PyLong_FromUnsignedLong, 1)
+#define POS(num, attr) SI(num + 3, pos, attr, double, PyFloat_FromDouble, 64.0)
+    INFO(0, codepoint); INFO(1, cluster); INFO(2, mask);
+    POS(0, x_offset); POS(1, y_offset); POS(2, x_advance); POS(3, y_advance);
+#undef INFO
+#undef POS
+#undef SI
+    return ans;
+}
+
+typedef struct {
+    unsigned int length;
+    hb_glyph_info_t *info;
+    hb_glyph_position_t *positions;
+} ShapeData;
+
+
+static inline void
+_shape(Face *self, const char *string, int len, int hinting, int hintstyle, ShapeData *ans) {
+    hb_buffer_clear_contents(self->harfbuzz_buffer);
+    hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(hinting, hintstyle, FT_LOAD_DEFAULT));
+    hb_buffer_add_utf8(self->harfbuzz_buffer, string, len, 0, len);
+    hb_buffer_guess_segment_properties(self->harfbuzz_buffer);
+    hb_shape(self->harfbuzz_font, self->harfbuzz_buffer, NULL, 0);
+
+    unsigned int info_length, positions_length;
+    ans->info = hb_buffer_get_glyph_infos(self->harfbuzz_buffer, &info_length);
+    ans->positions = hb_buffer_get_glyph_positions(self->harfbuzz_buffer, &positions_length);
+    ans->length = MIN(info_length, positions_length);
+}
+
+
+static PyObject*
+shape(Face *self, PyObject *args) {
+#define shape_doc "shape(text, hinting, hintstyle)"
+    const char *string;
+    int hinting, hintstyle, len;
+    if (!PyArg_ParseTuple(args, "s#ii", &string, &len, &hinting, &hintstyle)) return NULL;
+
+    ShapeData sd;
+    _shape(self, string, len, hinting, hintstyle, &sd);
+    PyObject *ans = PyTuple_New(sd.length);
+    if (ans == NULL) return NULL;
+    for (unsigned int i = 0; i < sd.length; i++) {
+        PyObject *s = shape_to_py(i, sd.info, sd.positions);
+        if (s == NULL) { Py_CLEAR(ans); return NULL; }
+        PyTuple_SET_ITEM(ans, i, s);
+    }
+    return ans;
+}
+
+
 static PyObject*
 trim_to_width(Face UNUSED *self, PyObject *args) {
 #define trim_to_width_doc "Trim edges from the supplied bitmap to make it fit in the specified cell-width"
@@ -254,6 +345,7 @@ static PyMemberDef members[] = {
 static PyMethodDef methods[] = {
     METHOD(set_char_size, METH_VARARGS)
     METHOD(load_char, METH_VARARGS)
+    METHOD(shape, METH_VARARGS)
     METHOD(get_char_index, METH_VARARGS)
     METHOD(glyph_metrics, METH_NOARGS)
     METHOD(bitmap, METH_NOARGS)
@@ -298,8 +390,10 @@ init_freetype_library(PyObject *m) {
     }
     if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;
     if (PyStructSequence_InitType2(&BitmapType, &bm_desc) != 0) return false;
+    if (PyStructSequence_InitType2(&ShapeFieldsType, &shape_fields_desc) != 0) return false;
     PyModule_AddObject(m, "GlyphMetrics", (PyObject*)&GlpyhMetricsType);
     PyModule_AddObject(m, "Bitmap", (PyObject*)&BitmapType);
+    PyModule_AddObject(m, "ShapeFields", (PyObject*)&ShapeFieldsType);
     PyModule_AddIntMacro(m, FT_LOAD_RENDER);
     PyModule_AddIntMacro(m, FT_LOAD_TARGET_NORMAL);
     PyModule_AddIntMacro(m, FT_LOAD_TARGET_LIGHT);
