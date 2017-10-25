@@ -67,7 +67,7 @@ check_for_gl_error(int line) {
 #endif
 
 static PyObject* 
-glew_init(PyObject UNUSED *self, PyObject *is_wayland) {
+glew_init(PyObject UNUSED *self, PyObject UNUSED *is_wayland) {
 #ifndef __APPLE__
     GLenum err = glewInit();
     if (err != GLEW_OK) {
