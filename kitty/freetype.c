@@ -13,6 +13,11 @@
 #include <hb.h>
 #pragma GCC diagnostic pop
 #include <hb-ft.h>
+
+#if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 0 || (HB_VERSION_MINOR == 0 && HB_VERSION_MICRO >= 5)))
+#define HARBUZZ_HAS_LOAD_FLAGS
+#endif
+
 #include FT_FREETYPE_H
 typedef struct {
     PyObject_HEAD
@@ -253,7 +258,9 @@ typedef struct {
 static inline void
 _shape(Face *self, const char *string, int len, int hinting, int hintstyle, ShapeData *ans) {
     hb_buffer_clear_contents(self->harfbuzz_buffer);
+#ifdef HARBUZZ_HAS_LOAD_FLAGS
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(hinting, hintstyle, FT_LOAD_DEFAULT));
+#endif
     hb_buffer_add_utf8(self->harfbuzz_buffer, string, len, 0, len);
     hb_buffer_guess_segment_properties(self->harfbuzz_buffer);
     hb_shape(self->harfbuzz_font, self->harfbuzz_buffer, NULL, 0);
