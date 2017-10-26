@@ -115,6 +115,8 @@ python3 /path/to/kitty/folder
 
 * Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
 
+* NixOS / nixpkgs: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix
+
 
 === macOS packages
 
