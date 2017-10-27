@@ -28,6 +28,8 @@ typedef struct {
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
     int hinting, hintstyle;
     bool is_scalable;
+    FT_F26Dot6 char_width, char_height;
+    FT_UInt xdpi, ydpi;
     PyObject *path;
     hb_buffer_t *harfbuzz_buffer;
     hb_font_t *harfbuzz_font;
@@ -67,6 +69,17 @@ set_freetype_error(const char* prefix, int err_code) {
 
 static FT_Library  library;
 
+static inline bool
+set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi) {
+    int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
+    if (!error) {
+        self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
+    } else {
+        set_freetype_error("Failed to set char size, with error:", error); return false; 
+    }
+    return !error;
+}
+
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
@@ -90,6 +103,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->harfbuzz_buffer = hb_buffer_create();
         self->hinting = hinting; self->hintstyle = hintstyle;
         if (self->harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(self->harfbuzz_buffer) || !hb_buffer_pre_allocate(self->harfbuzz_buffer, 20)) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        if (!set_font_size(self, 10, 20, 96, 96)) { Py_CLEAR(self); return NULL; }
         self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
         if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
     }
@@ -115,18 +129,14 @@ repr(Face *self) {
 }
 
 
+
 static PyObject*
 set_char_size(Face *self, PyObject *args) {
 #define set_char_size_doc "set_char_size(width, height, xdpi, ydpi) -> set the character size. width, height is in 1/64th of a pt. dpi is in pixels per inch"
     long char_width, char_height;
     unsigned int xdpi, ydpi;
-    int error;
     if (!PyArg_ParseTuple(args, "llII", &char_width, &char_height, &xdpi, &ydpi)) return NULL;
-    error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
-    if (error) { set_freetype_error("Failed to set char size, with error:", error); Py_CLEAR(self); return NULL; }
-    if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
-    self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
-    if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
+    if (!set_font_size(self, char_width, char_height, xdpi, ydpi)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -305,82 +315,112 @@ shape(Face *self, PyObject *args) {
 }
 
 typedef struct {
-    unsigned char *buf;
-    unsigned int width, height;
-    FT_Glyph_Metrics metrics;
-} GlyphBuffer;
-
-
-static inline bool
-ensure_space(GlyphBuffer *g, unsigned int width, unsigned int height) {
-    if (g->width >= width && g->height >= height) return true;
-    unsigned char *newbuf = calloc(width * height, sizeof(char));
-    if (newbuf == NULL) { free(g->buf); g->buf = NULL; g->width = 0; g->height = 0; return false; }
-    for (unsigned int r = 0; r < g->height; r++) memcpy(newbuf + r * width, g->buf + r * g->width, g->width);
-    free(g->buf); g->buf = newbuf; g->width = width; g->height = height;
-    return true;
-}
-
-typedef struct {
-    size_t x, y;
-} BitmapPoint;
+    unsigned char* buf;
+    size_t start_x, width, stride;
+    size_t rows;
+} ProcessedBitmap;
 
 
 static inline void
-apply_bitmap(GlyphBuffer *dest, FT_Bitmap *bitmap, BitmapPoint src_start, BitmapPoint dest_start) {
-    unsigned char *src = (unsigned char*)bitmap->buffer;
-    size_t src_height = bitmap->rows, src_width = bitmap->width;
-#define ZERO_SUB(a, b) ((a) <= (b) ? 0 : (a) - (b))
-    size_t width = MIN(ZERO_SUB(dest->width, dest_start.x), ZERO_SUB(src_width, src_start.x));
-#undef ZERO_SUB
+trim_borders(ProcessedBitmap *ans, size_t extra) {
+    bool column_has_text = false;
 
-    for (size_t sy = src_start.y, dy = dest_start.y; sy < src_height && dy < dest->height; sy++, dy++) {
-        unsigned char *d = dest->buf + dest_start.x + dy * dest->width, *s = src + src_start.x + sy * src_width;
-        for (size_t x = 0; x < width; x++) d[x] += s[x];
+    // Trim empty columns from the right side of the bitmap
+    for (ssize_t x = ans->width - 1; !column_has_text && x > -1 && extra > 0; x--) {
+        for (size_t y = 0; y < ans->rows && !column_has_text; y++) {
+            if (ans->buf[x + y * ans->stride] > 200) column_has_text = true;
+        }
+        if (!column_has_text) { ans->width--; extra--; }
+    }
+
+    ans->start_x = extra;
+    ans->width -= extra;
+}
+
+
+static inline bool
+render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, int bold, int italic, bool rescale) {
+    if (!load_glyph(self, glyph_id)) return false;
+    unsigned int max_width = cell_width * num_cells;
+    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+    ans->buf = bitmap->buffer;
+    ans->start_x = 0; ans->width = bitmap->width;
+    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
+    ans->rows = bitmap->rows;
+    if (bitmap->width > max_width) {
+        size_t extra = bitmap->width - max_width;
+        if (italic && extra < cell_width / 2) {
+            trim_borders(ans, extra);
+        } else if (rescale && self->is_scalable && extra > MAX(2, cell_width / 3)) {
+            FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
+            float ar = (float)max_width / (float)bitmap->width;
+            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi)) {
+                if (!render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, false)) return false;
+                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi)) return false;
+            }
+        }
+    }
+    return true;
+}
+
+static inline void
+place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
+    // We want the glyph to be positioned inside the cell based on the bearingX
+    // and bearingY values, making sure that it does not overflow the cell.
+
+    // Calculate column bounds
+    size_t src_start_column = bm->start_x, dest_start_column = (size_t)(x_offset + (float)metrics->horiBearingX / 64.f), extra;
+    // Move the start column back if the width overflows because of it
+    if (dest_start_column + bm->width > cell_width) {
+        extra = dest_start_column + bm->width - cell_width;
+        dest_start_column = extra > dest_start_column ? 0 : dest_start_column - extra;
+    }
+
+    // Calculate row bounds
+    ssize_t dy = (ssize_t)((float)metrics->horiBearingY / 64.f + y_offset);
+    size_t src_start_row, dest_start_row;
+    if (dy > 0 && (size_t)dy > baseline) {
+        src_start_row = dy - baseline;
+        dest_start_row = 0;
+    } else {
+        src_start_row = 0;
+        dest_start_row = baseline - dy;
+    }
+
+    for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
+        for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
+            uint16_t val = cell[dr * cell_width + dc];
+            val = (val + bm->buf[sr * bm->stride + sc]) % 256;
+            cell[dr * cell_width + dc] = val;
+        }
     }
 }
 
 
 static PyObject*
 draw_complex_glyph(Face *self, PyObject *args) {
-#define draw_complex_glyph_doc "draw_complex_glyph(text)"
-    const char *string;
-    int len;
-    float x = 0, y = 0;
-    unsigned int width = 0, height = 0;
-    if (!PyArg_ParseTuple(args, "s#", &string, &len)) return NULL;
+#define draw_complex_glyph_doc "draw_complex_glyph(text, cell_width, cell_height, cell_buffer, num_cells, bold, italic, baseline)"
+    const char *text;
+    int text_len, bold, italic;
+    unsigned int cell_width, cell_height, num_cells, baseline;
+    PyObject *addr;
+    float x = 0.f, y = 0.f;
+    if (!PyArg_ParseTuple(args, "s#IIO!Ipp", &text, &text_len, &cell_width, &cell_height, &PyLong_Type, &addr, &num_cells, &bold, &italic, &baseline)) return NULL;
+    unsigned char *cell = PyLong_AsVoidPtr(addr);
     ShapeData sd;
-    _shape(self, string, len, &sd);
-    GlyphBuffer g = {0}; 
-    BitmapPoint src, dest;
+    _shape(self, text, text_len, &sd);
+    ProcessedBitmap bm;
+
     for (unsigned i = 0; i < sd.length; i++) {
         if (sd.info[i].codepoint == 0) continue;
-        if (!load_glyph(self, sd.info[i].codepoint)) { free(g.buf); return NULL; }
-        if (i == 0) { g.metrics = self->face->glyph->metrics; }
+        if (!render_bitmap(self, sd.info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return NULL;
         x += (float)sd.positions[i].x_offset / 64.0f;
         y = (float)sd.positions[i].y_offset / 64.0f;
-        width = MAX(width, (unsigned int)ceilf(x + self->face->glyph->bitmap.width));
-        height = MAX(height, (unsigned int)ceilf(y + self->face->glyph->bitmap.rows));
-        if (!ensure_space(&g, width, height)) return PyErr_NoMemory();
-        src.x = (size_t)(x < 0 ? ceilf(-x) : 0); 
-        src.y = (size_t)(y < 0 ? ceilf(-y) : 0); 
-        dest.x = (size_t)(x < 0 ? 0 : roundf(x));
-        dest.y = (size_t)(y < 0 ? 0 : roundf(y));
-        if (self->face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) { 
-            free(g.buf); 
-            PyErr_Format(PyExc_ValueError, "FreeType rendered a complex glyph with an unsupported pixel mode: %d", self->face->glyph->bitmap.pixel_mode);
-            return NULL;
-        }
-        apply_bitmap(&g, &self->face->glyph->bitmap, src, dest);
+        place_bitmap_in_cell(cell, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
         x += (float)sd.positions[i].x_advance / 64.0f;
+
     }
-    if (!g.buf) { 
-        PyErr_Format(PyExc_ValueError, "No glyphs found for string: %s", string);
-        return NULL;
-    }
-    PyObject *t = PyByteArray_FromStringAndSize((const char*)g.buf, g.width * g.height);
-    free(g.buf);
-    return Py_BuildValue("NNII", t, gm_to_py(&g.metrics), g.width, g.height);
+    Py_RETURN_NONE;
 }
 
 
