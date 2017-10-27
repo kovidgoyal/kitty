@@ -304,7 +304,7 @@ shape(Face *self, PyObject *args) {
 }
 
 typedef struct {
-    char *buf;
+    unsigned char *buf;
     unsigned int width, height;
     FT_Glyph_Metrics metrics;
 } GlyphBuffer;
@@ -313,7 +313,7 @@ typedef struct {
 static inline bool
 ensure_space(GlyphBuffer *g, unsigned int width, unsigned int height) {
     if (g->width >= width && g->height >= height) return true;
-    char *newbuf = calloc(width * height, sizeof(char));
+    unsigned char *newbuf = calloc(width * height, sizeof(char));
     if (newbuf == NULL) { free(g->buf); g->buf = NULL; g->width = 0; g->height = 0; return false; }
     for (unsigned int r = 0; r < g->height; r++) memcpy(newbuf + r * width, g->buf + r * g->width, g->width);
     free(g->buf); g->buf = newbuf; g->width = width; g->height = height;
@@ -327,14 +327,15 @@ typedef struct {
 
 static inline void
 apply_bitmap(GlyphBuffer *dest, FT_Bitmap *bitmap, BitmapPoint src_start, BitmapPoint dest_start) {
-    char *src = (char*)bitmap->buffer;
+    unsigned char *src = (unsigned char*)bitmap->buffer;
     size_t src_height = bitmap->rows, src_width = bitmap->pitch;
 #define ZERO_SUB(a, b) ((a) <= (b) ? 0 : (a) - (b))
     size_t width = MIN(ZERO_SUB(dest->width, dest_start.x), ZERO_SUB(src_width, src_start.x));
 #undef ZERO_SUB
 
     for (size_t sy = src_start.y, dy = dest_start.y; sy < src_height && dy < dest->height; sy++, dy++) {
-        memcpy(dest->buf + dest_start.x + dy * dest->width, src + sy * src_width, width);
+        unsigned char *d = dest->buf + dest_start.x + dy * dest->width, *s = src + src_start.x + sy * src_width;
+        for (size_t x = 0; x < width; x++) d[x] += s[x];
     }
 }
 
