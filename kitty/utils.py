@@ -14,8 +14,8 @@ from time import monotonic
 
 from .constants import isosx, iswayland, selection_clipboard_funcs, x11_display
 from .fast_data_types import (
-    GLSL_VERSION, glfw_get_physical_dpi, redirect_std_streams,
-    wcwidth as wcwidth_impl
+    GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
+    redirect_std_streams, wcwidth as wcwidth_impl
 )
 from .rgb import Color, to_color
 
@@ -92,6 +92,8 @@ def parse_xrdb(raw):
 
 
 def x11_dpi():
+    if iswayland:
+        return
     XResourceManagerString = load_libx11()
     display = x11_display()
     if display:
@@ -103,18 +105,22 @@ def x11_dpi():
 
 
 def get_logical_dpi():
+    # See https://github.com/glfw/glfw/issues/1019 for why we cant use
+    # glfw_get_physical_dpi()
     if not hasattr(get_logical_dpi, 'ans'):
-        if isosx or iswayland:
-            # TODO: Investigate if this needs a different implementation on OS X or Wayland
+        if isosx:
+            # TODO: Investigate if this needs a different implementation on OS X
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
-            # See https://github.com/glfw/glfw/issues/1019 for why we cant use
-            # glfw_get_physical_dpi()
-            dpi = x11_dpi()
-            if dpi is None:
-                get_logical_dpi.ans = glfw_get_physical_dpi()
+            try:
+                xscale, yscale = glfw_primary_monitor_content_scale()
+            except NotImplementedError:  # glfw < 3.3
+                xdpi = ydpi = x11_dpi()
+                if xdpi is None:
+                    xdpi, ydpi = glfw_get_physical_dpi()
             else:
-                get_logical_dpi.ans = dpi, dpi
+                xdpi, ydpi = xscale * 96.0, yscale * 96.0
+        get_logical_dpi.ans = xdpi, ydpi
     return get_logical_dpi.ans
 
 
