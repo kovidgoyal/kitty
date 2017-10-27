@@ -329,7 +329,7 @@ typedef struct {
 static inline void
 apply_bitmap(GlyphBuffer *dest, FT_Bitmap *bitmap, BitmapPoint src_start, BitmapPoint dest_start) {
     unsigned char *src = (unsigned char*)bitmap->buffer;
-    size_t src_height = bitmap->rows, src_width = bitmap->pitch;
+    size_t src_height = bitmap->rows, src_width = bitmap->width;
 #define ZERO_SUB(a, b) ((a) <= (b) ? 0 : (a) - (b))
     size_t width = MIN(ZERO_SUB(dest->width, dest_start.x), ZERO_SUB(src_width, src_start.x));
 #undef ZERO_SUB
@@ -357,9 +357,9 @@ draw_complex_glyph(Face *self, PyObject *args) {
         if (sd.info[i].codepoint == 0) continue;
         if (!load_glyph(self, sd.info[i].codepoint)) { free(g.buf); return NULL; }
         if (i == 0) { g.metrics = self->face->glyph->metrics; }
-        x += (float)sd.positions[i].x_offset / 64.0;
-        y -= (float)sd.positions[i].y_offset / 64.0;
-        width = MAX(width, (unsigned int)ceilf(x + self->face->glyph->bitmap.pitch));
+        x += (float)sd.positions[i].x_offset / 64.0f;
+        y = (float)sd.positions[i].y_offset / 64.0f;
+        width = MAX(width, (unsigned int)ceilf(x + self->face->glyph->bitmap.width));
         height = MAX(height, (unsigned int)ceilf(y + self->face->glyph->bitmap.rows));
         if (!ensure_space(&g, width, height)) return PyErr_NoMemory();
         src.x = (size_t)(x < 0 ? ceilf(-x) : 0); 
@@ -372,8 +372,7 @@ draw_complex_glyph(Face *self, PyObject *args) {
             return NULL;
         }
         apply_bitmap(&g, &self->face->glyph->bitmap, src, dest);
-        x += (float)sd.positions[i].x_advance / 64.0;
-        y = 0;
+        x += (float)sd.positions[i].x_advance / 64.0f;
     }
     if (!g.buf) { 
         PyErr_Format(PyExc_ValueError, "No glyphs found for string: %s", string);
