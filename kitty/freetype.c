@@ -141,9 +141,8 @@ get_load_flags(int hinting, int hintstyle, int base) {
 }
 
 static inline bool 
-_load_char(Face *self, char_type codepoint) {
+load_glyph(Face *self, int glyph_index) {
     int flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
-    int glyph_index = FT_Get_Char_Index(self->face, codepoint);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return false; }
     return true;
@@ -152,7 +151,9 @@ _load_char(Face *self, char_type codepoint) {
 static PyObject*
 load_char(Face *self, PyObject *ch) {
 #define load_char_doc "load_char(char)"
-    if (!_load_char(self, (char_type)PyLong_AsUnsignedLong(ch))) return NULL;
+    char_type codepoint = (char_type)PyLong_AsUnsignedLong(ch);
+    int glyph_index = FT_Get_Char_Index(self->face, codepoint);
+    if (!load_glyph(self, glyph_index)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -354,7 +355,7 @@ draw_complex_glyph(Face *self, PyObject *args) {
     BitmapPoint src, dest;
     for (unsigned i = 0; i < sd.length; i++) {
         if (sd.info[i].codepoint == 0) continue;
-        if (!_load_char(self, sd.info[i].codepoint)) { free(g.buf); return NULL; }
+        if (!load_glyph(self, sd.info[i].codepoint)) { free(g.buf); return NULL; }
         if (i == 0) { g.metrics = self->face->glyph->metrics; }
         x += (float)sd.positions[i].x_offset / 64.0;
         y -= (float)sd.positions[i].y_offset / 64.0;
