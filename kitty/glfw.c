@@ -19,6 +19,7 @@
 #if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
 #define has_request_attention
 #define has_init_hint_string
+#define has_content_scale_query
 #endif
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -318,6 +319,18 @@ get_cursor_pos(WindowWrapper *self) {
 }
 
 static PyObject*
+get_content_scale(WindowWrapper *self) {
+#ifdef has_content_scale_query
+    float xscale, yscale;
+    glfwGetWindowContentScale(self->window, &xscale, &yscale);
+    return Py_BuildValue("ff", xscale, yscale);
+#else
+    PyErr_SetString(PyExc_NotImplementedError, "glfw version is too old");
+    return NULL;
+#endif
+}
+
+static PyObject*
 set_should_close(WindowWrapper *self, PyObject *args) {
     int c;
     if (!PyArg_ParseTuple(args, "p", &c)) return NULL;
@@ -440,6 +453,19 @@ primary_monitor_size(PyObject UNUSED *self) {
     return Py_BuildValue("ii", mode->width, mode->height);
 }
 
+static PyObject*
+primary_monitor_content_scale(PyObject UNUSED *self) {
+#ifdef has_content_scale_query
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    float xscale, yscale;
+    glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+    return Py_BuildValue("ff", xscale, yscale);
+#else
+    PyErr_SetString(PyExc_NotImplementedError, "glfw version is too old");
+    return NULL;
+#endif
+}
+
 // Boilerplate {{{
 #define MND(name, args) {#name, (PyCFunction)name, args, ""}
 
@@ -447,6 +473,7 @@ static PyMethodDef methods[] = {
     MND(swap_buffers, METH_NOARGS),
     MND(get_clipboard_string, METH_NOARGS),
     MND(get_cursor_pos, METH_NOARGS),
+    MND(get_content_scale, METH_NOARGS),
     MND(should_close, METH_NOARGS),
     MND(get_framebuffer_size, METH_NOARGS),
     MND(get_window_size, METH_NOARGS),
@@ -497,6 +524,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, \
     {"glfw_init_hint_string", (PyCFunction)glfw_init_hint_string, METH_VARARGS, ""}, \
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""}, \
+    {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""}, \
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
