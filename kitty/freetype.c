@@ -139,14 +139,19 @@ get_load_flags(int hinting, int hintstyle, int base) {
     return flags;
 }
 
+static inline bool 
+_load_char(Face *self, char_type codepoint) {
+    int flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
+    int glyph_index = FT_Get_Char_Index(self->face, codepoint);
+    int error = FT_Load_Glyph(self->face, glyph_index, flags);
+    if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return false; }
+    return true;
+}
+
 static PyObject*
 load_char(Face *self, PyObject *ch) {
 #define load_char_doc "load_char(char)"
-    int char_code = (int)PyLong_AsLong(ch);
-    int flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
-    int glyph_index = FT_Get_Char_Index(self->face, char_code);
-    int error = FT_Load_Glyph(self->face, glyph_index, flags);
-    if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return NULL; }
+    if (!_load_char(self, (char_type)PyLong_AsUnsignedLong(ch))) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -292,6 +297,52 @@ shape(Face *self, PyObject *args) {
     return ans;
 }
 
+typedef struct {
+    char *buf;
+    unsigned int width, height;
+    FT_Glyph_Metrics metrics;
+} GlyphBuffer;
+
+
+static inline bool
+ensure_space(GlyphBuffer *g, unsigned int width, unsigned int height) {
+    if (g->width >= width && g->height >= height) return true;
+    char *newbuf = calloc(width * height, sizeof(char));
+    if (newbuf == NULL) return false;
+    for (unsigned int r = 0; r < g->height; r++) memcpy(newbuf + r * width, g->buf + r * g->width, g->width);
+    free(g->buf); g->buf = newbuf; g->width = width; g->height = height;
+    return true;
+}
+
+
+static PyObject*
+draw_complex_glyph(Face *self, PyObject *args) {
+#define draw_complex_glyph_doc "draw_complex_glyph(text)"
+    const char *string;
+    int len;
+    float x = 0, y = 0;
+    unsigned int width = 0, height = 0;
+    if (!PyArg_ParseTuple(args, "s#", &string, &len)) return NULL;
+    ShapeData sd;
+    _shape(self, string, len, &sd);
+    GlyphBuffer g = {0}; 
+    for (unsigned i = 0; i < sd.length; i++) {
+        if (sd.info[i].codepoint == 0) continue;
+        _load_char(self, sd.info[i].codepoint);
+        if (i == 0) { g.metrics = self->face->glyph->metrics; }
+        x += (float)sd.positions[i].x_offset / 64.0;
+        y -= (float)sd.positions[i].y_offset / 64.0;
+        width = MAX(width, (unsigned int)ceilf(x + self->face->glyph->bitmap.pitch));
+        height = MAX(height, (unsigned int)ceilf(y + self->face->glyph->bitmap.rows));
+        if (!ensure_space(&g, width, height)) return PyErr_NoMemory();
+
+    }
+    if (!g.buf) { 
+        PyErr_Format(PyExc_ValueError, "No glpyhs found for string: %s", string);
+        return NULL;
+    }
+}
+
 
 static PyObject*
 trim_to_width(Face UNUSED *self, PyObject *args) {
@@ -354,6 +405,7 @@ static PyMethodDef methods[] = {
     METHOD(set_char_size, METH_VARARGS)
     METHOD(load_char, METH_O)
     METHOD(shape, METH_VARARGS)
+    METHOD(draw_complex_glyph, METH_VARARGS)
     METHOD(get_char_index, METH_VARARGS)
     METHOD(glyph_metrics, METH_NOARGS)
     METHOD(bitmap, METH_NOARGS)
