@@ -319,7 +319,7 @@ get_cursor_pos(WindowWrapper *self) {
 }
 
 static PyObject*
-get_content_scale(WindowWrapper *self) {
+get_content_scale(WindowWrapper UNUSED *self) {
 #ifdef has_content_scale_query
     float xscale, yscale;
     glfwGetWindowContentScale(self->window, &xscale, &yscale);
