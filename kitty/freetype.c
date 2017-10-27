@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include <math.h>
 #include <structmember.h>
 #include <ft2build.h>
 #pragma GCC diagnostic push
@@ -181,18 +182,23 @@ static PyStructSequence_Field gm_fields[] = {
 static PyStructSequence_Desc gm_desc = {"GlpyhMetrics", NULL, gm_fields, 8};
 static PyTypeObject GlpyhMetricsType = {{{0}}};
 
-static PyObject*
-glyph_metrics(Face *self) {
-#define glyph_metrics_doc ""
+static inline PyObject*
+gm_to_py(FT_Glyph_Metrics *gm) {
     PyObject *ans = PyStructSequence_New(&GlpyhMetricsType);
     if (ans != NULL) {
-#define SI(num, attr) PyStructSequence_SET_ITEM(ans, num, PyLong_FromLong(self->face->glyph->metrics.attr)); if (PyStructSequence_GET_ITEM(ans, num) == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
+#define SI(num, attr) PyStructSequence_SET_ITEM(ans, num, PyLong_FromLong(gm->attr)); if (PyStructSequence_GET_ITEM(ans, num) == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
         SI(0, width); SI(1, height);
         SI(2, horiBearingX); SI(3, horiBearingY); SI(4, horiAdvance);
         SI(5, vertBearingX); SI(6, vertBearingY); SI(7, vertAdvance);
 #undef SI
     } else return PyErr_NoMemory();
     return ans;
+}
+
+static PyObject*
+glyph_metrics(Face *self) {
+#define glyph_metrics_doc ""
+    return gm_to_py(&self->face->glyph->metrics);
 }
 
 static PyStructSequence_Field bm_fields[] = {
@@ -308,10 +314,28 @@ static inline bool
 ensure_space(GlyphBuffer *g, unsigned int width, unsigned int height) {
     if (g->width >= width && g->height >= height) return true;
     char *newbuf = calloc(width * height, sizeof(char));
-    if (newbuf == NULL) return false;
+    if (newbuf == NULL) { free(g->buf); g->buf = NULL; g->width = 0; g->height = 0; return false; }
     for (unsigned int r = 0; r < g->height; r++) memcpy(newbuf + r * width, g->buf + r * g->width, g->width);
     free(g->buf); g->buf = newbuf; g->width = width; g->height = height;
     return true;
+}
+
+typedef struct {
+    size_t x, y;
+} BitmapPoint;
+
+
+static inline void
+apply_bitmap(GlyphBuffer *dest, FT_Bitmap *bitmap, BitmapPoint src_start, BitmapPoint dest_start) {
+    char *src = (char*)bitmap->buffer;
+    size_t src_height = bitmap->rows, src_width = bitmap->pitch;
+#define ZERO_SUB(a, b) ((a) <= (b) ? 0 : (a) - (b))
+    size_t width = MIN(ZERO_SUB(dest->width, dest_start.x), ZERO_SUB(src_width, src_start.x));
+#undef ZERO_SUB
+
+    for (size_t sy = src_start.y, dy = dest_start.y; sy < src_height && dy < dest->height; sy++, dy++) {
+        memcpy(dest->buf + dest_start.x + dy * dest->width, src + sy * src_width, width);
+    }
 }
 
 
@@ -326,6 +350,7 @@ draw_complex_glyph(Face *self, PyObject *args) {
     ShapeData sd;
     _shape(self, string, len, &sd);
     GlyphBuffer g = {0}; 
+    BitmapPoint src, dest;
     for (unsigned i = 0; i < sd.length; i++) {
         if (sd.info[i].codepoint == 0) continue;
         _load_char(self, sd.info[i].codepoint);
@@ -335,12 +360,26 @@ draw_complex_glyph(Face *self, PyObject *args) {
         width = MAX(width, (unsigned int)ceilf(x + self->face->glyph->bitmap.pitch));
         height = MAX(height, (unsigned int)ceilf(y + self->face->glyph->bitmap.rows));
         if (!ensure_space(&g, width, height)) return PyErr_NoMemory();
-
+        src.x = (size_t)(x < 0 ? ceilf(-x) : 0); 
+        src.y = (size_t)(y < 0 ? ceilf(-y) : 0); 
+        dest.x = (size_t)(x < 0 ? 0 : roundf(x));
+        dest.y = (size_t)(y < 0 ? 0 : roundf(y));
+        if (self->face->glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) { 
+            free(g.buf); 
+            PyErr_Format(PyExc_ValueError, "FreeType rendered a complex glyph with an unsupported pixel mode: %d", self->face->glyph->bitmap.pixel_mode);
+            return NULL;
+        }
+        apply_bitmap(&g, &self->face->glyph->bitmap, src, dest);
+        x += (float)sd.positions[i].x_advance / 64.0;
+        y = 0;
     }
     if (!g.buf) { 
-        PyErr_Format(PyExc_ValueError, "No glpyhs found for string: %s", string);
+        PyErr_Format(PyExc_ValueError, "No glyphs found for string: %s", string);
         return NULL;
     }
+    PyObject *t = PyByteArray_FromStringAndSize((const char*)g.buf, g.width * g.height);
+    free(g.buf);
+    return Py_BuildValue("NNII", t, gm_to_py(&g.metrics), g.width, g.height);
 }
 
 

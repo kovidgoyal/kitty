@@ -193,8 +193,13 @@ def render_char(text, bold=False, italic=False, width=1):
 
 def render_complex_char(text, bold=False, italic=False, width=1):
     font, face = face_for_text(text, bold, italic)
-    import pprint
-    pprint.pprint(face.shape(text))
+    buf, m, width, height = face.draw_complex_glyph(text)
+    return CharBitmap(
+        buf,
+        ceil_int(abs(m.horiBearingX) / 64),
+        ceil_int(abs(m.horiBearingY) / 64),
+        ceil_int(m.horiAdvance / 64), height, width
+    )
 
 
 def place_char_in_cell(bitmap_char):
