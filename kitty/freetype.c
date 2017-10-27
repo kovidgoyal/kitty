@@ -354,7 +354,7 @@ draw_complex_glyph(Face *self, PyObject *args) {
     BitmapPoint src, dest;
     for (unsigned i = 0; i < sd.length; i++) {
         if (sd.info[i].codepoint == 0) continue;
-        _load_char(self, sd.info[i].codepoint);
+        if (!_load_char(self, sd.info[i].codepoint)) { free(g.buf); return NULL; }
         if (i == 0) { g.metrics = self->face->glyph->metrics; }
         x += (float)sd.positions[i].x_offset / 64.0;
         y -= (float)sd.positions[i].y_offset / 64.0;
