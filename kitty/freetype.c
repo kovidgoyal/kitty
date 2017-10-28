@@ -380,7 +380,7 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
     ssize_t dy = (ssize_t)((float)metrics->horiBearingY / 64.f + y_offset);
     size_t src_start_row, dest_start_row;
     if (dy > 0 && (size_t)dy > baseline) {
-        src_start_row = dy - baseline;
+        src_start_row = 0;
         dest_start_row = 0;
     } else {
         src_start_row = 0;
@@ -405,7 +405,7 @@ draw_complex_glyph(Face *self, PyObject *args) {
     unsigned int cell_width, cell_height, num_cells, baseline;
     PyObject *addr;
     float x = 0.f, y = 0.f;
-    if (!PyArg_ParseTuple(args, "s#IIO!Ipp", &text, &text_len, &cell_width, &cell_height, &PyLong_Type, &addr, &num_cells, &bold, &italic, &baseline)) return NULL;
+    if (!PyArg_ParseTuple(args, "s#IIO!IppI", &text, &text_len, &cell_width, &cell_height, &PyLong_Type, &addr, &num_cells, &bold, &italic, &baseline)) return NULL;
     unsigned char *cell = PyLong_AsVoidPtr(addr);
     ShapeData sd;
     _shape(self, text, text_len, &sd);
@@ -419,6 +419,30 @@ draw_complex_glyph(Face *self, PyObject *args) {
         place_bitmap_in_cell(cell, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
         x += (float)sd.positions[i].x_advance / 64.0f;
 
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+split_cells(Face UNUSED *self, PyObject *args) {
+#define split_cells_doc "split_cells(cell_width, cell_height, src, *cells)"
+    unsigned int cell_width, cell_height;
+    unsigned char *cells[10], *src;
+    size_t num_cells = PyTuple_GET_SIZE(args) - 3;
+    if (num_cells > sizeof(cells)/sizeof(cells[0])) { PyErr_SetString(PyExc_ValueError, "Too many cells being split"); return NULL; }
+    cell_width = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, 0));
+    cell_height = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, 1));
+    src = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, 2));
+    for (size_t i = 3; i < num_cells + 3; i++) cells[i - 3] = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
+
+    size_t stride = num_cells * cell_width;
+    for (size_t y = 0; y < cell_height; y++) {
+        for (size_t i = 0; i < num_cells; i++) {
+            unsigned char *dest = cells[i] + y * cell_width;
+            for (size_t x = 0; x < cell_width; x++) {
+                dest[x] = src[y * stride + i * cell_width + x];
+            }
+        }
     }
     Py_RETURN_NONE;
 }
@@ -486,6 +510,7 @@ static PyMethodDef methods[] = {
     METHOD(load_char, METH_O)
     METHOD(shape, METH_VARARGS)
     METHOD(draw_complex_glyph, METH_VARARGS)
+    METHOD(split_cells, METH_VARARGS)
     METHOD(get_char_index, METH_VARARGS)
     METHOD(glyph_metrics, METH_NOARGS)
     METHOD(bitmap, METH_NOARGS)

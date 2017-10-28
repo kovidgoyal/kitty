@@ -193,13 +193,16 @@ def render_char(text, bold=False, italic=False, width=1):
 
 def render_complex_char(text, bold=False, italic=False, width=1):
     font, face = face_for_text(text, bold, italic)
-    buf, m, width, height = face.draw_complex_glyph(text)
-    return CharBitmap(
-        buf,
-        ceil_int(abs(m.horiBearingX) / 64),
-        ceil_int(abs(m.horiBearingY) / 64),
-        ceil_int(m.horiAdvance / 64), height, width
-    )
+    if width == 1:
+        buf = CharTexture()
+        ans = (buf,)
+    else:
+        buf = (ctypes.c_ubyte * (cell_width * width * cell_height))()
+        ans = tuple(CharTexture() for i in range(width))
+    face.draw_complex_glyph(text, cell_width, cell_height, ctypes.addressof(buf), width, bold, italic, baseline)
+    if width > 1:
+        face.split_cells(cell_width, cell_height, ctypes.addressof(buf), *(ctypes.addressof(x) for x in ans))
+    return ans
 
 
 def place_char_in_cell(bitmap_char):
@@ -273,26 +276,35 @@ def missing_glyph(width):
 def render_cell(text=' ', bold=False, italic=False):
     width = wcwidth(text[0])
 
-    try:
-        if len(text) > 1:
-            bitmap_char = render_complex_char(text, bold, italic, width)
-        else:
-            bitmap_char = render_char(text, bold, italic, width)
-    except FontNotFound as err:
-        safe_print('ERROR:', err, file=sys.stderr)
-        return missing_glyph(width)
-    except FreeTypeError as err:
-        safe_print('Failed to render text:', repr(text), 'with error:', err, file=sys.stderr)
-        return missing_glyph(width)
-    second = None
-    if width == 2:
-        if bitmap_char.columns > cell_width:
-            bitmap_char, second = split_char_bitmap(bitmap_char)
-            second = place_char_in_cell(second)
-        else:
-            second = render_cell()[0]
+    def safe_freetype(func):
+        try:
+            return func(text, bold, italic, width)
+        except FontNotFound as err:
+            safe_print('ERROR:', err, file=sys.stderr)
+        except FreeTypeError as err:
+            safe_print('Failed to render text:', repr(text), 'with error:', err, file=sys.stderr)
 
-    first = place_char_in_cell(bitmap_char)
+    if len(text) > 1:
+        ret = safe_freetype(render_complex_char)
+        if ret is None:
+            return missing_glyph(width)
+        if width == 1:
+            first, second = ret[0], None
+        else:
+            first, second = ret
+    else:
+        bitmap_char = safe_freetype(render_char)
+        if bitmap_char is None:
+            return missing_glyph(width)
+        second = None
+        if width == 2:
+            if bitmap_char.columns > cell_width:
+                bitmap_char, second = split_char_bitmap(bitmap_char)
+                second = place_char_in_cell(second)
+            else:
+                second = render_cell()[0]
+
+        first = place_char_in_cell(bitmap_char)
 
     return first, second
 
