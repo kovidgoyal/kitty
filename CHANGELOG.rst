@@ -3,6 +3,13 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, OpenGL based terminal emulator.
 
+version 0.5.0 [future]
+---------------------------
+
+- Linux: Support rendering of non-normalizable unicode combining characters by using harfbuzz
+
+- Add an option to have window focus follow mouse
+
 
 version 0.4.2 [2017-10-23]
 ---------------------------
