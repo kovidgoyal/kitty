@@ -285,7 +285,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     ans->start_x = 0; ans->width = bitmap->width;
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
-    if (bitmap->width > max_width) {
+    if (ans->width > max_width) {
         size_t extra = bitmap->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
@@ -307,7 +307,10 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
     // and bearingY values, making sure that it does not overflow the cell.
 
     // Calculate column bounds
-    size_t src_start_column = bm->start_x, dest_start_column = (size_t)(x_offset + (float)metrics->horiBearingX / 64.f), extra;
+    ssize_t xoff = (ssize_t)(x_offset + (float)metrics->horiBearingX / 64.f);
+    size_t src_start_column = bm->start_x, dest_start_column = 0, extra;
+    if (xoff < 0) src_start_column += -xoff;
+    else dest_start_column = xoff;
     // Move the start column back if the width overflows because of it
     if (dest_start_column + bm->width > cell_width) {
         extra = dest_start_column + bm->width - cell_width;
@@ -324,6 +327,8 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
         src_start_row = 0;
         dest_start_row = baseline - dy;
     }
+
+    /* printf("src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu\n", src_start_row, src_start_column, dest_start_row, dest_start_column); */
 
     for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
         for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
