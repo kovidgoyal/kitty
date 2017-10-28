@@ -129,6 +129,8 @@ def face_for_text(text, bold=False, italic=False):
 
 
 def render_text(text, bold=False, italic=False, num_cells=1):
+    if text == ' ' and num_cells == 1:
+        return (CharTexture(),)
     font, face = face_for_text(text, bold, italic)
     func = partial(face.draw_single_glyph, ord(text[0])) if len(text) == 1 else partial(face.draw_complex_glyph, text)
     if num_cells == 1:
