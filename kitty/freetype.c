@@ -159,15 +159,6 @@ load_glyph(Face *self, int glyph_index) {
 }
 
 static PyObject*
-load_char(Face *self, PyObject *ch) {
-#define load_char_doc "load_char(char)"
-    char_type codepoint = (char_type)PyLong_AsUnsignedLong(ch);
-    int glyph_index = FT_Get_Char_Index(self->face, codepoint);
-    if (!load_glyph(self, glyph_index)) return NULL;
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 get_char_index(Face *self, PyObject *args) {
 #define get_char_index_doc ""
     int code;
@@ -178,71 +169,18 @@ get_char_index(Face *self, PyObject *args) {
     return Py_BuildValue("I", ans);
 }
  
-static PyStructSequence_Field gm_fields[] = {
-    {"width", NULL},
-    {"height", NULL},
-    {"horiBearingX", NULL},
-    {"horiBearingY", NULL},
-    {"horiAdvance", NULL},
-    {"vertBearingX", NULL},
-    {"vertBearingY", NULL},
-    {"vertAdvance", NULL},
-    {NULL}
-};
-
-static PyStructSequence_Desc gm_desc = {"GlpyhMetrics", NULL, gm_fields, 8};
-static PyTypeObject GlpyhMetricsType = {{{0}}};
-
-static inline PyObject*
-gm_to_py(FT_Glyph_Metrics *gm) {
-    PyObject *ans = PyStructSequence_New(&GlpyhMetricsType);
-    if (ans != NULL) {
-#define SI(num, attr) PyStructSequence_SET_ITEM(ans, num, PyLong_FromLong(gm->attr)); if (PyStructSequence_GET_ITEM(ans, num) == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
-        SI(0, width); SI(1, height);
-        SI(2, horiBearingX); SI(3, horiBearingY); SI(4, horiAdvance);
-        SI(5, vertBearingX); SI(6, vertBearingY); SI(7, vertAdvance);
-#undef SI
-    } else return PyErr_NoMemory();
-    return ans;
-}
-
 static PyObject*
-glyph_metrics(Face *self) {
-#define glyph_metrics_doc ""
-    return gm_to_py(&self->face->glyph->metrics);
+calc_cell_width(Face *self) {
+#define calc_cell_width_doc ""
+    unsigned long ans = 0;
+    for (char_type i = 32; i < 128; i++) {
+        int glyph_index = FT_Get_Char_Index(self->face, i);
+        if (!load_glyph(self, glyph_index)) return NULL;
+        ans = MAX(ans, (unsigned long)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f));
+    }
+    return PyLong_FromUnsignedLong(ans);
 }
 
-static PyStructSequence_Field bm_fields[] = {
-    {"rows", NULL},
-    {"width", NULL},
-    {"pitch", NULL},
-    {"buffer", NULL},
-    {"num_grays", NULL},
-    {"pixel_mode", NULL},
-    {"palette_mode", NULL},
-    {NULL}
-};
-static PyStructSequence_Desc bm_desc = {"Bitmap", NULL, bm_fields, 7};
-static PyTypeObject BitmapType = {{{0}}};
-
-static PyObject*
-bitmap(Face *self) {
-#define bitmap_doc ""
-    PyObject *ans = PyStructSequence_New(&BitmapType);
-    if (ans != NULL) {
-#define SI(num, attr, func, conv) PyStructSequence_SET_ITEM(ans, num, func((conv)self->face->glyph->bitmap.attr)); if (PyStructSequence_GET_ITEM(ans, num) == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
-        SI(0, rows, PyLong_FromUnsignedLong, unsigned long); SI(1, width, PyLong_FromUnsignedLong, unsigned long);
-        SI(2, pitch, PyLong_FromLong, long); 
-        PyObject *t = PyByteArray_FromStringAndSize((const char*)self->face->glyph->bitmap.buffer, self->face->glyph->bitmap.rows * self->face->glyph->bitmap.pitch);
-        if (t == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
-        PyStructSequence_SET_ITEM(ans, 3, t);
-        SI(4, num_grays, PyLong_FromUnsignedLong, unsigned long);
-        SI(5, pixel_mode, PyLong_FromUnsignedLong, unsigned long); SI(6, palette_mode, PyLong_FromUnsignedLong, unsigned long);
-#undef SI
-    } else return PyErr_NoMemory();
-    return ans;
-}
- 
 static PyStructSequence_Field shape_fields[] = {
     {"glyph_id", NULL},
     {"cluster", NULL},
@@ -396,6 +334,20 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
     }
 }
 
+static PyObject*
+draw_single_glyph(Face *self, PyObject *args) {
+#define draw_single_glyph_doc "draw_complex_glyph(codepoint, cell_width, cell_height, cell_buffer, num_cells, bold, italic, baseline)"
+    int bold, italic;
+    unsigned int cell_width, cell_height, num_cells, baseline, codepoint;
+    PyObject *addr;
+    if (!PyArg_ParseTuple(args, "IIIO!IppI", &codepoint, &cell_width, &cell_height, &PyLong_Type, &addr, &num_cells, &bold, &italic, &baseline)) return NULL;
+    unsigned char *cell = PyLong_AsVoidPtr(addr);
+    int glyph_id = FT_Get_Char_Index(self->face, codepoint);
+    ProcessedBitmap bm;
+    if (!render_bitmap(self, glyph_id, &bm, cell_width, num_cells, bold, italic, true)) return NULL;
+    place_bitmap_in_cell(cell, &bm, cell_width * num_cells, cell_height, 0, 0, &self->face->glyph->metrics, baseline);
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 draw_complex_glyph(Face *self, PyObject *args) {
@@ -448,46 +400,6 @@ split_cells(Face UNUSED *self, PyObject *args) {
 }
 
 
-static PyObject*
-trim_to_width(Face UNUSED *self, PyObject *args) {
-#define trim_to_width_doc "Trim edges from the supplied bitmap to make it fit in the specified cell-width"
-    PyObject *bitmap, *t;
-    unsigned long cell_width, rows, width, rtrim = 0, extra, ltrim;
-    unsigned char *src, *dest;
-    bool column_has_text = false;
-    if (!PyArg_ParseTuple(args, "O!k", &BitmapType, &bitmap, &cell_width)) return NULL;
-    rows = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 0));
-    width = PyLong_AsUnsignedLong(PyStructSequence_GET_ITEM(bitmap, 1));
-    extra = width - cell_width;
-    if (extra >= cell_width) { PyErr_SetString(FreeType_Exception, "Too large for trimming"); return NULL; }
-    PyObject *ans = PyStructSequence_New(&BitmapType);
-    if (ans == NULL) return PyErr_NoMemory();
-    src = (unsigned char*)PyByteArray_AS_STRING(PyStructSequence_GET_ITEM(bitmap, 3));
-    PyObject *abuf = PyByteArray_FromStringAndSize(NULL, cell_width * rows);
-    if (abuf == NULL) { Py_CLEAR(ans); return PyErr_NoMemory(); }
-    dest = (unsigned char*)PyByteArray_AS_STRING(abuf);
-    PyStructSequence_SET_ITEM(ans, 1, PyLong_FromUnsignedLong(cell_width));
-    PyStructSequence_SET_ITEM(ans, 2, PyLong_FromUnsignedLong(cell_width));
-    PyStructSequence_SET_ITEM(ans, 3, abuf);
-#define COPY(which) t = PyStructSequence_GET_ITEM(bitmap, which); Py_INCREF(t); PyStructSequence_SET_ITEM(ans, which, t);
-    COPY(0); COPY(4); COPY(5); COPY(6);
-#undef COPY
-
-    for (long x = width - 1; !column_has_text && x > -1 && rtrim < extra; x--) {
-        for (unsigned long y = 0; y < rows * width; y += width) {
-            if (src[x + y] > 200) { column_has_text = true; break; }
-        }
-        if (!column_has_text) rtrim++;
-    }
-    rtrim = MIN(extra, rtrim);
-    ltrim = extra - rtrim;
-    for (unsigned long y = 0; y < rows; y++) {
-        memcpy(dest + y*cell_width, src + ltrim + y*width, cell_width);
-    }
-
-    return ans;
-}
-
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
@@ -507,14 +419,12 @@ static PyMemberDef members[] = {
 
 static PyMethodDef methods[] = {
     METHOD(set_char_size, METH_VARARGS)
-    METHOD(load_char, METH_O)
     METHOD(shape, METH_VARARGS)
     METHOD(draw_complex_glyph, METH_VARARGS)
+    METHOD(draw_single_glyph, METH_VARARGS)
     METHOD(split_cells, METH_VARARGS)
     METHOD(get_char_index, METH_VARARGS)
-    METHOD(glyph_metrics, METH_NOARGS)
-    METHOD(bitmap, METH_NOARGS)
-    METHOD(trim_to_width, METH_VARARGS)
+    METHOD(calc_cell_width, METH_NOARGS)
     {NULL}  /* Sentinel */
 };
 
@@ -553,11 +463,7 @@ init_freetype_library(PyObject *m) {
         PyErr_SetString(FreeType_Exception, "Failed to register the freetype library at exit handler");
         return false;
     }
-    if (PyStructSequence_InitType2(&GlpyhMetricsType, &gm_desc) != 0) return false;
-    if (PyStructSequence_InitType2(&BitmapType, &bm_desc) != 0) return false;
     if (PyStructSequence_InitType2(&ShapeFieldsType, &shape_fields_desc) != 0) return false;
-    PyModule_AddObject(m, "GlyphMetrics", (PyObject*)&GlpyhMetricsType);
-    PyModule_AddObject(m, "Bitmap", (PyObject*)&BitmapType);
     PyModule_AddObject(m, "ShapeFields", (PyObject*)&ShapeFieldsType);
     PyModule_AddIntMacro(m, FT_LOAD_RENDER);
     PyModule_AddIntMacro(m, FT_LOAD_TARGET_NORMAL);

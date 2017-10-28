@@ -4,11 +4,10 @@
 
 import ctypes
 import sys
-from collections import namedtuple
-from functools import lru_cache
+from functools import lru_cache, partial
 from itertools import chain
 
-from kitty.fast_data_types import FT_PIXEL_MODE_GRAY, Face, FreeTypeError
+from kitty.fast_data_types import Face, FreeTypeError
 from kitty.fonts.box_drawing import render_missing_glyph
 from kitty.utils import ceil_int, get_logical_dpi, safe_print, wcwidth, adjust_line_height
 
@@ -24,20 +23,6 @@ symbol_map = {}
 
 def set_char_size(face, width=0, height=0, hres=0, vres=0):
     face.set_char_size(width, height, hres, vres)
-
-
-def load_char(font, face, text):
-    face.load_char(ord(text[0]))
-
-
-def calc_cell_width(font, face):
-    ans = 0
-    for i in range(32, 128):
-        ch = chr(i)
-        load_char(font, face, ch)
-        m = face.glyph_metrics()
-        ans = max(ans, ceil_int(m.horiAdvance / 64))
-    return ans
 
 
 @lru_cache(maxsize=2**10)
@@ -87,7 +72,7 @@ def set_font_family(opts, override_font_size=None):
     for fobj in chain(current_font_family.values(), symbol_map.values()):
         set_char_size(fobj.face, **cff_size)
     face = current_font_family['regular'].face
-    cell_width = calc_cell_width(current_font_family['regular'], face)
+    cell_width = face.calc_cell_width()
     cell_height = font_units_to_pixels(
         face.height, face.units_per_EM, size_in_pts, dpi[1]
     )
@@ -107,49 +92,6 @@ def set_font_family(opts, override_font_size=None):
     font_for_text.cache_clear()
     alt_face_cache.clear()
     return cell_width, cell_height
-
-
-CharBitmap = namedtuple(
-    'CharBitmap', 'data bearingX bearingY advance rows columns'
-)
-
-
-def render_to_bitmap(font, face, text):
-    load_char(font, face, text)
-    bitmap = face.bitmap()
-    if bitmap.pixel_mode != FT_PIXEL_MODE_GRAY:
-        raise ValueError(
-            'FreeType rendered the glyph for {!r} with an unsupported pixel mode: {}'.
-            format(text, bitmap.pixel_mode)
-        )
-    return bitmap
-
-
-def render_using_face(font, face, text, width, italic, bold):
-    bitmap = render_to_bitmap(font, face, text)
-    if width == 1 and bitmap.width > cell_width:
-        extra = bitmap.width - cell_width
-        if italic and extra < cell_width // 2:
-            bitmap = face.trim_to_width(bitmap, cell_width)
-        elif extra > max(2, 0.3 * cell_width) and face.is_scalable:
-            # rescale the font size so that the glyph is visible in a single
-            # cell and hope somebody updates libc's wcwidth
-            sz = cff_size.copy()
-            sz['width'] = int(sz['width'] * cell_width / bitmap.width)
-            # Preserve aspect ratio
-            sz['height'] = int(sz['height'] * cell_width / bitmap.width)
-            try:
-                set_char_size(face, **sz)
-                bitmap = render_to_bitmap(font, face, text)
-            finally:
-                set_char_size(face, **cff_size)
-    m = face.glyph_metrics()
-    return CharBitmap(
-        bitmap.buffer,
-        ceil_int(abs(m.horiBearingX) / 64),
-        ceil_int(abs(m.horiBearingY) / 64),
-        ceil_int(m.horiAdvance / 64), bitmap.rows, bitmap.width
-    )
 
 
 def font_has_text(font, text):
@@ -186,72 +128,19 @@ def face_for_text(text, bold=False, italic=False):
     return font, face
 
 
-def render_char(text, bold=False, italic=False, width=1):
-    font, face = face_for_text(text[0], bold, italic)
-    return render_using_face(font, face, text, width, italic, bold)
-
-
-def render_complex_char(text, bold=False, italic=False, width=1):
+def render_text(text, bold=False, italic=False, num_cells=1):
     font, face = face_for_text(text, bold, italic)
-    if width == 1:
+    func = partial(face.draw_single_glyph, ord(text[0])) if len(text) == 1 else partial(face.draw_complex_glyph, text)
+    if num_cells == 1:
         buf = CharTexture()
         ans = (buf,)
     else:
-        buf = (ctypes.c_ubyte * (cell_width * width * cell_height))()
-        ans = tuple(CharTexture() for i in range(width))
-    face.draw_complex_glyph(text, cell_width, cell_height, ctypes.addressof(buf), width, bold, italic, baseline)
-    if width > 1:
+        buf = (ctypes.c_ubyte * (cell_width * num_cells * cell_height))()
+        ans = tuple(CharTexture() for i in range(num_cells))
+    func(cell_width, cell_height, ctypes.addressof(buf), num_cells, bold, italic, baseline)
+    if num_cells > 1:
         face.split_cells(cell_width, cell_height, ctypes.addressof(buf), *(ctypes.addressof(x) for x in ans))
     return ans
-
-
-def place_char_in_cell(bitmap_char):
-    # We want the glyph to be positioned inside the cell based on the bearingX
-    # and bearingY values, making sure that it does not overflow the cell.
-
-    # Calculate column bounds
-    if bitmap_char.columns > cell_width:
-        src_start_column, dest_start_column = 0, 0
-    else:
-        src_start_column, dest_start_column = 0, bitmap_char.bearingX
-        extra = dest_start_column + bitmap_char.columns - cell_width
-        if extra > 0:
-            dest_start_column -= extra
-    column_count = min(
-        bitmap_char.columns - src_start_column, cell_width - dest_start_column
-    )
-
-    # Calculate row bounds, making sure the baseline is aligned with the cell
-    # baseline
-    if bitmap_char.bearingY > baseline:
-        src_start_row, dest_start_row = bitmap_char.bearingY - baseline, 0
-    else:
-        src_start_row, dest_start_row = 0, baseline - bitmap_char.bearingY
-    row_count = min(
-        bitmap_char.rows - src_start_row, cell_height - dest_start_row
-    )
-    return create_cell_buffer(
-        bitmap_char, src_start_row, dest_start_row, row_count,
-        src_start_column, dest_start_column, column_count
-    )
-
-
-def split_char_bitmap(bitmap_char):
-    stride = bitmap_char.columns
-    extra = stride - cell_width
-    rows = bitmap_char.rows
-    first_buf = (ctypes.c_ubyte * (cell_width * rows))()
-    second_buf = (ctypes.c_ubyte * (extra * rows))()
-    src = bitmap_char.data
-    for r in range(rows):
-        soff, off = r * stride, r * cell_width
-        first_buf[off:off + cell_width] = src[soff:soff + cell_width]
-        off = r * extra
-        soff += cell_width
-        second_buf[off:off + extra] = src[soff:soff + extra]
-    first = bitmap_char._replace(data=first_buf, columns=cell_width)
-    second = bitmap_char._replace(data=second_buf, bearingX=0, columns=extra)
-    return first, second
 
 
 def current_cell():
@@ -259,66 +148,38 @@ def current_cell():
 
 
 @lru_cache(maxsize=8)
-def missing_glyph(width):
-    w = cell_width * width
+def missing_glyph(num_cells, cell_width, cell_height):
+    w = cell_width * num_cells
     ans = bytearray(w * cell_height)
     render_missing_glyph(ans, w, cell_height)
-    first, second = CharBitmap(ans, 0, 0, 0, cell_height, w), None
-    if width == 2:
-        first, second = split_char_bitmap(first)
-        second = create_cell_buffer(
-            second, 0, 0, second.rows, 0, 0, second.columns
-        )
-    first = create_cell_buffer(first, 0, 0, first.rows, 0, 0, first.columns)
+    buf = (ctypes.c_ubyte * w * cell_height).from_buffer(ans)
+    face = current_font_family['regular'].face
+    bufs = tuple(CharTexture() for i in range(num_cells))
+    face.split_cells(cell_width, cell_height, ctypes.addressof(buf), *(ctypes.addressof(x) for x in bufs))
+    if num_cells == 2:
+        first, second = bufs
+    else:
+        first, second = bufs[0], None
     return first, second
 
 
 def render_cell(text=' ', bold=False, italic=False):
-    width = wcwidth(text[0])
+    num_cells = wcwidth(text[0])
 
     def safe_freetype(func):
         try:
-            return func(text, bold, italic, width)
+            return func(text, bold, italic, num_cells)
         except FontNotFound as err:
             safe_print('ERROR:', err, file=sys.stderr)
         except FreeTypeError as err:
             safe_print('Failed to render text:', repr(text), 'with error:', err, file=sys.stderr)
 
-    if len(text) > 1:
-        ret = safe_freetype(render_complex_char)
-        if ret is None:
-            return missing_glyph(width)
-        if width == 1:
-            first, second = ret[0], None
-        else:
-            first, second = ret
+    ret = safe_freetype(render_text)
+    if ret is None:
+        return missing_glyph(num_cells, cell_width, cell_height)
+    if num_cells == 1:
+        first, second = ret[0], None
     else:
-        bitmap_char = safe_freetype(render_char)
-        if bitmap_char is None:
-            return missing_glyph(width)
-        second = None
-        if width == 2:
-            if bitmap_char.columns > cell_width:
-                bitmap_char, second = split_char_bitmap(bitmap_char)
-                second = place_char_in_cell(second)
-            else:
-                second = render_cell()[0]
-
-        first = place_char_in_cell(bitmap_char)
+        first, second = ret
 
     return first, second
-
-
-def create_cell_buffer(
-    bitmap_char, src_start_row, dest_start_row, row_count, src_start_column,
-    dest_start_column, column_count
-):
-    src = bitmap_char.data
-    src_stride = bitmap_char.columns
-    dest = CharTexture()
-    for r in range(row_count):
-        sr, dr = src_start_column + (
-            src_start_row + r
-        ) * src_stride, dest_start_column + (dest_start_row + r) * cell_width
-        dest[dr:dr + column_count] = src[sr:sr + column_count]
-    return dest
