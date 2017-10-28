@@ -311,21 +311,21 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
     size_t src_start_column = bm->start_x, dest_start_column = 0, extra;
     if (xoff < 0) src_start_column += -xoff;
     else dest_start_column = xoff;
-    // Move the start column back if the width overflows because of it
-    if (dest_start_column + bm->width > cell_width) {
+    // Move the dest start column back if the width overflows because of it
+    if (dest_start_column > 0 && dest_start_column + bm->width > cell_width) {
         extra = dest_start_column + bm->width - cell_width;
         dest_start_column = extra > dest_start_column ? 0 : dest_start_column - extra;
     }
 
     // Calculate row bounds
-    ssize_t dy = (ssize_t)((float)metrics->horiBearingY / 64.f + y_offset);
+    ssize_t yoff = (ssize_t)(y_offset + (float)metrics->horiBearingY / 64.f);
     size_t src_start_row, dest_start_row;
-    if (dy > 0 && (size_t)dy > baseline) {
+    if (yoff > 0 && (size_t)yoff > baseline) {
         src_start_row = 0;
         dest_start_row = 0;
     } else {
         src_start_row = 0;
-        dest_start_row = baseline - dy;
+        dest_start_row = baseline - yoff;
     }
 
     /* printf("src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu\n", src_start_row, src_start_column, dest_start_row, dest_start_column); */
