@@ -166,9 +166,9 @@ text_at(Line* self, Py_ssize_t xval) {
 }
 
 size_t
-cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf) {
+cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
     size_t n = 1;
-    buf[0] = cell->ch;
+    buf[0] = cell->ch ? cell->ch : zero_char;
     if (include_cc) {
         char_type cc = cell->cc;
         Py_UCS4 cc1 = cc & CC_MASK, cc2;
@@ -191,9 +191,8 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
         char_type ch = self->cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
-            ch = ' ';
         }
-        n += cell_as_unicode(self->cells + i, include_cc, buf + n);
+        n += cell_as_unicode(self->cells + i, include_cc, buf + n, ' ');
         previous_width = self->cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);

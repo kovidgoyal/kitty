@@ -67,7 +67,7 @@ index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x);
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
 unsigned int line_length(Line *self);
-size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf);
+size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type);
 PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
 
 void linebuf_init_line(LineBuf *, index_type);

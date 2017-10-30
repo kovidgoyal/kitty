@@ -153,8 +153,8 @@ get_load_flags(int hinting, int hintstyle, int base) {
 }
 
 static inline bool 
-load_glyph(Face *self, int glyph_index) {
-    int flags = get_load_flags(self->hinting, self->hintstyle, FT_LOAD_RENDER);
+load_glyph(Face *self, int glyph_index, int load_type) {
+    int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return false; }
     return true;
@@ -165,7 +165,7 @@ calc_cell_width(Face *self) {
     unsigned int ans = 0;
     for (char_type i = 32; i < 128; i++) {
         int glyph_index = FT_Get_Char_Index(self->face, i);
-        if (load_glyph(self, glyph_index)) {
+        if (load_glyph(self, glyph_index, FT_LOAD_DEFAULT)) {
             ans = MAX(ans, (unsigned long)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f));
         }
     }

@@ -97,7 +97,7 @@ fallback_font(Cell *cell) {
     }
     if (get_fallback_font == NULL || i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) return &missing_font;
     Py_UCS4 buf[10];
-    size_t n = cell_as_unicode(cell, true, buf);
+    size_t n = cell_as_unicode(cell, true, buf, ' ');
     PyObject *face = PyObject_CallFunction(get_fallback_font, "NOO", PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n), bold ? Py_True : Py_False, italic ? Py_True : Py_False);
     if (face == NULL) { PyErr_Print(); return &missing_font; }
     if (face == Py_None) { Py_DECREF(face); return &missing_font; }
