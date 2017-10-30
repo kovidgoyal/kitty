@@ -11,9 +11,12 @@ from kitty.utils import get_logical_dpi
 from kitty.fast_data_types import set_font, set_font_size
 from .box_drawing import render_box_char, is_renderable_box_char
 if isosx:
-    pass
+    from .core_text import get_font_files, font_for_text, face_from_font, font_for_family, save_medium_face
 else:
     from .fontconfig import get_font_files, font_for_text, face_from_font, font_for_family
+
+    def save_medium_face(f):
+        pass
 
 
 def create_face(font):
@@ -50,6 +53,7 @@ def set_font_family(opts, override_font_size=None):
     set_font_family.state = FontState('', sz, xdpi, ydpi, 0, 0, 0, 0, 0)
     font_map = get_font_files(opts)
     faces = [create_face(font_map['medium'])]
+    save_medium_face(faces[0])
     for k in 'bold italic bi'.split():
         if k in font_map:
             faces.append(create_face(font_map[k]))
@@ -103,11 +107,15 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
 
 
 def render_cell(text=' ', bold=False, italic=False, underline=0, strikethrough=False):
-    CharTexture, cell_width, cell_height, baseline, underline_thickness, underline_position = current_cell()
+    s = set_font_family.state
+    cell_width, cell_height, baseline = s.cell_width, s.cell_height, s.baseline
+    underline_thickness, underline_position = s.underline_thickness, s.underline_position
+    CharTexture = ctypes.c_ubyte * cell_width * cell_height
     if is_renderable_box_char(text):
         first, second = render_box_char(text, CharTexture(), cell_width, cell_height), None
     else:
-        first, second = rc(text, bold, italic)
+        first = CharTexture()
+        second = None
 
     def dl(f, *a):
         f(first, cell_width, *a)
@@ -181,7 +189,8 @@ def render_string(text='\'Qing👁a⧽', underline=2, strikethrough=True):
             current_text = c
     if current_text:
         render_one(current_text)
-    cell_width, cell_height = current_cell()[1:3]
+    s = set_font_family.state
+    cell_width, cell_height = s.cell_width, s.cell_height
     char_data = join_cells(cell_width, cell_height, *cells)
     return char_data, cell_width * len(cells), cell_height
 

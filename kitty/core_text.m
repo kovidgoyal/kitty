@@ -118,18 +118,7 @@ coretext_all_fonts(PyObject UNUSED *_self) {
 }
 
 static inline bool
-apply_size(Face *self, float point_sz, float dpi) {
-    self->point_sz = point_sz;
-    self->dpi = dpi;
-    self->scaled_point_sz = (dpi / 72.0) * point_sz;
-    if (self->font) {
-        CTFontRef f = CTFontCreateCopyWithAttributes(self->font, self->scaled_point_sz, NULL, NULL);
-        CFRelease(self->font);
-        self->font = f;
-    } else {
-        self->font = CTFontCreateWithFontDescriptor(self->descriptor, self->scaled_point_sz, NULL);
-    }
-    if (self->font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create or copy font object"); return false; }
+init_font(Face *self) {
     self->units_per_em = CTFontGetUnitsPerEm(self->font);
     self->ascent = CTFontGetAscent(self->font);
     self->descent = CTFontGetDescent(self->font);
@@ -151,6 +140,34 @@ apply_size(Face *self, float point_sz, float dpi) {
     return true;
 }
 
+static inline bool
+apply_size(Face *self, float point_sz, float dpi) {
+    self->point_sz = point_sz;
+    self->dpi = dpi;
+    self->scaled_point_sz = (dpi / 72.0) * point_sz;
+    if (self->font) {
+        CTFontRef f = CTFontCreateCopyWithAttributes(self->font, self->scaled_point_sz, NULL, NULL);
+        CFRelease(self->font);
+        self->font = f;
+    } else {
+        self->font = CTFontCreateWithFontDescriptor(self->descriptor, self->scaled_point_sz, NULL);
+    }
+    if (self->font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create or copy font object"); return false; }
+    return init_font(self);
+}
+
+static inline bool
+init_font_names(Face *self) {
+    self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font), 1);
+    self->full_name = convert_cfstring(CTFontCopyFullName(self->font), 1);
+    self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font), 1);
+    NSURL *url = (NSURL*)CTFontCopyAttribute(self->font, kCTFontURLAttribute);
+    self->path = PyUnicode_FromString([[url path] UTF8String]);
+    [url release];
+    if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) {return false;}
+    return true;
+}
+
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
@@ -163,13 +180,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (desc) {
             self->descriptor = desc;
             if (apply_size(self, point_sz, dpi)) { 
-                self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font), 1);
-                self->full_name = convert_cfstring(CTFontCopyFullName(self->font), 1);
-                self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font), 1);
-                NSURL *url = (NSURL*)CTFontCopyAttribute(self->font, kCTFontURLAttribute);
-                self->path = PyUnicode_FromString([[url path] UTF8String]);
-                [url release];
-                if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) { Py_CLEAR(self); }
+                if (!init_font_names(self)) Py_CLEAR(self);
             } else Py_CLEAR(self);
         } else {
             Py_CLEAR(self);
@@ -207,6 +218,32 @@ face_has_codepoint(PyObject *s, char_type ch) {
     if (ch <= 0xffff) chars[0] = (unichar)ch;
     else { encode_utf16_pair(ch, chars); count = 2; }
     return CTFontGetGlyphsForCharacters(self->font, chars, glyphs, count);
+}
+
+static PyObject*
+face_for_text(Face *self, PyObject *args) {
+    char *s;
+    int bold, italic;
+    Face *ans = NULL;
+    if (!PyArg_ParseTuple(args, "espp", "UTF-8", &s, &bold, &italic)) return NULL;
+    CFStringRef str = CFStringCreateWithCString(NULL, s, kCFStringEncodingUTF8);
+    if (!str) return PyErr_NoMemory();
+    unichar chars[10] = {0};
+    CFRange range = CFRangeMake(0, CFStringGetLength(str));
+    CFStringGetCharacters(str, range, chars);
+    CTFontRef font = CTFontCreateForString(self->font, str, range);
+    if (font == self->font) return (PyObject*)self;
+    if (font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback font"); goto end; }
+    ans = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
+    if (ans == NULL) { PyErr_NoMemory(); goto end; }
+    ans->font = font;
+    if (!init_font(ans) || !init_font_names(ans)) { Py_CLEAR(ans); goto end; }
+    ans->point_sz = self->point_sz;
+    ans->dpi = self->dpi;
+end:
+    CFRelease(str);
+    if (ans) return (PyObject*)ans;
+    return NULL;
 }
 
 static inline void
@@ -284,6 +321,7 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
+    METHODB(face_for_text, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 
