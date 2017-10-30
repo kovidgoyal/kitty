@@ -18,6 +18,9 @@
 #if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 0 || (HB_VERSION_MINOR == 0 && HB_VERSION_MICRO >= 5)))
 #define HARBUZZ_HAS_LOAD_FLAGS
 #endif
+#if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 6 || (HB_VERSION_MINOR == 6 && HB_VERSION_MICRO >= 3)))
+#define HARFBUZZ_HAS_CHANGE_FONT
+#endif
 
 #include FT_FREETYPE_H
 typedef struct {
@@ -74,7 +77,17 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
     int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
     if (!error) {
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
-        if (self->harfbuzz_font) hb_ft_font_changed(self->harfbuzz_font);
+        if (self->harfbuzz_font != NULL) {
+#ifdef HARFBUZZ_HAS_CHANGE_FONT
+            hb_ft_font_changed(self->harfbuzz_font);
+#else
+            hb_font_set_scale(
+                self->harfbuzz_font,
+                (int) (((uint64_t) self->face->size->metrics.x_scale * (uint64_t) self->face->units_per_EM + (1u<<15)) >> 16),
+                (int) (((uint64_t) self->face->size->metrics.y_scale * (uint64_t) self->face->units_per_EM + (1u<<15)) >> 16)
+            );
+#endif
+        }
     } else {
         set_freetype_error("Failed to set char size, with error:", error); return false; 
     }
