@@ -192,6 +192,9 @@ face_has_codepoint(PyObject *s, char_type cp) {
     return FT_Get_Char_Index(((Face*)s)->face, cp) > 0;
 }
 
+hb_font_t*
+harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
+
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
