@@ -74,6 +74,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
     int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
     if (!error) {
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
+        if (self->harfbuzz_font) hb_ft_font_changed(self->harfbuzz_font);
     } else {
         set_freetype_error("Failed to set char size, with error:", error); return false; 
     }
