@@ -165,6 +165,22 @@ text_at(Line* self, Py_ssize_t xval) {
     return line_text_at(self->cells[xval].ch, self->cells[xval].cc);
 }
 
+size_t
+cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf) {
+    size_t n = 1;
+    buf[0] = cell->ch;
+    if (include_cc) {
+        char_type cc = cell->cc;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2;
+        if (cc1) {
+            buf[1] = cc1; n++;
+            cc2 = cc >> 16;
+            if (cc2) { buf[2] = cc2; n++; }
+        }
+    }
+    return n;
+}
+
 PyObject*
 unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
     size_t n = 0;
@@ -177,16 +193,7 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
             if (previous_width == 2) { previous_width = 0; continue; };
             ch = ' ';
         }
-        buf[n++] = ch;
-        if (include_cc) {
-            char_type cc = self->cells[i].cc;
-            Py_UCS4 cc1 = cc & CC_MASK, cc2;
-            if (cc1) {
-                buf[n++] = cc1;
-                cc2 = cc >> 16;
-                if (cc2) buf[n++] = cc2;
-            }
-        }
+        n += cell_as_unicode(self->cells + i, include_cc, buf + n);
         previous_width = self->cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);

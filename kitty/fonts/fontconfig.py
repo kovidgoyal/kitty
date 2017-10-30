@@ -3,19 +3,18 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import re
 from collections import namedtuple
 
 from kitty.fast_data_types import Face, get_fontconfig_font
 
 
-def escape_family_name(name):
-    return re.sub(r'([-:,\\])', lambda m: '\\' + m.group(1), name)
+def face_from_font(font, pt_sz, xdpi, ydpi):
+    return Face(font.path, font.index, font.hinting, font.hintstyle, pt_sz, xdpi, ydpi)
 
 
 Font = namedtuple(
     'Font',
-    'face hinting hintstyle bold italic scalable outline weight slant index'
+    'path hinting hintstyle bold italic scalable outline weight slant index'
 )
 
 
@@ -76,11 +75,19 @@ def find_font_for_characters(
         size_in_pts=size_in_pts,
         dpi=dpi
     )
-    if not ans.face or not os.path.exists(ans.face):
+    if not ans.path or not os.path.exists(ans.path):
         raise FontNotFound(
             'Failed to find font for characters: {!r}'.format(chars)
         )
     return ans
+
+
+def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, italic=False):
+    dpi = (xdpi + ydpi) / 2
+    try:
+        return find_font_for_characters(current_font_family, text, bold=bold, italic=italic, size_in_pts=pt_sz, dpi=dpi)
+    except FontNotFound:
+        return find_font_for_characters(current_font_family, text, bold=bold, italic=italic, size_in_pts=pt_sz, dpi=dpi, allow_bitmaped_fonts=True)
 
 
 def get_font_information(family, bold=False, italic=False):
@@ -102,7 +109,7 @@ def get_font_files(opts):
         return ans
 
     n = get_font_information(get_family())
-    ans['regular'] = n._replace(face=Face(n.face, n.index, n.hinting, n.hintstyle))
+    ans['medium'] = n
 
     def do(key):
         b = get_font_information(
@@ -110,8 +117,8 @@ def get_font_files(opts):
             bold=key in ('bold', 'bi'),
             italic=key in ('italic', 'bi')
         )
-        if b.face != n.face:
-            ans[key] = b._replace(face=Face(b.face, b.index, b.hinting, b.hintstyle))
+        if b.path != n.path:
+            ans[key] = b
 
     do('bold'), do('italic'), do('bi')
     return ans
@@ -119,4 +126,4 @@ def get_font_files(opts):
 
 def font_for_family(family):
     ans = get_font_information(family)
-    return ans._replace(face=Face(ans.face, ans.index, ans.hinting, ans.hintstyle))
+    return ans

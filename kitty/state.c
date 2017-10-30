@@ -180,6 +180,16 @@ PYWRAP1(set_options) {
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
     Py_DECREF(chars);
+
+    PyObject *al = PyObject_GetAttrString(args, "adjust_line_height");
+    if (PyFloat_Check(al)) { 
+        OPT(adjust_line_height_frac) = (float)PyFloat_AsDouble(al);
+        OPT(adjust_line_height_px) = 0;
+    } else {
+        OPT(adjust_line_height_frac) = 0;
+        OPT(adjust_line_height_px) = (int)PyLong_AsLong(al);
+    }
+    Py_DECREF(al);
 #undef S
     Py_RETURN_NONE;
 }

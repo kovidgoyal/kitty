@@ -165,8 +165,7 @@ def parse_symbol_map(val):
             return abort()
         if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
             return abort()
-        for y in range(a, b + 1):
-            symbol_map[chr(y)] = family
+        symbol_map[(a, b)] = family
     return symbol_map
 
 

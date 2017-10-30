@@ -157,6 +157,7 @@ extern int init_Screen(PyObject *);
 extern int init_Face(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
+extern bool init_fonts(PyObject*);
 extern bool init_glfw(PyObject *m);
 extern bool init_sprites(PyObject *module);
 extern bool init_state(PyObject *module);
@@ -201,6 +202,7 @@ PyInit_fast_data_types(void) {
         if (!init_freetype_library(m)) return NULL;
         if (!init_fontconfig_library(m)) return NULL;
 #endif
+        if (!init_fonts(m)) return NULL;
 
 #define OOF(n) #n, offsetof(Cell, n)
         if (PyModule_AddObject(m, "CELL", Py_BuildValue("{sI sI sI sI sI sI sI sI sI}",

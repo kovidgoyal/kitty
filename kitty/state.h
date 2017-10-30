@@ -20,6 +20,8 @@ typedef struct {
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt;
+    int adjust_line_height_px;
+    float adjust_line_height_frac;
 } Options;
 
 typedef struct {

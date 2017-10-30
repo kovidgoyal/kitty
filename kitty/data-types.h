@@ -45,6 +45,7 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define DECORATION_MASK 3
 #define BOLD_SHIFT 4
 #define ITALIC_SHIFT 5
+#define BI_VAL(attrs) ((attrs >> 4) & 3)
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
@@ -73,6 +74,7 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
+#define METHODB(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
 
 #define BOOL_GETSET(type, x) \
     static PyObject* x##_get(type *self, void UNUSED *closure) { PyObject *ans = self->x ? Py_True : Py_False; Py_INCREF(ans); return ans; } \

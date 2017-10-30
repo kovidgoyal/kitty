@@ -3,14 +3,69 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import ctypes
+from collections import namedtuple
 from math import sin, pi, ceil, floor, sqrt
 
 from kitty.constants import isosx
+from kitty.utils import get_logical_dpi
+from kitty.fast_data_types import set_font, set_font_size
 from .box_drawing import render_box_char, is_renderable_box_char
 if isosx:
-    from .core_text import set_font_family, render_cell as rc, current_cell  # noqa
+    pass
 else:
-    from .freetype import set_font_family, render_cell as rc, current_cell  # noqa
+    from .fontconfig import get_font_files, font_for_text, face_from_font, font_for_family
+
+
+def create_face(font):
+    s = set_font_family.state
+    return face_from_font(font, s.pt_sz, s.xdpi, s.ydpi)
+
+
+def create_symbol_map(opts):
+    val = opts.symbol_map
+    family_map = {}
+    faces = []
+    for family in val.values():
+        if family not in family_map:
+            o = create_face(font_for_family(family))
+            family_map[family] = len(faces)
+            faces.append(o)
+    sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
+    return sm, tuple(faces)
+
+
+FontState = namedtuple('FontState', 'family pt_sz xdpi ydpi cell_width cell_height baseline underline_position underline_thickness')
+
+
+def get_fallback_font(text, bold, italic):
+    state = set_font_family.state
+    return create_face(font_for_text(text, state.family, state.pt_sz, state.xdpi, state.ydpi, bold, italic))
+
+
+def set_font_family(opts, override_font_size=None):
+    if hasattr(set_font_family, 'state'):
+        raise ValueError('Cannot set font family more than once, use resize_fonts() to change size')
+    sz = override_font_size or opts.font_size
+    xdpi, ydpi = get_logical_dpi()
+    set_font_family.state = FontState('', sz, xdpi, ydpi, 0, 0, 0, 0, 0)
+    font_map = get_font_files(opts)
+    faces = [create_face(font_map['medium'])]
+    for k in 'bold italic bi'.split():
+        if k in font_map:
+            faces.append(create_face(font_map[k]))
+    sm, sfaces = create_symbol_map(opts)
+    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font(get_fallback_font, sm, sfaces, sz, xdpi, ydpi, *faces)
+    set_font_family.state = FontState(opts.font_family, sz, xdpi, ydpi, cell_width, cell_height, baseline, underline_position, underline_thickness)
+    return cell_width, cell_height
+
+
+def resize_fonts(new_sz, xdpi=None, ydpi=None):
+    s = set_font_family.state
+    xdpi = xdpi or s.xdpi
+    ydpi = ydpi or s.ydpi
+    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(new_sz, xdpi, ydpi)
+    set_font_family.state = FontState(
+        s.family, new_sz, xdpi, ydpi, cell_width, cell_height, baseline, underline_position, underline_thickness)
 
 
 def add_line(buf, cell_width, position, thickness, cell_height):

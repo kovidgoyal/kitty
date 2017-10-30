@@ -11,7 +11,7 @@ from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
     destroy_sprite_map, glfw_post_empty_event, layout_sprite_map
 )
-from .fonts.render import render_cell_wrapper, set_font_family
+from .fonts.render import render_cell_wrapper, set_font_family, resize_fonts
 from .keys import get_key_map, get_sent_data, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
@@ -142,8 +142,7 @@ class Boss:
         self.current_font_size = new_size
         w, h = cell_size.width, cell_size.height
         windows = tuple(filter(None, self.window_id_map.values()))
-        cell_size.width, cell_size.height = set_font_family(
-            self.opts, override_font_size=self.current_font_size)
+        cell_size.width, cell_size.height = resize_fonts(self.current_font_size)
         layout_sprite_map(cell_size.width, cell_size.height, render_cell_wrapper)
         for window in windows:
             window.screen.rescale_images(w, h)
