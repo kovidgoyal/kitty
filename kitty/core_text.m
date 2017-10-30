@@ -144,6 +144,7 @@ apply_size(Face *self, float point_sz, float dpi) {
     if (face == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create hb_face"); return false; }
     CGFontRelease(cg_font);
     unsigned int upem = hb_face_get_upem(face);
+    if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
     self->harfbuzz_font = hb_font_create(face);
     hb_face_destroy(face);
     hb_font_set_scale(self->harfbuzz_font, upem, upem);
