@@ -359,7 +359,7 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     int error;
     SpritePosition *pos = sprite_position_for(&box_font, glyph, extra_glyphs, false, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
-    return Py_BuildValue("III", pos->x, pos->y, pos->z);
+    return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
 
 static PyMethodDef module_methods[] = {
