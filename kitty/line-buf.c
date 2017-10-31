@@ -363,13 +363,6 @@ as_ansi(LineBuf *self, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
-void 
-linebuf_refresh_sprite_positions(LineBuf *self) {
-    for (index_type i = 0; i < self->ynum; i++) {
-        update_sprites_in_line(lineptr(self, i), self->xnum);
-    }
-}
-
 static PyObject*
 __str__(LineBuf *self) {
     PyObject *lines = PyTuple_New(self->ynum);

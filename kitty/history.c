@@ -58,13 +58,6 @@ dealloc(HistoryBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-void 
-historybuf_refresh_sprite_positions(HistoryBuf *self) {
-    for (index_type i = 0; i < self->ynum; i++) {
-        update_sprites_in_line(lineptr(self, i), self->xnum);
-    }
-}
-
 static inline index_type 
 index_of(HistoryBuf *self, index_type lnum) {
     // The index (buffer position) of the line with line number lnum

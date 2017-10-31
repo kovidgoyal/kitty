@@ -6,6 +6,7 @@
  */
 
 #include "gl.h"
+#include "fonts.h"
 #include <sys/sysctl.h>
 
 enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
@@ -61,7 +62,7 @@ realloc_sprite_texture() {
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
     unsigned int xnum, ynum, z, znum, width, height, src_ynum;
-    sprite_map_current_layout(&xnum, &ynum, &z);
+    sprite_tracker_current_layout(&xnum, &ynum, &z);
     znum = z + 1;
     width = xnum * sprite_map.cell_width; height = ynum * sprite_map.cell_height;
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); 
@@ -100,7 +101,7 @@ ensure_sprite_map() {
 static void 
 sprite_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, PyObject *buf) {
     unsigned int xnum, ynum, znum;
-    sprite_map_current_layout(&xnum, &ynum, &znum);
+    sprite_tracker_current_layout(&xnum, &ynum, &znum);
     if ((int)znum >= sprite_map.last_num_of_layers || (znum == 0 && (int)ynum > sprite_map.last_ynum)) realloc_sprite_texture();
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
@@ -113,13 +114,6 @@ sprite_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, PyObject *buf
     Py_DECREF(buf);
 }
 
-static void 
-render_and_send_dirty_sprites(PyObject *text, bool bold, bool italic, bool is_second, sprite_index x, sprite_index y, sprite_index z) {
-    if (text == NULL) { fatal("The text for a sprite was NULL, probably out of memory."); }
-    PyObject *buf = render_cell(text, bold, italic, false, false, is_second);
-    sprite_send_to_gpu(x, y, z, buf);
-}
-
 static inline sprite_index
 send_prerendered(unsigned int underline, bool strikethrough) {
     sprite_index x, y, z;
@@ -127,7 +121,7 @@ send_prerendered(unsigned int underline, bool strikethrough) {
     if (blank == NULL) { fatal("Out of memory"); }
     PyObject *buf = render_cell(blank, false, false, underline, strikethrough, false);
     Py_CLEAR(blank);
-    if (sprite_map_increment(&x, &y, &z) != 0) { fatal("Failed to increment sprite map for prerendering"); }
+    if (sprite_tracker_increment(&x, &y, &z) != 0) { fatal("Failed to increment sprite map for prerendering"); }
     sprite_send_to_gpu(x, y, z, buf);
     return x;
 }
@@ -141,9 +135,9 @@ layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *r
     if (sprite_map.max_texture_size == 0) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); 
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); 
-        sprite_map_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
+        /* sprite_map_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers); */
     }
-    sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height);
+    /* sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height); */
     Py_CLEAR(sprite_map.render_cell);
     sprite_map.render_cell = render_cell; Py_INCREF(sprite_map.render_cell);
     if (sprite_map.texture_id) { glDeleteTextures(1, &(sprite_map.texture_id)); sprite_map.texture_id = 0; }
@@ -157,7 +151,7 @@ layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *r
 
 static void
 destroy_sprite_map() {
-    sprite_map_free();
+    /* sprite_map_free(); */
     Py_CLEAR(sprite_map.render_cell);
     if (sprite_map.texture_id) {
         glDeleteTextures(1, &(sprite_map.texture_id));
@@ -259,7 +253,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     
     rd->xstart = xstart; rd->ystart = ystart; rd->dx = dx; rd->dy = dy;
     unsigned int x, y, z;
-    sprite_map_current_layout(&x, &y, &z);
+    sprite_tracker_current_layout(&x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->color1 = inverted & 1; rd->color2 = 1 - (inverted & 1);
 
@@ -300,7 +294,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
 
     ensure_sprite_map();
-    render_dirty_sprites(render_and_send_dirty_sprites);
+    /* render_dirty_sprites(render_and_send_dirty_sprites); */
 
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);

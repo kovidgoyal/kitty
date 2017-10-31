@@ -246,7 +246,6 @@ void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
-void set_sprite_position(Cell *cell, Cell *previous_cell);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);

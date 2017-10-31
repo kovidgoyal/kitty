@@ -324,15 +324,12 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
-#define set_sprite_position_at(x) set_sprite_position(self->cells + x, x == 0 ? NULL : self->cells + x - 1);
-
 void 
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     if (!self->cells[x].ch) return;  // dont allow adding combining chars to a null cell
     combining_type c = self->cells[x].cc;
     if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
     else self->cells[x].cc = ch & CC_MASK;
-    set_sprite_position_at(x);
 }
 
 static PyObject*
@@ -383,7 +380,6 @@ set_text(Line* self, PyObject *args) {
         self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
         self->cells[i].cc = 0;
-        set_sprite_position_at(i);
     }
 
     Py_RETURN_NONE;
@@ -416,13 +412,12 @@ line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
         self->cells[i].ch = ch; self->cells[i].cc = 0; \
-        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
+    }
     if (CHAR_IS_BLANK(ch)) {
         PREFIX
-        clear_sprite_position(self->cells[i]); }
     } else {
         PREFIX
-        set_sprite_position_at(i)}
     }
 }
 
@@ -452,7 +447,6 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
         } else {
             attrs_type w = self->cells[i].attrs & WIDTH_MASK;
             self->cells[i].attrs = attrs | w;
-            set_sprite_position_at(i);
         }
         self->cells[i].fg = fg; self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
@@ -512,7 +506,7 @@ left_shift(Line *self, PyObject *args) {
 }
  
 void 
-line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool is_second) {
+line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {
         self->cells[at].attrs = (self->cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     } else {
@@ -523,8 +517,6 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
     }
     self->cells[at].ch = ch;
     self->cells[at].cc = 0;
-    if (!is_second && CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
-    else set_sprite_position_at(at);
 }
 
 static PyObject*

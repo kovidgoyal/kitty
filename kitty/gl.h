@@ -9,7 +9,6 @@
 #include "gl-wrapper.h"
 #include "state.h"
 #include "screen.h"
-#include "sprites.h"
 #include <string.h>
 #include <stddef.h>
 #include <GLFW/glfw3.h>
