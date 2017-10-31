@@ -8,7 +8,11 @@
 #include "fonts.h"
 #include "state.h"
 
+#define MISSING_GLYPH 4
+
 typedef uint16_t glyph_index;
+typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, uint8_t*);
+send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 
 typedef struct SpritePosition SpritePosition;
 
@@ -75,7 +79,7 @@ do_increment(int *error) {
 }
 
 
-SpritePosition*
+static SpritePosition*
 sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, bool is_second, int *error) {
     glyph_index idx = glyph & 0x3ff;
     SpritePosition *s = font->sprite_map + idx;
@@ -106,14 +110,6 @@ sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, bool i
 void
 sprite_tracker_current_layout(unsigned int *x, unsigned int *y, unsigned int *z) {
     *x = sprite_tracker.xnum; *y = sprite_tracker.ynum; *z = sprite_tracker.z;
-}
-
-int 
-sprite_tracker_increment(sprite_index *x, sprite_index *y, sprite_index *z) {
-    int error = 0;
-    *x = sprite_tracker.x; *y = sprite_tracker.y; *z = sprite_tracker.z;
-    do_increment(&error);
-    return error;
 }
 
 void
@@ -183,6 +179,8 @@ static Font *symbol_map_fonts = NULL;
 static size_t symbol_maps_count = 0, symbol_map_fonts_count = 0;
 
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
+static uint8_t *canvas = NULL;
+static inline void clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
 
 static inline PyObject*
 update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
@@ -203,6 +201,8 @@ update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
     sprite_tracker_set_layout(cell_width, cell_height);
+    free(canvas); canvas = malloc(cell_width * cell_height);
+    if (canvas == NULL) return PyErr_NoMemory();
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);
 }
 
@@ -255,7 +255,7 @@ in_symbol_maps(char_type ch) {
 }
 
 
-Font*
+static Font*
 font_for_cell(Cell *cell) {
     Font *ans;
 START_ALLOW_CASE_RANGE
@@ -263,7 +263,7 @@ START_ALLOW_CASE_RANGE
         case 0:
             return &blank_font;
         case 0x2500 ... 0x2570:
-        case 0x2574 ... 0x2577:
+        case 0x2574 ... 0x257f:
         case 0xe0b0:
         case 0xe0b2:
             return &box_font;
@@ -291,11 +291,88 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
 }
 
+static inline void
+set_sprite(Cell *cell, sprite_index x, sprite_index y, sprite_index z) {
+    cell->sprite_x = x; cell->sprite_y = y; cell->sprite_z = z;
+}
+
+static inline glyph_index
+box_glyph_id(char_type ch) {
+START_ALLOW_CASE_RANGE
+    switch(ch) {
+        case 0x2500 ... 0x257f:
+            return ch - 0x2500;
+        case 0xe0b0:
+            return 0x80;
+        case 0xe0b2:
+            return 0x81;
+        default:
+            return 0x82;
+    }
+END_ALLOW_CASE_RANGE
+}
+
+static PyObject* box_drawing_function = NULL;
+
+static void 
+render_box_cell(Cell *cell) {
+    int error = 0;
+    glyph_index glyph = box_glyph_id(cell->ch);
+    SpritePosition *sp = sprite_position_for(&box_font, glyph, 0, false, &error);
+    if (sp == NULL) {
+        sprite_map_set_error(error); PyErr_Print();
+        set_sprite(cell, 0, 0, 0);
+        return;
+    }
+    set_sprite(cell, sp->x, sp->y, sp->z);
+    if (sp->rendered) return;
+    sp->rendered = true;
+    PyObject *ret = PyObject_CallFunction(box_drawing_function, "I", cell->ch);
+    if (ret == NULL) { PyErr_Print(); return; }
+    current_send_sprite_to_gpu(sp->x, sp->y, sp->z, PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0)));
+    Py_DECREF(ret);
+}
+
+static void 
+render_run(Cell *first_cell, index_type num_cells, Font *font) {
+    if (font->face) {
+    } else {
+        // special font
+        if (font == &blank_font) {
+            while(num_cells--) set_sprite(first_cell++, 0, 0, 0);
+        } else if (font == &missing_font) {
+            while(num_cells--) set_sprite(first_cell++, MISSING_GLYPH, 0, 0);
+        } else {
+            while(num_cells--) render_box_cell(first_cell++);
+        }
+    }
+}
+
+void
+render_line(Line *line) {
+    Font *run_font = NULL;
+    index_type first_cell_in_run = 0, i = 0;
+    attrs_type prev_width = 0;
+    for (; i < line->xnum; i++) {
+        if (prev_width == 2) continue;
+        Cell *cell = line->cells + i;
+        Font *cell_font = font_for_cell(cell);
+        prev_width = cell->attrs & WIDTH_MASK;
+        if (cell_font == run_font) continue;
+        if (run_font != NULL && i > first_cell_in_run) render_run(cell, i - first_cell_in_run, run_font);
+        run_font = cell_font;
+        first_cell_in_run = i;
+    }
+    if (run_font != NULL && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font);
+}
+
 static PyObject*
 set_font(PyObject UNUSED *m, PyObject *args) {
     PyObject *sm, *smf, *medium, *bold = NULL, *italic = NULL, *bi = NULL;
     float xdpi, ydpi, pt_sz;
-    if (!PyArg_ParseTuple(args, "OO!O!fffO|OOO", &get_fallback_font, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &pt_sz, &xdpi, &ydpi, &medium, &bold, &italic, &bi)) return NULL;
+    Py_CLEAR(get_fallback_font); Py_CLEAR(box_drawing_function);
+    if (!PyArg_ParseTuple(args, "OOO!O!fffO|OOO", &get_fallback_font, &box_drawing_function, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &pt_sz, &xdpi, &ydpi, &medium, &bold, &italic, &bi)) return NULL;
+    Py_INCREF(get_fallback_font); Py_INCREF(box_drawing_function);
     if (!alloc_font(&medium_font, medium, false, false)) return PyErr_NoMemory();
     if (bold && !alloc_font(&bold_font, bold, false, false)) return PyErr_NoMemory();
     if (italic && !alloc_font(&italic_font, italic, false, false)) return PyErr_NoMemory();
@@ -327,7 +404,9 @@ static hb_buffer_t *harfbuzz_buffer = NULL;
 
 static void
 finalize(void) {
+    free(canvas);
     Py_CLEAR(get_fallback_font);
+    Py_CLEAR(box_drawing_function);
     free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font);
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  free_font(fallback_fonts + i);
     for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
@@ -362,11 +441,31 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
 
+static PyObject*
+send_prerendered_sprites(PyObject UNUSED *s, PyObject *args) {
+    int error = 0;
+    sprite_index x = 0, y = 0, z = 0;
+    // blank cell
+    clear_canvas();
+    current_send_sprite_to_gpu(x, y, z, canvas);
+    do_increment(&error);
+    if (error != 0) { sprite_map_set_error(error); return NULL; }
+    for (ssize_t i = 0; i < PyTuple_GET_SIZE(args); i++) {
+        x = sprite_tracker.x; y = sprite_tracker.y; z = sprite_tracker.z;
+        do_increment(&error);
+        if (error != 0) { sprite_map_set_error(error); return NULL; }
+        current_send_sprite_to_gpu(x, y, z, PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i)));
+    }
+    return Py_BuildValue("H", x);
+}
+
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
     METHODB(set_font, METH_VARARGS),
     METHODB(sprite_map_set_limits, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
+    METHODB(send_prerendered_sprites, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -380,5 +479,6 @@ init_fonts(PyObject *module) {
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2000)) { PyErr_NoMemory(); return false; }
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;
 }

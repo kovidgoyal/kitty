@@ -19,4 +19,3 @@ hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, float, float, float);
 void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*); 
 void sprite_tracker_current_layout(unsigned int *x, unsigned int *y, unsigned int *z);
-int sprite_tracker_increment(sprite_index *x, sprite_index *y, sprite_index *z);
