@@ -263,11 +263,10 @@ class Boss:
         self.child_monitor.shutdown()
         wakeup()
         self.child_monitor.join()
-        for t in self.tab_manager:
-            t.destroy()
-        del self.tab_manager
+        self.tab_manager.destroy()
         destroy_sprite_map()
         destroy_global_data()
+        del self.tab_manager
         del self.glfw_window
 
     def paste_to_active_window(self, text):

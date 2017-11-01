@@ -285,6 +285,10 @@ class TabBar:  # {{{
         self.cell_ranges = cr
         glfw_post_empty_event()
 
+    def destroy(self):
+        self.screen.reset_callbacks()
+        del self.screen
+
     def tab_at(self, x):
         x = (x - self.window_geometry.left) // self.cell_width
         for i, (a, b) in enumerate(self.cell_ranges):
@@ -412,4 +416,11 @@ class TabManager:  # {{{
         if len(self.tabs) < 2:
             return
         self.tab_bar.render()
+
+    def destroy(self):
+        for t in self:
+            t.destroy()
+        self.tab_bar.destroy()
+        del self.tab_bar
+        del self.refresh_sprite_positions
 # }}}
