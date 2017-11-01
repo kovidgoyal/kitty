@@ -103,7 +103,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     char *path;
     int error, hinting, hintstyle;
     long index;
-    unsigned int size_in_pts, xdpi, ydpi;
+    float size_in_pts, xdpi, ydpi;
     if (!PyArg_ParseTuple(args, "sliifff", &path, &index, &hinting, &hintstyle, &size_in_pts, &xdpi, &ydpi)) return NULL;
 
     self = (Face *)type->tp_alloc(type, 0);
