@@ -435,7 +435,7 @@ finalize(void) {
     Py_CLEAR(box_drawing_function);
     free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font);
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  free_font(fallback_fonts + i);
-    for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
+    for (size_t i = 0; i < symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
     free(symbol_maps); free(symbol_map_fonts);
     if (harfbuzz_buffer) hb_buffer_destroy(harfbuzz_buffer);
 }
