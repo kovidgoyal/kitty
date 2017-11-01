@@ -320,6 +320,7 @@ width(Line *self, PyObject *val) {
 
 void 
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
+    if (!self->cells[x].ch) return;  // dont allow adding combining chars to a null cell
     combining_type c = self->cells[x].cc;
     if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
     else self->cells[x].cc = ch & CC_MASK;
