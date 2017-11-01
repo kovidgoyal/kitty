@@ -17,6 +17,7 @@
 #include <zlib.h>
 #include <png.h>
 #include <structmember.h>
+PyTypeObject GraphicsManager_Type;
 
 #define STORAGE_LIMIT (320 * (1024 * 1024))
 

@@ -74,7 +74,6 @@ typedef struct {
     unsigned int last_scrolled_by;
     size_t used_storage;
 } GraphicsManager;
-PyTypeObject GraphicsManager_Type;
 
 
 typedef struct {

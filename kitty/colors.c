@@ -8,6 +8,8 @@
 #include "data-types.h"
 #include <structmember.h>
 
+PyTypeObject ColorProfile_Type;
+
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
     0xcd0000,  // 1

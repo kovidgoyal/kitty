@@ -10,6 +10,8 @@
 #include "graphics.h"
 #include <time.h>
 
+extern PyTypeObject Screen_Type;
+
 // utils {{{
 static unsigned long pow10[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
@@ -893,6 +895,8 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
     }
 #undef HANDLE
 }
+
+extern uint32_t *latin1_charset;
 
 static inline void 
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {

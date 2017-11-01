@@ -135,7 +135,6 @@ typedef struct {
     bool continued;
     bool needs_free;
 } Line;
-PyTypeObject Line_Type;
 
 
 typedef struct {
@@ -146,7 +145,6 @@ typedef struct {
     bool *continued_map;
     Line *line;
 } LineBuf;
-PyTypeObject LineBuf_Type;
 
 
 typedef struct {
@@ -158,7 +156,6 @@ typedef struct {
     index_type start_of_data, count;
     bool *continued_map;
 } HistoryBuf;
-PyTypeObject HistoryBuf_Type;
 
 typedef struct {
     PyObject_HEAD
@@ -170,10 +167,6 @@ typedef struct {
     unsigned long fg, bg, decoration_fg;
 
 } Cursor;
-PyTypeObject Cursor_Type;
-
-PyTypeObject Face_Type;
-PyTypeObject Window_Type;
 
 typedef struct {
     color_type default_fg, default_bg, cursor_color, highlight_fg, highlight_bg;
@@ -187,7 +180,6 @@ typedef struct {
     uint32_t orig_color_table[256];
     DynamicColor configured, overridden;
 } ColorProfile;
-PyTypeObject ColorProfile_Type;
 
 #define SAVEPOINTS_SZ 256
 
@@ -223,7 +215,6 @@ typedef struct {
     bool shutting_down;
     pthread_t io_thread;
 } ChildMonitor;
-PyTypeObject ChildMonitor_Type;
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
 

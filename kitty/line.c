@@ -9,6 +9,8 @@
 #include "unicode-data.h"
 #include "lineops.h"
 
+extern PyTypeObject Cursor_Type;
+
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     PyErr_SetString(PyExc_TypeError, "Line objects cannot be instantiated directly, create them using LineBuf.line()");

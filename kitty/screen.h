@@ -56,7 +56,6 @@ typedef struct {
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
 } Screen;
-PyTypeObject Screen_Type;
 
 
 void parse_worker(Screen *screen, PyObject *dump_callback);
@@ -108,7 +107,6 @@ void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
-uint32_t *latin1_charset;
 void screen_request_capabilities(Screen *, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);

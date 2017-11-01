@@ -9,6 +9,8 @@
 #include "lineops.h"
 #include <structmember.h>
 
+extern PyTypeObject Line_Type;
+
 static inline Cell*
 lineptr(HistoryBuf *linebuf, index_type y) {
     return linebuf->buf + y * linebuf->xnum;

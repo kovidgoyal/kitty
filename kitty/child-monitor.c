@@ -28,6 +28,7 @@ extern int pthread_setname_np(const char *name);
 #include <sys/wait.h>
 #include <signal.h>
 #include <GLFW/glfw3.h>
+extern PyTypeObject Screen_Type;
 
 #define EXTRA_FDS 2
 #define wakeup_main_loop glfwPostEmptyEvent
