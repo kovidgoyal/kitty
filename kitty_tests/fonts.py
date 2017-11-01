@@ -20,7 +20,6 @@ class Rendering(BaseTest):
             cls.sprites[(x, y, z)] = data
 
         set_send_sprite_to_gpu(send_to_gpu)
-        cls.cell_width, cls.cell_height = set_font_family(override_dpi=(96.0, 96.0))
 
     @classmethod
     def tearDownClass(cls):
@@ -29,6 +28,7 @@ class Rendering(BaseTest):
 
     def setUp(self):
         self.sprites.clear()
+        self.cell_width, self.cell_height = set_font_family(override_dpi=(96.0, 96.0))
 
     def tearDown(self):
         self.sprites.clear()

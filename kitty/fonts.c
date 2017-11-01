@@ -195,7 +195,7 @@ static inline void clear_canvas(void) { memset(canvas, 0, cell_width * cell_heig
 static void
 python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
     if (python_send_to_gpu_impl) {
-        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, cell_width * cell_height);
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, (int)(cell_width * cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
     }
