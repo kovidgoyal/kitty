@@ -333,15 +333,17 @@ def safe_makedirs(path):
     os.makedirs(path, exist_ok=True)
 
 
-def build_test_launcher(args):
+def build_asan_launcher(args):
+    dest = 'asan-launcher'
+    src = 'asan-launcher.c'
+    if args.incremental and not newer(dest, src):
+        return
     cc, ccver = cc_version()
     cflags = '-g -Wall -Werror -fpie'.split()
     pylib = get_python_flags(cflags)
-    sanitize_lib = (['-lasan'] if cc == 'gcc' else []) if args.sanitize else []
-    cflags.extend(get_sanitize_args(cc, ccver) if args.sanitize else [])
-    cmd = [cc] + cflags + [
-        'test-launcher.c', '-o', 'test-launcher',
-    ] + sanitize_lib + pylib
+    sanitize_lib = ['-lasan'] if cc == 'gcc' else []
+    cflags.extend(get_sanitize_args(cc, ccver))
+    cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
     run_tool(cmd)
 
 
@@ -444,7 +446,7 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'build':
         build(args)
-        build_test_launcher(args)
+        build_asan_launcher(args)
         if args.profile:
             build_linux_launcher(args)
             print('kitty profile executable is', 'kitty-profile')

@@ -5,7 +5,7 @@ tags
 build
 linux-package
 logo/*.iconset
-test-launcher
+asan-launcher
 kitty-profile
 dev
 __pycache__

@@ -114,9 +114,8 @@ install: |
 before_script:
     - echo $LD_LIBRARY_PATH
     - $PYTHON setup.py build --debug $SANITIZE_ARG;
-    - if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then ldd ./test-launcher `which $PYTHON`; fi
 
 script:
-    - ./test-launcher
+    - if [[ -z $SANITIZE_ARG ]]; then $PYTHON test.py; else ./asan-launcher test; fi
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
     - if [[ "$BUILD_PKG" == "1" ]]; then $PYTHON setup.py linux-package; fi
