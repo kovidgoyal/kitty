@@ -34,9 +34,10 @@ def create_symbol_map(opts):
     faces = []
     for family in val.values():
         if family not in family_map:
-            o = create_face(font_for_family(family))
+            font = font_for_family(family)
+            o = create_face(font)
             family_map[family] = len(faces)
-            faces.append(o)
+            faces.append((o, font.bold, font.italic))
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
     return sm, tuple(faces)
 
