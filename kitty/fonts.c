@@ -190,12 +190,13 @@ static size_t symbol_maps_count = 0, symbol_map_fonts_count = 0;
 
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
-static inline void clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
+static inline void 
+clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
 
 static void
 python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
-    if (python_send_to_gpu_impl) {
-        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, (int)(cell_width * cell_height));
+    if (python_send_to_gpu_impl != NULL) {
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, cell_width * cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
     }
