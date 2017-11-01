@@ -81,7 +81,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
-        self->main_grman = grman_alloc(); self->alt_grman = grman_alloc();
+        self->main_grman = grman_alloc(); 
+        self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
@@ -213,7 +214,8 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
-    Py_CLEAR(self->grman); Py_CLEAR(self->alt_grman);
+    Py_CLEAR(self->main_grman); 
+    Py_CLEAR(self->alt_grman);
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->test_child);
