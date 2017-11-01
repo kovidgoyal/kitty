@@ -89,13 +89,12 @@ def get_python_flags(cflags):
 
 
 def get_sanitize_args(cc, ccver):
-    sanitize_args = set()
-    sanitize_args.add('-fno-omit-frame-pointer')
-    sanitize_args.add('-fsanitize=address')
+    sanitize_args = ['-fsanitize=address']
     if (cc == 'gcc' and ccver >= (5, 0)) or cc == 'clang':
-        sanitize_args.add('-fsanitize=undefined')
+        sanitize_args.append('-fsanitize=undefined')
         # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
-        #     sanitize_args.add('-fno-sanitize-recover=all')
+        #     sanitize_args.append('-fno-sanitize-recover=all')
+    sanitize_args.append('-fno-omit-frame-pointer')
     return sanitize_args
 
 
@@ -110,7 +109,7 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
-    optimize = '-ggdb' if debug or sanitize else '-O3'
+    optimize = '-g3' if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
@@ -129,12 +128,13 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    if not debug:
+    if not debug and not sanitize:
+        # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto'), ldflags.append('-flto')
 
     if profile:
         cflags.append('-DWITH_PROFILER')
-        cflags.append('-g')
+        cflags.append('-g3')
         ldflags.append('-lprofiler')
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
@@ -339,7 +339,7 @@ def build_asan_launcher(args):
     if args.incremental and not newer(dest, src):
         return
     cc, ccver = cc_version()
-    cflags = '-g -Wall -Werror -fpie -std=c99'.split()
+    cflags = '-g3 -Wall -Werror -fpie -std=c99'.split()
     pylib = get_python_flags(cflags)
     sanitize_lib = ['-lasan'] if cc == 'gcc' and not isosx else []
     cflags.extend(get_sanitize_args(cc, ccver))
