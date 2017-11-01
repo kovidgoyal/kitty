@@ -112,7 +112,7 @@ def face_from_font(font, pt_sz, xdpi, ydpi):
     return get_face(font.resolved_family, pt_sz, (xdpi + ydpi) / 2, bold=font.bold, italic=font.italic)
 
 
-def save_medium_face(face, family):
+def save_medium_face(face):
     save_medium_face.face = face
 
 
