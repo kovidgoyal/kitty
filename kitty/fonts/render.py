@@ -7,6 +7,7 @@ from collections import namedtuple
 from math import ceil, floor, pi, sin, sqrt
 
 from kitty.constants import isosx
+from kitty.config import defaults
 from kitty.fast_data_types import (
     send_prerendered_sprites, set_font, set_font_size
 )
@@ -56,13 +57,10 @@ def get_fallback_font(text, bold, italic):
     )
 
 
-def set_font_family(opts, override_font_size=None):
-    if hasattr(set_font_family, 'state'):
-        raise ValueError(
-            'Cannot set font family more than once, use resize_fonts() to change size'
-        )
+def set_font_family(opts=None, override_font_size=None, override_dpi=None):
+    opts = opts or defaults
     sz = override_font_size or opts.font_size
-    xdpi, ydpi = get_logical_dpi()
+    xdpi, ydpi = get_logical_dpi(override_dpi)
     set_font_family.state = FontState('', sz, xdpi, ydpi, 0, 0, 0, 0, 0)
     font_map = get_font_files(opts)
     faces = [create_face(font_map['medium'])]
@@ -136,7 +134,7 @@ def render_special(underline=0, strikethrough=False, missing=False):
     s = set_font_family.state
     cell_width, cell_height, baseline = s.cell_width, s.cell_height, s.baseline
     underline_position, underline_thickness = s.underline_position, s.underline_thickness
-    CharTexture = ctypes.c_ubyte * cell_width * cell_height
+    CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture if missing else CharTexture()
 
     def dl(f, *a):
@@ -171,7 +169,7 @@ def prerender():
 def render_box_drawing(codepoint):
     s = set_font_family.state
     cell_width, cell_height = s.cell_width, s.cell_height
-    CharTexture = ctypes.c_ubyte * cell_width * cell_height
+    CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = render_box_char(
         chr(codepoint), CharTexture(), cell_width, cell_height
     )

@@ -107,9 +107,11 @@ def x11_dpi():
             pass
 
 
-def get_logical_dpi():
+def get_logical_dpi(override_dpi=None):
     # See https://github.com/glfw/glfw/issues/1019 for why we cant use
     # glfw_get_physical_dpi()
+    if override_dpi is not None:
+        get_logical_dpi.ans = override_dpi
     if not hasattr(get_logical_dpi, 'ans'):
         if isosx:
             # TODO: Investigate if this needs a different implementation on OS X

@@ -13,6 +13,7 @@
 typedef uint16_t glyph_index;
 typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, uint8_t*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
+static PyObject *python_send_to_gpu_impl = NULL;
 
 typedef struct SpritePosition SpritePosition;
 
@@ -166,6 +167,15 @@ free_font(Font *f) {
     f->bold = false; f->italic = false;
 }
 
+static inline void
+clear_font(Font *f) { 
+    f->hb_font = NULL;
+    Py_CLEAR(f->face); 
+    clear_sprite_map(f);
+    f->bold = false; f->italic = false;
+}
+
+
 static Font medium_font = {0}, bold_font = {0}, italic_font = {0}, bi_font = {0}, box_font = {0}, missing_font = {0}, blank_font = {0};
 static Font fallback_fonts[256] = {{0}};
 static PyObject *get_fallback_font = NULL;
@@ -181,6 +191,16 @@ static size_t symbol_maps_count = 0, symbol_map_fonts_count = 0;
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
 static inline void clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
+
+static void
+python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
+    if (python_send_to_gpu_impl) {
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIy#", x, y, z, buf, cell_width * cell_height);
+        if (ret == NULL) PyErr_Print();
+        else Py_DECREF(ret);
+    }
+}
+
 
 static inline PyObject*
 update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
@@ -373,10 +393,15 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     Py_CLEAR(get_fallback_font); Py_CLEAR(box_drawing_function);
     if (!PyArg_ParseTuple(args, "OOO!O!fffO|OOO", &get_fallback_font, &box_drawing_function, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &pt_sz, &xdpi, &ydpi, &medium, &bold, &italic, &bi)) return NULL;
     Py_INCREF(get_fallback_font); Py_INCREF(box_drawing_function);
+    clear_font(&medium_font); clear_font(&bold_font); clear_font(&italic_font); clear_font(&bi_font);
     if (!alloc_font(&medium_font, medium, false, false)) return PyErr_NoMemory();
     if (bold && !alloc_font(&bold_font, bold, false, false)) return PyErr_NoMemory();
     if (italic && !alloc_font(&italic_font, italic, false, false)) return PyErr_NoMemory();
     if (bi && !alloc_font(&bi_font, bi, false, false)) return PyErr_NoMemory();
+    for (size_t i = 0; fallback_fonts[i].face != NULL; i++) clear_font(fallback_fonts + i);
+    for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
+    free(symbol_maps); free(symbol_map_fonts); symbol_maps = NULL; symbol_map_fonts = NULL;
+    symbol_maps_count = 0; symbol_map_fonts_count = 0;
 
     symbol_maps_count = PyTuple_GET_SIZE(sm);
     if (symbol_maps_count > 0) {
@@ -404,6 +429,7 @@ static hb_buffer_t *harfbuzz_buffer = NULL;
 
 static void
 finalize(void) {
+    Py_CLEAR(python_send_to_gpu_impl);
     free(canvas);
     Py_CLEAR(get_fallback_font);
     Py_CLEAR(box_drawing_function);
@@ -459,6 +485,14 @@ send_prerendered_sprites(PyObject UNUSED *s, PyObject *args) {
     return Py_BuildValue("H", x);
 }
 
+static PyObject*
+set_send_sprite_to_gpu(PyObject UNUSED *self, PyObject *func) {
+    Py_CLEAR(python_send_to_gpu_impl);
+    python_send_to_gpu_impl = func;
+    Py_INCREF(func);
+    current_send_sprite_to_gpu = func == Py_None ? send_sprite_to_gpu : python_send_to_gpu;
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
@@ -467,6 +501,7 @@ static PyMethodDef module_methods[] = {
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(send_prerendered_sprites, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
+    METHODB(set_send_sprite_to_gpu, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
