@@ -167,6 +167,8 @@ def missing_glyph(num_cells, cell_width, cell_height):
 
 def render_cell(text=' ', bold=False, italic=False):
     num_cells = wcwidth(text[0])
+    if num_cells < 1:
+        return render_cell()
 
     def safe_freetype(func):
         try:
