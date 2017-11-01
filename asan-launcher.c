@@ -13,5 +13,7 @@ int main(int argc, char *argv[]) {
     wchar_t *argvw[MAX_ARGC + 1] = {0};
     argvw[0] = L"kitty";
     for (int i = 1; i < argc; i++) argvw[i] = Py_DecodeLocale(argv[i], NULL);
-    return Py_Main(argc, argvw);
+    int ret = Py_Main(argc, argvw);
+    for (int i = 1; i < argc; i++) PyMem_RawFree(argvw[i]);
+    return ret;
 }
