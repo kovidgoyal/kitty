@@ -27,6 +27,7 @@ typedef struct {
     PyObject *family_name, *full_name, *postscript_name, *path;
     hb_font_t *harfbuzz_font;
 } Face;
+PyTypeObject Face_Type;
 
 
 static inline PyObject*
