@@ -339,9 +339,9 @@ def build_asan_launcher(args):
     if args.incremental and not newer(dest, src):
         return
     cc, ccver = cc_version()
-    cflags = '-g -Wall -Werror -fpie'.split()
+    cflags = '-g -Wall -Werror -fpie -std=c99'.split()
     pylib = get_python_flags(cflags)
-    sanitize_lib = ['-lasan'] if cc == 'gcc' else []
+    sanitize_lib = ['-lasan'] if cc == 'gcc' and not isosx else []
     cflags.extend(get_sanitize_args(cc, ccver))
     cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
     run_tool(cmd)
