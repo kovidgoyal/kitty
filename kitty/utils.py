@@ -120,7 +120,7 @@ def get_logical_dpi():
                     xdpi, ydpi = glfw_get_physical_dpi()
             else:
                 xdpi, ydpi = xscale * 96.0, yscale * 96.0
-        get_logical_dpi.ans = xdpi, ydpi
+            get_logical_dpi.ans = xdpi, ydpi
     return get_logical_dpi.ans
 
 
