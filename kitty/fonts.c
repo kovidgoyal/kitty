@@ -34,6 +34,8 @@ typedef struct {
 
 
 static GPUSpriteTracker sprite_tracker = {0};
+static hb_buffer_t *harfbuzz_buffer = NULL;
+static char_type shape_buffer[2048] = {0};
 
 
 typedef struct {
@@ -350,10 +352,35 @@ render_box_cell(Cell *cell) {
     Py_DECREF(ret);
 }
 
-static void 
-render_run(Cell *first_cell, index_type num_cells, Font UNUSED *font, FontType ft) {
+static inline void
+load_hb_buffer(Cell *first_cell, index_type num_cells) {  
+    index_type num;
+    hb_buffer_clear_contents(harfbuzz_buffer);
+    while (num_cells) {
+        for (num = 0; num_cells-- && num < sizeof(shape_buffer)/sizeof(shape_buffer[0]) - 20; first_cell++) {
+            shape_buffer[num++] = first_cell->ch;
+            if (first_cell->cc) {
+                shape_buffer[num++] = first_cell->cc & CC_MASK;
+                combining_type cc2 = first_cell->cc >> 16;
+                if (cc2) shape_buffer[num++] = cc2 & CC_MASK;
+            }
+        }
+        hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
+    }
+    hb_buffer_guess_segment_properties(harfbuzz_buffer);
+}
+
+static inline void
+shape_run(Cell *first_cell, index_type num_cells, Font *font) {
+    load_hb_buffer(first_cell, num_cells);
+    hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
+}
+
+static inline void 
+render_run(Cell *first_cell, index_type num_cells, Font *font, FontType ft) {
     switch(ft) {
         case FONT:
+            shape_run(first_cell, num_cells, font);
             break;
         case BLANK_FONT:
             while(num_cells--) set_sprite(first_cell++, 0, 0, 0);
@@ -427,8 +454,6 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     }
     return update_cell_metrics(pt_sz, xdpi, ydpi);
 }
-
-static hb_buffer_t *harfbuzz_buffer = NULL;
 
 static void
 finalize(void) {
@@ -546,7 +571,7 @@ init_fonts(PyObject *module) {
         return false;
     }
     harfbuzz_buffer = hb_buffer_create();
-    if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2000)) { PyErr_NoMemory(); return false; }
+    if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;
