@@ -175,3 +175,37 @@ def render_box_drawing(codepoint):
         chr(codepoint), CharTexture(), cell_width, cell_height
     )
     return ctypes.addressof(buf), buf
+
+
+def test_render_string(text='\'Qing👁a⧽', size=200.0, dpi=96.0):
+    from tempfile import NamedTemporaryFile
+    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line
+    from kitty.icat import detect_support, show
+    if not detect_support():
+        raise SystemExit('Your terminal does not support the graphics protocol')
+    sprites = {}
+
+    def send_to_gpu(x, y, z, data):
+        sprites[(x, y, z)] = data
+
+    sprite_map_set_limits(100000, 100)
+    set_send_sprite_to_gpu(send_to_gpu)
+    try:
+        cell_width, cell_height = set_font_family(override_dpi=(dpi, dpi), override_font_size=size)
+        s = Screen(None, 1, len(text)*2)
+        line = s.line(0)
+        s.draw(text)
+        test_render_line(line)
+    finally:
+        set_send_sprite_to_gpu(None)
+    cells = []
+    for i in range(s.columns):
+        sp = line.sprite_at(i)
+        if sp != (0, 0, 0):
+            cells.append(sprites[sp])
+    rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
+    with NamedTemporaryFile(delete=False) as f:
+        f.write(rgb_data)
+    print('Rendered string below: ({}x{})'.format(cell_width, cell_height))
+    show(f.name, cell_width * len(cells), cell_height, 24)
+    print()

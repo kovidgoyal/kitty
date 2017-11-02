@@ -124,7 +124,7 @@ def write_chunked(cmd, data):
         cmd.clear()
 
 
-def show(outfile, width, height, fmt, transmit_mode):
+def show(outfile, width, height, fmt, transmit_mode='t'):
     cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height}
     set_cursor(cmd, width, height)
     if detect_support.has_files:

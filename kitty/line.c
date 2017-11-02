@@ -203,6 +203,16 @@ as_unicode(Line* self) {
     return unicode_in_range(self, 0, xlimit_for_line(self), true, 0);
 }
 
+static PyObject*
+sprite_at(Line* self, PyObject *x) {
+#define sprite_at_doc "[x] -> Return the sprite in the specified cell"
+    unsigned long xval = PyLong_AsUnsignedLong(x);
+    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    Cell *c = self->cells + xval;
+    return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
+}
+
+
 static inline bool
 write_sgr(unsigned int val, Py_UCS4 *buf, index_type buflen, index_type *i) {
     static char s[20] = {0};
@@ -584,6 +594,7 @@ static PyMethodDef methods[] = {
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)
     METHOD(url_end_at, METH_O)
+    METHOD(sprite_at, METH_O)
         
     {NULL}  /* Sentinel */
 };

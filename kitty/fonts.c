@@ -369,6 +369,7 @@ render_run(Cell *first_cell, index_type num_cells, Font UNUSED *font, FontType f
 
 void
 render_line(Line *line) {
+#define RENDER if ((run_font != NULL || run_font_type != FONT) && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font, run_font_type);
     Font *run_font = NULL;
     FontType run_font_type = MISSING_FONT;
     index_type first_cell_in_run, i;
@@ -380,11 +381,12 @@ render_line(Line *line) {
         FontType cell_font_type = font_for_cell(cell, &cell_font);
         prev_width = cell->attrs & WIDTH_MASK;
         if (cell_font_type == run_font_type && cell_font == run_font) continue;
-        if ((run_font != NULL || run_font_type != FONT) && i > first_cell_in_run) render_run(cell, i - first_cell_in_run, run_font, run_font_type);
+        RENDER;
         run_font = cell_font; run_font_type = cell_font_type;
         first_cell_in_run = i;
     }
-    if ((run_font != NULL || run_font_type != FONT) && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font, run_font_type);
+    RENDER;
+#undef RENDER
 }
 
 static PyObject*
@@ -503,6 +505,27 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+concat_cells(PyObject UNUSED *self, PyObject *args) {
+    unsigned int cell_width, cell_height;
+    PyObject *cells;
+    if (!PyArg_ParseTuple(args, "IIO!", &cell_width, &cell_height, &PyTuple_Type, &cells)) return NULL;
+    size_t num_cells = PyTuple_GET_SIZE(cells), r, c, i;
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, 3 * cell_width * cell_height * num_cells);
+    if (ans == NULL) return PyErr_NoMemory();
+    uint8_t *dest = (uint8_t*)PyBytes_AS_STRING(ans), *src;
+    for (r = 0; r < cell_height; r++) {
+        for (c = 0; c < num_cells; c++) {
+            src = ((uint8_t*)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c))) + cell_width * r;
+            for (i = 0; i < cell_width; i++, dest += 3) {
+                dest[0] = src[i]; dest[1] = src[i]; dest[2] = src[i];
+            }
+
+        }
+    }
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
     METHODB(set_font, METH_VARARGS),
@@ -510,6 +533,7 @@ static PyMethodDef module_methods[] = {
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(send_prerendered_sprites, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
+    METHODB(concat_cells, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
     METHODB(test_render_line, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
