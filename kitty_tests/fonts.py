@@ -34,4 +34,5 @@ class Rendering(BaseTest):
         s.draw(''.join(box_chars))
         line = s.line(0)
         test_render_line(line)
+        print(self.sprites.keys())
         self.assertEqual(len(self.sprites), prerendered + len(box_chars))
