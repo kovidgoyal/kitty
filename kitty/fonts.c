@@ -33,11 +33,7 @@ typedef struct {
 } GPUSpriteTracker;
 
 
-static GPUSpriteTracker sprite_tracker = {
-    .max_array_len = 1000,
-    .max_texture_size = 1000,
-    .max_y = 100,
-};
+static GPUSpriteTracker sprite_tracker = {0};
 
 
 typedef struct {
@@ -177,9 +173,10 @@ clear_font(Font *f) {
 }
 
 
-static Font medium_font = {0}, bold_font = {0}, italic_font = {0}, bi_font = {0}, box_font = {0}, missing_font = {0}, blank_font = {0};
+static Font medium_font = {0}, bold_font = {0}, italic_font = {0}, bi_font = {0}, box_font = {0};
 static Font fallback_fonts[256] = {{0}};
 static PyObject *get_fallback_font = NULL;
+typedef enum { FONT, BLANK_FONT, BOX_FONT, MISSING_FONT } FontType;
 
 typedef struct {
     char_type left, right;
@@ -196,7 +193,7 @@ clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
 
 static void
 python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
-    if (python_send_to_gpu_impl != NULL) {
+    if (python_send_to_gpu_impl != NULL && python_send_to_gpu_impl != Py_None) {
         PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, cell_width * cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
@@ -207,7 +204,7 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf)
 static inline PyObject*
 update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
 #define CALL(f) { if ((f)->face) { if(!set_size_for_face((f)->face, pt_sz, xdpi, ydpi)) return NULL; clear_sprite_map(f); } }
-    CALL(&medium_font); CALL(&bold_font); CALL(&italic_font); CALL(&bi_font);
+    CALL(&medium_font); CALL(&bold_font); CALL(&italic_font); CALL(&bi_font); CALL(&box_font);
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
         CALL(fallback_fonts + i);
     }
@@ -258,12 +255,12 @@ fallback_font(Cell *cell) {
             return fallback_fonts + i;
         }
     }
-    if (get_fallback_font == NULL || i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) return &missing_font;
+    if (get_fallback_font == NULL || i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) return NULL;
     Py_UCS4 buf[10];
     size_t n = cell_as_unicode(cell, true, buf, ' ');
     PyObject *face = PyObject_CallFunction(get_fallback_font, "NOO", PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n), bold ? Py_True : Py_False, italic ? Py_True : Py_False);
-    if (face == NULL) { PyErr_Print(); return &missing_font; }
-    if (face == Py_None) { Py_DECREF(face); return &missing_font; }
+    if (face == NULL) { PyErr_Print(); return NULL; }
+    if (face == Py_None) { Py_DECREF(face); return NULL; }
     if (!alloc_font(fallback_fonts + i, face, bold, italic)) { fatal("Out of memory"); }
     return fallback_fonts + i;
 }
@@ -276,39 +273,37 @@ in_symbol_maps(char_type ch) {
     return NULL;
 }
 
-
-static Font*
-font_for_cell(Cell *cell) {
-    Font *ans;
+static FontType
+font_for_cell(Cell *cell, Font** font) {
 START_ALLOW_CASE_RANGE
     switch(cell->ch) {
         case 0:
-            return &blank_font;
+            return BLANK_FONT;
         case 0x2500 ... 0x2570:
         case 0x2574 ... 0x257f:
         case 0xe0b0:
         case 0xe0b2:
-            return &box_font;
+            return BOX_FONT;
         default:
-            ans = in_symbol_maps(cell->ch);
-            if (ans != NULL) return ans;
+            *font = in_symbol_maps(cell->ch);
+            if (*font != NULL) return FONT;
             switch(BI_VAL(cell->attrs)) {
                 case 0:
-                    ans = &medium_font;
+                    *font = &medium_font;
                     break;
                 case 1:
-                    ans = bold_font.face ? &bold_font : &medium_font;
+                    *font = bold_font.face ? &bold_font : &medium_font;
                     break;
                 case 2:
-                    ans = italic_font.face ? &italic_font : &medium_font;
+                    *font = italic_font.face ? &italic_font : &medium_font;
                     break;
                 case 4:
-                    ans = bi_font.face ? &bi_font : &medium_font;
+                    *font = bi_font.face ? &bi_font : &medium_font;
                     break;
             }
-            if (has_cell_text(ans, cell)) return ans;
-            return fallback_font(cell);
-
+            if (has_cell_text(*font, cell)) return FONT;
+            *font = fallback_font(cell);
+            return *font ? FONT : MISSING_FONT;
     }
 END_ALLOW_CASE_RANGE
 }
@@ -356,36 +351,40 @@ render_box_cell(Cell *cell) {
 }
 
 static void 
-render_run(Cell *first_cell, index_type num_cells, Font *font) {
-    if (font->face) {
-    } else {
-        // special font
-        if (font == &blank_font) {
+render_run(Cell *first_cell, index_type num_cells, Font UNUSED *font, FontType ft) {
+    switch(ft) {
+        case FONT:
+            break;
+        case BLANK_FONT:
             while(num_cells--) set_sprite(first_cell++, 0, 0, 0);
-        } else if (font == &missing_font) {
-            while(num_cells--) set_sprite(first_cell++, MISSING_GLYPH, 0, 0);
-        } else {
+            break;
+        case BOX_FONT:
             while(num_cells--) render_box_cell(first_cell++);
-        }
+            break;
+        case MISSING_FONT:
+            while(num_cells--) set_sprite(first_cell++, MISSING_GLYPH, 0, 0);
+            break;
     }
 }
 
 void
 render_line(Line *line) {
     Font *run_font = NULL;
-    index_type first_cell_in_run = 0, i = 0;
+    FontType run_font_type = MISSING_FONT;
+    index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
-    for (; i < line->xnum; i++) {
+    for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
         if (prev_width == 2) continue;
         Cell *cell = line->cells + i;
-        Font *cell_font = font_for_cell(cell);
+        Font *cell_font = NULL;
+        FontType cell_font_type = font_for_cell(cell, &cell_font);
         prev_width = cell->attrs & WIDTH_MASK;
-        if (cell_font == run_font) continue;
-        if (run_font != NULL && i > first_cell_in_run) render_run(cell, i - first_cell_in_run, run_font);
-        run_font = cell_font;
+        if (cell_font_type == run_font_type && cell_font == run_font) continue;
+        if ((run_font != NULL || run_font_type != FONT) && i > first_cell_in_run) render_run(cell, i - first_cell_in_run, run_font, run_font_type);
+        run_font = cell_font; run_font_type = cell_font_type;
         first_cell_in_run = i;
     }
-    if (run_font != NULL && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font);
+    if ((run_font != NULL || run_font_type != FONT) && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font, run_font_type);
 }
 
 static PyObject*
@@ -395,7 +394,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     Py_CLEAR(get_fallback_font); Py_CLEAR(box_drawing_function);
     if (!PyArg_ParseTuple(args, "OOO!O!fffO|OOO", &get_fallback_font, &box_drawing_function, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &pt_sz, &xdpi, &ydpi, &medium, &bold, &italic, &bi)) return NULL;
     Py_INCREF(get_fallback_font); Py_INCREF(box_drawing_function);
-    clear_font(&medium_font); clear_font(&bold_font); clear_font(&italic_font); clear_font(&bi_font);
+    clear_font(&medium_font); clear_font(&bold_font); clear_font(&italic_font); clear_font(&bi_font); clear_sprite_map(&box_font);
     if (!alloc_font(&medium_font, medium, false, false)) return PyErr_NoMemory();
     if (bold && !alloc_font(&bold_font, bold, false, false)) return PyErr_NoMemory();
     if (italic && !alloc_font(&italic_font, italic, false, false)) return PyErr_NoMemory();
@@ -464,7 +463,7 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     uint64_t extra_glyphs = 0;
     if (!PyArg_ParseTuple(args, "H|I", &glyph, &extra_glyphs)) return NULL;
     int error;
-    SpritePosition *pos = sprite_position_for(&box_font, glyph, extra_glyphs, false, &error);
+    SpritePosition *pos = sprite_position_for(&medium_font, glyph, extra_glyphs, false, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
