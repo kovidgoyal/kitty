@@ -14,6 +14,7 @@ typedef uint16_t glyph_index;
 typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, uint8_t*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
+extern PyTypeObject Line_Type;
 
 typedef struct SpritePosition SpritePosition;
 
@@ -495,6 +496,14 @@ set_send_sprite_to_gpu(PyObject UNUSED *self, PyObject *func) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+test_render_line(PyObject UNUSED *self, PyObject *args) {
+    PyObject *line;
+    if (!PyArg_ParseTuple(args, "O!", &Line_Type, &line)) return NULL;
+    render_line((Line*)line);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
     METHODB(set_font, METH_VARARGS),
@@ -503,6 +512,7 @@ static PyMethodDef module_methods[] = {
     METHODB(send_prerendered_sprites, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
+    METHODB(test_render_line, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

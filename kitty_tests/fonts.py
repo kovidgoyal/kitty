@@ -4,34 +4,34 @@
 
 from collections import OrderedDict
 
-from kitty.fast_data_types import set_send_sprite_to_gpu
+from kitty.fast_data_types import set_send_sprite_to_gpu, test_render_line, sprite_map_set_limits
 from kitty.fonts.render import set_font_family
+from kitty.fonts.box_drawing import box_chars
 
 from . import BaseTest
 
 
 class Rendering(BaseTest):
 
-    sprites = OrderedDict()
+    def setUp(self):
+        self.sprites = OrderedDict()
 
-    @classmethod
-    def setUpClass(cls):
         def send_to_gpu(x, y, z, data):
-            cls.sprites[(x, y, z)] = data
+            self.sprites[(x, y, z)] = data
 
         set_send_sprite_to_gpu(send_to_gpu)
-
-    @classmethod
-    def tearDownClass(cls):
-        set_send_sprite_to_gpu(None)
-        cls.sprites.clear()
-
-    def setUp(self):
-        self.sprites.clear()
+        sprite_map_set_limits(100000, 100)
         self.cell_width, self.cell_height = set_font_family(override_dpi=(96.0, 96.0))
+        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4])
 
     def tearDown(self):
-        self.sprites.clear()
+        set_send_sprite_to_gpu(None)
+        del self.sprites
 
     def test_box_drawing(self):
-        pass
+        prerendered = len(self.sprites)
+        s = self.create_screen(cols=len(box_chars), lines=1, scrollback=0)
+        s.draw(''.join(box_chars))
+        line = s.line(0)
+        test_render_line(line)
+        self.assertEqual(len(self.sprites), prerendered + len(box_chars))
