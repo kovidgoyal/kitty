@@ -33,6 +33,17 @@ utoi(uint32_t *buf, unsigned int sz) {
     }
     return ans;
 }
+
+
+static inline const char*
+utf8(char_type codepoint) {
+    if (!codepoint) return "";
+    static char buf[8];
+    int n = encode_utf8(codepoint, buf);
+    buf[n] = 0;
+    return buf;
+}
+
 // }}}
 
 // Macros {{{
@@ -354,6 +365,21 @@ restore_cursor(Screen *s, unsigned int UNUSED param, bool private) {
     else screen_restore_cursor(s);
 }
 
+static inline const char*
+repr_csi_params(unsigned int *params, unsigned int num_params) {
+    if (!num_params) return "";
+    static char buf[256];
+    int pos = 0;
+    while (pos < 200 && num_params) {
+        const char *fmt = num_params > 1 ? "%u " : "%u";
+        int ret = snprintf(buf + pos, sizeof(buf) - pos - 1, fmt, params[num_params--]);
+        if (ret < 0) return "An error occurred formatting the params array";
+        pos += ret;
+    }
+    buf[pos] = 0;
+    return buf;
+}
+
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define CALL_CSI_HANDLER1(name, defval) \
@@ -499,11 +525,11 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 // DECRQM
                 CALL_CSI_HANDLER1P(report_mode_status, 0, '?'); 
             } else {
-                REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: 0x%x 0x%x", start_modifier, end_modifier);
+                REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             }
             break;
         default:
-            REPORT_ERROR("Unknown CSI code: 0x%x", code);
+            REPORT_ERROR("Unknown CSI code: '%s' with start_modifier: '%c' and end_modifier: '%c' and parameters: '%s'", utf8(code), start_modifier, end_modifier, repr_csi_params(params, num_params));
     }
 }
 // }}}
