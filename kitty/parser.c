@@ -79,7 +79,9 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
     static char buf[MAX_PARAMS*3] = {0};
     unsigned int i, p;
     for(i = 0, p=0; i < count && p < MAX_PARAMS*3-20; i++) {
-        p += snprintf(buf + p, MAX_PARAMS*3 - p, "%u ", params[i]);
+        int n = snprintf(buf + p, MAX_PARAMS*3 - p, "%u ", params[i]);
+        if (n < 0) break;
+        p += n;
     }
     buf[p] = 0;
     Py_XDECREF(PyObject_CallFunction(dump_callback, "ss", name, buf)); PyErr_Clear();
@@ -370,7 +372,7 @@ repr_csi_params(unsigned int *params, unsigned int num_params) {
     if (!num_params) return "";
     static char buf[256];
     int pos = 0;
-    while (pos < 200 && num_params) {
+    while (pos < 200 && num_params && sizeof(buf) > pos + 1) {
         const char *fmt = num_params > 1 ? "%u " : "%u";
         int ret = snprintf(buf + pos, sizeof(buf) - pos - 1, fmt, params[num_params--]);
         if (ret < 0) return "An error occurred formatting the params array";
