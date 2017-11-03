@@ -263,7 +263,8 @@ fallback_font(Cell *cell) {
     PyObject *face = PyObject_CallFunction(get_fallback_font, "NOO", PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n), bold ? Py_True : Py_False, italic ? Py_True : Py_False);
     if (face == NULL) { PyErr_Print(); return NULL; }
     if (face == Py_None) { Py_DECREF(face); return NULL; }
-    if (!alloc_font(fallback_fonts + i, face, bold, italic)) { fatal("Out of memory"); }
+    if (!alloc_font(fallback_fonts + i, face, bold, italic)) { Py_DECREF(face); fatal("Out of memory"); }
+    Py_DECREF(face);
     return fallback_fonts + i;
 }
 
@@ -538,8 +539,8 @@ finalize(void) {
     free(canvas);
     Py_CLEAR(get_fallback_font);
     Py_CLEAR(box_drawing_function);
-    free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font);
-    for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  free_font(fallback_fonts + i);
+    free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font); free_font(&box_font);
+    for (size_t i = 0; fallback_fonts[i].face != NULL; i++) free_font(fallback_fonts + i); 
     for (size_t i = 0; i < symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
     free(symbol_maps); free(symbol_map_fonts);
     if (harfbuzz_buffer) hb_buffer_destroy(harfbuzz_buffer);
