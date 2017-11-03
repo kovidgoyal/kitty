@@ -97,6 +97,17 @@ set_size_for_face(PyObject *self, float pt_sz, float xdpi, float ydpi) {
     return set_font_size((Face*)self, w, w, (FT_UInt)xdpi, (FT_UInt) ydpi);
 }
 
+static inline int
+get_load_flags(int hinting, int hintstyle, int base) {
+    int flags = base;
+    if (hinting) {
+        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
+        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+    } else flags |= FT_LOAD_NO_HINTING;
+    return flags;
+}
+
+
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
@@ -120,6 +131,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (!set_size_for_face((PyObject*)self, size_in_pts, xdpi, ydpi)) { Py_CLEAR(self); return NULL; }
         self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
         if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
+#ifdef HARBUZZ_HAS_LOAD_FLAGS
+        hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
+#endif
     }
     return (PyObject*)self;
 }
@@ -142,21 +156,11 @@ repr(Face *self) {
 }
 
 
-static inline int
-get_load_flags(int hinting, int hintstyle, int base) {
-    int flags = base;
-    if (hinting) {
-        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
-        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
-    } else flags |= FT_LOAD_NO_HINTING;
-    return flags;
-}
-
 static inline bool 
 load_glyph(Face *self, int glyph_index, int load_type) {
     int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
-    if (error) { set_freetype_error("Failed to load glyph, with error:", error); Py_CLEAR(self); return false; }
+    if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
     return true;
 }
 
@@ -194,6 +198,112 @@ face_has_codepoint(PyObject *s, char_type cp) {
 
 hb_font_t*
 harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
+
+
+typedef struct {
+    unsigned char* buf;
+    size_t start_x, width, stride;
+    size_t rows;
+} ProcessedBitmap;
+
+
+static inline void
+trim_borders(ProcessedBitmap *ans, size_t extra) {
+    bool column_has_text = false;
+
+    // Trim empty columns from the right side of the bitmap
+    for (ssize_t x = ans->width - 1; !column_has_text && x > -1 && extra > 0; x--) {
+        for (size_t y = 0; y < ans->rows && !column_has_text; y++) {
+            if (ans->buf[x + y * ans->stride] > 200) column_has_text = true;
+        }
+        if (!column_has_text) { ans->width--; extra--; }
+    }
+
+    ans->start_x = extra;
+    ans->width -= extra;
+}
+
+
+
+static inline bool
+render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, bool bold, bool italic, bool rescale) {
+    if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
+    unsigned int max_width = cell_width * num_cells;
+    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+    ans->buf = bitmap->buffer;
+    ans->start_x = 0; ans->width = bitmap->width;
+    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
+    ans->rows = bitmap->rows;
+    if (ans->width > max_width) {
+        size_t extra = bitmap->width - max_width;
+        if (italic && extra < cell_width / 2) {
+            trim_borders(ans, extra);
+        } else if (rescale && self->is_scalable && extra > MAX(2, cell_width / 3)) {
+            FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
+            float ar = (float)max_width / (float)bitmap->width;
+            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi)) {
+                if (!render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, false)) return false;
+                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi)) return false;
+            } else return false;
+        }
+    }
+    return true;
+}
+
+static inline void
+place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
+    // We want the glyph to be positioned inside the cell based on the bearingX
+    // and bearingY values, making sure that it does not overflow the cell.
+
+    // Calculate column bounds
+    ssize_t xoff = (ssize_t)(x_offset + (float)metrics->horiBearingX / 64.f);
+    size_t src_start_column = bm->start_x, dest_start_column = 0, extra;
+    if (xoff < 0) src_start_column += -xoff;
+    else dest_start_column = xoff;
+    // Move the dest start column back if the width overflows because of it
+    if (dest_start_column > 0 && dest_start_column + bm->width > cell_width) {
+        extra = dest_start_column + bm->width - cell_width;
+        dest_start_column = extra > dest_start_column ? 0 : dest_start_column - extra;
+    }
+
+    // Calculate row bounds
+    ssize_t yoff = (ssize_t)(y_offset + (float)metrics->horiBearingY / 64.f);
+    size_t src_start_row, dest_start_row;
+    if (yoff > 0 && (size_t)yoff > baseline) {
+        src_start_row = 0;
+        dest_start_row = 0;
+    } else {
+        src_start_row = 0;
+        dest_start_row = baseline - yoff;
+    }
+
+    /* printf("src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu\n", src_start_row, src_start_column, dest_start_row, dest_start_column); */
+
+    for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
+        for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
+            uint16_t val = cell[dr * cell_width + dc];
+            val = (val + bm->buf[sr * bm->stride + sc]) % 256;
+            cell[dr * cell_width + dc] = val;
+        }
+    }
+}
+
+
+bool
+render_glyphs_in_cell(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+    Face *self = (Face*)f;
+    float x = 0.f, y = 0.f;
+    ProcessedBitmap bm;
+    for (unsigned int i = 0; i < num_glyphs; i++) {
+        if (info[i].codepoint == 0) continue;
+        if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
+        x += (float)positions[i].x_offset / 64.0f;
+        y = (float)positions[i].y_offset / 64.0f;
+        place_bitmap_in_cell(canvas, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
+        x += (float)positions[i].x_advance / 64.0f;
+    }
+    return true;
+}
 
 // Boilerplate {{{
 

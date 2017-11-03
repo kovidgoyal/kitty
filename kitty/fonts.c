@@ -191,7 +191,7 @@ static size_t symbol_maps_count = 0, symbol_map_fonts_count = 0;
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
 static inline void 
-clear_canvas(void) { memset(canvas, 0, cell_width * cell_height); }
+clear_canvas(void) { memset(canvas, 0, 4 * cell_width * cell_height); }
 
 static void
 python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
@@ -222,7 +222,7 @@ update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
     sprite_tracker_set_layout(cell_width, cell_height);
-    free(canvas); canvas = malloc(cell_width * cell_height);
+    free(canvas); canvas = malloc(4 * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);
 }
@@ -357,7 +357,7 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
     index_type num;
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
-        for (num = 0; num_cells-- && num < sizeof(shape_buffer)/sizeof(shape_buffer[0]) - 20; first_cell++) {
+        for (num = 0; num_cells && num < sizeof(shape_buffer)/sizeof(shape_buffer[0]) - 20; first_cell++, num_cells--) {
             shape_buffer[num++] = first_cell->ch;
             if (first_cell->cc) {
                 shape_buffer[num++] = first_cell->cc & CC_MASK;
@@ -371,9 +371,86 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
 }
 
 static inline void
+split_cell(uint8_t *src, uint8_t *d1, uint8_t *d2) {
+    for (size_t r = 0; r < cell_height; r++, d1 += cell_width, d2 += cell_width, src += 2 * cell_width) {
+        memcpy(d1, src, cell_width); memcpy(d2, src + cell_width, cell_width);
+    }
+}
+
+static inline unsigned int
+shape_cell(Cell *cell, Cell *second_cell, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int length, Font *font) {
+    uint32_t cluster = info[0].cluster;
+    unsigned int num_glyphs = 1;
+    while (num_glyphs < length && info[num_glyphs].cluster == cluster) num_glyphs++;
+    uint64_t extra_glyphs;
+#define G(n) ((uint64_t)(info[n].codepoint & 0xffff))
+    glyph_index glyph = G(0);
+    switch(num_glyphs) {
+        case 1:
+            extra_glyphs = 0;
+            break;
+        case 2:
+            extra_glyphs = G(1);
+            break;
+        case 3:
+            extra_glyphs = G(1) | (G(2) << 16);
+            break;
+        case 4:
+            extra_glyphs = G(1) | (G(2) << 16) | (G(3) << 32);
+            break;
+        default:  // we only support a maximum of four extra glyphs per cell
+            extra_glyphs = G(1) | (G(2) << 16) | (G(3) << 32) | (G(4) << 48);
+            break;
+    }
+#undef G
+    int error = 0;
+    SpritePosition *sp = sprite_position_for(font, glyph, extra_glyphs, false, &error), *sp2 = NULL;
+    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return num_glyphs; }
+    if (second_cell) { 
+        sp2 = sprite_position_for(font, glyph, extra_glyphs, true, &error);
+        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return num_glyphs; }
+    }
+    if (sp->rendered && (!sp2 || sp2->rendered)) goto end;
+    clear_canvas();
+    if (!render_glyphs_in_cell(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, second_cell == NULL ? 1 : 2, baseline)) {
+        PyErr_Print(); return num_glyphs;
+    }
+    if (second_cell) {
+        uint8_t *d1 = canvas + (2 * cell_width * cell_height);
+        uint8_t *d2 = canvas + (3 * cell_width * cell_height);
+        split_cell(canvas, d1, d2);
+        current_send_sprite_to_gpu(sp->x, sp->y, sp->z, d1);
+        current_send_sprite_to_gpu(sp2->x, sp2->y, sp2->z, d2);
+        sp2->rendered = true;
+    } else {
+        current_send_sprite_to_gpu(sp->x, sp->y, sp->z, canvas);
+    }
+    sp->rendered = true; 
+end:
+    cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
+    if (second_cell) { second_cell->sprite_x = sp2->x; second_cell->sprite_y = sp2->y; second_cell->sprite_z = sp2->z; }
+    return num_glyphs;
+}
+
+
+static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
+    // See https://www.mail-archive.com/harfbuzz@lists.freedesktop.org/msg04698.html
+    // for a discussion of glyph clustering in harfbuzz
     load_hb_buffer(first_cell, num_cells);
     hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
+    unsigned int info_length, positions_length, length;
+    hb_glyph_info_t *info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
+    hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
+    length = MIN(info_length, positions_length);
+    unsigned int run_pos = 0;
+    Cell *cell, *second_cell;
+    while(length > run_pos && num_cells) {
+        cell = first_cell++; num_cells--;
+        if ((cell->attrs & WIDTH_MASK) == 2 && num_cells) { second_cell = first_cell++; num_cells--; }
+        else second_cell = NULL;
+        run_pos += shape_cell(cell, second_cell, info + run_pos, positions + run_pos, length - run_pos, font);
+    }
 }
 
 static inline void 
@@ -425,9 +502,9 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     Py_INCREF(get_fallback_font); Py_INCREF(box_drawing_function);
     clear_font(&medium_font); clear_font(&bold_font); clear_font(&italic_font); clear_font(&bi_font); clear_sprite_map(&box_font);
     if (!alloc_font(&medium_font, medium, false, false)) return PyErr_NoMemory();
-    if (bold && !alloc_font(&bold_font, bold, false, false)) return PyErr_NoMemory();
-    if (italic && !alloc_font(&italic_font, italic, false, false)) return PyErr_NoMemory();
-    if (bi && !alloc_font(&bi_font, bi, false, false)) return PyErr_NoMemory();
+    if (bold && !alloc_font(&bold_font, bold, true, false)) return PyErr_NoMemory();
+    if (italic && !alloc_font(&italic_font, italic, false, true)) return PyErr_NoMemory();
+    if (bi && !alloc_font(&bi_font, bi, true, true)) return PyErr_NoMemory();
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++) clear_font(fallback_fonts + i);
     for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
     free(symbol_maps); free(symbol_map_fonts); symbol_maps = NULL; symbol_map_fonts = NULL;

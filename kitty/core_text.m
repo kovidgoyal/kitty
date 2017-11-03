@@ -290,6 +290,12 @@ set_size_for_face(PyObject *self, float pt_sz, float xdpi, float ydpi) {
 }
 
 
+bool
+render_glyphs_in_cell(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+    // TODO: Implement this
+    return true;
+}
+
 static PyObject *
 repr(Face *self) {
     char buf[400] = {0};
