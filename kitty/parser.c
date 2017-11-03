@@ -371,7 +371,7 @@ static inline const char*
 repr_csi_params(unsigned int *params, unsigned int num_params) {
     if (!num_params) return "";
     static char buf[256];
-    int pos = 0;
+    unsigned int pos = 0;
     while (pos < 200 && num_params && sizeof(buf) > pos + 1) {
         const char *fmt = num_params > 1 ? "%u " : "%u";
         int ret = snprintf(buf + pos, sizeof(buf) - pos - 1, fmt, params[num_params--]);
