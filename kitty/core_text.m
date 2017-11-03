@@ -293,6 +293,7 @@ set_size_for_face(PyObject *self, float pt_sz, float xdpi, float ydpi) {
 bool
 render_glyphs_in_cell(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     // TODO: Implement this
+    (void)(f); (void)(bold); (void)italic; (void)info; (void)positions; (void)num_glyphs; (void)num_glyphs; (void)canvas; (void)cell_width; (void)cell_height; (void)num_cells; (void)baseline;
     return true;
 }
 
