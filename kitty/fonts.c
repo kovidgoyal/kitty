@@ -446,12 +446,16 @@ next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *
     *num_group_cells = 0, *num_group_glyphs = 0;
     bool unsafe_to_break;
     do {
-        // If the glyph has no advance, then it is a combing char
+        // If the glyph has no advance, then it is a combining char
         if (positions[*num_group_glyphs].x_advance != 0) *num_group_cells += ((cells[*num_group_cells].attrs & WIDTH_MASK) == 2) ? 2 : 1;
 
         // check if the next glyph can be broken at
         *num_group_glyphs += 1;
         unsafe_to_break = *num_group_glyphs < num_glyphs && info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK;
+        // Soak up all combining char glyphs
+        if (unsafe_to_break) {
+            while (*num_group_glyphs < num_glyphs && positions[*num_group_glyphs].x_advance == 0 && info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK) *num_group_glyphs += 1;
+        }
 
     } while (unsafe_to_break && *num_group_cells < num_cells && *num_group_glyphs < MIN(num_glyphs, 6));
     *num_group_cells = MAX(1, MIN(*num_group_cells, num_cells));
@@ -460,8 +464,6 @@ next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *
 
 static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
-    // See https://www.mail-archive.com/harfbuzz@lists.freedesktop.org/msg04698.html
-    // for a discussion of glyph clustering in harfbuzz
     load_hb_buffer(first_cell, num_cells);
     hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
     unsigned int info_length, positions_length, num_glyphs;
@@ -477,6 +479,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
     while(run_pos < num_glyphs && cell_pos < num_cells) {
         next_group(&num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, num_glyphs - run_pos, num_cells - cell_pos);
+        /* printf("Group: num_group_cells: %u num_group_glyphs: %u\n", num_group_cells, num_group_glyphs); */
         render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font);
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
@@ -679,6 +682,7 @@ init_fonts(PyObject *module) {
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
 #ifdef HARBUZZ_HAS_SET_CLUSTER_LEVEL
+    // A cluster level of HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS is needed for the unsafe to break API
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 #endif
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
