@@ -279,7 +279,7 @@ place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_wid
         dest_start_row = baseline - yoff;
     }
 
-    /* printf("src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu\n", src_start_row, src_start_column, dest_start_row, dest_start_column); */
+    /* printf("x_offset: %f bearing_x: %f y_offset: %f bearing_y: %f src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu bm_width: %lu bitmap_rows: %lu\n", x_offset, bearing_x, y_offset, bearing_y, src_start_row, src_start_column, dest_start_row, dest_start_column, bm->width, bm->rows); */
 
     for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
         for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
@@ -294,14 +294,14 @@ place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_wid
 bool
 render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     Face *self = (Face*)f;
-    float x = 0.f, y = 0.f;
+    float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
     for (unsigned int i = 0; i < num_glyphs; i++) {
         if (info[i].codepoint == 0) continue;
         if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
-        x += (float)positions[i].x_offset / 64.0f;
+        x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
+        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, cell_width * num_cells, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
     }
     return true;
