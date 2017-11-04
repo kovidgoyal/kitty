@@ -387,10 +387,10 @@ set_cell_sprite(Cell *cell, SpritePosition *sp) {
 }
 
 static inline uint8_t*
-extract_cell_from_canvas(unsigned int i) {
-    uint8_t *ans = canvas + (cell_width * cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans;
-    uint8_t *src = canvas + (cell_width * cell_height * i);
-    for (unsigned int r = 0; r < cell_height; r++, dest += cell_width, src += cell_width) memcpy(dest, src, cell_width);
+extract_cell_from_canvas(unsigned int i, unsigned int num_cells) {
+    uint8_t *ans = canvas + (cell_width * cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans, *src = canvas + (i * cell_width);
+    unsigned int stride = cell_width * num_cells;
+    for (unsigned int r = 0; r < cell_height; r++, dest += cell_width, src += stride) memcpy(dest, src, cell_width);
     return ans;
 }
 
@@ -434,7 +434,7 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
     for (unsigned int i = 0; i < num_cells; i++) { 
         sprite_position[i]->rendered = true;
         set_cell_sprite(cells + i, sprite_position[i]); 
-        uint8_t *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i);
+        uint8_t *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i, num_cells);
         current_send_sprite_to_gpu(sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
     }
 

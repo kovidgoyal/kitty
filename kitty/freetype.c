@@ -251,12 +251,13 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
 }
 
 static inline void
-place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
+place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
     // Calculate column bounds
-    ssize_t xoff = (ssize_t)(x_offset + (float)metrics->horiBearingX / 64.f);
+    float bearing_x = (float)metrics->horiBearingX / 64.f;
+    ssize_t xoff = (ssize_t)(x_offset + bearing_x);
     size_t src_start_column = bm->start_x, dest_start_column = 0, extra;
     if (xoff < 0) src_start_column += -xoff;
     else dest_start_column = xoff;
@@ -267,7 +268,8 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
     }
 
     // Calculate row bounds
-    ssize_t yoff = (ssize_t)(y_offset + (float)metrics->horiBearingY / 64.f);
+    float bearing_y = (float)metrics->horiBearingY / 64.f;
+    ssize_t yoff = (ssize_t)(y_offset + bearing_y);
     size_t src_start_row, dest_start_row;
     if (yoff > 0 && (size_t)yoff > baseline) {
         src_start_row = 0;
@@ -299,7 +301,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
         x += (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        place_bitmap_in_cell(canvas, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
+        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, cell_width * num_cells, cell_height, x, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
     }
     return true;
