@@ -290,7 +290,7 @@ place_bitmap_in_cell(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width
 
 
 bool
-render_glyphs_in_cell(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     Face *self = (Face*)f;
     float x = 0.f, y = 0.f;
     ProcessedBitmap bm;

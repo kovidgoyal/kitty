@@ -20,8 +20,9 @@ typedef struct SpritePosition SpritePosition;
 
 struct SpritePosition {
     SpritePosition *next;
-    bool filled, rendered, is_second;
+    bool filled, rendered;
     sprite_index x, y, z;
+    uint8_t ligature_index;
     glyph_index glyph;
     uint64_t extra_glyphs;
 };
@@ -80,14 +81,14 @@ do_increment(int *error) {
 
 
 static SpritePosition*
-sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, bool is_second, int *error) {
+sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, uint8_t ligature_index, int *error) {
     glyph_index idx = glyph & 0x3ff;
     SpritePosition *s = font->sprite_map + idx;
     // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->filled && s->extra_glyphs == extra_glyphs && s->is_second == is_second)) return s;  // Cache hit
+    if (LIKELY(s->glyph == glyph && s->filled && s->extra_glyphs == extra_glyphs && s->ligature_index == ligature_index)) return s;  // Cache hit
     while(true) {
         if (s->filled) {
-            if (s->glyph == glyph && s->extra_glyphs == extra_glyphs && s->is_second == is_second) return s;  // Cache hit
+            if (s->glyph == glyph && s->extra_glyphs == extra_glyphs && s->ligature_index == ligature_index) return s;  // Cache hit
         } else {
             break;
         }
@@ -99,7 +100,7 @@ sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, bool i
     }
     s->glyph = glyph;
     s->extra_glyphs = extra_glyphs;
-    s->is_second = is_second;
+    s->ligature_index = ligature_index;
     s->filled = true;
     s->rendered = false;
     s->x = sprite_tracker.x; s->y = sprite_tracker.y; s->z = sprite_tracker.z;
@@ -128,7 +129,7 @@ sprite_map_free(Font *font) {
 
 void
 clear_sprite_map(Font *font) {
-#define CLEAR(s) s->filled = false; s->rendered = false; s->glyph = 0; s->extra_glyphs = 0; s->x = 0; s->y = 0; s->z = 0; s->is_second = false;
+#define CLEAR(s) s->filled = false; s->rendered = false; s->glyph = 0; s->extra_glyphs = 0; s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
     for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
         s = font->sprite_map + i;
@@ -190,8 +191,9 @@ static size_t symbol_maps_count = 0, symbol_map_fonts_count = 0;
 
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
+#define CELLS_IN_CANVAS 16
 static inline void 
-clear_canvas(void) { memset(canvas, 0, 4 * cell_width * cell_height); }
+clear_canvas(void) { memset(canvas, 0, CELLS_IN_CANVAS * cell_width * cell_height); }
 
 static void
 python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
@@ -222,7 +224,7 @@ update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
     sprite_tracker_set_layout(cell_width, cell_height);
-    free(canvas); canvas = malloc(4 * cell_width * cell_height);
+    free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);
 }
@@ -371,21 +373,26 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
     hb_buffer_guess_segment_properties(harfbuzz_buffer);
 }
 
+
 static inline void
-split_cell(uint8_t *src, uint8_t *d1, uint8_t *d2) {
-    for (size_t r = 0; r < cell_height; r++, d1 += cell_width, d2 += cell_width, src += 2 * cell_width) {
-        memcpy(d1, src, cell_width); memcpy(d2, src + cell_width, cell_width);
-    }
+set_cell_sprite(Cell *cell, SpritePosition *sp) {
+    cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
 }
 
-static inline unsigned int
-shape_cell(Cell *cell, Cell *second_cell, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int length, Font *font) {
-    uint32_t cluster = info[0].cluster;
-    unsigned int num_glyphs = 1;
-    while (num_glyphs < length && info[num_glyphs].cluster == cluster) num_glyphs++;
+static inline uint8_t*
+extract_cell_from_canvas(unsigned int i) {
+    uint8_t *ans = canvas + (cell_width * cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans;
+    uint8_t *src = canvas + (cell_width * cell_height * i);
+    for (unsigned int r = 0; r < cell_height; r++, dest += cell_width, src += cell_width) memcpy(dest, src, cell_width);
+    return ans;
+}
+
+static inline void
+render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font) {
     uint64_t extra_glyphs;
 #define G(n) ((uint64_t)(info[n].codepoint & 0xffff))
     glyph_index glyph = G(0);
+    SpritePosition* sprite_position[5];
     switch(num_glyphs) {
         case 1:
             extra_glyphs = 0;
@@ -405,34 +412,44 @@ shape_cell(Cell *cell, Cell *second_cell, hb_glyph_info_t *info, hb_glyph_positi
     }
 #undef G
     int error = 0;
-    SpritePosition *sp = sprite_position_for(font, glyph, extra_glyphs, false, &error), *sp2 = NULL;
-    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return num_glyphs; }
-    if (second_cell) { 
-        sp2 = sprite_position_for(font, glyph, extra_glyphs, true, &error);
-        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return num_glyphs; }
+    for (unsigned int i = 0; i < num_cells; i++) {
+        sprite_position[i] = sprite_position_for(font, glyph, extra_glyphs, (uint8_t)i, &error);
+        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
     }
-    if (sp->rendered && (!sp2 || sp2->rendered)) goto end;
+    if (sprite_position[0]->rendered) {
+        for (unsigned int i = 0; i < num_cells; i++) { set_cell_sprite(cells + i, sprite_position[i]); }
+        return;
+    }
+
     clear_canvas();
-    if (!render_glyphs_in_cell(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, second_cell == NULL ? 1 : 2, baseline)) {
-        PyErr_Print(); return num_glyphs;
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline);
+
+    for (unsigned int i = 0; i < num_cells; i++) { 
+        sprite_position[i]->rendered = true;
+        set_cell_sprite(cells + i, sprite_position[i]); 
+        uint8_t *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i);
+        current_send_sprite_to_gpu(sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
     }
-    if (second_cell) {
-        uint8_t *d1 = canvas + (2 * cell_width * cell_height);
-        uint8_t *d2 = canvas + (3 * cell_width * cell_height);
-        split_cell(canvas, d1, d2);
-        current_send_sprite_to_gpu(sp->x, sp->y, sp->z, d1);
-        current_send_sprite_to_gpu(sp2->x, sp2->y, sp2->z, d2);
-        sp2->rendered = true;
-    } else {
-        current_send_sprite_to_gpu(sp->x, sp->y, sp->z, canvas);
-    }
-    sp->rendered = true; 
-end:
-    cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
-    if (second_cell) { second_cell->sprite_x = sp2->x; second_cell->sprite_y = sp2->y; second_cell->sprite_z = sp2->z; }
-    return num_glyphs;
+
 }
 
+static inline void
+next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, unsigned int num_cells) {
+    num_glyphs = MIN(num_glyphs, 5); // we only support groupes of upto 5 glyphs
+    *num_group_cells = 0, *num_group_glyphs = 0;
+    bool unsafe_to_break;
+    do {
+        // If the glyph has no advance, then it is a combing char
+        if (positions[*num_group_glyphs].x_advance != 0) *num_group_cells += ((cells[*num_group_cells].attrs & WIDTH_MASK) == 2) ? 2 : 1;
+
+        // check if the next glyph can be broken at
+        *num_group_glyphs += 1;
+        unsafe_to_break = *num_group_glyphs < num_glyphs && info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK;
+
+    } while (unsafe_to_break && *num_group_cells < num_cells && *num_group_glyphs < MIN(num_glyphs, 6));
+    *num_group_cells = MAX(1, MIN(*num_group_cells, num_cells));
+    *num_group_glyphs = MAX(1, MIN(*num_group_glyphs, num_glyphs));
+}
 
 static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
@@ -440,17 +457,21 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     // for a discussion of glyph clustering in harfbuzz
     load_hb_buffer(first_cell, num_cells);
     hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
-    unsigned int info_length, positions_length, length;
+    unsigned int info_length, positions_length, num_glyphs;
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
-    length = MIN(info_length, positions_length);
-    unsigned int run_pos = 0;
-    Cell *cell, *second_cell;
-    while(length > run_pos && num_cells) {
-        cell = first_cell++; num_cells--;
-        if ((cell->attrs & WIDTH_MASK) == 2 && num_cells) { second_cell = first_cell++; num_cells--; }
-        else second_cell = NULL;
-        run_pos += shape_cell(cell, second_cell, info + run_pos, positions + run_pos, length - run_pos, font);
+    num_glyphs = MIN(info_length, positions_length);
+#if 0
+        // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 /path/to/font/file text
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, 4 * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+        printf("\n%s\n", canvas);
+        clear_canvas();
+#endif
+    unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
+    while(run_pos < num_glyphs && cell_pos < num_cells) {
+        next_group(&num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, num_glyphs - run_pos, num_cells - cell_pos);
+        render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font);
+        run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
 }
 
@@ -568,7 +589,7 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     uint64_t extra_glyphs = 0;
     if (!PyArg_ParseTuple(args, "H|I", &glyph, &extra_glyphs)) return NULL;
     int error;
-    SpritePosition *pos = sprite_position_for(&medium_font, glyph, extra_glyphs, false, &error);
+    SpritePosition *pos = sprite_position_for(&medium_font, glyph, extra_glyphs, 0, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
@@ -650,6 +671,7 @@ init_fonts(PyObject *module) {
     }
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
+    hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;
