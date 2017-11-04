@@ -448,16 +448,17 @@ next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *
     do {
         // If the glyph has no advance, then it is a combining char
         if (positions[*num_group_glyphs].x_advance != 0) *num_group_cells += ((cells[*num_group_cells].attrs & WIDTH_MASK) == 2) ? 2 : 1;
+        uint32_t cluster = info[*num_group_glyphs].cluster;
 
         // check if the next glyph can be broken at
-        *num_group_glyphs += 1;
-        unsafe_to_break = *num_group_glyphs < num_glyphs && info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK;
+#define IS_COMBINING_GLYPH ((unsafe_to_break = info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK || info[*num_group_glyphs].cluster == cluster))
         // Soak up all combining char glyphs
-        if (unsafe_to_break) {
-            while (*num_group_glyphs < num_glyphs && positions[*num_group_glyphs].x_advance == 0 && info[*num_group_glyphs].mask & HB_GLYPH_FLAG_UNSAFE_TO_BREAK) *num_group_glyphs += 1;
-        }
+        do {
+            *num_group_glyphs += 1;
+        } while (*num_group_glyphs < num_glyphs && IS_COMBINING_GLYPH && positions[*num_group_glyphs].x_advance == 0);
 
     } while (unsafe_to_break && *num_group_cells < num_cells && *num_group_glyphs < MIN(num_glyphs, 6));
+#undef IS_COMBINING_GLYPH
     *num_group_cells = MAX(1, MIN(*num_group_cells, num_cells));
     *num_group_glyphs = MAX(1, MIN(*num_group_glyphs, num_glyphs));
 }
