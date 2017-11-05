@@ -297,7 +297,6 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
     float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
     for (unsigned int i = 0; i < num_glyphs; i++) {
-        if (info[i].codepoint == 0) continue;
         if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;

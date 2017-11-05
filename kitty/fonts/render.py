@@ -207,11 +207,12 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
     with NamedTemporaryFile(delete=False) as f:
         f.write(rgb_data)
-    print('Rendered string {!r} below: ({}x{})'.format(text, cell_width, cell_height))
+    print('Rendered string {!r} below, with font: {}'.format(text, family))
     show(f.name, cell_width * len(cells), cell_height, 24)
     print('\n')
 
 
 def showcase():
-    test_render_string(family='Fira Code Medium')
-    test_render_string('==A=== -> -->', family='Fira Code Medium')
+    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Consolas')
+    test_render_string('你好,世界')
+    test_render_string('A=>>B!=C', family='Fira Code Medium')

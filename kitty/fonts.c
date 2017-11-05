@@ -367,8 +367,11 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
     index_type num;
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
+        attrs_type prev_width = 0;
         for (num = 0; num_cells && num < sizeof(shape_buffer)/sizeof(shape_buffer[0]) - 20; first_cell++, num_cells--) {
+            if (prev_width == 2) { prev_width = 0; continue; }
             shape_buffer[num++] = first_cell->ch;
+            prev_width = first_cell->attrs & WIDTH_MASK;
             if (first_cell->cc) {
                 shape_buffer[num++] = first_cell->cc & CC_MASK;
                 combining_type cc2 = first_cell->cc >> 16;
@@ -512,7 +515,7 @@ render_line(Line *line) {
     index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
-        if (prev_width == 2) continue;
+        if (prev_width == 2) { prev_width = 0; continue; }
         Cell *cell = line->cells + i;
         Font *cell_font = NULL;
         FontType cell_font_type = font_for_cell(cell, &cell_font);
