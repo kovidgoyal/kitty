@@ -185,7 +185,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             } else Py_CLEAR(self);
         } else {
             Py_CLEAR(self);
-            PyErr_NoMemory();
+            if (!PyErr_Occurred()) PyErr_NoMemory();
         }
     }
     return (PyObject*)self;
