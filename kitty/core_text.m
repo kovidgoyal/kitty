@@ -174,7 +174,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
     PyObject *descriptor;
     float point_sz, dpi;
-    if(!PyArg_ParseTuple(args, "Off", &descriptor, &point_sz, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "Off", &descriptor, &point_sz, &dpi)) return NULL;
     self = (Face *)type->tp_alloc(type, 0);
     if (self) {
         CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
@@ -194,7 +194,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(Face* self) {
-    CFRelease(self->descriptor);
+    if (self->descriptor) CFRelease(self->descriptor);
     if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
     if (self->font) CFRelease(self->font);
     Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name); Py_CLEAR(self->path);
