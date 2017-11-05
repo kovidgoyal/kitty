@@ -207,7 +207,7 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf)
 
 static inline PyObject*
 update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
-#define CALL(f) { if ((f)->face) { if(!set_size_for_face((f)->face, pt_sz, xdpi, ydpi)) return NULL; clear_sprite_map(f); } }
+#define CALL(f) { if ((f)->face) { if(!set_size_for_face((f)->face, pt_sz, xdpi, ydpi)) return NULL; clear_sprite_map(f); (f)->hb_font = harfbuzz_font_for_face((f)->face); } }
     CALL(&medium_font); CALL(&bold_font); CALL(&italic_font); CALL(&bi_font); CALL(&box_font);
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
         CALL(fallback_fonts + i);
