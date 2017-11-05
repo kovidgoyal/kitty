@@ -301,6 +301,14 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
     return true;
 }
 
+static PyObject*
+display_name(Face *self) {
+    const char *psname = FT_Get_Postscript_Name(self->face);
+    if (psname) return Py_BuildValue("s", psname);
+    Py_INCREF(self->path);
+    return self->path;
+}
+
 // Boilerplate {{{
 
 static PyMemberDef members[] = {
@@ -319,6 +327,7 @@ static PyMemberDef members[] = {
 };
 
 static PyMethodDef methods[] = {
+    METHODB(display_name, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
 

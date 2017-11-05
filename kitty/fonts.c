@@ -657,6 +657,33 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
     return ans;
 }
 
+static PyObject*
+current_fonts(PyObject UNUSED *self) {
+    PyObject *ans = PyDict_New();
+    if (!ans) return NULL;
+#define SET(key, val) {if (PyDict_SetItemString(ans, #key, val) != 0) { goto error; }}
+    SET(medium, medium_font.face);
+    if (bold_font.face) SET(bold, bold_font.face);
+    if (italic_font.face) SET(italic, italic_font.face);
+    if (bi_font.face) SET(bi, bi_font.face);
+    int num = 0;
+    while (fallback_fonts[num].face) num++;
+    PyObject *ff = PyTuple_New(num);
+    if (!ff) goto error;
+    num = 0;
+    while (fallback_fonts[num].face) {
+        Py_INCREF(fallback_fonts[num].face);
+        PyTuple_SET_ITEM(ff, num, fallback_fonts[num].face);
+        num++;
+    }
+    SET(fallback, ff);
+    Py_CLEAR(ff);
+    return ans;
+error:
+    Py_CLEAR(ans); return NULL;
+#undef SET
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
     METHODB(set_font, METH_VARARGS),
@@ -666,6 +693,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_sprite_position_for, METH_VARARGS),
     METHODB(concat_cells, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
+    METHODB(current_fonts, METH_NOARGS),
     METHODB(test_render_line, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

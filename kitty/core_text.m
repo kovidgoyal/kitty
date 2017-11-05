@@ -308,6 +308,12 @@ repr(Face *self) {
     );
 }
 
+static PyObject*
+display_name(Face *self) {
+#define R(x) if (self->x) { Py_INCREF(self->x); return self->x; }
+    R(full_name); R(postscript_name); R(family_name); R(path);
+#undef R
+}
 
 // Boilerplate {{{
 

@@ -180,7 +180,7 @@ def render_box_drawing(codepoint):
 
 def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
     from tempfile import NamedTemporaryFile
-    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line
+    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line, current_fonts
     from kitty.icat import detect_support, show
     if not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
@@ -208,12 +208,16 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
     with NamedTemporaryFile(delete=False) as f:
         f.write(rgb_data)
-    print('Rendered string {!r} below, with font: {}'.format(text, family))
+    cf = current_fonts()
+    fonts = [cf['medium'].display_name()]
+    fonts.extend(f.display_name() for f in cf['fallback'])
+    print('Rendered string {} below, with fonts: {}'.format(text, ', '.join(fonts)))
     show(f.name, cell_width * len(cells), cell_height, 24)
     print('\n')
 
 
 def showcase():
-    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Consolas')
-    test_render_string('你好,世界')
+    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Noto Sans Mono')
+    test_render_string('你好,世界', family='Noto Sans Mono')
+    test_render_string('|\U0001F929|\U0001F921|\U0001F91f|', family='Noto Sans Mono')
     test_render_string('A=>>B!=C', family='Fira Code Medium')
