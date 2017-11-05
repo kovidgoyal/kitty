@@ -45,6 +45,25 @@ def pkg_config(pkg, *args):
     )
 
 
+def at_least_version(package, major, minor=0):
+    q = '{}.{}'.format(major, minor)
+    if subprocess.run([PKGCONFIG, package, '--atleast-version=' + q]
+                      ).returncode != 0:
+        try:
+            ver = subprocess.check_output([PKGCONFIG, package, '--modversion']
+                                          ).decode('utf-8').strip()
+            qmajor, qminor = map(int, re.match(r'(\d+).(\d+)', ver).groups())
+        except Exception:
+            ver = 'not found'
+            qmajor = qminor = 0
+        if qmajor < major or (qmajor == major and qminor < minor):
+            raise SystemExit(
+                '{} >= {}.{} is required, found version: {}'.format(
+                    package, major, minor, ver
+                )
+            )
+
+
 def cc_version():
     cc = os.environ.get('CC', 'gcc')
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
@@ -98,7 +117,9 @@ def get_sanitize_args(cc, ccver):
     return sanitize_args
 
 
-def init_env(debug=False, sanitize=False, native_optimizations=True, profile=False):
+def init_env(
+    debug=False, sanitize=False, native_optimizations=True, profile=False
+):
     global cflags, ldflags, cc, ldpaths
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
@@ -116,14 +137,20 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
             ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
-            optimize, ' '.join(sanitize_args), ('' if debug else 'N'), stack_protector, missing_braces,
+            optimize,
+            ' '.join(sanitize_args),
+            ('' if debug else 'N'),
+            stack_protector,
+            missing_braces,
             '-march=native' if native_optimizations else '',
         )
     )
-    cflags = shlex.split(cflags
-                         ) + shlex.split(sysconfig.get_config_var('CCSHARED'))
+    cflags = shlex.split(cflags) + shlex.split(
+        sysconfig.get_config_var('CCSHARED')
+    )
     ldflags = os.environ.get(
-        'OVERRIDE_LDFLAGS', '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
+        'OVERRIDE_LDFLAGS',
+        '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
     )
     ldflags = shlex.split(ldflags)
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
@@ -141,20 +168,8 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
     # automatically if this version is high enough
     cflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
-    if not is_travis and not isosx and subprocess.Popen(
-        [PKGCONFIG, 'glew', '--atleast-version=2']
-    ).wait() != 0:
-        try:
-            ver = subprocess.check_output([PKGCONFIG, 'glew', '--modversion']
-                                          ).decode('utf-8').strip()
-            major = int(re.match(r'\d+', ver).group())
-        except Exception:
-            ver = 'not found'
-            major = 0
-        if major < 2:
-            raise SystemExit(
-                'glew >= 2.0.0 is required, found version: ' + ver
-            )
+    if not is_travis and not isosx:
+        at_least_version('glew', 2)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     if not isosx:
         cflags.extend(pkg_config('glew', '--cflags-only-I'))
@@ -176,7 +191,9 @@ def init_env(debug=False, sanitize=False, native_optimizations=True, profile=Fal
         glfw_ldflags = pkg_config('glfw3', '--libs')
         glew_libs = pkg_config('glew', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + libpng + ['-lunistring']
+    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + libpng + [
+        '-lunistring'
+    ]
     if not isosx:
         ldpaths += ['-lrt']
     if '-lz' not in ldpaths:
@@ -227,12 +244,16 @@ def dependecies_for(src, obj, all_headers):
         yield src
         yield from iter(all_headers)
     else:
-        RE_INC = re.compile(r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE)
+        RE_INC = re.compile(
+            r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE
+        )
         SPACE_TOK = '\x1B'
 
         text = deps.replace('\\\n', ' ').replace('\\ ', SPACE_TOK)
         for match in RE_INC.finditer(text):
-            files = (f.replace(SPACE_TOK, ' ') for f in match.group('deps').split())
+            files = (
+                f.replace(SPACE_TOK, ' ') for f in match.group('deps').split()
+            )
             for path in files:
                 path = os.path.abspath(path)
                 if path.startswith(base):
@@ -253,7 +274,9 @@ def compile_c_extension(module, incremental, sources, headers):
             cflgs.extend(map(define, defines))
 
         src = os.path.join(base, src)
-        if not incremental or newer(dest, *dependecies_for(src, dest, headers)):
+        if not incremental or newer(
+            dest, *dependecies_for(src, dest, headers)
+        ):
             run_tool([cc, '-MMD'] + cflgs + ['-c', src] + ['-o', dest])
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
@@ -307,7 +330,8 @@ def option_parser():
 def find_c_files():
     ans, headers = [], []
     d = os.path.join(base, 'kitty')
-    exclude = {'freetype.c', 'fontconfig.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
+    exclude = {'freetype.c',
+               'fontconfig.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
@@ -361,7 +385,8 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
     cmd = [cc] + cflags + [
-        'linux-launcher.c', '-o', os.path.join(launcher_dir, exe)
+        'linux-launcher.c', '-o',
+        os.path.join(launcher_dir, exe)
     ] + libs + pylib
     run_tool(cmd)
 
@@ -382,7 +407,8 @@ def package(args, for_bundle=False):  # {{{
     def src_ignore(parent, entries):
         return [
             x for x in entries
-            if '.' in x and x.rpartition('.')[2] not in ('py', 'so', 'conf', 'glsl')
+            if '.' in x and x.rpartition('.')[2] not in
+            ('py', 'so', 'conf', 'glsl')
         ]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
@@ -430,7 +456,9 @@ Categories=System;
 
 
 def clean():
-    for f in subprocess.check_output('git ls-files --others --ignored --exclude-from=.gitignore'.split()).decode('utf-8').splitlines():
+    for f in subprocess.check_output(
+        'git ls-files --others --ignored --exclude-from=.gitignore'.split()
+    ).decode('utf-8').splitlines():
         if f.startswith('logo/kitty.iconset') or f.startswith('dev/'):
             continue
         os.unlink(f)
