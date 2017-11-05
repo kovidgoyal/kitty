@@ -133,6 +133,7 @@ class TestParser(BaseTest):
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
         pb('\033[0;2m', *sgr('0 2'))
         pb('\033[;2m', *sgr('0 2'))
+        pb('\033[m', *sgr('0 '))
         pb('\033[1;;2m', *sgr('1 0 2'))
         pb('\033[38;5;1m', ('select_graphic_rendition', '38 5 1 '))
         pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38 2 1 2 3 '))

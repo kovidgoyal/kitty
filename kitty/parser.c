@@ -482,6 +482,10 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
         }
     }
     switch(state) {
+        case START:
+            params[num_params++] = 0;
+            SEND_SGR;
+            break;
         case COLOR1:
         case COLOR3:
         case NORMAL:
