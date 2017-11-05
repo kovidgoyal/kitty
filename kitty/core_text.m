@@ -119,22 +119,13 @@ coretext_all_fonts(PyObject UNUSED *_self) {
 }
 
 static inline bool
-init_font(Face *self) {
-    self->units_per_em = CTFontGetUnitsPerEm(self->font);
-    self->ascent = CTFontGetAscent(self->font);
-    self->descent = CTFontGetDescent(self->font);
-    self->leading = CTFontGetLeading(self->font);
-    self->underline_position = CTFontGetUnderlinePosition(self->font);
-    self->underline_thickness = CTFontGetUnderlineThickness(self->font);
-    self->scaled_point_sz = CTFontGetSize(self->font);
-
+create_harfbuzz_font(Face *self) {
     CGFontRef cg_font = CTFontCopyGraphicsFont(self->font, NULL);
     if (cg_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create CGFont"); return false; }
     hb_face_t *face = hb_coretext_face_create(cg_font);
     if (face == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create hb_face"); return false; }
     CGFontRelease(cg_font);
     unsigned int upem = hb_face_get_upem(face);
-    if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
     self->harfbuzz_font = hb_font_create(face);
     hb_face_destroy(face);
     hb_font_set_scale(self->harfbuzz_font, upem, upem);
@@ -142,23 +133,13 @@ init_font(Face *self) {
 }
 
 static inline bool
-apply_size(Face *self, float point_sz, float dpi) {
-    self->point_sz = point_sz;
+actual_new(Face *self, CTFontDescriptorRef desc, float point_sz, float dpi) {
+    self->descriptor = desc;
     self->dpi = dpi;
-    self->scaled_point_sz = (dpi / 72.0) * point_sz;
-    if (self->font) {
-        CTFontRef f = CTFontCreateCopyWithAttributes(self->font, self->scaled_point_sz, NULL, NULL);
-        CFRelease(self->font);
-        self->font = f;
-    } else {
-        self->font = CTFontCreateWithFontDescriptor(self->descriptor, self->scaled_point_sz, NULL);
-    }
-    if (self->font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create or copy font object"); return false; }
-    return init_font(self);
-}
-
-static inline bool
-init_font_names(Face *self) {
+    self->point_sz = point_sz;
+    float scaled_point_sz = (dpi / 72.0) * point_sz;
+    self->font = CTFontCreateWithFontDescriptor(self->descriptor, scaled_point_sz, NULL);
+    if (self->font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create font object"); return false; }
     self->family_name = convert_cfstring(CTFontCopyFamilyName(self->font), 1);
     self->full_name = convert_cfstring(CTFontCopyFullName(self->font), 1);
     self->postscript_name = convert_cfstring(CTFontCopyPostScriptName(self->font), 1);
@@ -166,7 +147,14 @@ init_font_names(Face *self) {
     self->path = PyUnicode_FromString([[url path] UTF8String]);
     [url release];
     if (self->family_name == NULL || self->full_name == NULL || self->postscript_name == NULL || self->path == NULL) {return false;}
-    return true;
+    self->units_per_em = CTFontGetUnitsPerEm(self->font);
+    self->ascent = CTFontGetAscent(self->font);
+    self->descent = CTFontGetDescent(self->font);
+    self->leading = CTFontGetLeading(self->font);
+    self->underline_position = CTFontGetUnderlinePosition(self->font);
+    self->underline_thickness = CTFontGetUnderlineThickness(self->font);
+    self->scaled_point_sz = CTFontGetSize(self->font);
+    return create_harfbuzz_font(self);
 }
 
 static PyObject*
@@ -179,8 +167,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (!self) return NULL;
     CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
     if (!desc) { Py_CLEAR(self); if(!PyErr_Occurred()) PyErr_NoMemory(); return NULL; }
-    self->descriptor = desc;
-    if (!apply_size(self, point_sz, dpi) || !init_font_names(self)) Py_CLEAR(self);
+    if (!actual_new(self, desc, point_sz, dpi)) Py_CLEAR(self);
     return (PyObject*)self;
 }
 
@@ -231,9 +218,7 @@ face_for_text(Face *self, PyObject *args) {
     if (ans == NULL) { CFRelease(font); PyErr_NoMemory(); goto end; }
     ans->font = font;
     ans->descriptor = self->descriptor; CFRetain(ans->descriptor);
-    if (!init_font(ans) || !init_font_names(ans)) { Py_CLEAR(ans); goto end; }
-    ans->point_sz = self->point_sz;
-    ans->dpi = self->dpi;
+    if(!actual_new(ans, ans->descriptor, self->point_sz, self->dpi)) Py_CLEAR(ans); 
 end:
     CFRelease(str);
     return (PyObject*)ans;
@@ -276,9 +261,18 @@ hb_font_t*
 harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
 
 bool
-set_size_for_face(PyObject *self, float pt_sz, float xdpi, float ydpi) {
+set_size_for_face(PyObject *s, float pt_sz, float xdpi, float ydpi) {
+    return true;
+    Face *self = (Face*)s;
     float dpi = (xdpi + ydpi) / 2.f;
-    return apply_size((Face*)self, pt_sz, dpi);
+    CTFontRef f = CTFontCreateCopyWithAttributes(self->font, self->scaled_point_sz, NULL, NULL);
+    if (f == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create font copy with different size"); return false; }
+    CFRelease(self->font); self->font = NULL;
+    self->point_sz = pt_sz; self->dpi = dpi; 
+    self->scaled_point_sz = CTFontGetSize(self->font);
+    self->font = f;
+    hb_font_destroy(self->harfbuzz_font); self->harfbuzz_font = NULL;
+    return create_harfbuzz_font(self);
 }
 
 
