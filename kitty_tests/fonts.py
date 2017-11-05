@@ -4,11 +4,11 @@
 
 from collections import OrderedDict
 
-from kitty.fast_data_types import (
-    set_send_sprite_to_gpu, sprite_map_set_layout,
-    sprite_map_set_limits, test_render_line, test_sprite_position_for
-)
 from kitty.constants import isosx
+from kitty.fast_data_types import (
+    set_send_sprite_to_gpu, sprite_map_set_layout, sprite_map_set_limits,
+    test_render_line, test_sprite_position_for, wcwidth
+)
 from kitty.fonts.box_drawing import box_chars
 from kitty.fonts.render import render_string, set_font_family
 
@@ -53,7 +53,7 @@ class Rendering(BaseTest):
         test_render_line(line)
         self.assertEqual(len(self.sprites), prerendered + len(box_chars))
 
-    def test_rendering(self):
+    def test_font_rendering(self):
         text = 'He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!'
         # macOS has no fonts capable of rendering combining chars
         if isosx:
@@ -61,5 +61,6 @@ class Rendering(BaseTest):
         cells = render_string(text)[-1]
         self.ae(len(cells), len(text.encode('ascii', 'ignore')))
         text = '你好,世界'
+        sz = sum(map(lambda x: wcwidth(ord(x)), text))
         cells = render_string(text)[-1]
-        self.ae(len(cells), 9 - (4 if isosx else 0))
+        self.ae(len(cells), sz)
