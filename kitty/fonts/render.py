@@ -6,10 +6,11 @@ import ctypes
 from collections import namedtuple
 from math import ceil, floor, pi, sin, sqrt
 
-from kitty.constants import isosx
 from kitty.config import defaults
+from kitty.constants import isosx
 from kitty.fast_data_types import (
-    send_prerendered_sprites, set_font, set_font_size
+    Screen, send_prerendered_sprites, set_font, set_font_size,
+    set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
 from kitty.utils import get_logical_dpi
@@ -177,8 +178,8 @@ def render_box_drawing(codepoint):
     return ctypes.addressof(buf), buf
 
 
-def render_string(text, family='monospace', size=11.0, dpi=96.0):
-    from kitty.fast_data_types import set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line
+def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
+    opts = defaults._replace(font_family=family)
     sprites = {}
 
     def send_to_gpu(x, y, z, data):
@@ -186,9 +187,13 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
 
     sprite_map_set_limits(100000, 100)
     set_send_sprite_to_gpu(send_to_gpu)
-    opts = defaults._replace(font_family=family)
+    cell_width, cell_height = set_font_family(opts, override_dpi=(dpi, dpi), override_font_size=size)
+    return sprites, cell_width, cell_height
+
+
+def render_string(text, family='monospace', size=11.0, dpi=96.0):
     try:
-        cell_width, cell_height = set_font_family(opts, override_dpi=(dpi, dpi), override_font_size=size)
+        sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
