@@ -88,10 +88,12 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 }
 
 bool
-set_size_for_face(PyObject *self, float pt_sz, float xdpi, float ydpi) {
+set_size_for_face(PyObject *s, float pt_sz, float xdpi, float ydpi) {
+    Face *self = (Face*)s;
     FT_UInt w = (FT_UInt)(ceilf(pt_sz * 64));
+    if (self->char_width == w && self->char_height == w && self->xdpi == (FT_UInt)xdpi && self->ydpi == (FT_UInt)ydpi) return true;
     ((Face*)self)->size_in_pts = pt_sz;
-    return set_font_size((Face*)self, w, w, (FT_UInt)xdpi, (FT_UInt) ydpi);
+    return set_font_size(self, w, w, (FT_UInt)xdpi, (FT_UInt) ydpi);
 }
 
 static inline int

@@ -262,9 +262,9 @@ harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
 
 bool
 set_size_for_face(PyObject *s, float pt_sz, float xdpi, float ydpi) {
-    return true;
     Face *self = (Face*)s;
     float dpi = (xdpi + ydpi) / 2.f;
+    if (self->dpi == dpi && self->point_sz == pt_sz) return true;
     CTFontRef f = CTFontCreateCopyWithAttributes(self->font, self->scaled_point_sz, NULL, NULL);
     if (f == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create font copy with different size"); return false; }
     CFRelease(self->font); self->font = NULL;
