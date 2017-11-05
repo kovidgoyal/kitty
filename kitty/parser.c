@@ -483,13 +483,13 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
     }
     switch(state) {
         case START:
-            params[num_params++] = 0;
+            if (num_params < MAX_PARAMS) params[num_params++] = 0;
             SEND_SGR;
             break;
         case COLOR1:
         case NORMAL:
         case MULTIPLE:
-            if (i > num_start) { READ_PARAM; }
+            if (i > num_start && num_params < MAX_PARAMS) { READ_PARAM; }
             if (num_params) { SEND_SGR; }
             else { REPORT_ERROR("Incomplete SGR code"); }
             break;
@@ -497,7 +497,7 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
             REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
             break;
         case COLOR3:
-            if (i > num_start) READ_PARAM;
+            if (i > num_start && num_params < MAX_PARAMS) READ_PARAM;
             if (num_params != 5) { 
                 REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
                 break;
