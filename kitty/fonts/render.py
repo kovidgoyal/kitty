@@ -50,12 +50,11 @@ FontState = namedtuple(
 
 def get_fallback_font(text, bold, italic):
     state = set_font_family.state
-    return create_face(
-        font_for_text(
+    font = font_for_text(
             text, state.family, state.pt_sz, state.xdpi, state.ydpi, bold,
             italic
         )
-    )
+    return None if font is None else create_face(font)
 
 
 def set_font_family(opts=None, override_font_size=None, override_dpi=None):
