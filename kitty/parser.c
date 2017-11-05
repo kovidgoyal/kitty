@@ -487,13 +487,23 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
             SEND_SGR;
             break;
         case COLOR1:
-        case COLOR3:
         case NORMAL:
         case MULTIPLE:
-            READ_PARAM;
-            SEND_SGR;
+            if (i > num_start) { READ_PARAM; }
+            if (num_params) { SEND_SGR; }
+            else { REPORT_ERROR("Incomplete SGR code"); }
             break;
-        default:
+        case COLOR:
+            REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
+            break;
+        case COLOR3:
+            if (i > num_start) READ_PARAM;
+            if (num_params != 5) { 
+                REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
+                break;
+            }
+            if (num_params) { SEND_SGR; }
+            else { REPORT_ERROR("Incomplete SGR code"); }
             break;
     }
 #undef READ_PARAM

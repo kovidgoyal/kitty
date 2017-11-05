@@ -136,6 +136,7 @@ class TestParser(BaseTest):
         pb('\033[m', *sgr('0 '))
         pb('\033[1;;2m', *sgr('1 0 2'))
         pb('\033[38;5;1m', ('select_graphic_rendition', '38 5 1 '))
+        pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58 2 1 2 3 '))
         pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38 2 1 2 3 '))
         pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001 2 1 2 3 '))
         pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
