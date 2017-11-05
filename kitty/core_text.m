@@ -313,6 +313,7 @@ display_name(Face *self) {
 #define R(x) if (self->x) { Py_INCREF(self->x); return self->x; }
     R(full_name); R(postscript_name); R(family_name); R(path);
 #undef R
+    Py_RETURN_NONE;
 }
 
 // Boilerplate {{{
@@ -336,6 +337,7 @@ static PyMemberDef members[] = {
 
 static PyMethodDef methods[] = {
     METHODB(face_for_text, METH_VARARGS),
+    METHODB(display_name, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
 

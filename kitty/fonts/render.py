@@ -178,12 +178,8 @@ def render_box_drawing(codepoint):
     return ctypes.addressof(buf), buf
 
 
-def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
-    from tempfile import NamedTemporaryFile
-    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line, current_fonts
-    from kitty.icat import detect_support, show
-    if not detect_support():
-        raise SystemExit('Your terminal does not support the graphics protocol')
+def render_string(text, family='monospace', size=11.0, dpi=96.0):
+    from kitty.fast_data_types import set_send_sprite_to_gpu, Screen, sprite_map_set_limits, test_render_line
     sprites = {}
 
     def send_to_gpu(x, y, z, data):
@@ -205,6 +201,17 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
         sp = line.sprite_at(i)
         if sp != (0, 0, 0):
             cells.append(sprites[sp])
+    return cell_width, cell_height, cells
+
+
+def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
+    from tempfile import NamedTemporaryFile
+    from kitty.fast_data_types import concat_cells, current_fonts
+    from kitty.icat import detect_support, show
+    if not detect_support():
+        raise SystemExit('Your terminal does not support the graphics protocol')
+
+    cell_width, cell_height, cells = render_string(text, family, size, dpi)
     rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
     with NamedTemporaryFile(delete=False) as f:
         f.write(rgb_data)
