@@ -135,6 +135,7 @@ def render_special(underline=0, strikethrough=False, missing=False):
     s = set_font_family.state
     cell_width, cell_height, baseline = s.cell_width, s.cell_height, s.baseline
     underline_position, underline_thickness = s.underline_position, s.underline_thickness
+    underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture if missing else CharTexture()
 
