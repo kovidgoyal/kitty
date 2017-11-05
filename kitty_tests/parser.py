@@ -115,19 +115,30 @@ class TestParser(BaseTest):
         pb('\033[?1000;1004h', ('screen_set_mode', 1000, 1), ('screen_set_mode', 1004, 1))
         pb('\033[20;4;20l', ('screen_reset_mode', 20, 0), ('screen_reset_mode', 4, 0), ('screen_reset_mode', 20, 0))
         s.reset()
-        pb('\033[1;3;4;7;9;34;44m', ('select_graphic_rendition', '1 3 4 7 9 34 44 '))
+
+        def sgr(params):
+            return (('select_graphic_rendition', '{} '.format(x)) for x in params.split())
+
+        pb('\033[1;3;4;7;9;34;44m', *sgr('1 3 4 7 9 34 44'))
         for attr in 'bold italic reverse strikethrough'.split():
             self.assertTrue(getattr(s.cursor, attr))
         self.ae(s.cursor.decoration, 1)
         self.ae(s.cursor.fg, 4 << 8 | 1)
         self.ae(s.cursor.bg, 4 << 8 | 1)
-        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38 5 1 48 5 7 '))
+        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38 5 1 '), ('select_graphic_rendition', '48 5 7 '))
         self.ae(s.cursor.fg, 1 << 8 | 1)
         self.ae(s.cursor.bg, 7 << 8 | 1)
-        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 48 2 7 8 9 '))
+        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 2 7 8 9 '))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
-        pb('\033[;2m', ('select_graphic_rendition', '0 2 '))
+        pb('\033[0;2m', *sgr('0 2'))
+        pb('\033[;2m', *sgr('0 2'))
+        pb('\033[1;;2m', *sgr('1 0 2'))
+        pb('\033[38;5;1m', ('select_graphic_rendition', '38 5 1 '))
+        pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38 2 1 2 3 '))
+        pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001 2 1 2 3 '))
+        pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
+            'select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 5 9 '), ('select_graphic_rendition', '58 5 7 '))
         c = s.callbacks
         pb('\033[5n', ('report_device_status', 5, 0))
         self.ae(c.wtcbuf, b'\033[0n')

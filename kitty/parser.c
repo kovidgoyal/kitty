@@ -343,6 +343,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // CSI mode {{{
 #define CSI_SECONDARY \
         case ';': \
+        case ':': \
         case '"': \
         case '*': \
         case '\'': \
@@ -380,6 +381,119 @@ repr_csi_params(unsigned int *params, unsigned int num_params) {
     }
     buf[pos] = 0;
     return buf;
+}
+
+static inline void
+parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject DUMP_UNUSED *dump_callback) {
+    enum State { START, NORMAL, MULTIPLE, COLOR, COLOR1, COLOR3 };
+    enum State state = START;
+    unsigned int num_params, num_start, i;
+
+#define READ_PARAM { params[num_params++] = utoi(buf + num_start, i - num_start); }
+#define SEND_SGR { REPORT_PARAMS(select_graphic_rendition, params, num_params); select_graphic_rendition(screen, params, num_params); state = START; num_params = 0; }
+
+    for (i=0, num_start=0, num_params=0; i < num && num_params < MAX_PARAMS; i++) {
+        switch(buf[i]) {
+            IS_DIGIT
+                switch(state) {
+                    case START:
+                        num_start = i;
+                        state = NORMAL;
+                        num_params = 0;
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            case ';':
+                switch(state) {
+                    case START:
+                        params[num_params++] = 0;
+                        SEND_SGR;
+                        break;
+                    case NORMAL:
+                        READ_PARAM;
+                        switch(params[0]) {
+                            case 38:
+                            case 48:
+                            case 58:
+                                state = COLOR;
+                                num_start = i + 1;
+                                break;
+                            default:
+                                SEND_SGR;
+                                break;
+                        }
+                        break;
+                    case MULTIPLE:
+                        READ_PARAM;
+                        SEND_SGR;
+                        break;
+                    case COLOR:
+                        READ_PARAM;
+                        switch(params[1]) {
+                            case 2:
+                                state = COLOR3;
+                                break;
+                            case 5:
+                                state = COLOR1;
+                                break;
+                            default:
+                                REPORT_ERROR("Invalid SGR color code with unknown color type: %u", params[1]);
+                                return;
+                        }
+                        num_start = i + 1;
+                        break;
+                    case COLOR1:
+                        READ_PARAM;
+                        SEND_SGR;
+                        break;
+                    case COLOR3:
+                        READ_PARAM;
+                        if (num_params == 5) { SEND_SGR; }
+                        else num_start = i + 1;
+                        break;
+                }
+                break;
+            case ':':
+                switch(state) {
+                    case START:
+                        REPORT_ERROR("Invalid SGR code containing ':' at an invalid location: %u", i);
+                        return;
+                    case NORMAL:
+                        READ_PARAM;
+                        state = MULTIPLE;
+                        num_start = i + 1;
+                        break;
+                    case MULTIPLE:
+                        READ_PARAM;
+                        num_start = i + 1;
+                        break;
+                    case COLOR: 
+                    case COLOR1: 
+                    case COLOR3:
+                        REPORT_ERROR("Invalid SGR code containing disallowed character: %s", utf8(buf[i]));
+                        return;
+                }
+                break;
+            default:
+                REPORT_ERROR("Invalid SGR code containing disallowed character: %s", utf8(buf[i]));
+                return;
+        }
+    }
+    switch(state) {
+        case COLOR1:
+        case COLOR3:
+        case NORMAL:
+        case MULTIPLE:
+            READ_PARAM;
+            SEND_SGR;
+            break;
+        default:
+            break;
+    }
+#undef READ_PARAM
+#undef SEND_SGR
 }
 
 static inline void
@@ -424,12 +538,6 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     } \
     break;
 
-#define CSI_HANDLER_MULTIPLE(name) \
-    REPORT_PARAMS(name, params, num_params); \
-    name(screen, params, num_params); \
-    break;
-
-
     char start_modifier = 0, end_modifier = 0;
     uint32_t *buf = screen->parser_buf, code = screen->parser_buf[screen->parser_buf_pos];
     unsigned int num = screen->parser_buf_pos, start, i, num_params=0, p1, p2;
@@ -438,6 +546,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (buf[0] == '>' || buf[0] == '?' || buf[0] == '!') {
         start_modifier = (char)screen->parser_buf[0];
         buf++; num--;
+    }
+    if (code == SGR && !start_modifier) {
+        parse_sgr(screen, buf, num, params, dump_callback);
+        return;
     }
     if (num > 0) {
         switch(buf[num-1]) {
@@ -506,8 +618,6 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             SET_MODE(screen_set_mode); 
         case RM: 
             SET_MODE(screen_reset_mode); 
-        case SGR: 
-            CSI_HANDLER_MULTIPLE(select_graphic_rendition); 
         case DSR: 
             CALL_CSI_HANDLER1P(report_device_status, 0, '?'); 
         case SC: 
