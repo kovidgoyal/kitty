@@ -171,6 +171,7 @@ def init_env(
     # automatically if this version is high enough
     cflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
+    at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     if isosx:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']

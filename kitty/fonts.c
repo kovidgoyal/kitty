@@ -8,13 +8,6 @@
 #include "fonts.h"
 #include "state.h"
 
-#if HB_VERSION_MAJOR > 0 || (HB_VERSION_MAJOR == 0 && (HB_VERSION_MINOR > 9 || (HB_VERSION_MINOR == 9 && HB_VERSION_MICRO >= 42)))
-#define HARBUZZ_HAS_SET_CLUSTER_LEVEL
-#endif
-#if HB_VERSION_MAJOR < 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR < 5))
-#define HB_GLYPH_FLAG_UNSAFE_TO_BREAK 1
-#endif
-
 #define MISSING_GLYPH 4
 
 typedef uint16_t glyph_index;
@@ -685,10 +678,8 @@ init_fonts(PyObject *module) {
     }
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
-#ifdef HARBUZZ_HAS_SET_CLUSTER_LEVEL
     // A cluster level of HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS is needed for the unsafe to break API
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
-#endif
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;

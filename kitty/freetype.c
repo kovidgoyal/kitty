@@ -11,9 +11,6 @@
 #include <ft2build.h>
 #include <hb-ft.h>
 
-#if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 0 || (HB_VERSION_MINOR == 0 && HB_VERSION_MICRO >= 5)))
-#define HARBUZZ_HAS_LOAD_FLAGS
-#endif
 #if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 6 || (HB_VERSION_MINOR == 6 && HB_VERSION_MICRO >= 3)))
 #define HARFBUZZ_HAS_CHANGE_FONT
 #endif
@@ -131,9 +128,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (!set_size_for_face((PyObject*)self, size_in_pts, xdpi, ydpi)) { Py_CLEAR(self); return NULL; }
         self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
         if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
-#ifdef HARBUZZ_HAS_LOAD_FLAGS
         hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
-#endif
     }
     return (PyObject*)self;
 }
