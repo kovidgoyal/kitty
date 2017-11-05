@@ -176,18 +176,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     float point_sz, dpi;
     if (!PyArg_ParseTuple(args, "Off", &descriptor, &point_sz, &dpi)) return NULL;
     self = (Face *)type->tp_alloc(type, 0);
-    if (self) {
-        CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
-        if (desc) {
-            self->descriptor = desc;
-            if (apply_size(self, point_sz, dpi)) { 
-                if (!init_font_names(self)) Py_CLEAR(self);
-            } else Py_CLEAR(self);
-        } else {
-            Py_CLEAR(self);
-            if (!PyErr_Occurred()) PyErr_NoMemory();
-        }
-    }
+    if (!self) return NULL;
+    CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
+    if (!desc) { Py_CLEAR(self); if(!PyErr_Occurred()) PyErr_NoMemory(); return NULL; }
+    self->descriptor = desc;
+    if (!apply_size(self, point_sz, dpi) || !init_font_names(self)) Py_CLEAR(self);
     return (PyObject*)self;
 }
 
@@ -233,18 +226,17 @@ face_for_text(Face *self, PyObject *args) {
     CFRange range = CFRangeMake(0, CFStringGetLength(str));
     CFStringGetCharacters(str, range, chars);
     CTFontRef font = CTFontCreateForString(self->font, str, range);
-    if (font == self->font) return (PyObject*)self;
     if (font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback font"); goto end; }
     ans = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
-    if (ans == NULL) { PyErr_NoMemory(); goto end; }
+    if (ans == NULL) { CFRelease(font); PyErr_NoMemory(); goto end; }
     ans->font = font;
+    ans->descriptor = self->descriptor; CFRetain(ans->descriptor);
     if (!init_font(ans) || !init_font_names(ans)) { Py_CLEAR(ans); goto end; }
     ans->point_sz = self->point_sz;
     ans->dpi = self->dpi;
 end:
     CFRelease(str);
-    if (ans) return (PyObject*)ans;
-    return NULL;
+    return (PyObject*)ans;
 }
 
 static inline void
