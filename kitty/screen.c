@@ -323,7 +323,8 @@ screen_align(Screen *self) {
 
 // Graphics {{{
 
-void screen_alignment_display(Screen *self) {
+void 
+screen_alignment_display(Screen *self) {
     // http://www.vt100.net/docs/vt510-rm/DECALN.html 
     screen_cursor_position(self, 1, 1);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
@@ -333,7 +334,8 @@ void screen_alignment_display(Screen *self) {
     }
 }
 
-void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count) {
+void 
+select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count) {
 #define SET_COLOR(which) \
     if (i < count) { \
         attr = params[i++];\
