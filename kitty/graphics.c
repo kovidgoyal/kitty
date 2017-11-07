@@ -23,6 +23,16 @@ PyTypeObject GraphicsManager_Type;
 
 #define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
+#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
+    if (base->capacity < num) { \
+        size_t _newcap = MAX(initial_cap, MAX(2 * base->capacity, num)); \
+        base->array = realloc(base->array, sizeof(type) * _newcap); \
+        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
+        if (zero_mem) memset(base->array + base->capacity, 0, sizeof(type) * (_newcap - base->capacity)); \
+        base->capacity = _newcap; \
+    }
+
+
 static bool send_to_gpu = true;
 
 GraphicsManager*
@@ -78,18 +88,6 @@ dealloc(GraphicsManager* self) {
 }
 
 static size_t internal_id_counter = 1;
-
-static inline void*
-ensure_space(void *array, size_t *capacity, size_t count, size_t item_size, bool initialize) {
-    if (count < *capacity) return array;
-    void *ans = realloc(array, (*capacity) * item_size * 2);
-    if (ans == NULL) fatal("Out of memory re-allocating array.");
-    if (initialize) {
-        memset(((uint8_t*)array) + ((*capacity) * item_size), 0, ((*capacity) * item_size));
-    }
-    *capacity *= 2;
-    return ans;
-}
 
 static inline void
 remove_from_array(void *array, size_t item_size, size_t idx, size_t array_count) {
@@ -354,7 +352,7 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
         }
     }
     *existing = false;
-    self->images = ensure_space(self->images, &self->images_capacity, self->image_count, sizeof(Image), true);
+    ensure_space_for(self, images, Image, self->image_count + 1, images_capacity, 64, true);
     return self->images + self->image_count++;
 }
 
@@ -539,13 +537,6 @@ create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid
 
 // Displaying images {{{
 
-#define ensure_space_for(base, array, type, num, capacity, initial_cap) \
-    if (base->capacity < num) { \
-        base->capacity = MAX(initial_cap, MAX(2 * base->capacity, num)); \
-        base->array = realloc(base->array, sizeof(type) * base->capacity); \
-        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
-    }
-
 static inline void
 update_src_rect(ImageRef *ref, Image *img) {
     // The src rect in OpenGL co-ords [0, 1] with origin at top-left corner of image
@@ -579,7 +570,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (img == NULL) img = img_by_client_id(self, g->id);
     if (img == NULL) { set_add_response("ENOENT", "Put command refers to non-existent image with id: %u", g->id); return; }
     if (!img->data_loaded) { set_add_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return; }
-    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 10);
+    ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
     ImageRef *ref = NULL;
@@ -642,7 +633,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
-        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 100);
+        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
         ImageRenderData *rd = self->render_data + self->count;
 #define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = r.a; rd->vertices[n*4 + 3] = r.b;
         R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
