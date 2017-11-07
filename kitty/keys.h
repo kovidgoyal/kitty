@@ -996,60 +996,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: False extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: False extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: False extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: False extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: False extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: False extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: False extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: False extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: False extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: False extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: False extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: False extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: False extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: False extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: False extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: False extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: False extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: False extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: False extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: False extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: False extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: False extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: False extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: False extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: False extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: False extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: False extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: False extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: False extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: False extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: False extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: False extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: False extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: False extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: False extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: False extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: False extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: False extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: False extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: False extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: False extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: False extended: False
@@ -1105,7 +1105,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: False extended: False
 {0},
 {0},
 {0},
@@ -1125,59 +1124,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: False extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: False extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: False extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: False extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: False extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: False extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: False extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: False extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: False extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: False extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: False extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: False extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: False extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: False extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: False extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: False extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: False extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: False extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: False extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: False extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: False extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: False extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: False extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: False extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: False extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: False extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: False extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: False extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: False extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: False extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: False extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: False extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: False extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: False extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: False extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: False extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: False extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: False extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: False extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: False extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: False extended: False
@@ -1233,7 +1233,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: False extended: False
+{0},
 {0},
 {0},
 {0},
@@ -3044,60 +3044,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: False extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: False extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: False extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: False extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: False extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: False extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: False extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: False extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: False extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: False extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: False extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: False extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: False extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: False extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: False extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: False extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: False extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: False extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: False extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: False extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: False extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: False extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: False extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: False extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: False extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: False extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: False extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: False extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: False extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: False extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: False extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: False extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: False extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: False extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: False extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: False extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: False extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: False extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: False extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: False extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: False extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: False extended: False
@@ -3153,7 +3153,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: False extended: False
 {0},
 {0},
 {0},
@@ -3173,59 +3172,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: False extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: False extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: False extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: False extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: False extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: False extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: False extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: False extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: False extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: False extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: False extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: False extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: False extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: False extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: False extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: False extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: False extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: False extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: False extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: False extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: False extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: False extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: False extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: False extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: False extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: False extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: False extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: False extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: False extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: False extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: False extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: False extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: False extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: False extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: False extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: False extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: False extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: False extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: False extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: False extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: False extended: False
@@ -3281,7 +3281,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: False extended: False
+{0},
 {0},
 {0},
 {0},
@@ -5092,60 +5092,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: False extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: False extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: False extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: False extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: False extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: False extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: False extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: False extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: False extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: False extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: False extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: False extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: False extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: False extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: False extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: False extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: False extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: False extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: False extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: False extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: False extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: False extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: False extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: False extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: False extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: False extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: False extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: False extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: False extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: False extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: False extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: False extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: False extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: False extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: False extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: False extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: False extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: False extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: False extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: False extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: False extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: False extended: False
@@ -5201,7 +5201,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: False extended: False
 {0},
 {0},
 {0},
@@ -5221,59 +5220,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: False extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: False extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: False extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: False extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: False extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: False extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: False extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: False extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: False extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: False extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: False extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: False extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: False extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: False extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: False extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: False extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: False extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: False extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: False extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: False extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: False extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: False extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: False extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: False extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: False extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: False extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: False extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: False extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: False extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: False extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: False extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: False extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: False extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: False extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: False extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: False extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: False extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: False extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: False extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: False extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: False extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: False extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: False extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: False extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: False extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: False extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: False extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: False extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: False extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: False extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: False extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: False extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: False extended: False
@@ -5329,7 +5329,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: False extended: False
+{0},
 {0},
 {0},
 {0},
@@ -9188,60 +9188,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: True extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: True extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: True extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: True extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: True extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: True extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: True extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: True extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: True extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: True extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: True extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: True extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: True extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: True extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: True extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: True extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: True extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: True extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: True extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: True extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: True extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: True extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: True extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: True extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: True extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: True extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: True extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: True extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: True extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: True extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: True extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: True extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: True extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: True extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: True extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: True extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: True extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: True extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: True extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: True extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: True extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: True extended: False
@@ -9297,7 +9297,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: True extended: False
 {0},
 {0},
 {0},
@@ -9317,59 +9316,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: True extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: True extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: True extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: True extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: True extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: True extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: True extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: True extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: True extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: True extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: True extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: True extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: True extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: True extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: True extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: True extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: True extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: True extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: True extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: True extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: True extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: True extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: True extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: True extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: True extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: True extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: True extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: True extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: True extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: True extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: True extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: True extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: True extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: True extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: True extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: True extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: True extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: True extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: True extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: True extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: True extended: False
@@ -9425,7 +9425,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: True extended: False
+{0},
 {0},
 {0},
 {0},
@@ -11236,60 +11236,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: True extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: True extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: True extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: True extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: True extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: True extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: True extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: True extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: True extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: True extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: True extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: True extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: True extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: True extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: True extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: True extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: True extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: True extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: True extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: True extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: True extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: True extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: True extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: True extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: True extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: True extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: True extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: True extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: True extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: True extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: True extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: True extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: True extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: True extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: True extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: True extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: True extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: True extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: True extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: True extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: True extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: True extended: False
@@ -11345,7 +11345,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: True extended: False
 {0},
 {0},
 {0},
@@ -11365,59 +11364,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: True extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: True extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: True extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: True extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: True extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: True extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: True extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: True extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: True extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: True extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: True extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: True extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: True extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: True extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: True extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: True extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: True extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: True extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: True extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: True extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: True extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: True extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: True extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: True extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: True extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: True extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: True extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: True extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: True extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: True extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: True extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: True extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: True extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: True extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: True extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: True extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: True extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: True extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: True extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: True extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: True extended: False
@@ -11473,7 +11473,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: True extended: False
+{0},
 {0},
 {0},
 {0},
@@ -13284,60 +13284,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SPACE smkx: True extended: False
+{2, 0x1b, 0x27}, // ALT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x2c}, // ALT+COMMA smkx: True extended: False
+{2, 0x1b, 0x2d}, // ALT+MINUS smkx: True extended: False
+{2, 0x1b, 0x2e}, // ALT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x2f}, // ALT+SLASH smkx: True extended: False
+{2, 0x1b, 0x30}, // ALT+0 smkx: True extended: False
+{2, 0x1b, 0x31}, // ALT+1 smkx: True extended: False
+{2, 0x1b, 0x32}, // ALT+2 smkx: True extended: False
+{2, 0x1b, 0x33}, // ALT+3 smkx: True extended: False
+{2, 0x1b, 0x34}, // ALT+4 smkx: True extended: False
+{2, 0x1b, 0x35}, // ALT+5 smkx: True extended: False
+{2, 0x1b, 0x36}, // ALT+6 smkx: True extended: False
+{2, 0x1b, 0x37}, // ALT+7 smkx: True extended: False
+{2, 0x1b, 0x38}, // ALT+8 smkx: True extended: False
+{2, 0x1b, 0x39}, // ALT+9 smkx: True extended: False
+{2, 0x1b, 0x3b}, // ALT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x3d}, // ALT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x61}, // ALT+A smkx: True extended: False
+{2, 0x1b, 0x62}, // ALT+B smkx: True extended: False
+{2, 0x1b, 0x63}, // ALT+C smkx: True extended: False
+{2, 0x1b, 0x64}, // ALT+D smkx: True extended: False
+{2, 0x1b, 0x65}, // ALT+E smkx: True extended: False
+{2, 0x1b, 0x66}, // ALT+F smkx: True extended: False
+{2, 0x1b, 0x67}, // ALT+G smkx: True extended: False
+{2, 0x1b, 0x68}, // ALT+H smkx: True extended: False
+{2, 0x1b, 0x69}, // ALT+I smkx: True extended: False
+{2, 0x1b, 0x6a}, // ALT+J smkx: True extended: False
+{2, 0x1b, 0x6b}, // ALT+K smkx: True extended: False
+{2, 0x1b, 0x6c}, // ALT+L smkx: True extended: False
+{2, 0x1b, 0x6d}, // ALT+M smkx: True extended: False
+{2, 0x1b, 0x6e}, // ALT+N smkx: True extended: False
+{2, 0x1b, 0x6f}, // ALT+O smkx: True extended: False
+{2, 0x1b, 0x70}, // ALT+P smkx: True extended: False
+{2, 0x1b, 0x71}, // ALT+Q smkx: True extended: False
+{2, 0x1b, 0x72}, // ALT+R smkx: True extended: False
+{2, 0x1b, 0x73}, // ALT+S smkx: True extended: False
+{2, 0x1b, 0x74}, // ALT+T smkx: True extended: False
+{2, 0x1b, 0x75}, // ALT+U smkx: True extended: False
+{2, 0x1b, 0x76}, // ALT+V smkx: True extended: False
+{2, 0x1b, 0x77}, // ALT+W smkx: True extended: False
+{2, 0x1b, 0x78}, // ALT+X smkx: True extended: False
+{2, 0x1b, 0x79}, // ALT+Y smkx: True extended: False
+{2, 0x1b, 0x7a}, // ALT+Z smkx: True extended: False
+{2, 0x1b, 0x5b}, // ALT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x5c}, // ALT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x5d}, // ALT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x60}, // ALT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+ENTER smkx: True extended: False
 {2, 0x1b, 0x9}, // ALT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x33, 0x7e}, // ALT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x33, 0x7e}, // ALT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x33, 0x43}, // ALT+RIGHT smkx: True extended: False
@@ -13393,7 +13393,6 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+KP_ENTER smkx: True extended: False
 {0},
 {0},
 {0},
@@ -13413,59 +13412,60 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
+{2, 0x1b, 0x20}, // ALT+SHIFT+SPACE smkx: True extended: False
+{2, 0x1b, 0x22}, // ALT+SHIFT+APOSTROPHE smkx: True extended: False
+{2, 0x1b, 0x3c}, // ALT+SHIFT+COMMA smkx: True extended: False
+{2, 0x1b, 0x5f}, // ALT+SHIFT+MINUS smkx: True extended: False
+{2, 0x1b, 0x3e}, // ALT+SHIFT+PERIOD smkx: True extended: False
+{2, 0x1b, 0x3f}, // ALT+SHIFT+SLASH smkx: True extended: False
+{2, 0x1b, 0x29}, // ALT+SHIFT+0 smkx: True extended: False
+{2, 0x1b, 0x21}, // ALT+SHIFT+1 smkx: True extended: False
+{2, 0x1b, 0x40}, // ALT+SHIFT+2 smkx: True extended: False
+{2, 0x1b, 0x23}, // ALT+SHIFT+3 smkx: True extended: False
+{2, 0x1b, 0x24}, // ALT+SHIFT+4 smkx: True extended: False
+{2, 0x1b, 0x25}, // ALT+SHIFT+5 smkx: True extended: False
+{2, 0x1b, 0x5e}, // ALT+SHIFT+6 smkx: True extended: False
+{2, 0x1b, 0x26}, // ALT+SHIFT+7 smkx: True extended: False
+{2, 0x1b, 0x2a}, // ALT+SHIFT+8 smkx: True extended: False
+{2, 0x1b, 0x28}, // ALT+SHIFT+9 smkx: True extended: False
+{2, 0x1b, 0x3a}, // ALT+SHIFT+SEMICOLON smkx: True extended: False
+{2, 0x1b, 0x2b}, // ALT+SHIFT+EQUAL smkx: True extended: False
+{2, 0x1b, 0x41}, // ALT+SHIFT+A smkx: True extended: False
+{2, 0x1b, 0x42}, // ALT+SHIFT+B smkx: True extended: False
+{2, 0x1b, 0x43}, // ALT+SHIFT+C smkx: True extended: False
+{2, 0x1b, 0x44}, // ALT+SHIFT+D smkx: True extended: False
+{2, 0x1b, 0x45}, // ALT+SHIFT+E smkx: True extended: False
+{2, 0x1b, 0x46}, // ALT+SHIFT+F smkx: True extended: False
+{2, 0x1b, 0x47}, // ALT+SHIFT+G smkx: True extended: False
+{2, 0x1b, 0x48}, // ALT+SHIFT+H smkx: True extended: False
+{2, 0x1b, 0x49}, // ALT+SHIFT+I smkx: True extended: False
+{2, 0x1b, 0x4a}, // ALT+SHIFT+J smkx: True extended: False
+{2, 0x1b, 0x4b}, // ALT+SHIFT+K smkx: True extended: False
+{2, 0x1b, 0x4c}, // ALT+SHIFT+L smkx: True extended: False
+{2, 0x1b, 0x4d}, // ALT+SHIFT+M smkx: True extended: False
+{2, 0x1b, 0x4e}, // ALT+SHIFT+N smkx: True extended: False
+{2, 0x1b, 0x4f}, // ALT+SHIFT+O smkx: True extended: False
+{2, 0x1b, 0x50}, // ALT+SHIFT+P smkx: True extended: False
+{2, 0x1b, 0x51}, // ALT+SHIFT+Q smkx: True extended: False
+{2, 0x1b, 0x52}, // ALT+SHIFT+R smkx: True extended: False
+{2, 0x1b, 0x53}, // ALT+SHIFT+S smkx: True extended: False
+{2, 0x1b, 0x54}, // ALT+SHIFT+T smkx: True extended: False
+{2, 0x1b, 0x55}, // ALT+SHIFT+U smkx: True extended: False
+{2, 0x1b, 0x56}, // ALT+SHIFT+V smkx: True extended: False
+{2, 0x1b, 0x57}, // ALT+SHIFT+W smkx: True extended: False
+{2, 0x1b, 0x58}, // ALT+SHIFT+X smkx: True extended: False
+{2, 0x1b, 0x59}, // ALT+SHIFT+Y smkx: True extended: False
+{2, 0x1b, 0x5a}, // ALT+SHIFT+Z smkx: True extended: False
+{2, 0x1b, 0x7b}, // ALT+SHIFT+LEFT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7c}, // ALT+SHIFT+BACKSLASH smkx: True extended: False
+{2, 0x1b, 0x7d}, // ALT+SHIFT+RIGHT_BRACKET smkx: True extended: False
+{2, 0x1b, 0x7e}, // ALT+SHIFT+GRAVE_ACCENT smkx: True extended: False
 {0},
 {0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{0},
-{1, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
-{1, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
+{2, 0x1b, 0x1b}, // ALT+SHIFT+ESCAPE smkx: True extended: False
+{2, 0x1b, 0xd}, // ALT+SHIFT+ENTER smkx: True extended: False
 {3, 0x1b, 0x5b, 0x5a}, // ALT+SHIFT+TAB smkx: True extended: False
-{1, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
+{2, 0x1b, 0x7f}, // ALT+SHIFT+BACKSPACE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x32, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+INSERT smkx: True extended: False
 {6, 0x1b, 0x5b, 0x33, 0x3b, 0x34, 0x7e}, // ALT+SHIFT+DELETE smkx: True extended: False
 {6, 0x1b, 0x5b, 0x31, 0x3b, 0x34, 0x43}, // ALT+SHIFT+RIGHT smkx: True extended: False
@@ -13521,7 +13521,7 @@ static const uint8_t key_bytes[32768][10] = {
 {0},
 {0},
 {0},
-{1, 0xd}, // ALT+SHIFT+KP_ENTER smkx: True extended: False
+{0},
 {0},
 {0},
 {0},

@@ -2,10 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import string
+
 from . import fast_data_types as defines
+from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes
 from .utils import base64_encode
-from .key_encoding import KEY_MAP
 
 
 def modify_key_bytes(keybytes, amt):
@@ -24,8 +26,9 @@ def modify_complex_key(name, amt):
 
 control_codes = {}
 smkx_key_map = {}
-alt_codes = {defines.GLFW_KEY_TAB: b'\033\t'}
-shift_alt_codes = {defines.GLFW_KEY_TAB: key_as_bytes('kcbt')}
+alt_codes = {defines.GLFW_KEY_TAB: b'\033\t', defines.GLFW_KEY_ENTER: b'\033\r', defines.GLFW_KEY_ESCAPE: b'\033\033', defines.GLFW_KEY_BACKSPACE: b'\033\177'}
+shift_alt_codes = alt_codes.copy()
+shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
 alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 
 for kf, kn in {
@@ -87,7 +90,6 @@ control_codes[defines.GLFW_KEY_6] = (30,)
 control_codes[defines.GLFW_KEY_SLASH] = (31,)
 control_codes[defines.GLFW_KEY_SPACE] = (0,)
 
-
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
     defines.GLFW_KEY_UP: b'\033[A',
@@ -136,6 +138,45 @@ def extended_key_event(key, mods, action):
     ).encode('ascii')
 
 
+def pmap(names, r):
+    names = names.split()
+    r = [x.encode('ascii') for x in r]
+    if len(names) != len(r):
+        raise ValueError('Incorrect mapping for {}'.format(names))
+    names = [getattr(defines, 'GLFW_KEY_' + n) for n in names]
+    return dict(zip(names, r))
+
+
+UN_SHIFTED_PRINTABLE = {
+    getattr(defines, 'GLFW_KEY_' + x): x.lower().encode('ascii')
+    for x in string.digits + string.ascii_uppercase
+}
+UN_SHIFTED_PRINTABLE.update(pmap(
+    'SPACE APOSTROPHE COMMA MINUS PERIOD SLASH SEMICOLON EQUAL',
+    " ',-./;="
+))
+UN_SHIFTED_PRINTABLE.update(pmap(
+    'LEFT_BRACKET BACKSLASH RIGHT_BRACKET GRAVE_ACCENT',
+    "[\\]`"
+))
+SHIFTED_PRINTABLE = UN_SHIFTED_PRINTABLE.copy()
+SHIFTED_PRINTABLE.update({
+    getattr(defines, 'GLFW_KEY_' + x): x.encode('ascii') for x in string.ascii_uppercase
+})
+SHIFTED_PRINTABLE.update(pmap(
+    '1 2 3 4 5 6 7 8 9 0',
+    '!@#$%^&*()'
+))
+SHIFTED_PRINTABLE.update(pmap(
+    'APOSTROPHE COMMA MINUS PERIOD SLASH SEMICOLON EQUAL',
+    '"<_>?:+'
+))
+SHIFTED_PRINTABLE.update(pmap(
+    'LEFT_BRACKET BACKSLASH RIGHT_BRACKET GRAVE_ACCENT',
+    "{|}~"
+))
+
+
 def key_to_bytes(key, smkx, extended, mods, action):
     if extended:
         return extended_key_event(key, mods, action)
@@ -143,9 +184,13 @@ def key_to_bytes(key, smkx, extended, mods, action):
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
         # Map Ctrl-key to ascii control code
         data.extend(control_codes[key])
-    elif mods in alt_mods and key in alt_codes:
-        # Printable keys handled by on_text_input()
-        data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+    elif mods in alt_mods:
+        if key in alt_codes:
+            data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+        elif key in UN_SHIFTED_PRINTABLE:
+            m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
+            data.append(0o33)
+            data.extend(m[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
