@@ -10,19 +10,14 @@
 #include "screen.h"
 #include <GLFW/glfw3.h>
 
-const uint8_t*
+const char*
 key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
     if ((action & 3) == 3) return NULL;
     if ((unsigned)glfw_key >= sizeof(key_map)/sizeof(key_map[0]) || glfw_key < 0) return NULL;
     uint16_t key = key_map[glfw_key];
     if (key == UINT8_MAX) return NULL;
-    mods &= 0xF;
-    key |= (mods & 0xF) << 7;
-    key |= (action & 3) << 11;
-    key |= (smkx & 1) << 13;
-    key |= (extended & 1) << 14;
-    if (key >= SIZE_OF_KEY_BYTES_MAP) return NULL;
-    return key_bytes[key];
+    KeyboardMode mode = extended ? EXTENDED : (smkx ? APPLICATION : NORMAL);
+    return key_lookup(key, mode, mods, action);
 }
 
 #define SPECIAL_INDEX(key) ((key & 0x7f) | ( (mods & 0xF) << 7))
@@ -166,8 +161,8 @@ on_key_input(int key, int scancode, int action, int mods) {
             (action == GLFW_REPEAT && screen->modes.mDECARM) ||
             screen->modes.mEXTENDED_KEYBOARD
        ) {
-        const uint8_t *data = key_to_bytes(lkey, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
-        if (data) schedule_write_to_child(w->id, (char*)(data + 1), *data);
+        const char *data = key_to_bytes(lkey, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
+        if (data) schedule_write_to_child(w->id, (data + 1), *data);
     }
 }
 
@@ -178,7 +173,7 @@ on_key_input(int key, int scancode, int action, int mods) {
 PYWRAP1(key_to_bytes) {
     int glfw_key, smkx, extended, mods, action;
     PA("ippii", &glfw_key, &smkx, &extended, &mods, &action);
-    const uint8_t *ans = key_to_bytes(glfw_key, smkx & 1, extended & 1, mods, action);
+    const char *ans = key_to_bytes(glfw_key, smkx & 1, extended & 1, mods, action);
     if (ans == NULL) return Py_BuildValue("y#", "", 0);
     return Py_BuildValue("y#", ans + 1, *ans);
 }

@@ -263,46 +263,62 @@ def generate_key_table():
         if k is not None:
             w('case %d: return "%s";' % (i, key_name(k)))
     w('default: return NULL; }}\n')
-    number_entries = 128 * 256
-    inits = []
-    longest = 0
-    for i in range(number_entries):
-        key = i & 0x7f  # lowest seven bits
-        if key < key_count:
-            glfw_key = key_rmap[key]
-            k = keys.get(glfw_key)
-        else:
-            k = None
-        if k is None:
-            inits.append(None)
-        else:
-            mods = (i >> 7) & 0b1111
-            rest = i >> 11
-            action = rest & 0b11
-            if action == 0b11:  # no such action
-                inits.append(None)
+    w('typedef enum { NORMAL, APPLICATION, EXTENDED } KeyboardMode;\n')
+    w('static inline const char*\nkey_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {')
+    i = 1
+
+    def ind(*a):
+        w(('  ' * i)[:-1], *a)
+    ind('switch(mode) {')
+    mmap = [(False, False), (True, False), (False, True)]
+    for (smkx, extended), mode in zip(mmap, 'NORMAL APPLICATION EXTENDED'.split()):
+        i += 1
+        ind('case {}:'.format(mode))
+        i += 1
+        ind('switch(action & 3) { case 3: return NULL; ')
+        for action in (defines.GLFW_RELEASE, defines.GLFW_PRESS, defines.GLFW_REPEAT):
+            i += 1
+            ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
+            i += 1
+            if action != defines.GLFW_RELEASE or mode == 'EXTENDED':
+                ind('switch (mods & 0xf) { ')
+                i += 1
+                for mods in range(16):
+                    key_bytes = {}
+                    for key in range(key_count):
+                        glfw_key = key_rmap[key]
+                        data = key_to_bytes(glfw_key, smkx, extended, mods, action)
+                        if data:
+                            key_bytes[key] = data, glfw_key
+                    i += 1
+                    ind('case 0x{:x}:'.format(mods))
+                    i += 1
+                    if key_bytes:
+                        ind('switch(key & 0x7f) { default: return NULL;')
+                        i += 1
+                        for key, (data, glfw_key) in key_bytes.items():
+                            ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))
+                            i += 1
+                            items = bytearray(data)
+                            items.insert(0, len(items))
+                            ind('return "{}";'.format(''.join('\\x{:02x}'.format(x) for x in items)))
+                            i -= 1
+                        i -= 1
+                        ind('} // end switch(key)')
+                    else:
+                        ind('return NULL;')
+                    i -= 2
+                i -= 1
+                ind('}  // end switch(mods)\n')
+                i -= 1
             else:
-                smkx = bool(rest & 0b100)
-                extended = bool(rest & 0b1000)
-                data = key_to_bytes(glfw_key, smkx, extended, mods, action)
-                if data:
-                    longest = max(len(data), longest)
-                    inits.append((data, k, mods, smkx, extended))
-                else:
-                    inits.append(None)
-    longest += 1
-    w('#define SIZE_OF_KEY_BYTES_MAP %d\n' % number_entries)
-    w('static const uint8_t key_bytes[%d][%d] = {' % (number_entries, longest))
-    # empty = '{' + ('0, ' * longest) + '},'
-    empty = '{0},'
-    all_mods = {k.rpartition('_')[2]: v for k, v in vars(defines).items() if k.startswith('GLFW_MOD_')}
-    all_mods = {k: v for k, v in sorted(all_mods.items(), key=lambda x: x[0])}
-    for b in inits:
-        if b is None:
-            w(empty)
-        else:
-            b, k, mods, smkx, extended = b
-            b = bytearray(b)
-            name = '+'.join([k for k, v in all_mods.items() if v & mods] + [key_name(k)])
-            w('{%d, ' % len(b) + ', '.join(map(hex, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
-    w('};')
+                ind('return NULL;\n')
+                i -= 1
+            i -= 1
+        ind('}}  // end switch(action) in mode {}\n\n'.format(mode))
+        i -= 1
+    i -= 1
+    ind('}')
+    ind('return NULL;')
+    i -= 1
+    w('}')
