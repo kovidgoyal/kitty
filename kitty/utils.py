@@ -2,17 +2,20 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import ctypes
 import math
 import os
 import re
 import shlex
 import string
 import subprocess
+import sys
 from contextlib import contextmanager
+from ctypes.util import find_library
 from functools import lru_cache
 from time import monotonic
 
-from .constants import isosx, iswayland, selection_clipboard_funcs, x11_display
+from .constants import isosx, iswayland, selection_clipboard_funcs, x11_display, x11_window_id
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
     redirect_std_streams, wcwidth as wcwidth_impl
@@ -225,3 +228,63 @@ def adjust_line_height(cell_height, val):
     if isinstance(val, int):
         return cell_height + val
     return int(cell_height * val)
+
+
+def init_startup_notification_x11(window):
+    # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
+    display = x11_display()
+    if not display:
+        return
+    lib = find_library('startup-notification-1')
+    if not lib:
+        safe_print('libstartup-notification-1.so not found, disabling startup notification', file=sys.stderr)
+        return
+    lib = init_startup_notification_x11.lib = ctypes.CDLL(lib)
+    f = lib.sn_display_new
+    f.restype = ctypes.c_void_p
+    f.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+    display = f(x11_display(), None, None)
+    f = lib.sn_launchee_context_new_from_environment
+    f.restype = ctypes.c_void_p
+    f.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    ctx = f(display, 0)
+    os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
+    if ctx:
+        f = lib.sn_launchee_context_setup_window
+        f.argtypes = [ctypes.c_void_p, ctypes.c_int32]
+        f(ctx, x11_window_id(window))
+    return ctx
+
+
+def end_startup_notification_x11(ctx):
+    lib = init_startup_notification_x11.lib
+    f = lib.sn_launchee_context_complete
+    f.restype = None
+    f.argtypes = [ctypes.c_void_p]
+    f(ctx)
+    f = lib.sn_launchee_context_unref
+    f.restype = None
+    f.argtypes = [ctypes.c_void_p]
+    f(ctx)
+
+
+def init_startup_notification(window):
+    if isosx or iswayland:
+        return
+    try:
+        return init_startup_notification_x11(window)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+
+
+def end_startup_notification(ctx):
+    if not ctx:
+        return
+    if isosx or iswayland:
+        return
+    try:
+        end_startup_notification_x11(ctx)
+    except Exception:
+        import traceback
+        traceback.print_exc()

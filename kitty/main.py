@@ -28,7 +28,10 @@ from .fast_data_types import (
     install_sigchld_handler, set_logical_dpi, set_options
 )
 from .layout import all_layouts
-from .utils import color_as_int, detach, get_logical_dpi, safe_print
+from .utils import (
+    color_as_int, detach, end_startup_notification, get_logical_dpi,
+    init_startup_notification, safe_print
+)
 
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
@@ -188,6 +191,7 @@ def run_app(opts, args):
         viewport_size.width = 640
         viewport_size.height = 400
         window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
+    startup_ctx = init_startup_notification(window)
     window.make_context_current()
     if isosx:
         from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu, cocoa_init
@@ -202,6 +206,7 @@ def run_app(opts, args):
     initialize_window(window, opts)
     boss = Boss(window, opts, args)
     boss.start()
+    end_startup_notification(startup_ctx)
     try:
         boss.child_monitor.main_loop()
     finally:
