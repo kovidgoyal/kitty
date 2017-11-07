@@ -212,8 +212,9 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     from tempfile import NamedTemporaryFile
     from kitty.fast_data_types import concat_cells, current_fonts
     from kitty.icat import detect_support, show
-    if not detect_support():
+    if not hasattr(test_render_string, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
+    test_render_string.detected = True
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
     rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
