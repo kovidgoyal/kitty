@@ -256,7 +256,8 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                text = BRACKETED_PASTE_START.encode('ascii') + text + BRACKETED_PASTE_END.encode('ascii')
+                bpe = BRACKETED_PASTE_END.encode('ascii')
+                text = BRACKETED_PASTE_START.encode('ascii') + text.replace(bpe, b'') + bpe
             self.write_to_child(text)
 
     def copy_to_clipboard(self):
