@@ -26,6 +26,8 @@ version 0.5.0 [future]
   applications such as neovim when they mistakenly identify kitty as a libvte
   based terminal.
 
+- Linux no longer require glew as a dependency
+
 
 version 0.4.2 [2017-10-23]
 ---------------------------
