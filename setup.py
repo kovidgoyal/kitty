@@ -417,7 +417,7 @@ def package(args, for_bundle=False):  # {{{
     safe_makedirs(launcher_dir)
     build_linux_launcher(args, launcher_dir, for_bundle)
     if not isosx:  # {{{ linux desktop gunk
-        icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256')
+        icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
         shutil.copy2('logo/kitty.png', icdir)
         deskdir = os.path.join(ddir, 'share', 'applications')
