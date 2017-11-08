@@ -65,7 +65,7 @@ def at_least_version(package, major, minor=0):
 
 
 def cc_version():
-    cc = os.environ.get('CC', 'gcc')
+    cc = os.environ.get('CC', 'clang' if isosx else 'gcc')
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
     ver = raw.split('.')[:2]
     try:
