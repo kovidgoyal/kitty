@@ -5687,488 +5687,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0x2:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x72\x43\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x72\x43\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x72\x43\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x72\x43\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x72\x43\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x72\x43\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x72\x43\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x72\x43\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x72\x43\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x72\x43\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x72\x43\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x72\x43\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x72\x43\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x72\x43\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x72\x43\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x72\x43\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x72\x43\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x72\x43\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x72\x43\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x72\x43\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x72\x43\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x72\x43\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x72\x43\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x72\x43\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x72\x43\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x72\x43\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x72\x43\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x72\x43\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x72\x43\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x72\x43\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x72\x43\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x72\x43\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x43\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x72\x43\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x43\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x72\x43\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x72\x43\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x72\x43\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x72\x43\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x72\x43\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x72\x43\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x72\x43\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x72\x43\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x43\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x72\x43\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x72\x43\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x43\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x72\x43\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x72\x43\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x43\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x43\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x43\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x72\x43\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x72\x43\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x72\x43\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x72\x43\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x72\x43\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x72\x43\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x72\x43\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x72\x43\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x72\x43\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x72\x43\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x72\x43\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x72\x43\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x72\x43\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x72\x43\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x72\x43\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x72\x43\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x72\x43\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x72\x43\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x3:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x72\x44\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x72\x44\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x72\x44\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x72\x44\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x72\x44\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x72\x44\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x72\x44\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x72\x44\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x72\x44\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x72\x44\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x72\x44\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x72\x44\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x72\x44\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x72\x44\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x72\x44\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x72\x44\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x72\x44\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x72\x44\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x72\x44\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x72\x44\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x72\x44\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x72\x44\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x72\x44\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x72\x44\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x72\x44\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x72\x44\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x72\x44\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x72\x44\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x72\x44\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x72\x44\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x72\x44\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x72\x44\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x44\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x72\x44\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x44\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x72\x44\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x72\x44\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x72\x44\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x72\x44\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x72\x44\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x72\x44\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x72\x44\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x72\x44\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x44\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x72\x44\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x72\x44\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x44\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x72\x44\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x72\x44\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x44\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x44\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x44\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x72\x44\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x72\x44\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x72\x44\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x72\x44\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x72\x44\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x72\x44\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x72\x44\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x72\x44\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x72\x44\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x72\x44\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x72\x44\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x72\x44\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x72\x44\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x72\x44\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x72\x44\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x72\x44\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x72\x44\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x72\x44\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x4:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x72\x45\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x72\x45\x42\x1b\x5c";
@@ -6407,7 +5925,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x72\x45\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0x5:
+                  case 0x3:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x72\x46\x41\x1b\x5c";
@@ -6647,6 +6165,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x72\x46\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x72\x46\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x4:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x72\x43\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x72\x43\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x72\x43\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x72\x43\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x72\x43\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x72\x43\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x72\x43\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x72\x43\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x72\x43\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x72\x43\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x72\x43\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x72\x43\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x72\x43\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x72\x43\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x72\x43\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x72\x43\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x72\x43\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x72\x43\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x72\x43\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x72\x43\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x72\x43\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x72\x43\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x72\x43\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x72\x43\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x72\x43\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x72\x43\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x72\x43\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x72\x43\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x72\x43\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x72\x43\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x72\x43\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x72\x43\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x43\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x72\x43\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x43\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x72\x43\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x72\x43\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x72\x43\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x72\x43\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x72\x43\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x72\x43\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x72\x43\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x72\x43\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x43\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x72\x43\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x72\x43\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x43\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x72\x43\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x72\x43\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x43\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x43\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x43\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x72\x43\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x72\x43\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x72\x43\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x72\x43\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x72\x43\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x72\x43\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x72\x43\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x72\x43\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x72\x43\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x72\x43\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x72\x43\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x72\x43\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x72\x43\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x72\x43\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x72\x43\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x72\x43\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x72\x43\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x72\x43\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x43\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x5:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x72\x44\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x72\x44\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x72\x44\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x72\x44\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x72\x44\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x72\x44\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x72\x44\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x72\x44\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x72\x44\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x72\x44\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x72\x44\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x72\x44\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x72\x44\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x72\x44\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x72\x44\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x72\x44\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x72\x44\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x72\x44\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x72\x44\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x72\x44\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x72\x44\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x72\x44\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x72\x44\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x72\x44\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x72\x44\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x72\x44\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x72\x44\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x72\x44\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x72\x44\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x72\x44\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x72\x44\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x72\x44\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x44\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x72\x44\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x44\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x72\x44\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x72\x44\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x72\x44\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x72\x44\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x72\x44\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x72\x44\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x72\x44\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x72\x44\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x44\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x72\x44\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x72\x44\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x44\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x72\x44\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x72\x44\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x44\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x44\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x44\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x72\x44\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x72\x44\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x72\x44\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x72\x44\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x72\x44\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x72\x44\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x72\x44\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x72\x44\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x72\x44\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x72\x44\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x72\x44\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x72\x44\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x72\x44\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x72\x44\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x72\x44\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x72\x44\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x72\x44\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x72\x44\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x44\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0x6:
                     switch(key & 0x7f) { default: return NULL;
@@ -7615,488 +7615,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0xa:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x72\x4b\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xb:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x72\x4c\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xc:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x72\x4d\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x72\x4d\x42\x1b\x5c";
@@ -8335,7 +7853,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x72\x4d\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0xd:
+                  case 0xb:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x72\x4e\x41\x1b\x5c";
@@ -8575,6 +8093,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x72\x4e\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x72\x4e\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xc:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x72\x4b\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x4b\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xd:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x72\x4c\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x72\x4c\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0xe:
                     switch(key & 0x7f) { default: return NULL;
@@ -9451,488 +9451,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0x2:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x70\x43\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x70\x43\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x70\x43\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x70\x43\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x70\x43\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x70\x43\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x70\x43\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x70\x43\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x70\x43\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x70\x43\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x70\x43\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x70\x43\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x70\x43\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x70\x43\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x70\x43\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x70\x43\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x70\x43\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x70\x43\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x70\x43\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x70\x43\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x70\x43\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x70\x43\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x70\x43\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x70\x43\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x70\x43\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x70\x43\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x70\x43\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x70\x43\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x70\x43\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x70\x43\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x70\x43\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x70\x43\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x43\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x70\x43\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x43\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x70\x43\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x70\x43\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x70\x43\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x70\x43\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x70\x43\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x70\x43\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x70\x43\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x70\x43\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x43\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x70\x43\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x70\x43\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x43\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x70\x43\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x70\x43\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x43\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x43\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x43\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x70\x43\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x70\x43\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x70\x43\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x70\x43\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x70\x43\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x70\x43\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x70\x43\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x70\x43\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x70\x43\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x70\x43\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x70\x43\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x70\x43\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x70\x43\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x70\x43\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x70\x43\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x70\x43\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x70\x43\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x70\x43\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x3:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x70\x44\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x70\x44\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x70\x44\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x70\x44\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x70\x44\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x70\x44\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x70\x44\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x70\x44\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x70\x44\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x70\x44\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x70\x44\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x70\x44\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x70\x44\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x70\x44\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x70\x44\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x70\x44\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x70\x44\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x70\x44\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x70\x44\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x70\x44\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x70\x44\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x70\x44\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x70\x44\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x70\x44\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x70\x44\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x70\x44\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x70\x44\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x70\x44\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x70\x44\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x70\x44\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x70\x44\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x70\x44\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x44\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x70\x44\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x44\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x70\x44\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x70\x44\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x70\x44\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x70\x44\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x70\x44\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x70\x44\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x70\x44\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x70\x44\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x44\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x70\x44\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x70\x44\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x44\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x70\x44\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x70\x44\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x44\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x44\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x44\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x70\x44\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x70\x44\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x70\x44\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x70\x44\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x70\x44\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x70\x44\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x70\x44\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x70\x44\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x70\x44\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x70\x44\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x70\x44\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x70\x44\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x70\x44\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x70\x44\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x70\x44\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x70\x44\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x70\x44\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x70\x44\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x4:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x70\x45\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x70\x45\x42\x1b\x5c";
@@ -10171,7 +9689,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x70\x45\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0x5:
+                  case 0x3:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x70\x46\x41\x1b\x5c";
@@ -10411,6 +9929,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x70\x46\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x70\x46\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x4:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x70\x43\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x70\x43\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x70\x43\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x70\x43\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x70\x43\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x70\x43\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x70\x43\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x70\x43\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x70\x43\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x70\x43\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x70\x43\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x70\x43\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x70\x43\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x70\x43\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x70\x43\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x70\x43\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x70\x43\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x70\x43\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x70\x43\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x70\x43\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x70\x43\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x70\x43\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x70\x43\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x70\x43\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x70\x43\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x70\x43\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x70\x43\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x70\x43\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x70\x43\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x70\x43\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x70\x43\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x70\x43\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x43\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x70\x43\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x43\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x70\x43\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x70\x43\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x70\x43\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x70\x43\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x70\x43\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x70\x43\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x70\x43\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x70\x43\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x43\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x70\x43\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x70\x43\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x43\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x70\x43\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x70\x43\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x43\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x43\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x43\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x70\x43\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x70\x43\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x70\x43\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x70\x43\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x70\x43\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x70\x43\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x70\x43\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x70\x43\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x70\x43\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x70\x43\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x70\x43\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x70\x43\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x70\x43\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x70\x43\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x70\x43\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x70\x43\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x70\x43\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x70\x43\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x43\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x5:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x70\x44\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x70\x44\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x70\x44\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x70\x44\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x70\x44\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x70\x44\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x70\x44\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x70\x44\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x70\x44\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x70\x44\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x70\x44\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x70\x44\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x70\x44\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x70\x44\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x70\x44\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x70\x44\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x70\x44\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x70\x44\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x70\x44\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x70\x44\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x70\x44\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x70\x44\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x70\x44\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x70\x44\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x70\x44\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x70\x44\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x70\x44\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x70\x44\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x70\x44\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x70\x44\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x70\x44\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x70\x44\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x44\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x70\x44\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x44\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x70\x44\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x70\x44\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x70\x44\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x70\x44\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x70\x44\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x70\x44\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x70\x44\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x70\x44\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x44\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x70\x44\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x70\x44\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x44\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x70\x44\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x70\x44\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x44\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x44\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x44\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x70\x44\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x70\x44\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x70\x44\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x70\x44\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x70\x44\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x70\x44\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x70\x44\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x70\x44\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x70\x44\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x70\x44\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x70\x44\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x70\x44\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x70\x44\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x70\x44\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x70\x44\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x70\x44\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x70\x44\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x70\x44\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x44\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0x6:
                     switch(key & 0x7f) { default: return NULL;
@@ -11379,488 +11379,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0xa:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x70\x4b\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xb:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x70\x4c\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xc:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x70\x4d\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x70\x4d\x42\x1b\x5c";
@@ -12099,7 +11617,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x70\x4d\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0xd:
+                  case 0xb:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x70\x4e\x41\x1b\x5c";
@@ -12339,6 +11857,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x70\x4e\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x70\x4e\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xc:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x70\x4b\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x4b\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xd:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x70\x4c\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x70\x4c\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0xe:
                     switch(key & 0x7f) { default: return NULL;
@@ -13215,488 +13215,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0x2:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x74\x43\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x74\x43\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x74\x43\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x74\x43\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x74\x43\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x74\x43\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x74\x43\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x74\x43\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x74\x43\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x74\x43\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x74\x43\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x74\x43\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x74\x43\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x74\x43\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x74\x43\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x74\x43\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x74\x43\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x74\x43\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x74\x43\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x74\x43\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x74\x43\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x74\x43\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x74\x43\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x74\x43\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x74\x43\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x74\x43\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x74\x43\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x74\x43\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x74\x43\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x74\x43\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x74\x43\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x74\x43\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x43\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x74\x43\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x43\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x74\x43\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x74\x43\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x74\x43\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x74\x43\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x74\x43\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x74\x43\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x74\x43\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x74\x43\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x43\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x74\x43\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x74\x43\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x43\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x74\x43\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x74\x43\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x43\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x43\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x43\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x74\x43\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x74\x43\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x74\x43\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x74\x43\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x74\x43\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x74\x43\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x74\x43\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x74\x43\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x74\x43\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x74\x43\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x74\x43\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x74\x43\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x74\x43\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x74\x43\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x74\x43\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x74\x43\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x74\x43\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x74\x43\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x3:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x74\x44\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x74\x44\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x74\x44\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x74\x44\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x74\x44\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x74\x44\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x74\x44\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x74\x44\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x74\x44\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x74\x44\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x74\x44\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x74\x44\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x74\x44\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x74\x44\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x74\x44\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x74\x44\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x74\x44\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x74\x44\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x74\x44\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x74\x44\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x74\x44\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x74\x44\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x74\x44\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x74\x44\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x74\x44\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x74\x44\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x74\x44\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x74\x44\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x74\x44\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x74\x44\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x74\x44\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x74\x44\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x44\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x74\x44\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x44\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x74\x44\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x74\x44\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x74\x44\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x74\x44\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x74\x44\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x74\x44\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x74\x44\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x74\x44\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x44\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x74\x44\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x74\x44\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x44\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x74\x44\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x74\x44\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x44\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x44\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x44\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x74\x44\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x74\x44\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x74\x44\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x74\x44\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x74\x44\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x74\x44\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x74\x44\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x74\x44\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x74\x44\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x74\x44\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x74\x44\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x74\x44\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x74\x44\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x74\x44\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x74\x44\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x74\x44\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x74\x44\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x74\x44\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0x4:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x74\x45\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x74\x45\x42\x1b\x5c";
@@ -13935,7 +13453,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x74\x45\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0x5:
+                  case 0x3:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x74\x46\x41\x1b\x5c";
@@ -14175,6 +13693,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x74\x46\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x74\x46\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x4:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x74\x43\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x74\x43\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x74\x43\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x74\x43\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x74\x43\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x74\x43\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x74\x43\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x74\x43\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x74\x43\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x74\x43\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x74\x43\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x74\x43\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x74\x43\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x74\x43\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x74\x43\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x74\x43\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x74\x43\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x74\x43\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x74\x43\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x74\x43\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x74\x43\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x74\x43\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x74\x43\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x74\x43\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x74\x43\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x74\x43\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x74\x43\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x74\x43\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x74\x43\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x74\x43\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x74\x43\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x74\x43\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x43\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x74\x43\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x43\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x74\x43\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x74\x43\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x74\x43\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x74\x43\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x74\x43\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x74\x43\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x74\x43\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x74\x43\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x43\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x74\x43\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x74\x43\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x43\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x74\x43\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x74\x43\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x43\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x43\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x43\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x74\x43\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x74\x43\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x74\x43\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x74\x43\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x74\x43\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x74\x43\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x74\x43\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x74\x43\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x74\x43\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x74\x43\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x74\x43\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x74\x43\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x74\x43\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x74\x43\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x74\x43\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x74\x43\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x74\x43\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x74\x43\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x43\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0x5:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x74\x44\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x74\x44\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x74\x44\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x74\x44\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x74\x44\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x74\x44\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x74\x44\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x74\x44\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x74\x44\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x74\x44\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x74\x44\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x74\x44\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x74\x44\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x74\x44\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x74\x44\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x74\x44\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x74\x44\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x74\x44\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x74\x44\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x74\x44\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x74\x44\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x74\x44\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x74\x44\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x74\x44\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x74\x44\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x74\x44\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x74\x44\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x74\x44\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x74\x44\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x74\x44\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x74\x44\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x74\x44\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x44\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x74\x44\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x44\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x74\x44\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x74\x44\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x74\x44\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x74\x44\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x74\x44\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x74\x44\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x74\x44\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x74\x44\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x44\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x74\x44\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x74\x44\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x44\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x74\x44\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x74\x44\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x44\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x44\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x44\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x74\x44\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x74\x44\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x74\x44\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x74\x44\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x74\x44\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x74\x44\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x74\x44\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x74\x44\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x74\x44\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x74\x44\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x74\x44\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x74\x44\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x74\x44\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x74\x44\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x74\x44\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x74\x44\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x74\x44\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x74\x44\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x44\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0x6:
                     switch(key & 0x7f) { default: return NULL;
@@ -15143,488 +15143,6 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 0xa:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x74\x4b\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xb:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x41\x1b\x5c";
-                      case 1: // APOSTROPHE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x42\x1b\x5c";
-                      case 2: // COMMA
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x43\x1b\x5c";
-                      case 3: // MINUS
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x44\x1b\x5c";
-                      case 4: // PERIOD
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x45\x1b\x5c";
-                      case 5: // SLASH
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x46\x1b\x5c";
-                      case 6: // 0
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x47\x1b\x5c";
-                      case 7: // 1
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x48\x1b\x5c";
-                      case 8: // 2
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x49\x1b\x5c";
-                      case 9: // 3
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4a\x1b\x5c";
-                      case 10: // 4
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4b\x1b\x5c";
-                      case 11: // 5
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4c\x1b\x5c";
-                      case 12: // 6
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4d\x1b\x5c";
-                      case 13: // 7
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4e\x1b\x5c";
-                      case 14: // 8
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x4f\x1b\x5c";
-                      case 15: // 9
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x50\x1b\x5c";
-                      case 16: // SEMICOLON
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x51\x1b\x5c";
-                      case 17: // EQUAL
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x52\x1b\x5c";
-                      case 18: // A
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x53\x1b\x5c";
-                      case 19: // B
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x54\x1b\x5c";
-                      case 20: // C
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x55\x1b\x5c";
-                      case 21: // D
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x56\x1b\x5c";
-                      case 22: // E
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x57\x1b\x5c";
-                      case 23: // F
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x58\x1b\x5c";
-                      case 24: // G
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x59\x1b\x5c";
-                      case 25: // H
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x5a\x1b\x5c";
-                      case 26: // I
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x61\x1b\x5c";
-                      case 27: // J
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x62\x1b\x5c";
-                      case 28: // K
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x63\x1b\x5c";
-                      case 29: // L
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x64\x1b\x5c";
-                      case 30: // M
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x65\x1b\x5c";
-                      case 31: // N
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x66\x1b\x5c";
-                      case 32: // O
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x67\x1b\x5c";
-                      case 33: // P
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x68\x1b\x5c";
-                      case 34: // Q
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x69\x1b\x5c";
-                      case 35: // R
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6a\x1b\x5c";
-                      case 36: // S
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6b\x1b\x5c";
-                      case 37: // T
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6c\x1b\x5c";
-                      case 38: // U
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6d\x1b\x5c";
-                      case 39: // V
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6e\x1b\x5c";
-                      case 40: // W
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x6f\x1b\x5c";
-                      case 41: // X
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x70\x1b\x5c";
-                      case 42: // Y
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x71\x1b\x5c";
-                      case 43: // Z
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x72\x1b\x5c";
-                      case 44: // LEFT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x73\x1b\x5c";
-                      case 45: // BACKSLASH
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x74\x1b\x5c";
-                      case 46: // RIGHT_BRACKET
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x75\x1b\x5c";
-                      case 47: // GRAVE_ACCENT
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x76\x1b\x5c";
-                      case 48: // WORLD_1
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x77\x1b\x5c";
-                      case 49: // WORLD_2
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x78\x1b\x5c";
-                      case 50: // ESCAPE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x79\x1b\x5c";
-                      case 51: // ENTER
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x7a\x1b\x5c";
-                      case 52: // TAB
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x30\x1b\x5c";
-                      case 53: // BACKSPACE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x31\x1b\x5c";
-                      case 54: // INSERT
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x32\x1b\x5c";
-                      case 55: // DELETE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x33\x1b\x5c";
-                      case 56: // RIGHT
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x34\x1b\x5c";
-                      case 57: // LEFT
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x35\x1b\x5c";
-                      case 58: // DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x36\x1b\x5c";
-                      case 59: // UP
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x37\x1b\x5c";
-                      case 60: // PAGE_UP
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x38\x1b\x5c";
-                      case 61: // PAGE_DOWN
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x39\x1b\x5c";
-                      case 62: // HOME
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x2e\x1b\x5c";
-                      case 63: // END
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x2d\x1b\x5c";
-                      case 64: // CAPS_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x3a\x1b\x5c";
-                      case 65: // SCROLL_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x2b\x1b\x5c";
-                      case 66: // NUM_LOCK
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x3d\x1b\x5c";
-                      case 67: // PRINT_SCREEN
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x5e\x1b\x5c";
-                      case 68: // PAUSE
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x21\x1b\x5c";
-                      case 69: // F1
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x2f\x1b\x5c";
-                      case 70: // F2
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x2a\x1b\x5c";
-                      case 71: // F3
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x3f\x1b\x5c";
-                      case 72: // F4
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x26\x1b\x5c";
-                      case 73: // F5
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x3c\x1b\x5c";
-                      case 74: // F6
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x3e\x1b\x5c";
-                      case 75: // F7
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x28\x1b\x5c";
-                      case 76: // F8
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x29\x1b\x5c";
-                      case 77: // F9
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x5b\x1b\x5c";
-                      case 78: // F10
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x5d\x1b\x5c";
-                      case 79: // F11
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x7b\x1b\x5c";
-                      case 80: // F12
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x7d\x1b\x5c";
-                      case 81: // F13
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x40\x1b\x5c";
-                      case 82: // F14
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x25\x1b\x5c";
-                      case 83: // F15
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x24\x1b\x5c";
-                      case 84: // F16
-                        return "\x08\x1b\x5f\x4b\x74\x4c\x23\x1b\x5c";
-                      case 85: // F17
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x41\x1b\x5c";
-                      case 86: // F18
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x42\x1b\x5c";
-                      case 87: // F19
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x43\x1b\x5c";
-                      case 88: // F20
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x44\x1b\x5c";
-                      case 89: // F21
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x45\x1b\x5c";
-                      case 90: // F22
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x46\x1b\x5c";
-                      case 91: // F23
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x47\x1b\x5c";
-                      case 92: // F24
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x48\x1b\x5c";
-                      case 93: // F25
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x49\x1b\x5c";
-                      case 94: // KP_0
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4a\x1b\x5c";
-                      case 95: // KP_1
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4b\x1b\x5c";
-                      case 96: // KP_2
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4c\x1b\x5c";
-                      case 97: // KP_3
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4d\x1b\x5c";
-                      case 98: // KP_4
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4e\x1b\x5c";
-                      case 99: // KP_5
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4f\x1b\x5c";
-                      case 100: // KP_6
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x50\x1b\x5c";
-                      case 101: // KP_7
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x51\x1b\x5c";
-                      case 102: // KP_8
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x52\x1b\x5c";
-                      case 103: // KP_9
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x53\x1b\x5c";
-                      case 104: // KP_DECIMAL
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x54\x1b\x5c";
-                      case 105: // KP_DIVIDE
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x55\x1b\x5c";
-                      case 106: // KP_MULTIPLY
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x56\x1b\x5c";
-                      case 107: // KP_SUBTRACT
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x57\x1b\x5c";
-                      case 108: // KP_ADD
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x58\x1b\x5c";
-                      case 109: // KP_ENTER
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x59\x1b\x5c";
-                      case 110: // KP_EQUAL
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x5a\x1b\x5c";
-                      case 111: // LEFT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x61\x1b\x5c";
-                      case 112: // LEFT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x62\x1b\x5c";
-                      case 113: // LEFT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x63\x1b\x5c";
-                      case 114: // LEFT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x64\x1b\x5c";
-                      case 115: // RIGHT_SHIFT
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x65\x1b\x5c";
-                      case 116: // RIGHT_CONTROL
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x66\x1b\x5c";
-                      case 117: // RIGHT_ALT
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x67\x1b\x5c";
-                      case 118: // RIGHT_SUPER
-                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x68\x1b\x5c";
-                    } // end switch(key)
-                  case 0xc:
-                    switch(key & 0x7f) { default: return NULL;
-                      case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x74\x4d\x41\x1b\x5c";
                       case 1: // APOSTROPHE
                         return "\x08\x1b\x5f\x4b\x74\x4d\x42\x1b\x5c";
@@ -15863,7 +15381,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x74\x4d\x42\x68\x1b\x5c";
                     } // end switch(key)
-                  case 0xd:
+                  case 0xb:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
                         return "\x08\x1b\x5f\x4b\x74\x4e\x41\x1b\x5c";
@@ -16103,6 +15621,488 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x09\x1b\x5f\x4b\x74\x4e\x42\x67\x1b\x5c";
                       case 118: // RIGHT_SUPER
                         return "\x09\x1b\x5f\x4b\x74\x4e\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xc:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x74\x4b\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x4b\x42\x68\x1b\x5c";
+                    } // end switch(key)
+                  case 0xd:
+                    switch(key & 0x7f) { default: return NULL;
+                      case 0: // SPACE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x41\x1b\x5c";
+                      case 1: // APOSTROPHE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x42\x1b\x5c";
+                      case 2: // COMMA
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x43\x1b\x5c";
+                      case 3: // MINUS
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x44\x1b\x5c";
+                      case 4: // PERIOD
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x45\x1b\x5c";
+                      case 5: // SLASH
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x46\x1b\x5c";
+                      case 6: // 0
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x47\x1b\x5c";
+                      case 7: // 1
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x48\x1b\x5c";
+                      case 8: // 2
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x49\x1b\x5c";
+                      case 9: // 3
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4a\x1b\x5c";
+                      case 10: // 4
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4b\x1b\x5c";
+                      case 11: // 5
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4c\x1b\x5c";
+                      case 12: // 6
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4d\x1b\x5c";
+                      case 13: // 7
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4e\x1b\x5c";
+                      case 14: // 8
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x4f\x1b\x5c";
+                      case 15: // 9
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x50\x1b\x5c";
+                      case 16: // SEMICOLON
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x51\x1b\x5c";
+                      case 17: // EQUAL
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x52\x1b\x5c";
+                      case 18: // A
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x53\x1b\x5c";
+                      case 19: // B
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x54\x1b\x5c";
+                      case 20: // C
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x55\x1b\x5c";
+                      case 21: // D
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x56\x1b\x5c";
+                      case 22: // E
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x57\x1b\x5c";
+                      case 23: // F
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x58\x1b\x5c";
+                      case 24: // G
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x59\x1b\x5c";
+                      case 25: // H
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x5a\x1b\x5c";
+                      case 26: // I
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x61\x1b\x5c";
+                      case 27: // J
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x62\x1b\x5c";
+                      case 28: // K
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x63\x1b\x5c";
+                      case 29: // L
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x64\x1b\x5c";
+                      case 30: // M
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x65\x1b\x5c";
+                      case 31: // N
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x66\x1b\x5c";
+                      case 32: // O
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x67\x1b\x5c";
+                      case 33: // P
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x68\x1b\x5c";
+                      case 34: // Q
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x69\x1b\x5c";
+                      case 35: // R
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6a\x1b\x5c";
+                      case 36: // S
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6b\x1b\x5c";
+                      case 37: // T
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6c\x1b\x5c";
+                      case 38: // U
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6d\x1b\x5c";
+                      case 39: // V
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6e\x1b\x5c";
+                      case 40: // W
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x6f\x1b\x5c";
+                      case 41: // X
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x70\x1b\x5c";
+                      case 42: // Y
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x71\x1b\x5c";
+                      case 43: // Z
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x72\x1b\x5c";
+                      case 44: // LEFT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x73\x1b\x5c";
+                      case 45: // BACKSLASH
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x74\x1b\x5c";
+                      case 46: // RIGHT_BRACKET
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x75\x1b\x5c";
+                      case 47: // GRAVE_ACCENT
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x76\x1b\x5c";
+                      case 48: // WORLD_1
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x77\x1b\x5c";
+                      case 49: // WORLD_2
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x78\x1b\x5c";
+                      case 50: // ESCAPE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x79\x1b\x5c";
+                      case 51: // ENTER
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x7a\x1b\x5c";
+                      case 52: // TAB
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x30\x1b\x5c";
+                      case 53: // BACKSPACE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x31\x1b\x5c";
+                      case 54: // INSERT
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x32\x1b\x5c";
+                      case 55: // DELETE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x33\x1b\x5c";
+                      case 56: // RIGHT
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x34\x1b\x5c";
+                      case 57: // LEFT
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x35\x1b\x5c";
+                      case 58: // DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x36\x1b\x5c";
+                      case 59: // UP
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x37\x1b\x5c";
+                      case 60: // PAGE_UP
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x38\x1b\x5c";
+                      case 61: // PAGE_DOWN
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x39\x1b\x5c";
+                      case 62: // HOME
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x2e\x1b\x5c";
+                      case 63: // END
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x2d\x1b\x5c";
+                      case 64: // CAPS_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x3a\x1b\x5c";
+                      case 65: // SCROLL_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x2b\x1b\x5c";
+                      case 66: // NUM_LOCK
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x3d\x1b\x5c";
+                      case 67: // PRINT_SCREEN
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x5e\x1b\x5c";
+                      case 68: // PAUSE
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x21\x1b\x5c";
+                      case 69: // F1
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x2f\x1b\x5c";
+                      case 70: // F2
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x2a\x1b\x5c";
+                      case 71: // F3
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x3f\x1b\x5c";
+                      case 72: // F4
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x26\x1b\x5c";
+                      case 73: // F5
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x3c\x1b\x5c";
+                      case 74: // F6
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x3e\x1b\x5c";
+                      case 75: // F7
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x28\x1b\x5c";
+                      case 76: // F8
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x29\x1b\x5c";
+                      case 77: // F9
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x5b\x1b\x5c";
+                      case 78: // F10
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x5d\x1b\x5c";
+                      case 79: // F11
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x7b\x1b\x5c";
+                      case 80: // F12
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x7d\x1b\x5c";
+                      case 81: // F13
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x40\x1b\x5c";
+                      case 82: // F14
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x25\x1b\x5c";
+                      case 83: // F15
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x24\x1b\x5c";
+                      case 84: // F16
+                        return "\x08\x1b\x5f\x4b\x74\x4c\x23\x1b\x5c";
+                      case 85: // F17
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x41\x1b\x5c";
+                      case 86: // F18
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x42\x1b\x5c";
+                      case 87: // F19
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x43\x1b\x5c";
+                      case 88: // F20
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x44\x1b\x5c";
+                      case 89: // F21
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x45\x1b\x5c";
+                      case 90: // F22
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x46\x1b\x5c";
+                      case 91: // F23
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x47\x1b\x5c";
+                      case 92: // F24
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x48\x1b\x5c";
+                      case 93: // F25
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x49\x1b\x5c";
+                      case 94: // KP_0
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4a\x1b\x5c";
+                      case 95: // KP_1
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4b\x1b\x5c";
+                      case 96: // KP_2
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4c\x1b\x5c";
+                      case 97: // KP_3
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4d\x1b\x5c";
+                      case 98: // KP_4
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4e\x1b\x5c";
+                      case 99: // KP_5
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x4f\x1b\x5c";
+                      case 100: // KP_6
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x50\x1b\x5c";
+                      case 101: // KP_7
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x51\x1b\x5c";
+                      case 102: // KP_8
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x52\x1b\x5c";
+                      case 103: // KP_9
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x53\x1b\x5c";
+                      case 104: // KP_DECIMAL
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x54\x1b\x5c";
+                      case 105: // KP_DIVIDE
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x55\x1b\x5c";
+                      case 106: // KP_MULTIPLY
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x56\x1b\x5c";
+                      case 107: // KP_SUBTRACT
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x57\x1b\x5c";
+                      case 108: // KP_ADD
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x58\x1b\x5c";
+                      case 109: // KP_ENTER
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x59\x1b\x5c";
+                      case 110: // KP_EQUAL
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x5a\x1b\x5c";
+                      case 111: // LEFT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x61\x1b\x5c";
+                      case 112: // LEFT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x62\x1b\x5c";
+                      case 113: // LEFT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x63\x1b\x5c";
+                      case 114: // LEFT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x64\x1b\x5c";
+                      case 115: // RIGHT_SHIFT
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x65\x1b\x5c";
+                      case 116: // RIGHT_CONTROL
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x66\x1b\x5c";
+                      case 117: // RIGHT_ALT
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x67\x1b\x5c";
+                      case 118: // RIGHT_SUPER
+                        return "\x09\x1b\x5f\x4b\x74\x4c\x42\x68\x1b\x5c";
                     } // end switch(key)
                   case 0xe:
                     switch(key & 0x7f) { default: return NULL;

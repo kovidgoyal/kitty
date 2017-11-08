@@ -139,7 +139,7 @@ The escape sequence encodes the following properties:
 
 Where `<type>` is one of `p` -- press, `r` -- release and `t` -- repeat.
 Modifiers is a bitmask represented as a single base64 digit.  Shift -- `0x1`,
-Control -- `0x2`, Alt -- `0x4` and Super -- `0x8`.  `<key>` is a number
+Alt -- `0x2`, Control -- `0x4` and Super -- `0x8`.  `<key>` is a number
 (encoded in base85) corresponding to the key pressed. The key name to number
 mapping is defined in link:key_encoding.asciidoc[this table].
 

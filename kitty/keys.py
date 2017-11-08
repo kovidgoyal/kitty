@@ -133,8 +133,17 @@ def extended_key_event(key, mods, action):
     name = KEY_MAP.get(key)
     if name is None:
         return b''
+    m = 0
+    if mods & defines.GLFW_MOD_SHIFT:
+        m |= 0x1
+    if mods & defines.GLFW_MOD_ALT:
+        m |= 0x2
+    if mods & defines.GLFW_MOD_CONTROL:
+        m |= 0x4
+    if mods & defines.GLFW_MOD_SUPER:
+        m |= 0x8
     return '\033_K{}{}{}\033\\'.format(
-        action_map[action], base64_encode(mods), name
+        action_map[action], base64_encode(m), name
     ).encode('ascii')
 
 
