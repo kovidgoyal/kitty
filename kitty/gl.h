@@ -22,19 +22,10 @@ static char glbuf[4096];
 #define REQUIRED_VERSION_MINOR 3
 #define GLSL_VERSION (REQUIRED_VERSION_MAJOR * 100 + REQUIRED_VERSION_MINOR * 10)
 
-#ifndef GL_STACK_UNDERFLOW
-#define GL_STACK_UNDERFLOW 0x0504
-#endif
-
-#ifndef GL_STACK_OVERFLOW
-#define GL_STACK_OVERFLOW 0x0503
-#endif
-
-#ifdef ENABLE_DEBUG_GL
 static void
-check_for_gl_error(int line) {
-#define f(msg) fatal("%s (at line: %d)", msg, line); break;
-    int code = glGetError();
+check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, ...) {
+#define f(msg) fatal("OpenGL error: %s (calling function: %s)", msg, name); break;
+    GLenum code = glad_glGetError();
     switch(code) { 
         case GL_NO_ERROR: break;
         case GL_INVALID_ENUM: 
@@ -52,15 +43,10 @@ check_for_gl_error(int line) {
         case GL_STACK_OVERFLOW: 
             f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"); 
         default: 
-            fatal("An unknown OpenGL error occurred with code: %d (at line: %d)", code, line); 
+            fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name); 
             break;
     }
 }
-
-#define check_gl() { check_for_gl_error(__LINE__); }
-#else
-#define check_gl() {}
-#endif
 
 static PyObject* 
 gl_init(PyObject UNUSED *self, PyObject *args) {
@@ -69,6 +55,7 @@ gl_init(PyObject UNUSED *self, PyObject *args) {
     if (!init_glad((GLADloadproc) glfwGetProcAddress, debug)) {
         fatal("Loading the OpenGL library failed");
     }
+    glad_set_post_callback(check_for_gl_error);
 #define ARB_TEST(name) \
     if (!GLAD_GL_ARB_##name) { \
         fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
@@ -81,25 +68,25 @@ gl_init(PyObject UNUSED *self, PyObject *args) {
 
 static void
 update_viewport_size_impl(int w, int h) {
-    glViewport(0, 0, w, h); check_gl();
+    glViewport(0, 0, w, h); 
 }
 
 static void
 free_texture_impl(GLuint *tex_id) {
-    glDeleteTextures(1, tex_id); check_gl();
+    glDeleteTextures(1, tex_id); 
     *tex_id = 0;
 }
 
 static void
 send_image_to_gpu_impl(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned) {
-    if (!(*tex_id)) { glGenTextures(1, tex_id); check_gl(); }
-    glBindTexture(GL_TEXTURE_2D, *tex_id); check_gl();
-    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1); check_gl();
+    if (!(*tex_id)) { glGenTextures(1, tex_id);  }
+    glBindTexture(GL_TEXTURE_2D, *tex_id); 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1); 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); check_gl();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data); check_gl(); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);  
 }
 
 
@@ -132,11 +119,8 @@ static Program programs[64] = {{0}};
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {
     GLuint shader_id = glCreateShader(shader_type);
-    check_gl();
     glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
-    check_gl();
     glCompileShader(shader_id);
-    check_gl();
     GLint ret = GL_FALSE;
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);
     if (ret != GL_TRUE) {
@@ -157,11 +141,9 @@ static inline void
 init_uniforms(int program) {
     Program *p = programs + program;
     glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &(p->num_of_uniforms));
-    check_gl();
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
-        check_gl();
         u->location = glGetUniformLocation(p->id, u->name);
         u->idx = i;
     }
@@ -181,14 +163,12 @@ get_uniform_information(int program, const char *name, GLenum information_type) 
 static inline GLint
 attrib_location(int program, const char *name) {
     GLint ans = glGetAttribLocation(programs[program].id, name);
-    check_gl();
     return ans;
 }
 
 static inline GLuint
 block_index(int program, const char *name) {
     GLuint ans = glGetUniformBlockIndex(programs[program].id, name);
-    check_gl();
     if (ans == GL_INVALID_INDEX) { fatal("Could not find block index"); }
     return ans;
 }
@@ -198,20 +178,17 @@ static inline GLint
 block_size(int program, GLuint block_index) {
     GLint ans;
     glGetActiveUniformBlockiv(programs[program].id, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &ans);
-    check_gl();
     return ans;
 }
 
 static inline void
 bind_program(int program) {
     glUseProgram(programs[program].id);
-    check_gl();
 }
 
 static inline void
 unbind_program() {
     glUseProgram(0);
-    check_gl();
 }
 // }}}
 
@@ -230,7 +207,6 @@ static ssize_t
 create_buffer(GLenum usage) {
     GLuint buffer_id;
     glGenBuffers(1, &buffer_id);
-    check_gl();
     for (size_t i = 0; i < sizeof(buffers)/sizeof(buffers[0]); i++) {
         if (buffers[i].id == 0) {
             buffers[i].id = buffer_id;
@@ -247,7 +223,6 @@ create_buffer(GLenum usage) {
 static void
 delete_buffer(ssize_t buf_idx) {
     glDeleteBuffers(1, &(buffers[buf_idx].id));
-    check_gl();
     buffers[buf_idx].id = 0;
     buffers[buf_idx].size = 0;
 }
@@ -255,14 +230,12 @@ delete_buffer(ssize_t buf_idx) {
 static GLuint
 bind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, buffers[buf_idx].id);
-    check_gl();
     return buffers[buf_idx].id;
 }
 
 static void
 unbind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, 0);
-    check_gl();
 }
 
 static inline void
@@ -271,20 +244,17 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     if (b->size == size) return;
     b->size = size;
     glBufferData(b->usage, size, NULL, usage);
-    check_gl();
 }
 
 static inline void*
 map_buffer(ssize_t idx, GLenum access) {
     void *ans = glMapBuffer(buffers[idx].usage, access);
-    check_gl();
     return ans;
 }
 
 static inline void
 unmap_buffer(ssize_t idx) {
     glUnmapBuffer(buffers[idx].usage);
-    check_gl();
 }
 
 // }}}
@@ -303,13 +273,11 @@ static ssize_t
 create_vao() {
     GLuint vao_id;
     glGenVertexArrays(1, &vao_id);
-    check_gl();
     for (size_t i = 0; i < sizeof(vaos)/sizeof(vaos[0]); i++) {
         if (!vaos[i].id) {
             vaos[i].id = vao_id;
             vaos[i].num_buffers = 0;
             glBindVertexArray(vao_id);
-            check_gl();
             return i;
         }
     }
@@ -336,7 +304,6 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
-    check_gl();
     switch(data_type) {
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
@@ -350,10 +317,8 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
             glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset);
             break;
     }
-    check_gl();
     if (divisor) {
         glVertexAttribDivisor(aloc, divisor);
-        check_gl();
     }
     unbind_buffer(buf);
 }
@@ -374,20 +339,17 @@ remove_vao(ssize_t vao_idx) {
         delete_buffer(vao->buffers[vao->num_buffers]);
     }
     glDeleteVertexArrays(1, &(vao->id));
-    check_gl();
     vaos[vao_idx].id = 0;
 }
 
 static void
 bind_vertex_array(ssize_t vao_idx) {
     glBindVertexArray(vaos[vao_idx].id);
-    check_gl();
 }
 
 static void
 unbind_vertex_array() {
     glBindVertexArray(0);
-    check_gl();
 }
 
 static ssize_t
@@ -415,7 +377,6 @@ static void
 bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     glBindBufferBase(GL_UNIFORM_BUFFER, block_index, buffers[buf_idx].id);
-    check_gl();
 }
 
 static void

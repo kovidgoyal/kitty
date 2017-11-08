@@ -36,15 +36,15 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
         uint8_t *src = malloc(5 * width * height * num_levels);
         if (src == NULL) { fatal("Out of memory."); }
         uint8_t *dest = src + (4 * width * height * num_levels);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, src_texture_id); check_gl();
-        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src); check_gl();
-        glBindTexture(GL_TEXTURE_2D_ARRAY, dest_texture_id); check_gl();
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); check_gl();
+        glBindTexture(GL_TEXTURE_2D_ARRAY, src_texture_id); 
+        glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src); 
+        glBindTexture(GL_TEXTURE_2D_ARRAY, dest_texture_id); 
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
         for(size_t i = 0; i < width * height * num_levels; i++) dest[i] = src[4*i];
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RED, GL_UNSIGNED_BYTE, dest); check_gl();
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RED, GL_UNSIGNED_BYTE, dest); 
         free(src);
     } else {
-        glCopyImageSubData(src_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, dest_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels); check_gl();
+        glCopyImageSubData(src_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, dest_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels); 
     }
 }
 
@@ -52,24 +52,24 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
 static void
 realloc_sprite_texture() {
     GLuint tex;
-    glGenTextures(1, &tex); check_gl();
-    glBindTexture(GL_TEXTURE_2D_ARRAY, tex); check_gl();
+    glGenTextures(1, &tex); 
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex); 
     // We use GL_NEAREST otherwise glyphs that touch the edge of the cell
     // often show a border between cells
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); check_gl();
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
     unsigned int xnum, ynum, z, znum, width, height, src_ynum;
     sprite_map_current_layout(&xnum, &ynum, &z);
     znum = z + 1;
     width = xnum * sprite_map.cell_width; height = ynum * sprite_map.cell_height;
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); check_gl();
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); 
     if (sprite_map.texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map.last_ynum);
         copy_image_sub_data(sprite_map.texture_id, tex, width, src_ynum * sprite_map.cell_height, sprite_map.last_num_of_layers);
-        glDeleteTextures(1, &sprite_map.texture_id); check_gl();
+        glDeleteTextures(1, &sprite_map.texture_id); 
     }
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
     sprite_map.last_num_of_layers = znum;
@@ -91,8 +91,8 @@ ensure_sprite_map() {
     static GLuint bound_texture_id = 0;
     if (!sprite_map.texture_id) realloc_sprite_texture();
     if (bound_texture_id != sprite_map.texture_id) {
-        glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); check_gl();
-        glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); check_gl();
+        glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); 
+        glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
         bound_texture_id = sprite_map.texture_id;
     }
 }
@@ -102,14 +102,14 @@ sprite_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, PyObject *buf
     unsigned int xnum, ynum, znum;
     sprite_map_current_layout(&xnum, &ynum, &znum);
     if ((int)znum >= sprite_map.last_num_of_layers || (znum == 0 && (int)ynum > sprite_map.last_ynum)) realloc_sprite_texture();
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); check_gl();
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); check_gl();
+    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
     x *= sprite_map.cell_width; y *= sprite_map.cell_height;
     PyObject *ret = PyObject_CallObject(buf, NULL);
     if (ret == NULL) { PyErr_Print(); fatal("Failed to get address of rendered cell buffer"); }
     void *address = PyLong_AsVoidPtr(ret);
     Py_DECREF(ret);
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, sprite_map.cell_width, sprite_map.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, address); check_gl();
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, sprite_map.cell_width, sprite_map.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, address); 
     Py_DECREF(buf);
 }
 
@@ -139,8 +139,8 @@ layout_sprite_map(unsigned int cell_width, unsigned int cell_height, PyObject *r
     global_state.cell_width = sprite_map.cell_width;
     global_state.cell_height = sprite_map.cell_height;
     if (sprite_map.max_texture_size == 0) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); check_gl();
-        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); check_gl();
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); 
+        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); 
         sprite_map_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
     }
     sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height);
@@ -161,7 +161,6 @@ destroy_sprite_map() {
     Py_CLEAR(sprite_map.render_cell);
     if (sprite_map.texture_id) {
         glDeleteTextures(1, &(sprite_map.texture_id));
-        check_gl();
         sprite_map.texture_id = 0;
     }
 }
@@ -314,16 +313,16 @@ draw_graphics(ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint s
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     static bool graphics_constants_set = false;
     if (!graphics_constants_set) { 
-        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT); check_gl(); 
+        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT);  
         graphics_constants_set = true; 
     }
-    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); check_gl();
+    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); 
 
     GLuint base = 4 * start;
     glEnable(GL_SCISSOR_TEST);
     for (GLuint i=0; i < count;) {
         ImageRenderData *rd = data + start + i;
-        glBindTexture(GL_TEXTURE_2D, rd->texture_id); check_gl();
+        glBindTexture(GL_TEXTURE_2D, rd->texture_id); 
         // You could reduce the number of draw calls by using
         // glDrawArraysInstancedBaseInstance but Apple chose to abandon OpenGL
         // before implementing it.
@@ -338,26 +337,26 @@ draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_PROGRAM); 
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
-        glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT); check_gl(); 
+        glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
         cell_constants_set = true; 
     }
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     if (screen->grman->count) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
 }
 
 static void
 draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_BACKGROUND_PROGRAM); 
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
 
     if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
     bind_program(CELL_SPECIAL_PROGRAM); 
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
 
     bind_program(CELL_FOREGROUND_PROGRAM); 
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); check_gl();
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
 
     if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
 }
@@ -401,10 +400,10 @@ init_cursor_program() {
 
 static void 
 draw_cursor_impl(CursorRenderInfo *cursor) {
-    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array); check_gl();
-    glUniform3f(cursor_uniform_locations[CURSOR_color], ((cursor->color >> 16) & 0xff) / 255.0, ((cursor->color >> 8) & 0xff) / 255.0, (cursor->color & 0xff) / 255.0); check_gl();
-    glUniform4f(cursor_uniform_locations[CURSOR_pos], cursor->left, cursor->top, cursor->right, cursor->bottom); check_gl();
-    glDrawArrays(global_state.application_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4); check_gl();
+    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array); 
+    glUniform3f(cursor_uniform_locations[CURSOR_color], ((cursor->color >> 16) & 0xff) / 255.0, ((cursor->color >> 8) & 0xff) / 255.0, (cursor->color & 0xff) / 255.0); 
+    glUniform4f(cursor_uniform_locations[CURSOR_pos], cursor->left, cursor->top, cursor->right, cursor->bottom); 
+    glDrawArrays(global_state.application_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4); 
     unbind_vertex_array(); unbind_program();
 }
 // }}}
@@ -442,7 +441,6 @@ draw_borders_impl() {
         bind_program(BORDERS_PROGRAM);
         bind_vertex_array(border_vertex_array);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
-        check_gl();
         unbind_vertex_array();
         unbind_program();
     }
@@ -469,7 +467,6 @@ send_borders_rects(GLuint vw, GLuint vh) {
     }
     bind_program(BORDERS_PROGRAM);
     glUniform2ui(border_uniform_locations[BORDER_viewport], vw, vh);
-    check_gl();
     unbind_program();
 }
 // }}}
@@ -484,12 +481,11 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
     programs[which].id = glCreateProgram();
-    check_gl();
-    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader); check_gl();
-    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader); check_gl();
-    glAttachShader(programs[which].id, vertex_shader_id); check_gl();
-    glAttachShader(programs[which].id, fragment_shader_id); check_gl();
-    glLinkProgram(programs[which].id); check_gl();
+    vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader); 
+    fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader); 
+    glAttachShader(programs[which].id, vertex_shader_id); 
+    glAttachShader(programs[which].id, fragment_shader_id); 
+    glLinkProgram(programs[which].id); 
     GLint ret = GL_FALSE;
     glGetProgramiv(programs[which].id, GL_LINK_STATUS, &ret);
     if (ret != GL_TRUE) {
@@ -504,7 +500,6 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
 end:
     if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
-    check_gl();
     if (PyErr_Occurred()) { glDeleteProgram(programs[which].id); programs[which].id = 0; return NULL;}
     return Py_BuildValue("I", programs[which].id);
     Py_RETURN_NONE;
