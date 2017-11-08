@@ -562,33 +562,11 @@ PYWRAP1(clear_buffers) {
     Py_RETURN_NONE;
 }
 
-PYWRAP0(check_for_extensions) {
-    GLint n = 0, i, left = 2;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-    bool texture_storage = false;
-#define CHECK(name) if (!name) { \
-    if (strstr((const char*)ext, "GL_ARB_" #name) == (const char *)ext) { left--; name = true; } \
-}
-    for (i = 0; i < n; i++) {
-        const GLubyte *ext = glGetStringi(GL_EXTENSIONS, i);
-        CHECK(texture_storage); 
-        if (left < 1) break;
-    }
-#undef CHECK
-    if (left > 0) {
-#define CHECK(name) if (!name) { PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: GL_ARB_%s", #name); return NULL; }
-        CHECK(texture_storage); 
-#undef CHECK
-    }
-    Py_RETURN_NONE;
-}
-
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     M(gl_init, METH_VARARGS),
     M(compile_program, METH_VARARGS),
-    MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),
     MW(remove_vao, METH_O),
     MW(bind_vertex_array, METH_O),

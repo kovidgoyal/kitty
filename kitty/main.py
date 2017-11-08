@@ -22,10 +22,9 @@ from .fast_data_types import (
     GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
-    clear_buffers, gl_init, glfw_init, glfw_init_hint_string,
-    glfw_swap_interval, glfw_terminate, glfw_window_hint,
-    install_sigchld_handler, set_logical_dpi, set_options
+    GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, clear_buffers, gl_init,
+    glfw_init, glfw_init_hint_string, glfw_swap_interval, glfw_terminate,
+    glfw_window_hint, install_sigchld_handler, set_logical_dpi, set_options
 )
 from .layout import all_layouts
 from .utils import (
@@ -195,7 +194,6 @@ def run_app(opts, args):
     window.make_context_current()
     if isosx:
         from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu, cocoa_init
-        check_for_extensions()
         cocoa_init()
         cocoa_create_global_menu()
         if opts.macos_hide_titlebar:
