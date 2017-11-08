@@ -19,6 +19,7 @@ typedef struct {
     color_type url_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
+    bool macos_option_as_alt;
 } Options;
 
 typedef struct {

@@ -12,8 +12,8 @@ version 0.5.0 [future]
 
 - Add an option to have window focus follow mouse
 
-- Fix handling of option key on macOS. It now behaves just like the alt key on
-  Linux.
+- macOS: Fix handling of option key. It now behaves just like the alt key on
+  Linux. There is an option to make it type unicode characters instead.
 
 - Linux: Add support for startup notification on X11 desktops. kitty will
   now inform the window manager when its startup is complete.

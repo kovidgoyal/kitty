@@ -261,6 +261,7 @@ type_map = {
     'initial_window_height': positive_int,
     'use_system_wcwidth': to_bool,
     'macos_hide_titlebar': to_bool,
+    'macos_option_as_alt': to_bool,
 }
 
 for name in (

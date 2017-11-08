@@ -21,6 +21,7 @@ key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
 }
 
 #define SPECIAL_INDEX(key) ((key & 0x7f) | ( (mods & 0xF) << 7))
+#define IS_ALT_MODS(mods) (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))
 
 void
 set_special_key_combo(int glfw_key, int mods) {
@@ -42,12 +43,15 @@ active_window() {
 void
 on_text_input(unsigned int codepoint, int mods) {
     Window *w = active_window();
-    static char buf[10];
+    static char buf[16];
     unsigned int sz = 0;
 
     if (w != NULL) {
         bool is_text = mods <= GLFW_MOD_SHIFT;
         if (is_text) sz = encode_utf8(codepoint, buf);
+#ifdef __APPLE__
+        if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) sz = encode_utf8(codepoint, buf);
+#endif
         if (sz) schedule_write_to_child(w->id, buf, sz);
     }
 }
@@ -156,6 +160,9 @@ on_key_input(int key, int scancode, int action, int mods) {
     if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
+#ifdef __APPLE__
+    if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) return;
+#endif
     if (
             action == GLFW_PRESS ||
             (action == GLFW_REPEAT && screen->modes.mDECARM) ||

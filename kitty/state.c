@@ -162,6 +162,7 @@ PYWRAP1(set_options) {
     S(url_color, color_as_int);
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
+    S(macos_option_as_alt, PyObject_IsTrue);
 
     PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
     if (chars == NULL) return NULL;
