@@ -51,7 +51,7 @@ init_glad(GLADloadproc load, int debug) {
     open('../kitty/gl-wrapper.c', 'w').write(c)
     raw = open('out/include/glad/glad.h').read()
     raw = raw.replace('<KHR/khrplatform.h>', '"khrplatform.h"')
-    raw += '\nint init_glad(GLADloadproc, int);'
+    raw += '\nint init_glad(GLADloadproc, int);\n'
     open('../kitty/gl-wrapper.h', 'w').write(raw)
     shutil.copy2('out/include/KHR/khrplatform.h', '../kitty')
 
