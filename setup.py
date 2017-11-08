@@ -109,7 +109,7 @@ def get_python_flags(cflags):
 
 def get_sanitize_args(cc, ccver):
     sanitize_args = ['-fsanitize=address']
-    if (cc == 'gcc' and ccver >= (5, 0)) or cc == 'clang':
+    if ccver >= (5, 0):
         sanitize_args.append('-fsanitize=undefined')
         # if cc == 'gcc' or (cc == 'clang' and ccver >= (4, 2)):
         #     sanitize_args.append('-fno-sanitize-recover=all')
