@@ -12,6 +12,8 @@ version 0.5.0 [future]
 
 - Add an option to have window focus follow mouse
 
+- Add a keyboard shortcut (ctrl+shift+f11) to toggle fullscreen mode
+
 - macOS: Fix handling of option key. It now behaves just like the alt key on
   Linux. There is an option to make it type unicode characters instead.
 

@@ -109,6 +109,9 @@ class Boss:
         for window in tab:
             self.close_window(window)
 
+    def toggle_fullscreen(self):
+        self.glfw_window.toggle_fullscreen()
+
     def start(self):
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()

@@ -37,11 +37,17 @@
     CALLBACK(the_window->name, "O" fmt, the_window, __VA_ARGS__);
 
 typedef struct {
+    int x, y, w, h;
+    bool is_set;
+} GLFWWindowGeometry;
+
+typedef struct {
     PyObject_HEAD
 
     GLFWwindow *window;
     PyObject *framebuffer_size_callback, *window_focus_callback;
     GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
+    GLFWWindowGeometry before_fullscreen;
 } WindowWrapper;
 
 static void update_viewport(GLFWwindow *window) {
@@ -429,6 +435,28 @@ current_monitor_dpi(WindowWrapper *self) {
     return get_physical_dpi(m);
 }
 
+static PyObject*
+toggle_fullscreen(WindowWrapper *self) {
+    GLFWmonitor *monitor;
+    if ((monitor = glfwGetWindowMonitor(self->window)) == NULL) {
+        // make fullscreen
+        monitor = current_monitor(self->window);
+        if (monitor == NULL) return NULL;
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        self->before_fullscreen.is_set = true;
+        glfwGetWindowSize(self->window, &self->before_fullscreen.w, &self->before_fullscreen.h);
+        glfwGetWindowPos(self->window, &self->before_fullscreen.x, &self->before_fullscreen.y);
+        glfwSetWindowMonitor(self->window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        Py_RETURN_TRUE;
+    } else {
+        // make windowed
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        if (self->before_fullscreen.is_set) glfwSetWindowMonitor(self->window, NULL, self->before_fullscreen.x, self->before_fullscreen.y, self->before_fullscreen.w, self->before_fullscreen.h, mode->refreshRate);
+        else glfwSetWindowMonitor(self->window, NULL, 0, 0, 600, 400, mode->refreshRate);
+        Py_RETURN_FALSE;
+    }
+}
+
 void
 request_window_attention() {
 #ifdef has_request_attention
@@ -477,6 +505,7 @@ static PyMethodDef methods[] = {
     MND(should_close, METH_NOARGS),
     MND(get_framebuffer_size, METH_NOARGS),
     MND(get_window_size, METH_NOARGS),
+    MND(toggle_fullscreen, METH_NOARGS),
     MND(current_monitor_dpi, METH_NOARGS),
 #ifdef __APPLE__
     MND(cocoa_window_id, METH_NOARGS),
