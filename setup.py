@@ -168,11 +168,7 @@ def init_env(
     # automatically if this version is high enough
     cflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
-    if not is_travis and not isosx:
-        at_least_version('glew', 2)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
-    if not isosx:
-        cflags.extend(pkg_config('glew', '--cflags-only-I'))
     if isosx:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
     else:
@@ -186,12 +182,10 @@ def init_env(
     if isosx:
         glfw_ldflags = pkg_config('--libs', '--static', 'glfw3'
                                   ) + ['-framework', 'OpenGL']
-        glew_libs = []
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
-        glew_libs = pkg_config('glew', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ldpaths = pylib + glew_libs + font_libs + glfw_ldflags + libpng + [
+    ldpaths = pylib + font_libs + glfw_ldflags + libpng + [
         '-lunistring'
     ]
     if not isosx:
