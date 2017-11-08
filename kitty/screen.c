@@ -140,7 +140,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
-    index_type num_content_lines;
+    index_type num_content_lines = 0;
 
     // Resize main linebuf
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);

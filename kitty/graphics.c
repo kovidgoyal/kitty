@@ -842,8 +842,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         case 't':
         case 'T':
         case 'q':
-            iid = g->id;
-            if (g->action == 'q') { q_iid = iid; iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
+            iid = g->id; q_iid = iid;
+            if (g->action == 'q') { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             image = handle_add_command(self, g, payload, is_dirty, iid);
             ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image);

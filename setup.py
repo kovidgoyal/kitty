@@ -130,7 +130,10 @@ def init_env(
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
-    optimize = '-g3' if debug or sanitize else '-O3'
+    df = '-g3'
+    if ccver >= (5, 0):
+        df += ' -Og'
+    optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (

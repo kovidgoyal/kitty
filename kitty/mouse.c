@@ -163,7 +163,7 @@ detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
 
 
 HANDLER(handle_move_event) {
-    unsigned int x, y;
+    unsigned int x = 0, y = 0;
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.tabs + global_state.active_tab;
         if (window_idx != t->active_window) {
@@ -327,7 +327,7 @@ void
 mouse_event(int button, int modifiers) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
-    unsigned int window_idx;
+    unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (in_tab_bar) { 
         mouse_cursor_shape = HAND;
@@ -346,7 +346,7 @@ scroll_event(double UNUSED xoffset, double yoffset) {
     if (s == 0) return;
     bool upwards = s > 0;
     bool in_tab_bar;
-    unsigned int window_idx;
+    unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (w) {
         Screen *screen = w->render_data.screen;
