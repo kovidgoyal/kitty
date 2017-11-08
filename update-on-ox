@@ -22,6 +22,6 @@ def run(what):
 
 
 os.chdir(os.path.expanduser('~/work/build-kitty'))
-run('./osx kitty')
+run('./osx kitty --dont-strip')
 run(f'scp build/osx/dist/{dmg} ox:/tmp')
 run(f'ssh ox /Users/kovid/install-dmg /tmp/{dmg}')
