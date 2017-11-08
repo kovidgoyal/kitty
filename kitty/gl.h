@@ -6,17 +6,13 @@
 
 #pragma once
 
+#include "gl-wrapper.h"
 #include "state.h"
 #include "screen.h"
 #include "sprites.h"
-#ifdef __APPLE__
-#include <OpenGL/gl3.h>
-#include <OpenGL/gl3ext.h>
-#else
-#include <GL/glew.h>
-#endif
 #include <string.h>
 #include <stddef.h>
+#include <GLFW/glfw3.h>
 
 static char glbuf[4096];
 
@@ -67,21 +63,18 @@ check_for_gl_error(int line) {
 #endif
 
 static PyObject* 
-glew_init(PyObject UNUSED *self, PyObject UNUSED *is_wayland) {
-#ifndef __APPLE__
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        if (PyObject_IsTrue(is_wayland)) {
-            fatal("GLEW init failed: [%d] %s. On Wayland, GLEW must be compiled with the EGL backend instead of the GLX backend.", err, glewGetErrorString(err));
-        } else fatal("GLEW init failed: [%d] %s", err, glewGetErrorString(err));
+gl_init(PyObject UNUSED *self, PyObject *args) {
+    int is_wayland, debug;
+    if (!PyArg_ParseTuple(args, "pp", &is_wayland, &debug)) return NULL;
+    if (!init_glad((GLADloadproc) glfwGetProcAddress, debug)) {
+        fatal("Loading the OpenGL library failed");
     }
 #define ARB_TEST(name) \
-    if (!GLEW_ARB_##name) { \
+    if (!GLAD_GL_ARB_##name) { \
         fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
     }
     ARB_TEST(texture_storage);
 #undef ARB_TEST
-#endif
     glEnable(GL_BLEND);
     Py_RETURN_NONE;
 }

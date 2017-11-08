@@ -14,7 +14,6 @@ matrix:
               packages:
                 - libfontconfig1-dev
                 - libharfbuzz-dev
-                - libglew-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
@@ -36,7 +35,6 @@ matrix:
               packages:
                 - libfontconfig1-dev
                 - libharfbuzz-dev
-                - libglew-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
@@ -58,7 +56,6 @@ matrix:
               packages:
                 - libfontconfig1-dev
                 - libharfbuzz-dev
-                - libglew-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev

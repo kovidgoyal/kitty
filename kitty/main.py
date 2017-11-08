@@ -23,7 +23,7 @@ from .fast_data_types import (
     GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
     GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
     GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, check_for_extensions,
-    clear_buffers, glewInit, glfw_init, glfw_init_hint_string,
+    clear_buffers, gl_init, glfw_init, glfw_init_hint_string,
     glfw_swap_interval, glfw_terminate, glfw_window_hint,
     install_sigchld_handler, set_logical_dpi, set_options
 )
@@ -111,7 +111,7 @@ def option_parser():
                ' child process. Useful for debugging.')
     )
     a(
-        '--debug-kitty-gl',
+        '--debug-gl',
         action='store_true',
         default=False,
         help=_('Debug OpenGL commands. This will cause all OpenGL calls'
@@ -155,13 +155,13 @@ def setup_opengl(opts):
         glfw_window_hint(GLFW_STENCIL_BITS, 8)
 
 
-def initialize_window(window, opts):
+def initialize_window(window, opts, debug_gl=False):
     set_logical_dpi(*get_logical_dpi())
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
     w, h = window.get_window_size()
     viewport_size.x_ratio = viewport_size.width / float(w)
     viewport_size.y_ratio = viewport_size.height / float(h)
-    glewInit(iswayland)
+    gl_init(iswayland, debug_gl)
     glfw_swap_interval(0)
     clear_buffers(window.swap_buffers, color_as_int(opts.background))
     # We dont turn this on as it causes rendering performance to be much worse,
@@ -203,7 +203,7 @@ def run_app(opts, args):
     elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
-    initialize_window(window, opts)
+    initialize_window(window, opts, args.debug_gl)
     boss = Boss(window, opts, args)
     boss.start()
     end_startup_notification(startup_ctx)

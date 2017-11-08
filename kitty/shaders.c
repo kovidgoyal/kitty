@@ -23,16 +23,11 @@ typedef struct {
 
 static SpriteMap sprite_map = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1, .texture_unit = GL_TEXTURE0 };
 
-#ifdef __APPLE__ 
-#define glCopyImageSubData(...)
-#define GLEW_ARB_copy_image false
-#endif
-
 static bool copy_image_warned = false;
 
 static void
 copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int width, unsigned int height, unsigned int num_levels) {
-    if (!GLEW_ARB_copy_image) {
+    if (!GLAD_GL_ARB_copy_image) {
         // ARB_copy_image not available, do a slow roundtrip copy
         if (!copy_image_warned) {
             copy_image_warned = true;
@@ -596,7 +591,7 @@ PYWRAP0(check_for_extensions) {
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
-    {"glewInit", (PyCFunction)glew_init, METH_O, NULL}, 
+    M(gl_init, METH_VARARGS),
     M(compile_program, METH_VARARGS),
     MW(check_for_extensions, METH_NOARGS),
     MW(create_vao, METH_NOARGS),
@@ -621,11 +616,7 @@ static PyMethodDef module_methods[] = {
 };
 
 bool
-#ifdef ENABLE_DEBUG_GL
-init_shaders_debug(PyObject *module) {
-#else
 init_shaders(PyObject *module) {
-#endif
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
     C(CELL_PROGRAM); C(CELL_BACKGROUND_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FOREGROUND_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM);
     C(GLSL_VERSION);

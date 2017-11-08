@@ -5,6 +5,7 @@ tags
 build
 linux-package
 logo/*.iconset
+glad/out
 asan-launcher
 kitty-profile
 dev
