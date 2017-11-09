@@ -30,6 +30,7 @@ typedef uint32_t combining_type;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
 typedef uint16_t attrs_type;
+typedef uint8_t line_attrs_type;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 
 #define ERROR_PREFIX "[PARSE ERROR]"
@@ -56,6 +57,8 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define UNDERCURL_CODE 6
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
+#define CONTINUED_MASK 1
+#define TEXT_DIRTY_MASK 2
 
 #define FG 1
 #define BG 2
@@ -134,8 +137,7 @@ typedef struct {
 
     Cell *cells;
     index_type xnum, ynum;
-    bool continued;
-    bool needs_free;
+    bool continued, needs_free, has_dirty_text;
 } Line;
 
 
@@ -144,7 +146,7 @@ typedef struct {
 
     Cell *buf;
     index_type xnum, ynum, *line_map, *scratch;
-    bool *continued_map;
+    line_attrs_type *line_attrs;
     Line *line;
 } LineBuf;
 
@@ -156,7 +158,7 @@ typedef struct {
     index_type xnum, ynum;
     Line *line;
     index_type start_of_data, count;
-    bool *continued_map;
+    line_attrs_type *line_attrs;
 } HistoryBuf;
 
 typedef struct {

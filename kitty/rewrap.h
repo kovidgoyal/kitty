@@ -34,11 +34,11 @@
         linebuf_clear_line(dest, dest->ynum - 1); \
     } else dest_y++; \
     init_dest_line(dest_y); \
-    dest->continued_map[dest_y] = continued;
+    dest->line_attrs[dest_y] = continued ? CONTINUED_MASK : 0;
 #endif
 
 #ifndef is_src_line_continued
-#define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? src->continued_map[src_y + 1] : false)
+#define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? (src->line_attrs[src_y + 1] & CONTINUED_MASK) : false)
 #endif
 
 static inline void 

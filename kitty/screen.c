@@ -275,7 +275,7 @@ screen_draw(Screen *self, uint32_t och) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
             screen_linefeed(self);
-            self->linebuf->continued_map[self->cursor->y] = true;
+            self->linebuf->line_attrs[self->cursor->y] |= CONTINUED_MASK;
         } else {
             self->cursor->x = self->columns - char_width;
         }
