@@ -89,19 +89,16 @@ typedef struct {
     color_type color;
 } CursorRenderInfo;
 
-bool drag_scroll(Window *);
-
 #define call_boss(name, ...) { \
     PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
     if (cret_ == NULL) { PyErr_Print(); } \
     else Py_DECREF(cret_); \
 }
 
-#define EXTERNAL_FUNC(name, ret, ...) typedef ret (*name##_func)(__VA_ARGS__); extern name##_func name
-#define EXTERNAL_FUNC0(name, ret) typedef ret (*name##_func)(); extern name##_func name
-EXTERNAL_FUNC0(draw_borders, void);
-EXTERNAL_FUNC(draw_cells, void, ssize_t, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
-EXTERNAL_FUNC(draw_cursor, void, CursorRenderInfo *);
-EXTERNAL_FUNC(update_viewport_size, void, int, int);
-EXTERNAL_FUNC(free_texture, void, uint32_t*);
-EXTERNAL_FUNC(send_image_to_gpu, void, uint32_t*, const void*, int32_t, int32_t, bool, bool);
+bool drag_scroll(Window *);
+void draw_borders();
+void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
+void draw_cursor(CursorRenderInfo *);
+void update_viewport_size(int, int);
+void free_texture(uint32_t*);
+void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);

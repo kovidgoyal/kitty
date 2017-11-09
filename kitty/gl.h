@@ -66,19 +66,19 @@ gl_init(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static void
-update_viewport_size_impl(int w, int h) {
+void
+update_viewport_size(int w, int h) {
     glViewport(0, 0, w, h); 
 }
 
-static void
-free_texture_impl(GLuint *tex_id) {
+void
+free_texture(GLuint *tex_id) {
     glDeleteTextures(1, tex_id); 
     *tex_id = 0;
 }
 
-static void
-send_image_to_gpu_impl(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned) {
+void
+send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned) {
     if (!(*tex_id)) { glGenTextures(1, tex_id);  }
     glBindTexture(GL_TEXTURE_2D, *tex_id); 
     glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1); 

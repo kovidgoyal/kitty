@@ -361,8 +361,8 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
 }
 
-static void 
-draw_cells_impl(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
+void 
+draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, CursorRenderInfo *cursor) {
     GLfloat h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(global_state.viewport_##w) * (GLfloat)(x))
     glScissor(
@@ -398,8 +398,8 @@ init_cursor_program() {
 #undef SET_LOC
 }
 
-static void 
-draw_cursor_impl(CursorRenderInfo *cursor) {
+void 
+draw_cursor(CursorRenderInfo *cursor) {
     bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array); 
     glUniform3f(cursor_uniform_locations[CURSOR_color], ((cursor->color >> 16) & 0xff) / 255.0, ((cursor->color >> 8) & 0xff) / 255.0, (cursor->color & 0xff) / 255.0); 
     glUniform4f(cursor_uniform_locations[CURSOR_pos], cursor->left, cursor->top, cursor->right, cursor->bottom); 
@@ -435,8 +435,8 @@ init_borders_program() {
             /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/(void*)(sizeof(GLuint)*4), /*divisor=*/1);
 }
 
-static void
-draw_borders_impl() {
+void
+draw_borders() {
     if (num_border_rects) {
         bind_program(BORDERS_PROGRAM);
         bind_vertex_array(border_vertex_array);
@@ -622,12 +622,6 @@ init_shaders(PyObject *module) {
 #undef C
     PyModule_AddObject(module, "GL_VERSION_REQUIRED", Py_BuildValue("II", REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    update_viewport_size = &update_viewport_size_impl;
-    draw_borders = &draw_borders_impl;
-    draw_cells = &draw_cells_impl;
-    draw_cursor = &draw_cursor_impl;
-    free_texture = &free_texture_impl;
-    send_image_to_gpu = &send_image_to_gpu_impl;
     return true;
 }
 // }}}

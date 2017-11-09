@@ -437,9 +437,6 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef DECREF_CHILD
 
 static double last_render_at = -DBL_MAX;
-draw_borders_func draw_borders = NULL;
-draw_cells_func draw_cells = NULL;
-draw_cursor_func draw_cursor = NULL;
 
 static inline double
 cursor_width(double w, bool vert) {

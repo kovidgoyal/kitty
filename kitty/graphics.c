@@ -64,9 +64,6 @@ free_load_data(LoadData *ld) {
     ld->mapped_file = NULL; ld->mapped_file_sz = 0;
 }
 
-free_texture_func free_texture = NULL;
-send_image_to_gpu_func send_image_to_gpu = NULL;
-
 static inline void
 free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);

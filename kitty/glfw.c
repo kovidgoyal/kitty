@@ -60,7 +60,6 @@ static void update_viewport(GLFWwindow *window) {
 
 // callbacks {{{
 static WindowWrapper* the_window = NULL;
-update_viewport_size_func update_viewport_size = NULL;
 
 static void 
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
