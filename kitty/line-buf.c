@@ -35,6 +35,16 @@ linebuf_clear(LineBuf *self, char_type ch) {
     }
 }
 
+void
+linebuf_mark_line_dirty(LineBuf *self, index_type y) {
+    self->line_attrs[y] |= TEXT_DIRTY_MASK;
+}
+
+void
+linebuf_mark_line_clean(LineBuf *self, index_type y) {
+    self->line_attrs[y] &= ~TEXT_DIRTY_MASK;
+}
+
 static PyObject*
 clear(LineBuf *self) {
 #define clear_doc "Clear all lines in this LineBuf"
@@ -156,6 +166,18 @@ set_continued(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+dirty_lines(LineBuf *self) {
+#define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
+    PyObject *ans = PyList_New(0);
+    for (index_type i = 0; i < self->ynum; i++) {
+        if (self->line_attrs[i] & TEXT_DIRTY_MASK) {
+            PyList_Append(ans, PyLong_FromUnsignedLong(i));
+        }
+    }
+    return ans;
+}
+
 static inline bool
 allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
@@ -215,7 +237,8 @@ clear_line_(Line *l, index_type xnum) {
     l->has_dirty_text = false;
 }
 
-void linebuf_clear_line(LineBuf *self, index_type y) {
+void 
+linebuf_clear_line(LineBuf *self, index_type y) {
     Line l;
     init_line(self, &l, self->line_map[y]);
     clear_line_(&l, self->xnum);
@@ -231,7 +254,8 @@ clear_line(LineBuf *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-void linebuf_index(LineBuf* self, index_type top, index_type bottom) {
+void 
+linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
     line_attrs_type old_attrs = self->line_attrs[top];
@@ -252,7 +276,8 @@ index(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
+void 
+linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_bottom = self->line_map[bottom];
     line_attrs_type old_attrs = self->line_attrs[bottom];
@@ -297,7 +322,7 @@ linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned i
             self->line_map[i] = self->line_map[i - num];
             self->line_attrs[i] = self->line_attrs[i - num];
         }
-        if (y + num < self->ynum) self->line_attrs[y + num] = 0;
+        if (y + num < self->ynum) self->line_attrs[y + num] &= ~CONTINUED_MASK;
         for (i = 0; i < num; i++) {
             self->line_map[y + i] = self->scratch[ylimit - num + i];
         }
@@ -332,7 +357,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
         self->line_map[i] = self->line_map[i + num];
         self->line_attrs[i] = self->line_attrs[i + num];
     }
-    self->line_attrs[y] = 0;
+    self->line_attrs[y] &= ~CONTINUED_MASK;
     for (i = 0; i < num; i++) {
         self->line_map[ylimit - num + i] = self->scratch[y + i];
     }
@@ -346,7 +371,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
  
 static PyObject*
 delete_lines(LineBuf *self, PyObject *args) {
-#define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num blank lines at y, only changing lines in the range [y, bottom]."
+#define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num lines at y, only changing lines in the range [y, bottom]."
     unsigned int y, num, bottom;
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
     linebuf_delete_lines(self, num, y, bottom);
@@ -409,6 +434,7 @@ static PyMethodDef methods[] = {
     METHOD(as_ansi, METH_O)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
+    METHOD(dirty_lines, METH_NOARGS)
     METHOD(index, METH_VARARGS)
     METHOD(reverse_index, METH_VARARGS)
     METHOD(insert_lines, METH_VARARGS)
@@ -491,6 +517,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
 
     rewrap_inner(self, other, first + 1, historybuf);
     *num_content_lines_after = other->line->ynum + 1;
+    for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i] |= TEXT_DIRTY_MASK;
     *num_content_lines_before = first + 1;
 }
 

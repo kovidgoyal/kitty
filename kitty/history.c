@@ -185,6 +185,19 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+dirty_lines(HistoryBuf *self) {
+#define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
+    PyObject *ans = PyList_New(0);
+    for (index_type i = 0; i < self->ynum; i++) {
+        if (self->line_attrs[i] & TEXT_DIRTY_MASK) {
+            PyList_Append(ans, PyLong_FromUnsignedLong(i));
+        }
+    }
+    return ans;
+}
+
+
 // Boilerplate {{{
 static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 #define rewrap_doc ""
@@ -193,6 +206,7 @@ static PyMethodDef methods[] = {
     METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
     METHOD(as_ansi, METH_O)
+    METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)
     METHOD(rewrap, METH_VARARGS)
     {NULL, NULL, 0, NULL}  /* Sentinel */
@@ -248,7 +262,10 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
         return;
     }
     other->count = 0; other->start_of_data = 0;
-    if (self->count > 0) rewrap_inner(self, other, self->count, NULL);
+    if (self->count > 0) {
+        rewrap_inner(self, other, self->count, NULL);
+        for (index_type i = 0; i < other->count; i++) other->line_attrs[(other->start_of_data + i) % other->ynum] |= TEXT_DIRTY_MASK;
+    }
 }
 
 static PyObject*

@@ -324,3 +324,41 @@ class TestScreen(BaseTest):
         s.cursor_visible = False
         s.toggle_alt_screen()
         self.assertFalse(s.cursor_visible)
+
+    def test_dirty_lines(self):
+        s = self.create_screen()
+        self.assertFalse(s.linebuf.dirty_lines())
+        s.draw('a' * (s.columns * 2))
+        self.ae(s.linebuf.dirty_lines(), [0, 1])
+        self.assertFalse(s.historybuf.dirty_lines())
+        while not s.historybuf.count:
+            s.draw('a' * (s.columns * 2))
+        self.ae(s.historybuf.dirty_lines(), list(range(s.historybuf.count)))
+        self.ae(s.linebuf.dirty_lines(), list(range(s.lines)))
+        s.cursor.x, s.cursor.y = 0, 1
+        s.insert_lines(2)
+        self.ae(s.linebuf.dirty_lines(), [0, 3, 4])
+        s.draw('a' * (s.columns * s.lines))
+        self.ae(s.linebuf.dirty_lines(), list(range(s.lines)))
+        s.cursor.x, s.cursor.y = 0, 1
+        s.delete_lines(2)
+        self.ae(s.linebuf.dirty_lines(), [0, 1, 2])
+
+        s = self.create_screen()
+        self.assertFalse(s.linebuf.dirty_lines())
+        s.erase_in_line(0, False)
+        self.ae(s.linebuf.dirty_lines(), [0])
+        s.index(), s.index()
+        s.erase_in_display(0, False)
+        self.ae(s.linebuf.dirty_lines(), [0, 2, 3, 4])
+
+        s = self.create_screen()
+        self.assertFalse(s.linebuf.dirty_lines())
+        s.insert_characters(2)
+        self.ae(s.linebuf.dirty_lines(), [0])
+        s.cursor.y = 1
+        s.delete_characters(2)
+        self.ae(s.linebuf.dirty_lines(), [0, 1])
+        s.cursor.y = 2
+        s.erase_characters(2)
+        self.ae(s.linebuf.dirty_lines(), [0, 1, 2])

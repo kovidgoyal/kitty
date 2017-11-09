@@ -292,15 +292,18 @@ screen_draw(Screen *self, uint32_t och) {
             self->cursor->x++;
         }
         self->is_dirty = true;
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     } else if (is_combining_char(ch)) {
         if (self->cursor->x > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y);
             line_add_combining_char(self->linebuf->line, ch, self->cursor->x - 1);
             self->is_dirty = true;
+            linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         } else if (self->cursor->y > 0) {
             linebuf_init_line(self->linebuf, self->cursor->y - 1);
             line_add_combining_char(self->linebuf->line, ch, self->columns - 1);
             self->is_dirty = true;
+            linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         }
     }
 }
@@ -324,6 +327,7 @@ screen_alignment_display(Screen *self) {
     for (unsigned int y = 0; y < self->linebuf->ynum; y++) {
         linebuf_init_line(self->linebuf, y);
         line_clear_text(self->linebuf->line, 0, self->linebuf->xnum, 'E');
+        linebuf_mark_line_dirty(self->linebuf, y);
     }
 }
 
@@ -820,7 +824,8 @@ screen_cursor_to_line(Screen *self, unsigned int line) {
 
 // Editing {{{
 
-void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
+void 
+screen_erase_in_line(Screen *self, unsigned int how, bool private) {
     /*Erases a line in a specific way.
 
         :param int how: defines the way the line should be erased in:
@@ -856,10 +861,12 @@ void screen_erase_in_line(Screen *self, unsigned int how, bool private) {
             line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
         }
         self->is_dirty = true;
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     }
 }
 
-void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
+void 
+screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
 
         :param int how: defines the way the line should be erased in:
@@ -892,6 +899,7 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             } else {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
+            linebuf_mark_line_dirty(self->linebuf, i);
         }
         self->is_dirty = true;
     }
@@ -900,7 +908,8 @@ void screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
 }
 
-void screen_insert_lines(Screen *self, unsigned int count) {
+void 
+screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
@@ -910,7 +919,8 @@ void screen_insert_lines(Screen *self, unsigned int count) {
     }
 }
 
-void screen_delete_lines(Screen *self, unsigned int count) {
+void 
+screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
@@ -920,7 +930,8 @@ void screen_delete_lines(Screen *self, unsigned int count) {
     }
 }
 
-void screen_insert_characters(Screen *self, unsigned int count) {
+void 
+screen_insert_characters(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
@@ -929,11 +940,13 @@ void screen_insert_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         line_right_shift(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
     }
 }
 
-void screen_delete_characters(Screen *self, unsigned int count) {
+void 
+screen_delete_characters(Screen *self, unsigned int count) {
     // Delete characters, later characters are moved left
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
@@ -943,17 +956,20 @@ void screen_delete_characters(Screen *self, unsigned int count) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         left_shift_line(self->linebuf->line, x, num);
         line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
     }
 }
 
-void screen_erase_characters(Screen *self, unsigned int count) {
+void 
+screen_erase_characters(Screen *self, unsigned int count) {
     // Delete characters replacing them by spaces
     if (count == 0) count = 1;
     unsigned int x = self->cursor->x;
     unsigned int num = MIN(self->columns - x, count);
     linebuf_init_line(self->linebuf, self->cursor->y);
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
+    linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     self->is_dirty = true;
 }
 

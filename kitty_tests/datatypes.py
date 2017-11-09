@@ -278,6 +278,8 @@ class TestDataTypes(BaseTest):
         self.ae(cy, 3)
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
+        self.assertFalse(lb.dirty_lines())
+        self.ae(lb2.dirty_lines(), list(range(lb2.ynum)))
 
     def line_comparison(self, buf, *lines):
         for i, l0 in enumerate(lines):
@@ -298,6 +300,7 @@ class TestDataTypes(BaseTest):
         lb = create_lbuf('0123 ', '56789')
         lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789', '')
         self.assertContinued(lb2, False, True)
+        self.ae(lb2.dirty_lines(), [0, 1])
 
         lb = create_lbuf('12', 'abc')
         lb2 = self.line_comparison_rewrap(lb, '12', 'abc')
@@ -357,6 +360,7 @@ class TestDataTypes(BaseTest):
         hb.rewrap(hb2)
         for i in range(hb2.ynum):
             self.ae(hb2.line(i), hb.line(i))
+        self.ae(hb2.dirty_lines(), list(range(hb2.ynum)))
         hb = filled_history_buf(5, 5)
         hb2 = HistoryBuf(hb.ynum, hb.xnum * 2)
         hb.rewrap(hb2)
