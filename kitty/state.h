@@ -105,3 +105,4 @@ void update_viewport_size(int, int);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(unsigned int, unsigned int, unsigned int, uint8_t*);
+void render_line(Line *line);

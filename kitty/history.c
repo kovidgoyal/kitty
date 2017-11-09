@@ -72,11 +72,22 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cells = lineptr(self, num);
     l->continued = self->line_attrs[num] & CONTINUED_MASK;
+    l->has_dirty_text = self->line_attrs[num] & TEXT_DIRTY_MASK ? true : false;
 }
 
 void 
 historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
+}
+
+void 
+historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
+    self->line_attrs[index_of(self, y)] &= ~TEXT_DIRTY_MASK;
+}
+
+void 
+historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
+    self->line_attrs[index_of(self, y)] |= TEXT_DIRTY_MASK;
 }
 
 static inline index_type 

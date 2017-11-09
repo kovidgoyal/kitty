@@ -236,6 +236,9 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     size_t sz;
     CELL_BUFFERS;
     void *address;
+
+    ensure_sprite_map();
+
     if (screen->scroll_changed || screen->is_dirty) {
         sz = sizeof(Cell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
@@ -258,9 +261,6 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, cursor);
-
-    ensure_sprite_map();
-    /* render_dirty_sprites(render_and_send_dirty_sprites); */
 
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);

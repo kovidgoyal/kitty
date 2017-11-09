@@ -1162,17 +1162,28 @@ screen_reset_dirty(Screen *self) {
 void
 screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
     unsigned int history_line_added_count = self->history_line_added_count;
+    index_type lnum;
     bool selection_must_be_cleared = self->is_dirty ? true : false;
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     screen_reset_dirty(self);
     self->scroll_changed = false;
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
-        historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
+        lnum = self->scrolled_by - 1 - y;
+        historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
         update_line_data(self->historybuf->line, y, address);
+        if (self->historybuf->line->has_dirty_text) {
+            render_line(self->historybuf->line);
+            historybuf_mark_line_clean(self->historybuf, lnum);
+        }
     }
     for (index_type y = self->scrolled_by; y < self->lines; y++) {
-        linebuf_init_line(self->linebuf, y - self->scrolled_by);
+        lnum = y - self->scrolled_by;
+        linebuf_init_line(self->linebuf, lnum);
         update_line_data(self->linebuf->line, y, address);
+        if (self->linebuf->line->has_dirty_text) {
+            render_line(self->linebuf->line);
+            linebuf_mark_line_clean(self->linebuf, lnum);
+        }
     }
     if (selection_must_be_cleared) {
         self->selection = EMPTY_SELECTION; self->url_range = EMPTY_SELECTION;
@@ -1258,6 +1269,17 @@ screen_url_range(Screen *self, uint32_t *data) {
 #define WRAP1B(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; int b=false; if(!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL; screen_##name(self, v, b); Py_RETURN_NONE; }
 #define WRAP1E(name, defval, ...) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v, __VA_ARGS__); Py_RETURN_NONE; }
 #define WRAP2(name, defval1, defval2) static PyObject* name(Screen *self, PyObject *args) { unsigned int a=defval1, b=defval2; if(!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL; screen_##name(self, a, b); Py_RETURN_NONE; }
+
+static PyObject*
+refresh_sprite_positions(Screen *self) {
+    self->is_dirty = true;
+    for (index_type i = 0; i < self->lines; i++) {
+        linebuf_mark_line_dirty(self->main_linebuf, i);
+        linebuf_mark_line_dirty(self->alt_linebuf, i);
+    }
+    for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 screen_wcswidth(Screen UNUSED *self, PyObject *str) {
@@ -1576,6 +1598,7 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
+    MND(refresh_sprite_positions, METH_O)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)
