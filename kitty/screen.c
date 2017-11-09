@@ -1171,20 +1171,20 @@ screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
-        update_line_data(self->historybuf->line, y, address);
         if (self->historybuf->line->has_dirty_text) {
             render_line(self->historybuf->line);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
+        update_line_data(self->historybuf->line, y, address);
     }
     for (index_type y = self->scrolled_by; y < self->lines; y++) {
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
-        update_line_data(self->linebuf->line, y, address);
         if (self->linebuf->line->has_dirty_text) {
             render_line(self->linebuf->line);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
+        update_line_data(self->linebuf->line, y, address);
     }
     if (selection_must_be_cleared) {
         self->selection = EMPTY_SELECTION; self->url_range = EMPTY_SELECTION;
