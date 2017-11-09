@@ -11,7 +11,7 @@ from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
     destroy_sprite_map, glfw_post_empty_event, layout_sprite_map
 )
-from .fonts.render import set_font_family, resize_fonts
+from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_key_map, get_sent_data, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
@@ -24,6 +24,7 @@ from .window import load_shader_programs
 def initialize_renderer():
     load_shader_programs()
     layout_sprite_map(cell_size.width, cell_size.height)
+    prerender()
 
 
 class DumpCommands:  # {{{
@@ -144,6 +145,7 @@ class Boss:
         windows = tuple(filter(None, self.window_id_map.values()))
         cell_size.width, cell_size.height = resize_fonts(self.current_font_size)
         layout_sprite_map(cell_size.width, cell_size.height)
+        prerender()
         for window in windows:
             window.screen.rescale_images(w, h)
         self.resize_windows_after_font_size_change()

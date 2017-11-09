@@ -77,7 +77,6 @@ def set_font_family(opts=None, override_font_size=None, override_dpi=None):
         opts.font_family, sz, xdpi, ydpi, cell_width, cell_height, baseline,
         underline_position, underline_thickness
     )
-    prerender()
     return cell_width, cell_height
 
 
@@ -92,7 +91,6 @@ def resize_fonts(new_sz, xdpi=None, ydpi=None):
         s.family, new_sz, xdpi, ydpi, cell_width, cell_height, baseline,
         underline_position, underline_thickness
     )
-    prerender()
 
 
 def add_line(buf, cell_width, position, thickness, cell_height):
@@ -188,6 +186,7 @@ def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
     sprite_map_set_limits(100000, 100)
     set_send_sprite_to_gpu(send_to_gpu)
     cell_width, cell_height = set_font_family(opts, override_dpi=(dpi, dpi), override_font_size=size)
+    prerender()
     return sprites, cell_width, cell_height
 
 
