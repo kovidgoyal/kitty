@@ -100,6 +100,18 @@ send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t *buf)
     Py_DECREF(buf);
 }
 
+void
+send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned) {
+    if (!(*tex_id)) { glGenTextures(1, tex_id);  }
+    glBindTexture(GL_TEXTURE_2D, *tex_id); 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1); 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);  
+}
+
 static bool limits_updated = false;
 
 static void 
