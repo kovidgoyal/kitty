@@ -710,5 +710,6 @@ init_fonts(PyObject *module) {
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
+    sprite_tracker_set_limits(2000, 2000);
     return true;
 }

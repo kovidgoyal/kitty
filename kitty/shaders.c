@@ -100,18 +100,21 @@ send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t *buf)
     Py_DECREF(buf);
 }
 
+static bool limits_updated = false;
+
 static void 
 layout_sprite_map(unsigned int cell_width, unsigned int cell_height) {
     sprite_map.cell_width = MAX(1, cell_width);
     sprite_map.cell_height = MAX(1, cell_height);
     global_state.cell_width = sprite_map.cell_width;
     global_state.cell_height = sprite_map.cell_height;
-    if (sprite_map.max_texture_size == 0) {
+    if (!limits_updated) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); 
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); 
-        /* sprite_map_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers); */
+        sprite_tracker_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
+        limits_updated = true;
     }
-    /* sprite_map_set_layout(sprite_map.cell_width, sprite_map.cell_height); */
+    sprite_tracker_set_layout(sprite_map.cell_width, sprite_map.cell_height);
     if (sprite_map.texture_id) { glDeleteTextures(1, &(sprite_map.texture_id)); sprite_map.texture_id = 0; }
     realloc_sprite_texture();
 }

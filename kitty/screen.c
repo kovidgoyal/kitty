@@ -8,6 +8,7 @@
 #define EXTRA_INIT PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL);
 
 #include "state.h"
+#include "fonts.h"
 #include "lineops.h"
 #include "screen.h"
 #include <structmember.h>
