@@ -440,7 +440,7 @@ static inline void
 next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, unsigned int num_cells) {
     num_glyphs = MIN(num_glyphs, 5); // we only support groupes of upto 5 glyphs
     *num_group_cells = 0, *num_group_glyphs = 0;
-    bool unsafe_to_break;
+    bool unsafe_to_break = false;
     do {
         // If the glyph has no advance, then it is a combining char
         if (positions[*num_group_glyphs].x_advance != 0) *num_group_cells += ((cells[*num_group_cells].attrs & WIDTH_MASK) == 2) ? 2 : 1;
