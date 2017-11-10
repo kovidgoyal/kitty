@@ -238,10 +238,12 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = font_units_to_pixels(self, self->height);
+#ifdef __APPLE__
     if (self->apple_leading <= 0) {
         // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
         *cell_height += floor(0.2 * (double)(*cell_height) + 0.5);
     }
+#endif
     *baseline = font_units_to_pixels(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = font_units_to_pixels(self, self->underline_thickness);
