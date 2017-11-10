@@ -229,4 +229,4 @@ def showcase():
     test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Noto Sans Mono')
     test_render_string('你好,世界', family='Noto Sans Mono')
     test_render_string('|\U0001F929|\U0001F921|\U0001F91f|', family='Noto Sans Mono')
-    test_render_string('A=>>B!=C', family='Fira Code Medium')
+    test_render_string('A=>>B!=C', family='Fira Code')
