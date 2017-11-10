@@ -19,9 +19,9 @@ attr_map = {(False, False): 'font_family',
 def create_font_map(all_fonts):
     ans = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
-        f = (x['family'] or '').lower()
-        full = (x['full_name'] or '').lower()
-        ps = (x['postscript_name'] or '').lower()
+        f = (x.get('family') or '').lower()
+        full = (x.get('full_name') or '').lower()
+        ps = (x.get('postscript_name') or '').lower()
         ans['family_map'].setdefault(f, []).append(x)
         ans['ps_map'].setdefault(ps, []).append(x)
         ans['full_map'].setdefault(full, []).append(x)
