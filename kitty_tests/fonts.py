@@ -10,7 +10,7 @@ from kitty.fast_data_types import (
     test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import render_string, set_font_family
+from kitty.fonts.render import render_string, set_font_family, prerender
 
 from . import BaseTest
 
@@ -26,6 +26,7 @@ class Rendering(BaseTest):
 
         set_send_sprite_to_gpu(send_to_gpu)
         self.cell_width, self.cell_height = set_font_family(override_dpi=(96.0, 96.0))
+        prerender()
         self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4])
 
     def tearDown(self):
