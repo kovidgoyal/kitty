@@ -121,7 +121,8 @@ def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, ital
 
 
 def font_for_family(family):
-    return face_description(family, save_medium_face.family)
+    ans = face_description(family, save_medium_face.family)
+    return ans, ans.bold, ans.italic
 
 
 def test_font_matching(

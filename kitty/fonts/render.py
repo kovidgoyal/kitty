@@ -18,10 +18,7 @@ from kitty.utils import get_logical_dpi
 if isosx:
     from .core_text import get_font_files, font_for_text, face_from_font, font_for_family, save_medium_face
 else:
-    from .fontconfig import get_font_files, font_for_text, face_from_font, font_for_family
-
-    def save_medium_face(f):
-        pass
+    from .fontconfig import get_font_files, font_for_text, face_from_font, font_for_family, save_medium_face
 
 
 def create_face(font):
@@ -35,10 +32,10 @@ def create_symbol_map(opts):
     faces = []
     for family in val.values():
         if family not in family_map:
-            font = font_for_family(family)
+            font, bold, italic = font_for_family(family)
             o = create_face(font)
             family_map[family] = len(faces)
-            faces.append((o, font.bold, font.italic))
+            faces.append((o, bold, italic))
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
     return sm, tuple(faces)
 

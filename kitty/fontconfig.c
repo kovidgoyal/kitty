@@ -28,20 +28,20 @@ pattern_as_dict(FcPattern *pat) {
 #define PS(x) PyUnicode_FromString((char*)x)
 #define G(type, get, which, conv, name) { \
     type out; PyObject *p; \
-    if (get(pat, which, 0, &out) == FcResultMatch) { p = conv(out); if (p == NULL) { Py_CLEAR(ans); return NULL; } \
-    } else { p = Py_None; Py_INCREF(p); } \
-    if (PyDict_SetItemString(ans, #name, p) != 0) { Py_CLEAR(p); Py_CLEAR(ans); return NULL; } \
-    Py_CLEAR(p); \
-    }
+    if (get(pat, which, 0, &out) == FcResultMatch) { \
+        p = conv(out); if (p == NULL) { Py_CLEAR(ans); return NULL; } \
+        if (PyDict_SetItemString(ans, #name, p) != 0) { Py_CLEAR(p); Py_CLEAR(ans); return NULL; } \
+        Py_CLEAR(p); \
+    }}
 #define S(which, key) G(FcChar8*, FcPatternGetString, which, PS, key)
 #define I(which, key) G(int, FcPatternGetInteger, which, PyLong_FromLong, key)
-#define B(which, key) G(int, FcPatternGetInteger, which, pybool, key)
+#define B(which, key) G(int, FcPatternGetBool, which, pybool, key)
 #define E(which, key, conv) G(int, FcPatternGetInteger, which, conv, key)
     S(FC_FILE, path);
     S(FC_FAMILY, family);
     S(FC_STYLE, style);
-    S(FC_FULLNAME, fullname);
-    S(FC_POSTSCRIPT_NAME, psname);
+    S(FC_FULLNAME, full_name);
+    S(FC_POSTSCRIPT_NAME, postscript_name);
     I(FC_WEIGHT, weight);
     I(FC_SLANT, slant);
     I(FC_HINT_STYLE, hint_style);
@@ -73,8 +73,10 @@ font_set(FcFontSet *fs) {
     return ans;
 }
 
+#define AP(func, which, in, desc) if (!func(pat, which, in)) { PyErr_Format(PyExc_ValueError, "Failed to add %s to fontconfig pattern", desc, NULL); goto end; }
+
 static PyObject*
-list_fontconfig_fonts(PyObject UNUSED *self, PyObject *args) {
+fc_list(PyObject UNUSED *self, PyObject *args) {
     int allow_bitmapped_fonts = 0, only_monospaced_fonts = 1;
     PyObject *ans = NULL;
     FcObjectSet *os = NULL;
@@ -83,13 +85,11 @@ list_fontconfig_fonts(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "|pp", &only_monospaced_fonts, &allow_bitmapped_fonts)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-#define AP(func, which, in, desc) if (!func(pat, which, in)) { PyErr_Format(PyExc_ValueError, "Failed to add %s to fontconfig pattern", desc, NULL); goto end; }
     if (!allow_bitmapped_fonts) {
         AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
         AP(FcPatternAddBool, FC_SCALABLE, true, "scalable");
     }
     if (only_monospaced_fonts) AP(FcPatternAddInteger, FC_SPACING, FC_MONO, "spacing");
-#undef AP
     os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, NULL);
     if (!os) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig object set"); goto end; }
     fs = FcFontList(NULL, pat, os);
@@ -102,34 +102,25 @@ end:
     return ans;
 }
 
-static PyObject*
-get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
-    char *family;
-    int bold, italic, allow_bitmapped_fonts, index = 0, hint_style=0, weight=0, slant=0;
-    double size_in_pts, dpi;
-    PyObject *characters;
-    FcBool hinting, scalable, outline;
-    FcChar8 *path = NULL;
-    FcPattern *pat = NULL, *match = NULL;
-    FcResult result;
-    FcCharSet *charset = NULL;
+static inline PyObject*
+_fc_match(FcPattern *pat) {
+    FcPattern *match = NULL;
     PyObject *ans = NULL;
+    FcResult result;
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    match = FcFontMatch(NULL, pat, &result);
+    if (match == NULL) { PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed"); goto end; }
+    ans = pattern_as_dict(match);
+end:
+    if (match) FcPatternDestroy(match);
+    return ans;
+}
 
-    if (!PyArg_ParseTuple(args, "spppdO!d", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &PyUnicode_Type, &characters, &dpi)) return NULL;
-    if (PyUnicode_READY(characters) != 0) return NULL;
-    pat = FcPatternCreate();
-    if (pat == NULL) return PyErr_NoMemory();
-
-#define AP(func, which, in, desc) if (!func(pat, which, in)) { PyErr_Format(PyExc_RuntimeError, "Failed to add %s to fontconfig patter", desc, NULL); goto end; }
-    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
-    if (!allow_bitmapped_fonts) {
-        AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
-        AP(FcPatternAddBool, FC_SCALABLE, true, "scalable");
-    }
-    if (size_in_pts > 0) { AP(FcPatternAddDouble, FC_SIZE, size_in_pts, "size"); }
-    if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
-    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+static inline void
+add_charset(PyObject *characters, FcPattern *pat) {
+    FcCharSet *charset = NULL;
+    if (PyUnicode_READY(characters) != 0) goto end;
     if (PyUnicode_GET_LENGTH(characters) > 0) {
         charset = FcCharSetCreate();
         if (charset == NULL) { PyErr_NoMemory(); goto end; }
@@ -142,42 +133,66 @@ get_fontconfig_font(PyObject UNUSED *self, PyObject *args) {
         }
         AP(FcPatternAddCharSet, FC_CHARSET, charset, "charset");
     }
-#undef AP
-    FcConfigSubstitute(NULL, pat, FcMatchPattern);
-    FcDefaultSubstitute(pat);
-    match = FcFontMatch(NULL, pat, &result);
-    if (match == NULL) { PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed"); goto end; }
+end:
+    if (charset != NULL) FcCharSetDestroy(charset);
+}
 
-#define GI(func, which, out, desc) \
-    if (func(match, which, 0, & out) != FcResultMatch) { \
-        PyErr_Format(PyExc_RuntimeError, "Failed to get %s from match object", desc, NULL); goto end; \
+static PyObject*
+fc_match(PyObject UNUSED *self, PyObject *args) {
+    char *family = NULL;
+    int bold = 0, italic = 0, allow_bitmapped_fonts = 0;
+    double size_in_pts = 0, dpi = 0;
+    PyObject *characters = NULL;
+    FcPattern *pat = NULL;
+    PyObject *ans = NULL;
+
+    if (!PyArg_ParseTuple(args, "|zpppdO!d", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &PyUnicode_Type, &characters, &dpi)) return NULL;
+    pat = FcPatternCreate();
+    if (pat == NULL) return PyErr_NoMemory();
+
+    if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
+    if (!allow_bitmapped_fonts) {
+        AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
+        AP(FcPatternAddBool, FC_SCALABLE, true, "scalable");
     }
-
-    GI(FcPatternGetString, FC_FILE, path, "file path");
-    GI(FcPatternGetInteger, FC_INDEX, index, "face index");
-    GI(FcPatternGetInteger, FC_WEIGHT, weight, "weight");
-    GI(FcPatternGetInteger, FC_SLANT, slant, "slant");
-    GI(FcPatternGetInteger, FC_HINT_STYLE, hint_style, "hint style");
-    GI(FcPatternGetBool, FC_HINTING, hinting, "hinting");
-    GI(FcPatternGetBool, FC_SCALABLE, scalable, "scalable");
-    GI(FcPatternGetBool, FC_OUTLINE, outline, "outline");
-#undef GI
-
-#define BP(x) (x ? Py_True : Py_False)
-    ans = Py_BuildValue("siiOOOii", path, index, hint_style, BP(hinting), BP(scalable), BP(outline), weight, slant);
-#undef BP
+    if (size_in_pts > 0) { AP(FcPatternAddDouble, FC_SIZE, size_in_pts, "size"); }
+    if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    if (characters) add_charset(characters, pat);
+    ans = _fc_match(pat);
 
 end:
     if (pat != NULL) FcPatternDestroy(pat);
-    if (match != NULL) FcPatternDestroy(match);
-    if (charset != NULL) FcCharSetDestroy(charset);
-    if (PyErr_Occurred()) return NULL;
     return ans;
 }
 
+static PyObject*
+fc_font(PyObject UNUSED *self, PyObject *args) {
+    double size_in_pts, dpi;
+    int index;
+    char *path;
+    PyObject *ans = NULL, *chars = NULL;
+    if (!PyArg_ParseTuple(args, "ddsi|O!", &size_in_pts, &dpi, &path, &index, &PyUnicode_Type, &chars)) return NULL;
+    FcPattern *pat = FcPatternCreate();
+    if (pat == NULL) return PyErr_NoMemory();
+    if (size_in_pts > 0) { AP(FcPatternAddDouble, FC_SIZE, size_in_pts, "size"); }
+    if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
+    AP(FcPatternAddString, FC_FILE, (const FcChar8*)path, "path");
+    AP(FcPatternAddInteger, FC_INDEX, index, "index"); 
+    if (chars) add_charset(chars, pat);
+    ans = _fc_match(pat);
+
+end:
+    if (pat != NULL) FcPatternDestroy(pat);
+    return ans;
+}
+
+#undef AP
 static PyMethodDef module_methods[] = {
-    METHODB(list_fontconfig_fonts, METH_VARARGS),
-    METHODB(get_fontconfig_font, METH_VARARGS),
+    METHODB(fc_list, METH_VARARGS),
+    METHODB(fc_match, METH_VARARGS),
+    METHODB(fc_font, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -192,5 +207,11 @@ init_fontconfig_library(PyObject *module) {
         return false;
     }
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    PyModule_AddIntMacro(module, FC_WEIGHT_REGULAR);
+    PyModule_AddIntMacro(module, FC_WEIGHT_MEDIUM);
+    PyModule_AddIntMacro(module, FC_WEIGHT_SEMIBOLD);
+    PyModule_AddIntMacro(module, FC_WEIGHT_BOLD);
+    PyModule_AddIntMacro(module, FC_SLANT_ITALIC);
+    PyModule_AddIntMacro(module, FC_SLANT_ROMAN);
     return true;
 }

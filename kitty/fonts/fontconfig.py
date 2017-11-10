@@ -2,128 +2,93 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
-from collections import namedtuple
+import re
+from functools import lru_cache
 
-from kitty.fast_data_types import Face, get_fontconfig_font
-
-
-def face_from_font(font, pt_sz, xdpi, ydpi):
-    return Face(font.path, font.index, font.hinting, font.hintstyle, pt_sz, xdpi, ydpi)
-
-
-Font = namedtuple(
-    'Font',
-    'path hinting hintstyle bold italic scalable outline weight slant index'
+from kitty.fast_data_types import (
+    FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD, FC_WEIGHT_REGULAR, Face,
+    fc_list, fc_match, fc_font
 )
 
-
-class FontNotFound(ValueError):
-    pass
-
-
-def to_bool(x):
-    return x.lower() == 'true'
+attr_map = {(False, False): 'font_family',
+            (True, False): 'bold_font',
+            (False, True): 'italic_font',
+            (True, True): 'bold_italic_font'}
 
 
-def font_not_found(err, chars):
-    msg = 'Failed to find font'
-    if chars:
-        chars = ', '.join('U+{:X}'.format(ord(c)) for c in chars)
-        msg = 'Failed to find font for characters U+{:X}, error from fontconfig: {}'.  format(chars, err)
-    return FontNotFound(msg)
-
-
-def get_font(
-    family='monospace',
-    bold=False,
-    italic=False,
-    allow_bitmaped_fonts=False,
-    size_in_pts=None,
-    characters='',
-    dpi=None
-):
-    try:
-        path, index, hintstyle, hinting, scalable, outline, weight, slant = get_fontconfig_font(
-            family, bold, italic, allow_bitmaped_fonts, size_in_pts or 0,
-            characters or '', dpi or 0
-        )
-    except KeyError as err:
-        raise font_not_found(err, characters)
-
-    return Font(
-        path, hinting, hintstyle, bold, italic, scalable, outline, weight,
-        slant, index
-    )
-
-
-def find_font_for_characters(
-    family,
-    chars,
-    bold=False,
-    italic=False,
-    allow_bitmaped_fonts=False,
-    size_in_pts=None,
-    dpi=None
-):
-    ans = get_font(
-        family,
-        bold,
-        italic,
-        characters=chars,
-        allow_bitmaped_fonts=allow_bitmaped_fonts,
-        size_in_pts=size_in_pts,
-        dpi=dpi
-    )
-    if not ans.path or not os.path.exists(ans.path):
-        raise FontNotFound(
-            'Failed to find font for characters: {!r}'.format(chars)
-        )
+def create_font_map(all_fonts):
+    ans = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
+    for x in all_fonts:
+        f = (x['family'] or '').lower()
+        full = (x['full_name'] or '').lower()
+        ps = (x['postscript_name'] or '').lower()
+        ans['family_map'].setdefault(f, []).append(x)
+        ans['ps_map'].setdefault(ps, []).append(x)
+        ans['full_map'].setdefault(full, []).append(x)
     return ans
 
 
-def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, italic=False):
-    dpi = (xdpi + ydpi) / 2
-    try:
-        return find_font_for_characters(current_font_family, text, bold=bold, italic=italic, size_in_pts=pt_sz, dpi=dpi)
-    except FontNotFound:
-        return find_font_for_characters(current_font_family, text, bold=bold, italic=italic, size_in_pts=pt_sz, dpi=dpi, allow_bitmaped_fonts=True)
+@lru_cache()
+def all_fonts_map(monospaced=True):
+    return create_font_map(fc_list(monospaced))
 
 
-def get_font_information(family, bold=False, italic=False):
-    return get_font(family, bold, italic)
+def find_best_match(family, bold=False, italic=False, monospaced=True):
+    q = re.sub(r'\s+', ' ', family.lower())
+    font_map = all_fonts_map(monospaced)
+
+    def score(candidate):
+        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate['weight'])
+        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate['slant'])
+        monospace_match = 0 if candidate['spacing'] == 'MONO' else 1
+        return bold_score + italic_score, monospace_match
+
+    # First look for an exact match
+    for selector in ('ps_map', 'full_map', 'family_map'):
+        candidates = font_map[selector].get(q)
+        if candidates:
+            candidates.sort(key=score)
+            return candidates[0]
+
+    # Use fc-match with a generic family
+    family = 'monospace' if monospaced else 'sans-serif'
+    return fc_match(family, bold, italic)
+
+
+def face_from_font(font, pt_sz=11.0, xdpi=96.0, ydpi=96.0):
+    font = fc_font(pt_sz, (xdpi + ydpi) / 2.0, font['path'], font['index'])
+    return Face(font['path'], font['index'], font['hinting'], font['hint_style'], pt_sz, xdpi, ydpi)
+
+
+def resolve_family(f, main_family, bold, italic):
+    if (bold or italic) and f == 'auto':
+        f = main_family
+    return f
+
+
+def save_medium_face(face):
+    pass
 
 
 def get_font_files(opts):
     ans = {}
-    attr_map = {
-        'bold': 'bold_font',
-        'italic': 'italic_font',
-        'bi': 'bold_italic_font'
-    }
-
-    def get_family(key=None):
-        ans = getattr(opts, attr_map.get(key, 'font_family'))
-        if ans == 'auto' and key:
-            ans = get_family()
-        return ans
-
-    n = get_font_information(get_family())
-    ans['medium'] = n
-
-    def do(key):
-        b = get_font_information(
-            get_family(key),
-            bold=key in ('bold', 'bi'),
-            italic=key in ('italic', 'bi')
-        )
-        if b.path != n.path:
-            ans[key] = b
-
-    do('bold'), do('italic'), do('bi')
+    for (bold, italic), attr in attr_map.items():
+        rf = resolve_family(getattr(opts, attr), opts.font_family, bold, italic)
+        font = find_best_match(rf, bold, italic)
+        key = {(False, False): 'medium',
+               (True, False): 'bold',
+               (False, True): 'italic',
+               (True, True): 'bi'}[(bold, italic)]
+        ans[key] = font
+        if key == 'medium':
+            save_medium_face.medium_font = font
     return ans
 
 
 def font_for_family(family):
-    ans = get_font_information(family)
-    return ans
+    ans = find_best_match(family)
+    return ans, ans['weight'] >= FC_WEIGHT_BOLD, ans['slant'] != FC_SLANT_ROMAN
+
+
+def font_for_text(text, current_font_family='monospace', pt_sz=11.0, xdpi=96.0, ydpi=96.0, bold=False, italic=False):
+    return fc_match('monospace', bold, italic, False, pt_sz, str(text), (xdpi + ydpi) / 2.0)
