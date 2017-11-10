@@ -6,7 +6,7 @@ import re
 import sys
 from collections import namedtuple
 
-from kitty.fast_data_types import CTFace as Face, coretext_all_fonts
+from kitty.fast_data_types import coretext_all_fonts, create_face, face_for_text
 from kitty.utils import safe_print
 
 attr_map = {(False, False): 'font_family',
@@ -96,9 +96,9 @@ def face_description(family, main_family, bold=False, italic=False):
     )
 
 
-def get_face(family, font_size, dpi, bold=False, italic=False):
+def get_face(family, font_size, xdpi, ydpi, bold=False, italic=False):
     descriptor = find_best_match(family, bold, italic)
-    return Face(descriptor, font_size, dpi)
+    return create_face(descriptor, font_size, xdpi, ydpi)
 
 
 def get_font_files(opts):
@@ -118,7 +118,7 @@ def get_font_files(opts):
 
 
 def face_from_font(font, pt_sz, xdpi, ydpi):
-    return get_face(font.resolved_family, pt_sz, (xdpi + ydpi) / 2, bold=font.bold, italic=font.italic)
+    return get_face(font.resolved_family, pt_sz, xdpi, ydpi, bold=font.bold, italic=font.italic)
 
 
 def save_medium_face(face):
@@ -126,7 +126,7 @@ def save_medium_face(face):
 
 
 def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, italic=False):
-    save_medium_face.face.face_for_text(text, bold, italic)
+    return face_for_text(text, pt_sz, xdpi, ydpi, bold, italic)
 
 
 def font_for_family(family):
@@ -138,7 +138,7 @@ def test_font_matching(
     name='Menlo', bold=False, italic=False, dpi=72.0, font_size=11.0
 ):
     all_fonts = create_font_map(coretext_all_fonts())
-    face = get_face(all_fonts, name, 'Menlo', font_size, dpi, bold, italic)
+    face = get_face(all_fonts, name, 'Menlo', font_size, dpi, dpi, bold, italic)
     return face
 
 
@@ -147,6 +147,6 @@ def test_family_matching(name='Menlo', dpi=72.0, font_size=11.0):
     for bold in (False, True):
         for italic in (False, True):
             face = get_face(
-                all_fonts, name, 'Menlo', font_size, dpi, bold, italic
+                all_fonts, name, 'Menlo', font_size, dpi, dpi, bold, italic
             )
             print(bold, italic, face)

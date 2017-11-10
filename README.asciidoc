@@ -85,6 +85,7 @@ the following dependencies are installed first.
 * libunistring 
 * zlib
 * libpng
+* freetype
 * fontconfig (not needed on macOS)
 * harfbuzz >= 1.5.0 
 * xsel (only on X11 systems with glfw < 3.3)

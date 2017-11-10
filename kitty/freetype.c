@@ -157,15 +157,12 @@ load_from_path_and_psname(const char *path, const char* psname, FT_Face ans) {
 }
 
 PyObject*
-ft_face_from_path_and_psname(const char* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
-    if (!load_from_path_and_psname(path, psname, ans->face)) { Py_CLEAR(ans); return NULL; }
-    PyObject *p = PyUnicode_FromString(path);
-    if (p == NULL) { Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, p, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
+    if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans->face)) { Py_CLEAR(ans); return NULL; }
+    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
-    Py_DECREF(p);
     return (PyObject*)ans;
 }
 

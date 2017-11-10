@@ -88,6 +88,7 @@ install: |
             brew install python3;
             brew install glfw;
             brew install libunistring;
+            brew install freetype;
             brew install harfbuzz;
         else
             mkdir -p $SW;
