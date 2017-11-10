@@ -19,6 +19,8 @@ attr_map = {(False, False): 'font_family',
 def create_font_map(all_fonts):
     ans = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
+        if 'path' not in x:
+            continue
         f = (x.get('family') or '').lower()
         full = (x.get('full_name') or '').lower()
         ps = (x.get('postscript_name') or '').lower()
@@ -33,14 +35,23 @@ def all_fonts_map(monospaced=True):
     return create_font_map(fc_list(monospaced))
 
 
+def list_fonts():
+    for fd in fc_list(False):
+        f = fd.get('family')
+        if f:
+            fn = fd.get('full_name') or (f + ' ' + fd.get('style', '')).strip()
+            is_mono = fd.get('spacing') == 'MONO'
+            yield {'family': f, 'full_name': fn, 'is_monospace': is_mono}
+
+
 def find_best_match(family, bold=False, italic=False, monospaced=True):
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map(monospaced)
 
     def score(candidate):
-        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate['weight'])
-        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate['slant'])
-        monospace_match = 0 if candidate['spacing'] == 'MONO' else 1
+        bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate.get('weight', 0))
+        italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate.get('slant', 0))
+        monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
         return bold_score + italic_score, monospace_match
 
     # First look for an exact match
@@ -56,8 +67,8 @@ def find_best_match(family, bold=False, italic=False, monospaced=True):
 
 
 def face_from_font(font, pt_sz=11.0, xdpi=96.0, ydpi=96.0):
-    font = fc_font(pt_sz, (xdpi + ydpi) / 2.0, font['path'], font['index'])
-    return Face(font['path'], font['index'], font['hinting'], font['hint_style'], pt_sz, xdpi, ydpi)
+    font = fc_font(pt_sz, (xdpi + ydpi) / 2.0, font['path'], font.get('index', 0))
+    return Face(font['path'], font.get('index', 0), font.get('hinting', False), font.get('hint_style', 0), pt_sz, xdpi, ydpi)
 
 
 def resolve_family(f, main_family, bold, italic):
@@ -86,8 +97,8 @@ def get_font_files(opts):
 
 
 def font_for_family(family):
-    ans = find_best_match(family)
-    return ans, ans['weight'] >= FC_WEIGHT_BOLD, ans['slant'] != FC_SLANT_ROMAN
+    ans = find_best_match(family, monospaced=False)
+    return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
 
 
 def font_for_text(text, current_font_family='monospace', pt_sz=11.0, xdpi=96.0, ydpi=96.0, bold=False, italic=False):

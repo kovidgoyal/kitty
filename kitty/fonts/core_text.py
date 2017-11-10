@@ -34,6 +34,15 @@ def all_fonts_map():
     return ans
 
 
+def list_fonts():
+    for fd in coretext_all_fonts():
+        f = fd['family']
+        if f:
+            fn = (f + ' ' + (fd['style'] or '')).strip()
+            is_mono = bool(fd['monospace'])
+            yield {'family': f, 'full_name': fn, 'is_monospace': is_mono}
+
+
 def find_best_match(family, bold, italic):
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()

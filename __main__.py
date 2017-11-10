@@ -7,6 +7,9 @@ import sys
 if len(sys.argv) > 1 and sys.argv[1] == 'icat':
     from kitty.icat import main
     main(sys.argv[1:])
+elif len(sys.argv) > 1 and sys.argv[1] == 'list-fonts':
+    from kitty.fonts.list import main
+    main(sys.argv[1:])
 else:
     from kitty.main import main
     main()

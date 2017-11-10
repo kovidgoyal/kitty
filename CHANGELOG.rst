@@ -6,6 +6,9 @@ kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 version 0.5.0 [future]
 ---------------------------
 
+- Make it easy to select fonts by allowing listing of monospace fonts using:
+  kitty list-fonts
+
 - macOS: Enable subpixel rendering of text for improved appearance
 
 - Linux: Support rendering of non-normalizable unicode combining characters by using harfbuzz
