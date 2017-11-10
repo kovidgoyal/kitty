@@ -140,16 +140,16 @@ ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_d
 }
 
 static inline bool
-load_from_path_and_psname(const char *path, const char* psname, FT_Face ans) {
+load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
     int error, num_faces, index = 0;
-    error = FT_New_Face(library, path, index, &ans);
-    if (error) { set_freetype_error("False to load face, with error:", error); return false; }
-    num_faces = ans->num_faces;
+    error = FT_New_Face(library, path, index, &ans->face);
+    if (error) { set_freetype_error("False to load face, with error:", error); ans->face = NULL; return false; }
+    num_faces = ans->face->num_faces;
     if (num_faces < 2) return true;
     do {
-        if (strcmp(FT_Get_Postscript_Name(ans), psname) == 0) return true;
-        FT_Done_Face(ans);
-        error = FT_New_Face(library, path, ++index, &ans);
+        if (strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
+        FT_Done_Face(ans->face); ans->face = NULL;
+        error = FT_New_Face(library, path, ++index, &ans->face);
         if (error) continue;
     } while(index < num_faces);
     PyErr_Format(PyExc_ValueError, "No face matching the postscript name: %s found in: %s", psname, path);
@@ -158,8 +158,10 @@ load_from_path_and_psname(const char *path, const char* psname, FT_Face ans) {
 
 PyObject*
 ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+    if (PyUnicode_READY(path) != 0) return NULL;
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
-    if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans->face)) { Py_CLEAR(ans); return NULL; }
+    if (!ans) return NULL;
+    if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans)) { Py_CLEAR(ans); return NULL; }
     if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
