@@ -1599,7 +1599,7 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
-    MND(refresh_sprite_positions, METH_O)
+    MND(refresh_sprite_positions, METH_NOARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)

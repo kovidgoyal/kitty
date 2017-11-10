@@ -91,6 +91,7 @@ def resize_fonts(new_sz, xdpi=None, ydpi=None):
         s.family, new_sz, xdpi, ydpi, cell_width, cell_height, baseline,
         underline_position, underline_thickness
     )
+    return cell_width, cell_height
 
 
 def add_line(buf, cell_width, position, thickness, cell_height):
