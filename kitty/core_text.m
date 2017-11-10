@@ -275,11 +275,44 @@ set_size_for_face(PyObject *s, float pt_sz, float xdpi, float ydpi) {
     return create_harfbuzz_font(self);
 }
 
+static inline CGContextRef
+create_context(uint8_t *canvas, unsigned int width, unsigned int height) {
+    CGColorSpaceRef color_space = CGColorSpaceCreateDeviceGray();
+    if (color_space == NULL) return NULL;
+    CGContextRef ctx = CGBitmapContextCreate(canvas, width, height, 8, width, color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
+    CGColorSpaceRelease(color_space);
+    if(ctx) {
+        CGContextSetShouldAntialias(ctx, true);
+        CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
+        CGContextSetShouldSubpixelQuantizeFonts(ctx, true);
+        CGContextSetShouldSubpixelPositionFonts(ctx, true);
+        CGContextSetRGBFillColor(ctx, 1, 1, 1, 1); // white glyphs
+        CGContextSetTextDrawingMode(ctx, kCGTextFill);
+        CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
+    }
+    return ctx;
+}
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
-    // TODO: Implement this
-    (void)(f); (void)(bold); (void)italic; (void)info; (void)positions; (void)num_glyphs; (void)num_glyphs; (void)canvas; (void)cell_width; (void)cell_height; (void)num_cells; (void)baseline;
+render_glyphs_in_cells(PyObject *f, bool UNUSED bold, bool UNUSED italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int UNUSED baseline) {
+    Face *self = (Face*)f;
+    CGContextRef ctx = create_context(canvas, cell_width * num_cells, cell_height);
+    if (ctx == NULL) return false;
+    static CGGlyph glyphs[100];
+    static CGPoint cg_positions[sizeof(glyphs)/sizeof(glyphs[0])];
+    num_glyphs = MIN(sizeof(glyphs)/sizeof(glyphs[0]), num_glyphs);
+    float x = 0.f;
+    // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
+    /* CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1); */
+    for (unsigned int i=0; i < num_glyphs; i++) {
+        glyphs[i] = info[i].codepoint;
+        cg_positions[i].x = x + (float)positions[i].x_offset / 64.0f;
+        cg_positions[i].y = (float)positions[i].y_offset / 64.0f;
+        x += (float)positions[i].x_advance / 64.0f;
+    }
+
+    CTFontDrawGlyphs(self->font, glyphs, cg_positions, num_glyphs, ctx);
+    CGContextRelease(ctx);
     return true;
 }
 

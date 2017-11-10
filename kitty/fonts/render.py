@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import ctypes
+import sys
 from collections import namedtuple
 from math import ceil, floor, pi, sin, sqrt
 
@@ -220,7 +221,11 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     cf = current_fonts()
     fonts = [cf['medium'].display_name()]
     fonts.extend(f.display_name() for f in cf['fallback'])
-    print('Rendered string {} below, with fonts: {}'.format(text, ', '.join(fonts)))
+    msg = 'Rendered string {} below, with fonts: {}'.format(text, ', '.join(fonts))
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write(msg.encode('utf-8') + b'\n')
     show(f.name, cell_width * len(cells), cell_height, 24)
     print('\n')
 
