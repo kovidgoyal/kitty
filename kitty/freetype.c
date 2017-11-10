@@ -29,6 +29,8 @@ typedef struct {
     FT_UInt xdpi, ydpi;
     PyObject *path;
     hb_font_t *harfbuzz_font;
+    void *extra_data;
+    free_extra_data_func free_extra_data;
 } Face;
 
 static PyObject* FreeType_Exception = NULL;
@@ -107,6 +109,24 @@ get_load_flags(int hinting, int hintstyle, int base) {
 }
 
 
+static inline bool
+init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+#define CPY(n) self->n = self->face->n;
+    CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
+#undef CPY
+    self->is_scalable = FT_IS_SCALABLE(self->face);
+    self->hinting = hinting; self->hintstyle = hintstyle;
+    if (!set_size_for_face((PyObject*)self, size_in_pts, xdpi, ydpi)) return false;
+    self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
+    if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
+    hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
+
+    self->path = path;
+    Py_INCREF(self->path);
+    return true;
+}
+
+
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Face *self;
@@ -118,19 +138,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     self = (Face *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        self->path = PyTuple_GET_ITEM(args, 0);
-        Py_INCREF(self->path);
         error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
-#define CPY(n) self->n = self->face->n;
-        CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
-#undef CPY
-        self->is_scalable = FT_IS_SCALABLE(self->face);
-        self->hinting = hinting; self->hintstyle = hintstyle;
-        if (!set_size_for_face((PyObject*)self, size_in_pts, xdpi, ydpi)) { Py_CLEAR(self); return NULL; }
-        self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
-        if (self->harfbuzz_font == NULL) { Py_CLEAR(self); return PyErr_NoMemory(); }
-        hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
+        if (!init_ft_face(self, PyTuple_GET_ITEM(args, 0), hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
 }
@@ -139,6 +149,7 @@ static void
 dealloc(Face* self) {
     if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);
     if (self->face) FT_Done_Face(self->face);
+    if (self->extra_data && self->free_extra_data) self->free_extra_data(self->extra_data);
     Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -347,8 +358,6 @@ PyTypeObject Face_Type = {
     .tp_repr = (reprfunc)repr,
 };
 
-INIT_TYPE(Face)
-
 static void
 free_freetype() {
     FT_Done_FreeType(library);
@@ -356,6 +365,9 @@ free_freetype() {
 
 bool 
 init_freetype_library(PyObject *m) {
+    if (PyType_Ready(&Face_Type) < 0) return 0;
+    if (PyModule_AddObject(m, "Face", (PyObject *)&Face_Type) != 0) return 0; 
+    Py_INCREF(&Face_Type); 
     FreeType_Exception = PyErr_NewException("fast_data_types.FreeTypeError", NULL, NULL);
     if (FreeType_Exception == NULL) return false;
     if (PyModule_AddObject(m, "FreeTypeError", FreeType_Exception) != 0) return false;

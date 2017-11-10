@@ -23,3 +23,5 @@ bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t
 void render_line(Line *line);
 void sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len);
 void sprite_tracker_set_layout(unsigned int cell_width, unsigned int cell_height);
+
+typedef void (*free_extra_data_func)(void*);
