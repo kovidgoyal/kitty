@@ -227,7 +227,7 @@ calc_cell_width(Face *self) {
 
 static inline int
 font_units_to_pixels(Face *self, int x) {
-    return (int)ceilf(((float)x * (((float)self->size_in_pts * (float)self->ydpi) / (72.f * (float)self->units_per_EM))));
+    return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
 }
 
 void 
@@ -236,7 +236,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     *cell_width = calc_cell_width(self);
     *cell_height = font_units_to_pixels(self, self->height);
     *baseline = font_units_to_pixels(self, self->ascender);
-    *underline_position = MIN(*cell_height - 1, *baseline - font_units_to_pixels(self, self->underline_position));
+    *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = font_units_to_pixels(self, self->underline_thickness);
 }
 
