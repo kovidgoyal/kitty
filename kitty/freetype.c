@@ -31,6 +31,7 @@ typedef struct {
     hb_font_t *harfbuzz_font;
     void *extra_data;
     free_extra_data_func free_extra_data;
+    float apple_leading;
 } Face;
 PyTypeObject Face_Type;
 
@@ -128,7 +129,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, float size_
 }
 
 PyObject*
-ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi, float apple_leading) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (ans == NULL) return NULL; 
     int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
@@ -136,6 +137,7 @@ ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_d
     if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
+    ans->apple_leading = apple_leading;
     return (PyObject*)ans;
 }
 
@@ -157,7 +159,7 @@ load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
 }
 
 PyObject*
-ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi, float apple_leading) {
     if (PyUnicode_READY(path) != 0) return NULL;
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (!ans) return NULL;
@@ -165,6 +167,7 @@ ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_dat
     if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
+    ans->apple_leading = apple_leading;
     return (PyObject*)ans;
 }
 
@@ -235,6 +238,10 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = font_units_to_pixels(self, self->height);
+    if (self->apple_leading <= 0) {
+        // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
+        *cell_height += floor(0.2 * (double)(*cell_height) + 0.5);
+    }
     *baseline = font_units_to_pixels(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = font_units_to_pixels(self, self->underline_thickness);

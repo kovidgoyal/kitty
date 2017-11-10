@@ -132,7 +132,7 @@ create_face(PyObject UNUSED *self, PyObject *args) {
     PyObject *path = PyUnicode_FromString([[url path] UTF8String]);
     [url release];
     if (path == NULL) { CFRelease(font); return NULL; }
-    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, point_sz, xdpi, ydpi);
+    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, point_sz, xdpi, ydpi, CTFontGetLeading(font));
     Py_DECREF(path);
     if (ans == NULL) { CFRelease(font); }
     return ans;
