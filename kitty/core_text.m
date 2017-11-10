@@ -69,9 +69,9 @@ font_descriptor_from_python(PyObject *src) {
     PyObject *t = PyDict_GetItemString(src, "traits");
     if (t == NULL) {
         symbolic_traits = (
-            (PyDict_GetItemString(src, "bold") == Py_True) ? kCTFontBoldTrait : 0 |
-            (PyDict_GetItemString(src, "italic") == Py_True) ? kCTFontItalicTrait : 0 |
-            (PyDict_GetItemString(src, "monospace") == Py_True) ? kCTFontMonoSpaceTrait : 0);
+            (PyDict_GetItemString(src, "bold") == Py_True ? kCTFontBoldTrait : 0) |
+            (PyDict_GetItemString(src, "italic") == Py_True ? kCTFontItalicTrait : 0) |
+            (PyDict_GetItemString(src, "monospace") == Py_True ? kCTFontMonoSpaceTrait : 0));
     } else {
         symbolic_traits = PyLong_AsUnsignedLong(t);
     }

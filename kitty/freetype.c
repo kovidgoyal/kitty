@@ -202,7 +202,9 @@ dealloc(Face* self) {
 static PyObject *
 repr(Face *self) {
     return PyUnicode_FromFormat(
-        "Face(path=%S, index=%d, is_scalable=%S, units_per_EM=%u, ascender=%i, descender=%i, height=%i, max_advance_width=%i max_advance_height=%i, underline_position=%i, underline_thickness=%i)",
+        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, units_per_EM=%u, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i)",
+        self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
+        FT_Get_Postscript_Name(self->face),
         self->path, self->index, self->is_scalable ? Py_True : Py_False, 
         self->ascender, self->descender, self->height, self->max_advance_width, self->max_advance_height, self->underline_position, self->underline_thickness
     );
