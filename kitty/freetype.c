@@ -32,6 +32,7 @@ typedef struct {
     void *extra_data;
     free_extra_data_func free_extra_data;
 } Face;
+PyTypeObject Face_Type;
 
 static PyObject* FreeType_Exception = NULL;
 
@@ -126,6 +127,17 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, float size_
     return true;
 }
 
+PyObject*
+ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+    Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
+    if (ans == NULL) return NULL; 
+    int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
+    if(error) { set_freetype_error("Failed to load memory face, with error:", error); Py_CLEAR(ans); return NULL; }
+    ans->extra_data = extra_data;
+    ans->free_extra_data = fed;
+    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
+    return (PyObject*)ans;
+}
 
 static PyObject*
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
