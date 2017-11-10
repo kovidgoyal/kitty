@@ -7,6 +7,9 @@
 
 #include "data-types.h"
 #include <fontconfig/fontconfig.h>
+#ifndef FC_COLOR
+#define FC_COLOR "color"
+#endif
 
 static inline PyObject*
 pybool(FcBool x) { PyObject *ans = x ? Py_True: Py_False; Py_INCREF(ans); return ans; }
