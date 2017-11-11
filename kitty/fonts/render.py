@@ -220,7 +220,7 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     cf = current_fonts()
     fonts = [cf['medium'].display_name()]
     fonts.extend(f.display_name() for f in cf['fallback'])
-    msg = 'Rendered string {} below, with fonts: {}'.format(text, ', '.join(fonts))
+    msg = 'Rendered string {} below, with fonts: {}\n'.format(text, ', '.join(fonts))
     try:
         print(msg)
     except UnicodeEncodeError:
@@ -241,8 +241,9 @@ def test_fallback_font(qtext=None, bold=False, italic=False):
 
 
 def showcase():
-    change_wcwidth(True)
-    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Noto Sans Mono')
-    test_render_string('你好,世界', family='Noto Sans Mono')
-    test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family='Noto Sans Mono')
+    change_wcwidth(False)
+    f = 'monospace' if isosx else 'Liberation Mono'
+    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family=f)
+    test_render_string('你好,世界', family=f)
+    test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family=f)
     test_render_string('A=>>B!=C', family='Fira Code')
