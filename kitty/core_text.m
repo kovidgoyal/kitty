@@ -105,14 +105,38 @@ coretext_all_fonts(PyObject UNUSED *_self) {
     return ans;
 }
 
-static PyObject*
-face_for_text(PyObject UNUSED *self, PyObject UNUSED *args) {
-    Py_RETURN_NONE;  // TODO: Implement this
-}
-
 static void
 free_font(void *f) {
     CFRelease((CTFontRef)f);
+}
+
+static inline PyObject*
+ft_face(CTFontRef font, float pt_sz, float xdpi, float ydpi) {
+    const char *psname = convert_cfstring(CTFontCopyPostScriptName(font), 1);
+    NSURL *url = (NSURL*)CTFontCopyAttribute(font, kCTFontURLAttribute);
+    PyObject *path = PyUnicode_FromString([[url path] UTF8String]);
+    [url release];
+    if (path == NULL) { CFRelease(font); return NULL; }
+    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, pt_sz, xdpi, ydpi, CTFontGetLeading(font));
+    Py_DECREF(path);
+    if (ans == NULL) { CFRelease(font); }
+    return ans;
+}
+
+static PyObject*
+face_for_text(PyObject UNUSED *self, PyObject UNUSED *args) {
+    char *text;
+    PyObject *lp;
+    float pt_sz, xdpi, ydpi;
+    int bold, italic;
+    if (!PyArg_ParseTuple(args, "sO!fffpp", &text, &PyLong_Type, &lp, &pt_sz, &xdpi, &ydpi, &bold, &italic)) return NULL;
+    CTFontRef font = PyLong_AsVoidPtr(lp);
+    CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
+    if (str == NULL) return PyErr_NoMemory();
+    CFRange range = CFRangeMake(0, CFStringGetLength(str));
+    CTFontRef new_font = CTFontCreateForString(font, str, range);
+    if (new_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont"); CFRelease(str); return NULL; }
+    return ft_face(new_font, pt_sz, xdpi, ydpi);
 }
 
 static PyObject*
@@ -127,15 +151,7 @@ create_face(PyObject UNUSED *self, PyObject *args) {
     CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz, NULL);
     CFRelease(desc); desc = NULL;
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
-    const char *psname = convert_cfstring(CTFontCopyPostScriptName(font), 1);
-    NSURL *url = (NSURL*)CTFontCopyAttribute(font, kCTFontURLAttribute);
-    PyObject *path = PyUnicode_FromString([[url path] UTF8String]);
-    [url release];
-    if (path == NULL) { CFRelease(font); return NULL; }
-    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, point_sz, xdpi, ydpi, CTFontGetLeading(font));
-    Py_DECREF(path);
-    if (ans == NULL) { CFRelease(font); }
-    return ans;
+    return ft_face(font, point_sz, xdpi, ydpi);
 }
 
 // Boilerplate {{{

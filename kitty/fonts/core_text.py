@@ -117,7 +117,7 @@ def get_font_files(opts):
     return ans
 
 
-def face_from_font(font, pt_sz, xdpi, ydpi):
+def face_from_font(font, pt_sz=11.0, xdpi=72.0, ydpi=72.0):
     return get_face(font.resolved_family, pt_sz, xdpi, ydpi, bold=font.bold, italic=font.italic)
 
 
@@ -126,7 +126,7 @@ def save_medium_face(face):
 
 
 def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, italic=False):
-    return face_for_text(text, pt_sz, xdpi, ydpi, bold, italic)
+    return face_for_text(text, save_medium_face.face.extra_data(), pt_sz, xdpi, ydpi, bold, italic)
 
 
 def font_for_family(family):
@@ -143,10 +143,9 @@ def test_font_matching(
 
 
 def test_family_matching(name='Menlo', dpi=72.0, font_size=11.0):
-    all_fonts = create_font_map(coretext_all_fonts())
     for bold in (False, True):
         for italic in (False, True):
             face = get_face(
-                all_fonts, name, 'Menlo', font_size, dpi, dpi, bold, italic
+                name, font_size, dpi, dpi, bold, italic
             )
             print(bold, italic, face)

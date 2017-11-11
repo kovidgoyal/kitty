@@ -10,7 +10,7 @@ from math import ceil, floor, pi, sin, sqrt
 from kitty.config import defaults
 from kitty.constants import isosx
 from kitty.fast_data_types import (
-    Screen, send_prerendered_sprites, set_font, set_font_size,
+    Screen, change_wcwidth, send_prerendered_sprites, set_font, set_font_size,
     set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
@@ -49,11 +49,10 @@ FontState = namedtuple(
 
 def get_fallback_font(text, bold, italic):
     state = set_font_family.state
-    font = font_for_text(
+    return font_for_text(
             text, state.family, state.pt_sz, state.xdpi, state.ydpi, bold,
             italic
         )
-    return None if font is None else create_face(font)
 
 
 def set_font_family(opts=None, override_font_size=None, override_dpi=None):
@@ -230,8 +229,20 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
     print('\n')
 
 
+def test_fallback_font(qtext=None, bold=False, italic=False):
+    set_font_family(override_dpi=(96.0, 96.0))
+    for text in (qtext, '你好', 'He\u0347\u0305', '\U0001F929'):
+        if text:
+            f = get_fallback_font(text, bold, italic)
+            try:
+                print(text, f)
+            except UnicodeEncodeError:
+                sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
+
+
 def showcase():
+    change_wcwidth(True)
     test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family='Noto Sans Mono')
     test_render_string('你好,世界', family='Noto Sans Mono')
-    test_render_string('|\U0001F929|\U0001F921|\U0001F91f|', family='Noto Sans Mono')
+    test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family='Noto Sans Mono')
     test_render_string('A=>>B!=C', family='Fira Code')

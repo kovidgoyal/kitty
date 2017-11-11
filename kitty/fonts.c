@@ -224,6 +224,7 @@ update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
     sprite_tracker_set_layout(cell_width, cell_height);
+    global_state.cell_width = cell_width; global_state.cell_height = cell_height;
     free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);

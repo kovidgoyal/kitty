@@ -102,4 +102,7 @@ def font_for_family(family):
 
 
 def font_for_text(text, current_font_family='monospace', pt_sz=11.0, xdpi=96.0, ydpi=96.0, bold=False, italic=False):
-    return fc_match('monospace', bold, italic, False, pt_sz, str(text), (xdpi + ydpi) / 2.0)
+    ans = fc_match('monospace', bold, italic, False, pt_sz, str(text), (xdpi + ydpi) / 2.0)
+    if ans is not None:
+        ans = face_from_font(ans, pt_sz, xdpi, ydpi)
+    return ans
