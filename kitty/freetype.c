@@ -221,6 +221,17 @@ face_from_descriptor(PyObject *descriptor) {
 }
 #endif
  
+PyObject*
+face_from_path(const char *path, int index) {
+    Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
+    if (ans == NULL) return NULL;
+    int error;
+    error = FT_New_Face(library, path, index, &ans->face);
+    if (error) { set_freetype_error("Failed to load face, with error:", error); ans->face = NULL; return NULL; }
+    if (!init_ft_face(ans, Py_None, true, 3)) { Py_CLEAR(ans); return NULL; }
+    return (PyObject*)ans;
+}
+
 static void
 dealloc(Face* self) {
     if (self->harfbuzz_font) hb_font_destroy(self->harfbuzz_font);

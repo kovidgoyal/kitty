@@ -187,14 +187,14 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     return cell_width, cell_height, cells
 
 
-def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0):
+def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None):
     import json
     try:
         sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
-        data = test_shape(line)
+        data = test_shape(line, path)
         return json.loads('[' + data + ']')
     finally:
         set_send_sprite_to_gpu(None)

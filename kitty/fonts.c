@@ -499,15 +499,27 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
 }
 
 static PyObject*
-test_shape(PyObject UNUSED *self, Line *line) {
+test_shape(PyObject UNUSED *self, PyObject *args) {
+    Line *line;
+    char *path = NULL;
+    int index = 0;
+    if(!PyArg_ParseTuple(args, "O!|zi", &Line_Type, &line, &path, &index)) return NULL;
     index_type num = 0;
     while(num < line->xnum && line->cells[num].ch) num++;
     load_hb_buffer(line->cells, num);
+    PyObject *face = NULL;
+    hb_font_t *hb_font; 
     Font *font = &medium_font;
-    hb_shape_full(font->hb_font, harfbuzz_buffer, NULL, 0, SHAPERS);
+    if (path) {
+        face = face_from_path(path, index);
+        if (face == NULL) return NULL;
+        hb_font = harfbuzz_font_for_face(face);
+    } else hb_font = font->hb_font;
+    hb_shape_full(hb_font, harfbuzz_buffer, NULL, 0, SHAPERS);
     unsigned int num_glyphs;
     hb_buffer_get_glyph_infos(harfbuzz_buffer, &num_glyphs);
-    hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_JSON, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+    hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, hb_font, HB_BUFFER_SERIALIZE_FORMAT_JSON, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+    Py_CLEAR(face);
     return Py_BuildValue("s", canvas);
 }
 
@@ -739,7 +751,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_sprite_position_for, METH_VARARGS),
     METHODB(concat_cells, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
-    METHODB(test_shape, METH_O),
+    METHODB(test_shape, METH_VARARGS),
     METHODB(current_fonts, METH_NOARGS),
     METHODB(test_render_line, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),

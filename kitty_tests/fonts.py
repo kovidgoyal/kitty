@@ -70,6 +70,9 @@ class Rendering(BaseTest):
         self.ae(len(cells), sz)
 
     def test_shaping(self):
-        self.assertEqual(len(shape_string('abcd')), 4)
+        flags = [x.get('fl', 0) for x in shape_string('abcd')]
+        self.ae(flags, [0, 0, 0, 0])
         flags = [x.get('fl', 0) for x in shape_string('e\u0347\u0305')]
+        self.assertEqual(flags, [0, 1, 1])
+        flags = [x.get('fl', 0) for x in shape_string('===', path='kitty_tests/FiraCode-Medium.otf')]
         self.assertEqual(flags, [0, 1, 1])

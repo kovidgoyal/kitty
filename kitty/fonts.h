@@ -29,3 +29,4 @@ PyObject* ft_face_from_path_and_psname(PyObject* path, const char* psname, void 
 PyObject* specialize_font_descriptor(PyObject *base_descriptor);
 PyObject* create_fallback_face(PyObject *base_face, Cell* cell, bool bold, bool italic);
 PyObject* face_from_descriptor(PyObject*);
+PyObject* face_from_path(const char *path, int index);
