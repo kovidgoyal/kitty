@@ -72,6 +72,7 @@ typedef struct {
     bool application_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
     double logical_dpi_x, logical_dpi_y;
+    float font_sz_in_pts;
     double mouse_x, mouse_y;
     bool mouse_button_pressed[20];
     int viewport_width, viewport_height;

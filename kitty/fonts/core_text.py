@@ -4,9 +4,8 @@
 
 import re
 import sys
-from collections import namedtuple
 
-from kitty.fast_data_types import coretext_all_fonts, create_face, face_for_text
+from kitty.fast_data_types import coretext_all_fonts
 from kitty.utils import safe_print
 
 attr_map = {(False, False): 'font_family',
@@ -43,7 +42,7 @@ def list_fonts():
             yield {'family': f, 'full_name': fn, 'is_monospace': is_mono}
 
 
-def find_best_match(family, bold, italic):
+def find_best_match(family, bold=False, italic=False):
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
@@ -77,7 +76,7 @@ def find_best_match(family, bold, italic):
     }
 
 
-def resolve_family(f, main_family, bold, italic):
+def resolve_family(f, main_family, bold=False, italic=False):
     if (bold or italic) and f == 'auto':
         f = main_family
     if f.lower() == 'monospace':
@@ -85,67 +84,20 @@ def resolve_family(f, main_family, bold, italic):
     return f
 
 
-FaceDescription = namedtuple(
-    'FaceDescription', 'resolved_family family bold italic'
-)
-
-
-def face_description(family, main_family, bold=False, italic=False):
-    return FaceDescription(
-        resolve_family(family, main_family, bold, italic), family, bold, italic
-    )
-
-
-def get_face(family, font_size, xdpi, ydpi, bold=False, italic=False):
-    descriptor = find_best_match(family, bold, italic)
-    return create_face(descriptor, font_size, xdpi, ydpi)
-
-
 def get_font_files(opts):
     ans = {}
     for (bold, italic), attr in attr_map.items():
-        face = face_description(
-            getattr(opts, attr), opts.font_family, bold, italic
-        )
+        face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic)
         key = {(False, False): 'medium',
                (True, False): 'bold',
                (False, True): 'italic',
                (True, True): 'bi'}[(bold, italic)]
         ans[key] = face
         if key == 'medium':
-            save_medium_face.family = face.resolved_family
+            get_font_files.medium_family = face['family']
     return ans
 
 
-def face_from_font(font, pt_sz=11.0, xdpi=72.0, ydpi=72.0):
-    return get_face(font.resolved_family, pt_sz, xdpi, ydpi, bold=font.bold, italic=font.italic)
-
-
-def save_medium_face(face):
-    save_medium_face.face = face
-
-
-def font_for_text(text, current_font_family, pt_sz, xdpi, ydpi, bold=False, italic=False):
-    return face_for_text(text, save_medium_face.face.extra_data(), pt_sz, xdpi, ydpi, bold, italic)
-
-
 def font_for_family(family):
-    ans = face_description(family, save_medium_face.family)
-    return ans, ans.bold, ans.italic
-
-
-def test_font_matching(
-    name='Menlo', bold=False, italic=False, dpi=72.0, font_size=11.0
-):
-    all_fonts = create_font_map(coretext_all_fonts())
-    face = get_face(all_fonts, name, 'Menlo', font_size, dpi, dpi, bold, italic)
-    return face
-
-
-def test_family_matching(name='Menlo', dpi=72.0, font_size=11.0):
-    for bold in (False, True):
-        for italic in (False, True):
-            face = get_face(
-                name, font_size, dpi, dpi, bold, italic
-            )
-            print(bold, italic, face)
+    ans = find_best_match(resolve_family(family, get_font_files.medium_family))
+    return ans, ans['bold'], ans['italic']

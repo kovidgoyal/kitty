@@ -6,8 +6,8 @@ import re
 from functools import lru_cache
 
 from kitty.fast_data_types import (
-    FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD, FC_WEIGHT_REGULAR, Face,
-    fc_list, fc_match, fc_font
+    FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD, FC_WEIGHT_REGULAR,
+    fc_list, fc_match,
 )
 
 attr_map = {(False, False): 'font_family',
@@ -66,19 +66,10 @@ def find_best_match(family, bold=False, italic=False, monospaced=True):
     return fc_match(family, bold, italic)
 
 
-def face_from_font(font, pt_sz=11.0, xdpi=96.0, ydpi=96.0):
-    font = fc_font(pt_sz, (xdpi + ydpi) / 2.0, font['path'], font.get('index', 0))
-    return Face(font['path'], font.get('index', 0), font.get('hinting', False), font.get('hint_style', 0), pt_sz, xdpi, ydpi)
-
-
 def resolve_family(f, main_family, bold, italic):
     if (bold or italic) and f == 'auto':
         f = main_family
     return f
-
-
-def save_medium_face(face):
-    pass
 
 
 def get_font_files(opts):
@@ -91,18 +82,9 @@ def get_font_files(opts):
                (False, True): 'italic',
                (True, True): 'bi'}[(bold, italic)]
         ans[key] = font
-        if key == 'medium':
-            save_medium_face.medium_font = font
     return ans
 
 
 def font_for_family(family):
     ans = find_best_match(family, monospaced=False)
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
-
-
-def font_for_text(text, current_font_family='monospace', pt_sz=11.0, xdpi=96.0, ydpi=96.0, bold=False, italic=False):
-    ans = fc_match('monospace', bold, italic, False, pt_sz, str(text), (xdpi + ydpi) / 2.0)
-    if ans is not None:
-        ans = face_from_font(ans, pt_sz, xdpi, ydpi)
-    return ans

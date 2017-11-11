@@ -149,12 +149,24 @@ sprite_tracker_set_layout(unsigned int cell_width, unsigned int cell_height) {
     sprite_tracker.x = 0; sprite_tracker.y = 0; sprite_tracker.z = 0;
 }
 
+static inline PyObject*
+desc_to_face(PyObject *desc) {
+    PyObject *d = specialize_font_descriptor(desc);
+    if (d == NULL) return NULL;
+    PyObject *ans = face_from_descriptor(d);
+    Py_DECREF(d);
+    return ans;
+}
+
 
 static inline bool
-alloc_font(Font *f, PyObject *face, bool bold, bool italic) {
-    f->face = face; Py_INCREF(face);
+alloc_font(Font *f, PyObject *descriptor, bool bold, bool italic, bool is_face) {
+    PyObject *face;
+    if (is_face) { face = descriptor; Py_INCREF(face); }
+    else { face = desc_to_face(descriptor); if (face == NULL) return false; }
+    f->face = face; 
     f->hb_font = harfbuzz_font_for_face(face);
-    if (f->hb_font == NULL) return false;
+    if (f->hb_font == NULL) { PyErr_NoMemory(); return false; }
     f->bold = bold; f->italic = italic;
     return true;
 }
@@ -178,7 +190,6 @@ clear_font(Font *f) {
 
 static Font medium_font = {0}, bold_font = {0}, italic_font = {0}, bi_font = {0}, box_font = {0};
 static Font fallback_fonts[256] = {{0}};
-static PyObject *get_fallback_font = NULL;
 typedef enum { FONT, BLANK_FONT, BOX_FONT, MISSING_FONT } FontType;
 
 typedef struct {
@@ -206,16 +217,9 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf)
 
 
 static inline PyObject*
-update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
-#define CALL(f) { if ((f)->face) { if(!set_size_for_face((f)->face, pt_sz, xdpi, ydpi)) return NULL; (f)->hb_font = harfbuzz_font_for_face((f)->face); } clear_sprite_map((f)); }
-    CALL(&medium_font); CALL(&bold_font); CALL(&italic_font); CALL(&bi_font); CALL(&box_font);
-    for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
-        CALL(fallback_fonts + i);
-    }
-    for (size_t i = 0; i < symbol_map_fonts_count; i++)  {
-        CALL(symbol_map_fonts + i);
-    }
-#undef CALL
+update_cell_metrics() {
+#define CALL(f, desired_height) { if ((f)->face) { if(!set_size_for_face((f)->face, desired_height)) return NULL; (f)->hb_font = harfbuzz_font_for_face((f)->face); } clear_sprite_map((f)); }
+    CALL(&medium_font, 0); CALL(&bold_font, 0); CALL(&italic_font, 0); CALL(&bi_font, 0); CALL(&box_font, 0);
     cell_metrics(medium_font.face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness);
     if (!cell_width) { PyErr_SetString(PyExc_ValueError, "Failed to calculate cell width for the specified font."); return NULL; }
     if (OPT(adjust_line_height_px) != 0) cell_height += OPT(adjust_line_height_px);
@@ -227,14 +231,20 @@ update_cell_metrics(float pt_sz, float xdpi, float ydpi) {
     global_state.cell_width = cell_width; global_state.cell_height = cell_height;
     free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
+    for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
+        CALL(fallback_fonts + i, cell_height);
+    }
+    for (size_t i = 0; i < symbol_map_fonts_count; i++)  {
+        CALL(symbol_map_fonts + i, cell_height);
+    }
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);
+#undef CALL
 }
 
 static PyObject*
 set_font_size(PyObject UNUSED *m, PyObject *args) {
-    float pt_sz, xdpi, ydpi;
-    if (!PyArg_ParseTuple(args, "fff", &pt_sz, &xdpi, &ydpi)) return NULL;
-    return update_cell_metrics(pt_sz, xdpi, ydpi);
+    if (!PyArg_ParseTuple(args, "f", &global_state.font_sz_in_pts)) return NULL;
+    return update_cell_metrics();
 }
 
 static inline bool 
@@ -260,13 +270,16 @@ fallback_font(Cell *cell) {
             return fallback_fonts + i;
         }
     }
-    if (get_fallback_font == NULL || i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) return NULL;
-    Py_UCS4 buf[10];
-    size_t n = cell_as_unicode(cell, true, buf, ' ');
-    PyObject *face = PyObject_CallFunction(get_fallback_font, "NOO", PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n), bold ? Py_True : Py_False, italic ? Py_True : Py_False);
+    if (i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) { return NULL; }
+    Font* base_font;
+    if (bold) base_font = italic ? &bi_font : &bold_font;
+    else base_font = italic ? &italic_font : &medium_font;
+    if (!base_font->face) base_font = &medium_font;
+    PyObject *face = create_fallback_face(base_font->face, cell, bold, italic);
     if (face == NULL) { PyErr_Print(); return NULL; }
     if (face == Py_None) { Py_DECREF(face); return NULL; }
-    if (!alloc_font(fallback_fonts + i, face, bold, italic)) { Py_DECREF(face); fatal("Out of memory"); }
+    if (!alloc_font(fallback_fonts + i, face, bold, italic, true)) { Py_DECREF(face); fatal("Out of memory"); }
+    set_size_for_face(face, cell_height);
     Py_DECREF(face);
     return fallback_fonts + i;
 }
@@ -526,15 +539,14 @@ render_line(Line *line) {
 static PyObject*
 set_font(PyObject UNUSED *m, PyObject *args) {
     PyObject *sm, *smf, *medium, *bold = NULL, *italic = NULL, *bi = NULL;
-    float xdpi, ydpi, pt_sz;
-    Py_CLEAR(get_fallback_font); Py_CLEAR(box_drawing_function);
-    if (!PyArg_ParseTuple(args, "OOO!O!fffO|OOO", &get_fallback_font, &box_drawing_function, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &pt_sz, &xdpi, &ydpi, &medium, &bold, &italic, &bi)) return NULL;
-    Py_INCREF(get_fallback_font); Py_INCREF(box_drawing_function);
+    Py_CLEAR(box_drawing_function);
+    if (!PyArg_ParseTuple(args, "OO!O!fO|OOO", &box_drawing_function, &PyTuple_Type, &sm, &PyTuple_Type, &smf, &global_state.font_sz_in_pts, &medium, &bold, &italic, &bi)) return NULL;
+    Py_INCREF(box_drawing_function);
     clear_font(&medium_font); clear_font(&bold_font); clear_font(&italic_font); clear_font(&bi_font); clear_sprite_map(&box_font);
-    if (!alloc_font(&medium_font, medium, false, false)) return PyErr_NoMemory();
-    if (bold && !alloc_font(&bold_font, bold, true, false)) return PyErr_NoMemory();
-    if (italic && !alloc_font(&italic_font, italic, false, true)) return PyErr_NoMemory();
-    if (bi && !alloc_font(&bi_font, bi, true, true)) return PyErr_NoMemory();
+    if (!alloc_font(&medium_font, medium, false, false, false)) return NULL;
+    if (bold && !alloc_font(&bold_font, bold, true, false, false)) return NULL;
+    if (italic && !alloc_font(&italic_font, italic, false, true, false)) return NULL;
+    if (bi && !alloc_font(&bi_font, bi, true, true, false)) return NULL;
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++) clear_font(fallback_fonts + i);
     for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
     free(symbol_maps); free(symbol_map_fonts); symbol_maps = NULL; symbol_map_fonts = NULL;
@@ -551,7 +563,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
             PyObject *face;
             int bold, italic;
             if (!PyArg_ParseTuple(PyTuple_GET_ITEM(smf, i), "Opp", &face, &bold, &italic)) return NULL;
-            if (!alloc_font(symbol_map_fonts + i, face, bold != 0, italic != 0)) return PyErr_NoMemory();
+            if (!alloc_font(symbol_map_fonts + i, face, bold != 0, italic != 0, false)) return NULL;
         }
         for (size_t i = 0; i < symbol_maps_count; i++) {
             unsigned int left, right, font_idx;
@@ -559,14 +571,13 @@ set_font(PyObject UNUSED *m, PyObject *args) {
             symbol_maps[i].left = left; symbol_maps[i].right = right; symbol_maps[i].font_idx = font_idx;
         }
     }
-    return update_cell_metrics(pt_sz, xdpi, ydpi);
+    return update_cell_metrics();
 }
 
 static void
 finalize(void) {
     Py_CLEAR(python_send_to_gpu_impl);
     free(canvas);
-    Py_CLEAR(get_fallback_font);
     Py_CLEAR(box_drawing_function);
     free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font); free_font(&box_font);
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++) free_font(fallback_fonts + i); 
@@ -685,6 +696,25 @@ error:
 #undef SET
 }
 
+static PyObject*
+get_fallback_font(PyObject UNUSED *self, PyObject *args) {
+    PyObject *text; 
+    int bold, italic;
+    if (!PyArg_ParseTuple(args, "Upp", &text, &bold, &italic)) return NULL;
+    static Py_UCS4 char_buf[16];
+    if (!PyUnicode_AsUCS4(text, char_buf, sizeof(char_buf)/sizeof(char_buf[0]), 1)) return NULL;
+    Cell cell = {0};
+    cell.ch = char_buf[0];
+    if (PyUnicode_GetLength(text) > 1) cell.cc |= char_buf[1] & CC_MASK;
+    if (PyUnicode_GetLength(text) > 2) cell.cc |= (char_buf[2] & CC_MASK) << 16;
+    if (bold) cell.attrs |= 1 << BOLD_SHIFT;
+    if (italic) cell.attrs |= 1 << ITALIC_SHIFT;
+    Font *ans = fallback_font(&cell);
+    if (ans == NULL) { PyErr_SetString(PyExc_ValueError, "Too many fallback fonts"); return NULL; }
+    return ans->face;
+}
+
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_size, METH_VARARGS),
     METHODB(set_font, METH_VARARGS),
@@ -696,6 +726,7 @@ static PyMethodDef module_methods[] = {
     METHODB(set_send_sprite_to_gpu, METH_O),
     METHODB(current_fonts, METH_NOARGS),
     METHODB(test_render_line, METH_VARARGS),
+    METHODB(get_fallback_font, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

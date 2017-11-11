@@ -5,7 +5,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "state.h"
+#include "lineops.h"
+#include "fonts.h"
 #include <fontconfig/fontconfig.h>
 #ifndef FC_COLOR
 #define FC_COLOR "color"
@@ -117,16 +119,16 @@ end:
     return ans;
 }
 
+static Py_UCS4 char_buf[1024];
+
 static inline void
-add_charset(PyObject *characters, FcPattern *pat) {
+add_charset(FcPattern *pat, size_t num) {
     FcCharSet *charset = NULL;
-    if (PyUnicode_READY(characters) != 0) goto end;
-    if (PyUnicode_GET_LENGTH(characters) > 0) {
+    if (num) {
         charset = FcCharSetCreate();
         if (charset == NULL) { PyErr_NoMemory(); goto end; }
-        int kind = PyUnicode_KIND(characters); void *data = PyUnicode_DATA(characters);
-        for (int i = 0; i < PyUnicode_GET_LENGTH(characters); i++) {
-            if (!FcCharSetAddChar(charset, PyUnicode_READ(kind, data, i))) { 
+        for (size_t i = 0; i < num; i++) {
+            if (!FcCharSetAddChar(charset, char_buf[i])) { 
                 PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset"); 
                 goto end; 
             }
@@ -142,11 +144,10 @@ fc_match(PyObject UNUSED *self, PyObject *args) {
     char *family = NULL;
     int bold = 0, italic = 0, allow_bitmapped_fonts = 0;
     double size_in_pts = 0, dpi = 0;
-    PyObject *characters = NULL;
     FcPattern *pat = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "|zpppdO!d", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &PyUnicode_Type, &characters, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "|zpppdd", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
 
@@ -159,7 +160,6 @@ fc_match(PyObject UNUSED *self, PyObject *args) {
     if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
     if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (characters) add_charset(characters, pat);
     ans = _fc_match(pat);
 
 end:
@@ -167,22 +167,36 @@ end:
     return ans;
 }
 
-static PyObject*
-fc_font(PyObject UNUSED *self, PyObject *args) {
-    double size_in_pts, dpi;
-    int index;
-    char *path;
-    PyObject *ans = NULL, *chars = NULL;
-    if (!PyArg_ParseTuple(args, "ddsi|O!", &size_in_pts, &dpi, &path, &index, &PyUnicode_Type, &chars)) return NULL;
+PyObject*
+specialize_font_descriptor(PyObject *base_descriptor) {
+    PyObject *p = PyDict_GetItemString(base_descriptor, "path"), *ans = NULL;
+    PyObject *idx = PyDict_GetItemString(base_descriptor, "index");
+    if (p == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no path"); return NULL; }
+    if (idx == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no index"); return NULL; }
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    if (size_in_pts > 0) { AP(FcPatternAddDouble, FC_SIZE, size_in_pts, "size"); }
-    if (dpi > 0) { AP(FcPatternAddDouble, FC_DPI, dpi, "dpi"); }
-    AP(FcPatternAddString, FC_FILE, (const FcChar8*)path, "path");
-    AP(FcPatternAddInteger, FC_INDEX, index, "index"); 
-    if (chars) add_charset(chars, pat);
+    AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
+    AP(FcPatternAddInteger, FC_INDEX, PyLong_AsLong(idx), "index");
+    AP(FcPatternAddDouble, FC_SIZE, global_state.font_sz_in_pts, "size");
+    AP(FcPatternAddDouble, FC_DPI, (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
+end:
+    if (pat != NULL) FcPatternDestroy(pat);
+    return ans;
+}
 
+PyObject*
+create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool italic) {
+    PyObject *ans = NULL;
+    FcPattern *pat = FcPatternCreate();
+    if (pat == NULL) return PyErr_NoMemory();
+    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)"monospace", "family");
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    size_t num = cell_as_unicode(cell, true, char_buf, ' ');
+    add_charset(pat, num);
+    PyObject *d = _fc_match(pat);
+    if (d) { ans = face_from_descriptor(d); Py_CLEAR(d); }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ans;
@@ -192,7 +206,6 @@ end:
 static PyMethodDef module_methods[] = {
     METHODB(fc_list, METH_VARARGS),
     METHODB(fc_match, METH_VARARGS),
-    METHODB(fc_font, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

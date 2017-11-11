@@ -6,11 +6,12 @@ from collections import OrderedDict
 
 from kitty.constants import isosx
 from kitty.fast_data_types import (
-    set_send_sprite_to_gpu, sprite_map_set_layout, sprite_map_set_limits,
-    test_render_line, test_sprite_position_for, wcwidth
+    set_logical_dpi, set_send_sprite_to_gpu, sprite_map_set_layout,
+    sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import render_string, set_font_family, prerender
+from kitty.fonts.render import prerender, render_string, set_font_family
+from kitty.utils import get_logical_dpi
 
 from . import BaseTest
 
@@ -25,7 +26,9 @@ class Rendering(BaseTest):
             self.sprites[(x, y, z)] = data
 
         set_send_sprite_to_gpu(send_to_gpu)
-        self.cell_width, self.cell_height = set_font_family(override_dpi=(96.0, 96.0))
+        set_logical_dpi(96.0, 96.0)
+        get_logical_dpi((96.0, 96.0))
+        self.cell_width, self.cell_height = set_font_family()
         prerender()
         self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4])
 

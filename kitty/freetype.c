@@ -116,12 +116,12 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 }
 
 bool
-set_size_for_face(PyObject *s, float pt_sz, float xdpi, float ydpi) {
+set_size_for_face(PyObject *s, unsigned int UNUSED desired_height) {
     Face *self = (Face*)s;
-    FT_UInt w = (FT_UInt)(ceilf(pt_sz * 64));
-    if (self->char_width == w && self->char_height == w && self->xdpi == (FT_UInt)xdpi && self->ydpi == (FT_UInt)ydpi) return true;
-    ((Face*)self)->size_in_pts = pt_sz;
-    return set_font_size(self, w, w, (FT_UInt)xdpi, (FT_UInt) ydpi);
+    FT_UInt w = (FT_UInt)(ceilf(global_state.font_sz_in_pts * 64));
+    if (self->char_width == w && self->char_height == w && self->xdpi == (FT_UInt)global_state.logical_dpi_x && self->ydpi == (FT_UInt)global_state.logical_dpi_x) return true;
+    ((Face*)self)->size_in_pts = global_state.font_sz_in_pts;
+    return set_font_size(self, w, w, self->xdpi, self->ydpi);
 }
 
 static inline int
@@ -136,13 +136,13 @@ get_load_flags(int hinting, int hintstyle, int base) {
 
 
 static inline bool
-init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi) {
+init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
 #define CPY(n) self->n = self->face->n;
     CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->hinting = hinting; self->hintstyle = hintstyle;
-    if (!set_size_for_face((PyObject*)self, size_in_pts, xdpi, ydpi)) return false;
+    if (!set_size_for_face((PyObject*)self, 0)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
@@ -154,12 +154,12 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, float size_
 }
 
 PyObject*
-ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi, float apple_leading) {
+ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float apple_leading) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (ans == NULL) return NULL; 
     int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
     if(error) { set_freetype_error("Failed to load memory face, with error:", error); Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(ans); return NULL; }
+    if (!init_ft_face(ans, path, hinting, hintstyle)) { Py_CLEAR(ans); return NULL; }
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
     ans->apple_leading = apple_leading;
@@ -186,35 +186,40 @@ load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
 }
 
 PyObject*
-ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float size_in_pts, float xdpi, float ydpi, float apple_leading) {
+ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float apple_leading) {
     if (PyUnicode_READY(path) != 0) return NULL;
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (!ans) return NULL;
     if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans)) { Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(ans); return NULL; }
+    if (!init_ft_face(ans, path, hinting, hintstyle)) { Py_CLEAR(ans); return NULL; }
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
     ans->apple_leading = apple_leading;
     return (PyObject*)ans;
 }
 
-static PyObject*
-new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
-    Face *self;
+#ifndef __APPLE__
+PyObject*
+face_from_descriptor(PyObject *descriptor) {
+#define D(key, conv) { PyObject *t = PyDict_GetItemString(descriptor, #key); if (t == NULL) return NULL; key = conv(t); t = NULL; }
     char *path;
-    int error, hinting, hintstyle;
     long index;
-    float size_in_pts, xdpi, ydpi;
-    if (!PyArg_ParseTuple(args, "sliifff", &path, &index, &hinting, &hintstyle, &size_in_pts, &xdpi, &ydpi)) return NULL;
-
-    self = (Face *)type->tp_alloc(type, 0);
+    bool hinting;
+    long hint_style;
+    D(path, PyUnicode_AsUTF8);
+    D(index, PyLong_AsLong);
+    D(hinting, PyObject_IsTrue);
+    D(hint_style, PyLong_AsLong);
+#undef D
+    Face *self = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
     if (self != NULL) {
-        error = FT_New_Face(library, path, index, &(self->face));
+        int error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
-        if (!init_ft_face(self, PyTuple_GET_ITEM(args, 0), hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(self); return NULL; }
+        if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
 }
+#endif
  
 static void
 dealloc(Face* self) {
@@ -439,7 +444,6 @@ PyTypeObject Face_Type = {
     .tp_doc = "FreeType Font face",
     .tp_methods = methods,
     .tp_members = members,
-    .tp_new = new,                
     .tp_repr = (reprfunc)repr,
 };
 

@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "state.h"
 #include "fonts.h"
 #include <structmember.h>
 #include <stdint.h>
@@ -111,13 +112,13 @@ free_font(void *f) {
 }
 
 static inline PyObject*
-ft_face(CTFontRef font, float pt_sz, float xdpi, float ydpi) {
+ft_face(CTFontRef font) {
     const char *psname = convert_cfstring(CTFontCopyPostScriptName(font), 1);
     NSURL *url = (NSURL*)CTFontCopyAttribute(font, kCTFontURLAttribute);
     PyObject *path = PyUnicode_FromString([[url path] UTF8String]);
     [url release];
     if (path == NULL) { CFRelease(font); return NULL; }
-    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, pt_sz, xdpi, ydpi, CTFontGetLeading(font));
+    PyObject *ans =  ft_face_from_path_and_psname(path, psname, (void*)font, free_font, true, 3, CTFontGetLeading(font));
     Py_DECREF(path);
     if (ans == NULL) { CFRelease(font); }
     return ans;
@@ -141,43 +142,43 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
     return NULL;
 }
 
-static PyObject*
-face_for_text(PyObject UNUSED *self, PyObject UNUSED *args) {
-    char *text;
-    PyObject *lp;
-    float pt_sz, xdpi, ydpi;
-    int bold, italic;
-    if (!PyArg_ParseTuple(args, "sO!fffpp", &text, &PyLong_Type, &lp, &pt_sz, &xdpi, &ydpi, &bold, &italic)) return NULL;
+PyObject*
+create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic) {
+    PyObject *lp = PyObject_CallMethod(base_face, "extra_data", NULL);
+    if (lp == NULL) return NULL;
     CTFontRef font = PyLong_AsVoidPtr(lp);
+    Py_CLEAR(lp);
+    static char text[128];
+    cell_as_utf8(cell, true, text, ' ');
     CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
     if (str == NULL) return PyErr_NoMemory();
     CTFontRef new_font = find_substitute_face(str, font);
     CFRelease(str);
     if (new_font == NULL) return NULL;
-    return ft_face(new_font, pt_sz, xdpi, ydpi);
+    return ft_face(new_font);
 }
 
-static PyObject*
-create_face(PyObject UNUSED *self, PyObject *args) {
-    PyObject *descriptor;
-    float point_sz, xdpi, ydpi;
-    if(!PyArg_ParseTuple(args, "Offf", &descriptor, &point_sz, &xdpi, &ydpi)) return NULL;
-
+PyObject*
+face_from_descriptor(PyObject *descriptor) {
     CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
     if (!desc) return NULL;
-    float scaled_point_sz = ((xdpi + ydpi) / 144.0) * point_sz;
+    float scaled_point_sz = ((global_state.logical_dpi_x + global_state.logical_dpi_y) / 144.0) * global_state.font_sz_in_pts;
     CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz, NULL);
     CFRelease(desc); desc = NULL;
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
-    return ft_face(font, point_sz, xdpi, ydpi);
+    return ft_face(font);
+}
+
+PyObject*
+specialize_font_descriptor(PyObject *base_descriptor) {
+    Py_INCREF(base_descriptor);
+    return base_descriptor;
 }
 
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
     METHODB(coretext_all_fonts, METH_NOARGS),
-    METHODB(face_for_text, METH_VARARGS),
-    METHODB(create_face, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

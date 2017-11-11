@@ -181,6 +181,23 @@ cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) 
     return n;
 }
 
+size_t
+cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type zero_char) {
+    size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
+    if (include_cc) {
+        char_type cc = cell->cc;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2;
+        if (cc1) {
+            n += encode_utf8(cc1, buf + n);
+            cc2 = cc >> 16;
+            if (cc2) { n += encode_utf8(cc2, buf + n); }
+        }
+    }
+    buf[n] = 0;
+    return n;
+}
+
+
 PyObject*
 unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
     size_t n = 0;

@@ -10,21 +10,16 @@ from math import ceil, floor, pi, sin, sqrt
 from kitty.config import defaults
 from kitty.constants import isosx
 from kitty.fast_data_types import (
-    Screen, change_wcwidth, send_prerendered_sprites, set_font, set_font_size,
-    set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line
+    Screen, change_wcwidth, get_fallback_font, send_prerendered_sprites,
+    set_font, set_font_size, set_logical_dpi, set_send_sprite_to_gpu,
+    sprite_map_set_limits, test_render_line
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
-from kitty.utils import get_logical_dpi
 
 if isosx:
-    from .core_text import get_font_files, font_for_text, face_from_font, font_for_family, save_medium_face
+    from .core_text import get_font_files, font_for_family
 else:
-    from .fontconfig import get_font_files, font_for_text, face_from_font, font_for_family, save_medium_face
-
-
-def create_face(font):
-    s = set_font_family.state
-    return face_from_font(font, s.pt_sz, s.xdpi, s.ydpi)
+    from .fontconfig import get_font_files, font_for_family
 
 
 def create_symbol_map(opts):
@@ -34,58 +29,42 @@ def create_symbol_map(opts):
     for family in val.values():
         if family not in family_map:
             font, bold, italic = font_for_family(family)
-            o = create_face(font)
             family_map[family] = len(faces)
-            faces.append((o, bold, italic))
+            faces.append((font, bold, italic))
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
     return sm, tuple(faces)
 
 
 FontState = namedtuple(
     'FontState',
-    'family pt_sz xdpi ydpi cell_width cell_height baseline underline_position underline_thickness'
+    'family pt_sz cell_width cell_height baseline underline_position underline_thickness'
 )
 
 
-def get_fallback_font(text, bold, italic):
-    state = set_font_family.state
-    return font_for_text(
-            text, state.family, state.pt_sz, state.xdpi, state.ydpi, bold,
-            italic
-        )
-
-
-def set_font_family(opts=None, override_font_size=None, override_dpi=None):
+def set_font_family(opts=None, override_font_size=None):
     opts = opts or defaults
     sz = override_font_size or opts.font_size
-    xdpi, ydpi = get_logical_dpi(override_dpi)
-    set_font_family.state = FontState('', sz, xdpi, ydpi, 0, 0, 0, 0, 0)
     font_map = get_font_files(opts)
-    faces = [create_face(font_map['medium'])]
-    save_medium_face(faces[0])
+    faces = [font_map['medium']]
     for k in 'bold italic bi'.split():
         if k in font_map:
-            faces.append(create_face(font_map[k]))
-    sm, sfaces = create_symbol_map(opts)
+            faces.append(font_map[k])
+    sm, sfonts = create_symbol_map(opts)
     cell_width, cell_height, baseline, underline_position, underline_thickness = set_font(
-        get_fallback_font, render_box_drawing, sm, sfaces, sz, xdpi, ydpi, *faces
+        render_box_drawing, sm, sfonts, sz, *faces
     )
     set_font_family.state = FontState(
-        opts.font_family, sz, xdpi, ydpi, cell_width, cell_height, baseline,
+        opts.font_family, sz, cell_width, cell_height, baseline,
         underline_position, underline_thickness
     )
     return cell_width, cell_height
 
 
-def resize_fonts(new_sz, xdpi=None, ydpi=None):
+def resize_fonts(new_sz):
     s = set_font_family.state
-    xdpi = xdpi or s.xdpi
-    ydpi = ydpi or s.ydpi
-    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(
-        new_sz, xdpi, ydpi
-    )
+    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(new_sz)
     set_font_family.state = FontState(
-        s.family, new_sz, xdpi, ydpi, cell_width, cell_height, baseline,
+        s.family, new_sz, cell_width, cell_height, baseline,
         underline_position, underline_thickness
     )
     return cell_width, cell_height
@@ -175,6 +154,7 @@ def render_box_drawing(codepoint):
 
 
 def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
+    from kitty.utils import get_logical_dpi
     opts = defaults._replace(font_family=family)
     sprites = {}
 
@@ -183,7 +163,9 @@ def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
 
     sprite_map_set_limits(100000, 100)
     set_send_sprite_to_gpu(send_to_gpu)
-    cell_width, cell_height = set_font_family(opts, override_dpi=(dpi, dpi), override_font_size=size)
+    set_logical_dpi(dpi, dpi)
+    get_logical_dpi((dpi, dpi))
+    cell_width, cell_height = set_font_family(opts, override_font_size=size)
     prerender()
     return sprites, cell_width, cell_height
 
@@ -230,8 +212,9 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
 
 
 def test_fallback_font(qtext=None, bold=False, italic=False):
-    set_font_family(override_dpi=(96.0, 96.0))
-    trials = (qtext,) if qtext else ('你好', 'He\u0347\u0305', '\U0001F929')
+    set_logical_dpi(96.0, 96.0)
+    set_font_family()
+    trials = (qtext,) if qtext else ('你', 'He\u0347\u0305', '\U0001F929')
     for text in trials:
         f = get_fallback_font(text, bold, italic)
         try:
