@@ -473,16 +473,18 @@ next_group(unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *
     *num_group_glyphs = MAX(1, MIN(*num_group_glyphs, num_glyphs));
 }
 
+static const char* SHAPERS[] = {"ot", NULL};
+
 static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     load_hb_buffer(first_cell, num_cells);
-    hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
+    hb_shape_full(font->hb_font, harfbuzz_buffer, NULL, 0, SHAPERS);
     unsigned int info_length, positions_length, num_glyphs;
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
     num_glyphs = MIN(info_length, positions_length);
 #if 0
-        // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 /path/to/font/file text
+        // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
         hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, 4 * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
         printf("\n%s\n", canvas);
         clear_canvas();
@@ -743,5 +745,14 @@ init_fonts(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     sprite_tracker_set_limits(2000, 2000);
+    const char** shapers = hb_shape_list_shapers();
+    bool found = false;
+    for(int i = 0; shapers[i] != NULL && !found; i++) {
+        if (strcmp(shapers[i], "ot") == 0) found = true;
+    }
+    if (!found) {
+        PyErr_SetString(PyExc_RuntimeError, "The harfbuzz library on your system does not support the OpenType shaper");
+        return false;
+    }
     return true;
 }
