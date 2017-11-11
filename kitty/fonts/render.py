@@ -241,7 +241,7 @@ def test_fallback_font(qtext=None, bold=False, italic=False):
 
 
 def showcase():
-    change_wcwidth(False)
+    change_wcwidth(True)
     f = 'monospace' if isosx else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
