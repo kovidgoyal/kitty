@@ -485,7 +485,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     num_glyphs = MIN(info_length, positions_length);
 #if 0
         // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
-        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, 4 * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
         printf("\n%s\n", canvas);
         clear_canvas();
 #endif
@@ -496,6 +496,19 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font);
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
+}
+
+static PyObject*
+test_shape(PyObject UNUSED *self, Line *line) {
+    index_type num = 0;
+    while(num < line->xnum && line->cells[num].ch) num++;
+    load_hb_buffer(line->cells, num);
+    Font *font = &medium_font;
+    hb_shape_full(font->hb_font, harfbuzz_buffer, NULL, 0, SHAPERS);
+    unsigned int num_glyphs;
+    hb_buffer_get_glyph_infos(harfbuzz_buffer, &num_glyphs);
+    hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_JSON, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+    return Py_BuildValue("s", canvas);
 }
 
 static inline void 
@@ -726,6 +739,7 @@ static PyMethodDef module_methods[] = {
     METHODB(test_sprite_position_for, METH_VARARGS),
     METHODB(concat_cells, METH_VARARGS),
     METHODB(set_send_sprite_to_gpu, METH_O),
+    METHODB(test_shape, METH_O),
     METHODB(current_fonts, METH_NOARGS),
     METHODB(test_render_line, METH_VARARGS),
     METHODB(get_fallback_font, METH_VARARGS),

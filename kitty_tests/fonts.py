@@ -10,7 +10,7 @@ from kitty.fast_data_types import (
     sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import prerender, render_string, set_font_family
+from kitty.fonts.render import prerender, render_string, set_font_family, shape_string
 from kitty.utils import get_logical_dpi
 
 from . import BaseTest
@@ -68,3 +68,8 @@ class Rendering(BaseTest):
         sz = sum(map(lambda x: wcwidth(ord(x)), text))
         cells = render_string(text)[-1]
         self.ae(len(cells), sz)
+
+    def test_shaping(self):
+        self.assertEqual(len(shape_string('abcd')), 4)
+        flags = [x.get('fl', 0) for x in shape_string('e\u0347\u0305')]
+        self.assertEqual(flags, [0, 1, 1])

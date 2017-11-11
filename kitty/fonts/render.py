@@ -12,7 +12,7 @@ from kitty.constants import isosx
 from kitty.fast_data_types import (
     Screen, change_wcwidth, get_fallback_font, send_prerendered_sprites,
     set_font, set_font_size, set_logical_dpi, set_send_sprite_to_gpu,
-    sprite_map_set_limits, test_render_line
+    sprite_map_set_limits, test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
 
@@ -185,6 +185,20 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
         if sp != (0, 0, 0):
             cells.append(sprites[sp])
     return cell_width, cell_height, cells
+
+
+def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0):
+    import json
+    try:
+        sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
+        s = Screen(None, 1, len(text)*2)
+        line = s.line(0)
+        s.draw(text)
+        data = test_shape(line)
+        return json.loads('[' + data + ']')
+    finally:
+        set_send_sprite_to_gpu(None)
+    return data
 
 
 def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
