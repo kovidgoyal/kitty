@@ -135,7 +135,7 @@ ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_d
     if (ans == NULL) return NULL; 
     int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
     if(error) { set_freetype_error("Failed to load memory face, with error:", error); Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
+    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(ans); return NULL; }
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
     ans->apple_leading = apple_leading;
@@ -146,14 +146,16 @@ static inline bool
 load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
     int error, num_faces, index = 0;
     error = FT_New_Face(library, path, index, &ans->face);
-    if (error) { set_freetype_error("False to load face, with error:", error); ans->face = NULL; return false; }
+    if (error) { set_freetype_error("Failed to load face, with error:", error); ans->face = NULL; return false; }
     num_faces = ans->face->num_faces;
     if (num_faces < 2) return true;
     do {
-        if (strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
-        FT_Done_Face(ans->face); ans->face = NULL;
+        if (ans->face) {
+            if (strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
+            FT_Done_Face(ans->face); ans->face = NULL;
+        }
         error = FT_New_Face(library, path, ++index, &ans->face);
-        if (error) continue;
+        if (error) ans->face = NULL;
     } while(index < num_faces);
     PyErr_Format(PyExc_ValueError, "No face matching the postscript name: %s found in: %s", psname, path);
     return false;
@@ -165,7 +167,7 @@ ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_dat
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (!ans) return NULL;
     if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans)) { Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) Py_CLEAR(ans);
+    if (!init_ft_face(ans, path, hinting, hintstyle, size_in_pts, xdpi, ydpi)) { Py_CLEAR(ans); return NULL; }
     ans->extra_data = extra_data;
     ans->free_extra_data = fed;
     ans->apple_leading = apple_leading;
