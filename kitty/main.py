@@ -155,7 +155,6 @@ def setup_opengl(opts):
 
 
 def initialize_window(window, opts, debug_gl=False):
-    set_logical_dpi(*get_logical_dpi())
     viewport_size.width, viewport_size.height = window.get_framebuffer_size()
     w, h = window.get_window_size()
     viewport_size.x_ratio = viewport_size.width / float(w)
@@ -201,6 +200,7 @@ def run_app(opts, args):
     elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)
+    set_logical_dpi(*get_logical_dpi())
     initialize_window(window, opts, args.debug_gl)
     boss = Boss(window, opts, args)
     boss.start()
