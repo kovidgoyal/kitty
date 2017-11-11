@@ -6,6 +6,7 @@
  */
 
 #include "fonts.h"
+#include "state.h"
 #include <math.h>
 #include <structmember.h>
 #include <ft2build.h>
@@ -86,7 +87,30 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 #endif
         }
     } else {
-        set_freetype_error("Failed to set char size, with error:", error); return false; 
+        if (!self->is_scalable && self->face->num_fixed_sizes > 0) {
+            int32_t min_diff = INT32_MAX;
+            int desired_height = global_state.cell_height;
+            if (desired_height == 0) {
+                desired_height = ceil(((double)char_height / 64.) * (double)ydpi / 72.);
+                desired_height += ceil(0.2 * desired_height);
+            }
+            FT_Int strike_index = -1;
+            for (FT_Int i = 0; i < self->face->num_fixed_sizes; i++) {
+                int h = self->face->available_sizes[i].height;
+                int32_t diff = h < desired_height ? desired_height - h : h - desired_height;
+                if (diff < min_diff) {
+                    min_diff = diff;
+                    strike_index = i;
+                }
+            }
+            if (strike_index > -1) {
+                error = FT_Select_Size(self->face, strike_index);
+                if (error) { set_freetype_error("Failed to set char size for non-scaleable font, with error:", error); return false; }
+                return true;
+            }
+        }
+        set_freetype_error("Failed to set char size, with error:", error); 
+        return false; 
     }
     return !error;
 }
