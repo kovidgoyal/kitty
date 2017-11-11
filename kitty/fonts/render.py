@@ -231,13 +231,13 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
 
 def test_fallback_font(qtext=None, bold=False, italic=False):
     set_font_family(override_dpi=(96.0, 96.0))
-    for text in (qtext, '你好', 'He\u0347\u0305', '\U0001F929'):
-        if text:
-            f = get_fallback_font(text, bold, italic)
-            try:
-                print(text, f)
-            except UnicodeEncodeError:
-                sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
+    trials = (qtext,) if qtext else ('你好', 'He\u0347\u0305', '\U0001F929')
+    for text in trials:
+        f = get_fallback_font(text, bold, italic)
+        try:
+            print(text, f)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
 
 
 def showcase():

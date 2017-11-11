@@ -123,6 +123,24 @@ ft_face(CTFontRef font, float pt_sz, float xdpi, float ydpi) {
     return ans;
 }
 
+static inline CTFontRef
+find_substitute_face(CFStringRef str, CTFontRef old_font) {
+    // CTFontCreateForString returns the original font when there are combining
+    // diacritics in the font and the base character is in the original font,
+    // so we have to check each character individually
+    CFIndex len = CFStringGetLength(str), start = 0, amt = len;
+    while (start < len) {
+        CTFontRef new_font = CTFontCreateForString(old_font, str, CFRangeMake(start, amt));
+        if (amt == len && len != 1) amt = 1;
+        else start++;
+        if (new_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont"); return NULL; }
+        if (new_font == old_font) { CFRelease(new_font); continue; }
+        return new_font;
+    }
+    PyErr_SetString(PyExc_ValueError, "CoreText returned the same font as a fallback font"); 
+    return NULL;
+}
+
 static PyObject*
 face_for_text(PyObject UNUSED *self, PyObject UNUSED *args) {
     char *text;
@@ -133,9 +151,9 @@ face_for_text(PyObject UNUSED *self, PyObject UNUSED *args) {
     CTFontRef font = PyLong_AsVoidPtr(lp);
     CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
     if (str == NULL) return PyErr_NoMemory();
-    CFRange range = CFRangeMake(0, CFStringGetLength(str));
-    CTFontRef new_font = CTFontCreateForString(font, str, range);
-    if (new_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont"); CFRelease(str); return NULL; }
+    CTFontRef new_font = find_substitute_face(str, font);
+    CFRelease(str);
+    if (new_font == NULL) return NULL;
     return ft_face(new_font, pt_sz, xdpi, ydpi);
 }
 
