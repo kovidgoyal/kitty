@@ -14,7 +14,7 @@
 
 
 
-bool face_has_codepoint(PyObject *, char_type);
+unsigned int glyph_id_for_codepoint(PyObject *, char_type);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, unsigned int, bool);
 void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*); 

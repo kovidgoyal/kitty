@@ -248,6 +248,11 @@ set_font_size(PyObject UNUSED *m, PyObject *args) {
     return update_cell_metrics();
 }
 
+static inline bool
+face_has_codepoint(PyObject* face, char_type cp) {
+    return glyph_id_for_codepoint(face, cp) > 0;
+}
+
 static inline bool 
 has_cell_text(Font *self, Cell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;

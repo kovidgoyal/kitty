@@ -301,9 +301,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     *underline_thickness = MAX(1, font_units_to_pixels(self, self->underline_thickness));
 }
 
-bool 
-face_has_codepoint(PyObject *s, char_type cp) {
-    return FT_Get_Char_Index(((Face*)s)->face, cp) > 0;
+unsigned int 
+glyph_id_for_codepoint(PyObject *s, char_type cp) {
+    return FT_Get_Char_Index(((Face*)s)->face, cp);
 }
 
 hb_font_t*
