@@ -63,7 +63,7 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
             return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
             break;
         case URXVT_PROTOCOL:
-            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[%d;%d;%dM", cb, x, y);
+            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[%d;%d;%dM", cb + 32, x, y);
             break;
         case UTF8_PROTOCOL:
             mouse_event_buf[0] = 033; mouse_event_buf[1] = '['; mouse_event_buf[2] = 'M'; mouse_event_buf[3] = cb + 32; 
