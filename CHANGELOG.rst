@@ -6,12 +6,12 @@ kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 version 0.5.0 [future]
 ---------------------------
 
+- Add support for ligature fonts such as Fira Code, Hasklig, etc. kitty now
+  uses harfbuzz for text shaping which allow it to support advanced OpenType
+  features such as contextual alternates/ligatures/combining glyphs/etc.
+
 - Make it easy to select fonts by allowing listing of monospace fonts using:
   kitty list-fonts
-
-- macOS: Enable subpixel rendering of text for improved appearance
-
-- Linux: Support rendering of non-normalizable unicode combining characters by using harfbuzz
 
 - Add an option to have window focus follow mouse
 
@@ -29,7 +29,7 @@ version 0.5.0 [future]
   applications such as neovim when they mistakenly identify kitty as a libvte
   based terminal.
 
-- Linux no longer require glew as a dependency
+- Linux: no longer require glew as a dependency
 
 
 version 0.4.2 [2017-10-23]
