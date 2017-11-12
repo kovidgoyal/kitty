@@ -316,7 +316,7 @@ START_ALLOW_CASE_RANGE
                 case 2:
                     *font = italic_font.face ? &italic_font : &medium_font;
                     break;
-                case 4:
+                case 3:
                     *font = bi_font.face ? &bi_font : &medium_font;
                     break;
             }
