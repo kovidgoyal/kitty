@@ -70,9 +70,12 @@ class Rendering(BaseTest):
         self.ae(len(cells), sz)
 
     def test_shaping(self):
-        flags = [x.get('fl', 0) for x in shape_string('abcd')]
-        self.ae(flags, [0, 0, 0, 0])
-        flags = [x.get('fl', 0) for x in shape_string('e\u0347\u0305')]
-        self.assertEqual(flags, [0, 1, 1])
-        flags = [x.get('fl', 0) for x in shape_string('===', path='kitty_tests/FiraCode-Medium.otf')]
-        self.assertEqual(flags, [0, 1, 1])
+
+        def groups(text, path=None):
+            return [x[:2] for x in shape_string(text, path=path)]
+
+        self.ae(groups('abcd'), [(1, 1) for i in range(4)])
+        self.ae(groups('A=>>B!=C', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+        self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
+        self.ae(groups('He\u0347\u0305llo\u0337,', path='kitty_tests/LiberationMono-Regular.ttf'),
+                [(1, 1), (1, 3), (1, 1), (1, 1), (1, 2), (1, 1)])
