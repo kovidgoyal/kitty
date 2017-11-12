@@ -44,6 +44,7 @@ typedef struct {
     hb_font_t *hb_font;
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024]; 
+    uint8_t dummy_glyph_cache[1 << (8 * sizeof(glyph_index))];
     bool bold, italic;
 } Font;
 
@@ -430,11 +431,14 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
 }
 
 static inline bool
-is_dummy_glyph(glyph_index glyph_id, hb_font_t *font) {
+is_dummy_glyph(glyph_index glyph_id, Font *font) {
     // we assume glyphs with no width are dummy glyphs used for a contextual ligature, so skip it
-    static hb_glyph_extents_t extents;
-    hb_font_get_glyph_extents(font, glyph_id, &extents);
-    return extents.width == 0;
+    if (!font->dummy_glyph_cache[glyph_id]) {
+        static hb_glyph_extents_t extents;
+        hb_font_get_glyph_extents(font->hb_font, glyph_id, &extents);
+        font->dummy_glyph_cache[glyph_id] = extents.width == 0 ? 1 : 2;
+    } 
+    return font->dummy_glyph_cache[glyph_id] & 1;
 }
 
 static inline int
@@ -462,7 +466,7 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
 }
 
 static inline glyph_index
-next_group(hb_font_t *font, unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, unsigned int max_num_glyphs, unsigned int max_num_cells, uint64_t *extra_glyphs) {
+next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, unsigned int max_num_glyphs, unsigned int max_num_cells, uint64_t *extra_glyphs) {
     // See https://github.com/behdad/harfbuzz/issues/615 for a discussion of
     // how to break text into cells. In addition, we have to deal with
     // monospace ligature fonts that use dummy glyphs of zero size to implement
@@ -542,7 +546,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
     uint64_t extra_glyphs; glyph_index first_glyph;
     while(run_pos < num_glyphs && cell_pos < num_cells) {
-        first_glyph = next_group(font->hb_font, &num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, num_glyphs - run_pos, num_cells - cell_pos, &extra_glyphs);
+        first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, num_glyphs - run_pos, num_cells - cell_pos, &extra_glyphs);
         /* printf("Group: num_group_cells: %u num_group_glyphs: %u\n", num_group_cells, num_group_glyphs); */
         render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font, first_glyph, extra_glyphs);
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
@@ -559,26 +563,29 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     while(num < line->xnum && line->cells[num].ch) num += line->cells[num].attrs & WIDTH_MASK;
     load_hb_buffer(line->cells, num);
     PyObject *face = NULL;
-    hb_font_t *hb_font; 
     Font *font = &medium_font;
     if (path) {
         face = face_from_path(path, index);
         if (face == NULL) return NULL;
-        hb_font = harfbuzz_font_for_face(face);
-    } else hb_font = font->hb_font;
-    hb_shape(hb_font, harfbuzz_buffer, NULL, 0);
+        Font f = {0};
+        font = &f;
+        font->hb_font = harfbuzz_font_for_face(face); 
+        if (!font->hb_font) return NULL;
+    } 
+    hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
     hb_glyph_info_t *info;
     hb_glyph_position_t *positions;
-    unsigned int num_glyphs = shape(line->cells, num, hb_font, &info, &positions);
+    unsigned int num_glyphs = shape(line->cells, num, font->hb_font, &info, &positions);
 
     PyObject *ans = PyList_New(0);
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
     uint64_t extra_glyphs; glyph_index first_glyph;
     while(run_pos < num_glyphs && cell_pos < num) {
-        first_glyph = next_group(hb_font, &num_group_cells, &num_group_glyphs, line->cells + cell_pos, info + run_pos, num_glyphs - run_pos, num - cell_pos, &extra_glyphs);
+        first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, line->cells + cell_pos, info + run_pos, num_glyphs - run_pos, num - cell_pos, &extra_glyphs);
         PyList_Append(ans, Py_BuildValue("IIIK", num_group_cells, num_group_glyphs, first_glyph, extra_glyphs));
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
+    Py_CLEAR(face);
     return ans;
 }
 
