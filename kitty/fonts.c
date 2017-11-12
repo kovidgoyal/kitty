@@ -482,6 +482,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     unsigned int info_length, positions_length, num_glyphs;
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
+    if (!info || !positions) return;
     num_glyphs = MIN(info_length, positions_length);
 #if 0
         // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
