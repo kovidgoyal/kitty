@@ -41,12 +41,13 @@ typedef struct {
     bool is_set;
 } GLFWWindowGeometry;
 
+static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
+
 typedef struct {
     PyObject_HEAD
 
     GLFWwindow *window;
     PyObject *framebuffer_size_callback, *window_focus_callback;
-    GLFWcursor *standard_cursor, *click_cursor, *arrow_cursor;
     GLFWWindowGeometry before_fullscreen;
 } WindowWrapper;
 
@@ -130,13 +131,13 @@ void
 set_mouse_cursor(MouseShape type) {
     switch(type) {
         case HAND:
-            glfwSetCursor(the_window->window, the_window->click_cursor);
+            glfwSetCursor(the_window->window, click_cursor);
             break;
         case ARROW:
-            glfwSetCursor(the_window->window, the_window->arrow_cursor);
+            glfwSetCursor(the_window->window, arrow_cursor);
             break;
         default:
-            glfwSetCursor(the_window->window, the_window->standard_cursor);
+            glfwSetCursor(the_window->window, standard_cursor);
             break;
     }
 }
@@ -155,11 +156,13 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (self->window == NULL) { Py_CLEAR(self); the_window = NULL; PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
         update_viewport(self->window);
-        self->standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-        self->click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-        self->arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        if (self->standard_cursor == NULL || self->click_cursor == NULL || self->arrow_cursor == NULL) {
-            Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+        if (standard_cursor == NULL) {
+            standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+            click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+            arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+            if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
+                Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+        }
         set_mouse_cursor(0);
         glfwSetFramebufferSizeCallback(self->window, framebuffer_size_callback);
         glfwSetCharModsCallback(self->window, char_mods_callback);
