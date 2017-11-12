@@ -49,7 +49,7 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 layouts without needing to use an extra program like tmux
 
 * Supports all modern terminal features: graphics (images), unicode,
-true-color, mouse protocol, focus tracking, bracketed paste and so on.
+true-color, OpenType ligatures, mouse protocol, focus tracking, bracketed paste and so on.
 
 * Supports startup sessions which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
@@ -62,8 +62,10 @@ latency.
 it uses only OpenGL for rendering, it should be trivial to port to other
 platforms. 
 
-* Allows you to view the scrollback buffer in a separate window using your
-favorite pager program such as less
+* Allows you to open the scrollback buffer and window contents in a separate
+window using arbitrary programs of your choice. This is useful for browsing
+the history comfortably in a pager or editor and also for doing things like
+opening URLs using only the keyboard.
 
 * Easily hackable (UI layer written in python, inner loops in C for
 speed). Less than fifteen thousand lines of code.
