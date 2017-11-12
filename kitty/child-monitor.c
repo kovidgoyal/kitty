@@ -21,9 +21,6 @@ extern int pthread_setname_np(const char *name);
 #include <unistd.h>
 #include <float.h>
 #include <fcntl.h>
-#ifndef __APPLE__
-#include <stropts.h>
-#endif
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <signal.h>
