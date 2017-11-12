@@ -433,6 +433,7 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
 static inline bool
 is_dummy_glyph(glyph_index glyph_id, Font *font) {
     // we assume glyphs with no width are dummy glyphs used for a contextual ligature, so skip it
+    return false;
     if (!font->dummy_glyph_cache[glyph_id]) {
         static hb_glyph_extents_t extents;
         hb_font_get_glyph_extents(font->hb_font, glyph_id, &extents);
@@ -537,6 +538,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     hb_glyph_info_t *info;
     hb_glyph_position_t *positions;
     unsigned int num_glyphs = shape(first_cell, num_cells, font->hb_font, &info, &positions);
+    if (num_glyphs == 0) return;
 #if 0
         // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
         hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
