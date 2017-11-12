@@ -400,18 +400,33 @@ place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_wid
     }
 }
 
+static inline void
+right_shift_canvas(uint8_t *canvas, size_t width, size_t height, size_t amt) {
+    uint8_t *src;
+    size_t r;
+    for (r = 0, src = canvas; r < height; r++, src += width) {
+        memmove(src + amt, src, width - amt);
+        memset(src, 0, amt);
+    }
+}
 
 bool
 render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     Face *self = (Face*)f;
     float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
+    unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
         if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, cell_width * num_cells, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
+        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
+    }
+    unsigned int right_edge = (unsigned int)x, delta;
+    if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
+        // center the glyphs in the canvas
+        right_shift_canvas(canvas, canvas_width, cell_height, delta);
     }
     return true;
 }
