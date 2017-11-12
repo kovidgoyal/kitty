@@ -218,8 +218,8 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf)
 
 static inline PyObject*
 update_cell_metrics() {
-#define CALL(f, desired_height) { if ((f)->face) { if(!set_size_for_face((f)->face, desired_height)) return NULL; (f)->hb_font = harfbuzz_font_for_face((f)->face); } clear_sprite_map((f)); }
-    CALL(&medium_font, 0); CALL(&bold_font, 0); CALL(&italic_font, 0); CALL(&bi_font, 0); CALL(&box_font, 0);
+#define CALL(f, desired_height, force) { if ((f)->face) { if(!set_size_for_face((f)->face, desired_height, force)) return NULL; (f)->hb_font = harfbuzz_font_for_face((f)->face); } clear_sprite_map((f)); }
+    CALL(&medium_font, 0, false); CALL(&bold_font, 0, false); CALL(&italic_font, 0, false); CALL(&bi_font, 0, false); CALL(&box_font, 0, false);
     cell_metrics(medium_font.face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness);
     if (!cell_width) { PyErr_SetString(PyExc_ValueError, "Failed to calculate cell width for the specified font."); return NULL; }
     if (OPT(adjust_line_height_px) != 0) cell_height += OPT(adjust_line_height_px);
@@ -232,10 +232,10 @@ update_cell_metrics() {
     free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
     for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
-        CALL(fallback_fonts + i, cell_height);
+        CALL(fallback_fonts + i, cell_height, true);
     }
     for (size_t i = 0; i < symbol_map_fonts_count; i++)  {
-        CALL(symbol_map_fonts + i, cell_height);
+        CALL(symbol_map_fonts + i, cell_height, true);
     }
     return Py_BuildValue("IIIII", cell_width, cell_height, baseline, underline_position, underline_thickness);
 #undef CALL
@@ -279,7 +279,7 @@ fallback_font(Cell *cell) {
     if (face == NULL) { PyErr_Print(); return NULL; }
     if (face == Py_None) { Py_DECREF(face); return NULL; }
     if (!alloc_font(fallback_fonts + i, face, bold, italic, true)) { Py_DECREF(face); fatal("Out of memory"); }
-    set_size_for_face(face, cell_height);
+    set_size_for_face(face, cell_height, true);
     Py_DECREF(face);
     return fallback_fonts + i;
 }

@@ -70,10 +70,22 @@ set_freetype_error(const char* prefix, int err_code) {
 
 static FT_Library  library;
 
+#define CALC_CELL_HEIGHT(self) font_units_to_pixels(self, self->height)
+
+static inline int
+font_units_to_pixels(Face *self, int x) {
+    return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
+}
+
 static inline bool
-set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi) {
-    int error = FT_Set_Char_Size(self->face, char_width, char_height, xdpi, ydpi);
+set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height) {
+    int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
     if (!error) {
+        unsigned int ch = CALC_CELL_HEIGHT(self);
+        if (desired_height && ch != desired_height) {
+            FT_F26Dot6 h = floor((double)char_height * (double)desired_height / (double) ch);
+            return set_font_size(self, 0, h, xdpi, ydpi, 0);
+        }
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
         if (self->harfbuzz_font != NULL) {
 #ifdef HARFBUZZ_HAS_CHANGE_FONT
@@ -89,7 +101,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
     } else {
         if (!self->is_scalable && self->face->num_fixed_sizes > 0) {
             int32_t min_diff = INT32_MAX;
-            int desired_height = global_state.cell_height;
+            if (desired_height == 0) desired_height = global_state.cell_height;
             if (desired_height == 0) {
                 desired_height = ceil(((double)char_height / 64.) * (double)ydpi / 72.);
                 desired_height += ceil(0.2 * desired_height);
@@ -97,7 +109,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
             FT_Int strike_index = -1;
             for (FT_Int i = 0; i < self->face->num_fixed_sizes; i++) {
                 int h = self->face->available_sizes[i].height;
-                int32_t diff = h < desired_height ? desired_height - h : h - desired_height;
+                int32_t diff = h < (int32_t)desired_height ? (int32_t)desired_height - h : h - (int32_t)desired_height;
                 if (diff < min_diff) {
                     min_diff = diff;
                     strike_index = i;
@@ -116,12 +128,12 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 }
 
 bool
-set_size_for_face(PyObject *s, unsigned int UNUSED desired_height) {
+set_size_for_face(PyObject *s, unsigned int desired_height, bool force) {
     Face *self = (Face*)s;
-    FT_UInt w = (FT_UInt)(ceil(global_state.font_sz_in_pts * 64.0));
-    if (self->char_width == w && self->char_height == w && self->xdpi == (FT_UInt)global_state.logical_dpi_x && self->ydpi == (FT_UInt)global_state.logical_dpi_x) return true;
+    FT_UInt w = (FT_UInt)(ceil(global_state.font_sz_in_pts * 64.0)), xdpi = (FT_UInt)global_state.logical_dpi_x, ydpi = (FT_UInt)global_state.logical_dpi_y;
+    if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
     ((Face*)self)->size_in_pts = global_state.font_sz_in_pts;
-    return set_font_size(self, w, w, (FT_UInt)global_state.logical_dpi_x, (FT_UInt)global_state.logical_dpi_y);
+    return set_font_size(self, w, w, xdpi, ydpi, desired_height);
 }
 
 static inline int
@@ -142,7 +154,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
 #undef CPY
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->hinting = hinting; self->hintstyle = hintstyle;
-    if (!set_size_for_face((PyObject*)self, 0)) return false;
+    if (!set_size_for_face((PyObject*)self, 0, false)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
@@ -273,16 +285,11 @@ calc_cell_width(Face *self) {
     return ans;
 }
 
-static inline int
-font_units_to_pixels(Face *self, int x) {
-    return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
-}
-
 void 
 cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
-    *cell_height = font_units_to_pixels(self, self->height);
+    *cell_height = CALC_CELL_HEIGHT(self);
 #ifdef __APPLE__
     // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
     if (self->apple_leading <= 0) {
@@ -344,9 +351,9 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         } else if (rescale && self->is_scalable && extra > MAX(2, cell_width / 3)) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)bitmap->width;
-            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi)) {
+            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0)) {
                 if (!render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, false)) return false;
-                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi)) return false;
+                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0)) return false;
             } else return false;
         }
     }
