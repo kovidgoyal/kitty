@@ -188,17 +188,14 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
 
 
 def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None):
-    import json
     try:
         sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
-        data = test_shape(line, path)
-        return json.loads('[' + data + ']')
+        return test_shape(line, path)
     finally:
         set_send_sprite_to_gpu(None)
-    return data
 
 
 def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
@@ -240,7 +237,7 @@ def test_fallback_font(qtext=None, bold=False, italic=False):
 def showcase():
     change_wcwidth(True)
     f = 'monospace' if isosx else 'Liberation Mono'
-    test_render_string('He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!', family=f)
+    test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
     test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family=f)
     test_render_string('A=>>B!=C', family='Fira Code')
