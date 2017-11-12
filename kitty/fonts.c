@@ -446,7 +446,7 @@ is_dummy_glyph(glyph_index glyph_id, Font *font) {
     return font->dummy_glyph_cache[glyph_id] & 1;
 }
 
-static inline int
+static inline unsigned int
 num_codepoints_in_cell(Cell *cell) {
     unsigned int ans = 1;
     if (cell->cc) ans += ((cell->cc >> CC_SHIFT) & CC_MASK) ? 2 : 1;
@@ -455,15 +455,17 @@ num_codepoints_in_cell(Cell *cell) {
 
 typedef struct {
     Cell *cell;
-    int num_codepoints;
+    unsigned int num_codepoints;
+    unsigned int codepoints_consumed;
 } CellData;
 
 static inline unsigned int
 check_cell_consumed(CellData *cell_data, Cell *last_cell) {
-    cell_data->num_codepoints--;
-    if (cell_data->num_codepoints <= 0) {
+    cell_data->codepoints_consumed++;
+    if (cell_data->codepoints_consumed >= cell_data->num_codepoints) {
         attrs_type width = cell_data->cell->attrs & WIDTH_MASK;
         cell_data->cell += MAX(1, width);
+        cell_data->codepoints_consumed = 0;
         if (cell_data->cell <= last_cell) cell_data->num_codepoints = num_codepoints_in_cell(cell_data->cell);
         return width;
     }
@@ -478,7 +480,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     // their ligatures.
     
     CellData cell_data;
-    cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells);
+    cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0;
     glyph_index significant_glyphs[5];
     significant_glyphs[0] = 0;
     unsigned int num_significant_glyphs = 0;
