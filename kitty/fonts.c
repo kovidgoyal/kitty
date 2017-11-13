@@ -242,15 +242,6 @@ del_font(Font *f) {
     f->bold = false; f->italic = false;
 }
 
-static inline void
-clear_font(Font *f) { 
-    f->hb_font = NULL;
-    Py_CLEAR(f->face); 
-    clear_sprite_map(f); clear_special_glyph_cache(f);
-    f->bold = false; f->italic = false;
-}
-
-
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
 #define CELLS_IN_CANVAS 16
