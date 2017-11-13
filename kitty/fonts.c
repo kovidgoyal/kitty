@@ -552,6 +552,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
             break;
     }
 #undef G
+#undef LIMIT
     return glyphs_in_group[0];
 }
 
