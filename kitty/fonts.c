@@ -185,12 +185,14 @@ clear_font(Font *f) {
     f->hb_font = NULL;
     Py_CLEAR(f->face); 
     clear_sprite_map(f);
+    memset(f->special_glyph_cache, 0, sizeof(f->special_glyph_cache));
     f->bold = false; f->italic = false;
 }
 
 
 static Font medium_font = {0}, bold_font = {0}, italic_font = {0}, bi_font = {0}, box_font = {0};
-static Font fallback_fonts[256] = {{0}};
+static Font *fallback_fonts = NULL;
+static size_t fallback_fonts_count = 0;
 typedef enum { FONT, BLANK_FONT, BOX_FONT, MISSING_FONT } FontType;
 
 typedef struct {
@@ -232,7 +234,7 @@ update_cell_metrics() {
     global_state.cell_width = cell_width; global_state.cell_height = cell_height;
     free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
     if (canvas == NULL) return PyErr_NoMemory();
-    for (size_t i = 0; fallback_fonts[i].face != NULL; i++)  {
+    for (size_t i = 0; i < fallback_fonts_count; i++)  {
         CALL(fallback_fonts + i, cell_height, true);
     }
     for (size_t i = 0; i < symbol_map_fonts_count; i++)  {
@@ -269,25 +271,32 @@ static inline Font*
 fallback_font(Cell *cell) {
     bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
     bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
-    size_t i;
+    Font *base_font, *ans;
 
-    for (i = 0; fallback_fonts[i].face != NULL; i++)  {
+    for (size_t i = 0; i < fallback_fonts_count; i++)  {
         if (fallback_fonts[i].bold == bold && fallback_fonts[i].italic == italic && has_cell_text(fallback_fonts + i, cell)) {
             return fallback_fonts + i;
         }
     }
-    if (i == (sizeof(fallback_fonts)/sizeof(fallback_fonts[0])-1)) { return NULL; }
-    Font* base_font;
+
     if (bold) base_font = italic ? &bi_font : &bold_font;
     else base_font = italic ? &italic_font : &medium_font;
     if (!base_font->face) base_font = &medium_font;
+
     PyObject *face = create_fallback_face(base_font->face, cell, bold, italic);
     if (face == NULL) { PyErr_Print(); return NULL; }
     if (face == Py_None) { Py_DECREF(face); return NULL; }
-    if (!alloc_font(fallback_fonts + i, face, bold, italic, true)) { Py_DECREF(face); fatal("Out of memory"); }
     set_size_for_face(face, cell_height, true);
+
+    fallback_fonts = realloc(fallback_fonts, sizeof(Font) * (fallback_fonts_count + 1));
+    if (fallback_fonts == NULL) fatal("Out of memory");
+    ans = fallback_fonts + fallback_fonts_count;
+    memset(ans, 0, sizeof(Font));
+    
+    if (!alloc_font(ans, face, bold, italic, true)) fatal("Out of memory");
     Py_DECREF(face);
-    return fallback_fonts + i;
+    fallback_fonts_count++;
+    return ans;
 }
 
 static inline Font*
@@ -677,8 +686,9 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     if (bold && !alloc_font(&bold_font, bold, true, false, false)) return NULL;
     if (italic && !alloc_font(&italic_font, italic, false, true, false)) return NULL;
     if (bi && !alloc_font(&bi_font, bi, true, true, false)) return NULL;
-    for (size_t i = 0; fallback_fonts[i].face != NULL; i++) clear_font(fallback_fonts + i);
+    for (size_t i = 0; i < fallback_fonts_count; i++) free_font(fallback_fonts + i);
     for (size_t i = 0; symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
+    free(fallback_fonts); fallback_fonts = NULL; fallback_fonts_count = 0;
     free(symbol_maps); free(symbol_map_fonts); symbol_maps = NULL; symbol_map_fonts = NULL;
     symbol_maps_count = 0; symbol_map_fonts_count = 0;
 
@@ -710,9 +720,9 @@ finalize(void) {
     free(canvas);
     Py_CLEAR(box_drawing_function);
     free_font(&medium_font); free_font(&bold_font); free_font(&italic_font); free_font(&bi_font); free_font(&box_font);
-    for (size_t i = 0; fallback_fonts[i].face != NULL; i++) free_font(fallback_fonts + i); 
+    for (size_t i = 0; i < fallback_fonts_count; i++) free_font(fallback_fonts + i); 
     for (size_t i = 0; i < symbol_map_fonts_count; i++) free_font(symbol_map_fonts + i);
-    free(symbol_maps); free(symbol_map_fonts);
+    free(symbol_maps); free(symbol_map_fonts); free(fallback_fonts);
     if (harfbuzz_buffer) hb_buffer_destroy(harfbuzz_buffer);
 }
 
