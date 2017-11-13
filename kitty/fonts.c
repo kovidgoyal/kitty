@@ -169,7 +169,9 @@ free_maps(Font *font) {
             s = s->next; \
             free(t); \
         } \
-    }}
+    }\
+    memset(font->attr, 0, sizeof(font->attr)); \
+}
     free_a_map(SpritePosition, sprite_map);
     free_a_map(SpecialGlyphCache, special_glyph_cache);
 #undef free_a_map
