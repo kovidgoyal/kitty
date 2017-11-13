@@ -23,15 +23,6 @@ PyTypeObject GraphicsManager_Type;
 
 #define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
 
-#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
-    if (base->capacity < num) { \
-        size_t _newcap = MAX(initial_cap, MAX(2 * base->capacity, num)); \
-        base->array = realloc(base->array, sizeof(type) * _newcap); \
-        if (base->array == NULL) fatal("Out of memory while ensuring space in array"); \
-        if (zero_mem) memset(base->array + base->capacity, 0, sizeof(type) * (_newcap - base->capacity)); \
-        base->capacity = _newcap; \
-    }
-
 
 static bool send_to_gpu = true;
 

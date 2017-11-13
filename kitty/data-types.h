@@ -232,6 +232,16 @@ typedef struct {
         clear_sprite_position((line)->cells[(at)]); \
     }
 
+#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
+    if ((base)->capacity < num) { \
+        size_t _newcap = MAX(initial_cap, MAX(2 * (base)->capacity, num)); \
+        (base)->array = realloc((base)->array, sizeof(type) * _newcap); \
+        if ((base)->array == NULL) fatal("Out of memory while ensuring space in array"); \
+        if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity)); \
+        (base)->capacity = _newcap; \
+    }
+
+
 // Global functions 
 const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);
 Line* alloc_line();
