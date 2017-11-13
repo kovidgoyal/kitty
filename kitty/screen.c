@@ -141,7 +141,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
-    index_type num_content_lines = 0;
+    index_type num_content_lines = 0, old_columns = self->columns;
+    bool cursor_on_last_content_line = false;
 
     // Resize main linebuf
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
@@ -150,7 +151,10 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    if (is_main) num_content_lines = num_content_lines_after;
+    if (is_main) {
+        num_content_lines = num_content_lines_after;
+        cursor_on_last_content_line = num_content_lines_before == self->cursor->y + 1 || !num_content_lines_before;
+    }
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
 
     // Resize alt linebuf
@@ -175,9 +179,15 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->selection = EMPTY_SELECTION;
     self->url_range = EMPTY_SELECTION;
 
-    // Ensure cursor is on a blank line
+    // Ensure cursor is on the correct line
     self->cursor->x = 0;
-    self->cursor->y = MIN(self->lines - 1, num_content_lines); 
+    if (cursor_on_last_content_line) {
+        index_type delta;
+        if (self->columns > old_columns) delta = 1;
+        else delta = (old_columns % self->columns) + 1;
+        self->cursor->y = num_content_lines > delta ? num_content_lines - delta : 0;
+    } else self->cursor->y = num_content_lines;
+    self->cursor->y = MIN(self->cursor->y, self->lines - 1);
     if (num_content_lines >= self->lines) screen_index(self);
 
     return true;

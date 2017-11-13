@@ -228,7 +228,7 @@ class TestScreen(BaseTest):
         s.draw(''.join(str(i) * s.columns for i in range(s.lines*2)))
         self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
         s.resize(5, 2)
-        self.ae(str(s.linebuf), '88\n99\n99\n9\n')
+        self.ae(str(s.linebuf), '88\n88\n99\n99\n9')
 
     def test_cursor_after_resize(self):
         s = self.create_screen()
