@@ -510,10 +510,10 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     unsigned int ncells = 0, nglyphs = 0, n;
     uint32_t previous_cluster = UINT32_MAX, cluster;
     Cell *last_cell = cells + max_num_cells;
-    unsigned int cell_limit = MIN(max_num_cells, LIMIT + 1);
+    unsigned int cell_limit = MIN(max_num_cells, LIMIT + 1), glyph_limit = MIN(LIMIT, max_num_glyphs);
     bool is_special, prev_was_special = false;
 
-    while(nglyphs < LIMIT && ncells < cell_limit && nglyphs < max_num_glyphs) {
+    while(nglyphs < glyph_limit && ncells < cell_limit) {
         glyph_index glyph_id = info[nglyphs].codepoint;
         cluster = info[nglyphs].cluster;
         is_special = is_special_glyph(glyph_id, font, &cell_data);
@@ -530,7 +530,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
         prev_was_special = is_special;
     }
     *num_group_cells = MAX(1, MIN(ncells, cell_limit));
-    *num_group_glyphs = MAX(1, MIN(nglyphs, max_num_glyphs));
+    *num_group_glyphs = MAX(1, MIN(nglyphs, glyph_limit));
 
 #define G(n) ((uint64_t)(glyphs_in_group[n] & 0xffff))
     switch(nglyphs) {
