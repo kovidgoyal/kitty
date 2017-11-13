@@ -61,6 +61,7 @@ class Rendering(BaseTest):
         self.assertEqual(len(self.sprites), prerendered + len(box_chars))
 
     def test_font_rendering(self):
+        render_string('ab\u0347\u0305你好|\U0001F601|\U0001F64f|\U0001F63a|')
         text = 'He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!'
         # macOS has no fonts capable of rendering combining chars
         if isosx:
