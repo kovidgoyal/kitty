@@ -614,11 +614,9 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     if (path) {
         face = face_from_path(path, index);
         if (face == NULL) return NULL;
-        Font f = {0};
-        font = &f;
+        font = calloc(1, sizeof(Font));
         font->hb_font = harfbuzz_font_for_face(face); 
         font->face = face;
-        if (!font->hb_font) return NULL;
     } 
     hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
     hb_glyph_info_t *info;
@@ -633,7 +631,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         PyList_Append(ans, Py_BuildValue("IIIK", num_group_cells, num_group_glyphs, first_glyph, extra_glyphs));
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
-    Py_CLEAR(face);
+    if (face) { Py_CLEAR(face); free(font); }
     return ans;
 }
 
