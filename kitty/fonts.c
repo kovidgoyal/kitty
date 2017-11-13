@@ -279,6 +279,8 @@ fallback_font(Cell *cell) {
         }
     }
 
+    if (fallback_fonts_count > 100) { fprintf(stderr, "Too many fallback fonts\n"); return NULL; }
+
     if (bold) base_font = italic ? &bi_font : &bold_font;
     else base_font = italic ? &italic_font : &medium_font;
     if (!base_font->face) base_font = &medium_font;
