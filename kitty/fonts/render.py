@@ -180,11 +180,14 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     finally:
         set_send_sprite_to_gpu(None)
     cells = []
-    for i in range(s.columns):
+    found_content = False
+    for i in reversed(range(s.columns)):
         sp = line.sprite_at(i)
-        if sp != (0, 0, 0):
-            cells.append(sprites[sp])
-    return cell_width, cell_height, cells
+        if sp == (0, 0, 0) and not found_content:
+            continue
+        found_content = True
+        cells.append(sprites[sp])
+    return cell_width, cell_height, list(reversed(cells))
 
 
 def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None):

@@ -81,6 +81,10 @@ class Rendering(BaseTest):
 
             self.ae(groups('abcd'), [(1, 1) for i in range(4)])
             self.ae(groups('A=>>B!=C', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+            colon_glyph = shape_string('9:30', path='kitty_tests/FiraCode-Medium.otf')[1][2]
+            self.assertNotEqual(colon_glyph, shape_string(':', path='kitty_tests/FiraCode-Medium.otf')[0][2])
+            self.ae(colon_glyph, 998)
+            self.ae(groups('9:30', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (1, 1), (1, 1), (1, 1)])
             self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
             self.ae(groups('He\u0347\u0305llo\u0337,', path='kitty_tests/LiberationMono-Regular.ttf'),
                     [(1, 1), (1, 3), (1, 1), (1, 1), (1, 2), (1, 1)])

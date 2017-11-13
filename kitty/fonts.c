@@ -44,7 +44,7 @@ typedef struct {
     hb_font_t *hb_font;
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024]; 
-    uint8_t dummy_glyph_cache[1 << (8 * sizeof(glyph_index))];
+    uint8_t special_glyph_cache[1 << (8 * sizeof(glyph_index))];
     bool bold, italic;
 } Font;
 
@@ -303,6 +303,7 @@ font_for_cell(Cell *cell, Font** font) {
 START_ALLOW_CASE_RANGE
     switch(cell->ch) {
         case 0:
+        case ' ':
             return BLANK_FONT;
         case 0x2500 ... 0x2570:
         case 0x2574 ... 0x257f:
@@ -414,6 +415,7 @@ static inline void
 render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, uint64_t extra_glyphs) {
     static SpritePosition* sprite_position[16];
     int error = 0;
+    num_cells = MIN(sizeof(sprite_position)/sizeof(sprite_position[0]), num_cells);
     for (unsigned int i = 0; i < num_cells; i++) {
         sprite_position[i] = sprite_position_for(font, glyph, extra_glyphs, (uint8_t)i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
@@ -435,15 +437,25 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
 
 }
 
+typedef struct {
+    Cell *cell;
+    unsigned int num_codepoints;
+    unsigned int codepoints_consumed;
+    char_type current_codepoint;
+} CellData;
+
+
 static inline bool
-is_dummy_glyph(glyph_index glyph_id, Font *font) {
-    // we assume glyphs with no width are dummy glyphs used for a contextual ligature, so skip it
-    if (!font->dummy_glyph_cache[glyph_id]) {
-        static hb_glyph_extents_t extents;
-        hb_font_get_glyph_extents(font->hb_font, glyph_id, &extents);
-        font->dummy_glyph_cache[glyph_id] = extents.width == 0 ? 1 : 2;
+is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
+    // A glyph is special if the codepoint it corresponds to matches a
+    // different glyph in the font
+    if (font->special_glyph_cache[glyph_id] == 0) {
+        font->special_glyph_cache[glyph_id] = cell_data->current_codepoint ? (
+            glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? 1 : 2) 
+            :
+            2;
     } 
-    return font->dummy_glyph_cache[glyph_id] & 1;
+    return font->special_glyph_cache[glyph_id] & 1;
 }
 
 static inline unsigned int
@@ -453,12 +465,6 @@ num_codepoints_in_cell(Cell *cell) {
     return ans;
 }
 
-typedef struct {
-    Cell *cell;
-    unsigned int num_codepoints;
-    unsigned int codepoints_consumed;
-} CellData;
-
 static inline unsigned int
 check_cell_consumed(CellData *cell_data, Cell *last_cell) {
     cell_data->codepoints_consumed++;
@@ -466,8 +472,26 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
         attrs_type width = cell_data->cell->attrs & WIDTH_MASK;
         cell_data->cell += MAX(1, width);
         cell_data->codepoints_consumed = 0;
-        if (cell_data->cell <= last_cell) cell_data->num_codepoints = num_codepoints_in_cell(cell_data->cell);
+        if (cell_data->cell <= last_cell) {
+            cell_data->num_codepoints = num_codepoints_in_cell(cell_data->cell);
+            cell_data->current_codepoint = cell_data->cell->ch;
+        } else cell_data->current_codepoint = 0;
         return width;
+    } else {
+        switch(cell_data->codepoints_consumed) {
+            case 0:
+                cell_data->current_codepoint = cell_data->cell->ch;
+                break;
+            case 1:
+                cell_data->current_codepoint = cell_data->cell->cc & CC_MASK;
+                break;
+            case 2:
+                cell_data->current_codepoint = (cell_data->cell->cc >> CC_SHIFT) & CC_MASK;
+                break;
+            default:
+                cell_data->current_codepoint = 0;
+                break;
+        }
     }
     return 0;
 }
@@ -480,32 +504,36 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     // their ligatures.
     
     CellData cell_data;
-    cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0;
-    glyph_index significant_glyphs[5];
-    significant_glyphs[0] = 0;
-    unsigned int num_significant_glyphs = 0;
+    cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0; cell_data.current_codepoint = cells->ch;
+#define LIMIT 5
+    glyph_index glyphs_in_group[LIMIT];
     unsigned int ncells = 0, nglyphs = 0, n;
     uint32_t previous_cluster = UINT32_MAX, cluster;
     Cell *last_cell = cells + max_num_cells;
-    while(num_significant_glyphs < sizeof(significant_glyphs)/sizeof(significant_glyphs[0]) && ncells < max_num_cells && nglyphs < max_num_glyphs) {
+    unsigned int cell_limit = MIN(max_num_cells, LIMIT + 1);
+    bool is_special, prev_was_special = false;
+
+    while(nglyphs < LIMIT && ncells < cell_limit && nglyphs < max_num_glyphs) {
         glyph_index glyph_id = info[nglyphs].codepoint;
         cluster = info[nglyphs].cluster;
-        nglyphs += 1;
-        bool is_dummy = is_dummy_glyph(glyph_id, font);
-        if (!is_dummy) significant_glyphs[num_significant_glyphs++] = glyph_id;
+        is_special = is_special_glyph(glyph_id, font, &cell_data);
+        if (prev_was_special && !is_special) break; 
+        glyphs_in_group[nglyphs++] = glyph_id;
+        // Soak up a number of codepoints indicated by the difference in cluster numbers.
         if (cluster > previous_cluster || nglyphs == 1) {
             n = nglyphs == 1 ? 1 : cluster - previous_cluster;
             unsigned int before = ncells;
             while(n-- && ncells < max_num_cells) ncells += check_cell_consumed(&cell_data, last_cell);
-            if (ncells > before && !is_dummy) break;
+            if (ncells > before && !is_special) break;
         }
         previous_cluster = cluster;
+        prev_was_special = is_special;
     }
-    *num_group_cells = MAX(1, MIN(ncells, max_num_cells));
+    *num_group_cells = MAX(1, MIN(ncells, cell_limit));
     *num_group_glyphs = MAX(1, MIN(nglyphs, max_num_glyphs));
 
-#define G(n) ((uint64_t)(significant_glyphs[n] & 0xffff))
-    switch(num_significant_glyphs) {
+#define G(n) ((uint64_t)(glyphs_in_group[n] & 0xffff))
+    switch(nglyphs) {
         case 0:
         case 1:
             *extra_glyphs = 0;
@@ -524,7 +552,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
             break;
     }
 #undef G
-    return significant_glyphs[0];
+    return glyphs_in_group[0];
 }
 
 static inline unsigned int
@@ -577,6 +605,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         Font f = {0};
         font = &f;
         font->hb_font = harfbuzz_font_for_face(face); 
+        font->face = face;
         if (!font->hb_font) return NULL;
     } 
     hb_shape(font->hb_font, harfbuzz_buffer, NULL, 0);
