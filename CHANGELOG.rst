@@ -31,6 +31,9 @@ version 0.5.0 [future]
   applications such as neovim when they mistakenly identify kitty as a libvte
   based terminal.
 
+- Fix mouse interaction not working in apps using obsolete mouse interaction
+  protocols
+
 - Linux: no longer require glew as a dependency
 
 
