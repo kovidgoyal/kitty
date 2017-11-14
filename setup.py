@@ -2,14 +2,15 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import argparse
+import json
 import os
 import re
-import sys
-import sysconfig
 import shlex
 import shutil
 import subprocess
-import argparse
+import sys
+import sysconfig
 
 base = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(base, 'build')
@@ -259,24 +260,31 @@ def dependecies_for(src, obj, all_headers):
                     yield path
 
 
-def compile_c_extension(module, incremental, sources, headers):
+def compile_c_extension(module, incremental, compilation_database, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
         for src in sources
     ]
 
-    for src, dest in zip(sources, objects):
+    for original_src, dest in zip(sources, objects):
+        src = original_src
         cflgs = cflags[:]
-        if src in SPECIAL_SOURCES:
+        is_special = src in SPECIAL_SOURCES
+        if is_special:
             src, defines = SPECIAL_SOURCES[src]
             cflgs.extend(map(define, defines))
 
+        cmd = [cc, '-MMD'] + cflgs
+        cmd_changed = compilation_database.get(original_src, [])[:-4] != cmd
+        must_compile = not incremental or cmd_changed
         src = os.path.join(base, src)
-        if not incremental or newer(
+        if must_compile or newer(
             dest, *dependecies_for(src, dest, headers)
         ):
-            run_tool([cc, '-MMD'] + cflgs + ['-c', src] + ['-o', dest])
+            cmd += ['-c', src] + ['-o', dest]
+            compilation_database[original_src] = cmd
+            run_tool(cmd)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
         run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
@@ -344,10 +352,23 @@ def find_c_files():
 
 
 def build(args, native_optimizations=True):
+    try:
+        with open('compile_commands.json') as f:
+            compilation_database = json.load(f)
+    except FileNotFoundError:
+        compilation_database = []
+    compilation_database = {
+        k['file']: k['arguments'] for k in compilation_database
+    }
     init_env(args.debug, args.sanitize, native_optimizations, args.profile)
     compile_c_extension(
-        'kitty/fast_data_types', args.incremental, *find_c_files()
+        'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
     )
+    compilation_database = [
+        {'file': k, 'arguments': v, 'directory': base} for k, v in compilation_database.items()
+    ]
+    with open('compile_commands.json', 'w') as f:
+        json.dump(compilation_database, f, indent=2, sort_keys=True)
 
 
 def safe_makedirs(path):
