@@ -129,8 +129,8 @@ window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_focused = focused ? true : false;
     if (focused) {
-        global_state.focussed_os_window = global_state.callback_os_window;
-    } else if (global_state.focussed_os_window == global_state.callback_os_window) global_state.focussed_os_window = NULL;
+        global_state.focused_os_window = global_state.callback_os_window;
+    } else if (global_state.focused_os_window == global_state.callback_os_window) global_state.focused_os_window = NULL;
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;

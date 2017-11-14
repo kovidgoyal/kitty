@@ -100,7 +100,7 @@ typedef struct {
     PyObject *boss;
     OSWindow os_windows[MAX_CHILDREN];
     size_t num_os_windows;
-    OSWindow *callback_os_window, *focussed_os_window;
+    OSWindow *callback_os_window, *focused_os_window;
     bool close_all_windows;
 } GlobalState;
 

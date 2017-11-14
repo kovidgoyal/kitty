@@ -43,7 +43,7 @@ static const Window EMPTY_WINDOW = {0};
 OSWindow* 
 current_os_window() {
     if (global_state.callback_os_window) return global_state.callback_os_window;
-    if (global_state.focussed_os_window) return global_state.focussed_os_window;
+    if (global_state.focused_os_window) return global_state.focused_os_window;
     return global_state.os_windows;
 }
 
