@@ -166,7 +166,6 @@ def run_app(opts, args):
         boss.child_monitor.main_loop()
     finally:
         boss.destroy()
-    cached_values['window-size'] = viewport_size.width, viewport_size.height
     save_cached_values()
 
 

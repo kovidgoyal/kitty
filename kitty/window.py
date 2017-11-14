@@ -15,16 +15,20 @@ from .constants import (
 )
 from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
-    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, set_clipboard_string,
+    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
     CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     Screen, compile_program, create_cell_vao, create_graphics_vao,
-    glfw_post_empty_event, init_cell_program, init_cursor_program, remove_vao,
-    set_window_render_data, update_window_title, update_window_visibility
+    glfw_post_empty_event, init_cell_program, init_cursor_program,
+    set_clipboard_string, set_window_render_data, update_window_title,
+    update_window_visibility
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .utils import color_as_int, load_shaders, parse_color_set, sanitize_title, open_url, open_cmd
+from .utils import (
+    color_as_int, load_shaders, open_cmd, open_url, parse_color_set,
+    sanitize_title
+)
 
 
 class DynamicColor(Enum):
@@ -246,8 +250,6 @@ class Window:
 
     def destroy(self):
         if self.vao_id is not None:
-            remove_vao(self.vao_id)
-            remove_vao(self.gvao_id)
             self.vao_id = self.gvao_id = None
 
     def buffer_as_ansi(self):

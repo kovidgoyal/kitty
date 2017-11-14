@@ -629,6 +629,7 @@ static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
     bool has_open_windows = true;
+
     while (has_open_windows) {
         double now = monotonic();
         render(now);
@@ -639,13 +640,13 @@ main_loop(ChildMonitor *self) {
             global_state.close_all_windows = false;
         }
         has_open_windows = false;
-        for (size_t w = 0; w < global_state.num_os_windows; w++) {
-            if (!should_os_window_close(&global_state.os_windows[w])) {
-                has_open_windows = true;
-                break;
-            }
+        for (size_t w = global_state.num_os_windows; w > 0; w--) {
+            OSWindow *os_window = global_state.os_windows + w - 1;
+            if (should_os_window_close(os_window)) {
+                int viewport_width, viewport_height;
+                if (remove_os_window(os_window->id, &viewport_width, &viewport_height)) call_boss(on_os_window_closed, "Kii", os_window->id, viewport_width, viewport_height);
+            } else has_open_windows = true;
         }
-
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

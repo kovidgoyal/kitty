@@ -312,7 +312,7 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
     add_located_attribute_to_vao(vao_idx, aloc, size, data_type, stride, offset, divisor);
 }
 
-static void
+void
 remove_vao(ssize_t vao_idx) {
     VAO *vao = vaos + vao_idx;
     while (vao->num_buffers) {

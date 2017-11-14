@@ -5,7 +5,7 @@
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
-from .config import MINIMUM_FONT_SIZE
+from .config import MINIMUM_FONT_SIZE, cached_values
 from .constants import cell_size, set_boss, viewport_size, wakeup
 from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
@@ -211,6 +211,10 @@ class Boss:
         w = self.active_window
         if w is not None:
             w.focus_changed(focused)
+
+    def on_os_window_closed(self, os_window_id, viewport_width, viewport_height):
+        # WIN: Implement this
+        cached_values['window-size'] = viewport_width, viewport_height
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:

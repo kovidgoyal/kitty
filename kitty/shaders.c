@@ -518,8 +518,6 @@ PYWRAP0(create_vao) {
     return Py_BuildValue("i", ans);
 }
 
-ONE_INT(remove_vao)
-
 ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
 TWO_INT(unmap_vao_buffer)
@@ -546,7 +544,6 @@ PYWRAP1(layout_sprite_map) {
 static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
-    MW(remove_vao, METH_O),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
     MW(unmap_vao_buffer, METH_VARARGS),
