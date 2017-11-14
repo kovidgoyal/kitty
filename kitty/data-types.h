@@ -246,7 +246,7 @@ typedef struct {
     if ((base)->capacity < num) { \
         size_t _newcap = MAX(initial_cap, MAX(2 * (base)->capacity, num)); \
         (base)->array = realloc((base)->array, sizeof(type) * _newcap); \
-        if ((base)->array == NULL) fatal("Out of memory while ensuring space in array"); \
+        if ((base)->array == NULL) fatal("Out of memory while ensuring space for %zu elements in array of %s", (size_t)num, #type); \
         if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity)); \
         (base)->capacity = _newcap; \
     }

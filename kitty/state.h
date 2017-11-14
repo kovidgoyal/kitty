@@ -58,8 +58,8 @@ typedef struct {
 
 typedef struct {
     id_type id;
-    unsigned int active_window, num_windows;
-    Window windows[MAX_CHILDREN];
+    unsigned int active_window, num_windows, capacity;
+    Window *windows;
 } Tab;
 
 #define MAX_KEY_COUNT 512
@@ -76,8 +76,8 @@ typedef struct {
     OSWindowGeometry before_fullscreen;
     int viewport_width, viewport_height;
     double viewport_x_ratio, viewport_y_ratio;
-    Tab tabs[MAX_CHILDREN];
-    unsigned int active_tab, num_tabs, last_active_tab, last_num_tabs, last_active_window_id;
+    Tab *tabs;
+    unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     ScreenRenderData tab_bar_render_data;
     bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
@@ -98,8 +98,8 @@ typedef struct {
     float font_sz_in_pts;
     unsigned int cell_width, cell_height;
     PyObject *boss;
-    OSWindow os_windows[MAX_CHILDREN];
-    size_t num_os_windows;
+    OSWindow *os_windows;
+    size_t num_os_windows, capacity;
     OSWindow *callback_os_window, *focused_os_window;
     bool close_all_windows;
 } GlobalState;
@@ -122,6 +122,7 @@ void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
 void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
+OSWindow* add_os_window();
 OSWindow* current_os_window();
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders();

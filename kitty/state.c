@@ -8,18 +8,16 @@
 #include "state.h"
 
 GlobalState global_state = {{0}};
-static const Tab EMPTY_TAB = {0};
-static const Window EMPTY_WINDOW = {0};
 
 #define ensure_can_add(array, count, msg) if (count >= sizeof(array)/sizeof(array[0]) - 1) fatal(msg);
 
 #define noop(...)
-#define REMOVER(array, qid, count, empty, structure, destroy) { \
+#define REMOVER(array, qid, count, structure, destroy) { \
     size_t capacity = sizeof(array)/sizeof(array[0]); \
     for (size_t i = 0; i < count; i++) { \
         if (array[i].id == qid) { \
             destroy(array[i]); \
-            array[i] = empty; \
+            memset(array + i, 0, sizeof(structure)); \
             size_t num_to_right = capacity - count - 1; \
             if (num_to_right) memmove(array + i, array + i + 1, num_to_right * sizeof(structure)); \
             (count)--; \
@@ -61,11 +59,19 @@ os_window_for_kitty_window(id_type kitty_window_id) {
     return NULL;
 }
 
+OSWindow*
+add_os_window() {
+    ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
+    OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
+    memset(ans, 0, sizeof(OSWindow));
+    return ans;
+}
+
 static inline void
 add_tab(id_type os_window_id, id_type id) {
     WITH_OS_WINDOW(os_window_id)
-        ensure_can_add(os_window->tabs, os_window->num_tabs, "Too many children (add_tab)");
-        os_window->tabs[os_window->num_tabs] = EMPTY_TAB;
+        ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
+        memset(os_window->tabs + os_window->num_tabs, 0, sizeof(Tab));
         os_window->tabs[os_window->num_tabs].id = id;
         os_window->num_tabs++;
     END_WITH_OS_WINDOW
@@ -74,8 +80,8 @@ add_tab(id_type os_window_id, id_type id) {
 static inline void
 add_window(id_type os_window_id, id_type tab_id, id_type id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
-    ensure_can_add(tab->windows, tab->num_windows, "Too many children (add_window)");
-    tab->windows[tab->num_windows] = EMPTY_WINDOW;
+    ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
+    memset(tab->windows + tab->num_windows, 0, sizeof(Window));
     tab->windows[tab->num_windows].id = id;
     tab->windows[tab->num_windows].visible = true;
     tab->windows[tab->num_windows].title = title;
@@ -101,7 +107,7 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
 static inline void
 remove_tab(id_type os_window_id, id_type id) {
     WITH_OS_WINDOW(os_window_id)
-        REMOVER(os_window->tabs, id, os_window->num_tabs, EMPTY_TAB, Tab, noop);
+        REMOVER(os_window->tabs, id, os_window->num_tabs, Tab, noop);
     END_WITH_OS_WINDOW
 }
 
@@ -109,7 +115,7 @@ static inline void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
 #define destroy_window(w) Py_CLEAR(w.render_data.screen); Py_CLEAR(w.title);
-    REMOVER(tab->windows, id, tab->num_windows, EMPTY_WINDOW, Window, destroy_window);
+    REMOVER(tab->windows, id, tab->num_windows, Window, destroy_window);
 #undef destroy_window
     END_WITH_TAB;
 }

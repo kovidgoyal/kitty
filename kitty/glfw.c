@@ -177,7 +177,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-    OSWindow *w = global_state.os_windows + global_state.num_os_windows++;
+    OSWindow *w = add_os_window();
     w->window_id = global_state.os_window_counter++;
     glfwSetWindowUserPointer(glfw_window, w);
     w->handle = glfw_window;
