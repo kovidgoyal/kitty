@@ -178,7 +178,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     OSWindow *w = global_state.os_windows + global_state.num_os_windows++;
-    w->window_id = global_state.window_counter++;
+    w->window_id = global_state.os_window_counter++;
     glfwSetWindowUserPointer(glfw_window, w);
     w->handle = glfw_window;
     glfwSetCursor(glfw_window, standard_cursor);
@@ -196,6 +196,10 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
         if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); }
     }
 #endif
+    double now = monotonic();
+    w->is_focused = true;
+    w->cursor_blink_zero_time = now;
+    w->last_mouse_activity_at = now;
     return PyLong_FromUnsignedLongLong(w->window_id);
 }
 
@@ -384,7 +388,7 @@ toggle_fullscreen(PyObject UNUSED *self) {
 }
 
 void
-request_window_attention(unsigned int kitty_window_id) {
+request_window_attention(id_type kitty_window_id) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
 #ifdef has_request_attention

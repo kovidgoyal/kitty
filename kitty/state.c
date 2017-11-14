@@ -25,11 +25,20 @@ static const Window EMPTY_WINDOW = {0};
             (count)--; \
         } \
     }} 
-#define WITH_TAB(tab_id) \
-    for (size_t t = 0; t < global_state.num_tabs; t++) { \
-        if (global_state.tabs[t].id == tab_id) { \
-            Tab *tab = global_state.tabs + t;
-#define END_WITH_TAB break; }}
+#define WITH_OS_WINDOW(os_window_id) \
+    for (size_t o = 0; o < global_state.num_os_windows; o++) { \
+        OSWindow *os_window = global_state.os_windows + o; \
+        if (os_window->window_id == os_window_id) { 
+#define END_WITH_OS_WINDOW break; }}
+
+#define WITH_TAB(os_window_id, tab_id) \
+    for (size_t o = 0; o < global_state.num_os_windows; o++) { \
+        OSWindow *osw = global_state.os_windows + o; \
+        if (osw->window_id == os_window_id) { \
+            for (size_t t = 0; t < osw->num_tabs; t++) { \
+                if (osw->tabs[t].id == tab_id) { \
+                    Tab *tab = osw->tabs + t;
+#define END_WITH_TAB break; }}}}
 
 OSWindow* 
 current_os_window() {
@@ -39,7 +48,7 @@ current_os_window() {
 }
 
 OSWindow*
-os_window_for_kitty_window(unsigned int kitty_window_id) {
+os_window_for_kitty_window(id_type kitty_window_id) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         for (size_t t = 0; t < w->num_tabs; t++) {
@@ -53,16 +62,18 @@ os_window_for_kitty_window(unsigned int kitty_window_id) {
 }
 
 static inline void
-add_tab(unsigned int id) {
-    ensure_can_add(global_state.tabs, global_state.num_tabs, "Too many children (add_tab)");
-    global_state.tabs[global_state.num_tabs] = EMPTY_TAB;
-    global_state.tabs[global_state.num_tabs].id = id;
-    global_state.num_tabs++;
+add_tab(id_type os_window_id, id_type id) {
+    WITH_OS_WINDOW(os_window_id)
+        ensure_can_add(os_window->tabs, os_window->num_tabs, "Too many children (add_tab)");
+        os_window->tabs[os_window->num_tabs] = EMPTY_TAB;
+        os_window->tabs[os_window->num_tabs].id = id;
+        os_window->num_tabs++;
+    END_WITH_OS_WINDOW
 }
 
 static inline void
-add_window(unsigned int tab_id, unsigned int id, PyObject *title) {
-    WITH_TAB(tab_id);
+add_window(id_type os_window_id, id_type tab_id, id_type id, PyObject *title) {
+    WITH_TAB(os_window_id, tab_id);
     ensure_can_add(tab->windows, tab->num_windows, "Too many children (add_window)");
     tab->windows[tab->num_windows] = EMPTY_WINDOW;
     tab->windows[tab->num_windows].id = id;
@@ -74,8 +85,8 @@ add_window(unsigned int tab_id, unsigned int id, PyObject *title) {
 }
 
 static inline void
-update_window_title(unsigned int tab_id, unsigned int window_id, PyObject *title) {
-    WITH_TAB(tab_id);
+update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
+    WITH_TAB(os_window_id, tab_id);
     for (size_t i = 0; i < tab->num_windows; i++) {
         if (tab->windows[i].id == window_id) {
             Py_CLEAR(tab->windows[i].title);
@@ -88,13 +99,15 @@ update_window_title(unsigned int tab_id, unsigned int window_id, PyObject *title
 }
 
 static inline void
-remove_tab(unsigned int id) {
-    REMOVER(global_state.tabs, id, global_state.num_tabs, EMPTY_TAB, Tab, noop);
+remove_tab(id_type os_window_id, id_type id) {
+    WITH_OS_WINDOW(os_window_id)
+        REMOVER(os_window->tabs, id, os_window->num_tabs, EMPTY_TAB, Tab, noop);
+    END_WITH_OS_WINDOW
 }
 
 static inline void
-remove_window(unsigned int tab_id, unsigned int id) {
-    WITH_TAB(tab_id);
+remove_window(id_type os_window_id, id_type tab_id, id_type id) {
+    WITH_TAB(os_window_id, tab_id);
 #define destroy_window(w) Py_CLEAR(w.render_data.screen); Py_CLEAR(w.title);
     REMOVER(tab->windows, id, tab->num_windows, EMPTY_WINDOW, Window, destroy_window);
 #undef destroy_window
@@ -103,27 +116,31 @@ remove_window(unsigned int tab_id, unsigned int id) {
 
 
 static inline void
-set_active_tab(unsigned int idx) {
-    global_state.active_tab = idx;
+set_active_tab(id_type os_window_id, unsigned int idx) {
+    WITH_OS_WINDOW(os_window_id)
+        os_window->active_tab = idx;
+    END_WITH_OS_WINDOW
 }
 
 static inline void
-set_active_window(unsigned int tab_id, unsigned int idx) {
-    WITH_TAB(tab_id);
-    tab->active_window = idx;
+set_active_window(id_type os_window_id, id_type tab_id, unsigned int idx) {
+    WITH_TAB(os_window_id, tab_id)
+        tab->active_window = idx;
     END_WITH_TAB;
 }
 
 static inline void
-swap_tabs(unsigned int a, unsigned int b) {
-    Tab t = global_state.tabs[b];
-    global_state.tabs[b] = global_state.tabs[a];
-    global_state.tabs[a] = t;
+swap_tabs(id_type os_window_id, unsigned int a, unsigned int b) {
+    WITH_OS_WINDOW(os_window_id)
+        Tab t = os_window->tabs[b];
+        os_window->tabs[b] = os_window->tabs[a];
+        os_window->tabs[a] = t;
+    END_WITH_OS_WINDOW
 }
 
 static inline void
-swap_windows(unsigned int tab_id, unsigned int a, unsigned int b) {
-    WITH_TAB(tab_id);
+swap_windows(id_type os_window_id, id_type tab_id, unsigned int a, unsigned int b) {
+    WITH_TAB(os_window_id, tab_id);
     Window w = tab->windows[b];
     tab->windows[b] = tab->windows[a];
     tab->windows[a] = w;
@@ -138,6 +155,13 @@ swap_windows(unsigned int tab_id, unsigned int a, unsigned int b) {
 #define ONE_UINT(name) PYWRAP1(name) { name((unsigned int)PyLong_AsUnsignedLong(args)); Py_RETURN_NONE; }
 #define TWO_UINT(name) PYWRAP1(name) { unsigned int a, b; PA("II", &a, &b); name(a, b); Py_RETURN_NONE; }
 #define THREE_UINT(name) PYWRAP1(name) { unsigned int a, b, c; PA("III", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
+#define TWO_ID(name) PYWRAP1(name) { id_type a, b; PA("KK", &a, &b); name(a, b); Py_RETURN_NONE; }
+#define THREE_ID(name) PYWRAP1(name) { id_type a, b, c; PA("KKK", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
+#define THREE_ID_OBJ(name) PYWRAP1(name) { id_type a, b, c; PyObject *o; PA("KKKO", &a, &b, &c, &o); name(a, b, c, o); Py_RETURN_NONE; }
+#define KI(name) PYWRAP1(name) { id_type a; unsigned int b; PA("KI", &a, &b); name(a, b); Py_RETURN_NONE; }
+#define KII(name) PYWRAP1(name) { id_type a; unsigned int b, c; PA("KII", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
+#define KKI(name) PYWRAP1(name) { id_type a, b; unsigned int c; PA("KKI", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
+#define KKII(name) PYWRAP1(name) { id_type a, b; unsigned int c, d; PA("KKII", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
 
 static inline color_type
 color_as_int(PyObject *color) {
@@ -211,10 +235,14 @@ PYWRAP1(set_options) {
 }
 
 PYWRAP1(set_tab_bar_render_data) {
-#define A(name) &(global_state.tab_bar_render_data.name)
-    Py_CLEAR(global_state.tab_bar_render_data.screen);
-    PA("iffffO", A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen));
-    Py_INCREF(global_state.tab_bar_render_data.screen);
+#define A(name) &(d.name)
+    ScreenRenderData d = {0};
+    id_type os_window_id;
+    PA("KiffffO", &os_window_id, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen));
+    WITH_OS_WINDOW(os_window_id)
+        Py_CLEAR(os_window->tab_bar_render_data.screen);
+        Py_INCREF(os_window->tab_bar_render_data.screen);
+    END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 #undef A
 }
@@ -222,16 +250,17 @@ PYWRAP1(set_tab_bar_render_data) {
 PYWRAP1(set_window_render_data) {
 #define A(name) &(d.name)
 #define B(name) &(g.name)
-    unsigned int window_idx, tab_id;
-    static ScreenRenderData d = {0};
-    static WindowGeometry g = {0};
-    PA("IIiiffffOIIII", &tab_id, &window_idx, A(vao_idx), A(gvao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    id_type os_window_id, tab_id;
+    unsigned int window_idx;
+    ScreenRenderData d = {0};
+    WindowGeometry g = {0};
+    PA("KIiiffffOIIII", &os_window_id, &tab_id, &window_idx, A(vao_idx), A(gvao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
-    WITH_TAB(tab_id);
-    Py_CLEAR(tab->windows[window_idx].render_data.screen);
-    tab->windows[window_idx].render_data = d;
-    tab->windows[window_idx].geometry = g;
-    Py_INCREF(tab->windows[window_idx].render_data.screen);
+    WITH_TAB(os_window_id, tab_id);
+        Py_CLEAR(tab->windows[window_idx].render_data.screen);
+        tab->windows[window_idx].render_data = d;
+        tab->windows[window_idx].geometry = g;
+        Py_INCREF(tab->windows[window_idx].render_data.screen);
     END_WITH_TAB;
     Py_RETURN_NONE;
 #undef A
@@ -239,10 +268,11 @@ PYWRAP1(set_window_render_data) {
 }
 
 PYWRAP1(update_window_visibility) {
+    id_type os_window_id;
     unsigned int window_idx, tab_id;
     int visible;
-    PA("IIp", &tab_id, &window_idx, &visible);
-    WITH_TAB(tab_id);
+    PA("KIIp", &os_window_id, &tab_id, &window_idx, &visible);
+    WITH_TAB(os_window_id, tab_id);
     tab->windows[window_idx].visible = visible & 1;
     END_WITH_TAB;
     Py_RETURN_NONE;
@@ -261,33 +291,25 @@ PYWRAP1(set_boss) {
 }
 
 PYWRAP0(destroy_global_data) {
-    Py_CLEAR(global_state.tab_bar_render_data.screen);
     Py_CLEAR(global_state.boss);
     Py_RETURN_NONE;
 }
 
 PYWRAP1(set_display_state) {
-    PA("iiII", &global_state.viewport_width, &global_state.viewport_height, &global_state.cell_width, &global_state.cell_height);
+    int vw, vh;
+    PA("iiII", &vw, &vh, &global_state.cell_width, &global_state.cell_height);
     Py_RETURN_NONE;
 }
 
-#define WF(name) PYWRAP1(name) { \
-    unsigned int tab_id, window_id; \
-    PyObject *title; \
-    PA("IIO", &tab_id, &window_id, &title); \
-    name(tab_id, window_id, title); \
-    Py_RETURN_NONE; \
-}
-WF(add_window)
-WF(update_window_title)
-
-ONE_UINT(add_tab)
-ONE_UINT(remove_tab)
-TWO_UINT(remove_window)
-ONE_UINT(set_active_tab)
-TWO_UINT(set_active_window)
-TWO_UINT(swap_tabs)
-THREE_UINT(swap_windows)
+THREE_ID_OBJ(add_window)
+THREE_ID_OBJ(update_window_title)
+THREE_ID(remove_window)
+TWO_ID(add_tab)
+TWO_ID(remove_tab)
+KI(set_active_tab)
+KKI(set_active_window)
+KII(swap_tabs)
+KKII(swap_windows)
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
@@ -317,10 +339,6 @@ static PyMethodDef module_methods[] = {
 
 bool 
 init_state(PyObject *module) {
-    double now = monotonic();
-    global_state.application_focused = true;
-    global_state.cursor_blink_zero_time = now;
-    global_state.last_mouse_activity_at = now;
     global_state.cell_width = 1; global_state.cell_height = 1;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;

@@ -24,6 +24,7 @@
 #define str(s) #s
 #define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
 
+typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
 typedef uint32_t combining_type;
@@ -284,4 +285,4 @@ void scroll_event(double, double);
 void set_special_key_combo(int glfw_key, int mods);
 void on_text_input(unsigned int codepoint, int mods);
 void on_key_input(int key, int scancode, int action, int mods);
-void request_window_attention(unsigned int);
+void request_window_attention(id_type);

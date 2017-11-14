@@ -51,8 +51,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     int ret = 0;
     PyObject *callbacks = Py_None, *test_child = Py_None;
-    unsigned int columns=80, lines=24, scrollback=0, window_id=0;
-    if (!PyArg_ParseTuple(args, "|OIIIIO", &callbacks, &lines, &columns, &scrollback, &window_id, &test_child)) return NULL;
+    unsigned int columns=80, lines=24, scrollback=0;
+    id_type window_id=0;
+    if (!PyArg_ParseTuple(args, "|OIIIKO", &callbacks, &lines, &columns, &scrollback, &window_id, &test_child)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {

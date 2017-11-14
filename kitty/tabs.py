@@ -33,10 +33,11 @@ def SpecialWindow(cmd, stdin=None, override_title=None):
 
 class Tab:  # {{{
 
-    def __init__(self, opts, args, on_title_change, session_tab=None, special_window=None):
+    def __init__(self, os_window_id, opts, args, on_title_change, session_tab=None, special_window=None):
         global borders
         self.id = next(tab_counter)
-        add_tab(self.id)
+        self.os_window_id = os_window_id
+        add_tab(os_window_id, self.id)
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
@@ -126,9 +127,9 @@ class Tab:  # {{{
             window.title = window.override_title = override_title
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        add_window(self.id, window.id, window.override_title or window.title or appname)
+        add_window(self.os_window_id, self.id, window.id, window.override_title or window.title or appname)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
-        set_active_window(self.id, self.active_window_idx)
+        set_active_window(self.os_window_id, self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
         return window
@@ -141,9 +142,9 @@ class Tab:  # {{{
             self.remove_window(self.windows[self.active_window_idx])
 
     def remove_window(self, window):
-        remove_window(self.id, window.id)
+        remove_window(self.os_window_id, self.id, window.id)
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
-        set_active_window(self.id, self.active_window_idx)
+        set_active_window(self.os_window_id, self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
 
@@ -151,7 +152,7 @@ class Tab:  # {{{
         if idx != self.active_window_idx:
             self.current_layout.set_active_window(self.windows, idx)
             self.active_window_idx = idx
-            set_active_window(self.id, self.active_window_idx)
+            set_active_window(self.os_window_id, self.id, self.active_window_idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -169,7 +170,7 @@ class Tab:  # {{{
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
-            set_active_window(self.id, self.active_window_idx)
+            set_active_window(self.os_window_id, self.id, self.active_window_idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -184,9 +185,9 @@ class Tab:  # {{{
             idx = self.active_window_idx
             nidx = (idx + len(self.windows) + delta) % len(self.windows)
             self.windows[nidx], self.windows[idx] = self.windows[idx], self.windows[nidx]
-            swap_windows(self.id, nidx, idx)
+            swap_windows(self.os_window_id, self.id, nidx, idx)
             self.active_window_idx = nidx
-            set_active_window(self.id, self.active_window_idx)
+            set_active_window(self.os_window_id, self.id, self.active_window_idx)
             self.relayout()
 
     def move_window_to_top(self):
@@ -253,7 +254,7 @@ class TabBar:  # {{{
         else:
             self.tab_bar_blank_rects = ()
         self.screen_geometry = sg = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
-        set_tab_bar_render_data(self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
+        set_tab_bar_render_data(self.os_window_id, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data):
         if self.layout_changed is None:
@@ -299,7 +300,8 @@ class TabBar:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, opts, args):
+    def __init__(self, os_window_id, opts, args):
+        self.os_window_id = os_window_id
         self.opts, self.args = opts, args
         self.tabs = []
         self.tab_bar = TabBar(opts)
@@ -311,16 +313,16 @@ class TabManager:  # {{{
         self.tabs.append(tab)
 
     def _remove_tab(self, tab):
-        remove_tab(tab.id)
+        remove_tab(self.os_window_id, tab.id)
         self.tabs.remove(tab)
 
     def _set_active_tab(self, idx):
         self.active_tab_idx = idx
-        set_active_tab(idx)
+        set_active_tab(self.os_window_id, idx)
 
     def init(self, startup_session):
         for t in startup_session.tabs:
-            self._add_tab(Tab(self.opts, self.args, self.title_changed, t))
+            self._add_tab(Tab(self.os_window_id, self.opts, self.args, self.title_changed, t))
         self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
         if len(self.tabs) > 1:
             get_boss().tabbar_visibility_changed()
@@ -365,7 +367,7 @@ class TabManager:  # {{{
             idx = self.active_tab_idx
             nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
             self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
-            swap_tabs(idx, nidx)
+            swap_tabs(self.os_window_id, idx, nidx)
             self._set_active_tab(nidx)
             self.update_tab_bar()
 
@@ -375,7 +377,7 @@ class TabManager:  # {{{
     def new_tab(self, special_window=None):
         needs_resize = len(self.tabs) == 1
         idx = len(self.tabs)
-        self._add_tab(Tab(self.opts, self.args, self.title_changed, special_window=special_window))
+        self._add_tab(Tab(self.os_window_id, self.opts, self.args, self.title_changed, special_window=special_window))
         self._set_active_tab(idx)
         self.update_tab_bar()
         if needs_resize:

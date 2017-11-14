@@ -79,6 +79,7 @@ class Window:
         self.vao_id = create_cell_vao()
         self.gvao_id = create_graphics_vao()
         self.tab_id = tab.id
+        self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
         self.override_title = None
         self.destroyed = False
@@ -98,7 +99,7 @@ class Window:
         val = bool(val)
         if val is not self.is_visible_in_layout:
             self.is_visible_in_layout = val
-            update_window_visibility(self.tab_id, window_idx, val)
+            update_window_visibility(self.os_window_id, self.tab_id, window_idx, val)
             if val:
                 self.refresh()
 
@@ -125,7 +126,7 @@ class Window:
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
-        set_window_render_data(self.tab_id, window_idx, self.vao_id, self.gvao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, window_idx, self.vao_id, self.gvao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
 
     def contains(self, x, y):
         g = self.geometry
@@ -175,7 +176,7 @@ class Window:
     def title_changed(self, new_title):
         if self.override_title is None:
             self.title = sanitize_title(new_title or appname)
-            update_window_title(self.tab_id, self.id, self.title)
+            update_window_title(self.os_window_id, self.tab_id, self.id, self.title)
             t = self.tabref()
             if t is not None:
                 t.title_changed(self)

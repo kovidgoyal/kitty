@@ -46,7 +46,7 @@ typedef struct {
 } ClickQueue;
 
 typedef struct {
-    unsigned int id;
+    id_type id;
     bool visible;
     PyObject *title;
     ScreenRenderData render_data;
@@ -57,7 +57,8 @@ typedef struct {
 } Window;
 
 typedef struct {
-    unsigned int id, active_window, num_windows;
+    id_type id;
+    unsigned int active_window, num_windows;
     Window windows[MAX_CHILDREN];
 } Tab;
 
@@ -71,7 +72,7 @@ typedef struct {
 
 typedef struct {
     void *handle;
-    unsigned long long window_id;
+    id_type window_id;
     OSWindowGeometry before_fullscreen;
     int viewport_width, viewport_height;
     double viewport_x_ratio, viewport_y_ratio;
@@ -93,7 +94,7 @@ typedef struct {
     Options opts;
 
     double logical_dpi_x, logical_dpi_y;
-    unsigned long long window_counter;
+    id_type os_window_counter;
     float font_sz_in_pts;
     unsigned int cell_width, cell_height;
     PyObject *boss;
@@ -120,7 +121,7 @@ void swap_window_buffers(OSWindow *w);
 void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
 void set_os_window_title(OSWindow *w, const char *title);
-OSWindow* os_window_for_kitty_window(unsigned int);
+OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* current_os_window();
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders();
