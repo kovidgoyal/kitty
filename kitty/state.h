@@ -72,7 +72,7 @@ typedef struct {
 
 typedef struct {
     void *handle;
-    id_type window_id;
+    id_type id;
     OSWindowGeometry before_fullscreen;
     int viewport_width, viewport_height;
     double viewport_x_ratio, viewport_y_ratio;

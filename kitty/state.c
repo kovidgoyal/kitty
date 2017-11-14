@@ -9,11 +9,8 @@
 
 GlobalState global_state = {{0}};
 
-#define ensure_can_add(array, count, msg) if (count >= sizeof(array)/sizeof(array[0]) - 1) fatal(msg);
-
 #define noop(...)
-#define REMOVER(array, qid, count, structure, destroy) { \
-    size_t capacity = sizeof(array)/sizeof(array[0]); \
+#define REMOVER(array, qid, count, structure, destroy, capacity) { \
     for (size_t i = 0; i < count; i++) { \
         if (array[i].id == qid) { \
             destroy(array[i]); \
@@ -26,13 +23,13 @@ GlobalState global_state = {{0}};
 #define WITH_OS_WINDOW(os_window_id) \
     for (size_t o = 0; o < global_state.num_os_windows; o++) { \
         OSWindow *os_window = global_state.os_windows + o; \
-        if (os_window->window_id == os_window_id) { 
+        if (os_window->id == os_window_id) { 
 #define END_WITH_OS_WINDOW break; }}
 
 #define WITH_TAB(os_window_id, tab_id) \
     for (size_t o = 0; o < global_state.num_os_windows; o++) { \
         OSWindow *osw = global_state.os_windows + o; \
-        if (osw->window_id == os_window_id) { \
+        if (osw->id == os_window_id) { \
             for (size_t t = 0; t < osw->num_tabs; t++) { \
                 if (osw->tabs[t].id == tab_id) { \
                     Tab *tab = osw->tabs + t;
@@ -105,9 +102,16 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
 }
 
 static inline void
+remove_os_window(id_type os_window_id) {
+#define destroy_window(w) Py_CLEAR(w.window_title); Py_CLEAR(w.tab_bar_render_data.screen);
+    REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_window, global_state.capacity);
+#undef destroy_window
+}
+
+static inline void
 remove_tab(id_type os_window_id, id_type id) {
     WITH_OS_WINDOW(os_window_id)
-        REMOVER(os_window->tabs, id, os_window->num_tabs, Tab, noop);
+        REMOVER(os_window->tabs, id, os_window->num_tabs, Tab, noop, os_window->capacity);
     END_WITH_OS_WINDOW
 }
 
@@ -115,7 +119,7 @@ static inline void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
 #define destroy_window(w) Py_CLEAR(w.render_data.screen); Py_CLEAR(w.title);
-    REMOVER(tab->windows, id, tab->num_windows, Window, destroy_window);
+    REMOVER(tab->windows, id, tab->num_windows, Window, destroy_window, tab->capacity);
 #undef destroy_window
     END_WITH_TAB;
 }

@@ -56,7 +56,7 @@ set_callback_window(GLFWwindow *w) {
     return false;
 }
 
-#define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->window_id, __VA_ARGS__)
+#define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->id, __VA_ARGS__)
 
 static void 
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
@@ -178,7 +178,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     OSWindow *w = add_os_window();
-    w->window_id = global_state.os_window_counter++;
+    w->id = global_state.os_window_counter++;
     glfwSetWindowUserPointer(glfw_window, w);
     w->handle = glfw_window;
     glfwSetCursor(glfw_window, standard_cursor);
@@ -200,7 +200,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
-    return PyLong_FromUnsignedLongLong(w->window_id);
+    return PyLong_FromUnsignedLongLong(w->id);
 }
 
 // Global functions {{{
