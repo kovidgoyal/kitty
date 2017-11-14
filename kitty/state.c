@@ -317,6 +317,7 @@ PYWRAP1(set_tab_bar_render_data) {
     PA("KiffffO", &os_window_id, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen));
     WITH_OS_WINDOW(os_window_id)
         Py_CLEAR(os_window->tab_bar_render_data.screen);
+        os_window->tab_bar_render_data = d;
         Py_INCREF(os_window->tab_bar_render_data.screen);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
