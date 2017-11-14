@@ -15,21 +15,17 @@ from .config import (
     cached_values, load_cached_values, load_config, save_cached_values
 )
 from .constants import (
-    appname, defconf, isosx, iswayland, logo_data_file, str_version,
-    viewport_size
+    appname, defconf, isosx, iswayland, logo_data_file, str_version
 )
 from .fast_data_types import (
-    GL_VERSION_REQUIRED, GLFW_CONTEXT_VERSION_MAJOR,
-    GLFW_CONTEXT_VERSION_MINOR, GLFW_DECORATED, GLFW_OPENGL_CORE_PROFILE,
-    GLFW_OPENGL_FORWARD_COMPAT, GLFW_OPENGL_PROFILE, GLFW_SAMPLES,
-    GLFW_STENCIL_BITS, GLFWWindow, change_wcwidth, clear_buffers, gl_init,
-    glfw_init, glfw_init_hint_string, glfw_swap_interval, glfw_terminate,
-    glfw_window_hint, install_sigchld_handler, set_logical_dpi, set_options
+    change_wcwidth, create_os_window, glfw_init, glfw_init_hint_string,
+    glfw_terminate, install_sigchld_handler, set_default_window_icon,
+    set_logical_dpi, set_options
 )
 from .fonts.box_drawing import set_scale
 from .layout import all_layouts
 from .utils import (
-    color_as_int, detach, end_startup_notification, get_logical_dpi,
+    detach, end_startup_notification, get_logical_dpi,
     init_startup_notification, safe_print
 )
 
@@ -142,73 +138,34 @@ def option_parser():
     return parser
 
 
-def setup_opengl(opts):
-    if opts.macos_hide_titlebar:
-        glfw_window_hint(GLFW_DECORATED, False)
-    glfw_window_hint(GLFW_CONTEXT_VERSION_MAJOR, GL_VERSION_REQUIRED[0])
-    glfw_window_hint(GLFW_CONTEXT_VERSION_MINOR, GL_VERSION_REQUIRED[1])
-    glfw_window_hint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-    glfw_window_hint(GLFW_OPENGL_FORWARD_COMPAT, True)
-    glfw_window_hint(GLFW_SAMPLES, 0)
-    if isosx:
-        # OS X cannot handle 16bit stencil buffers
-        glfw_window_hint(GLFW_STENCIL_BITS, 8)
-
-
-def initialize_window(window, opts, debug_gl=False):
-    viewport_size.width, viewport_size.height = window.get_framebuffer_size()
-    w, h = window.get_window_size()
-    viewport_size.x_ratio = viewport_size.width / float(w)
-    viewport_size.y_ratio = viewport_size.height / float(h)
-    gl_init(iswayland, debug_gl)
-    glfw_swap_interval(0)
-    clear_buffers(window.swap_buffers, color_as_int(opts.background))
-    # We dont turn this on as it causes rendering performance to be much worse,
-    # for example, dragging the mouse to select is laggy
-    # glfw_swap_interval(1)
-
-
 def run_app(opts, args):
-    set_options(opts)
-    setup_opengl(opts)
     set_scale(opts.box_drawing_scale)
+    set_options(opts, iswayland, args.debug_gl)
     load_cached_values()
+    w, h = opts.initial_window_width, opts.initial_window_height
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
         try:
-            viewport_size.width, viewport_size.height = map(int, ws)
+            w, h = map(int, ws)
         except Exception:
             safe_print('Invalid cached window size, ignoring', file=sys.stderr)
-        viewport_size.width = max(100, viewport_size.width)
-        viewport_size.height = max(80, viewport_size.height)
-    else:
-        viewport_size.width = opts.initial_window_width
-        viewport_size.height = opts.initial_window_height
-    try:
-        window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
-    except ValueError:
-        safe_print('Failed to create GLFW window with initial size:', viewport_size)
-        viewport_size.width = 640
-        viewport_size.height = 400
-        window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
-    startup_ctx = init_startup_notification(window)
+    window_id = create_os_window(w, h, args.cls)
+    startup_ctx = init_startup_notification(window_id)
     if isosx:
         from .fast_data_types import cocoa_create_global_menu, cocoa_init
         cocoa_init()
         cocoa_create_global_menu()
     elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
-            window.set_icon(f.read(), 256, 256)
+            set_default_window_icon(f.read(), 256, 256)
     set_logical_dpi(*get_logical_dpi())
-    initialize_window(window, opts, args.debug_gl)
-    boss = Boss(window, opts, args)
+    boss = Boss(window_id, opts, args)
     boss.start()
     end_startup_notification(startup_ctx)
     try:
         boss.child_monitor.main_loop()
     finally:
         boss.destroy()
-    del window
     cached_values['window-size'] = viewport_size.width, viewport_size.height
     save_cached_values()
 

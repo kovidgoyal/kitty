@@ -14,6 +14,9 @@
 #include <pthread.h>
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+// Required minimum OpenGL version
+#define OPENGL_REQUIRED_VERSION_MAJOR 3
+#define OPENGL_REQUIRED_VERSION_MINOR 3
 #define UNUSED __attribute__ ((unused))
 #define EXPORTED __attribute__ ((visibility ("default")))
 #define LIKELY(x)    __builtin_expect (!!(x), 1)

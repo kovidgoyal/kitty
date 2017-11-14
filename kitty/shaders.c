@@ -541,25 +541,9 @@ PYWRAP1(layout_sprite_map) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(clear_buffers) {
-    PyObject *swap_buffers;
-    unsigned int bg;
-    PA("OI", &swap_buffers, &bg);
-#define C(shift) ((float)((bg >> shift) & 0xff)) / 255.0
-    glClearColor(C(16), C(8), C(0), 1);
-#undef C
-    glClear(GL_COLOR_BUFFER_BIT);
-    PyObject *ret = PyObject_CallFunctionObjArgs(swap_buffers, NULL);
-    if (ret == NULL) return NULL;
-    Py_DECREF(ret);
-    glClear(GL_COLOR_BUFFER_BIT);
-    Py_RETURN_NONE;
-}
-
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
-    M(gl_init, METH_VARARGS),
     M(compile_program, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
     MW(remove_vao, METH_O),
@@ -577,7 +561,6 @@ static PyMethodDef module_methods[] = {
     MW(create_graphics_vao, METH_NOARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
-    MW(clear_buffers, METH_VARARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -614,7 +597,6 @@ init_shaders(PyObject *module) {
     C(GL_BLEND); C(GL_FLOAT); C(GL_UNSIGNED_INT); C(GL_ARRAY_BUFFER); C(GL_UNIFORM_BUFFER);
 
 #undef C
-    PyModule_AddObject(module, "GL_VERSION_REQUIRED", Py_BuildValue("II", REQUIRED_VERSION_MAJOR, REQUIRED_VERSION_MINOR));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

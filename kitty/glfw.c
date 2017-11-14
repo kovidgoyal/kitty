@@ -157,6 +157,15 @@ set_mouse_cursor(MouseShape type) {
     }
 }
 
+static GLFWimage logo = {0};
+
+static PyObject*
+set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
+    Py_ssize_t sz;
+    if(!PyArg_ParseTuple(args, "s#ii", &(logo.pixels), &sz, &(logo.width), &(logo.height))) return NULL;
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height;
@@ -164,11 +173,24 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
 
     if (standard_cursor == NULL) {
+        // The first window to be created
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
+        glfwWindowHint(GLFW_SAMPLES, 0);
+        glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+#ifdef __APPLE__
+        if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, False)
+        // OS X cannot handle 16bit stencil buffers
+        glfwWindowHint(GLFW_STENCIL_BITS, 8)
+#else
+#endif
         standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
-            Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
     }
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {
@@ -176,7 +198,12 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
         return NULL;
     }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
-    if (glfw_window == NULL) { Py_CLEAR(self); PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    if (glfw_window == NULL) {
+        fprintf(stderr, "Failed to create a window at size: %dx%d, using a standard size instead.\n", width, height);
+        glfw_window = glfwCreateWindow(640, 400, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
+    }
+    if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     OSWindow *w = add_os_window();
     w->id = global_state.os_window_counter++;
     glfwSetWindowUserPointer(glfw_window, w);
@@ -221,22 +248,6 @@ glfw_init(PyObject UNUSED *self) {
 PyObject*
 glfw_terminate(PyObject UNUSED *self) {
     glfwTerminate();
-    Py_RETURN_NONE;
-}
-
-PyObject*
-glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
-    int hint, value;
-    if (!PyArg_ParseTuple(args, "ii", &hint, &value)) return NULL;
-    glfwWindowHint(hint, value);
-    Py_RETURN_NONE;
-}
-
-PyObject* 
-glfw_swap_interval(PyObject UNUSED *self, PyObject *args) {
-    int value;
-    if (!PyArg_ParseTuple(args, "i", &value)) return NULL;
-    glfwSwapInterval(value);
     Py_RETURN_NONE;
 }
 
@@ -408,10 +419,15 @@ hide_mouse(OSWindow *w) {
     glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
+static OSWindow *current_ctx_window = NULL;
+
 void
 make_window_context_current(OSWindow *w) { 
-    glfwMakeContextCurrent(w->handle); 
-    if (w->viewport_size_dirty) update_viewport_size(w->viewport_width, w->viewport_height);
+    if (current_ctx_window != w) {
+        glfwMakeContextCurrent(w->handle); 
+        current_ctx_window = w;
+        if (w->viewport_size_dirty) update_viewport_size(w->viewport_width, w->viewport_height);
+    }
 }
 
 void 
@@ -471,14 +487,13 @@ primary_monitor_content_scale(PyObject UNUSED *self) {
 
 static PyMethodDef module_methods[] = {
     METHODB(create_new_os_window, METH_VARARGS),
+    METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(set_clipboard_string, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_NOARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
-    {"glfw_window_hint", (PyCFunction)glfw_window_hint, METH_VARARGS, ""}, 
-    {"glfw_swap_interval", (PyCFunction)glfw_swap_interval, METH_VARARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, 
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, 

@@ -200,9 +200,23 @@ set_special_keys(PyObject *dict) {
     }}
 }
 
+PYWRAP1(handle_for_window_id) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        return PyLong_FromVoidPtr(os_window->handle);
+    END_WITH_OS_WINDOW
+    PyErr_SetString(PyExc_ValueError, "No such window");
+    return NULL;
+}
+
 PYWRAP1(set_options) {
-    PyObject *ret;
-#define GA(name) ret = PyObject_GetAttrString(args, #name); if (ret == NULL) return NULL;
+    PyObject *ret, *opts;
+    int is_wayland, debug_gl = 0;
+    PA("Op|p", &opts, &is_wayland, &debug_gl);
+    global_state.is_wayland = is_wayland ? true : false;
+    global_state.debug_gl = debug_gl ? true : false;
+#define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
@@ -215,12 +229,13 @@ PYWRAP1(set_options) {
     S(open_url_modifiers, PyLong_AsUnsignedLong);
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
+    S(background, color_as_int);
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
 
-    PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
+    PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
     if (chars == NULL) return NULL;
     for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {
         OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
@@ -231,7 +246,7 @@ PYWRAP1(set_options) {
     GA(keymap); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
-    PyObject *al = PyObject_GetAttrString(args, "adjust_line_height");
+    PyObject *al = PyObject_GetAttrString(opts, "adjust_line_height");
     if (PyFloat_Check(al)) { 
         OPT(adjust_line_height_frac) = (float)PyFloat_AsDouble(al);
         OPT(adjust_line_height_px) = 0;
@@ -326,6 +341,7 @@ KKII(swap_windows)
 
 static PyMethodDef module_methods[] = {
     MW(set_options, METH_O),
+    MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),

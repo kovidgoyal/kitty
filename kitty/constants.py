@@ -8,7 +8,7 @@ import ctypes
 import sys
 from collections import namedtuple
 
-from .fast_data_types import set_boss as set_c_boss
+from .fast_data_types import set_boss as set_c_boss, handle_for_window_id
 
 appname = 'kitty'
 version = (0, 5, 1)
@@ -37,18 +37,6 @@ del _get_config_dir
 defconf = os.path.join(config_dir, 'kitty.conf')
 
 
-class ViewportSize:
-
-    __slots__ = ('width', 'height', 'x_ratio', 'y_ratio')
-
-    def __init__(self):
-        self.width = self.height = 1024
-        self.x_ratio = self.y_ratio = 1.0
-
-    def __repr__(self):
-        return '(width={}, height={}, x_ratio={}, y_ratio={})'.format(self.width, self.height, self.x_ratio, self.y_ratio)
-
-
 def get_boss():
     return get_boss.boss
 
@@ -62,8 +50,6 @@ def wakeup():
     get_boss.boss.child_monitor.wakeup()
 
 
-viewport_size = ViewportSize()
-cell_size = ViewportSize()
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
@@ -121,11 +107,11 @@ def selection_clipboard_funcs():
     return ans
 
 
-def x11_window_id(window):
+def x11_window_id(window_id):
     lib = glfw_lib()
     lib.glfwGetX11Window.restype = ctypes.c_int32
     lib.glfwGetX11Window.argtypes = [ctypes.c_void_p]
-    return lib.glfwGetX11Window(window.window_id())
+    return lib.glfwGetX11Window(handle_for_window_id(window_id))
 
 
 def x11_display():

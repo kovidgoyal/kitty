@@ -16,10 +16,7 @@
 static char glbuf[4096];
 
 // GL setup and error handling {{{
-// Required minimum OpenGL version
-#define REQUIRED_VERSION_MAJOR 3
-#define REQUIRED_VERSION_MINOR 3
-#define GLSL_VERSION (REQUIRED_VERSION_MAJOR * 100 + REQUIRED_VERSION_MINOR * 10)
+#define GLSL_VERSION (OPENGL_REQUIRED_VERSION_MAJOR * 100 + OPENGL_REQUIRED_VERSION_MINOR * 10)
 
 static void
 check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, ...) {
@@ -47,11 +44,9 @@ check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, 
     }
 }
 
-static PyObject* 
-gl_init(PyObject UNUSED *self, PyObject *args) {
-    int is_wayland, debug;
-    if (!PyArg_ParseTuple(args, "pp", &is_wayland, &debug)) return NULL;
-    if (!init_glad((GLADloadproc) glfwGetProcAddress, debug)) {
+void
+gl_init() {
+    if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
         fatal("Loading the OpenGL library failed");
     }
     glad_set_post_callback(check_for_gl_error);
@@ -62,7 +57,6 @@ gl_init(PyObject UNUSED *self, PyObject *args) {
     ARB_TEST(texture_storage);
 #undef ARB_TEST
     glEnable(GL_BLEND);
-    Py_RETURN_NONE;
 }
 
 void

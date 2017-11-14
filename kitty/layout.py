@@ -5,7 +5,7 @@
 from collections import namedtuple
 from itertools import islice
 
-from .constants import WindowGeometry, viewport_size, cell_size, get_boss
+from .constants import WindowGeometry, get_boss
 from .utils import pt_to_px
 
 

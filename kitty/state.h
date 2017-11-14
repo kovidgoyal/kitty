@@ -16,7 +16,7 @@ typedef struct {
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
-    color_type url_color;
+    color_type url_color, background;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt, macos_hide_titlebar;
@@ -102,6 +102,8 @@ typedef struct {
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window, *focused_os_window;
     bool close_all_windows;
+    bool is_wayland;
+    bool debug_gl;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -112,6 +114,7 @@ extern GlobalState global_state;
     else Py_DECREF(cret_); \
 }
 
+void gl_init();
 void mark_os_window_for_close(OSWindow* w, bool yes);
 bool should_os_window_close(OSWindow* w);
 bool should_os_window_be_rendered(OSWindow* w);
