@@ -76,7 +76,7 @@ typedef struct {
     int viewport_width, viewport_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab tabs[MAX_CHILDREN];
-    unsigned int active_tab, num_tabs;
+    unsigned int active_tab, num_tabs, last_active_tab, last_num_tabs, last_active_window_id;
     ScreenRenderData tab_bar_render_data;
     bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
@@ -85,6 +85,7 @@ typedef struct {
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
+    bool needs_render;
 } OSWindow;
 
 
@@ -99,16 +100,10 @@ typedef struct {
     OSWindow os_windows[MAX_CHILDREN];
     size_t num_os_windows;
     OSWindow *callback_os_window, *focussed_os_window;
+    bool close_all_windows;
 } GlobalState;
 
 extern GlobalState global_state;
-
-typedef struct {
-    bool is_visible;
-    CursorShape shape;
-    double left, right, top, bottom;
-    color_type color;
-} CursorRenderInfo;
 
 #define call_boss(name, ...) { \
     PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
@@ -116,12 +111,21 @@ typedef struct {
     else Py_DECREF(cret_); \
 }
 
+void mark_os_window_for_close(OSWindow* w, bool yes);
+bool should_os_window_close(OSWindow* w);
+bool should_os_window_be_rendered(OSWindow* w);
+void wakeup_main_loop();
+void event_loop_wait(double timeout);
+void swap_window_buffers(OSWindow *w);
+void make_window_context_current(OSWindow *w);
+void hide_mouse(OSWindow *w);
+void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(unsigned int);
 OSWindow* current_os_window();
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders();
-void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
-void draw_cursor(CursorRenderInfo *);
+bool draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
+void draw_cursor(CursorRenderInfo *, bool);
 void update_viewport_size(int, int);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);

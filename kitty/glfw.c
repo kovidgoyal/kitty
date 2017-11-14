@@ -182,7 +182,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetWindowUserPointer(glfw_window, w);
     w->handle = glfw_window;
     glfwSetCursor(glfw_window, standard_cursor);
-    global_state.callback_os_window->viewport_size_dirty = true;
+    w->viewport_size_dirty = true;
     update_viewport(w);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     glfwSetCharModsCallback(glfw_window, char_mods_callback);
@@ -392,6 +392,55 @@ request_window_attention(unsigned int kitty_window_id) {
 #endif
         glfwPostEmptyEvent();
     }
+}
+
+void
+set_os_window_title(OSWindow *w, const char *title) {
+    glfwSetWindowTitle(w->handle, title);
+}
+
+void
+hide_mouse(OSWindow *w) {
+    glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+}
+
+void
+make_window_context_current(OSWindow *w) { 
+    glfwMakeContextCurrent(w->handle); 
+    if (w->viewport_size_dirty) update_viewport_size(w->viewport_width, w->viewport_height);
+}
+
+void 
+swap_window_buffers(OSWindow *w) {
+    glfwSwapBuffers(w->handle);
+}
+
+void
+event_loop_wait(double timeout) {
+    if (timeout < 0) glfwWaitEvents();
+    else if (timeout > 0) glfwWaitEventsTimeout(timeout);
+}
+
+void
+wakeup_main_loop() {
+    glfwPostEmptyEvent();
+}
+
+void 
+mark_os_window_for_close(OSWindow* w, bool yes) {
+    glfwSetWindowShouldClose(w->handle, yes);
+}
+
+bool
+should_os_window_be_rendered(OSWindow* w) {
+    if (glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)) return false;
+    if (!glfwGetWindowAttrib(w->handle, GLFW_VISIBLE)) return false;
+    return true;
+}
+
+bool
+should_os_window_close(OSWindow* w) {
+    return glfwWindowShouldClose(w->handle) ? true : false;
 }
 
 static PyObject*

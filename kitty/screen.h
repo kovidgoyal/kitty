@@ -55,6 +55,10 @@ typedef struct {
     size_t read_buf_sz, write_buf_sz, write_buf_used;
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
+    CursorRenderInfo last_cursor_render_info, current_cursor_render_info;
+    bool colors_inverted_at_last_render;
+    float last_render_x_start, last_render_y_start;
+
 } Screen;
 
 

@@ -24,11 +24,9 @@ extern int pthread_setname_np(const char *name);
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <GLFW/glfw3.h>
 extern PyTypeObject Screen_Type;
 
 #define EXTRA_FDS 2
-#define wakeup_main_loop glfwPostEmptyEvent
 
 static void (*parse_func)(Screen*, PyObject*);
 
@@ -58,7 +56,6 @@ static bool signal_received = false;
 static ChildMonitor *the_monitor = NULL;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
-static void *glfw_window_id = NULL;
 
 
 static inline void
@@ -120,12 +117,11 @@ self_pipe(int fds[2]) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *wid; 
+    PyObject *dump_callback, *death_notify; 
     int ret;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "OOO", &wid, &death_notify, &dump_callback)) return NULL; 
-    glfw_window_id = PyLong_AsVoidPtr(wid);
+    if (!PyArg_ParseTuple(args, "OO", &death_notify, &dump_callback)) return NULL; 
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -313,7 +309,7 @@ parse_input(ChildMonitor *self) {
     }
 
     if (UNLIKELY(signal_received)) {
-        glfwSetWindowShouldClose(glfw_window_id, true);
+        global_state.close_all_windows = true;
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -436,24 +432,26 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 static double last_render_at = -DBL_MAX;
 
 static inline double
-cursor_width(double w, bool vert) {
+cursor_width(double w, bool vert, OSWindow *os_window) {
     double dpi = vert ? global_state.logical_dpi_x : global_state.logical_dpi_y;
     double ans = w * dpi / 72.0;  // as pixels
-    double factor = 2.0 / (vert ? global_state.viewport_width : global_state.viewport_height);
+    double factor = 2.0 / (vert ? os_window->viewport_width : os_window->viewport_height);
     return ans * factor;
 }
 
 extern void cocoa_update_title(PyObject*);
 
 static inline void
-collect_cursor_info(CursorRenderInfo *ans, Window *w, double now) {
+collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
+    Cursor *cursor = rd->screen->cursor;
+    ans->x = cursor->x; ans->y = cursor->y;
+    ans->is_visible = false;
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) {
         ans->is_visible = false;
-        return;
     }
-    double time_since_start_blink = now - global_state.cursor_blink_zero_time;
-    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && global_state.application_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
+    double time_since_start_blink = now - os_window->cursor_blink_zero_time;
+    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && os_window->is_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
     bool do_draw_cursor = true;
     if (cursor_blinking) {
         int t = (int)(time_since_start_blink * 1000);
@@ -467,28 +465,29 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now) {
     if (!do_draw_cursor) { ans->is_visible = false; return; }
     ans->is_visible = true;
     ColorProfile *cp = rd->screen->color_profile;
-    Cursor *cursor = rd->screen->cursor;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
     if (ans->shape == CURSOR_BLOCK) return;
     double left = rd->xstart + cursor->x * rd->dx;
     double top = rd->ystart - cursor->y * rd->dy;
     unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
-    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
+    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true, os_window) : rd->dx * mult);
     double bottom = top - rd->dy;
-    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
+    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false, os_window);
     ans->left = left; ans->right = right; ans->top = top; ans->bottom = bottom;
 }
 
-static inline void
-update_window_title(Window *w) {
-    if (w->title && w->title != global_state.application_title) {
-        global_state.application_title = w->title;
-        glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
+static inline bool
+update_window_title(Window *w, OSWindow *os_window) {
+    if (w->title && w->title != os_window->window_title) {
+        os_window->window_title = w->title;
+        set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
-        cocoa_update_title(w->title);
+        if (os_window == global_state.focussed_os_window) cocoa_update_title(w->title);
 #endif
+        return true;
     }
+    return false;
 }
 
 static PyObject*
@@ -498,34 +497,23 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
     ssize_t vao_idx, gvao_idx;
     float xstart, ystart, dx, dy;
     if (!PyArg_ParseTuple(args, "O!nnffff", &Screen_Type, &screen, &vao_idx, &gvao_idx, &xstart, &ystart, &dx, &dy)) return NULL;
-    static CursorRenderInfo cursor_info = {0};
-    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, &cursor_info);
-    Py_RETURN_NONE;
+    PyObject *ret = draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window()) ? Py_True : Py_False;
+    Py_INCREF(ret); return ret;
 }
 
-static inline void
-render(double now) {
-    double time_since_last_render = now - last_render_at;
-    static CursorRenderInfo cursor_info;
-    if (time_since_last_render < OPT(repaint_delay)) { 
-        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
-        return;
-    }
-
-    draw_borders();
-    cursor_info.is_visible = false;
-#define TD global_state.tab_bar_render_data
-    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, &cursor_info);
-#undef TD
-    if (global_state.num_tabs) {
-        Tab *tab = global_state.tabs + global_state.active_tab;
+static inline bool
+render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
+    bool dirtied = false;
+    if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
+    if (os_window->num_tabs) {
+        Tab *tab = os_window->tabs + os_window->active_tab;
         for (unsigned int i = 0; i < tab->num_windows; i++) {
             Window *w = tab->windows + i;
 #define WD w->render_data
             if (w->visible && WD.screen) {
                 if (w->last_drag_scroll_at > 0) {
                     if (now - w->last_drag_scroll_at >= 0.02) { 
-                        if (drag_scroll(w)) {
+                        if (drag_scroll(w, os_window)) {
                             w->last_drag_scroll_at = now;
                             set_maximum_wait(0.02);
                         } else w->last_drag_scroll_at = 0;
@@ -533,23 +521,54 @@ render(double now) {
                 }
                 bool is_active_window = i == tab->active_window;
                 if (is_active_window) {
-                    collect_cursor_info(&cursor_info, w, now);
-                    update_window_title(w);
-                } else cursor_info.is_visible = false;
-                draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, &cursor_info);
-                if (is_active_window && cursor_info.is_visible && cursor_info.shape != CURSOR_BLOCK) draw_cursor(&cursor_info);
+                    *active_window_id = w->id;
+                    collect_cursor_info(&WD.screen->current_cursor_render_info, w, now, os_window);
+                    if (update_window_title(w, os_window)) dirtied = true;
+                } else WD.screen->current_cursor_render_info.is_visible = false;
+                if (draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) {
+                    if (is_active_window && WD.screen->current_cursor_render_info.is_visible && WD.screen->current_cursor_render_info.shape != CURSOR_BLOCK) {
+                        draw_cursor(&WD.screen->current_cursor_render_info, os_window == global_state.focussed_os_window);
+                    }
+                    dirtied = true;
+                }
                 if (WD.screen->start_visual_bell_at != 0) {
                     double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                     set_maximum_wait(bell_left);
                 }
             }
         }
-        
 #undef WD
     }
-    glfwSwapBuffers(glfw_window_id);
-    last_render_at = now;
+    return dirtied;
 }
+
+static inline void
+render(double now) {
+    double time_since_last_render = now - last_render_at;
+    if (time_since_last_render < OPT(repaint_delay)) { 
+        set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
+        return;
+    }
+#define TD w->tab_bar_render_data
+
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (!should_os_window_be_rendered(w)) continue;
+        make_window_context_current(w);
+        unsigned int active_window_id = 0;
+        bool window_rendered = render_os_window(w, now, &active_window_id);
+        bool tab_bar_changed = w->num_tabs > 1 && (w->last_active_tab != w->active_tab || w->last_num_tabs != w->num_tabs);
+        if (window_rendered || tab_bar_changed || active_window_id != w->last_active_window_id) {
+            draw_borders();
+            if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w);
+            swap_window_buffers(w);
+            w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
+        }
+    }
+    last_render_at = now;
+#undef TD
+}
+
 
 typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
 
@@ -600,17 +619,8 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
 }
 
 static inline void
-hide_mouse(double now) {
-    if (glfwGetInputMode(glfw_window_id, GLFW_CURSOR) == GLFW_CURSOR_NORMAL && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
-        glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    }
-}
-
-
-static inline void
 wait_for_events() {
-    if (maximum_wait < 0) glfwWaitEvents();
-    else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
+    event_loop_wait(maximum_wait);
     maximum_wait = -1;
 }
 
@@ -618,12 +628,24 @@ wait_for_events() {
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
-    while (!glfwWindowShouldClose(glfw_window_id)) {
+    bool has_open_windows = true;
+    while (has_open_windows) {
         double now = monotonic();
         render(now);
-        hide_mouse(now);
         wait_for_events();
         parse_input(self);
+        if (global_state.close_all_windows) {
+            for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
+            global_state.close_all_windows = false;
+        }
+        has_open_windows = false;
+        for (size_t w = 0; w < global_state.num_os_windows; w++) {
+            if (!should_os_window_close(&global_state.os_windows[w])) {
+                has_open_windows = true;
+                break;
+            }
+        }
+
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

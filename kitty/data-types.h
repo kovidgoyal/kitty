@@ -173,6 +173,14 @@ typedef struct {
 } Cursor;
 
 typedef struct {
+    bool is_visible;
+    CursorShape shape;
+    unsigned int x, y;
+    double left, right, top, bottom;
+    color_type color;
+} CursorRenderInfo;
+
+typedef struct {
     color_type default_fg, default_bg, cursor_color, highlight_fg, highlight_bg;
 } DynamicColor;
 
