@@ -192,13 +192,10 @@ def run_app(opts, args):
         viewport_size.height = 400
         window = GLFWWindow(viewport_size.width, viewport_size.height, args.cls)
     startup_ctx = init_startup_notification(window)
-    window.make_context_current()
     if isosx:
-        from .fast_data_types import cocoa_make_window_resizable, cocoa_create_global_menu, cocoa_init
+        from .fast_data_types import cocoa_create_global_menu, cocoa_init
         cocoa_init()
         cocoa_create_global_menu()
-        if opts.macos_hide_titlebar:
-            cocoa_make_window_resizable(window.cocoa_window_id())
     elif not iswayland:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             window.set_icon(f.read(), 256, 256)

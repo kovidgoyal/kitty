@@ -158,17 +158,18 @@ cocoa_update_title(PyObject *pytitle) {
     [title release];
 }
 
-PyObject*
-cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
-    NSWindow *window = (NSWindow*)PyLong_AsVoidPtr(window_id);
+bool
+cocoa_make_window_resizable(void *w) {
+    NSWindow *window = (NSWindow*)w;
     
     @try {
         [window setStyleMask:
             [window styleMask] | NSWindowStyleMaskResizable];
     } @catch (NSException *e) {
         return PyErr_Format(PyExc_ValueError, "Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
+        return false;
     }
-    Py_RETURN_NONE;
+    return true;
 }
 
  
@@ -188,7 +189,6 @@ cocoa_get_lang(PyObject UNUSED *self) {
 
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
-    {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
     {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
     {"cocoa_init", (PyCFunction)cocoa_init, METH_NOARGS, ""}, \
     {NULL, NULL, 0, NULL}        /* Sentinel */

@@ -86,15 +86,15 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
 static inline bool
 contains_mouse(Window *w) {
     WindowGeometry *g = &w->geometry;
-    double x = global_state.mouse_x, y = global_state.mouse_y;
+    double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     return (w->visible && g->left <= x && x <= g->right && g->top <= y && y <= g->bottom);
 }
 
 static inline bool
 cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
     WindowGeometry *g = &w->geometry;
-    unsigned int qx = (unsigned int)((double)(global_state.mouse_x - g->left) / global_state.cell_width);
-    unsigned int qy = (unsigned int)((double)(global_state.mouse_y - g->top) / global_state.cell_height);
+    unsigned int qx = (unsigned int)((double)(global_state.callback_os_window->mouse_x - g->left) / global_state.cell_width);
+    unsigned int qy = (unsigned int)((double)(global_state.callback_os_window->mouse_y - g->top) / global_state.cell_height);
     bool ret = false;
     Screen *screen = w->render_data.screen;
     if (screen && qx <= screen->columns && qy <= screen->lines) {
@@ -119,9 +119,9 @@ update_drag(bool from_button, Window *w, bool is_release) {
 
 
 bool
-drag_scroll(Window *w) {
+drag_scroll(Window *w, OSWindow *frame) {
     unsigned int margin = global_state.cell_height / 2;
-    double x = global_state.mouse_x, y = global_state.mouse_y;
+    double x = frame->mouse_x, y = frame->mouse_y;
     if (y < w->geometry.top || y > w->geometry.bottom) return false;
     if (x < w->geometry.left || x > w->geometry.right) return false;
     bool upwards = y <= (w->geometry.top + margin);
@@ -130,7 +130,7 @@ drag_scroll(Window *w) {
         if (screen->linebuf == screen->main_linebuf) {
             screen_history_scroll(screen, SCROLL_LINE, upwards);
             update_drag(false, w, false);
-            global_state.last_mouse_activity_at = monotonic();
+            frame->last_mouse_activity_at = monotonic();
             if (mouse_cursor_shape != ARROW) {
                 mouse_cursor_shape = ARROW;
                 set_mouse_cursor(mouse_cursor_shape);
@@ -165,7 +165,7 @@ detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
 HANDLER(handle_move_event) {
     unsigned int x = 0, y = 0;
     if (OPT(focus_follows_mouse)) {
-        Tab *t = global_state.tabs + global_state.active_tab;
+        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_idx != t->active_window) {
             call_boss(switch_focus_to, "I", window_idx);
         }
@@ -178,7 +178,7 @@ HANDLER(handle_move_event) {
     bool handle_in_kitty = (
             (screen->modes.mouse_tracking_mode == ANY_MODE ||
             (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
-            !(global_state.is_key_pressed[GLFW_KEY_LEFT_SHIFT] || global_state.is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
+            !(global_state.callback_os_window->is_key_pressed[GLFW_KEY_LEFT_SHIFT] || global_state.callback_os_window->is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
     ) ? false : true;
     if (handle_in_kitty) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -249,8 +249,8 @@ open_url(Window *w) {
 }
 
 HANDLER(handle_button_event) {
-    Tab *t = global_state.tabs + global_state.active_tab;
-    bool is_release = !global_state.mouse_button_pressed[button];
+    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+    bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
     if (window_idx != t->active_window) {
         call_boss(switch_focus_to, "I", window_idx);
     }
@@ -287,7 +287,7 @@ HANDLER(handle_button_event) {
 HANDLER(handle_event) {
     switch(button) {
         case -1:
-            for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.mouse_button_pressed[i]) { button = i; break; } }
+            for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.callback_os_window->mouse_button_pressed[i]) { button = i; break; } }
             handle_move_event(w, button, modifiers, window_idx);
             break;
         case GLFW_MOUSE_BUTTON_LEFT:  
@@ -304,15 +304,15 @@ HANDLER(handle_event) {
 
 static inline void 
 handle_tab_bar_mouse(int button, int UNUSED modifiers) {
-    if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.mouse_button_pressed[button]) return;
-    call_boss(activate_tab_at, "d", global_state.mouse_x);
+    if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
+    call_boss(activate_tab_at, "d", global_state.callback_os_window->mouse_x);
 }
 
 static inline Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
-    *in_tab_bar = global_state.num_tabs > 1 && global_state.mouse_y >= global_state.viewport_height - global_state.cell_height;
+    *in_tab_bar = global_state.callback_os_window->num_tabs > 1 && global_state.callback_os_window->mouse_y >= global_state.callback_os_window->viewport_height - global_state.cell_height;
     if (!*in_tab_bar) {
-        Tab *t = global_state.tabs + global_state.active_tab;
+        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
                 *window_idx = i; return t->windows + i;

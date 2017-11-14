@@ -19,7 +19,7 @@ typedef struct {
     color_type url_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
-    bool macos_option_as_alt;
+    bool macos_option_as_alt, macos_hide_titlebar;
     int adjust_line_height_px;
     float adjust_line_height_frac;
 } Options;
@@ -64,23 +64,41 @@ typedef struct {
 #define MAX_KEY_COUNT 512
 
 typedef struct {
-    Options opts;
+    int x, y, w, h;
+    bool is_set;
+} OSWindowGeometry;
 
+
+typedef struct {
+    void *handle;
+    unsigned long long window_id;
+    OSWindowGeometry before_fullscreen;
+    int viewport_width, viewport_height;
+    double viewport_x_ratio, viewport_y_ratio;
     Tab tabs[MAX_CHILDREN];
     unsigned int active_tab, num_tabs;
     ScreenRenderData tab_bar_render_data;
-    bool application_focused;
+    bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
-    double logical_dpi_x, logical_dpi_y;
-    float font_sz_in_pts;
     double mouse_x, mouse_y;
     bool mouse_button_pressed[20];
-    int viewport_width, viewport_height;
-    double viewport_x_ratio, viewport_y_ratio;
-    unsigned int cell_width, cell_height;
-    PyObject *application_title;
-    PyObject *boss;
+    PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
+    bool viewport_size_dirty;
+} OSWindow;
+
+
+typedef struct {
+    Options opts;
+
+    double logical_dpi_x, logical_dpi_y;
+    unsigned long long window_counter;
+    float font_sz_in_pts;
+    unsigned int cell_width, cell_height;
+    PyObject *boss;
+    OSWindow os_windows[MAX_CHILDREN];
+    size_t num_os_windows;
+    OSWindow *callback_os_window, *focussed_os_window;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -98,7 +116,9 @@ typedef struct {
     else Py_DECREF(cret_); \
 }
 
-bool drag_scroll(Window *);
+OSWindow* os_window_for_kitty_window(unsigned int);
+OSWindow* current_os_window();
+bool drag_scroll(Window *, OSWindow*);
 void draw_borders();
 void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, CursorRenderInfo *);
 void draw_cursor(CursorRenderInfo *);

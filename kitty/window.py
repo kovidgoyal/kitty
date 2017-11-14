@@ -15,7 +15,7 @@ from .constants import (
 )
 from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
-    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
+    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, set_clipboard_string,
     CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     Screen, compile_program, create_cell_vao, create_graphics_vao,
     glfw_post_empty_event, init_cell_program, init_cursor_program, remove_vao,
@@ -275,7 +275,7 @@ class Window:
     def copy_to_clipboard(self):
         text = self.text_for_selection()
         if text:
-            get_boss().glfw_window.set_clipboard_string(text)
+            set_clipboard_string(text)
 
     def pass_selection_to_program(self, *args):
         text = self.text_for_selection()

@@ -38,7 +38,7 @@ typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MOD
 typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL} MouseTrackingProtocol;
 typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 
-#define MAX_CHILDREN 256
+#define MAX_CHILDREN 512
 #define BLANK_CHAR 0
 #define ATTRS_MASK_WITHOUT_WIDTH 0xFFC
 #define WIDTH_MASK  3
@@ -220,6 +220,7 @@ typedef struct {
     pthread_t io_thread;
 } ChildMonitor;
 
+
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
 
 #define left_shift_line(line, at, num) \
@@ -275,4 +276,4 @@ void scroll_event(double, double);
 void set_special_key_combo(int glfw_key, int mods);
 void on_text_input(unsigned int codepoint, int mods);
 void on_key_input(int key, int scancode, int action, int mods);
-void request_window_attention();
+void request_window_attention(unsigned int);

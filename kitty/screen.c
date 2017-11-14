@@ -1007,7 +1007,7 @@ screen_invert_colors(Screen *self) {
 }
 
 void 
-screen_bell(Screen UNUSED *self) {  
+screen_bell(Screen *self) {  
     if (global_state.opts.enable_audio_bell) {
         int fd = open("/dev/tty", O_WRONLY | O_CLOEXEC | O_NOCTTY);
         if (fd > 0) {
@@ -1023,7 +1023,7 @@ screen_bell(Screen UNUSED *self) {
     if (global_state.opts.visual_bell_duration > 0) {
         self->start_visual_bell_at = monotonic();
     }
-    request_window_attention();
+    request_window_attention(self->window_id);
 } 
 
 void 

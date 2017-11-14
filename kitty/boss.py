@@ -9,7 +9,8 @@ from .config import MINIMUM_FONT_SIZE
 from .constants import cell_size, set_boss, viewport_size, wakeup
 from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
-    destroy_sprite_map, glfw_post_empty_event, layout_sprite_map
+    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
+    layout_sprite_map, toggle_fullscreen
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_key_map, get_shortcut
@@ -72,8 +73,6 @@ class Boss:
         cell_size.width, cell_size.height = set_font_family(opts)
         self.opts, self.args = opts, args
         self.glfw_window = glfw_window
-        glfw_window.framebuffer_size_callback = self.on_window_resize
-        glfw_window.window_focus_callback = self.on_focus
         initialize_renderer()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
@@ -111,7 +110,7 @@ class Boss:
             self.close_window(window)
 
     def toggle_fullscreen(self):
-        self.glfw_window.toggle_fullscreen()
+        toggle_fullscreen()
 
     def start(self):
         if not getattr(self, 'io_thread_started', False):
@@ -119,6 +118,7 @@ class Boss:
             self.io_thread_started = True
 
     def on_window_resize(self, window, w, h):
+        # WIN: Port this
         viewport_size.width, viewport_size.height = w, h
         self.tab_manager.resize()
 
@@ -206,6 +206,7 @@ class Boss:
             self.dispatch_action(key_action)
 
     def on_focus(self, window, focused):
+        # WIN: Port this
         self.window_is_focused = focused
         w = self.active_window
         if w is not None:
@@ -273,7 +274,7 @@ class Boss:
                 w.paste(text)
 
     def paste_from_clipboard(self):
-        text = self.glfw_window.get_clipboard_string()
+        text = get_clipboard_string()
         self.paste_to_active_window(text)
 
     def paste_from_selection(self):

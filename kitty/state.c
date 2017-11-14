@@ -31,6 +31,27 @@ static const Window EMPTY_WINDOW = {0};
             Tab *tab = global_state.tabs + t;
 #define END_WITH_TAB break; }}
 
+OSWindow* 
+current_os_window() {
+    if (global_state.callback_os_window) return global_state.callback_os_window;
+    if (global_state.focussed_os_window) return global_state.focussed_os_window;
+    return global_state.os_windows;
+}
+
+OSWindow*
+os_window_for_kitty_window(unsigned int kitty_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        for (size_t t = 0; t < w->num_tabs; t++) {
+            Tab *tab = w->tabs + t;
+            for (size_t c = 0; c < tab->num_windows; c++) {
+                if (tab->windows[c].id == kitty_window_id) return w;
+            }
+        }
+    }
+    return NULL;
+}
+
 static inline void
 add_tab(unsigned int id) {
     ensure_can_add(global_state.tabs, global_state.num_tabs, "Too many children (add_tab)");
@@ -163,6 +184,7 @@ PYWRAP1(set_options) {
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
     S(macos_option_as_alt, PyObject_IsTrue);
+    S(macos_hide_titlebar, PyObject_IsTrue);
 
     PyObject *chars = PyObject_GetAttrString(args, "select_by_word_characters");
     if (chars == NULL) return NULL;
