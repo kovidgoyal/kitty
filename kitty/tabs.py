@@ -22,7 +22,6 @@ from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-borders = None
 tab_counter = count()
 next(tab_counter)
 
@@ -34,7 +33,6 @@ def SpecialWindow(cmd, stdin=None, override_title=None):
 class Tab:  # {{{
 
     def __init__(self, os_window_id, opts, args, on_title_change, session_tab=None, special_window=None):
-        global borders
         self.id = next(tab_counter)
         self.os_window_id = os_window_id
         add_tab(os_window_id, self.id)
@@ -42,8 +40,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
         self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or opts.enabled_layouts)
-        if borders is None:
-            borders = Borders(opts)
+        self.borders = Borders(self.os_window_id, self.id, opts)
         self.windows = deque()
         self.active_window_idx = 0
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
@@ -51,7 +48,7 @@ class Tab:  # {{{
         if session_tab is None:
             self.cwd = args.directory
             sl = self.enabled_layouts[0]
-            self.current_layout = all_layouts[sl](opts, borders.border_width, self.windows)
+            self.current_layout = all_layouts[sl](opts, self.borders.border_width, self.windows)
             if special_window is None:
                 self.new_window()
             else:
@@ -59,7 +56,7 @@ class Tab:  # {{{
         else:
             self.cwd = session_tab.cwd or args.directory
             l0 = session_tab.layout
-            self.current_layout = all_layouts[l0](opts, borders.border_width, self.windows)
+            self.current_layout = all_layouts[l0](opts, self.borders.border_width, self.windows)
             self.startup(session_tab)
 
     def startup(self, session_tab):
@@ -90,13 +87,13 @@ class Tab:  # {{{
 
     def relayout(self):
         if self.windows:
-            self.current_layout(self.windows, self.active_window_idx)
+            self.current_layout(self.os_window_id, self.windows, self.active_window_idx)
         self.relayout_borders()
 
     def relayout_borders(self):
         tm = get_boss().tab_manager
-        borders(self.windows, self.active_window, self.current_layout, tm.blank_rects,
-                self.current_layout.needs_window_borders and len(self.windows) > 1)
+        self.borders(self.windows, self.active_window, self.current_layout,
+                     tm.blank_rects, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
@@ -105,7 +102,7 @@ class Tab:  # {{{
             except Exception:
                 idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
-            self.current_layout = all_layouts[nl](self.opts, borders.border_width, self.windows)
+            self.current_layout = all_layouts[nl](self.opts, self.borders.border_width, self.windows)
             for i, w in enumerate(self.windows):
                 w.set_visible_in_layout(i, True)
             self.relayout()

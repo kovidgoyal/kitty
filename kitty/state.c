@@ -324,6 +324,15 @@ PYWRAP1(set_tab_bar_render_data) {
 #undef A
 }
 
+PYWRAP1(viewport_for_window) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    WITH_OS_WINDOW(os_window_id)
+        return Py_BuildValue("iiII", os_window->viewport_width, os_window->viewport_height, global_state.cell_width, global_state.cell_height);
+    END_WITH_OS_WINDOW
+    return Py_BuildValue("iiII", 400, 400, global_state.cell_width, global_state.cell_height);
+}
+
+
 PYWRAP1(set_window_render_data) {
 #define A(name) &(d.name)
 #define B(name) &(g.name)
@@ -408,6 +417,7 @@ static PyMethodDef module_methods[] = {
     MW(add_borders_rect, METH_VARARGS),
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
+    MW(viewport_for_window, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(set_display_state, METH_VARARGS),

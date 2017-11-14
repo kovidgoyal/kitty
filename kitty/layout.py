@@ -7,10 +7,11 @@ from itertools import islice
 
 from .constants import WindowGeometry, get_boss
 from .utils import pt_to_px
+from .fast_data_types import viewport_for_window
 
 
-def available_height():
-    return viewport_size.height - get_boss().current_tab_bar_height
+viewport_width = viewport_height = 400
+cell_width = cell_height = 20
 
 
 def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
@@ -74,17 +75,26 @@ class Layout:
     def set_active_window(self, windows, active_window_idx):
         pass
 
-    def __call__(self, windows, active_window_idx):
+    def __call__(self, os_window_id, windows, active_window_idx):
+        global viewport_width, viewport_height, cell_width, cell_height
+        viewport_width, viewport_height, cell_width, cell_height = viewport_for_window(os_window_id)
+        self.do_layout(windows, active_window_idx)
+
+    def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
 
 
+def available_height():
+    return viewport_height - get_boss().current_tab_bar_height
+
+
 def window_geometry(xstart, xnum, ystart, ynum):
-    return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_size.width * xnum, bottom=ystart + cell_size.height * ynum)
+    return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
 
 
 def layout_single_window(margin_length, padding_length):
-    xstart, xnum = next(layout_dimension(viewport_size.width, cell_size.width, margin_length=margin_length, padding_length=padding_length))
-    ystart, ynum = next(layout_dimension(available_height(), cell_size.height, margin_length=margin_length, padding_length=padding_length))
+    xstart, xnum = next(layout_dimension(viewport_width, cell_width, margin_length=margin_length, padding_length=padding_length))
+    ystart, ynum = next(layout_dimension(available_height(), cell_height, margin_length=margin_length, padding_length=padding_length))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
@@ -94,18 +104,18 @@ def left_blank_rect(w, rects, vh):
 
 
 def right_blank_rect(w, rects, vh):
-    if w.geometry.right < viewport_size.width:
-        rects.append(Rect(w.geometry.right, 0, viewport_size.width, vh))
+    if w.geometry.right < viewport_width:
+        rects.append(Rect(w.geometry.right, 0, viewport_width, vh))
 
 
 def top_blank_rect(w, rects, vh):
     if w.geometry.top > 0:
-        rects.append(Rect(0, 0, viewport_size.width, w.geometry.top))
+        rects.append(Rect(0, 0, viewport_width, w.geometry.top))
 
 
 def bottom_blank_rect(w, rects, vh):
     if w.geometry.bottom < available_height():
-        rects.append(Rect(0, w.geometry.bottom, viewport_size.width, vh))
+        rects.append(Rect(0, w.geometry.bottom, viewport_width, vh))
 
 
 def blank_rects_for_window(w):
@@ -124,7 +134,7 @@ class Stack(Layout):
         for i, w in enumerate(windows):
             w.set_visible_in_layout(i, i == active_window_idx)
 
-    def __call__(self, windows, active_window_idx):
+    def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
         wg = layout_single_window(self.margin_width, self.padding_width)
         for i, w in enumerate(windows):
@@ -138,7 +148,7 @@ class Tall(Layout):
 
     name = 'tall'
 
-    def __call__(self, windows, active_window_idx):
+    def do_layout(self, windows, active_window_idx):
         self.blank_rects = br = []
         if len(windows) == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
@@ -146,24 +156,24 @@ class Tall(Layout):
             self.blank_rects = blank_rects_for_window(windows[0])
             return
         xlayout = layout_dimension(
-            viewport_size.width, cell_size.width, 2, self.border_width,
+            viewport_width, cell_width, 2, self.border_width,
             margin_length=self.margin_width, padding_length=self.padding_width)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(layout_dimension(
-            available_height(), cell_size.height, 1, self.border_width, left_align=True,
+            available_height(), cell_height, 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
         vh = available_height()
         xstart, xnum = next(xlayout)
         ylayout = layout_dimension(
-            available_height(), cell_size.height, len(windows) - 1, self.border_width, left_align=True,
+            available_height(), cell_height, len(windows) - 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
         left_blank_rect(windows[0], br, vh), top_blank_rect(windows[0], br, vh), right_blank_rect(windows[-1], br, vh)
         br.append(Rect(windows[0].geometry.right, 0, windows[1].geometry.left, vh))
         br.append(Rect(0, windows[0].geometry.bottom, windows[0].geometry.right, vh))
-        br.append(Rect(windows[-1].geometry.left, windows[-1].geometry.bottom, viewport_size.width, vh))
+        br.append(Rect(windows[-1].geometry.left, windows[-1].geometry.bottom, viewport_width, vh))
 
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
