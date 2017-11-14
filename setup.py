@@ -320,10 +320,11 @@ def option_parser():
         help='Where to create the linux package'
     )
     p.add_argument(
-        '--incremental',
-        default=False,
-        action='store_true',
-        help='Only build changed files'
+        '--full',
+        dest='incremental',
+        default=True,
+        action='store_false',
+        help='Do a full build, even for unchanged files'
     )
     p.add_argument(
         '--profile',
