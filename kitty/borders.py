@@ -5,12 +5,10 @@
 from functools import partial
 from itertools import chain
 
-from .constants import viewport_size
 from .fast_data_types import (
-    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
-    send_borders_rects
+    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program
 )
-from .utils import color_as_int, pt_to_px, load_shaders
+from .utils import color_as_int, load_shaders, pt_to_px
 
 
 def vertical_edge(color, width, top, bottom, left):
@@ -74,4 +72,3 @@ class Borders:
                         color, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw
                     )
-        send_borders_rects(viewport_size.width, viewport_size.height)

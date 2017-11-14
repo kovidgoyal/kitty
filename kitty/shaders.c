@@ -406,16 +406,11 @@ draw_cursor(CursorRenderInfo *cursor, bool is_focused) {
 // Borders {{{
 enum BorderUniforms { BORDER_viewport, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
-static ssize_t border_vertex_array;
-static GLsizei num_border_rects = 0;
-static GLuint rect_buf[5 * 1024];
-static GLuint *rect_pos = NULL;
 
 static void
 init_borders_program() {
     Program *p = programs + BORDERS_PROGRAM;
     int left = NUM_BORDER_UNIFORMS;
-    border_vertex_array = create_vao();
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
 #define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
         SET_LOC(viewport);
@@ -423,47 +418,39 @@ init_borders_program() {
     }
     if (left) { fatal("Left over uniforms in borders program"); return; }
 #undef SET_LOC
-    add_buffer_to_vao(border_vertex_array, GL_ARRAY_BUFFER);
-    add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect",
+}
+
+ssize_t
+create_border_vao() {
+    ssize_t vao_idx = create_vao();
+
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
+    add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect",
             /*size=*/4, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/0, /*divisor=*/1);
-    add_attribute_to_vao(BORDERS_PROGRAM, border_vertex_array, "rect_color",
+    add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect_color",
             /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(GLuint)*5, /*offset=*/(void*)(sizeof(GLuint)*4), /*divisor=*/1);
+
+    return vao_idx;
 }
 
 void
-draw_borders() {
+draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height) {
     if (num_border_rects) {
+        if (rect_data_is_dirty) {
+            size_t sz = sizeof(GLuint) * 5 * num_border_rects;
+            void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
+            if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
+            unmap_vao_buffer(vao_idx, 0);
+        }
         bind_program(BORDERS_PROGRAM);
-        bind_vertex_array(border_vertex_array);
+        glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
+        bind_vertex_array(vao_idx);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_vertex_array();
         unbind_program();
     }
 }
 
-static void
-add_borders_rect(GLuint left, GLuint top, GLuint right, GLuint bottom, GLuint color) {
-    if (!left && !top && !right && !bottom) { num_border_rects = 0;  rect_pos = rect_buf; return; }
-    num_border_rects++;
-    *(rect_pos++) = left;
-    *(rect_pos++) = top;
-    *(rect_pos++) = right;
-    *(rect_pos++) = bottom;
-    *(rect_pos++) = color;
-}
-
-static void
-send_borders_rects(GLuint vw, GLuint vh) {
-    if (num_border_rects) {
-        size_t sz = sizeof(GLuint) * 5 * num_border_rects;
-        void *borders_buf_address = alloc_and_map_vao_buffer(border_vertex_array, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
-        if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
-        unmap_vao_buffer(border_vertex_array, 0);
-    }
-    bind_program(BORDERS_PROGRAM);
-    glUniform2ui(border_uniform_locations[BORDER_viewport], vw, vh);
-    unbind_program();
-}
 // }}}
 
 // Python API {{{
@@ -525,8 +512,6 @@ TWO_INT(unmap_vao_buffer)
 NO_ARG(init_cursor_program)
 
 NO_ARG(init_borders_program)
-PYWRAP1(add_borders_rect) { unsigned int a, b, c, d, e; PA("IIIII", &a, &b, &c, &d, &e); add_borders_rect(a, b, c, d, e); Py_RETURN_NONE; }
-TWO_INT(send_borders_rects)
 
 NO_ARG(init_cell_program)
 NO_ARG_INT(create_cell_vao)
@@ -551,8 +536,6 @@ static PyMethodDef module_methods[] = {
     MW(unbind_program, METH_NOARGS),
     MW(init_cursor_program, METH_NOARGS),
     MW(init_borders_program, METH_NOARGS),
-    MW(add_borders_rect, METH_VARARGS),
-    MW(send_borders_rects, METH_VARARGS),
     MW(init_cell_program, METH_NOARGS),
     MW(create_cell_vao, METH_NOARGS),
     MW(create_graphics_vao, METH_NOARGS),

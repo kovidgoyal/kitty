@@ -558,11 +558,14 @@ render(double now) {
         unsigned int active_window_id = 0;
         bool window_rendered = render_os_window(w, now, &active_window_id);
         bool tab_bar_changed = w->num_tabs > 1 && (w->last_active_tab != w->active_tab || w->last_num_tabs != w->num_tabs);
-        if (window_rendered || tab_bar_changed || active_window_id != w->last_active_window_id) {
-            draw_borders();
+        Tab *active_tab = w->tabs + w->active_tab;
+        BorderRects *br = &active_tab->border_rects;
+        if (window_rendered || tab_bar_changed || br->is_dirty || active_window_id != w->last_active_window_id) {
+            draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
             if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w);
             swap_window_buffers(w);
             w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
+            br->is_dirty = false;
         }
     }
     last_render_at = now;

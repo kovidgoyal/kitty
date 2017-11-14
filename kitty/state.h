@@ -57,9 +57,21 @@ typedef struct {
 } Window;
 
 typedef struct {
+    uint32_t left, top, right, bottom, color;
+} BorderRect;
+
+typedef struct {
+    BorderRect *rect_buf;
+    unsigned int num_border_rects, capacity;
+    bool is_dirty;
+    ssize_t vao_idx;
+} BorderRects;
+
+typedef struct {
     id_type id;
     unsigned int active_window, num_windows, capacity;
     Window *windows;
+    BorderRects border_rects;
 } Tab;
 
 #define MAX_KEY_COUNT 512
@@ -130,7 +142,8 @@ OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* add_os_window();
 OSWindow* current_os_window();
 bool drag_scroll(Window *, OSWindow*);
-void draw_borders();
+void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height);
+ssize_t create_border_vao();
 bool draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cursor(CursorRenderInfo *, bool);
 void update_viewport_size(int, int);

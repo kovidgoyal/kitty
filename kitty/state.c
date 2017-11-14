@@ -69,6 +69,7 @@ add_tab(id_type os_window_id, id_type id) {
         ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
         memset(os_window->tabs + os_window->num_tabs, 0, sizeof(Tab));
         os_window->tabs[os_window->num_tabs].id = id;
+        os_window->tabs[os_window->num_tabs].border_rects.vao_idx = create_border_vao();
         os_window->num_tabs++;
     END_WITH_OS_WINDOW
 }
@@ -121,6 +122,8 @@ remove_window(id_type os_window_id, id_type tab_id, id_type id) {
 static inline void
 destroy_tab(Tab *tab) {
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[ i - 1].id);
+    remove_vao(tab->border_rects.vao_idx);
+    free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
 }
 
 static inline void
@@ -191,6 +194,19 @@ swap_windows(id_type os_window_id, id_type tab_id, unsigned int a, unsigned int 
     END_WITH_TAB;
 }
 
+static void
+add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t top, uint32_t right, uint32_t bottom, uint32_t color) {
+    WITH_TAB(os_window_id, tab_id)
+        BorderRects *br = &tab->border_rects;
+        br->is_dirty = true;
+        if (!left && !top && !right && !bottom) { br->num_border_rects = 0; return; }
+        ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
+        BorderRect *r = br->rect_buf + br->num_border_rects++;
+        r->left = left; r->right = right; r->top = top; r->bottom = bottom; r->color = color;
+    END_WITH_TAB
+}
+
+
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
@@ -206,6 +222,7 @@ swap_windows(id_type os_window_id, id_type tab_id, unsigned int a, unsigned int 
 #define KII(name) PYWRAP1(name) { id_type a; unsigned int b, c; PA("KII", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define KKI(name) PYWRAP1(name) { id_type a, b; unsigned int c; PA("KKI", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define KKII(name) PYWRAP1(name) { id_type a, b; unsigned int c, d; PA("KKII", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
+#define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
 
 static inline color_type
 color_as_int(PyObject *color) {
@@ -369,6 +386,7 @@ KI(set_active_tab)
 KKI(set_active_window)
 KII(swap_tabs)
 KKII(swap_windows)
+KK5I(add_borders_rect)
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
@@ -386,6 +404,7 @@ static PyMethodDef module_methods[] = {
     MW(set_active_window, METH_VARARGS),
     MW(swap_tabs, METH_VARARGS),
     MW(swap_windows, METH_VARARGS),
+    MW(add_borders_rect, METH_VARARGS),
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(update_window_visibility, METH_VARARGS),
