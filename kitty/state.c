@@ -421,6 +421,7 @@ PYWRAP1(set_boss) {
 
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.boss);
+    free(global_state.os_windows); global_state.os_windows = NULL;
     Py_RETURN_NONE;
 }
 
