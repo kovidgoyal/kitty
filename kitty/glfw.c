@@ -56,6 +56,15 @@ set_callback_window(GLFWwindow *w) {
     return false;
 }
 
+static inline bool
+is_window_ready_for_callbacks() {
+    OSWindow *w = global_state.callback_os_window;
+    if (w->num_tabs == 0) return false;
+    Tab *t = w->tabs + w->active_tab;
+    if (t->num_windows == 0) return false;
+    return true;
+}
+
 #define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->id, __VA_ARGS__)
 
 static void 
@@ -63,7 +72,9 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width > 100 && height > 100) {
         update_viewport(global_state.callback_os_window);
-        WINDOW_CALLBACK(on_window_resize, "ii", width, height);
+        if (is_window_ready_for_callbacks()) { 
+            WINDOW_CALLBACK(on_window_resize, "ii", width, height);
+        }
         glfwPostEmptyEvent();
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
     global_state.callback_os_window = NULL;
@@ -73,7 +84,7 @@ static void
 char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
-    on_text_input(codepoint, mods);
+    if (is_window_ready_for_callbacks()) on_text_input(codepoint, mods);
     global_state.callback_os_window = NULL;
 }
 
@@ -83,7 +94,7 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (key >= 0 && key <= GLFW_KEY_LAST) {
         global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
-        on_key_input(key, scancode, action, mods);
+        if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods);
     }
     global_state.callback_os_window = NULL;
 }
@@ -96,7 +107,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < sizeof(global_state.callback_os_window->mouse_button_pressed)/sizeof(global_state.callback_os_window->mouse_button_pressed[0])) {
         global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
-        mouse_event(button, mods);
+        if (is_window_ready_for_callbacks()) mouse_event(button, mods);
     }
     global_state.callback_os_window = NULL;
 }
@@ -110,7 +121,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
-    mouse_event(-1, 0);
+    if (is_window_ready_for_callbacks()) mouse_event(-1, 0);
     global_state.callback_os_window = NULL;
 }
 
@@ -120,7 +131,7 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
-    scroll_event(xoffset, yoffset);
+    if (is_window_ready_for_callbacks()) scroll_event(xoffset, yoffset);
     global_state.callback_os_window = NULL;
 }
 
@@ -134,7 +145,9 @@ window_focus_callback(GLFWwindow *w, int focused) {
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
-    WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
+    if (is_window_ready_for_callbacks()) {
+        WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
+    }
     global_state.callback_os_window = NULL;
 }
 // }}}
