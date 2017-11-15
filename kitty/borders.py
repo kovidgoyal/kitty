@@ -26,7 +26,7 @@ def edge(func, os_window_id, tab_id, color, sz, a, b):
 def border(os_window_id, tab_id, color, sz, left, top, right, bottom):
     horz = edge(horizontal_edge, os_window_id, tab_id, color, sz, left, right)
     horz(top), horz(bottom - sz)  # top, bottom edges
-    vert = edge(vertical_edge, color, sz, top, bottom)
+    vert = edge(vertical_edge, os_window_id, tab_id, color, sz, top, bottom)
     vert(left), vert(right - sz)  # left, right edges
 
 

@@ -70,7 +70,7 @@ class Boss:
         self.opts, self.args = opts, args
         initialize_renderer()
         startup_session = create_session(opts, args)
-        self.add_os_window(startup_session)
+        self.add_os_window(startup_session, os_window_id=os_window_id)
 
     def add_os_window(self, startup_session, os_window_id=None):
         if os_window_id is None:
