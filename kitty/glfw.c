@@ -76,6 +76,11 @@ is_window_ready_for_callbacks() {
 
 #define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->id, __VA_ARGS__)
 
+static inline void
+show_mouse_cursor(GLFWwindow *w) {
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
+}
+
 static void 
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
@@ -111,7 +116,7 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
 static void 
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
-    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
+    show_mouse_cursor(w);
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < sizeof(global_state.callback_os_window->mouse_button_pressed)/sizeof(global_state.callback_os_window->mouse_button_pressed[0])) {
@@ -124,7 +129,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 static void 
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
     if (!set_callback_window(w)) return;
-    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
+    show_mouse_cursor(w);
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
@@ -137,7 +142,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
 static void 
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     if (!set_callback_window(w)) return;
-    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
+    show_mouse_cursor(w);
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (is_window_ready_for_callbacks()) scroll_event(xoffset, yoffset);
@@ -150,6 +155,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     global_state.callback_os_window->is_focused = focused ? true : false;
     if (focused) {
         global_state.focused_os_window = global_state.callback_os_window;
+        show_mouse_cursor(w);
     } else if (global_state.focused_os_window == global_state.callback_os_window) global_state.focused_os_window = NULL;
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
@@ -447,7 +453,9 @@ set_os_window_title(OSWindow *w, const char *title) {
 
 void
 hide_mouse(OSWindow *w) {
-    glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    if (glfwGetInputMode(w->handle, GLFW_CURSOR) != GLFW_CURSOR_HIDDEN) {
+        glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    }
 }
 
 void 
