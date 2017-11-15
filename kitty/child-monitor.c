@@ -554,7 +554,10 @@ render(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!should_os_window_be_rendered(w)) continue;
-        make_window_context_current(w);
+        if (w->viewport_size_dirty) {
+            update_surface_size(w->viewport_width, w->viewport_height);
+            w->viewport_size_dirty = false;
+        }
         unsigned int active_window_id = 0;
         bool window_rendered = render_os_window(w, now, &active_window_id);
         bool tab_bar_changed = w->num_tabs > 1 && (w->last_active_tab != w->active_tab || w->last_num_tabs != w->num_tabs);

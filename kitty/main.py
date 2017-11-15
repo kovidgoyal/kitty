@@ -142,7 +142,7 @@ def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, iswayland, args.debug_gl)
     load_cached_values()
-    w, h = initial_window_size()
+    w, h = initial_window_size(opts)
     window_id = create_os_window(w, h, args.cls)
     startup_ctx = init_startup_notification(window_id)
     if isosx:

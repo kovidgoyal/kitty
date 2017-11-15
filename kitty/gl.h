@@ -60,7 +60,7 @@ gl_init() {
 }
 
 void
-update_viewport_size(int w, int h) {
+update_surface_size(int w, int h) {
     glViewport(0, 0, w, h); 
 }
 

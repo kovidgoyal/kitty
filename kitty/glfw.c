@@ -167,30 +167,30 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-create_new_os_window(PyObject UNUSED *self, PyObject *args) {
+create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height;
     char *title;
     if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
+    bool is_first_window = standard_cursor == NULL;
 
-    if (standard_cursor == NULL) {
-        // The first window to be created
+    if (is_first_window) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
         glfwWindowHint(GLFW_SAMPLES, 0);
-        glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
 #ifdef __APPLE__
         if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
         // OS X cannot handle 16bit stencil buffers
         glfwWindowHint(GLFW_STENCIL_BITS, 8);
-#else
 #endif
+
         standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
         click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; }
+            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; 
+        }
     }
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {
@@ -203,13 +203,18 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
         glfw_window = glfwCreateWindow(640, 400, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-    if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
+    if (is_first_window) { 
+        glfwMakeContextCurrent(glfw_window);
+        gl_init();
+        glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+    }
+
     OSWindow *w = add_os_window();
     w->id = ++global_state.os_window_id_counter;
-    glfwSetWindowUserPointer(glfw_window, w);
     w->handle = glfw_window;
+    if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
+    glfwSetWindowUserPointer(glfw_window, w);
     glfwSetCursor(glfw_window, standard_cursor);
-    w->viewport_size_dirty = true;
     update_viewport(w);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     glfwSetCharModsCallback(glfw_window, char_mods_callback);
@@ -419,17 +424,6 @@ hide_mouse(OSWindow *w) {
     glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
-static OSWindow *current_ctx_window = NULL;
-
-void
-make_window_context_current(OSWindow *w) { 
-    if (current_ctx_window != w) {
-        glfwMakeContextCurrent(w->handle); 
-        current_ctx_window = w;
-        if (w->viewport_size_dirty) update_viewport_size(w->viewport_width, w->viewport_height);
-    }
-}
-
 void 
 swap_window_buffers(OSWindow *w) {
     glfwSwapBuffers(w->handle);
@@ -486,7 +480,7 @@ primary_monitor_content_scale(PyObject UNUSED *self) {
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
-    METHODB(create_new_os_window, METH_VARARGS),
+    METHODB(create_os_window, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
