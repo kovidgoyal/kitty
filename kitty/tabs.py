@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import weakref
 from collections import deque, namedtuple
 from functools import partial
 
@@ -27,32 +28,32 @@ def SpecialWindow(cmd, stdin=None, override_title=None):
 
 class Tab:  # {{{
 
-    def __init__(self, os_window_id, opts, args, on_title_change, session_tab=None, special_window=None):
-        self.os_window_id = os_window_id
-        self.id = add_tab(os_window_id, self.id)
+    def __init__(self, tab_manager, session_tab=None, special_window=None):
+        self.tab_manager_ref = weakref.ref(tab_manager)
+        self.os_window_id = tab_manager.os_window_id
+        self.id = add_tab(self.os_window_id, self.id)
         if not self.id:
-            raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(os_window_id))
-        self.opts, self.args = opts, args
+            raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
+        self.opts, self.args = tab_manager.opts, tab_manager.args
         self.name = getattr(session_tab, 'name', '')
-        self.on_title_change = on_title_change
-        self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or opts.enabled_layouts)
-        self.borders = Borders(self.os_window_id, self.id, opts)
+        self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts)
+        self.borders = Borders(self.os_window_id, self.id, self.opts)
         self.windows = deque()
         self.active_window_idx = 0
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         if session_tab is None:
-            self.cwd = args.directory
+            self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
-            self.current_layout = all_layouts[sl](opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[sl](self.opts, self.borders.border_width, self.windows)
             if special_window is None:
                 self.new_window()
             else:
                 self.new_special_window(special_window)
         else:
-            self.cwd = session_tab.cwd or args.directory
+            self.cwd = session_tab.cwd or self.args.directory
             l0 = session_tab.layout
-            self.current_layout = all_layouts[l0](opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[l0](self.opts, self.borders.border_width, self.windows)
             self.startup(session_tab)
 
     def startup(self, session_tab):
@@ -70,7 +71,9 @@ class Tab:  # {{{
 
     def title_changed(self, window):
         if window is self.active_window:
-            self.on_title_change(window.title)
+            tm = self.tab_manager_ref()
+            if tm is not None:
+                tm.title_changed(window.title)
 
     def visible_windows(self):
         for w in self.windows:
@@ -83,9 +86,10 @@ class Tab:  # {{{
         self.relayout_borders()
 
     def relayout_borders(self):
-        tm = get_boss().tab_manager
-        self.borders(self.windows, self.active_window, self.current_layout,
-                     tm.blank_rects, self.current_layout.needs_window_borders and len(self.windows) > 1)
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            self.borders(self.windows, self.active_window, self.current_layout,
+                         tm.blank_rects, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
@@ -195,6 +199,8 @@ class Tab:  # {{{
         return window in self.windows
 
     def destroy(self):
+        for w in self.windows:
+            w.destroy()
         self.windows = deque()
 
     def __repr__(self):
@@ -285,14 +291,23 @@ class TabBar:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, os_window_id, opts, args):
+    def __init__(self, os_window_id, opts, args, startup_session):
         self.os_window_id = os_window_id
         self.opts, self.args = opts, args
         self.tabs = []
         self.tab_bar = TabBar(opts)
-        self.refresh_sprite_positions = self.tab_bar.screen.refresh_sprite_positions
         self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
+
+        for t in startup_session.tabs:
+            self._add_tab(Tab(self, session_tab=t))
+        self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
+        if len(self.tabs) > 1:
+            self.tabbar_visibility_changed()
+        self.update_tab_bar()
+
+    def refresh_sprite_positions(self):
+        self.tab_bar.screen.refresh_sprite_positions()
 
     def _add_tab(self, tab):
         self.tabs.append(tab)
@@ -308,14 +323,6 @@ class TabManager:  # {{{
     def tabbar_visibility_changed(self):
         self.resize(only_tabs=True)
         glfw_post_empty_event()
-
-    def init(self, startup_session):
-        for t in startup_session.tabs:
-            self._add_tab(Tab(self.os_window_id, self.opts, self.args, self.title_changed, t))
-        self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
-        if len(self.tabs) > 1:
-            self.tabbar_visibility_changed()
-        self.update_tab_bar()
 
     def update_tab_bar(self):
         if len(self.tabs) > 1:
@@ -362,7 +369,7 @@ class TabManager:  # {{{
     def new_tab(self, special_window=None):
         needs_resize = len(self.tabs) == 1
         idx = len(self.tabs)
-        self._add_tab(Tab(self.os_window_id, self.opts, self.args, self.title_changed, special_window=special_window))
+        self._add_tab(Tab(self, special_window=special_window))
         self._set_active_tab(idx)
         self.update_tab_bar()
         if needs_resize:
@@ -400,15 +407,9 @@ class TabManager:  # {{{
     def blank_rects(self):
         return self.tab_bar.blank_rects if len(self.tabs) > 1 else ()
 
-    def render(self):
-        if len(self.tabs) < 2:
-            return
-        self.tab_bar.render()
-
     def destroy(self):
         for t in self:
             t.destroy()
         self.tab_bar.destroy()
         del self.tab_bar
-        del self.refresh_sprite_positions
 # }}}

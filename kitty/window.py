@@ -136,16 +136,6 @@ class Window:
     def close(self):
         get_boss().close_window(self)
 
-    def on_child_death(self):
-        if self.destroyed:
-            return
-        self.destroyed = True
-        # Remove cycles so that screen is de-allocated immediately
-        boss = get_boss()
-        self.screen.reset_callbacks()
-        boss.gui_close_window(self)
-        self.screen = None
-
     def send_text(self, *args):
         mode = keyboard_mode_name(self.screen)
         required_mode, text = args[-2:]
@@ -246,7 +236,11 @@ class Window:
         return ''.join(self.screen.text_for_selection())
 
     def destroy(self):
-        pass
+        self.destroyed = True
+        if self.screen is not None:
+            # Remove cycles so that screen is de-allocated immediately
+            self.screen.reset_callbacks()
+        self.screen = None
 
     def buffer_as_ansi(self):
         data = []

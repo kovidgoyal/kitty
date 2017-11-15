@@ -422,3 +422,14 @@ def save_cached_values():
                 format(err),
                 file=sys.stderr
             )
+
+
+def initial_window_size(opts):
+    w, h = opts.initial_window_width, opts.initial_window_height
+    if 'window-size' in cached_values and opts.remember_window_size:
+        ws = cached_values['window-size']
+        try:
+            w, h = map(int, ws)
+        except Exception:
+            safe_print('Invalid cached window size, ignoring', file=sys.stderr)
+    return w, h

@@ -5,12 +5,13 @@
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
-from .config import MINIMUM_FONT_SIZE, cached_values
+from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
 from .constants import set_boss, wakeup
 from .fast_data_types import (
-    GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
-    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, toggle_fullscreen, viewport_for_window
+    GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, create_os_window,
+    current_os_window, destroy_global_data, destroy_sprite_map,
+    get_clipboard_string, glfw_post_empty_event, layout_sprite_map,
+    mark_os_window_for_close, toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_key_map, get_shortcut
@@ -59,9 +60,8 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args):
         self.window_id_map = WeakValueDictionary()
-        startup_session = create_session(opts, args)
+        self.os_window_map = {}
         self.cursor_blinking = True
-        self.window_is_focused = True
         self.shutting_down = False
         self.child_monitor = ChildMonitor(
             self.on_child_death,
@@ -71,17 +71,42 @@ class Boss:
         set_font_family(opts)
         self.opts, self.args = opts, args
         initialize_renderer()
-        self.tab_manager = TabManager(opts, args)
-        self.tab_manager.init(startup_session)
+        startup_session = create_session(opts, args)
+        self.add_os_window(startup_session)
+
+    def add_os_window(self, startup_session, os_window_id=None):
+        if os_window_id is None:
+            w, h = initial_window_size(self.opts)
+            os_window_id = create_os_window(w, h, self.args.cls)
+        tm = TabManager(os_window_id, self.opts, self.args, startup_session)
+        self.os_window_map[os_window_id] = tm
 
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
     def on_child_death(self, window_id):
-        w = self.window_id_map.pop(window_id, None)
-        if w is not None:
-            w.on_child_death()
+        window = self.window_id_map.pop(window_id, None)
+        if window is None:
+            return
+        os_window_id = window.os_window_id
+        window.destroy()
+        tm = self.os_window_map.get(os_window_id)
+        if tm is None:
+            return
+        for tab in tm:
+            if window in tab:
+                break
+        else:
+            return
+        tab.remove_window(window)
+        if len(tab) == 0:
+            tm.remove(tab)
+            tab.destroy()
+            if len(tm) == 0:
+                if not self.shutting_down:
+                    mark_os_window_for_close(os_window_id)
+                    glfw_post_empty_event()
 
     def close_window(self, window=None):
         if window is None:
@@ -103,12 +128,14 @@ class Boss:
             self.io_thread_started = True
 
     def activate_tab_at(self, os_window_id, x):
-        # WIN: Implement this
-        pass
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            tm.activate_tab_at(x)
 
-    def on_window_resize(self, window, w, h):
-        # WIN: Port this
-        self.tab_manager.resize()
+    def on_window_resize(self, os_window_id, w, h):
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            tm.resize()
 
     def increase_font_size(self):
         self.change_font_size(
@@ -136,18 +163,22 @@ class Boss:
         prerender()
         for window in windows:
             window.screen.rescale_images(old_cell_width, old_cell_height)
-        self.resize_windows_after_font_size_change()
-        for window in windows:
             window.screen.refresh_sprite_positions()
-        self.tab_manager.refresh_sprite_positions()
-
-    def resize_windows_after_font_size_change(self):
-        self.tab_manager.resize()
+        for tm in self.os_window_map.values():
+            tm.resize()
+            tm.refresh_sprite_positions()
         glfw_post_empty_event()
 
     @property
+    def active_tab_manager(self):
+        os_window_id = current_os_window()
+        return self.os_window_map.get(os_window_id)
+
+    @property
     def active_tab(self):
-        return self.tab_manager.active_tab
+        tm = self.active_tab_manager
+        if tm is not None:
+            return tm.active_tab
 
     @property
     def active_window(self):
@@ -186,16 +217,20 @@ class Boss:
         for key_action in actions:
             self.dispatch_action(key_action)
 
-    def on_focus(self, window, focused):
-        # WIN: Port this
-        self.window_is_focused = focused
-        w = self.active_window
-        if w is not None:
-            w.focus_changed(focused)
+    def on_focus(self, os_window_id, focused):
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            w = tm.active_window
+            if w is not None:
+                w.focus_changed(focused)
 
     def on_os_window_closed(self, os_window_id, viewport_width, viewport_height):
-        # WIN: Implement this
         cached_values['window-size'] = viewport_width, viewport_height
+        for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
+            self.window_id_map.pop(window_id, None)
+        tm = self.os_window_map.pop(os_window_id, None)
+        if tm is not None:
+            tm.destroy()
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:
@@ -225,32 +260,16 @@ class Boss:
         if url:
             open_url(url, self.opts.open_url_with)
 
-    def gui_close_window(self, window):
-        window.destroy()
-        for tab in self.tab_manager:
-            if window in tab:
-                break
-        else:
-            return
-        tab.remove_window(window)
-        if len(tab) == 0:
-            self.tab_manager.remove(tab)
-            tab.destroy()
-            if len(self.tab_manager) == 0:
-                if not self.shutting_down:
-                    self.glfw_window.set_should_close(True)
-                    glfw_post_empty_event()
-
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown()
         wakeup()
         self.child_monitor.join()
-        self.tab_manager.destroy()
+        for tm in self.os_window_map.values():
+            tm.destroy()
+        self.os_window_map = {}
         destroy_sprite_map()
         destroy_global_data()
-        del self.tab_manager
-        del self.glfw_window
 
     def paste_to_active_window(self, text):
         if text:
@@ -274,10 +293,14 @@ class Boss:
                 set_primary_selection(text)
 
     def next_tab(self):
-        self.tab_manager.next_tab()
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.next_tab()
 
     def previous_tab(self):
-        self.tab_manager.next_tab(-1)
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.next_tab(-1)
 
     def args_to_special_window(self, args):
         args = list(args)
@@ -311,7 +334,9 @@ class Boss:
         special_window = None
         if args:
             special_window = self.args_to_special_window(args)
-        self.tab_manager.new_tab(special_window=special_window)
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.new_tab(special_window=special_window)
 
     def new_window(self, *args):
         tab = self.active_tab
@@ -322,14 +347,17 @@ class Boss:
                 tab.new_window()
 
     def move_tab_forward(self):
-        self.tab_manager.move_tab(1)
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.move_tab(1)
 
     def move_tab_backward(self):
-        self.tab_manager.move_tab(-1)
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.move_tab(-1)
 
     def display_scrollback_in_new_tab(self, data):
-        self.tab_manager.new_tab(
-            special_window=SpecialWindow(
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.new_tab(special_window=SpecialWindow(
                 self.opts.scrollback_pager, data, _('History')))
-
-    # }}}

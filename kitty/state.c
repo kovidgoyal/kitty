@@ -341,6 +341,16 @@ PYWRAP1(viewport_for_window) {
     return Py_BuildValue("iiII", 400, 400, global_state.cell_width, global_state.cell_height);
 }
 
+PYWRAP1(mark_os_window_for_close) {
+    id_type os_window_id;
+    int yes = 1;
+    PA("K|p", &os_window_id, &yes);
+    WITH_OS_WINDOW(os_window_id)
+        mark_os_window_for_close(os_window, yes ? true : false);
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
 
 PYWRAP1(set_window_render_data) {
 #define A(name) &(d.name)
@@ -402,6 +412,7 @@ THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
+PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
 TWO_ID(remove_tab)
 KI(set_active_tab)
 KKI(set_active_window)
@@ -413,6 +424,7 @@ KK5I(add_borders_rect)
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 
 static PyMethodDef module_methods[] = {
+    MW(current_os_window, METH_NOARGS),
     MW(set_options, METH_O),
     MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
@@ -429,6 +441,7 @@ static PyMethodDef module_methods[] = {
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(viewport_for_window, METH_O),
+    MW(mark_os_window_for_close, METH_VARARGS),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(set_display_state, METH_VARARGS),

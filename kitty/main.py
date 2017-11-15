@@ -12,7 +12,7 @@ from gettext import gettext as _
 
 from .boss import Boss
 from .config import (
-    cached_values, load_cached_values, load_config, save_cached_values
+    initial_window_size, load_cached_values, load_config, save_cached_values
 )
 from .constants import (
     appname, defconf, isosx, iswayland, logo_data_file, str_version
@@ -26,7 +26,7 @@ from .fonts.box_drawing import set_scale
 from .layout import all_layouts
 from .utils import (
     detach, end_startup_notification, get_logical_dpi,
-    init_startup_notification, safe_print
+    init_startup_notification
 )
 
 try:
@@ -142,13 +142,7 @@ def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, iswayland, args.debug_gl)
     load_cached_values()
-    w, h = opts.initial_window_width, opts.initial_window_height
-    if 'window-size' in cached_values and opts.remember_window_size:
-        ws = cached_values['window-size']
-        try:
-            w, h = map(int, ws)
-        except Exception:
-            safe_print('Invalid cached window size, ignoring', file=sys.stderr)
+    w, h = initial_window_size()
     window_id = create_os_window(w, h, args.cls)
     startup_ctx = init_startup_notification(window_id)
     if isosx:
