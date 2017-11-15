@@ -224,11 +224,11 @@ class Boss:
 
     def on_os_window_closed(self, os_window_id, viewport_width, viewport_height):
         cached_values['window-size'] = viewport_width, viewport_height
-        for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
-            self.window_id_map.pop(window_id, None)
         tm = self.os_window_map.pop(os_window_id, None)
         if tm is not None:
             tm.destroy()
+        for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
+            self.window_id_map.pop(window_id, None)
 
     def display_scrollback(self, data):
         if self.opts.scrollback_in_new_tab:
@@ -263,6 +263,7 @@ class Boss:
         self.child_monitor.shutdown()
         wakeup()
         self.child_monitor.join()
+        del self.child_monitor
         for tm in self.os_window_map.values():
             tm.destroy()
         self.os_window_map = {}

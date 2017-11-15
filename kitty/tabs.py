@@ -419,4 +419,5 @@ class TabManager:  # {{{
             t.destroy()
         self.tab_bar.destroy()
         del self.tab_bar
+        del self.tabs
 # }}}

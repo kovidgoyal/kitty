@@ -127,7 +127,7 @@ extern GlobalState global_state;
 
 void gl_init();
 void remove_vao(ssize_t vao_idx);
-bool remove_os_window(id_type os_window_id, int*, int*);
+bool remove_os_window(id_type os_window_id);
 void remove_os_window_reference(OSWindow *w);
 void mark_os_window_for_close(OSWindow* w, bool yes);
 bool should_os_window_close(OSWindow* w);

@@ -145,7 +145,7 @@ remove_window(id_type os_window_id, id_type tab_id, id_type id) {
 
 static inline void
 destroy_tab(Tab *tab) {
-    for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[ i - 1].id);
+    for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[i - 1].id);
     remove_vao(tab->border_rects.vao_idx);
     free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
     free(tab->windows); tab->windows = NULL;
@@ -175,11 +175,10 @@ destroy_os_window(OSWindow *w) {
 }
 
 bool
-remove_os_window(id_type os_window_id, int *viewport_width, int *viewport_height) {
+remove_os_window(id_type os_window_id) {
     bool found = false;
     WITH_OS_WINDOW(os_window_id)
         remove_os_window_reference(os_window);
-        *viewport_width = os_window->viewport_width; *viewport_height = os_window->viewport_height;
         found = true;
     END_WITH_OS_WINDOW
     if (found) { 

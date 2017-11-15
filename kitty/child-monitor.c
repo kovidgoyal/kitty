@@ -336,11 +336,8 @@ parse_input(ChildMonitor *self) {
     }
 }
 
-static PyObject *
-mark_for_close(ChildMonitor *self, PyObject *args) {
-#define mark_for_close_doc "Mark a child to be removed from the child monitor"
-    unsigned long window_id;
-    if (!PyArg_ParseTuple(args, "k", &window_id)) return NULL;
+static inline void
+mark_child_for_close(ChildMonitor *self, id_type window_id) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
@@ -350,6 +347,15 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
     }
     children_mutex(unlock);
     wakeup_io_loop();
+}
+
+
+static PyObject *
+mark_for_close(ChildMonitor *self, PyObject *args) {
+#define mark_for_close_doc "Mark a child to be removed from the child monitor"
+    id_type window_id;
+    if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
+    mark_child_for_close(self, window_id);
     Py_RETURN_NONE;
 }
 
@@ -640,8 +646,12 @@ main_loop(ChildMonitor *self) {
         for (size_t w = global_state.num_os_windows; w > 0; w--) {
             OSWindow *os_window = global_state.os_windows + w - 1;
             if (should_os_window_close(os_window)) {
-                int viewport_width, viewport_height;
-                if (remove_os_window(os_window->id, &viewport_width, &viewport_height)) call_boss(on_os_window_closed, "Kii", os_window->id, viewport_width, viewport_height);
+                call_boss(on_os_window_closed, "Kii", os_window->id, os_window->viewport_width, os_window->viewport_width);
+                for (size_t t=0; t < os_window->num_tabs; t++) {
+                    Tab *tab = os_window->tabs + t;
+                    for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
+                }
+                remove_os_window(os_window->id); 
             } else has_open_windows = true;
         }
     }
