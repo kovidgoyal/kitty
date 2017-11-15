@@ -15,7 +15,6 @@ enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT };
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
-    unsigned int cell_width, cell_height;
     GLuint texture_id;
     GLenum texture_unit;
     GLint max_texture_size, max_array_texture_layers;
@@ -63,12 +62,12 @@ realloc_sprite_texture() {
     unsigned int xnum, ynum, z, znum, width, height, src_ynum;
     sprite_tracker_current_layout(&xnum, &ynum, &z);
     znum = z + 1;
-    width = xnum * sprite_map.cell_width; height = ynum * sprite_map.cell_height;
+    width = xnum * global_state.cell_width; height = ynum * global_state.cell_height;
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); 
     if (sprite_map.texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map.last_ynum);
-        copy_image_sub_data(sprite_map.texture_id, tex, width, src_ynum * sprite_map.cell_height, sprite_map.last_num_of_layers);
+        copy_image_sub_data(sprite_map.texture_id, tex, width, src_ynum * global_state.cell_height, sprite_map.last_num_of_layers);
         glDeleteTextures(1, &sprite_map.texture_id); 
     }
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
@@ -95,8 +94,8 @@ send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t *buf)
     if ((int)znum >= sprite_map.last_num_of_layers || (znum == 0 && (int)ynum > sprite_map.last_ynum)) realloc_sprite_texture();
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
-    x *= sprite_map.cell_width; y *= sprite_map.cell_height;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, sprite_map.cell_width, sprite_map.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, buf); 
+    x *= global_state.cell_width; y *= global_state.cell_height;
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, global_state.cell_width, global_state.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, buf); 
     Py_DECREF(buf);
 }
 
@@ -115,18 +114,13 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 static bool limits_updated = false;
 
 static void 
-layout_sprite_map(unsigned int cell_width, unsigned int cell_height) {
-    sprite_map.cell_width = MAX(1, cell_width);
-    sprite_map.cell_height = MAX(1, cell_height);
-    global_state.cell_width = sprite_map.cell_width;
-    global_state.cell_height = sprite_map.cell_height;
+layout_sprite_map() {
     if (!limits_updated) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); 
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); 
         sprite_tracker_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
         limits_updated = true;
     }
-    sprite_tracker_set_layout(sprite_map.cell_width, sprite_map.cell_height);
     if (sprite_map.texture_id) { glDeleteTextures(1, &(sprite_map.texture_id)); sprite_map.texture_id = 0; }
     realloc_sprite_texture();
 }
@@ -515,12 +509,7 @@ NO_ARG(init_borders_program)
 
 NO_ARG(init_cell_program)
 NO_ARG(destroy_sprite_map)
-PYWRAP1(layout_sprite_map) {
-    unsigned int cell_width, cell_height;
-    PA("II", &cell_width, &cell_height);
-    layout_sprite_map(cell_width, cell_height);
-    Py_RETURN_NONE;
-}
+NO_ARG(layout_sprite_map)
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}

@@ -24,8 +24,7 @@ from .window import load_shader_programs
 
 def initialize_renderer():
     load_shader_programs()
-    cw, ch = viewport_for_window()
-    layout_sprite_map(cw, ch)
+    layout_sprite_map()
     prerender()
 
 
@@ -75,10 +74,6 @@ class Boss:
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
         self.activate_tab_at = self.tab_manager.activate_tab_at
-
-    @property
-    def current_tab_bar_height(self):
-        return self.tab_manager.tab_bar_height
 
     def __iter__(self):
         return iter(self.tab_manager)
@@ -138,13 +133,13 @@ class Boss:
         if new_size == self.current_font_size:
             return
         self.current_font_size = new_size
-        w, h = viewport_for_window()[:-2]
+        old_cell_width, old_cell_height = viewport_for_window()[-2:]
         windows = tuple(filter(None, self.window_id_map.values()))
-        cw, ch = resize_fonts(self.current_font_size)
-        layout_sprite_map(cw, ch)
+        resize_fonts(self.current_font_size)
+        layout_sprite_map()
         prerender()
         for window in windows:
-            window.screen.rescale_images(w, h)
+            window.screen.rescale_images(old_cell_width, old_cell_height)
         self.resize_windows_after_font_size_change()
         for window in windows:
             window.screen.refresh_sprite_positions()

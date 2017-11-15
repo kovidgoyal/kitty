@@ -5,12 +5,12 @@
 from collections import namedtuple
 from itertools import islice
 
-from .constants import WindowGeometry, get_boss
+from .constants import WindowGeometry
 from .utils import pt_to_px
 from .fast_data_types import viewport_for_window
 
 
-viewport_width = viewport_height = 400
+viewport_width = viewport_height = available_height = 400
 cell_width = cell_height = 20
 
 
@@ -76,16 +76,12 @@ class Layout:
         pass
 
     def __call__(self, os_window_id, windows, active_window_idx):
-        global viewport_width, viewport_height, cell_width, cell_height
-        viewport_width, viewport_height, cell_width, cell_height = viewport_for_window(os_window_id)
+        global viewport_width, viewport_height, cell_width, cell_height, available_height
+        viewport_width, viewport_height, available_height, cell_width, cell_height = viewport_for_window(os_window_id)
         self.do_layout(windows, active_window_idx)
 
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
-
-
-def available_height():
-    return viewport_height - get_boss().current_tab_bar_height
 
 
 def window_geometry(xstart, xnum, ystart, ynum):
@@ -94,7 +90,7 @@ def window_geometry(xstart, xnum, ystart, ynum):
 
 def layout_single_window(margin_length, padding_length):
     xstart, xnum = next(layout_dimension(viewport_width, cell_width, margin_length=margin_length, padding_length=padding_length))
-    ystart, ynum = next(layout_dimension(available_height(), cell_height, margin_length=margin_length, padding_length=padding_length))
+    ystart, ynum = next(layout_dimension(available_height, cell_height, margin_length=margin_length, padding_length=padding_length))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
@@ -114,13 +110,13 @@ def top_blank_rect(w, rects, vh):
 
 
 def bottom_blank_rect(w, rects, vh):
-    if w.geometry.bottom < available_height():
+    if w.geometry.bottom < available_height:
         rects.append(Rect(0, w.geometry.bottom, viewport_width, vh))
 
 
 def blank_rects_for_window(w):
     ans = []
-    vh = available_height()
+    vh = available_height
     left_blank_rect(w, ans, vh), top_blank_rect(w, ans, vh), right_blank_rect(w, ans, vh), bottom_blank_rect(w, ans, vh)
     return ans
 
@@ -160,13 +156,13 @@ class Tall(Layout):
             margin_length=self.margin_width, padding_length=self.padding_width)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(layout_dimension(
-            available_height(), cell_height, 1, self.border_width, left_align=True,
+            available_height, cell_height, 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
-        vh = available_height()
+        vh = available_height
         xstart, xnum = next(xlayout)
         ylayout = layout_dimension(
-            available_height(), cell_height, len(windows) - 1, self.border_width, left_align=True,
+            available_height, cell_height, len(windows) - 1, self.border_width, left_align=True,
             margin_length=self.margin_width, padding_length=self.padding_width)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))

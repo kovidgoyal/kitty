@@ -334,7 +334,9 @@ PYWRAP1(viewport_for_window) {
     id_type os_window_id = 0;
     PA("|K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
-        return Py_BuildValue("iiII", os_window->viewport_width, os_window->viewport_height, global_state.cell_width, global_state.cell_height);
+        int available_height = os_window->viewport_height;
+        if (os_window->num_tabs > 1) available_height -= global_state.cell_height;
+        return Py_BuildValue("iiiII", os_window->viewport_width, os_window->viewport_height, available_height, global_state.cell_width, global_state.cell_height);
     END_WITH_OS_WINDOW
     return Py_BuildValue("iiII", 400, 400, global_state.cell_width, global_state.cell_height);
 }

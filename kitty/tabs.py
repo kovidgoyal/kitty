@@ -8,7 +8,7 @@ from functools import partial
 from .borders import Borders
 from .child import Child
 from .config import build_ansi_color_table
-from .constants import WindowGeometry, appname, cell_size, get_boss, shell_path
+from .constants import WindowGeometry, appname, get_boss, shell_path
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, remove_tab, remove_window,
     set_active_tab, set_active_window, set_tab_bar_render_data, swap_tabs,
@@ -347,10 +347,6 @@ class TabManager:  # {{{
     def active_tab(self):
         return self.tabs[self.active_tab_idx] if self.tabs else None
 
-    @property
-    def tab_bar_height(self):
-        return 0 if len(self.tabs) < 2 else cell_size.height
-
     def move_tab(self, delta=1):
         if len(self.tabs) > 1:
             idx = self.active_tab_idx
@@ -383,7 +379,8 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_layout_data(self):
-        return viewport_for_window(self.os_window_id)
+        vw, vh, ah, cw, ch = viewport_for_window(self.os_window_id)
+        return vw, vh, cw, ch
 
     @property
     def tab_bar_data(self):
