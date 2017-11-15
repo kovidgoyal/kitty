@@ -43,6 +43,7 @@ GlobalState global_state = {{0}};
 
 #define END_WITH_OS_WINDOW_REFS \
     if (cb_window_id || focused_window_id) { \
+        global_state.callback_os_window = NULL; global_state.focused_os_window = NULL; \
         for (size_t wn = 0; wn < global_state.num_os_windows; wn++) { \
             OSWindow *wp = global_state.os_windows + wn; \
             if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp; \
