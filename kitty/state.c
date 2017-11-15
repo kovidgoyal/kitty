@@ -148,6 +148,7 @@ destroy_tab(Tab *tab) {
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[ i - 1].id);
     remove_vao(tab->border_rects.vao_idx);
     free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
+    free(tab->windows); tab->windows = NULL;
 }
 
 static inline void
@@ -170,6 +171,7 @@ destroy_os_window(OSWindow *w) {
     }
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
     remove_vao(w->tab_bar_render_data.vao_idx);
+    free(w->tabs); w->tabs = NULL;
 }
 
 bool
@@ -469,7 +471,6 @@ static PyMethodDef module_methods[] = {
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
-
 
 bool 
 init_state(PyObject *module) {
