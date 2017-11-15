@@ -15,10 +15,10 @@ from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
     CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
     CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    Screen, add_window, compile_program, create_cell_vao, create_graphics_vao,
-    glfw_post_empty_event, init_cell_program, init_cursor_program,
-    set_clipboard_string, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    Screen, add_window, compile_program, glfw_post_empty_event,
+    init_cell_program, init_cursor_program, set_clipboard_string,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -80,8 +80,6 @@ class Window:
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
-        self.vao_id = create_cell_vao()
-        self.gvao_id = create_graphics_vao()
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
@@ -128,7 +126,7 @@ class Window:
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, window_idx, self.vao_id, self.gvao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, window_idx, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
 
     def contains(self, x, y):
         g = self.geometry
@@ -247,8 +245,7 @@ class Window:
         return ''.join(self.screen.text_for_selection())
 
     def destroy(self):
-        if self.vao_id is not None:
-            self.vao_id = self.gvao_id = None
+        pass
 
     def buffer_as_ansi(self):
         data = []

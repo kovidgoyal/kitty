@@ -143,6 +143,8 @@ OSWindow* add_os_window();
 OSWindow* current_os_window();
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height);
+ssize_t create_cell_vao();
+ssize_t create_graphics_vao();
 ssize_t create_border_vao();
 bool draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cursor(CursorRenderInfo *, bool);

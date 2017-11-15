@@ -60,6 +60,7 @@ add_os_window() {
     ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
     OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
     memset(ans, 0, sizeof(OSWindow));
+    ans->tab_bar_render_data.vao_idx = create_cell_vao();
     return ans;
 }
 
@@ -83,6 +84,8 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
         tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
         tab->windows[tab->num_windows].visible = true;
         tab->windows[tab->num_windows].title = title;
+        tab->windows[tab->num_windows].render_data.vao_idx = create_cell_vao();
+        tab->windows[tab->num_windows].render_data.gvao_idx = create_graphics_vao();
         Py_INCREF(tab->windows[tab->num_windows].title);
     return tab->windows[tab->num_windows++].id;
     END_WITH_TAB;
@@ -316,9 +319,10 @@ PYWRAP1(set_tab_bar_render_data) {
 #define A(name) &(d.name)
     ScreenRenderData d = {0};
     id_type os_window_id;
-    PA("KiffffO", &os_window_id, A(vao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen));
+    PA("KffffO", &os_window_id, A(xstart), A(ystart), A(dx), A(dy), A(screen));
     WITH_OS_WINDOW(os_window_id)
         Py_CLEAR(os_window->tab_bar_render_data.screen);
+        d.vao_idx = os_window->tab_bar_render_data.vao_idx;
         os_window->tab_bar_render_data = d;
         Py_INCREF(os_window->tab_bar_render_data.screen);
     END_WITH_OS_WINDOW
@@ -343,10 +347,12 @@ PYWRAP1(set_window_render_data) {
     unsigned int window_idx;
     ScreenRenderData d = {0};
     WindowGeometry g = {0};
-    PA("KIiiffffOIIII", &os_window_id, &tab_id, &window_idx, A(vao_idx), A(gvao_idx), A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    PA("KKI ffff OIIII", &os_window_id, &tab_id, &window_idx, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_TAB(os_window_id, tab_id);
         Py_CLEAR(tab->windows[window_idx].render_data.screen);
+        d.vao_idx = tab->windows[window_idx].render_data.vao_idx;
+        d.gvao_idx = tab->windows[window_idx].render_data.gvao_idx;
         tab->windows[window_idx].render_data = d;
         tab->windows[window_idx].geometry = g;
         Py_INCREF(tab->windows[window_idx].render_data.screen);

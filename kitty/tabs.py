@@ -10,9 +10,9 @@ from .child import Child
 from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, cell_size, get_boss, shell_path
 from .fast_data_types import (
-    DECAWM, Screen, add_tab, create_cell_vao, glfw_post_empty_event,
-    remove_tab, remove_window, set_active_tab, set_active_window,
-    set_tab_bar_render_data, swap_tabs, swap_windows, viewport_for_window
+    DECAWM, Screen, add_tab, glfw_post_empty_event, remove_tab, remove_window,
+    set_active_tab, set_active_window, set_tab_bar_render_data, swap_tabs,
+    swap_windows, viewport_for_window
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -212,7 +212,6 @@ class TabBar:  # {{{
         self.num_tabs = 1
         self.cell_width = 1
         self.data_buffer_size = 0
-        self.vao_id = create_cell_vao()
         self.layout_changed = None
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
@@ -244,7 +243,7 @@ class TabBar:  # {{{
         else:
             self.tab_bar_blank_rects = ()
         self.screen_geometry = sg = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
-        set_tab_bar_render_data(self.os_window_id, self.vao_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
+        set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data):
         if self.layout_changed is None:

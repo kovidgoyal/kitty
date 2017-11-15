@@ -171,7 +171,7 @@ init_cell_program() {
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
 
-static ssize_t
+ssize_t
 create_cell_vao() {
     ssize_t vao_idx = create_vao();
 #define A(name, size, dtype, offset, stride) \
@@ -194,7 +194,7 @@ create_cell_vao() {
 #undef A1
 }
 
-static ssize_t
+ssize_t
 create_graphics_vao() {
     ssize_t vao_idx = create_vao();
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
@@ -514,8 +514,6 @@ NO_ARG(init_cursor_program)
 NO_ARG(init_borders_program)
 
 NO_ARG(init_cell_program)
-NO_ARG_INT(create_cell_vao)
-NO_ARG_INT(create_graphics_vao)
 NO_ARG(destroy_sprite_map)
 PYWRAP1(layout_sprite_map) {
     unsigned int cell_width, cell_height;
@@ -537,8 +535,6 @@ static PyMethodDef module_methods[] = {
     MW(init_cursor_program, METH_NOARGS),
     MW(init_borders_program, METH_NOARGS),
     MW(init_cell_program, METH_NOARGS),
-    MW(create_cell_vao, METH_NOARGS),
-    MW(create_graphics_vao, METH_NOARGS),
     MW(layout_sprite_map, METH_VARARGS),
     MW(destroy_sprite_map, METH_NOARGS),
 
