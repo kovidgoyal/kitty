@@ -6,21 +6,19 @@ import sys
 import weakref
 from collections import deque
 from enum import Enum
-from itertools import count
 
 from .config import build_ansi_color_table, parse_send_text_bytes
 from .constants import (
-    ScreenGeometry, WindowGeometry, appname, cell_size, get_boss,
-    viewport_size, wakeup
+    ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
     BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
     CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
     CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    Screen, compile_program, create_cell_vao, create_graphics_vao,
+    Screen, add_window, compile_program, create_cell_vao, create_graphics_vao,
     glfw_post_empty_event, init_cell_program, init_cursor_program,
     set_clipboard_string, set_window_render_data, update_window_title,
-    update_window_visibility
+    update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -43,8 +41,6 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
-window_counter = count()
-next(window_counter)
 
 
 def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell_width, cell_height):
@@ -78,19 +74,21 @@ def setup_colors(screen, opts):
 
 class Window:
 
-    def __init__(self, tab, child, opts, args):
-        self.id = next(window_counter)
+    def __init__(self, tab, child, opts, args, override_title=None):
+        self.override_title = override_title
+        self.title = self.override_title or appname
+        self.id = add_window(tab.os_window_id, tab.id, self.title)
+        if not self.id:
+            raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.vao_id = create_cell_vao()
         self.gvao_id = create_graphics_vao()
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
-        self.override_title = None
         self.destroyed = False
         self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
-        self.title = appname
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id)
@@ -112,7 +110,7 @@ class Window:
         wakeup()
 
     def update_position(self, window_geometry):
-        self.screen_geometry = sg = calculate_gl_geometry(window_geometry, viewport_size.width, viewport_size.height, cell_size.width, cell_size.height)
+        self.screen_geometry = sg = calculate_gl_geometry(window_geometry, *viewport_for_window(self.os_window_id))
         return sg
 
     def set_geometry(self, window_idx, new_geometry):

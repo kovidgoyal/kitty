@@ -4,26 +4,21 @@
 
 from collections import deque, namedtuple
 from functools import partial
-from itertools import count
 
 from .borders import Borders
 from .child import Child
 from .config import build_ansi_color_table
-from .constants import (
-    WindowGeometry, appname, cell_size, get_boss, shell_path, viewport_size
-)
+from .constants import WindowGeometry, appname, cell_size, get_boss, shell_path
 from .fast_data_types import (
-    DECAWM, Screen, add_tab, add_window, create_cell_vao,
-    glfw_post_empty_event, remove_tab, remove_window, set_active_tab,
-    set_active_window, set_tab_bar_render_data, swap_tabs, swap_windows
+    DECAWM, Screen, add_tab, create_cell_vao, glfw_post_empty_event,
+    remove_tab, remove_window, set_active_tab, set_active_window,
+    set_tab_bar_render_data, swap_tabs, swap_windows, viewport_for_window
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-tab_counter = count()
-next(tab_counter)
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None):
@@ -33,9 +28,10 @@ def SpecialWindow(cmd, stdin=None, override_title=None):
 class Tab:  # {{{
 
     def __init__(self, os_window_id, opts, args, on_title_change, session_tab=None, special_window=None):
-        self.id = next(tab_counter)
         self.os_window_id = os_window_id
-        add_tab(os_window_id, self.id)
+        self.id = add_tab(os_window_id, self.id)
+        if not self.id:
+            raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(os_window_id))
         self.opts, self.args = opts, args
         self.name = getattr(session_tab, 'name', '')
         self.on_title_change = on_title_change
@@ -119,12 +115,9 @@ class Tab:  # {{{
 
     def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None):
         child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin)
-        window = Window(self, child, self.opts, self.args)
-        if override_title is not None:
-            window.title = window.override_title = override_title
+        window = Window(self, child, self.opts, self.args, override_title=override_title)
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        add_window(self.os_window_id, self.id, window.id, window.override_title or window.title or appname)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         set_active_window(self.os_window_id, self.id, self.active_window_idx)
         self.relayout_borders()
@@ -391,7 +384,7 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_layout_data(self):
-        return viewport_size.width, viewport_size.height, cell_size.width, cell_size.height
+        return viewport_for_window(self.os_window_id)
 
     @property
     def tab_bar_data(self):

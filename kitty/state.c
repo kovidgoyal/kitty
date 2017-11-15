@@ -63,28 +63,30 @@ add_os_window() {
     return ans;
 }
 
-static inline void
-add_tab(id_type os_window_id, id_type id) {
+static inline id_type
+add_tab(id_type os_window_id) {
     WITH_OS_WINDOW(os_window_id)
         ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
         memset(os_window->tabs + os_window->num_tabs, 0, sizeof(Tab));
-        os_window->tabs[os_window->num_tabs].id = id;
+        os_window->tabs[os_window->num_tabs].id = ++global_state.tab_id_counter;
         os_window->tabs[os_window->num_tabs].border_rects.vao_idx = create_border_vao();
-        os_window->num_tabs++;
+        return os_window->tabs[os_window->num_tabs++].id;
     END_WITH_OS_WINDOW
+    return 0;
 }
 
-static inline void
-add_window(id_type os_window_id, id_type tab_id, id_type id, PyObject *title) {
+static inline id_type
+add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
-    ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
-    memset(tab->windows + tab->num_windows, 0, sizeof(Window));
-    tab->windows[tab->num_windows].id = id;
-    tab->windows[tab->num_windows].visible = true;
-    tab->windows[tab->num_windows].title = title;
-    Py_INCREF(tab->windows[tab->num_windows].title);
-    tab->num_windows++;
+        ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
+        memset(tab->windows + tab->num_windows, 0, sizeof(Window));
+        tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
+        tab->windows[tab->num_windows].visible = true;
+        tab->windows[tab->num_windows].title = title;
+        Py_INCREF(tab->windows[tab->num_windows].title);
+    return tab->windows[tab->num_windows++].id;
     END_WITH_TAB;
+    return 0;
 }
 
 static inline void
@@ -325,7 +327,8 @@ PYWRAP1(set_tab_bar_render_data) {
 }
 
 PYWRAP1(viewport_for_window) {
-    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    id_type os_window_id = 0;
+    PA("|K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
         return Py_BuildValue("iiII", os_window->viewport_width, os_window->viewport_height, global_state.cell_width, global_state.cell_height);
     END_WITH_OS_WINDOW
@@ -387,10 +390,10 @@ PYWRAP1(set_display_state) {
     Py_RETURN_NONE;
 }
 
-THREE_ID_OBJ(add_window)
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
-TWO_ID(add_tab)
+PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
+PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
 TWO_ID(remove_tab)
 KI(set_active_tab)
 KKI(set_active_window)

@@ -6,11 +6,11 @@ from gettext import gettext as _
 from weakref import WeakValueDictionary
 
 from .config import MINIMUM_FONT_SIZE, cached_values
-from .constants import cell_size, set_boss, viewport_size, wakeup
+from .constants import set_boss, wakeup
 from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, toggle_fullscreen
+    layout_sprite_map, toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_key_map, get_shortcut
@@ -24,7 +24,8 @@ from .window import load_shader_programs
 
 def initialize_renderer():
     load_shader_programs()
-    layout_sprite_map(cell_size.width, cell_size.height)
+    cw, ch = viewport_for_window()
+    layout_sprite_map(cw, ch)
     prerender()
 
 
@@ -57,22 +58,19 @@ class DumpCommands:  # {{{
 
 class Boss:
 
-    def __init__(self, glfw_window, opts, args):
+    def __init__(self, os_window_id, opts, args):
         self.window_id_map = WeakValueDictionary()
         startup_session = create_session(opts, args)
         self.cursor_blinking = True
         self.window_is_focused = True
-        self.glfw_window_title = None
         self.shutting_down = False
         self.child_monitor = ChildMonitor(
-            glfw_window.window_id(),
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
         set_boss(self)
         self.current_font_size = opts.font_size
-        cell_size.width, cell_size.height = set_font_family(opts)
+        set_font_family(opts)
         self.opts, self.args = opts, args
-        self.glfw_window = glfw_window
         initialize_renderer()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
@@ -119,7 +117,6 @@ class Boss:
 
     def on_window_resize(self, window, w, h):
         # WIN: Port this
-        viewport_size.width, viewport_size.height = w, h
         self.tab_manager.resize()
 
     def increase_font_size(self):
@@ -141,10 +138,10 @@ class Boss:
         if new_size == self.current_font_size:
             return
         self.current_font_size = new_size
-        w, h = cell_size.width, cell_size.height
+        w, h = viewport_for_window()[:-2]
         windows = tuple(filter(None, self.window_id_map.values()))
-        cell_size.width, cell_size.height = resize_fonts(self.current_font_size)
-        layout_sprite_map(cell_size.width, cell_size.height)
+        cw, ch = resize_fonts(self.current_font_size)
+        layout_sprite_map(cw, ch)
         prerender()
         for window in windows:
             window.screen.rescale_images(w, h)

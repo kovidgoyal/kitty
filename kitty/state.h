@@ -106,7 +106,7 @@ typedef struct {
     Options opts;
 
     double logical_dpi_x, logical_dpi_y;
-    id_type os_window_counter;
+    id_type os_window_id_counter, tab_id_counter, window_id_counter;
     float font_sz_in_pts;
     unsigned int cell_width, cell_height;
     PyObject *boss;
