@@ -355,6 +355,12 @@ class TabManager:  # {{{
     def active_tab(self):
         return self.tabs[self.active_tab_idx] if self.tabs else None
 
+    @property
+    def active_window(self):
+        t = self.active_tab
+        if t is not None:
+            return t.active_window
+
     def move_tab(self, delta=1):
         if len(self.tabs) > 1:
             idx = self.active_tab_idx
