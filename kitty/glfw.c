@@ -181,7 +181,7 @@ create_new_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_SAMPLES, 0);
         glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
 #ifdef __APPLE__
-        if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, False)
+        if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false)
         // OS X cannot handle 16bit stencil buffers
         glfwWindowHint(GLFW_STENCIL_BITS, 8)
 #else
