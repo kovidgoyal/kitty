@@ -29,19 +29,28 @@ extern bool cocoa_make_window_resizable(void *w);
 
 static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
 
-#define GLFW_WINDOW(w) ((GLFWwindow*)((w)->handle))
-
 static void 
 update_viewport(OSWindow *window) {
     int w, h;
-    glfwGetFramebufferSize(GLFW_WINDOW(window), &window->viewport_width, &window->viewport_height);
-    glfwGetWindowSize(GLFW_WINDOW(window), &w, &h);
+    glfwGetFramebufferSize(window->handle, &window->viewport_width, &window->viewport_height);
+    glfwGetWindowSize(window->handle, &w, &h);
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
     window->viewport_size_dirty = true;
 }
 
 // callbacks {{{
+
+void
+remove_os_window_reference(OSWindow *w) { if (w->handle) glfwSetWindowUserPointer(w->handle, NULL); }
+
+static inline void 
+update_os_window_references() {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->handle) glfwSetWindowUserPointer(w->handle, w);
+    }
+}
 
 static inline bool
 set_callback_window(GLFWwindow *w) {
@@ -229,8 +238,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     OSWindow *w = add_os_window();
     w->id = ++global_state.os_window_id_counter;
     w->handle = glfw_window;
+    update_os_window_references();
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
-    glfwSetWindowUserPointer(glfw_window, w);
     glfwSetCursor(glfw_window, standard_cursor);
     update_viewport(w);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);

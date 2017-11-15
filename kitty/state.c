@@ -36,6 +36,20 @@ GlobalState global_state = {{0}};
                     Tab *tab = osw->tabs + t;
 #define END_WITH_TAB break; }}}}
 
+#define WITH_OS_WINDOW_REFS \
+    id_type cb_window_id = 0, focused_window_id = 0; \
+    if (global_state.callback_os_window) cb_window_id = global_state.callback_os_window->id; \
+    if (global_state.focused_os_window) focused_window_id = global_state.focused_os_window->id;
+
+#define END_WITH_OS_WINDOW_REFS \
+    if (cb_window_id || focused_window_id) { \
+        for (size_t wn = 0; wn < global_state.num_os_windows; wn++) { \
+            OSWindow *wp = global_state.os_windows + wn; \
+            if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp; \
+            if (wp->id == focused_window_id && focused_window_id) global_state.focused_os_window = wp; \
+    }}
+
+
 OSWindow* 
 current_os_window() {
     if (global_state.callback_os_window) return global_state.callback_os_window;
@@ -59,10 +73,12 @@ os_window_for_kitty_window(id_type kitty_window_id) {
 
 OSWindow*
 add_os_window() {
+    WITH_OS_WINDOW_REFS
     ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
     OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
     memset(ans, 0, sizeof(OSWindow));
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
+    END_WITH_OS_WINDOW_REFS
     return ans;
 }
 
@@ -159,11 +175,14 @@ bool
 remove_os_window(id_type os_window_id, int *viewport_width, int *viewport_height) {
     bool found = false;
     WITH_OS_WINDOW(os_window_id)
+        remove_os_window_reference(os_window);
         *viewport_width = os_window->viewport_width; *viewport_height = os_window->viewport_height;
         found = true;
     END_WITH_OS_WINDOW
     if (found) { 
-        REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window, global_state.capacity);
+        WITH_OS_WINDOW_REFS
+            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window, global_state.capacity);
+        END_WITH_OS_WINDOW_REFS
     }
     return found;
 }
