@@ -30,19 +30,19 @@ def border(os_window_id, tab_id, color, sz, left, top, right, bottom):
     vert(left), vert(right - sz)  # left, right edges
 
 
-class Borders:
+def load_borders_program():
+    compile_program(BORDERS_PROGRAM, *load_shaders('border'))
+    init_borders_program()
+    Borders.program_initialized = True
 
-    program_initialized = False
+
+class Borders:
 
     def __init__(self, os_window_id, tab_id, opts):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.border_width = pt_to_px(opts.window_border_width)
         self.padding_width = pt_to_px(opts.window_padding_width)
-        if not Borders.program_initialized:
-            compile_program(BORDERS_PROGRAM, *load_shaders('border'))
-            init_borders_program()
-            Borders.program_initialized = True
         self.background = color_as_int(opts.background)
         self.active_border = color_as_int(opts.active_border_color)
         self.inactive_border = color_as_int(opts.inactive_border_color)

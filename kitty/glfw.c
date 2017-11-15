@@ -170,7 +170,8 @@ static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height;
     char *title;
-    if (!PyArg_ParseTuple(args, "iis", &width, &height, &title)) return NULL;
+    PyObject *load_programs = NULL;
+    if (!PyArg_ParseTuple(args, "iis|O", &width, &height, &title, &load_programs)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
@@ -207,6 +208,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwMakeContextCurrent(glfw_window);
         gl_init();
         glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+        PyObject *ret = PyObject_CallFunction(load_programs, NULL);
+        if (ret == NULL) return NULL;
+        Py_DECREF(ret);
     }
 
     OSWindow *w = add_os_window();

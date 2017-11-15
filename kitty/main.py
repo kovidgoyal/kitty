@@ -10,6 +10,7 @@ import sys
 from contextlib import contextmanager
 from gettext import gettext as _
 
+from .borders import load_borders_program
 from .boss import Boss
 from .config import (
     initial_window_size, load_cached_values, load_config, save_cached_values
@@ -28,11 +29,17 @@ from .utils import (
     detach, end_startup_notification, get_logical_dpi,
     init_startup_notification
 )
+from .window import load_shader_programs
 
 try:
     from .fast_data_types import GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
 except ImportError:
     GLFW_X11_WM_CLASS_NAME = GLFW_X11_WM_CLASS_CLASS = None
+
+
+def load_all_shaders():
+    load_shader_programs()
+    load_borders_program()
 
 
 def option_parser():
@@ -143,7 +150,7 @@ def run_app(opts, args):
     set_options(opts, iswayland, args.debug_gl)
     load_cached_values()
     w, h = initial_window_size(opts)
-    window_id = create_os_window(w, h, args.cls)
+    window_id = create_os_window(w, h, args.cls, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
     if isosx:
         from .fast_data_types import cocoa_create_global_menu, cocoa_init

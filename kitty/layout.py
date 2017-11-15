@@ -45,7 +45,8 @@ class Layout:
     name = None
     needs_window_borders = True
 
-    def __init__(self, opts, border_width, windows):
+    def __init__(self, os_window_id, opts, border_width, windows):
+        self.os_window_id = os_window_id
         self.opts = opts
         self.border_width = border_width
         self.margin_width = pt_to_px(opts.window_margin_width)
@@ -75,9 +76,9 @@ class Layout:
     def set_active_window(self, windows, active_window_idx):
         pass
 
-    def __call__(self, os_window_id, windows, active_window_idx):
+    def __call__(self, windows, active_window_idx):
         global viewport_width, viewport_height, cell_width, cell_height, available_height
-        viewport_width, viewport_height, available_height, cell_width, cell_height = viewport_for_window(os_window_id)
+        viewport_width, viewport_height, available_height, cell_width, cell_height = viewport_for_window(self.os_window_id)
         self.do_layout(windows, active_window_idx)
 
     def do_layout(self, windows, active_window_idx):

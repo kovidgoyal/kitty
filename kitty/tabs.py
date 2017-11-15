@@ -31,7 +31,7 @@ class Tab:  # {{{
     def __init__(self, tab_manager, session_tab=None, special_window=None):
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
-        self.id = add_tab(self.os_window_id, self.id)
+        self.id = add_tab(self.os_window_id)
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
@@ -45,7 +45,7 @@ class Tab:  # {{{
         if session_tab is None:
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
-            self.current_layout = all_layouts[sl](self.opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[sl](self.os_window_id, self.opts, self.borders.border_width, self.windows)
             if special_window is None:
                 self.new_window()
             else:
@@ -53,7 +53,7 @@ class Tab:  # {{{
         else:
             self.cwd = session_tab.cwd or self.args.directory
             l0 = session_tab.layout
-            self.current_layout = all_layouts[l0](self.opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[l0](self.os_window_id, self.opts, self.borders.border_width, self.windows)
             self.startup(session_tab)
 
     def startup(self, session_tab):
@@ -82,7 +82,7 @@ class Tab:  # {{{
 
     def relayout(self):
         if self.windows:
-            self.current_layout(self.os_window_id, self.windows, self.active_window_idx)
+            self.current_layout(self.windows, self.active_window_idx)
         self.relayout_borders()
 
     def relayout_borders(self):
@@ -98,7 +98,7 @@ class Tab:  # {{{
             except Exception:
                 idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
-            self.current_layout = all_layouts[nl](self.opts, self.borders.border_width, self.windows)
+            self.current_layout = all_layouts[nl](self.os_window_id, self.opts, self.borders.border_width, self.windows)
             for i, w in enumerate(self.windows):
                 w.set_visible_in_layout(i, True)
             self.relayout()
@@ -210,7 +210,8 @@ class Tab:  # {{{
 
 class TabBar:  # {{{
 
-    def __init__(self, opts):
+    def __init__(self, os_window_id, opts):
+        self.os_window_id = os_window_id
         self.num_tabs = 1
         self.cell_width = 1
         self.data_buffer_size = 0
@@ -295,7 +296,7 @@ class TabManager:  # {{{
         self.os_window_id = os_window_id
         self.opts, self.args = opts, args
         self.tabs = []
-        self.tab_bar = TabBar(opts)
+        self.tab_bar = TabBar(self.os_window_id, opts)
         self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
 

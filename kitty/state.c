@@ -316,10 +316,9 @@ PYWRAP1(set_options) {
 }
 
 PYWRAP1(set_tab_bar_render_data) {
-#define A(name) &(d.name)
     ScreenRenderData d = {0};
     id_type os_window_id;
-    PA("KffffO", &os_window_id, A(xstart), A(ystart), A(dx), A(dy), A(screen));
+    PA("KffffO", &os_window_id, &d.xstart, &d.ystart, &d.dx, &d.dy, &d.screen);
     WITH_OS_WINDOW(os_window_id)
         Py_CLEAR(os_window->tab_bar_render_data.screen);
         d.vao_idx = os_window->tab_bar_render_data.vao_idx;
@@ -327,7 +326,6 @@ PYWRAP1(set_tab_bar_render_data) {
         Py_INCREF(os_window->tab_bar_render_data.screen);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
-#undef A
 }
 
 PYWRAP1(viewport_for_window) {
@@ -359,7 +357,7 @@ PYWRAP1(set_window_render_data) {
     unsigned int window_idx;
     ScreenRenderData d = {0};
     WindowGeometry g = {0};
-    PA("KKI ffff OIIII", &os_window_id, &tab_id, &window_idx, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    PA("KKIffffOIIII", &os_window_id, &tab_id, &window_idx, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_TAB(os_window_id, tab_id);
         Py_CLEAR(tab->windows[window_idx].render_data.screen);

@@ -20,11 +20,9 @@ from .tabs import SpecialWindow, TabManager
 from .utils import (
     get_primary_selection, open_url, safe_print, set_primary_selection
 )
-from .window import load_shader_programs
 
 
 def initialize_renderer():
-    load_shader_programs()
     layout_sprite_map()
     prerender()
 
