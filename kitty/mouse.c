@@ -305,7 +305,7 @@ HANDLER(handle_event) {
 static inline void 
 handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
-    call_boss(activate_tab_at, "d", global_state.callback_os_window->mouse_x);
+    call_boss(activate_tab_at, "Kd", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x);
 }
 
 static inline Window*

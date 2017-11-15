@@ -73,14 +73,6 @@ class Boss:
         initialize_renderer()
         self.tab_manager = TabManager(opts, args)
         self.tab_manager.init(startup_session)
-        self.activate_tab_at = self.tab_manager.activate_tab_at
-
-    def __iter__(self):
-        return iter(self.tab_manager)
-
-    def iterwindows(self):
-        for t in self:
-            yield from t
 
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
@@ -109,6 +101,10 @@ class Boss:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
+
+    def activate_tab_at(self, os_window_id, x):
+        # WIN: Implement this
+        pass
 
     def on_window_resize(self, window, w, h):
         # WIN: Port this
