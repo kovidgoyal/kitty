@@ -505,40 +505,38 @@ static inline bool
 render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
     bool dirtied = false;
     if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
-    if (os_window->num_tabs) {
-        Tab *tab = os_window->tabs + os_window->active_tab;
-        for (unsigned int i = 0; i < tab->num_windows; i++) {
-            Window *w = tab->windows + i;
+    Tab *tab = os_window->tabs + os_window->active_tab;
+    for (unsigned int i = 0; i < tab->num_windows; i++) {
+        Window *w = tab->windows + i;
 #define WD w->render_data
-            if (w->visible && WD.screen) {
-                if (w->last_drag_scroll_at > 0) {
-                    if (now - w->last_drag_scroll_at >= 0.02) { 
-                        if (drag_scroll(w, os_window)) {
-                            w->last_drag_scroll_at = now;
-                            set_maximum_wait(0.02);
-                        } else w->last_drag_scroll_at = 0;
-                    } else set_maximum_wait(now - w->last_drag_scroll_at);
+        if (w->visible && WD.screen) {
+            if (w->last_drag_scroll_at > 0) {
+                if (now - w->last_drag_scroll_at >= 0.02) { 
+                    if (drag_scroll(w, os_window)) {
+                        w->last_drag_scroll_at = now;
+                        set_maximum_wait(0.02);
+                    } else w->last_drag_scroll_at = 0;
+                } else set_maximum_wait(now - w->last_drag_scroll_at);
+            }
+            bool is_active_window = i == tab->active_window;
+            if (is_active_window) {
+                *active_window_id = w->id;
+                collect_cursor_info(&WD.screen->current_cursor_render_info, w, now, os_window);
+                if (update_window_title(w, os_window)) dirtied = true;
+            } else WD.screen->current_cursor_render_info.is_visible = false;
+            if (draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) {
+                if (is_active_window && WD.screen->current_cursor_render_info.is_visible && WD.screen->current_cursor_render_info.shape != CURSOR_BLOCK) {
+                    draw_cursor(&WD.screen->current_cursor_render_info, os_window == global_state.focused_os_window);
                 }
-                bool is_active_window = i == tab->active_window;
-                if (is_active_window) {
-                    *active_window_id = w->id;
-                    collect_cursor_info(&WD.screen->current_cursor_render_info, w, now, os_window);
-                    if (update_window_title(w, os_window)) dirtied = true;
-                } else WD.screen->current_cursor_render_info.is_visible = false;
-                if (draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) {
-                    if (is_active_window && WD.screen->current_cursor_render_info.is_visible && WD.screen->current_cursor_render_info.shape != CURSOR_BLOCK) {
-                        draw_cursor(&WD.screen->current_cursor_render_info, os_window == global_state.focused_os_window);
-                    }
-                    dirtied = true;
-                }
-                if (WD.screen->start_visual_bell_at != 0) {
-                    double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
-                    set_maximum_wait(bell_left);
-                }
+                dirtied = true;
+            }
+            if (WD.screen->start_visual_bell_at != 0) {
+                double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
+                set_maximum_wait(bell_left);
             }
         }
-#undef WD
     }
+#undef WD
     return dirtied;
 }
 
@@ -553,7 +551,7 @@ render(double now) {
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        if (!should_os_window_be_rendered(w)) continue;
+        if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
         if (w->viewport_size_dirty) {
             update_surface_size(w->viewport_width, w->viewport_height);
             w->viewport_size_dirty = false;

@@ -14,11 +14,13 @@ GlobalState global_state = {{0}};
         if (array[i].id == qid) { \
             destroy(array + i); \
             memset(array + i, 0, sizeof(structure)); \
-            size_t num_to_right = capacity - count - 1; \
+            size_t num_to_right = count - 1 - i; \
             if (num_to_right) memmove(array + i, array + i + 1, num_to_right * sizeof(structure)); \
             (count)--; \
+            break; \
         } \
     }} 
+
 #define WITH_OS_WINDOW(os_window_id) \
     for (size_t o = 0; o < global_state.num_os_windows; o++) { \
         OSWindow *os_window = global_state.os_windows + o; \
@@ -87,7 +89,7 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
         tab->windows[tab->num_windows].render_data.vao_idx = create_cell_vao();
         tab->windows[tab->num_windows].render_data.gvao_idx = create_graphics_vao();
         Py_INCREF(tab->windows[tab->num_windows].title);
-    return tab->windows[tab->num_windows++].id;
+        return tab->windows[tab->num_windows++].id;
     END_WITH_TAB;
     return 0;
 }
