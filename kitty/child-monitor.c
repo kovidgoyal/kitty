@@ -497,13 +497,12 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
     ssize_t vao_idx, gvao_idx;
     float xstart, ystart, dx, dy;
     if (!PyArg_ParseTuple(args, "O!nnffff", &Screen_Type, &screen, &vao_idx, &gvao_idx, &xstart, &ystart, &dx, &dy)) return NULL;
-    PyObject *ret = draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window()) ? Py_True : Py_False;
-    Py_INCREF(ret); return ret;
+    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window());
+    Py_RETURN_NONE;
 }
 
-static inline bool
+static inline void
 render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
-    bool dirtied = false;
     if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     for (unsigned int i = 0; i < tab->num_windows; i++) {
@@ -521,14 +520,12 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
             bool is_active_window = i == tab->active_window;
             if (is_active_window) {
                 *active_window_id = w->id;
-                collect_cursor_info(&WD.screen->current_cursor_render_info, w, now, os_window);
-                if (update_window_title(w, os_window)) dirtied = true;
-            } else WD.screen->current_cursor_render_info.is_visible = false;
-            if (draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) {
-                if (is_active_window && WD.screen->current_cursor_render_info.is_visible && WD.screen->current_cursor_render_info.shape != CURSOR_BLOCK) {
-                    draw_cursor(&WD.screen->current_cursor_render_info, os_window == global_state.focused_os_window);
-                }
-                dirtied = true;
+                collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
+                update_window_title(w, os_window);
+            } else WD.screen->cursor_render_info.is_visible = false;
+            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window);
+            if (is_active_window && WD.screen->cursor_render_info.is_visible && WD.screen->cursor_render_info.shape != CURSOR_BLOCK) {
+                draw_cursor(&WD.screen->cursor_render_info, os_window == global_state.focused_os_window);
             }
             if (WD.screen->start_visual_bell_at != 0) {
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
@@ -537,7 +534,6 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
         }
     }
 #undef WD
-    return dirtied;
 }
 
 static inline void
@@ -557,17 +553,14 @@ render(double now) {
             w->viewport_size_dirty = false;
         }
         unsigned int active_window_id = 0;
-        bool window_rendered = render_os_window(w, now, &active_window_id);
-        bool tab_bar_changed = w->num_tabs > 1 && (w->last_active_tab != w->active_tab || w->last_num_tabs != w->num_tabs);
+        render_os_window(w, now, &active_window_id);
         Tab *active_tab = w->tabs + w->active_tab;
         BorderRects *br = &active_tab->border_rects;
-        if (window_rendered || tab_bar_changed || br->is_dirty || active_window_id != w->last_active_window_id) {
-            draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
-            if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w);
-            swap_window_buffers(w);
-            w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
-            br->is_dirty = false;
-        }
+        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
+        if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w);
+        swap_window_buffers(w);
+        w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
+        br->is_dirty = false;
     }
     last_render_at = now;
 #undef TD

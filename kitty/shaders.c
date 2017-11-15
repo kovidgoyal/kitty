@@ -239,12 +239,11 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
 
-static inline bool
+static inline void
 cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy) {
     size_t sz;
     CELL_BUFFERS;
     void *address;
-    bool needs_render = false;
 
     ensure_sprite_map();
 
@@ -253,7 +252,6 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, sz);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
-        needs_render = true;
     }
 
     if (screen_is_selection_dirty(screen)) {
@@ -261,7 +259,6 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
-        needs_render = true;
     }
 
     if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
@@ -269,28 +266,13 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
         for (size_t i = 0; i < screen->grman->count; i++, a += 16) memcpy(a, screen->grman->render_data[i].vertices, sizeof(screen->grman->render_data[0].vertices));
         unmap_vao_buffer(gvao_idx, 0); a = NULL;
-        needs_render = true;
     }
     bool inverted = screen_invert_colors(screen);
-    if (inverted != screen->colors_inverted_at_last_render) needs_render = true;
 
-    if (!needs_render && (screen->last_render_x_start != xstart || screen->last_render_y_start != ystart)) needs_render = true;
-#define CC(attr) (screen->last_cursor_render_info.attr != screen->current_cursor_render_info.attr)
-    if (!needs_render && (CC(is_visible) || CC(shape) || CC(x) || CC(y) || CC(color))) needs_render = true;
-#undef CC
+    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted);
 
-    if (needs_render) {
-        cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->current_cursor_render_info, inverted);
-
-        bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
-        bind_vertex_array(vao_idx);
-        screen->colors_inverted_at_last_render = inverted;
-        screen->last_render_x_start = xstart; screen->last_render_y_start = ystart;
-#define CC(attr) screen->last_cursor_render_info.attr = screen->current_cursor_render_info.attr
-        CC(is_visible); CC(shape); CC(x); CC(y); CC(color);
-#undef CC
-    }
-    return needs_render;
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
+    bind_vertex_array(vao_idx);
 }
 
 static void
@@ -348,10 +330,9 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
 }
 
-bool 
+void 
 draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
-    bool needs_render = cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
-    if (!needs_render) return false;
+    cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
     GLfloat h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
@@ -363,7 +344,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
 #undef SCALE
     if (screen->grman->num_of_negative_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
     else draw_all_cells(vao_idx, gvao_idx, screen);
-    return true;
 }
 // }}}
 

@@ -98,7 +98,6 @@ typedef struct {
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
-    bool needs_render;
 } OSWindow;
 
 
@@ -147,7 +146,7 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao();
 ssize_t create_graphics_vao();
 ssize_t create_border_vao();
-bool draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
+void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cursor(CursorRenderInfo *, bool);
 void update_surface_size(int, int);
 void free_texture(uint32_t*);
