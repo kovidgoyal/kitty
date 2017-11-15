@@ -145,16 +145,9 @@ class Boss:
         self.tab_manager.resize()
         glfw_post_empty_event()
 
-    def tabbar_visibility_changed(self):
-        self.tab_manager.resize(only_tabs=True)
-        glfw_post_empty_event()
-
     @property
     def active_tab(self):
         return self.tab_manager.active_tab
-
-    def is_tab_visible(self, tab):
-        return self.active_tab is tab
 
     @property
     def active_window(self):

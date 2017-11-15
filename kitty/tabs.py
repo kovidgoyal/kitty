@@ -61,10 +61,6 @@ class Tab:  # {{{
         self.set_active_window_idx(session_tab.active_window_idx)
 
     @property
-    def is_visible(self):
-        return get_boss().is_tab_visible(self)
-
-    @property
     def active_window(self):
         return self.windows[self.active_window_idx] if self.windows else None
 
@@ -309,12 +305,16 @@ class TabManager:  # {{{
         self.active_tab_idx = idx
         set_active_tab(self.os_window_id, idx)
 
+    def tabbar_visibility_changed(self):
+        self.resize(only_tabs=True)
+        glfw_post_empty_event()
+
     def init(self, startup_session):
         for t in startup_session.tabs:
             self._add_tab(Tab(self.os_window_id, self.opts, self.args, self.title_changed, t))
         self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
         if len(self.tabs) > 1:
-            get_boss().tabbar_visibility_changed()
+            self.tabbar_visibility_changed()
         self.update_tab_bar()
 
     def update_tab_bar(self):
@@ -366,7 +366,7 @@ class TabManager:  # {{{
         self._set_active_tab(idx)
         self.update_tab_bar()
         if needs_resize:
-            get_boss().tabbar_visibility_changed()
+            self.tabbar_visibility_changed()
 
     def remove(self, tab):
         needs_resize = len(self.tabs) == 2
@@ -375,7 +375,7 @@ class TabManager:  # {{{
         self.update_tab_bar()
         tab.destroy()
         if needs_resize:
-            get_boss().tabbar_visibility_changed()
+            self.tabbar_visibility_changed()
 
     @property
     def tab_bar_layout_data(self):
