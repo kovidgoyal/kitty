@@ -47,10 +47,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
 
 // callbacks {{{
 
-void
-remove_os_window_reference(OSWindow *w) { if (w->handle) glfwSetWindowUserPointer(w->handle, NULL); }
-
-static inline void 
+void 
 update_os_window_references() {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;

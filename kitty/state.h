@@ -134,7 +134,7 @@ void gl_init();
 void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void make_os_window_context_current(OSWindow *w);
-void remove_os_window_reference(OSWindow *w);
+void update_os_window_references();
 void mark_os_window_for_close(OSWindow* w, bool yes);
 void update_os_window_viewport(OSWindow *window, bool);
 bool should_os_window_close(OSWindow* w);

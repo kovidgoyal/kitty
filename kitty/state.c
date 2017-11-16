@@ -182,7 +182,6 @@ bool
 remove_os_window(id_type os_window_id) {
     bool found = false;
     WITH_OS_WINDOW(os_window_id)
-        remove_os_window_reference(os_window);
         found = true;
         make_os_window_context_current(os_window);
     END_WITH_OS_WINDOW
@@ -190,6 +189,7 @@ remove_os_window(id_type os_window_id) {
         WITH_OS_WINDOW_REFS
             REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window_item, global_state.capacity);
         END_WITH_OS_WINDOW_REFS
+        update_os_window_references();
     }
     return found;
 }
