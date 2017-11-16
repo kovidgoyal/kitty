@@ -261,7 +261,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
 
     OSWindow *w = add_os_window();
-    w->id = ++global_state.os_window_id_counter;
     w->handle = glfw_window;
     update_os_window_references();
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
@@ -288,7 +287,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
 void
 destroy_os_window(OSWindow *w) {
-    if (w->handle) glfwDestroyWindow(w->handle); 
+    if (w->handle) {
+        glfwDestroyWindow(w->handle); 
+        if (current_os_window_ctx == w->handle) current_os_window_ctx = NULL;
+    }
     w->handle = NULL;
 }
 

@@ -78,6 +78,7 @@ add_os_window() {
     ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
     OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
     memset(ans, 0, sizeof(OSWindow));
+    ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     END_WITH_OS_WINDOW_REFS
     return ans;
@@ -140,6 +141,7 @@ remove_window_inner(Tab *tab, id_type id) {
 static inline void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
+        make_os_window_context_current(osw);
         remove_window_inner(tab, id);
     END_WITH_TAB;
 }
@@ -154,6 +156,7 @@ destroy_tab(Tab *tab) {
 
 static inline void
 remove_tab_inner(OSWindow *os_window, id_type id) {
+    make_os_window_context_current(os_window);
     REMOVER(os_window->tabs, id, os_window->num_tabs, Tab, destroy_tab, os_window->capacity);
 }
 
@@ -181,6 +184,7 @@ remove_os_window(id_type os_window_id) {
     WITH_OS_WINDOW(os_window_id)
         remove_os_window_reference(os_window);
         found = true;
+        make_os_window_context_current(os_window);
     END_WITH_OS_WINDOW
     if (found) { 
         WITH_OS_WINDOW_REFS
