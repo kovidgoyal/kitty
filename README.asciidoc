@@ -5,10 +5,12 @@
 :sc_close_tab: pass:quotes[`ctrl+shift+q`]
 :sc_close_window: pass:quotes[`ctrl+shift+w`]
 :sc_copy_to_clipboard: pass:quotes[`ctrl+shift+c`]
+:sc_decrease_font_size: pass:quotes[`ctrl+shift+minus`]
 :sc_eighth_window: pass:quotes[`ctrl+shift+8`]
 :sc_fifth_window: pass:quotes[`ctrl+shift+5`]
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
+:sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
 :sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
 :sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
@@ -20,10 +22,12 @@
 :sc_next_tab: pass:quotes[`ctrl+shift+right`]
 :sc_next_window: pass:quotes[`ctrl+shift+]`]
 :sc_ninth_window: pass:quotes[`ctrl+shift+9`]
+:sc_pass_selection_to_program: pass:quotes[`ctrl+shift+o`]
 :sc_paste_from_clipboard: pass:quotes[`ctrl+shift+v`]
 :sc_paste_from_selection: pass:quotes[`ctrl+shift+s` or `shift+insert`]
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
+:sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -36,6 +40,7 @@
 :sc_sixth_window: pass:quotes[`ctrl+shift+6`]
 :sc_tenth_window: pass:quotes[`ctrl+shift+0`]
 :sc_third_window: pass:quotes[`ctrl+shift+3`]
+:sc_toggle_fullscreen: pass:quotes[`ctrl+shift+f11`]
 // END_SHORTCUT_BLOCK
 
 ++++
@@ -210,6 +215,19 @@ windows are:
 |Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===
+
+=== Miscellaneous
+
+|===
+|Action |Shortcut
+
+|Increase font size   | {sc_increase_font_size}
+|Decrease font size   | {sc_decrease_font_size}
+|Restore font size    | {sc_restore_font_size} 
+|Toggle fullscreen    | {sc_toggle_fullscreen}
+|Pass current selection to program | {sc_pass_selection_to_program}
+|===
+
 
 
 == The scrollback buffer
