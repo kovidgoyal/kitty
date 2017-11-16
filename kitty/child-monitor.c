@@ -627,6 +627,20 @@ wait_for_events() {
     maximum_wait = -1;
 }
 
+static inline void
+process_pending_resizes(double now) {
+    global_state.has_pending_resizes = false;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->has_pending_resizes) {
+            if (now - w->last_resize_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
+            else {
+                global_state.has_pending_resizes = true;
+                set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_at);
+            }
+        }
+    }
+}
 
 static PyObject*
 main_loop(ChildMonitor *self) {
@@ -635,6 +649,7 @@ main_loop(ChildMonitor *self) {
 
     while (has_open_windows) {
         double now = monotonic();
+        if (global_state.has_pending_resizes) process_pending_resizes(now);
         render(now);
         wait_for_events();
         parse_input(self);

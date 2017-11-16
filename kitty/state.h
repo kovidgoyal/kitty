@@ -98,6 +98,8 @@ typedef struct {
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
+    double last_resize_at;
+    bool has_pending_resizes;
 } OSWindow;
 
 
@@ -115,6 +117,7 @@ typedef struct {
     bool close_all_windows;
     bool is_wayland;
     bool debug_gl;
+    bool has_pending_resizes;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -125,11 +128,14 @@ extern GlobalState global_state;
     else Py_DECREF(cret_); \
 }
 
+#define RESIZE_DEBOUNCE_TIME 0.2
+
 void gl_init();
 void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void remove_os_window_reference(OSWindow *w);
 void mark_os_window_for_close(OSWindow* w, bool yes);
+void update_os_window_viewport(OSWindow *window, bool);
 bool should_os_window_close(OSWindow* w);
 bool should_os_window_be_rendered(OSWindow* w);
 void wakeup_main_loop();

@@ -29,15 +29,21 @@ extern bool cocoa_make_window_resizable(void *w);
 
 static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
 
-static void 
-update_viewport(OSWindow *window) {
+void
+update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h;
     glfwGetFramebufferSize(window->handle, &window->viewport_width, &window->viewport_height);
     glfwGetWindowSize(window->handle, &w, &h);
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
     window->viewport_size_dirty = true;
+    window->has_pending_resizes = false;
+    if (notify_boss) {
+        call_boss(on_window_resize, "Kii", window->id, window->viewport_width, window->viewport_height);
+    }
+    window->last_resize_at = monotonic();
 }
+
 
 // callbacks {{{
 
@@ -85,11 +91,13 @@ static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width > 100 && height > 100) {
-        update_viewport(global_state.callback_os_window);
-        if (is_window_ready_for_callbacks()) { 
-            WINDOW_CALLBACK(on_window_resize, "ii", width, height);
+        double now = monotonic();
+        OSWindow *window = global_state.callback_os_window;
+        if (now - window->last_resize_at < RESIZE_DEBOUNCE_TIME) { window->has_pending_resizes = true; global_state.has_pending_resizes = true; }
+        else {
+            update_os_window_viewport(global_state.callback_os_window, is_window_ready_for_callbacks());
+            glfwPostEmptyEvent();
         }
-        glfwPostEmptyEvent();
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
     global_state.callback_os_window = NULL;
 }
@@ -247,7 +255,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     update_os_window_references();
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
-    update_viewport(w);
+    update_os_window_viewport(w, false);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     glfwSetCharModsCallback(glfw_window, char_mods_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
