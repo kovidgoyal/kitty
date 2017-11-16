@@ -232,7 +232,7 @@ def adjust_line_height(cell_height, val):
     return int(cell_height * val)
 
 
-def init_startup_notification_x11(window):
+def init_startup_notification_x11(window_id):
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     display = x11_display()
     if not display:
@@ -250,16 +250,21 @@ def init_startup_notification_x11(window):
     f.restype = ctypes.c_void_p
     f.argtypes = [ctypes.c_void_p, ctypes.c_int]
     ctx = f(display, 0)
+    f = lib.sn_display_unref
+    f.argtypes = [ctypes.c_void_p]
+    f.restype = None
+    f(display)
     os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
     if ctx:
         f = lib.sn_launchee_context_setup_window
         f.argtypes = [ctypes.c_void_p, ctypes.c_int32]
-        f(ctx, x11_window_id(window))
+        f(ctx, x11_window_id(window_id))
     return ctx
 
 
 def end_startup_notification_x11(ctx):
     lib = init_startup_notification_x11.lib
+    del init_startup_notification_x11.lib
     f = lib.sn_launchee_context_complete
     f.restype = None
     f.argtypes = [ctypes.c_void_p]
