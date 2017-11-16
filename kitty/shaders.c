@@ -78,13 +78,11 @@ realloc_sprite_texture() {
 
 static inline void
 ensure_sprite_map() {
-    static GLuint bound_texture_id = 0;
     if (!sprite_map.texture_id) realloc_sprite_texture();
-    if (bound_texture_id != sprite_map.texture_id) {
-        glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); 
-        glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
-        bound_texture_id = sprite_map.texture_id;
-    }
+    // We have to rebind since we dont know if the texture was ever bound
+    // in the context of the current OSWindow
+    glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT); 
+    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
 }
 
 void 
