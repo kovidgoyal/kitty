@@ -5,6 +5,12 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#ifdef __APPLE__
+// Needed for _CS_DARWIN_USER_CACHE_DIR
+#define _DARWIN_C_SOURCE
+#include <unistd.h>
+#undef _DARWIN_C_SOURCE
+#endif
 #include "data-types.h"
 #include "modes.h"
 #include <stddef.h>
@@ -34,9 +40,18 @@
 #ifdef __APPLE__
 #include <mach/mach_time.h>
 static mach_timebase_info_data_t timebase = {0};
+
 static inline double monotonic_() {
 	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
 }
+
+static PyObject*
+user_cache_dir() {
+    static char buf[1024];
+    if (!confstr(_CS_DARWIN_USER_CACHE_DIR, buf, sizeof(buf) - 1)) return PyErr_SetFromErrno(PyExc_OSError);
+    return PyUnicode_FromString(buf);
+}
+
 #else
 #include <time.h>
 static inline double monotonic_() {
@@ -130,6 +145,9 @@ static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
     {"install_sigchld_handler", (PyCFunction)install_sigchld_handler, METH_NOARGS, ""},
+#ifdef __APPLE__
+    METHODB(user_cache_dir, METH_NOARGS),
+#endif
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
     {"stop_profiler", (PyCFunction)stop_profiler, METH_NOARGS, ""},
