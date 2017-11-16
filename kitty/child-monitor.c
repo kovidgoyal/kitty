@@ -128,8 +128,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     }
     if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
     if (!self_pipe(signal_fds)) return PyErr_SetFromErrno(PyExc_OSError);
-    if (signal(SIGINT, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
-    if (signal(SIGTERM, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
+    struct sigaction act = {.sa_handler=handle_signal};
+    if (sigaction(SIGINT, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    if (sigaction(SIGTERM, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     if (siginterrupt(SIGINT, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     if (siginterrupt(SIGTERM, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     self = (ChildMonitor *)type->tp_alloc(type, 0);
