@@ -184,7 +184,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (cursor_on_last_content_line) {
         index_type delta;
         if (self->columns > old_columns) delta = 1;
-        else delta = (old_columns % self->columns) + 1;
+        else delta = (old_columns / self->columns) + 1;
         self->cursor->y = num_content_lines > delta ? num_content_lines - delta : 0;
     } else self->cursor->y = num_content_lines;
     self->cursor->y = MIN(self->cursor->y, self->lines - 1);
