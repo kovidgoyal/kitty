@@ -99,6 +99,7 @@ static inline id_type
 add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
         ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
+        make_os_window_context_current(osw);
         memset(tab->windows + tab->num_windows, 0, sizeof(Window));
         tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
         tab->windows[tab->num_windows].visible = true;
