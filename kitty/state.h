@@ -143,6 +143,7 @@ void event_loop_wait(double timeout);
 void swap_window_buffers(OSWindow *w);
 void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
+void destroy_os_window(OSWindow *w);
 void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* add_os_window();

@@ -275,6 +275,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
+void
+destroy_os_window(OSWindow *w) {
+    if (w->handle) glfwDestroyWindow(w->handle); 
+    w->handle = NULL;
+}
+
 // Global functions {{{
 static void 
 error_callback(int error, const char* description) {

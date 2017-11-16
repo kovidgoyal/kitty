@@ -487,6 +487,7 @@ static inline bool
 update_window_title(Window *w, OSWindow *os_window) {
     if (w->title && w->title != os_window->window_title) {
         os_window->window_title = w->title;
+        Py_INCREF(os_window->window_title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
         if (os_window == global_state.focused_os_window) cocoa_update_title(w->title);
@@ -661,6 +662,7 @@ main_loop(ChildMonitor *self) {
         for (size_t w = global_state.num_os_windows; w > 0; w--) {
             OSWindow *os_window = global_state.os_windows + w - 1;
             if (should_os_window_close(os_window)) {
+                destroy_os_window(os_window);
                 call_boss(on_os_window_closed, "Kii", os_window->id, os_window->viewport_width, os_window->viewport_width);
                 for (size_t t=0; t < os_window->num_tabs; t++) {
                     Tab *tab = os_window->tabs + t;

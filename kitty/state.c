@@ -164,7 +164,7 @@ remove_tab(id_type os_window_id, id_type id) {
 }
 
 static inline void
-destroy_os_window(OSWindow *w) {
+destroy_os_window_item(OSWindow *w) {
     for (size_t t = w->num_tabs; t > 0; t--) {
         Tab *tab = w->tabs + t - 1;
         remove_tab_inner(w, tab->id);
@@ -183,7 +183,7 @@ remove_os_window(id_type os_window_id) {
     END_WITH_OS_WINDOW
     if (found) { 
         WITH_OS_WINDOW_REFS
-            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window, global_state.capacity);
+            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window_item, global_state.capacity);
         END_WITH_OS_WINDOW_REFS
     }
     return found;
