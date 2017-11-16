@@ -8,7 +8,7 @@ from collections import deque
 from enum import Enum
 from itertools import count
 
-from .config import build_ansi_color_table
+from .config import build_ansi_color_table, parse_send_text_bytes
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, cell_size, get_boss,
     viewport_size, wakeup
@@ -21,6 +21,7 @@ from .fast_data_types import (
     glfw_post_empty_event, init_cell_program, init_cursor_program, remove_vao,
     set_window_render_data, update_window_title, update_window_visibility
 )
+from .keys import keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import color_as_int, load_shaders, parse_color_set, sanitize_title, open_url, open_cmd
@@ -142,6 +143,17 @@ class Window:
         self.screen.reset_callbacks()
         boss.gui_close_window(self)
         self.screen = None
+
+    def send_text(self, *args):
+        mode = keyboard_mode_name(self.screen)
+        required_mode, text = args[-2:]
+        required_mode = frozenset(required_mode.split(','))
+        if not required_mode & {mode, 'all'}:
+            return True
+        data = parse_send_text_bytes(text)
+        if not data:
+            return True
+        self.write_to_child(data)
 
     def write_to_child(self, data):
         if data:

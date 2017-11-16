@@ -107,6 +107,8 @@ def parse_key_action(action):
         sep, rest = rest.split(' ', 1)
         parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
         args = tuple(map(parse_key_action, filter(None, parts)))
+    elif func == 'send_text':
+        args = rest.split(' ', 1)
     elif func in shlex_actions:
         args = shlex.split(rest)
     return KeyAction(func, args)
@@ -169,6 +171,10 @@ def parse_symbol_map(val):
     return symbol_map
 
 
+def parse_send_text_bytes(text):
+    return ast.literal_eval("'''" + text + "'''").encode('utf-8')
+
+
 def parse_send_text(val):
     parts = val.split(' ')
 
@@ -187,7 +193,7 @@ def parse_send_text(val):
     mods, key = parse_shortcut(sc.strip())
     if key is None:
         return abort('Invalid shortcut')
-    text = ast.literal_eval("'''" + text + "'''").encode('utf-8')
+    text = parse_send_text_bytes(text)
     if not text:
         return abort('Empty text')
 
@@ -325,7 +331,7 @@ with open(
     defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine'})
+actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine', 'send_text'})
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
