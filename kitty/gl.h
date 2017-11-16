@@ -44,18 +44,23 @@ check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, 
     }
 }
 
+static bool glad_loaded = false;
+
 void
 gl_init() {
-    if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
-        fatal("Loading the OpenGL library failed");
-    }
-    glad_set_post_callback(check_for_gl_error);
+    if (!glad_loaded) {
+        if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
+            fatal("Loading the OpenGL library failed");
+        }
+        glad_set_post_callback(check_for_gl_error);
 #define ARB_TEST(name) \
-    if (!GLAD_GL_ARB_##name) { \
-        fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
-    }
-    ARB_TEST(texture_storage);
+        if (!GLAD_GL_ARB_##name) { \
+            fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
+        }
+        ARB_TEST(texture_storage);
 #undef ARB_TEST
+        glad_loaded = true;
+    }
     glEnable(GL_BLEND);
 }
 

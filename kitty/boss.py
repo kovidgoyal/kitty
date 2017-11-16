@@ -79,6 +79,11 @@ class Boss:
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
 
+    def new_os_window(self, *args):
+        sw = self.args_to_special_window(args) if args else None
+        startup_session = create_session(self.opts, special_window=sw)
+        self.add_os_window(startup_session)
+
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window

@@ -202,6 +202,16 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static GLFWwindow *current_os_window_ctx = NULL;
+
+void 
+make_os_window_context_current(OSWindow *w) {
+    if (w->handle != current_os_window_ctx) {
+        current_os_window_ctx = w->handle;
+        glfwMakeContextCurrent(w->handle);
+    }
+}
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height;
@@ -240,10 +250,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfw_window = glfwCreateWindow(640, 400, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    glfwMakeContextCurrent(glfw_window);
+    current_os_window_ctx = glfw_window;
+    glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+    gl_init();
     if (is_first_window) { 
-        glfwMakeContextCurrent(glfw_window);
-        gl_init();
-        glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
         PyObject *ret = PyObject_CallFunction(load_programs, NULL);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);

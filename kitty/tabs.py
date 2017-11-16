@@ -20,10 +20,11 @@ from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
+SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title')
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None):
-    return (cmd, stdin, override_title)
+    return SpecialWindowInstance(cmd, stdin, override_title)
 
 
 class Tab:  # {{{
@@ -58,7 +59,10 @@ class Tab:  # {{{
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
-            self.new_window(cmd=cmd)
+            if isinstance(cmd, (SpecialWindowInstance,)):
+                self.new_special_window(cmd)
+            else:
+                self.new_window(cmd=cmd)
         self.set_active_window_idx(session_tab.active_window_idx)
 
     @property

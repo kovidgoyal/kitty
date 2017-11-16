@@ -43,6 +43,9 @@ class Session:
             cmd = None
         self.tabs[-1].windows.append(cmd)
 
+    def add_special_window(self, sw):
+        self.tabs[-1].windows.append(sw)
+
     def focus(self):
         self.active_tab_idx = max(0, len(self.tabs) - 1)
         self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
@@ -82,12 +85,12 @@ def parse_session(raw, opts):
     return ans
 
 
-def create_session(opts, args):
-    if args.session:
+def create_session(opts, args=None, special_window=None):
+    if args and args.session:
         with open(args.session) as f:
             return parse_session(f.read(), opts)
     ans = Session()
-    if args.window_layout:
+    if args and args.window_layout:
         if args.window_layout not in opts.enabled_layouts:
             opts.enabled_layouts.insert(0, args.window_layout)
         current_layout = args.window_layout
@@ -95,6 +98,9 @@ def create_session(opts, args):
         current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout
-    cmd = args.args or [shell_path]
-    ans.add_window(cmd)
+    if special_window is None:
+        cmd = args.args if args and args.args else [shell_path]
+        ans.add_window(cmd)
+    else:
+        ans.add_special_window(special_window)
     return ans
