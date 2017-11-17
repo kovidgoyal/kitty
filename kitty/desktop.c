@@ -58,7 +58,6 @@ init_x11_startup_notification(PyObject UNUSED *self, PyObject *args) {
     void* display = PyLong_AsVoidPtr(dp);
     void* sn_display = sn_display_new(display, NULL, NULL);
     if (!sn_display) { PyErr_SetString(PyExc_OSError, "Failed to create SnDisplay"); return NULL; }
-    printf("%s", startup_id);
     void *ctx = startup_id ? sn_launchee_context_new(sn_display, 0, startup_id) : sn_launchee_context_new_from_environment(sn_display, 0);
     sn_display_unref(sn_display);
     if (!ctx) { PyErr_SetString(PyExc_OSError, "Failed to create startup-notification context"); return NULL; }
