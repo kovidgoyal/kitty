@@ -16,6 +16,7 @@
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
 :sc_move_window_forward: pass:quotes[`ctrl+shift+f`]
 :sc_move_window_to_top: pass:quotes[`ctrl+shift+``]
+:sc_new_os_window: pass:quotes[`ctrl+shift+n`]
 :sc_new_tab: pass:quotes[`ctrl+shift+t`]
 :sc_new_window: pass:quotes[`ctrl+shift+enter`]
 :sc_next_layout: pass:quotes[`ctrl+shift+l`]
@@ -206,6 +207,7 @@ windows are:
 |Action |Shortcut
 
 |New window   | {sc_new_window}
+|New OS window| {sc_new_os_window}
 |Close window | {sc_close_window}
 |Next window  | {sc_next_window}
 |Previous window | {sc_previous_window}

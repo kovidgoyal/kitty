@@ -3,6 +3,19 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.6.0 [future]
+------------------------
+
+- Support multiple top level (OS) windows. These windows all share the sprite
+  texture cache on the GPU, further reducing overall resource usage. Use
+  the shortcut `ctrl+shift+n` to open anew top-level window.
+
+- Add support for a *daemon* mode using the `--single-instance` command line
+  option. With this option you can have only a single kitty instance running.
+  All future invocations simply open new top-level windows in the existing
+  instance.
+
+
 version 0.5.1 [2017-12-01]
 ---------------------------
 
