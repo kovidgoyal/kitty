@@ -2,20 +2,28 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import atexit
 import ctypes
+import errno
+import fcntl
 import math
 import os
 import re
 import shlex
+import socket
 import string
 import subprocess
 import sys
+import tempfile
 from contextlib import contextmanager
 from ctypes.util import find_library
 from functools import lru_cache
 from time import monotonic
 
-from .constants import isosx, iswayland, selection_clipboard_funcs, x11_display, x11_window_id
+from .constants import (
+    appname, isosx, iswayland, selection_clipboard_funcs, x11_display,
+    x11_window_id
+)
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
     redirect_std_streams, wcwidth as wcwidth_impl
@@ -295,3 +303,78 @@ def end_startup_notification(ctx):
     except Exception:
         import traceback
         traceback.print_exc()
+
+
+def remove_socket_file(s, path=None):
+    try:
+        s.close()
+    except EnvironmentError:
+        pass
+    if path:
+        try:
+            os.unlink(path)
+        except EnvironmentError:
+            pass
+
+
+def single_instance_unix(name):
+    home = os.path.expanduser('~')
+    candidates = [tempfile.gettempdir(), home]
+    if isosx:
+        from .fast_data_types import user_cache_dir
+        candidates = [user_cache_dir(), '/Library/Caches']
+    for loc in candidates:
+        if os.access(loc, os.W_OK | os.R_OK | os.X_OK):
+            filename = ('.' if loc == home else '') + name + '.lock'
+            path = os.path.join(loc, filename)
+            socket_path = path.rpartition('.')[0] + '.sock'
+            fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC | os.O_CLOEXEC)
+            try:
+                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except EnvironmentError as err:
+                if err.errno in (errno.EAGAIN, errno.EACCES):
+                    # Client
+                    s = socket.socket(family=socket.AF_UNIX)
+                    s.connect(socket_path)
+                    single_instance.socket = s
+                    return False
+                raise
+            s = socket.socket(family=socket.AF_UNIX)
+            try:
+                s.bind(socket_path)
+            except EnvironmentError as err:
+                if err.errno in (errno.EADDRINUSE, errno.EEXIST):
+                    os.unlink(socket_path)
+                    s.bind(socket_path)
+                else:
+                    raise
+            single_instance.socket = s  # prevent garbage collection from closing the socket
+            atexit.register(remove_socket_file, s, socket_path)
+            s.listen()
+            s.set_inheritable(False)
+            return True
+
+
+def single_instance(group_id=None):
+    name = '{}-ipc-{}'.format(appname, os.geteuid())
+    if group_id:
+        name += '-{}'.format(group_id)
+
+    s = socket.socket(family=socket.AF_UNIX)
+    # First try with abstract UDS
+    addr = '\0' + name
+    try:
+        s.bind(addr)
+    except EnvironmentError as err:
+        if err.errno == errno.ENOENT:
+            return single_instance_unix(name)
+        if err.errno == errno.EADDRINUSE:
+            s.connect(addr)
+            single_instance.socket = s
+            return False
+        raise
+    s.listen()
+    single_instance.socket = s  # prevent garbage collection from closing the socket
+    s.set_inheritable(False)
+    atexit.register(remove_socket_file, s)
+    return True
