@@ -2,29 +2,25 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import argparse
 import locale
 import os
 import signal
 import sys
 from contextlib import contextmanager
-from gettext import gettext as _
 
 from .borders import load_borders_program
 from .boss import Boss
+from .cli import option_parser
 from .config import (
     initial_window_size, load_cached_values, load_config, save_cached_values
 )
-from .constants import (
-    appname, defconf, isosx, iswayland, logo_data_file, str_version
-)
+from .constants import defconf, isosx, iswayland, logo_data_file
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_init_hint_string,
     glfw_terminate, install_sigchld_handler, set_default_window_icon,
     set_logical_dpi, set_options
 )
 from .fonts.box_drawing import set_scale
-from .layout import all_layouts
 from .utils import (
     detach, end_startup_notification, get_logical_dpi,
     init_startup_notification
@@ -40,109 +36,6 @@ except ImportError:
 def load_all_shaders():
     load_shader_programs()
     load_borders_program()
-
-
-def option_parser():
-    parser = argparse.ArgumentParser(
-        prog=appname,
-        description=_('The {} terminal emulator').format(appname)
-    )
-    a = parser.add_argument
-    a(
-        '--class',
-        default=appname,
-        dest='cls',
-        help=_('Set the WM_CLASS property')
-    )
-    a(
-        '--config',
-        action='append',
-        help=_(
-            'Specify a path to the config file(s) to use.'
-            ' Can be specified multiple times to read multiple'
-            ' config files in sequence, which are merged. Default: {}'
-        ).format(defconf)
-    )
-    a(
-        '--override',
-        '-o',
-        action='append',
-        help=_(
-            'Override individual configuration options, can be specified'
-            ' multiple times. Syntax: name=value. For example: {}'
-        ).format('-o font_size=20')
-    )
-    a(
-        '--cmd',
-        '-c',
-        default=None,
-        help=_('Run python code in the kitty context')
-    )
-    a(
-        '-d',
-        '--directory',
-        default='.',
-        help=_('Change to the specified directory when launching')
-    )
-    a(
-        '--version',
-        '-v',
-        action='version',
-        version='{} {} by Kovid Goyal'.format(appname, str_version)
-    )
-    a(
-        '--dump-commands',
-        action='store_true',
-        default=False,
-        help=_('Output commands received from child process to stdout')
-    )
-    if not isosx:
-        a(
-            '--detach',
-            action='store_true',
-            default=False,
-            help=_('Detach from the controlling terminal, if any')
-        )
-    a(
-        '--replay-commands',
-        default=None,
-        help=_('Replay previously dumped commands')
-    )
-    a(
-        '--dump-bytes',
-        help=_('Path to file in which to store the raw bytes received from the'
-               ' child process. Useful for debugging.')
-    )
-    a(
-        '--debug-gl',
-        action='store_true',
-        default=False,
-        help=_('Debug OpenGL commands. This will cause all OpenGL calls'
-               ' to check for errors instead of ignoring them. Useful'
-               ' when debugging rendering problems.')
-    )
-    a(
-        '--window-layout',
-        default=None,
-        choices=frozenset(all_layouts.keys()),
-        help=_('The window layout to use on startup')
-    )
-    a(
-        '--session',
-        default=None,
-        help=_(
-            'Path to a file containing the startup session (tabs, windows, layout, programs)'
-        )
-    )
-    a(
-        'args',
-        nargs=argparse.REMAINDER,
-        help=_(
-            'The remaining arguments are used to launch a program other than the default shell. Any further options are passed'
-            ' directly to the program being invoked.'
-        )
-    )
-    return parser
 
 
 def run_app(opts, args):
