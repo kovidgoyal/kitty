@@ -19,8 +19,8 @@ from .keys import get_key_map, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
-    get_primary_selection, open_url, safe_print, set_primary_selection,
-    single_instance
+    end_startup_notification, get_primary_selection, init_startup_notification,
+    open_url, safe_print, set_primary_selection, single_instance
 )
 
 
@@ -84,11 +84,12 @@ class Boss:
             os_window_id = create_os_window(w, h, self.args.cls)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
+        return os_window_id
 
     def new_os_window(self, *args):
         sw = self.args_to_special_window(args) if args else None
         startup_session = create_session(self.opts, special_window=sw)
-        self.add_os_window(startup_session)
+        return self.add_os_window(startup_session)
 
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
@@ -98,10 +99,14 @@ class Boss:
         import json
         msg = json.loads(msg.decode('utf-8'))
         if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+            startup_id = msg.get('startup_id')
             args = option_parser().parse_args(msg['args'][1:])
             opts = create_opts(args)
             session = create_session(opts, args)
-            self.add_os_window(session)
+            os_window_id = self.add_os_window(session)
+            if startup_id:
+                ctx = init_startup_notification(os_window_id, startup_id)
+                end_startup_notification(ctx)
         else:
             safe_print('Unknown message received from peer, ignoring')
 

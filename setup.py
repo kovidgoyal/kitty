@@ -197,6 +197,8 @@ def init_env(
     ]
     if not isosx:
         ldpaths += ['-lrt']
+        if '-ldl' not in ldpaths:
+            ldpaths.append('-ldl')
     if '-lz' not in ldpaths:
         ldpaths.append('-lz')
 
@@ -338,7 +340,7 @@ def option_parser():
 def find_c_files():
     ans, headers = [], []
     d = os.path.join(base, 'kitty')
-    exclude = {'fontconfig.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
+    exclude = {'fontconfig.c', 'desktop.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:

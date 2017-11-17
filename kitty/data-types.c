@@ -174,6 +174,7 @@ extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
 extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
+extern bool init_desktop(PyObject*);
 extern bool init_fonts(PyObject*);
 extern bool init_glfw(PyObject *m);
 extern bool init_state(PyObject *module);
@@ -215,6 +216,7 @@ PyInit_fast_data_types(void) {
         if (!init_cocoa(m)) return NULL;
 #else
         if (!init_fontconfig_library(m)) return NULL;
+        if (!init_desktop(m)) return NULL;
 #endif
         if (!init_fonts(m)) return NULL;
 

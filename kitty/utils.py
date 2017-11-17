@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
-import ctypes
 import errno
 import fcntl
 import math
@@ -13,10 +12,8 @@ import shlex
 import socket
 import string
 import subprocess
-import sys
 import tempfile
 from contextlib import contextmanager
-from ctypes.util import find_library
 from functools import lru_cache
 from time import monotonic
 
@@ -240,54 +237,29 @@ def adjust_line_height(cell_height, val):
     return int(cell_height * val)
 
 
-def init_startup_notification_x11(window_id):
+def init_startup_notification_x11(window_id, startup_id=None):
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
+    from kitty.fast_data_types import init_x11_startup_notification
+    sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
+    if not sid:
+        return
     display = x11_display()
     if not display:
         return
-    lib = find_library('startup-notification-1')
-    if not lib:
-        safe_print('libstartup-notification-1.so not found, disabling startup notification', file=sys.stderr)
-        return
-    lib = init_startup_notification_x11.lib = ctypes.CDLL(lib)
-    f = lib.sn_display_new
-    f.restype = ctypes.c_void_p
-    f.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-    display = f(x11_display(), None, None)
-    f = lib.sn_launchee_context_new_from_environment
-    f.restype = ctypes.c_void_p
-    f.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    ctx = f(display, 0)
-    f = lib.sn_display_unref
-    f.argtypes = [ctypes.c_void_p]
-    f.restype = None
-    f(display)
-    os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
-    if ctx:
-        f = lib.sn_launchee_context_setup_window
-        f.argtypes = [ctypes.c_void_p, ctypes.c_int32]
-        f(ctx, x11_window_id(window_id))
-    return ctx
+    window_id = x11_window_id(window_id)
+    return init_x11_startup_notification(display, window_id, sid)
 
 
 def end_startup_notification_x11(ctx):
-    lib = init_startup_notification_x11.lib
-    del init_startup_notification_x11.lib
-    f = lib.sn_launchee_context_complete
-    f.restype = None
-    f.argtypes = [ctypes.c_void_p]
-    f(ctx)
-    f = lib.sn_launchee_context_unref
-    f.restype = None
-    f.argtypes = [ctypes.c_void_p]
-    f(ctx)
+    from kitty.fast_data_types import end_x11_startup_notification
+    end_x11_startup_notification(ctx)
 
 
-def init_startup_notification(window):
+def init_startup_notification(window, startup_id=None):
     if isosx or iswayland:
         return
     try:
-        return init_startup_notification_x11(window)
+        return init_startup_notification_x11(window, startup_id)
     except Exception:
         import traceback
         traceback.print_exc()
