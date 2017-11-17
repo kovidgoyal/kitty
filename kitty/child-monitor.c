@@ -329,6 +329,7 @@ parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
     double now = monotonic();
+    PyObject *msg = NULL;
     children_mutex(lock);
     while (remove_queue_count) {
         remove_queue_count--; 
@@ -340,7 +341,7 @@ parse_input(ChildMonitor *self) {
     if (UNLIKELY(self->messages_count)) {
         while(self->messages_count) {
             Message *m = self->messages + --self->messages_count;
-            call_boss(peer_msg_received, "y#", m->data, m->sz);
+            msg = PyBytes_FromStringAndSize(m->data, m->sz);
             free(m->data); m->data = NULL; m->sz = 0;
         }
     }
@@ -355,6 +356,10 @@ parse_input(ChildMonitor *self) {
         }
     }
     children_mutex(unlock);
+    if (msg) {
+        call_boss(peer_msg_received, "O", msg);
+        Py_CLEAR(msg);
+    }
 
     while(remove_count) {
         // must be done while no locks are held, since the locks are non-recursive and

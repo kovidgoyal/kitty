@@ -5,6 +5,7 @@
 import argparse
 from gettext import gettext as _
 
+from .config import load_config
 from .constants import appname, str_version, isosx, defconf
 from .layout import all_layouts
 
@@ -131,3 +132,10 @@ def option_parser():
         )
     )
     return parser
+
+
+def create_opts(args):
+    config = args.config or (defconf, )
+    overrides = (a.replace('=', ' ', 1) for a in args.override or ())
+    opts = load_config(*config, overrides=overrides)
+    return opts

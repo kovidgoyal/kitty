@@ -10,11 +10,9 @@ from contextlib import contextmanager
 
 from .borders import load_borders_program
 from .boss import Boss
-from .cli import option_parser
-from .config import (
-    initial_window_size, load_cached_values, load_config, save_cached_values
-)
-from .constants import defconf, isosx, iswayland, logo_data_file
+from .cli import create_opts, option_parser
+from .config import initial_window_size, load_cached_values, save_cached_values
+from .constants import isosx, iswayland, logo_data_file
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_init_hint_string,
     glfw_terminate, install_sigchld_handler, set_default_window_icon,
@@ -137,9 +135,7 @@ def main():
             data = json.dumps(data, ensure_ascii=False).encode('utf-8')
             single_instance.socket.sendall(data)
             return
-    config = args.config or (defconf, )
-    overrides = (a.replace('=', ' ', 1) for a in args.override or ())
-    opts = load_config(*config, overrides=overrides)
+    opts = create_opts(args)
     change_wcwidth(not opts.use_system_wcwidth)
     if GLFW_X11_WM_CLASS_CLASS is not None:
         glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, args.cls)

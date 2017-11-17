@@ -5,6 +5,7 @@
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
+from .cli import create_opts, option_parser
 from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
 from .constants import set_boss, wakeup
 from .fast_data_types import (
@@ -96,8 +97,13 @@ class Boss:
     def peer_msg_received(self, msg):
         import json
         msg = json.loads(msg.decode('utf-8'))
-        if msg.get('cmd') == 'new_instance':
-            print(msg['args'])
+        if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+            args = option_parser().parse_args(msg['args'][1:])
+            opts = create_opts(args)
+            session = create_session(opts, args)
+            self.add_os_window(session)
+        else:
+            safe_print('Unknown message received from peer, ignoring')
 
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)
