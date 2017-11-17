@@ -217,22 +217,6 @@ typedef struct {
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)
 
-typedef struct {
-    double at;
-    PyObject *callback;
-    PyObject *args;
-} TimerEvent;
-
-typedef struct {
-    PyObject_HEAD
-
-    PyObject *dump_callback, *update_screen, *death_notify;
-    unsigned int count;
-    bool shutting_down;
-    pthread_t io_thread;
-} ChildMonitor;
-
-
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
 
 #define left_shift_line(line, at, num) \

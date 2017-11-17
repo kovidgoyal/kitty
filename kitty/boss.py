@@ -265,7 +265,7 @@ class Boss:
 
     def destroy(self):
         self.shutting_down = True
-        self.child_monitor.shutdown()
+        self.child_monitor.shutdown_monitor()
         wakeup()
         self.child_monitor.join()
         del self.child_monitor
