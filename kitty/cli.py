@@ -102,6 +102,27 @@ def option_parser():
         )
     )
     a(
+        '-1', '--single-instance',
+        default=False,
+        action='store_true',
+        help=_(
+            'If specified only a single instance of {0} will run. New invocations will'
+            ' instead create a new top-level window in the existing {0} instance. This'
+            ' allows {0} to share a single sprite cache on the GPU and also reduces'
+            ' startup time. You can also have groups of {0} instances by using the'
+            ' {1} option.'
+        ).format(appname, '--instance-group')
+    )
+    a(
+        '--instance-group',
+        default=None,
+        help=_(
+            'Used in combination with the --single-instance option. All {0} invocations'
+            ' with the same --instance-group will result in new windows being created'
+            ' in the first {0} instance with that group.'
+        ).format(appname)
+    )
+    a(
         'args',
         nargs=argparse.REMAINDER,
         help=_(

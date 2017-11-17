@@ -223,9 +223,6 @@ join(ChildMonitor *self) {
 #define join_doc "join() -> Wait for the I/O thread to finish"
     int ret = pthread_join(self->io_thread, NULL);
     if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
-    if (self->talk_fd > -1) {
-        if (pthread_join(self->talk_thread, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
-    }
     Py_RETURN_NONE;
 }
 
@@ -341,10 +338,10 @@ parse_input(ChildMonitor *self) {
     }
 
     if (UNLIKELY(self->messages_count)) {
-        while(self->messages_count--) {
-            Message *m = self->messages + self->messages_count;
+        while(self->messages_count) {
+            Message *m = self->messages + --self->messages_count;
             call_boss(peer_msg_received, "y#", m->data, m->sz);
-            free(m->data);
+            free(m->data); m->data = NULL; m->sz = 0;
         }
     }
 
@@ -928,14 +925,13 @@ io_loop(void *data) {
 
 static inline void
 handle_peer(ChildMonitor *self, int s) {
-    size_t bufsz = 1024;
+    size_t bufsz = 0;
     char *buf = NULL;
     size_t buf_used = 0;
-    if (buf == NULL) return;
 
     while(true) {
         if (buf_used >= bufsz) {
-            bufsz *= 2;
+            bufsz = MAX(1024, bufsz) * 2;
             if (bufsz > 1024 * 1024) return;
             buf = realloc(buf, bufsz);
             if (buf == NULL) return;
@@ -951,7 +947,7 @@ handle_peer(ChildMonitor *self, int s) {
     }
     if (buf_used) {
         children_mutex(lock);
-        ensure_space_for(self, messages, Message, self->messages_count + 1, messages_capacity, 16, false);
+        ensure_space_for(self, messages, Message, self->messages_count + 1, messages_capacity, 16, true);
         Message *m = self->messages + self->messages_count++;
         m->data = buf; m->sz = buf_used;
         children_mutex(unlock);
@@ -969,7 +965,7 @@ talk_loop(void *data) {
         int peer = accept(self->talk_fd, NULL, NULL);
         if (peer == -1) {
             if (errno == EINTR) continue;
-            perror("accept() on talk socket failed!");
+            if (!self->shutting_down) perror("accept() on talk socket failed!");
             break;
         }
         handle_peer(self, peer);

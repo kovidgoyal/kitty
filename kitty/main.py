@@ -23,7 +23,7 @@ from .fast_data_types import (
 from .fonts.box_drawing import set_scale
 from .utils import (
     detach, end_startup_notification, get_logical_dpi,
-    init_startup_notification
+    init_startup_notification, single_instance
 )
 from .window import load_shader_programs
 
@@ -129,6 +129,14 @@ def main():
         from kitty.client import main
         main(args.replay_commands)
         return
+    if args.single_instance:
+        is_first = single_instance(args.instance_group)
+        if not is_first:
+            import json
+            data = {'cmd': 'new_instance', 'args': tuple(sys.argv)}
+            data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            single_instance.socket.sendall(data)
+            return
     config = args.config or (defconf, )
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)

@@ -18,7 +18,8 @@ from .keys import get_key_map, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
-    get_primary_selection, open_url, safe_print, set_primary_selection
+    get_primary_selection, open_url, safe_print, set_primary_selection,
+    single_instance
 )
 
 
@@ -61,9 +62,13 @@ class Boss:
         self.os_window_map = {}
         self.cursor_blinking = True
         self.shutting_down = False
+        talk_fd = getattr(single_instance, 'socket', None)
+        talk_fd = -1 if talk_fd is None else talk_fd.fileno()
         self.child_monitor = ChildMonitor(
             self.on_child_death,
-            DumpCommands(args) if args.dump_commands or args.dump_bytes else None)
+            DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
+            talk_fd
+        )
         set_boss(self)
         self.current_font_size = opts.font_size
         set_font_family(opts)
@@ -87,6 +92,12 @@ class Boss:
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
+
+    def peer_msg_received(self, msg):
+        import json
+        msg = json.loads(msg.decode('utf-8'))
+        if msg.get('cmd') == 'new_instance':
+            print(msg['args'])
 
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)
