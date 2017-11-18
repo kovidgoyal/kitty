@@ -211,10 +211,10 @@ make_os_window_context_current(OSWindow *w) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
-    int width, height, visible = 1;
+    int width, height, visible = 1, swap_interval = 0, x = -1, y = -1;
     char *title;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iis|pO", &width, &height, &title, &visible, &load_programs)) return NULL;
+    if (!PyArg_ParseTuple(args, "iis|pOiii", &width, &height, &title, &visible, &load_programs, &swap_interval, &x, &y)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
@@ -249,8 +249,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
+    if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
-    glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+    glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
     gl_init();
     if (is_first_window) { 
         PyObject *ret = PyObject_CallFunction(load_programs, NULL);
@@ -559,6 +560,40 @@ primary_monitor_content_scale(PyObject UNUSED *self) {
 #endif
 }
 
+static PyObject*
+os_window_should_close(PyObject UNUSED *self, PyObject *args) {
+    int q = -1001;
+    id_type os_window_id;
+    if (!PyArg_ParseTuple(args, "K|i", &os_window_id, &q)) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) {
+            if (q == -1001) {
+                if (should_os_window_close(w)) Py_RETURN_TRUE;
+                Py_RETURN_FALSE;
+            }
+            glfwSetWindowShouldClose(w->handle, q ? GLFW_TRUE : GL_FALSE);
+            Py_RETURN_NONE;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "no such OSWindow");
+    return NULL;
+}
+
+static PyObject*
+os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
+    id_type os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) {
+            swap_window_buffers(w); Py_RETURN_NONE;
+        }
+    }
+    PyErr_SetString(PyExc_ValueError, "no such OSWindow");
+    return NULL;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -570,6 +605,8 @@ static PyMethodDef module_methods[] = {
     METHODB(toggle_fullscreen, METH_NOARGS),
     METHODB(show_window, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
+    METHODB(os_window_should_close, METH_VARARGS),
+    METHODB(os_window_swap_buffers, METH_VARARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 

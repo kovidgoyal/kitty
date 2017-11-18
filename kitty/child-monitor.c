@@ -543,9 +543,11 @@ static PyObject*
 simple_render_screen(PyObject UNUSED *self, PyObject *args) {
 #define simple_render_screen_doc "Render a Screen object, with no cursor"
     Screen *screen; 
-    ssize_t vao_idx, gvao_idx;
     float xstart, ystart, dx, dy;
-    if (!PyArg_ParseTuple(args, "O!nnffff", &Screen_Type, &screen, &vao_idx, &gvao_idx, &xstart, &ystart, &dx, &dy)) return NULL;
+    static ssize_t vao_idx = -1, gvao_idx = -1;
+    if (vao_idx == -1) vao_idx = create_cell_vao();
+    if (gvao_idx == -1) gvao_idx = create_graphics_vao();
+    if (!PyArg_ParseTuple(args, "O!ffff", &Screen_Type, &screen, &xstart, &ystart, &dx, &dy)) return NULL;
     draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window());
     Py_RETURN_NONE;
 }
