@@ -211,10 +211,10 @@ make_os_window_context_current(OSWindow *w) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
-    int width, height;
+    int width, height, visible = 1;
     char *title;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iis|O", &width, &height, &title, &load_programs)) return NULL;
+    if (!PyArg_ParseTuple(args, "iis|pO", &width, &height, &title, &visible, &load_programs)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
@@ -241,6 +241,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Too many windows");
         return NULL;
     }
+    glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) {
         fprintf(stderr, "Failed to create a window at size: %dx%d, using a standard size instead.\n", width, height);
@@ -280,6 +281,21 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     return PyLong_FromUnsignedLongLong(w->id);
+}
+
+static PyObject*
+show_window(PyObject UNUSED *self, PyObject *args) {
+    id_type os_window_id;
+    int yes = 1;
+    if (!PyArg_ParseTuple(args, "K|p", &os_window_id, &yes)) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) {
+            if (yes) glfwShowWindow(w->handle); else glfwHideWindow(w->handle);
+            break;
+        }
+    }
+    Py_RETURN_NONE;
 }
 
 void
@@ -354,6 +370,14 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     int key, scancode;
     if (!PyArg_ParseTuple(args, "ii", &key, &scancode)) return NULL;
     return Py_BuildValue("s", glfwGetKeyName(key, scancode));
+}
+
+PyObject*
+glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
+    int key, val;
+    if (!PyArg_ParseTuple(args, "ii", &key, &val)) return NULL;
+    glfwWindowHint(key, val);
+    Py_RETURN_NONE;
 }
 
 PyObject*
@@ -544,6 +568,8 @@ static PyMethodDef module_methods[] = {
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(set_clipboard_string, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_NOARGS),
+    METHODB(show_window, METH_VARARGS),
+    METHODB(glfw_window_hint, METH_VARARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
@@ -568,6 +594,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);
+    ADDC(GLFW_TRUE); ADDC(GLFW_FALSE);
 
 // --- Keys --------------------------------------------------------------------
 

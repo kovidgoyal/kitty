@@ -78,10 +78,10 @@ class Boss:
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
-    def add_os_window(self, startup_session, os_window_id=None, wclass=None, size=None):
+    def add_os_window(self, startup_session, os_window_id=None, wclass=None, size=None, visible=True):
         if os_window_id is None:
             w, h = initial_window_size(self.opts) if size is None else size
-            os_window_id = create_os_window(w, h, wclass or self.args.cls)
+            os_window_id = create_os_window(w, h, wclass or self.args.cls, visible)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id
