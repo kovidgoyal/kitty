@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+from multiprocessing import cpu_count
 
 base = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(base, 'build')
@@ -212,10 +213,10 @@ def define(x):
     return '-D' + x
 
 
-def run_tool(cmd):
+def run_tool(cmd, desc=None):
     if isinstance(cmd, str):
         cmd = shlex.split(cmd[0])
-    print(' '.join(cmd))
+    print(desc or ' '.join(cmd))
     p = subprocess.Popen(cmd)
     ret = p.wait()
     if ret != 0:
@@ -262,12 +263,48 @@ def dependecies_for(src, obj, all_headers):
                     yield path
 
 
+def emphasis(text):
+    if sys.stdout.isatty():
+        text = '\033[32m' + text + '\033[39m'
+    return text
+
+
+def parallel_run(todo, desc='Compiling {} ...'):
+    num_workers = max(1, cpu_count())
+    items = list(todo.items())
+    workers = {}
+    failed = None
+
+    def wait():
+        nonlocal failed
+        if not workers:
+            return
+        pid, s = os.wait()
+        name, cmd, w = workers.pop(pid, (None, None, None))
+        if name is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0) and failed is None:
+            failed = name, cmd
+
+    while items and failed is None:
+        while len(workers) < num_workers and items:
+            name, cmd = items.pop()
+            print(desc.format(emphasis(name)))
+            w = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            workers[w.pid] = name, cmd, w
+        wait()
+    while len(workers):
+        wait()
+    if failed:
+        run_tool(failed[1])
+
+
 def compile_c_extension(module, incremental, compilation_database, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
         for src in sources
     ]
+
+    todo = {}
 
     for original_src, dest in zip(sources, objects):
         src = original_src
@@ -286,10 +323,12 @@ def compile_c_extension(module, incremental, compilation_database, sources, head
         ):
             cmd += ['-c', src] + ['-o', dest]
             compilation_database[original_src] = cmd
-            run_tool(cmd)
+            todo[original_src] = cmd
+    if todo:
+        parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest])
+        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
 
 
 def option_parser():
