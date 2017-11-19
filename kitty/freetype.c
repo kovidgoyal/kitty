@@ -394,7 +394,7 @@ place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_wid
     for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
         for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
             uint16_t val = cell[dr * cell_width + dc];
-            val = (val + bm->buf[sr * bm->stride + sc]) % 256;
+            val = MIN(255, ((uint16_t)val + (uint16_t)bm->buf[sr * bm->stride + sc]));
             cell[dr * cell_width + dc] = val;
         }
     }
