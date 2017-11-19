@@ -11,7 +11,6 @@ import shutil
 import subprocess
 import sys
 import sysconfig
-from multiprocessing import cpu_count
 
 base = os.path.dirname(os.path.abspath(__file__))
 build_dir = os.path.join(base, 'build')
@@ -270,7 +269,11 @@ def emphasis(text):
 
 
 def parallel_run(todo, desc='Compiling {} ...'):
-    num_workers = max(1, cpu_count())
+    try:
+        from multiprocessing import cpu_count
+        num_workers = max(1, cpu_count())
+    except Exception:
+        num_workers = 2
     items = list(todo.items())
     workers = {}
     failed = None
