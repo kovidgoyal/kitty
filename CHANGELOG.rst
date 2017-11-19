@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.5.0 [future]
+version 0.5.0 [2017-11-19]
 ---------------------------
 
 - Add support for ligature fonts such as Fira Code, Hasklig, etc. kitty now
@@ -23,7 +23,7 @@ version 0.5.0 [future]
 - Linux: Add support for startup notification on X11 desktops. kitty will
   now inform the window manager when its startup is complete.
 
-- Fix extra shell prompt being duplicated when window is resized
+- Fix shell prompt being duplicated when window is resized
 
 - Fix crash when displaying more than 64 images in the same session
 
