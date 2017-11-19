@@ -170,16 +170,10 @@ PYWRAP1(set_options) {
         OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
     }
     OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
+    Py_DECREF(chars);
 
     GA(keymap); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
-    GA(send_text_map);
-    dict_iter(ret) {
-        set_special_keys(value);
-    }}
-    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
-
-    Py_DECREF(chars);
 
     PyObject *al = PyObject_GetAttrString(args, "adjust_line_height");
     if (PyFloat_Check(al)) { 

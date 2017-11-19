@@ -175,7 +175,7 @@ def parse_send_text_bytes(text):
     return ast.literal_eval("'''" + text + "'''").encode('utf-8')
 
 
-def parse_send_text(val):
+def parse_send_text(val, keymap):
     parts = val.split(' ')
 
     def abort(msg):
@@ -187,28 +187,10 @@ def parse_send_text(val):
 
     if len(parts) < 3:
         return abort('Incomplete')
-
-    text = ' '.join(parts[2:])
     mode, sc = parts[:2]
-    mods, key = parse_shortcut(sc.strip())
-    if key is None:
-        return abort('Invalid shortcut')
-    text = parse_send_text_bytes(text)
-    if not text:
-        return abort('Empty text')
-
-    if mode in ('all', '*'):
-        modes = parse_send_text.all_modes
-    else:
-        modes = frozenset(mode.split(',')).intersection(
-            parse_send_text.all_modes
-        )
-        if not modes:
-            return abort('Invalid keyboard modes')
-    return {mode: {(mods, key): text} for mode in modes}
-
-
-parse_send_text.all_modes = frozenset({'normal', 'application', 'kitty'})
+    text = ' '.join(parts[2:])
+    key_str = '{} send_text {} {}'.format(sc, mode, text)
+    return parse_key(key_str, keymap)
 
 
 def to_open_url_modifiers(val):
@@ -285,11 +267,6 @@ def parse_config(lines, check_keys=True):
     ans = {
         'keymap': {},
         'symbol_map': {},
-        'send_text_map': {
-            'kitty': {},
-            'normal': {},
-            'application': {}
-        }
     }
     if check_keys:
         all_keys = defaults._asdict()
@@ -307,9 +284,8 @@ def parse_config(lines, check_keys=True):
                 ans['symbol_map'].update(parse_symbol_map(val))
                 continue
             if key == 'send_text':
-                stvals = parse_send_text(val)
-                for k, v in ans['send_text_map'].items():
-                    v.update(stvals.get(k, {}))
+                # For legacy compatibility
+                parse_send_text(val, ans['keymap'])
                 continue
             if check_keys:
                 if key not in all_keys:
@@ -360,11 +336,6 @@ def merge_configs(defaults, vals):
             newvals = vals.get(k, {})
             if k == 'keymap':
                 ans['keymap'] = merge_keymaps(v, newvals)
-            elif k == 'send_text_map':
-                ans[k] = {
-                    m: merge_dicts(mm, newvals.get(m, {}))
-                    for m, mm in v.items()
-                }
             else:
                 ans[k] = merge_dicts(v, newvals)
         else:

@@ -12,7 +12,7 @@ from .fast_data_types import (
     destroy_sprite_map, glfw_post_empty_event, layout_sprite_map
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
-from .keys import get_key_map, get_sent_data, get_shortcut
+from .keys import get_key_map, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
@@ -199,13 +199,6 @@ class Boss:
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
-        key, scancode, action, mods = self.current_key_press_info
-        data = get_sent_data(
-            self.opts.send_text_map, key, scancode, mods, window, action
-        )
-        if data:
-            window.write_to_child(data)
-            return True
         return False
 
     def combine(self, *actions):

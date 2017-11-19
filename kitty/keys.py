@@ -225,13 +225,6 @@ def get_shortcut(keymap, mods, key, scancode):
     return keymap.get((mods & 0b1111, key))
 
 
-def get_sent_data(send_text_map, key, scancode, mods, window, action):
-    if action in (defines.GLFW_PRESS, defines.GLFW_REPEAT):
-        m = keyboard_mode_name(window.screen)
-        keymap = send_text_map[m]
-        return keymap.get((mods & 0b1111, key))
-
-
 def generate_key_table():
     # To run this, use: python3 . -c "from kitty.keys import *; generate_key_table()"
     import os
