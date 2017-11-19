@@ -1,0 +1,121 @@
+{
+  "cocoa": {
+    "headers": [
+      "cocoa_platform.h", 
+      "cocoa_joystick.h", 
+      "posix_thread.h", 
+      "nsgl_context.h", 
+      "egl_context.h", 
+      "osmesa_context.h"
+    ], 
+    "sources": [
+      "cocoa_init.m", 
+      "cocoa_joystick.m", 
+      "cocoa_monitor.m", 
+      "cocoa_window.m", 
+      "cocoa_time.c", 
+      "posix_thread.c", 
+      "nsgl_context.m", 
+      "egl_context.c", 
+      "osmesa_context.c"
+    ]
+  }, 
+  "common": {
+    "headers": [
+      "internal.h", 
+      "mappings.h"
+    ], 
+    "sources": [
+      "context.c", 
+      "init.c", 
+      "input.c", 
+      "monitor.c", 
+      "vulkan.c", 
+      "window.c"
+    ]
+  }, 
+  "osmesa": {
+    "headers": [
+      "null_platform.h", 
+      "null_joystick.h", 
+      "posix_time.h", 
+      "posix_thread.h", 
+      "osmesa_context.h"
+    ], 
+    "sources": [
+      "null_init.c", 
+      "null_monitor.c", 
+      "null_window.c", 
+      "null_joystick.c", 
+      "posix_time.c", 
+      "posix_thread.c", 
+      "osmesa_context.c"
+    ]
+  }, 
+  "wayland": {
+    "headers": [
+      "wl_platform.h", 
+      "linux_joystick.h", 
+      "posix_time.h", 
+      "posix_thread.h", 
+      "xkb_unicode.h", 
+      "egl_context.h", 
+      "osmesa_context.h"
+    ], 
+    "sources": [
+      "wl_init.c", 
+      "wl_monitor.c", 
+      "wl_window.c", 
+      "linux_joystick.c", 
+      "posix_time.c", 
+      "posix_thread.c", 
+      "xkb_unicode.c", 
+      "egl_context.c", 
+      "osmesa_context.c"
+    ]
+  }, 
+  "win32": {
+    "headers": [
+      "win32_platform.h", 
+      "win32_joystick.h", 
+      "wgl_context.h", 
+      "egl_context.h", 
+      "osmesa_context.h"
+    ], 
+    "sources": [
+      "win32_init.c", 
+      "win32_joystick.c", 
+      "win32_monitor.c", 
+      "win32_time.c", 
+      "win32_thread.c", 
+      "win32_window.c", 
+      "wgl_context.c", 
+      "egl_context.c", 
+      "osmesa_context.c"
+    ]
+  }, 
+  "x11": {
+    "headers": [
+      "x11_platform.h", 
+      "xkb_unicode.h", 
+      "posix_time.h", 
+      "posix_thread.h", 
+      "glx_context.h", 
+      "egl_context.h", 
+      "osmesa_context.h", 
+      "linux_joystick.h"
+    ], 
+    "sources": [
+      "x11_init.c", 
+      "x11_monitor.c", 
+      "x11_window.c", 
+      "xkb_unicode.c", 
+      "posix_time.c", 
+      "posix_thread.c", 
+      "glx_context.c", 
+      "egl_context.c", 
+      "osmesa_context.c", 
+      "linux_joystick.c"
+    ]
+  }
+}

@@ -5,3 +5,5 @@ kitty/key_encoding.py linguist-generated=true
 kitty/rgb.py linguist-generated=true
 kitty/gl-wrapper.* linguist-generated=true
 kitty/khrplatform.h linguist-generated=true
+glfw/*.c linguist-vendored
+glfw/*.h linguist-vendored

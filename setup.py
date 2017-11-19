@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import importlib
 import json
 import os
 import re
@@ -13,6 +14,9 @@ import sys
 import sysconfig
 
 base = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(base, 'glfw'))
+glfw = importlib.import_module('glfw')
+del sys.path[0]
 build_dir = os.path.join(base, 'build')
 constants = os.path.join(base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
@@ -165,6 +169,7 @@ def init_env(
         '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
     )
     ldflags = shlex.split(ldflags)
+    ldflags.append('-shared')
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
     if not debug and not sanitize:
@@ -180,7 +185,7 @@ def init_env(
 
 def kitty_env():
     ans = env.copy()
-    cflags, ldflags = ans.cflags, ans.ldflags
+    cflags = ans.cflags
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
@@ -198,7 +203,6 @@ def kitty_env():
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     font_libs.extend(pkg_config('harfbuzz', '--libs'))
     cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
-    ldflags.append('-shared')
     pylib = get_python_flags(cflags)
     if isosx:
         glfw_ldflags = pkg_config('--libs', '--static', 'glfw3'
@@ -234,6 +238,8 @@ def run_tool(cmd, desc=None):
     p = subprocess.Popen(cmd)
     ret = p.wait()
     if ret != 0:
+        if desc:
+            print(' '.join(cmd))
         raise SystemExit(ret)
 
 
@@ -315,7 +321,7 @@ def parallel_run(todo, desc='Compiling {} ...'):
         run_tool(failed[1])
 
 
-def compile_c_extension(module, incremental, compilation_database, sources, headers):
+def compile_c_extension(kenv, module, incremental, compilation_database, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
@@ -323,7 +329,6 @@ def compile_c_extension(module, incremental, compilation_database, sources, head
     ]
 
     todo = {}
-    kenv = kitty_env()
 
     for original_src, dest in zip(sources, objects):
         src = original_src
@@ -412,6 +417,15 @@ def find_c_files():
     return tuple(ans), tuple(headers)
 
 
+def compile_glfw(incremental, compilation_database):
+    modules = 'cocoa' if isosx else 'x11'
+    for module in modules.split():
+        genv = glfw.init_env(env, pkg_config, at_least_version, module)
+        sources = [os.path.join('glfw', x) for x in genv.sources]
+        all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
+        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, sources, all_headers)
+
+
 def build(args, native_optimizations=True):
     global env
     try:
@@ -423,8 +437,9 @@ def build(args, native_optimizations=True):
         k['file']: k['arguments'] for k in compilation_database
     }
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
+    compile_glfw(args.incremental, compilation_database)
     compile_c_extension(
-        'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
+        kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
     )
     compilation_database = [
         {'file': k, 'arguments': v, 'directory': base} for k, v in compilation_database.items()
@@ -448,7 +463,7 @@ def build_asan_launcher(args):
     sanitize_lib = ['-lasan'] if cc == 'gcc' and not isosx else []
     cflags.extend(get_sanitize_args(cc, ccver))
     cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
-    run_tool(cmd)
+    run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
 
 
 def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
