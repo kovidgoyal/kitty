@@ -29,8 +29,8 @@ version = tuple(
 _plat = sys.platform.lower()
 isosx = 'darwin' in _plat
 is_travis = os.environ.get('TRAVIS') == 'true'
+env = None
 
-cflags = ldflags = cc = ldpaths = None
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
@@ -118,10 +118,18 @@ def get_sanitize_args(cc, ccver):
     return sanitize_args
 
 
+class Env:
+
+    def __init__(self, cc, cflags, ldflags, ldpaths=[]):
+        self.cc, self.cflags, self.ldflags, self.ldpaths = cc, cflags, ldflags, ldpaths
+
+    def copy(self):
+        return Env(self.cc, list(self.cflags), list(self.ldflags), list(self.ldflags))
+
+
 def init_env(
     debug=False, sanitize=False, native_optimizations=True, profile=False
 ):
-    global cflags, ldflags, cc, ldpaths
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
@@ -167,6 +175,12 @@ def init_env(
         cflags.append('-DWITH_PROFILER')
         cflags.append('-g3')
         ldflags.append('-lprofiler')
+    return Env(cc, cflags, ldflags)
+
+
+def kitty_env():
+    ans = env.copy()
+    cflags, ldflags = ans.cflags, ans.ldflags
     cflags.append('-pthread')
     # We add 4000 to the primary version because vim turns on SGR mouse mode
     # automatically if this version is high enough
@@ -192,20 +206,21 @@ def init_env(
     else:
         glfw_ldflags = pkg_config('glfw3', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ldpaths = pylib + font_libs + glfw_ldflags + libpng + [
+    ans.ldpaths += pylib + font_libs + glfw_ldflags + libpng + [
         '-lunistring'
     ]
     if not isosx:
-        ldpaths += ['-lrt']
-        if '-ldl' not in ldpaths:
-            ldpaths.append('-ldl')
-    if '-lz' not in ldpaths:
-        ldpaths.append('-lz')
+        ans.ldpaths += ['-lrt']
+        if '-ldl' not in ans.ldpaths:
+            ans.ldpaths.append('-ldl')
+    if '-lz' not in ans.ldpaths:
+        ans.ldpaths.append('-lz')
 
     try:
         os.mkdir(build_dir)
     except FileExistsError:
         pass
+    return ans
 
 
 def define(x):
@@ -308,16 +323,17 @@ def compile_c_extension(module, incremental, compilation_database, sources, head
     ]
 
     todo = {}
+    kenv = kitty_env()
 
     for original_src, dest in zip(sources, objects):
         src = original_src
-        cflgs = cflags[:]
+        cflgs = kenv.cflags[:]
         is_special = src in SPECIAL_SOURCES
         if is_special:
             src, defines = SPECIAL_SOURCES[src]
             cflgs.extend(map(define, defines))
 
-        cmd = [cc, '-MMD'] + cflgs
+        cmd = [kenv.cc, '-MMD'] + cflgs
         cmd_changed = compilation_database.get(original_src, [])[:-4] != cmd
         must_compile = not incremental or cmd_changed
         src = os.path.join(base, src)
@@ -331,7 +347,7 @@ def compile_c_extension(module, incremental, compilation_database, sources, head
         parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        run_tool([cc] + ldflags + objects + ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
+        run_tool([kenv.cc] + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
 
 
 def option_parser():
@@ -397,6 +413,7 @@ def find_c_files():
 
 
 def build(args, native_optimizations=True):
+    global env
     try:
         with open('compile_commands.json') as f:
             compilation_database = json.load(f)
@@ -405,7 +422,7 @@ def build(args, native_optimizations=True):
     compilation_database = {
         k['file']: k['arguments'] for k in compilation_database
     }
-    init_env(args.debug, args.sanitize, native_optimizations, args.profile)
+    env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
     compile_c_extension(
         'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
     )
@@ -447,7 +464,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
         cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
-    cmd = [cc] + cflags + [
+    cmd = [env.cc] + cflags + [
         'linux-launcher.c', '-o',
         os.path.join(launcher_dir, exe)
     ] + libs + pylib
