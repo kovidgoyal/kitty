@@ -38,11 +38,7 @@ def run_app(opts, args):
     w, h = initial_window_size(opts)
     window_id = create_os_window(w, h, args.cls, True, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
-    if isosx:
-        from .fast_data_types import cocoa_create_global_menu, cocoa_init
-        cocoa_init()
-        cocoa_create_global_menu()
-    elif not iswayland:  # no window icons on wayland
+    if not iswayland and not isosx:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
     set_logical_dpi(*get_logical_dpi())

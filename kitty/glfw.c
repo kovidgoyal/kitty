@@ -8,6 +8,7 @@
 #include <structmember.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
+extern void cocoa_create_global_menu(void);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -243,6 +244,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         PyObject *ret = PyObject_CallFunction(load_programs, NULL);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
+#ifdef __APPLE__
+        cocoa_create_global_menu();
+#endif
     }
 
     OSWindow *w = add_os_window();
