@@ -40,15 +40,18 @@ PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
 def pkg_config(pkg, *args):
-    return list(
-        filter(
-            None,
-            shlex.split(
-                subprocess.check_output([PKGCONFIG, pkg] + list(args))
-                .decode('utf-8')
+    try:
+        return list(
+            filter(
+                None,
+                shlex.split(
+                    subprocess.check_output([PKGCONFIG, pkg] + list(args))
+                    .decode('utf-8')
+                )
             )
         )
-    )
+    except subprocess.CalledProcessError:
+        raise SystemExit('The package {} was not found on your system'.format(pkg))
 
 
 def at_least_version(package, major, minor=0):
