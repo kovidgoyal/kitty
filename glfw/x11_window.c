@@ -2357,6 +2357,11 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
                   0, 1, 0);
 }
 
+int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+{
+    return XkbBell(_glfw.x11.display, window->x11.handle, (int)param, (Atom)0) ? GLFW_TRUE : GLFW_FALSE;
+}
+
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     if (_glfw.x11.NET_ACTIVE_WINDOW)

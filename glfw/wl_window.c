@@ -618,6 +618,14 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
                     "Wayland: Window attention request not implemented yet");
 }
 
+int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+{
+    // TODO
+    _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Wayland: Window bell request not implemented yet");
+    return GLFW_FALSE;
+}
+
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     _glfwInputError(GLFW_PLATFORM_ERROR,

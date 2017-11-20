@@ -1456,6 +1456,11 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
     FlashWindow(window->win32.handle, TRUE);
 }
 
+int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+{
+    return MessageBeep(0xFFFFFFFF & param) ? GLFW_TRUE : GLFW_FALSE;
+}
+
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     BringWindowToTop(window->win32.handle);

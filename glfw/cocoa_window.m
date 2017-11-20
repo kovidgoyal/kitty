@@ -1350,6 +1350,12 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
     [NSApp requestUserAttention:NSInformationalRequest];
 }
 
+int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+{
+    NSBeep();
+    return GLFW_TRUE;
+}
+
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     // Make us the active application

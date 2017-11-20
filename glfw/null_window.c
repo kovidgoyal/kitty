@@ -200,6 +200,11 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 {
 }
 
+int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+{
+    return GLFW_FALSE;
+}
+
 void _glfwPlatformUnhideWindow(_GLFWwindow* window)
 {
 }

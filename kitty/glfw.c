@@ -10,7 +10,6 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
-extern void cocoa_audio_bell(void);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -32,23 +31,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
     window->last_resize_at = monotonic();
 }
-
-static void*
-load_libX11(bool unload) {
-    static void* ans = NULL;
-    static bool tried = false;
-    if (unload) { if (ans) { dlclose(ans); ans = NULL; }; return NULL; }
-    if (!tried) {
-        tried = true;
-        ans = dlopen("libX11.so", RTLD_LAZY);
-        if (ans == NULL) fprintf(stderr, "Failed to load libX11.so with error: %s\n", dlerror());
-    }
-    return ans;
-}
-
-typedef bool (*xkb_bell_func)(void*, int32_t, int, void*);
-xkb_bell_func xkb_bell = NULL;
-
 
 
 // callbacks {{{
@@ -346,7 +328,6 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 PyObject*
 glfw_terminate(PyObject UNUSED *self) {
     glfwTerminate();
-    load_libX11(true);
     Py_RETURN_NONE;
 }
 
@@ -494,29 +475,9 @@ ring_audio_bell(OSWindow *w) {
     double now = monotonic();
     if (now - last_bell_at <= 0.1) return; 
     last_bell_at = now;
-#ifdef __APPLE__
-    (void)w;
-    cocoa_audio_bell();
-#else
-    if (glfwGetX11Display) {
-        static bool tried = false;
-        if (!tried) {
-            tried = true;
-            void *lib = load_libX11(false);
-            if (lib) {
-                *(void **) (&xkb_bell) = dlsym(lib, "XkbBell");
-                if (!xkb_bell) fprintf(stderr, "Failed to load the XkbBell function with error: %s\n", dlerror());
-            }
-        }
-        if (xkb_bell) {
-            void* display = glfwGetX11Display();
-            int32_t x11win = glfwGetX11Window(w->handle);
-            if (display) {
-                xkb_bell(display, x11win, OPT(x11_bell_volume), NULL);
-            }
-        }
+    if (w->handle) {
+        glfwWindowBell(w->handle, OPT(x11_bell_volume));
     }
-#endif
 }
 
 void
