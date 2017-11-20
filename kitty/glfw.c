@@ -309,6 +309,10 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* err = load_glfw(path);
     if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);
+#ifdef __APPLE__
+    glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
+    glfwInitHint(GLFW_COCOA_MENUBAR, 0);
+#endif
     PyObject *ans = glfwInit() ? Py_True: Py_False;
     Py_INCREF(ans);
     return ans;
