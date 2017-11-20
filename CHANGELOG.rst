@@ -32,6 +32,8 @@ version 0.5.1 [2017-12-01]
 - Image display: Fix displaying images taller than two screen heights not
   scrolling properly
 
+- Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)
+
 
 version 0.5.0 [2017-11-19]
 ---------------------------
