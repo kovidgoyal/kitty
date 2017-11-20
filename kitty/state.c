@@ -308,6 +308,7 @@ PYWRAP1(set_options) {
     S(cursor_blink_interval, PyFloat_AsDouble);
     S(cursor_stop_blinking_after, PyFloat_AsDouble);
     S(cursor_shape, PyLong_AsLong);
+    S(x11_bell_volume, PyLong_AsLong);
     S(mouse_hide_wait, PyFloat_AsDouble);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, PyLong_AsUnsignedLong);

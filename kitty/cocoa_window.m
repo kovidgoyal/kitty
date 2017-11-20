@@ -152,6 +152,10 @@ cocoa_make_window_resizable(void *w) {
     return true;
 }
 
+void
+cocoa_audio_bell(void) {
+    NSBeep();
+}
  
 PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {

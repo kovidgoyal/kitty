@@ -1009,22 +1009,7 @@ screen_invert_colors(Screen *self) {
 
 void 
 screen_bell(Screen *self) {  
-    if (global_state.opts.enable_audio_bell) {
-        int fd = open("/dev/tty", O_WRONLY | O_CLOEXEC | O_NOCTTY);
-        if (fd > 0) {
-            static const char bell[2] = {7, 0};
-            while(true) {
-                if (write(fd, &bell, sizeof(bell)) == sizeof(bell)) break;
-                if (errno == EINTR) continue;
-                break;
-            }
-            close(fd);
-        }
-    }
-    if (global_state.opts.visual_bell_duration > 0) {
-        self->start_visual_bell_at = monotonic();
-    }
-    request_window_attention(self->window_id);
+    request_window_attention(self->window_id, OPT(enable_audio_bell));
 } 
 
 void 

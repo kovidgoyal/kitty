@@ -257,6 +257,7 @@ type_map = {
     'macos_hide_titlebar': to_bool,
     'macos_option_as_alt': to_bool,
     'box_drawing_scale': box_drawing_scale,
+    'x11_bell_volume': int,
 }
 
 for name in (
