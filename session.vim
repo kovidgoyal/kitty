@@ -4,6 +4,9 @@ let g:syntastic_python_flake8_exec = 'flake8'
 let g:ycm_python_binary_path = 'python3'
 set wildignore+==template.py
 set wildignore+=tags
+set expandtab
+set tabstop=4
+set shiftwidth=4
 
 python <<endpython
 import sys
