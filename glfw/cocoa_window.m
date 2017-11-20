@@ -859,15 +859,9 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 - (void)loadMainMenu
-{
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= 100800
-    [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
-                                  owner:NSApp
-                        topLevelObjects:&nibObjects];
-#else
-    [[NSBundle mainBundle] loadNibNamed:@"MainMenu" owner:NSApp];
-#endif
+{ // removed by Kovid as it generated compiler warnings 
 }
+
 @end
 
 // Set up the menu bar (manually)

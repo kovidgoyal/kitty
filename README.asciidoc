@@ -89,14 +89,12 @@ the following dependencies are installed first.
 === Dependencies
 
 * python >= 3.5
-* glfw   >= 3.2
+* harfbuzz >= 1.5.0 
 * libunistring 
 * zlib
 * libpng
 * freetype
 * fontconfig (not needed on macOS)
-* harfbuzz >= 1.5.0 
-* xsel (only on X11 systems with glfw < 3.3)
 * ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
@@ -131,8 +129,7 @@ python3 /path/to/kitty/folder
 kitty is available as a macOS `dmg` file for easy installation from the
 link:../../releases[releases page].  You can also run kitty directly from
 source using the above install from source instructions, after installing its
-two dependencies (`python >= 3.5` and `glfw >= 3.2` using http://brew.sh/[brew]
-or a similar package manager)
+dependencies using http://brew.sh/[brew] or a similar package manager.
 
 
 == Design philosophy

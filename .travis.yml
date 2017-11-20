@@ -75,8 +75,8 @@ matrix:
 env:
     global:
         - PYTHON=python3
-        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig:$HOME/harfbuzz/lib/pkgconfig:$PKG_CONFIG_PATH
-        - LD_LIBRARY_PATH=$HOME/glfw/lib:$HOME/harfbuzz/lib:$LD_LIBRARY_PATH
+        - PKG_CONFIG_PATH=$HOME/harfbuzz/lib/pkgconfig:$PKG_CONFIG_PATH
+        - LD_LIBRARY_PATH=$HOME/harfbuzz/lib:$LD_LIBRARY_PATH
         - ASAN_OPTIONS=leak_check_at_exit=0
 
 install: |
@@ -86,7 +86,7 @@ install: |
         if [[ "$USE_BREW" == "1" ]]; then
             brew update;
             brew install python3;
-            brew install glfw;
+            brew install libunistring;
             brew install freetype;
             brew install harfbuzz --without-glib --without-gobject-introspection --without-graphite2 --without-icu4c;
         else
@@ -95,13 +95,6 @@ install: |
         fi
     else
         pushd /tmp
-        wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
-        unzip -q glfw-3.2.1.zip
-        cd glfw-3.2.1
-        cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
-        make
-        make install
-
         wget https://github.com/behdad/harfbuzz/releases/download/1.6.3/harfbuzz-1.6.3.tar.bz2
         tar xf harfbuzz-1.6.3.tar.bz2
         cd harfbuzz-1.6.3
@@ -111,7 +104,6 @@ install: |
         cd ..
         popd
     fi
-    pkg-config --cflags glfw3
     pkg-config --cflags harfbuzz
     if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then
         PLIB=$(ldd `which python` | grep libpython | cut -d ' ' -f 3)

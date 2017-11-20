@@ -208,7 +208,9 @@ def kitty_env():
     ans.ldpaths += pylib + font_libs + gl_libs + libpng + [
         '-lunistring'
     ]
-    if not isosx:
+    if isosx:
+        ans.ldpaths.extend('-framework Cocoa'.split())
+    else:
         ans.ldpaths += ['-lrt']
         if '-ldl' not in ans.ldpaths:
             ans.ldpaths.append('-ldl')

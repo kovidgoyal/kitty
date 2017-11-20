@@ -7,9 +7,7 @@
 #include "state.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
-#if defined(__APPLE__)
 extern bool cocoa_make_window_resizable(void *w);
-#endif
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -262,7 +260,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetWindowFocusCallback(glfw_window, window_focus_callback);
 #ifdef __APPLE__
     if (OPT(macos_hide_titlebar)) {
-        if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); }
+        if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
+        else fprintf(stderr, "Failed to load glfwGetCocoaWindow\n");
     }
 #endif
     double now = monotonic();

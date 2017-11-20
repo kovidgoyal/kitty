@@ -19,13 +19,19 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         x for x in ans.cflags
         if x not in '-Wpedantic -Wextra -pedantic-errors'.split()
     ]
-    ans.cflags.append('-pthread')
+    if not isosx:
+        ans.cflags.append('-pthread')
+        ans.ldpaths.append('-pthread')
     ans.cflags.append('-fpic')
-    ans.ldpaths.append('-pthread')
     ans.cflags.append('-D_GLFW_' + module.upper())
     ans.cflags.append('-D_GLFW_BUILD_DLL')
 
-    if not isosx:
+    if isosx:
+        ans.ldpaths.extend(
+            "-framework Cocoa -framework IOKit -framework CoreFoundation -framework CoreVideo".
+            split()
+        )
+    else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
 
     if module == 'x11':
@@ -216,6 +222,8 @@ def main():
         shutil.copy2(src, '.')
     shutil.copy2(glfw_header, '.')
     patch_in_file('internal.h', lambda x: x.replace('../include/GLFW/', ''))
+    patch_in_file('cocoa_window.m', lambda x: re.sub(
+        r'[(]void[)]loadMainMenu.+?}', '(void)loadMainMenu\n{ // removed by Kovid as it generated compiler warnings \n}\n', x, flags=re.DOTALL))
     json.dump(
         sinfo,
         open('source-info.json', 'w'),
