@@ -211,6 +211,9 @@ def kitty_env():
     ]
     if isosx:
         ans.ldpaths.extend('-framework Cocoa'.split())
+        if is_travis and 'SW' in os.environ:
+            cflags.append('-I{}/include'.format(os.environ['SW']))
+            ans.ldpaths.append('-L{}/lib'.format(os.environ['SW']))
     else:
         ans.ldpaths += ['-lrt']
         if '-ldl' not in ans.ldpaths:
