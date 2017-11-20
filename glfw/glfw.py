@@ -94,12 +94,13 @@ class Arg:
 
 class Function:
 
-    def __init__(self, declaration):
+    def __init__(self, declaration, check_fail=True):
+        self.check_fail = check_fail
         m = re.match(
             r'(.+?)\s+(glfw[A-Z][a-zA-Z0-9]+)[(](.+)[)]$', declaration
         )
         if m is None:
-            raise SystemExit('Failed to parse ' + declaration)
+            raise SystemExit('Failed to parse ' + repr(declaration))
         self.restype = m.group(1).strip()
         self.name = m.group(2)
         args = m.group(3).strip().split(',')
@@ -121,9 +122,10 @@ class Function:
         ans = '*(void **) (&{name}_impl) = dlsym(handle, "{name}");'.format(
             name=self.name
         )
-        ans += '\n    if ({name}_impl == NULL) fail("Failed to load glfw function {name} with error: %s", dlerror());'.format(
-            name=self.name
-        )
+        if self.check_fail:
+            ans += '\n    if ({name}_impl == NULL) fail("Failed to load glfw function {name} with error: %s", dlerror());'.format(
+                name=self.name
+            )
         return ans
 
 
@@ -138,6 +140,17 @@ def generate_wrappers(glfw_header, glfw_native_header):
         if 'VkInstance' in decl:
             continue
         functions.append(Function(decl))
+    for line in '''\
+    void* glfwGetCocoaWindow(GLFWwindow* window)
+    uint32_t glfwGetCocoaMonitor(GLFWmonitor* monitor)
+    void* glfwGetX11Display(void)
+    int32_t glfwGetX11Window(GLFWwindow* window)
+    void glfwSetX11SelectionString(const char* string)
+    const char* glfwGetX11SelectionString(void)
+'''.splitlines():
+        if line:
+            functions.append(Function(line.strip(), check_fail=False))
+
     declarations = [f.declaration() for f in functions]
     p = src.find(' * GLFW API tokens')
     p = src.find('*/', p)

@@ -17,13 +17,10 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import (
-    appname, isosx, iswayland, selection_clipboard_funcs, x11_display,
-    x11_window_id
-)
+from .constants import appname, isosx, iswayland
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
-    redirect_std_streams, wcwidth as wcwidth_impl
+    redirect_std_streams, wcwidth as wcwidth_impl, x11_display, x11_window_id
 )
 from .rgb import Color, to_color
 
@@ -75,43 +72,6 @@ def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
 
 
-@lru_cache()
-def load_libx11():
-    import ctypes
-    from ctypes.util import find_library
-    libx11 = ctypes.CDLL(find_library('X11'))
-
-    def cdef(name, restype, *argtypes):
-        f = getattr(libx11, name)
-        if restype is not None:
-            f.restype = restype
-        if argtypes:
-            f.argtypes = argtypes
-        return f
-
-    return cdef('XResourceManagerString', ctypes.c_char_p, ctypes.c_void_p)
-
-
-def parse_xrdb(raw):
-    q = 'Xft.dpi:\t'
-    for line in raw.decode('utf-8', 'replace').splitlines():
-        if line.startswith(q):
-            return float(line[len(q):])
-
-
-def x11_dpi():
-    if iswayland:
-        return
-    XResourceManagerString = load_libx11()
-    display = x11_display()
-    if display:
-        try:
-            raw = XResourceManagerString(display)
-            return parse_xrdb(raw)
-        except Exception:
-            pass
-
-
 def get_logical_dpi(override_dpi=None):
     # See https://github.com/glfw/glfw/issues/1019 for why we cant use
     # glfw_get_physical_dpi()
@@ -122,14 +82,8 @@ def get_logical_dpi(override_dpi=None):
             # TODO: Investigate if this needs a different implementation on OS X
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
-            try:
-                xscale, yscale = glfw_primary_monitor_content_scale()
-            except NotImplementedError:  # glfw < 3.3
-                xdpi = ydpi = x11_dpi()
-                if xdpi is None:
-                    xdpi, ydpi = glfw_get_physical_dpi()
-            else:
-                xdpi, ydpi = xscale * 96.0, yscale * 96.0
+            xscale, yscale = glfw_primary_monitor_content_scale()
+            xdpi, ydpi = xscale * 96.0, yscale * 96.0
             get_logical_dpi.ans = xdpi, ydpi
     return get_logical_dpi.ans
 
@@ -163,32 +117,19 @@ def parse_color_set(raw):
 
 
 def set_primary_selection(text):
-    if isosx:
-        return  # There is no primary selection on OS X
-    if isinstance(text, str):
-        text = text.encode('utf-8')
-    s = selection_clipboard_funcs()[1]
-    if s is None:
-        p = subprocess.Popen(['xsel', '-i', '-p'], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        p.stdin.write(text), p.stdin.close()
-        p.wait()
-    else:
-        s(text)
+    if isosx or iswayland:
+        return  # There is no primary selection
+    if isinstance(text, bytes):
+        text = text.decode('utf-8')
+    from kitty.fast_data_types import set_primary_selection
+    set_primary_selection(text)
 
 
 def get_primary_selection():
-    if isosx:
-        return ''  # There is no primary selection on OS X
-    g = selection_clipboard_funcs()[0]
-    if g is None:
-        # We cannot use check_output as we set a SIGCHLD handler to reap zombies
-        ans = subprocess.Popen(['xsel', '-p'], stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE).stdout.read().decode('utf-8')
-        if ans:
-            # Without this for some reason repeated pastes dont work
-            set_primary_selection(ans)
-    else:
-        ans = (g() or b'').decode('utf-8', 'replace')
-    return ans
+    if isosx or iswayland:
+        return ''  # There is no primary selection
+    from kitty.fast_data_types import get_primary_selection
+    return (get_primary_selection() or b'').decode('utf-8', 'replace')
 
 
 def base64_encode(

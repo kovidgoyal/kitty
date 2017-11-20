@@ -1783,4 +1783,28 @@ typedef const char** (*glfwGetRequiredInstanceExtensions_func)(uint32_t*);
 glfwGetRequiredInstanceExtensions_func glfwGetRequiredInstanceExtensions_impl;
 #define glfwGetRequiredInstanceExtensions glfwGetRequiredInstanceExtensions_impl
 
+typedef void* (*glfwGetCocoaWindow_func)(GLFWwindow*);
+glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
+#define glfwGetCocoaWindow glfwGetCocoaWindow_impl
+
+typedef uint32_t (*glfwGetCocoaMonitor_func)(GLFWmonitor*);
+glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
+#define glfwGetCocoaMonitor glfwGetCocoaMonitor_impl
+
+typedef void* (*glfwGetX11Display_func)();
+glfwGetX11Display_func glfwGetX11Display_impl;
+#define glfwGetX11Display glfwGetX11Display_impl
+
+typedef int32_t (*glfwGetX11Window_func)(GLFWwindow*);
+glfwGetX11Window_func glfwGetX11Window_impl;
+#define glfwGetX11Window glfwGetX11Window_impl
+
+typedef void (*glfwSetX11SelectionString_func)(const char*);
+glfwSetX11SelectionString_func glfwSetX11SelectionString_impl;
+#define glfwSetX11SelectionString glfwSetX11SelectionString_impl
+
+typedef const char* (*glfwGetX11SelectionString_func)();
+glfwGetX11SelectionString_func glfwGetX11SelectionString_impl;
+#define glfwGetX11SelectionString glfwGetX11SelectionString_impl
+
 const char* load_glfw(const char* path);

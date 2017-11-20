@@ -341,6 +341,18 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetRequiredInstanceExtensions_impl) = dlsym(handle, "glfwGetRequiredInstanceExtensions");
     if (glfwGetRequiredInstanceExtensions_impl == NULL) fail("Failed to load glfw function glfwGetRequiredInstanceExtensions with error: %s", dlerror());
 
+    *(void **) (&glfwGetCocoaWindow_impl) = dlsym(handle, "glfwGetCocoaWindow");
+
+    *(void **) (&glfwGetCocoaMonitor_impl) = dlsym(handle, "glfwGetCocoaMonitor");
+
+    *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
+
+    *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");
+
+    *(void **) (&glfwSetX11SelectionString_impl) = dlsym(handle, "glfwSetX11SelectionString");
+
+    *(void **) (&glfwGetX11SelectionString_impl) = dlsym(handle, "glfwGetX11SelectionString");
+
     return NULL;
 }
 

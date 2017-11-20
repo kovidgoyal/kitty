@@ -4,11 +4,10 @@
 
 import os
 import pwd
-import ctypes
 import sys
 from collections import namedtuple
 
-from .fast_data_types import set_boss as set_c_boss, handle_for_window_id
+from .fast_data_types import set_boss as set_c_boss
 
 appname = 'kitty'
 version = (0, 5, 1)
@@ -59,67 +58,4 @@ except KeyError:
     print('Failed to read login shell from /etc/passwd for current user, falling back to /bin/sh', file=sys.stderr)
     shell_path = '/bin/sh'
 
-GLint = ctypes.c_int if ctypes.sizeof(ctypes.c_int) == 4 else ctypes.c_long
-GLuint = ctypes.c_uint if ctypes.sizeof(ctypes.c_uint) == 4 else ctypes.c_ulong
-GLfloat = ctypes.c_float
-if ctypes.sizeof(GLfloat) != 4:
-    raise RuntimeError('float size is not 4')
-if ctypes.sizeof(GLint) != 4:
-    raise RuntimeError('int size is not 4')
-
-
-def get_glfw_lib_name():
-    try:
-        for line in open('/proc/self/maps'):
-            lib = line.split()[-1]
-            if '/libglfw.so' in lib:
-                return lib
-    except Exception as err:
-        try:
-            print(str(err), file=sys.stderr)
-        except Exception:
-            pass
-    return 'libglfw.so.3'
-
-
-def glfw_lib():
-    ans = getattr(glfw_lib, 'ans', None)
-    if ans is None:
-        ans = glfw_lib.ans = ctypes.CDLL('libglfw.3.dylib' if isosx else get_glfw_lib_name())
-    return ans
-
-
-def selection_clipboard_funcs():
-    ans = getattr(selection_clipboard_funcs, 'ans', None)
-    if ans is None:
-        lib = glfw_lib()
-        if hasattr(lib, 'glfwGetX11SelectionString'):
-            g = lib.glfwGetX11SelectionString
-            g.restype = ctypes.c_char_p
-            g.argtypes = []
-            s = lib.glfwSetX11SelectionString
-            s.restype = None
-            s.argtypes = [ctypes.c_char_p]
-            ans = g, s
-        else:
-            ans = None, None
-        selection_clipboard_funcs.ans = ans
-    return ans
-
-
-def x11_window_id(window_id):
-    lib = glfw_lib()
-    lib.glfwGetX11Window.restype = ctypes.c_int32
-    lib.glfwGetX11Window.argtypes = [ctypes.c_void_p]
-    return lib.glfwGetX11Window(handle_for_window_id(window_id))
-
-
-def x11_display():
-    lib = glfw_lib()
-    ans = lib.glfwGetX11Display
-    ans.restype = ctypes.c_void_p
-    ans.argtypes = []
-    return ans()
-
-
-iswayland = not isosx and hasattr(glfw_lib(), 'glfwGetWaylandDisplay')
+iswayland = False

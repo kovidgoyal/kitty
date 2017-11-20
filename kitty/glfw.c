@@ -538,6 +538,45 @@ primary_monitor_content_scale(PyObject UNUSED *self) {
 }
 
 static PyObject*
+x11_display(PyObject UNUSED *self) {
+    if (glfwGetX11Display) {
+        return PyLong_FromVoidPtr(glfwGetX11Display());
+    } else fprintf(stderr, "Failed to load glfwGetX11Display\n");
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
+    if (glfwGetX11Window) {
+        id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
+        for (size_t i = 0; i < global_state.num_os_windows; i++) {
+            OSWindow *w = global_state.os_windows + i;
+            if (w->id == os_window_id) return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
+        }
+    }
+    else { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
+    PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found");
+    return NULL;
+}
+
+static PyObject*
+get_primary_selection(PyObject UNUSED *self) {
+    if (glfwGetX11SelectionString) {
+        return Py_BuildValue("y", glfwGetX11SelectionString());
+    } else fprintf(stderr, "Failed to load glfwGetX11SelectionString\n");
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+set_primary_selection(PyObject UNUSED *self, PyObject *args) {
+    char *text;
+    if (!PyArg_ParseTuple(args, "s", &text)) return NULL;
+    if (glfwSetX11SelectionString) glfwSetX11SelectionString(text);
+    else fprintf(stderr, "Failed to load glfwSetX11SelectionString\n");
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 os_window_should_close(PyObject UNUSED *self, PyObject *args) {
     int q = -1001;
     id_type os_window_id;
@@ -584,6 +623,10 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
+    METHODB(get_primary_selection, METH_NOARGS),
+    METHODB(x11_display, METH_NOARGS),
+    METHODB(x11_window_id, METH_O),
+    METHODB(set_primary_selection, METH_VARARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
