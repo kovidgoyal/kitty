@@ -16,6 +16,7 @@ import sysconfig
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(base, 'glfw'))
 glfw = importlib.import_module('glfw')
+verbose = False
 del sys.path[0]
 build_dir = os.path.join(base, 'build')
 constants = os.path.join(base, 'kitty', 'constants.py')
@@ -231,6 +232,8 @@ def define(x):
 def run_tool(cmd, desc=None):
     if isinstance(cmd, str):
         cmd = shlex.split(cmd[0])
+    if verbose:
+        desc = None
     print(desc or ' '.join(cmd))
     p = subprocess.Popen(cmd)
     ret = p.wait()
@@ -308,7 +311,10 @@ def parallel_run(todo, desc='Compiling {} ...'):
     while items and failed is None:
         while len(workers) < num_workers and items:
             name, cmd = items.pop()
-            print(desc.format(emphasis(name)))
+            if verbose:
+                print(' '.join(cmd))
+            else:
+                print(desc.format(emphasis(name)))
             w = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = name, cmd, w
         wait()
@@ -366,6 +372,12 @@ def option_parser():
         default=False,
         action='store_true',
         help='Build extension modules with debugging symbols'
+    )
+    p.add_argument(
+        '-v', '--verbose',
+        default=0,
+        action='count',
+        help='Be verbose'
     )
     p.add_argument(
         '--sanitize',
@@ -434,10 +446,10 @@ def build(args, native_optimizations=True):
         k['file']: k['arguments'] for k in compilation_database
     }
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
-    compile_glfw(args.incremental, compilation_database)
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
     )
+    compile_glfw(args.incremental, compilation_database)
     compilation_database = [
         {'file': k, 'arguments': v, 'directory': base} for k, v in compilation_database.items()
     ]
@@ -559,9 +571,11 @@ def clean():
 
 
 def main():
+    global verbose
     if sys.version_info < (3, 5):
         raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args()
+    verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'build':

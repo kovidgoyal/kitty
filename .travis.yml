@@ -113,7 +113,7 @@ install: |
 
 before_script:
     - echo $LD_LIBRARY_PATH
-    - $PYTHON setup.py build --debug $SANITIZE_ARG;
+    - $PYTHON setup.py build --debug --verbose $SANITIZE_ARG;
 
 script:
     - if [[ -z $SANITIZE_ARG ]]; then $PYTHON test.py; else ./asan-launcher test.py; fi
