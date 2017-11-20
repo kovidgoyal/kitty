@@ -330,7 +330,7 @@ def parallel_run(todo, desc='Compiling {} ...'):
         run_tool(failed[1])
 
 
-def compile_c_extension(kenv, module, incremental, compilation_database, sources, headers):
+def compile_c_extension(kenv, module, incremental, compilation_database, all_keys, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
@@ -349,6 +349,7 @@ def compile_c_extension(kenv, module, incremental, compilation_database, sources
 
         cmd = [kenv.cc, '-MMD'] + cflgs
         key = original_src, os.path.basename(dest)
+        all_keys.add(key)
         cmd_changed = compilation_database.get(key, [])[:-4] != cmd
         must_compile = not incremental or cmd_changed
         src = os.path.join(base, src)
@@ -363,57 +364,6 @@ def compile_c_extension(kenv, module, incremental, compilation_database, sources
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
         run_tool([kenv.cc] + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
-
-
-def option_parser():
-    p = argparse.ArgumentParser()
-    p.add_argument(
-        'action',
-        nargs='?',
-        default='build',
-        choices='build test linux-package osx-bundle clean'.split(),
-        help='Action to perform (default is build)'
-    )
-    p.add_argument(
-        '--debug',
-        default=False,
-        action='store_true',
-        help='Build extension modules with debugging symbols'
-    )
-    p.add_argument(
-        '-v', '--verbose',
-        default=0,
-        action='count',
-        help='Be verbose'
-    )
-    p.add_argument(
-        '--sanitize',
-        default=False,
-        action='store_true',
-        help='Turn on sanitization to detect memory access errors and undefined behavior. Note that if you do turn it on,'
-        ' a special executable will be built for running the test suite. If you want to run normal kitty'
-        ' with sanitization, use LD_PRELOAD=libasan.so (for gcc) and'
-        ' LD_PRELOAD=/usr/lib/clang/4.0.0/lib/linux/libclang_rt.asan-x86_64.so (for clang, changing path as appropriate).'
-    )
-    p.add_argument(
-        '--prefix',
-        default='./linux-package',
-        help='Where to create the linux package'
-    )
-    p.add_argument(
-        '--full',
-        dest='incremental',
-        default=True,
-        action='store_false',
-        help='Do a full build, even for unchanged files'
-    )
-    p.add_argument(
-        '--profile',
-        default=False,
-        action='store_true',
-        help='Use the -pg compile flag to add profiling information'
-    )
-    return p
 
 
 def find_c_files():
@@ -433,13 +383,13 @@ def find_c_files():
     return tuple(ans), tuple(headers)
 
 
-def compile_glfw(incremental, compilation_database):
+def compile_glfw(incremental, compilation_database, all_keys):
     modules = 'cocoa' if isosx else 'x11'
     for module in modules.split():
         genv = glfw.init_env(env, pkg_config, at_least_version, module)
         sources = [os.path.join('glfw', x) for x in genv.sources]
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
-        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, sources, all_headers)
+        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, all_keys, sources, all_headers)
 
 
 def build(args, native_optimizations=True):
@@ -449,19 +399,24 @@ def build(args, native_optimizations=True):
             compilation_database = json.load(f)
     except FileNotFoundError:
         compilation_database = []
+    all_keys = set()
     compilation_database = {
         (k['file'], k.get('output')): k['arguments'] for k in compilation_database
     }
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
-    compile_c_extension(
-        kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, *find_c_files()
-    )
-    compile_glfw(args.incremental, compilation_database)
-    compilation_database = [
-        {'file': k[0], 'arguments': v, 'directory': base, 'output': k[1]} for k, v in compilation_database.items()
-    ]
-    with open('compile_commands.json', 'w') as f:
-        json.dump(compilation_database, f, indent=2, sort_keys=True)
+    try:
+        compile_c_extension(
+            kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, all_keys, *find_c_files()
+        )
+        compile_glfw(args.incremental, compilation_database, all_keys)
+        for key in set(compilation_database) - all_keys:
+            del compilation_database[key]
+    finally:
+        compilation_database = [
+            {'file': k[0], 'arguments': v, 'directory': base, 'output': k[1]} for k, v in compilation_database.items()
+        ]
+        with open('compile_commands.json', 'w') as f:
+            json.dump(compilation_database, f, indent=2, sort_keys=True)
 
 
 def safe_makedirs(path):
@@ -575,6 +530,57 @@ def clean():
         os.unlink(f)
         if os.sep in f and not os.listdir(os.path.dirname(f)):
             os.rmdir(os.path.dirname(f))
+
+
+def option_parser():
+    p = argparse.ArgumentParser()
+    p.add_argument(
+        'action',
+        nargs='?',
+        default='build',
+        choices='build test linux-package osx-bundle clean'.split(),
+        help='Action to perform (default is build)'
+    )
+    p.add_argument(
+        '--debug',
+        default=False,
+        action='store_true',
+        help='Build extension modules with debugging symbols'
+    )
+    p.add_argument(
+        '-v', '--verbose',
+        default=0,
+        action='count',
+        help='Be verbose'
+    )
+    p.add_argument(
+        '--sanitize',
+        default=False,
+        action='store_true',
+        help='Turn on sanitization to detect memory access errors and undefined behavior. Note that if you do turn it on,'
+        ' a special executable will be built for running the test suite. If you want to run normal kitty'
+        ' with sanitization, use LD_PRELOAD=libasan.so (for gcc) and'
+        ' LD_PRELOAD=/usr/lib/clang/4.0.0/lib/linux/libclang_rt.asan-x86_64.so (for clang, changing path as appropriate).'
+    )
+    p.add_argument(
+        '--prefix',
+        default='./linux-package',
+        help='Where to create the linux package'
+    )
+    p.add_argument(
+        '--full',
+        dest='incremental',
+        default=True,
+        action='store_false',
+        help='Do a full build, even for unchanged files'
+    )
+    p.add_argument(
+        '--profile',
+        default=False,
+        action='store_true',
+        help='Use the -pg compile flag to add profiling information'
+    )
+    return p
 
 
 def main():
