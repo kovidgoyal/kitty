@@ -265,11 +265,11 @@ GLFWAPI void glfwInitHintString(int hint, const char* value)
         case GLFW_X11_WM_CLASS_NAME:
             strncpy(_glfwInitHints.x11.className, value,
                     sizeof(_glfwInitHints.x11.className) - 1);
-            break;
+            return;
         case GLFW_X11_WM_CLASS_CLASS:
             strncpy(_glfwInitHints.x11.classClass, value,
                     sizeof(_glfwInitHints.x11.classClass) - 1);
-            break;
+            return;
     }
 
     _glfwInputError(GLFW_INVALID_ENUM,
