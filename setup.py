@@ -202,15 +202,10 @@ def kitty_env():
         font_libs = pkg_config('fontconfig', '--libs')
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     font_libs.extend(pkg_config('harfbuzz', '--libs'))
-    cflags.extend(pkg_config('glfw3', '--cflags-only-I'))
     pylib = get_python_flags(cflags)
-    if isosx:
-        glfw_ldflags = pkg_config('--libs', '--static', 'glfw3'
-                                  ) + ['-framework', 'OpenGL']
-    else:
-        glfw_ldflags = pkg_config('glfw3', '--libs')
+    gl_libs = ['-framework', 'OpenGL'] if isosx else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ans.ldpaths += pylib + font_libs + glfw_ldflags + libpng + [
+    ans.ldpaths += pylib + font_libs + gl_libs + libpng + [
         '-lunistring'
     ]
     if not isosx:

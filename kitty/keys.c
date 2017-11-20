@@ -8,7 +8,7 @@
 #include "keys.h"
 #include "state.h"
 #include "screen.h"
-#include <GLFW/glfw3.h>
+#include "glfw-wrapper.h"
 
 const char*
 key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {

@@ -11,7 +11,7 @@
 #include "screen.h"
 #include <string.h>
 #include <stddef.h>
-#include <GLFW/glfw3.h>
+#include "glfw-wrapper.h"
 
 static char glbuf[4096];
 

@@ -6,21 +6,9 @@
 
 #include "state.h"
 #include <structmember.h>
-#include <GLFW/glfw3.h>
+#include "glfw-wrapper.h"
 #if defined(__APPLE__)
-#define GLFW_EXPOSE_NATIVE_COCOA
-#include <GLFW/glfw3native.h>
 extern bool cocoa_make_window_resizable(void *w);
-#endif
-
-#if GLFW_VERSION_MAJOR < 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR < 2)
-#error "glfw >= 3.2 required"
-#endif
-
-#if GLFW_VERSION_MAJOR > 3 || (GLFW_VERSION_MAJOR == 3 && GLFW_VERSION_MINOR > 2)
-#define has_request_attention
-#define has_init_hint_string
-#define has_content_scale_query
 #endif
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -316,7 +304,11 @@ error_callback(int error, const char* description) {
 
 
 PyObject*
-glfw_init(PyObject UNUSED *self) {
+glfw_init(PyObject UNUSED *self, PyObject *args) {
+    const char* path;
+    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    const char* err = load_glfw(path);
+    if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);
     PyObject *ans = glfwInit() ? Py_True: Py_False;
     Py_INCREF(ans);
@@ -386,9 +378,7 @@ glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
     int hint_id;
     char *hint;
     if (!PyArg_ParseTuple(args, "is", &hint_id, &hint)) return NULL;
-#ifdef has_init_hint_string
     glfwInitHintString(hint_id, hint);
-#endif
     Py_RETURN_NONE;
 }
 
@@ -404,16 +394,10 @@ get_clipboard_string(PyObject UNUSED *self) {
 
 static PyObject*
 get_content_scale_for_window(PyObject UNUSED *self) {
-#ifdef has_content_scale_query
     OSWindow *w = global_state.callback_os_window ? global_state.callback_os_window : global_state.os_windows;
     float xscale, yscale;
     glfwGetWindowContentScale(w->handle, &xscale, &yscale);
     return Py_BuildValue("ff", xscale, yscale);
-#else
-    (void)self;
-    PyErr_SetString(PyExc_NotImplementedError, "glfw version is too old");
-    return NULL;
-#endif
 }
 
 static PyObject*
@@ -488,9 +472,7 @@ void
 request_window_attention(id_type kitty_window_id) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
-#ifdef has_request_attention
         glfwRequestWindowAttention(w->handle);
-#endif
         glfwPostEmptyEvent();
     }
 }
@@ -549,15 +531,10 @@ primary_monitor_size(PyObject UNUSED *self) {
 
 static PyObject*
 primary_monitor_content_scale(PyObject UNUSED *self) {
-#ifdef has_content_scale_query
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     float xscale, yscale;
     glfwGetMonitorContentScale(monitor, &xscale, &yscale);
     return Py_BuildValue("ff", xscale, yscale);
-#else
-    PyErr_SetString(PyExc_NotImplementedError, "glfw version is too old");
-    return NULL;
-#endif
 }
 
 static PyObject*
@@ -572,7 +549,7 @@ os_window_should_close(PyObject UNUSED *self, PyObject *args) {
                 if (should_os_window_close(w)) Py_RETURN_TRUE;
                 Py_RETURN_FALSE;
             }
-            glfwSetWindowShouldClose(w->handle, q ? GLFW_TRUE : GL_FALSE);
+            glfwSetWindowShouldClose(w->handle, q ? GLFW_TRUE : GLFW_FALSE);
             Py_RETURN_NONE;
         }
     }
@@ -607,7 +584,7 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
-    {"glfw_init", (PyCFunction)glfw_init, METH_NOARGS, ""}, 
+    {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, 
@@ -624,10 +601,8 @@ bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
-#ifdef GLFW_X11_WM_CLASS_NAME
     ADDC(GLFW_X11_WM_CLASS_NAME)
     ADDC(GLFW_X11_WM_CLASS_CLASS)
-#endif
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);
