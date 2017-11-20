@@ -2343,7 +2343,12 @@ GLFWAPI void glfwWindowHint(int hint, int value);
  *  @remark @x11 The name and class of the `WM_CLASS` window property will by
  *  default be set to the window title passed to this function.  Set the @ref
  *  GLFW_X11_WM_CLASS_NAME and @ref GLFW_X11_WM_CLASS_CLASS init hints before
- *  initialization to override this.
+ *  initialization to override this. You can also set the title int he following
+ *  special format, which allows setting the two parts of the WM_CLASS property
+ *  and the window title independently:
+ *  <01> WM_CLASS name <30> WM_CLASS class <30> title
+ *  Here <01> refers to the byte value 01 (ASCII start-of-header) and <30> refers
+ *  to the byte value 30 (ASCII record separator).
  *
  *  @remark @wayland The window frame is currently unimplemented, as if
  *  [GLFW_DECORATED](@ref GLFW_DECORATED_hint) was always set to `GLFW_FALSE`.

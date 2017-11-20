@@ -14,13 +14,13 @@ from .cli import create_opts, option_parser
 from .config import initial_window_size, load_cached_values, save_cached_values
 from .constants import isosx, iswayland, logo_data_file
 from .fast_data_types import (
-    change_wcwidth, create_os_window, glfw_init, glfw_init_hint_string,
-    glfw_terminate, install_sigchld_handler, set_default_window_icon,
-    set_logical_dpi, set_options, GLFW_X11_WM_CLASS_NAME, GLFW_X11_WM_CLASS_CLASS
+    change_wcwidth, create_os_window, glfw_init, glfw_terminate,
+    install_sigchld_handler, set_default_window_icon, set_logical_dpi,
+    set_options
 )
 from .fonts.box_drawing import set_scale
 from .utils import (
-    detach, end_startup_notification, get_logical_dpi,
+    detach, encode_wm_class, end_startup_notification, get_logical_dpi,
     init_startup_notification, single_instance
 )
 from .window import load_shader_programs
@@ -45,7 +45,7 @@ def run_app(opts, args):
     set_options(opts, iswayland, args.debug_gl)
     load_cached_values()
     w, h = initial_window_size(opts)
-    window_id = create_os_window(w, h, args.cls, True, load_all_shaders)
+    window_id = create_os_window(w, h, encode_wm_class(args.name, args.cls), True, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
     if not iswayland and not isosx:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
@@ -137,10 +137,7 @@ def main():
             return
     opts = create_opts(args)
     change_wcwidth(not opts.use_system_wcwidth)
-    glfw_module = init_graphics()
-    if glfw_module == 'x11':
-        glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, args.cls)
-        glfw_init_hint_string(GLFW_X11_WM_CLASS_NAME, args.cls)
+    init_graphics()
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies

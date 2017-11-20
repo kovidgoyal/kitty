@@ -19,8 +19,9 @@ from .keys import get_key_map, get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
-    end_startup_notification, get_primary_selection, init_startup_notification,
-    open_url, safe_print, set_primary_selection, single_instance
+    encode_wm_class, end_startup_notification, get_primary_selection,
+    init_startup_notification, open_url, safe_print, set_primary_selection,
+    single_instance
 )
 
 
@@ -78,10 +79,10 @@ class Boss:
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
-    def add_os_window(self, startup_session, os_window_id=None, wclass=None, size=None, visible=True):
+    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, visible=True):
         if os_window_id is None:
             w, h = initial_window_size(self.opts) if size is None else size
-            os_window_id = create_os_window(w, h, wclass or self.args.cls, visible)
+            os_window_id = create_os_window(w, h, encode_wm_class(wname or self.args.name, wclass or self.args.cls), visible)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id
@@ -103,7 +104,7 @@ class Boss:
             args = option_parser().parse_args(msg['args'][1:])
             opts = create_opts(args)
             session = create_session(opts, args)
-            os_window_id = self.add_os_window(session, wclass=args.cls, size=initial_window_size(opts))
+            os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts))
             if startup_id:
                 ctx = init_startup_notification(os_window_id, startup_id)
                 end_startup_notification(ctx)

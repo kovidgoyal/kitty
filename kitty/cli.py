@@ -20,7 +20,13 @@ def option_parser():
         '--class',
         default=appname,
         dest='cls',
-        help=_('Set the WM_CLASS property')
+        help=_('Set the class part of the WM_CLASS property')
+    )
+    a(
+        '--name',
+        default=None,
+        dest='name',
+        help=_('Set the name part of the WM_CLASS property (defaults to using the value from {})').format('--class')
     )
     a(
         '--config',

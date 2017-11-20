@@ -291,3 +291,9 @@ def single_instance(group_id=None):
     s.set_inheritable(False)
     atexit.register(remove_socket_file, s)
     return True
+
+
+def encode_wm_class(name, cls, title=appname):
+    if isosx:
+        return title
+    return '\x01' + (name or cls) + '\x1e' + cls + '\x1e' + title

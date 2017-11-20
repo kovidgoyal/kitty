@@ -402,15 +402,6 @@ glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-PyObject*
-glfw_init_hint_string(PyObject UNUSED *self, PyObject *args) {
-    int hint_id;
-    char *hint;
-    if (!PyArg_ParseTuple(args, "is", &hint_id, &hint)) return NULL;
-    glfwInitHintString(hint_id, hint);
-    Py_RETURN_NONE;
-}
-
 
 // }}}
 
@@ -694,7 +685,6 @@ static PyMethodDef module_methods[] = {
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, 
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, 
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, 
-    {"glfw_init_hint_string", (PyCFunction)glfw_init_hint_string, METH_VARARGS, ""}, 
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""}, 
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""}, 
     {NULL, NULL, 0, NULL}        /* Sentinel */
