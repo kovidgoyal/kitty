@@ -25,10 +25,19 @@ from .utils import (
 )
 from .window import load_shader_programs
 
+base = os.path.dirname(os.path.abspath(__file__))
+
 
 def load_all_shaders():
     load_shader_programs()
     load_borders_program()
+
+
+def init_graphics():
+    glfw_module = 'cocoa' if isosx else 'x11'
+    if not glfw_init(os.path.join(base, 'glfw-{}.so'.format(glfw_module))):
+        raise SystemExit('GLFW initialization failed')
+    return glfw_module
 
 
 def run_app(opts, args):
@@ -90,7 +99,6 @@ def main():
         sys.setswitchinterval(1000.0)  # we have only a single python thread
     except AttributeError:
         pass  # python compiled without threading
-    base = os.path.dirname(os.path.abspath(__file__))
     if isosx:
         ensure_osx_locale()
     try:
@@ -129,9 +137,7 @@ def main():
             return
     opts = create_opts(args)
     change_wcwidth(not opts.use_system_wcwidth)
-    glfw_module = 'cocoa' if isosx else 'x11'
-    if not glfw_init(os.path.join(base, 'glfw-{}.so'.format(glfw_module))):
-        raise SystemExit('GLFW initialization failed')
+    glfw_module = init_graphics()
     if glfw_module == 'x11':
         glfw_init_hint_string(GLFW_X11_WM_CLASS_CLASS, args.cls)
         glfw_init_hint_string(GLFW_X11_WM_CLASS_NAME, args.cls)
