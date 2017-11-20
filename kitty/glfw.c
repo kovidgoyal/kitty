@@ -6,7 +6,6 @@
 
 #include "state.h"
 #include <structmember.h>
-#include <dlfcn.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
