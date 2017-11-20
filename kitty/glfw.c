@@ -499,6 +499,10 @@ toggle_fullscreen(PyObject UNUSED *self) {
 
 void 
 ring_audio_bell(OSWindow *w) {
+    static double last_bell_at = -1;
+    double now = monotonic();
+    if (now - last_bell_at <= 0.1) return; 
+    last_bell_at = now;
 #ifdef __APPLE__
     (void)w;
     cocoa_audio_bell();
