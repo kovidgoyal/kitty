@@ -348,14 +348,15 @@ def compile_c_extension(kenv, module, incremental, compilation_database, sources
             cflgs.extend(map(define, defines))
 
         cmd = [kenv.cc, '-MMD'] + cflgs
-        cmd_changed = compilation_database.get(original_src, [])[:-4] != cmd
+        key = original_src, os.path.basename(dest)
+        cmd_changed = compilation_database.get(key, [])[:-4] != cmd
         must_compile = not incremental or cmd_changed
         src = os.path.join(base, src)
         if must_compile or newer(
             dest, *dependecies_for(src, dest, headers)
         ):
             cmd += ['-c', src] + ['-o', dest]
-            compilation_database[original_src] = cmd
+            compilation_database[key] = cmd
             todo[original_src] = cmd
     if todo:
         parallel_run(todo)
@@ -449,7 +450,7 @@ def build(args, native_optimizations=True):
     except FileNotFoundError:
         compilation_database = []
     compilation_database = {
-        k['file']: k['arguments'] for k in compilation_database
+        (k['file'], k.get('output')): k['arguments'] for k in compilation_database
     }
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
     compile_c_extension(
@@ -457,7 +458,7 @@ def build(args, native_optimizations=True):
     )
     compile_glfw(args.incremental, compilation_database)
     compilation_database = [
-        {'file': k, 'arguments': v, 'directory': base} for k, v in compilation_database.items()
+        {'file': k[0], 'arguments': v, 'directory': base, 'output': k[1]} for k, v in compilation_database.items()
     ]
     with open('compile_commands.json', 'w') as f:
         json.dump(compilation_database, f, indent=2, sort_keys=True)
