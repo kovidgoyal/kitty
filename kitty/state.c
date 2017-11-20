@@ -39,22 +39,22 @@ GlobalState global_state = {{0}};
 #define WITH_OS_WINDOW_REFS \
     id_type cb_window_id = 0, focused_window_id = 0; \
     if (global_state.callback_os_window) cb_window_id = global_state.callback_os_window->id; \
-    if (global_state.focused_os_window) focused_window_id = global_state.focused_os_window->id;
 
 #define END_WITH_OS_WINDOW_REFS \
     if (cb_window_id || focused_window_id) { \
-        global_state.callback_os_window = NULL; global_state.focused_os_window = NULL; \
+        global_state.callback_os_window = NULL; \
         for (size_t wn = 0; wn < global_state.num_os_windows; wn++) { \
             OSWindow *wp = global_state.os_windows + wn; \
             if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp; \
-            if (wp->id == focused_window_id && focused_window_id) global_state.focused_os_window = wp; \
     }}
 
 
 OSWindow* 
 current_os_window() {
     if (global_state.callback_os_window) return global_state.callback_os_window;
-    if (global_state.focused_os_window) return global_state.focused_os_window;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        if (global_state.os_windows[i].is_focused) return global_state.os_windows + i;
+    }
     return global_state.os_windows;
 }
 

@@ -532,7 +532,7 @@ update_window_title(Window *w, OSWindow *os_window) {
         Py_INCREF(os_window->window_title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
-        if (os_window == global_state.focused_os_window) cocoa_update_title(w->title);
+        if (os_window->is_focused) cocoa_update_title(w->title);
 #endif
         return true;
     }
@@ -576,7 +576,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
             } else WD.screen->cursor_render_info.is_visible = false;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window);
             if (is_active_window && WD.screen->cursor_render_info.is_visible && WD.screen->cursor_render_info.shape != CURSOR_BLOCK) {
-                draw_cursor(&WD.screen->cursor_render_info, os_window == global_state.focused_os_window);
+                draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
             }
             if (WD.screen->start_visual_bell_at != 0) {
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);

@@ -145,10 +145,7 @@ static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_focused = focused ? true : false;
-    if (focused) {
-        global_state.focused_os_window = global_state.callback_os_window;
-        show_mouse_cursor(w);
-    } else if (global_state.focused_os_window == global_state.callback_os_window) global_state.focused_os_window = NULL;
+    if (focused) show_mouse_cursor(w); 
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
@@ -252,6 +249,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     update_os_window_references();
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        // On some platforms (macOS) newly created windows dont get the initial focus in event
+        OSWindow *q = global_state.os_windows + i;
+        q->is_focused = q == w ? true : false;
+    }
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);

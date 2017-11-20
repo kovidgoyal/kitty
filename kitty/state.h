@@ -113,7 +113,7 @@ typedef struct {
     PyObject *boss;
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
-    OSWindow *callback_os_window, *focused_os_window;
+    OSWindow *callback_os_window;
     bool close_all_windows;
     bool is_wayland;
     bool debug_gl;
