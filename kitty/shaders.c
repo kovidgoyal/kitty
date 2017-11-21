@@ -308,9 +308,9 @@ draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
 
 static void
 draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
-    glEnable(GL_BLEND);
     bind_program(CELL_BACKGROUND_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+    glEnable(GL_BLEND);
 
     if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
