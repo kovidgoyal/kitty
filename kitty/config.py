@@ -19,7 +19,7 @@ from .rgb import to_color
 from .utils import safe_print
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
-MINIMUM_FONT_SIZE = 6
+MINIMUM_FONT_SIZE = 4
 
 
 def to_font_size(x):
