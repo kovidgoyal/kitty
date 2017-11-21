@@ -39,6 +39,18 @@ env = None
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
 
 
+def emphasis(text):
+    if sys.stdout.isatty():
+        text = '\033[32m' + text + '\033[39m'
+    return text
+
+
+def error(text):
+    if sys.stdout.isatty():
+        text = '\033[91m' + text + '\033[39m'
+    return text
+
+
 def pkg_config(pkg, *args):
     try:
         return list(
@@ -51,7 +63,7 @@ def pkg_config(pkg, *args):
             )
         )
     except subprocess.CalledProcessError:
-        raise SystemExit('The package {} was not found on your system'.format(pkg))
+        raise SystemExit('The package {} was not found on your system'.format(error(pkg)))
 
 
 def at_least_version(package, major, minor=0):
@@ -68,7 +80,7 @@ def at_least_version(package, major, minor=0):
         if qmajor < major or (qmajor == major and qminor < minor):
             raise SystemExit(
                 '{} >= {}.{} is required, found version: {}'.format(
-                    package, major, minor, ver
+                    error(package), major, minor, ver
                 )
             )
 
@@ -289,12 +301,6 @@ def dependecies_for(src, obj, all_headers):
                     yield path
 
 
-def emphasis(text):
-    if sys.stdout.isatty():
-        text = '\033[32m' + text + '\033[39m'
-    return text
-
-
 def parallel_run(todo, desc='Compiling {} ...'):
     try:
         from multiprocessing import cpu_count
@@ -392,7 +398,7 @@ def compile_glfw(incremental, compilation_database, all_keys):
             if module != 'wayland':
                 raise
             print(err, file=sys.stderr)
-            print('Disabling building of wayland backend', file=sys.stderr)
+            print(error('Disabling building of wayland backend'), file=sys.stderr)
             continue
         sources = [os.path.join('glfw', x) for x in genv.sources]
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
