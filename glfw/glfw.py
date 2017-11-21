@@ -13,6 +13,11 @@ is_macos = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
+def wayland_protocol_file_name(base, ext='c'):
+    base = os.path.basename(base).rpartition('.')[0]
+    return 'wayland-{}-client-protocol.{}'.format(base, ext)
+
+
 def init_env(env, pkg_config, at_least_version, module='x11'):
     ans = env.copy()
     ans.cflags = [
@@ -34,6 +39,8 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
     else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
     sinfo = json.load(open(os.path.join(base, 'source-info.json')))
+    ans.sources = sinfo['common']['sources'] + sinfo[module]['sources']
+    ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
 
     if module == 'x11':
         for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11'.split():
@@ -49,23 +56,26 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         ans.wayland_packagedir = os.path.abspath(pkg_config('wayland-protocols', '--variable=pkgdatadir')[0])
         ans.wayland_scanner = os.path.abspath(pkg_config('wayland-scanner', '--variable=wayland_scanner')[0])
         ans.wayland_protocols = tuple(sinfo[module]['protocols'])
-        for dep in 'wayland-egl wayland-client wayland-scanner xkbcommon'.split():
+        for p in ans.wayland_protocols:
+            ans.sources.append(wayland_protocol_file_name(p))
+            ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
+        for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
-    ans.sources = sinfo['common']['sources'] + sinfo[module]['sources']
-    ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
     return ans
 
 
 def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
-        dest = os.path.basename(src).rpartition('.')[0] + '-client-protocol.h'
-        dest = os.path.join(dest_dir, 'wayland-' + dest)
-        if newer(dest, src):
-            run_tool([env.wayland_scanner, 'client-header', src, dest],
-                     desc='Generating {} ...'.format(emphasis(os.path.basename(dest))))
+        for ext in 'hc':
+            dest = wayland_protocol_file_name(src, ext)
+            dest = os.path.join(dest_dir, dest)
+            if newer(dest, src):
+                q = 'client-header' if ext == 'h' else 'code'
+                run_tool([env.wayland_scanner, q, src, dest],
+                         desc='Generating {} ...'.format(emphasis(os.path.basename(dest))))
 
 
 def collect_source_information():
