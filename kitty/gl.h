@@ -44,10 +44,9 @@ check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, 
     }
 }
 
-static bool glad_loaded = false;
-
 void
 gl_init() {
+    static bool glad_loaded = false;
     if (!glad_loaded) {
         if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
             fatal("Loading the OpenGL library failed");
@@ -61,7 +60,6 @@ gl_init() {
 #undef ARB_TEST
         glad_loaded = true;
     }
-    glEnable(GL_BLEND);
 }
 
 void

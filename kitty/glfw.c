@@ -209,8 +209,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_SAMPLES, 0);
 #ifdef __APPLE__
         if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
-        // OS X cannot handle 16bit stencil buffers
-        glfwWindowHint(GLFW_STENCIL_BITS, 8);
 #endif
 
         standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
@@ -238,8 +236,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
-    gl_init();
     if (is_first_window) { 
+        gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, NULL);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
