@@ -302,11 +302,6 @@ draw_graphics(ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint s
 static void
 draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_PROGRAM); 
-    static bool cell_constants_set = false;
-    if (!cell_constants_set) { 
-        glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
-        cell_constants_set = true; 
-    }
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     if (screen->grman->count) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
 }
@@ -340,6 +335,12 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
+    static bool cell_constants_set = false;
+    if (!cell_constants_set) { 
+        glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
+        glUniform1i(glGetUniformLocation(program_id(CELL_FOREGROUND_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
+        cell_constants_set = true; 
+    }
     if (screen->grman->num_of_negative_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
     else draw_all_cells(vao_idx, gvao_idx, screen);
 }
