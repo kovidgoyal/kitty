@@ -15,8 +15,13 @@ in vec4 special_bg;
 
 out vec4 final_color;
 
-vec3 blend(float alpha, vec3 over, vec3 under) {
-    return over + (1 - alpha) * under;
+vec4 alpha_blend(vec3 over, float over_alpha, vec3 under, float under_alpha) {
+    // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
+    // and its alpha.
+    // See https://en.wikipedia.org/wiki/Alpha_compositing
+    float alpha = mix(under_alpha, 1.0f, over_alpha);  
+    vec3 combined_color = mix(under * under_alpha, over, over_alpha);
+    return vec4(combined_color, alpha);
 }
 
 void main() {
@@ -24,17 +29,19 @@ void main() {
     float text_alpha = texture(sprites, sprite_pos).r;
     float underline_alpha = texture(sprites, underline_pos).r;
     float strike_alpha = texture(sprites, strike_pos).r;
-    vec3 underline = underline_alpha * decoration_fg;
-    vec3 strike = strike_alpha * foreground;
-    vec3 fg = text_alpha * foreground;
-    vec3 decoration = blend(underline_alpha, underline, strike);
-    vec3 combined_fg = blend(text_alpha, fg, decoration);
-    float combined_alpha = max(max(underline_alpha, strike_alpha), text_alpha);
+    // Since strike and text are the same color, we simply add the alpha values
+    float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
+    // Underline color might be different, so alpha blend
+    vec4 fg = alpha_blend(decoration_fg, underline_alpha, foreground, combined_alpha);
 
 #ifdef ALL
-    final_color = vec4(blend(combined_alpha, combined_fg, background), 1);
+    // since background alpha is 1.0 and fg color is pre-multiplied by its alpha,
+    // we can simplify the alpha blend equation 
+    final_color = vec4(fg.rgb + (1.0f - fg.a) * background, 1.0f);
 #else
-    final_color = vec4(combined_fg, combined_alpha);
+    // FOREGROUND
+    // fg is pre-multipled so divide it by alpha
+    final_color = vec4(fg.rgb / fg.a, fg.a);
 #endif
 
 #else
@@ -42,7 +49,8 @@ void main() {
 #ifdef SPECIAL
     final_color = special_bg;
 #else
-    final_color = vec4(background, 1);
+    // BACKGROUND
+    final_color = vec4(background, 1.0f);
 #endif
 
 #endif
