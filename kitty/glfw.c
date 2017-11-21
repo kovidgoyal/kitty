@@ -226,6 +226,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         return NULL;
     }
     glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
+    bool want_semi_transparent = (1.0 - OPT(background_opacity) > 0.1) ? true : false;
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) {
         fprintf(stderr, "Failed to create a window at size: %dx%d, using a standard size instead.\n", width, height);
@@ -274,6 +276,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
+    w->is_semi_transparent = glfwGetWindowAttrib(w->handle, GLFW_TRANSPARENT_FRAMEBUFFER);
+    if (want_semi_transparent && !w->is_semi_transparent) {
+        static bool warned = false;
+        if (!warned) {
+            fprintf(stderr, "Failed to enable transparency. This happens when your desktop environment does not support compositing.\n");
+            warned = true;
+        }
+    }
     return PyLong_FromUnsignedLongLong(w->id);
 }
 

@@ -23,6 +23,7 @@ typedef struct {
     int adjust_line_height_px;
     int x11_bell_volume;
     float adjust_line_height_frac;
+    float background_opacity;
 } Options;
 
 typedef struct {
@@ -101,6 +102,7 @@ typedef struct {
     bool viewport_size_dirty;
     double last_resize_at;
     bool has_pending_resizes;
+    bool is_semi_transparent;
 } OSWindow;
 
 

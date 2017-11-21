@@ -337,7 +337,9 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
 #undef SCALE
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
+        bind_program(CELL_PROGRAM);
         glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
+        bind_program(CELL_FOREGROUND_PROGRAM);
         glUniform1i(glGetUniformLocation(program_id(CELL_FOREGROUND_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
         cell_constants_set = true; 
     }
@@ -377,7 +379,7 @@ draw_cursor(CursorRenderInfo *cursor, bool is_focused) {
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -385,9 +387,10 @@ init_borders_program() {
     Program *p = programs + BORDERS_PROGRAM;
     int left = NUM_BORDER_UNIFORMS;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
-        SET_LOC(viewport);
-        else { fatal("Unknown uniform in borders program"); return; }
+#define SET_LOC(which) (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
+        if SET_LOC(viewport);
+        else if SET_LOC(background_opacity);
+        else { fatal("Unknown uniform in borders program: %s", p->uniforms[i].name); return; }
     }
     if (left) { fatal("Left over uniforms in borders program"); return; }
 #undef SET_LOC
@@ -416,6 +419,11 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             unmap_vao_buffer(vao_idx, 0);
         }
         bind_program(BORDERS_PROGRAM);
+        static bool constants_set = false;
+        if (!constants_set) {
+            constants_set = true;
+            glUniform1f(border_uniform_locations[BORDER_background_opacity], OPT(background_opacity));
+        }
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         bind_vertex_array(vao_idx);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
