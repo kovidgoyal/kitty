@@ -4,7 +4,7 @@
 
 from collections import OrderedDict
 
-from kitty.constants import isosx
+from kitty.constants import is_macos
 from kitty.fast_data_types import (
     change_wcwidth, set_logical_dpi, set_send_sprite_to_gpu,
     sprite_map_set_layout, sprite_map_set_limits, test_render_line,
@@ -64,7 +64,7 @@ class Rendering(BaseTest):
         render_string('ab\u0347\u0305你好|\U0001F601|\U0001F64f|\U0001F63a|')
         text = 'He\u0347\u0305llo\u0341, w\u0302or\u0306l\u0354d!'
         # macOS has no fonts capable of rendering combining chars
-        if isosx:
+        if is_macos:
             text = text.encode('ascii', 'ignore').decode('ascii')
         cells = render_string(text)[-1]
         self.ae(len(cells), len(text.encode('ascii', 'ignore')))

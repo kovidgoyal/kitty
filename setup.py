@@ -32,7 +32,7 @@ version = tuple(
     )
 )
 _plat = sys.platform.lower()
-isosx = 'darwin' in _plat
+is_macos = 'darwin' in _plat
 is_travis = os.environ.get('TRAVIS') == 'true'
 env = None
 
@@ -74,7 +74,7 @@ def at_least_version(package, major, minor=0):
 
 
 def cc_version():
-    cc = os.environ.get('CC', 'clang' if isosx else 'gcc')
+    cc = os.environ.get('CC', 'clang' if is_macos else 'gcc')
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
     ver = raw.split('.')[:2]
     try:
@@ -197,7 +197,7 @@ def kitty_env():
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
-    if isosx:
+    if is_macos:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
         cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
         font_libs += pkg_config('freetype2', '--libs')
@@ -207,12 +207,12 @@ def kitty_env():
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
     font_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(cflags)
-    gl_libs = ['-framework', 'OpenGL'] if isosx else pkg_config('gl', '--libs')
+    gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     ans.ldpaths += pylib + font_libs + gl_libs + libpng + [
         '-lunistring'
     ]
-    if isosx:
+    if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
         if is_travis and 'SW' in os.environ:
             cflags.append('-I{}/include'.format(os.environ['SW']))
@@ -369,7 +369,7 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
 def find_c_files():
     ans, headers = [], []
     d = os.path.join(base, 'kitty')
-    exclude = {'fontconfig.c', 'desktop.c'} if isosx else {'core_text.m', 'cocoa_window.m'}
+    exclude = {'fontconfig.c', 'desktop.c'} if is_macos else {'core_text.m', 'cocoa_window.m'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
@@ -384,7 +384,7 @@ def find_c_files():
 
 
 def compile_glfw(incremental, compilation_database, all_keys):
-    modules = 'cocoa' if isosx else 'x11 wayland'
+    modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
             genv = glfw.init_env(env, pkg_config, at_least_version, module)
@@ -440,7 +440,7 @@ def build_asan_launcher(args):
     cc, ccver = cc_version()
     cflags = '-g3 -Wall -Werror -fpie -std=c99'.split()
     pylib = get_python_flags(cflags)
-    sanitize_lib = ['-lasan'] if cc == 'gcc' and not isosx else []
+    sanitize_lib = ['-lasan'] if cc == 'gcc' and not is_macos else []
     cflags.extend(get_sanitize_args(cc, ccver))
     cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
     run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
@@ -496,7 +496,7 @@ def package(args, for_bundle=False):  # {{{
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
     build_linux_launcher(args, launcher_dir, for_bundle)
-    if not isosx:  # {{{ linux desktop gunk
+    if not is_macos:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
         shutil.copy2('logo/kitty.png', icdir)

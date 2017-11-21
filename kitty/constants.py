@@ -13,7 +13,7 @@ appname = 'kitty'
 version = (0, 5, 1)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
-isosx = 'darwin' in _plat
+is_macos = 'darwin' in _plat
 
 
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
@@ -25,7 +25,7 @@ def _get_config_dir():
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['VISE_CONFIG_DIRECTORY']))
 
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if isosx else '~/.config')))
+    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if is_macos else '~/.config')))
     ans = os.path.join(candidate, appname)
     os.makedirs(ans, exist_ok=True)
     return ans

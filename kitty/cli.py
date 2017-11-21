@@ -6,7 +6,7 @@ import argparse
 from gettext import gettext as _
 
 from .config import load_config
-from .constants import appname, str_version, isosx, defconf
+from .constants import appname, str_version, is_macos, defconf
 from .layout import all_layouts
 
 
@@ -70,7 +70,7 @@ def option_parser():
         default=False,
         help=_('Output commands received from child process to stdout')
     )
-    if not isosx:
+    if not is_macos:
         a(
             '--detach',
             action='store_true',

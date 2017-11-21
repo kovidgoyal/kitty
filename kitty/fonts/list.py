@@ -3,9 +3,9 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from kitty.constants import isosx
+from kitty.constants import is_macos
 
-if isosx:
+if is_macos:
     from .core_text import list_fonts
 else:
     from .fontconfig import list_fonts

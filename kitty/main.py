@@ -12,7 +12,7 @@ from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, option_parser
 from .config import initial_window_size, load_cached_values, save_cached_values
-from .constants import isosx, iswayland, logo_data_file
+from .constants import is_macos, iswayland, logo_data_file
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_terminate,
     install_sigchld_handler, set_default_window_icon, set_logical_dpi,
@@ -34,7 +34,7 @@ def load_all_shaders():
 
 
 def init_graphics():
-    glfw_module = 'cocoa' if isosx else 'x11'
+    glfw_module = 'cocoa' if is_macos else 'x11'
     if not glfw_init(os.path.join(base, 'glfw-{}.so'.format(glfw_module))):
         raise SystemExit('GLFW initialization failed')
     return glfw_module
@@ -47,7 +47,7 @@ def run_app(opts, args):
     w, h = initial_window_size(opts)
     window_id = create_os_window(w, h, encode_wm_class(args.name, args.cls), True, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
-    if not iswayland and not isosx:  # no window icons on wayland
+    if not iswayland and not is_macos:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
     set_logical_dpi(*get_logical_dpi())
@@ -99,12 +99,12 @@ def main():
         sys.setswitchinterval(1000.0)  # we have only a single python thread
     except AttributeError:
         pass  # python compiled without threading
-    if isosx:
+    if is_macos:
         ensure_osx_locale()
     try:
         locale.setlocale(locale.LC_ALL, '')
     except Exception:
-        if not isosx:
+        if not is_macos:
             raise
         print('Failed to set locale with LANG:', os.environ.get('LANG'), file=sys.stderr)
         os.environ.pop('LANG')

@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import appname, isosx, iswayland
+from .constants import appname, is_macos, iswayland
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
     redirect_std_streams, wcwidth as wcwidth_impl, x11_display, x11_window_id
@@ -78,7 +78,7 @@ def get_logical_dpi(override_dpi=None):
     if override_dpi is not None:
         get_logical_dpi.ans = override_dpi
     if not hasattr(get_logical_dpi, 'ans'):
-        if isosx:
+        if is_macos:
             # TODO: Investigate if this needs a different implementation on OS X
             get_logical_dpi.ans = glfw_get_physical_dpi()
         else:
@@ -117,7 +117,7 @@ def parse_color_set(raw):
 
 
 def set_primary_selection(text):
-    if isosx or iswayland:
+    if is_macos or iswayland:
         return  # There is no primary selection
     if isinstance(text, bytes):
         text = text.decode('utf-8')
@@ -126,7 +126,7 @@ def set_primary_selection(text):
 
 
 def get_primary_selection():
-    if isosx or iswayland:
+    if is_macos or iswayland:
         return ''  # There is no primary selection
     from kitty.fast_data_types import get_primary_selection
     return (get_primary_selection() or b'').decode('utf-8', 'replace')
@@ -155,7 +155,7 @@ def open_cmd(cmd, arg=None):
 
 def open_url(url, program='default'):
     if program == 'default':
-        cmd = ['open'] if isosx else ['xdg-open']
+        cmd = ['open'] if is_macos else ['xdg-open']
     else:
         cmd = shlex.split(program)
     return open_cmd(cmd, url)
@@ -197,7 +197,7 @@ def end_startup_notification_x11(ctx):
 
 
 def init_startup_notification(window, startup_id=None):
-    if isosx or iswayland:
+    if is_macos or iswayland:
         return
     try:
         return init_startup_notification_x11(window, startup_id)
@@ -209,7 +209,7 @@ def init_startup_notification(window, startup_id=None):
 def end_startup_notification(ctx):
     if not ctx:
         return
-    if isosx or iswayland:
+    if is_macos or iswayland:
         return
     try:
         end_startup_notification_x11(ctx)
@@ -233,7 +233,7 @@ def remove_socket_file(s, path=None):
 def single_instance_unix(name):
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
-    if isosx:
+    if is_macos:
         from .fast_data_types import user_cache_dir
         candidates = [user_cache_dir(), '/Library/Caches']
     for loc in candidates:
@@ -294,6 +294,6 @@ def single_instance(group_id=None):
 
 
 def encode_wm_class(name, cls, title=appname):
-    if isosx:
+    if is_macos:
         return title
     return '\x01' + (name or cls) + '\x1e' + cls + '\x1e' + title

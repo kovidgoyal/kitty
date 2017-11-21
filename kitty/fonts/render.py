@@ -8,7 +8,7 @@ from collections import namedtuple
 from math import ceil, floor, pi, sin, sqrt
 
 from kitty.config import defaults
-from kitty.constants import isosx
+from kitty.constants import is_macos
 from kitty.fast_data_types import (
     Screen, change_wcwidth, get_fallback_font, send_prerendered_sprites,
     set_font, set_font_size, set_logical_dpi, set_send_sprite_to_gpu,
@@ -16,7 +16,7 @@ from kitty.fast_data_types import (
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
 
-if isosx:
+if is_macos:
     from .core_text import get_font_files, font_for_family
 else:
     from .fontconfig import get_font_files, font_for_family
@@ -243,7 +243,7 @@ def test_fallback_font(qtext=None, bold=False, italic=False):
 
 def showcase():
     change_wcwidth(True)
-    f = 'monospace' if isosx else 'Liberation Mono'
+    f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
     test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family=f)

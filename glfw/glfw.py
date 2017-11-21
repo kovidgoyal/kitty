@@ -9,7 +9,7 @@ import shutil
 import sys
 
 _plat = sys.platform.lower()
-isosx = 'darwin' in _plat
+is_macos = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -19,14 +19,14 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         x for x in ans.cflags
         if x not in '-Wpedantic -Wextra -pedantic-errors'.split()
     ]
-    if not isosx:
+    if not is_macos:
         ans.cflags.append('-pthread')
         ans.ldpaths.append('-pthread')
     ans.cflags.append('-fpic')
     ans.cflags.append('-D_GLFW_' + module.upper())
     ans.cflags.append('-D_GLFW_BUILD_DLL')
 
-    if isosx:
+    if is_macos:
         ans.ldpaths.extend(
             "-framework Cocoa -framework IOKit -framework CoreFoundation -framework CoreVideo".
             split()
