@@ -12,7 +12,7 @@ from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, option_parser
 from .config import initial_window_size, load_cached_values, save_cached_values
-from .constants import is_macos, iswayland, logo_data_file
+from .constants import is_macos, is_wayland, logo_data_file, glfw_path
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_terminate,
     install_sigchld_handler, set_default_window_icon, set_logical_dpi,
@@ -25,8 +25,6 @@ from .utils import (
 )
 from .window import load_shader_programs
 
-base = os.path.dirname(os.path.abspath(__file__))
-
 
 def load_all_shaders():
     load_shader_programs()
@@ -34,20 +32,20 @@ def load_all_shaders():
 
 
 def init_graphics():
-    glfw_module = 'cocoa' if is_macos else 'x11'
-    if not glfw_init(os.path.join(base, 'glfw-{}.so'.format(glfw_module))):
+    glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland else 'x11')
+    if not glfw_init(glfw_path(glfw_module)):
         raise SystemExit('GLFW initialization failed')
     return glfw_module
 
 
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
-    set_options(opts, iswayland, args.debug_gl)
+    set_options(opts, is_wayland, args.debug_gl)
     load_cached_values()
     w, h = initial_window_size(opts)
     window_id = create_os_window(w, h, encode_wm_class(args.name, args.cls), True, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
-    if not iswayland and not is_macos:  # no window icons on wayland
+    if not is_wayland and not is_macos:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
     set_logical_dpi(*get_logical_dpi())

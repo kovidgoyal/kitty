@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from time import monotonic
 
-from .constants import appname, is_macos, iswayland
+from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
     GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
     redirect_std_streams, wcwidth as wcwidth_impl, x11_display, x11_window_id
@@ -117,7 +117,7 @@ def parse_color_set(raw):
 
 
 def set_primary_selection(text):
-    if is_macos or iswayland:
+    if is_macos or is_wayland:
         return  # There is no primary selection
     if isinstance(text, bytes):
         text = text.decode('utf-8')
@@ -126,7 +126,7 @@ def set_primary_selection(text):
 
 
 def get_primary_selection():
-    if is_macos or iswayland:
+    if is_macos or is_wayland:
         return ''  # There is no primary selection
     from kitty.fast_data_types import get_primary_selection
     return (get_primary_selection() or b'').decode('utf-8', 'replace')
@@ -197,7 +197,7 @@ def end_startup_notification_x11(ctx):
 
 
 def init_startup_notification(window, startup_id=None):
-    if is_macos or iswayland:
+    if is_macos or is_wayland:
         return
     try:
         return init_startup_notification_x11(window, startup_id)
@@ -209,7 +209,7 @@ def init_startup_notification(window, startup_id=None):
 def end_startup_notification(ctx):
     if not ctx:
         return
-    if is_macos or iswayland:
+    if is_macos or is_wayland:
         return
     try:
         end_startup_notification_x11(ctx)

@@ -14,6 +14,7 @@ version = (0, 5, 1)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
+base = os.path.dirname(os.path.abspath(__file__))
 
 
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
@@ -58,4 +59,11 @@ except KeyError:
     print('Failed to read login shell from /etc/passwd for current user, falling back to /bin/sh', file=sys.stderr)
     shell_path = '/bin/sh'
 
-iswayland = False
+
+def glfw_path(module):
+    return os.path.join(base, 'glfw-{}.so'.format(module))
+
+
+is_wayland = False
+if os.environ.get('WAYLAND_DISPLAY') and os.path.exists(glfw_path('wayland')):
+    is_wayland = True
