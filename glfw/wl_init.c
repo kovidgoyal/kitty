@@ -131,7 +131,7 @@ static void pointerHandleAxis(void* data,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     double scrollFactor;
-    double x, y;
+    double x = 0.0, y = 0.0;
 
     if (!window)
         return;

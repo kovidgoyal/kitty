@@ -62,6 +62,10 @@
       "egl_context.h", 
       "osmesa_context.h"
     ], 
+    "protocols": [
+      "unstable/relative-pointer/relative-pointer-unstable-v1.xml", 
+      "unstable/pointer-constraints/pointer-constraints-unstable-v1.xml"
+    ], 
     "sources": [
       "wl_init.c", 
       "wl_monitor.c", 

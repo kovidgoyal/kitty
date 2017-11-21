@@ -33,9 +33,10 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         )
     else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
+    sinfo = json.load(open(os.path.join(base, 'source-info.json')))
 
     if module == 'x11':
-        for dep in 'x11 xrandr xinerama xcursor xkbcommon-x11'.split():
+        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
@@ -43,10 +44,28 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         for f in 'Cocoa IOKit CoreFoundation CoreVideo'.split():
             ans.ldpaths.extend(('-framework', f))
 
-    sinfo = json.load(open(os.path.join(base, 'source-info.json')))
+    elif module == 'wayland':
+        at_least_version('wayland-protocols', 1, 1)
+        ans.wayland_packagedir = os.path.abspath(pkg_config('wayland-protocols', '--variable=pkgdatadir')[0])
+        ans.wayland_scanner = os.path.abspath(pkg_config('wayland-scanner', '--variable=wayland_scanner')[0])
+        ans.wayland_protocols = tuple(sinfo[module]['protocols'])
+        for dep in 'wayland-egl wayland-client wayland-scanner xkbcommon'.split():
+            ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
+            ans.ldpaths.extend(pkg_config(dep, '--libs'))
+
     ans.sources = sinfo['common']['sources'] + sinfo[module]['sources']
     ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
     return ans
+
+
+def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
+    for protocol in env.wayland_protocols:
+        src = os.path.join(env.wayland_packagedir, protocol)
+        dest = os.path.basename(src).rpartition('.')[0] + '-client-protocol.h'
+        dest = os.path.join(dest_dir, 'wayland-' + dest)
+        if newer(dest, src):
+            run_tool([env.wayland_scanner, 'client-header', src, dest],
+                     desc='Generating {} ...'.format(emphasis(os.path.basename(dest))))
 
 
 def collect_source_information():
@@ -71,6 +90,10 @@ def collect_source_information():
         if group == 'x11':
             ans[group]['headers'].append('linux_joystick.h')
             ans[group]['sources'].append('linux_joystick.c')
+        elif group == 'wayland':
+            ans[group]['protocols'] = p = []
+            for m in re.finditer(r'WAYLAND_PROTOCOLS_PKGDATADIR\}/([^"]+)"', raw):
+                p.append(m.group(1))
     return ans
 
 

@@ -11,3 +11,4 @@ asan-launcher
 kitty-profile
 dev
 __pycache__
+glfw/wayland-*-client-protocol.h

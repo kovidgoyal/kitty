@@ -384,11 +384,20 @@ def find_c_files():
 
 
 def compile_glfw(incremental, compilation_database, all_keys):
-    modules = 'cocoa' if isosx else 'x11'
+    modules = 'cocoa' if isosx else 'x11 wayland'
     for module in modules.split():
-        genv = glfw.init_env(env, pkg_config, at_least_version, module)
+        try:
+            genv = glfw.init_env(env, pkg_config, at_least_version, module)
+        except SystemExit as err:
+            if module != 'wayland':
+                raise
+            print(err.message, file=sys.stderr)
+            print('Disabling building of wayland backend', file=sys.stderr)
+            continue
         sources = [os.path.join('glfw', x) for x in genv.sources]
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
+        if module == 'wayland':
+            glfw.build_wayland_protocols(genv, run_tool, emphasis, newer, os.path.join(base, 'glfw'))
         compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, all_keys, sources, all_headers)
 
 
