@@ -391,7 +391,7 @@ def compile_glfw(incremental, compilation_database, all_keys):
         except SystemExit as err:
             if module != 'wayland':
                 raise
-            print(err.message, file=sys.stderr)
+            print(err, file=sys.stderr)
             print('Disabling building of wayland backend', file=sys.stderr)
             continue
         sources = [os.path.join('glfw', x) for x in genv.sources]
