@@ -67,7 +67,11 @@ cell_size = ViewportSize()
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
-shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+try:
+    shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+except KeyError:
+    print('Failed to read login shell from /etc/passwd for current user, falling back to /bin/sh', file=sys.stderr)
+    shell_path = '/bin/sh'
 
 GLint = ctypes.c_int if ctypes.sizeof(ctypes.c_int) == 4 else ctypes.c_long
 GLuint = ctypes.c_uint if ctypes.sizeof(ctypes.c_uint) == 4 else ctypes.c_ulong
