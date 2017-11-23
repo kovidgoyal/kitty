@@ -326,9 +326,11 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); 
     }
+    glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, offscreen_framebuffer);
     glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, os_window->offscreen_texture_id, 0);
     /* if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) fatal("offscreen framebuffer not complete"); */
+    glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
 
     bind_program(CELL_BG_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
@@ -347,6 +349,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 
     glDisable(GL_BLEND);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
 
     // Now render the framebuffer to the screen reversing alpha pre-multiplication
     glEnable(GL_SCISSOR_TEST);
@@ -374,6 +377,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
+    glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
         bind_program(CELL_PROGRAM);

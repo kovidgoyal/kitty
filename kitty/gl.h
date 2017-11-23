@@ -64,7 +64,6 @@ gl_init() {
 
 void
 update_surface_size(int w, int h, GLuint offscreen_texture_id) {
-    glViewport(0, 0, w, h); 
     if (offscreen_texture_id) {
         glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
