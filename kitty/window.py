@@ -12,13 +12,12 @@ from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
-    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BACKGROUND_PROGRAM,
-    CELL_FOREGROUND_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM,
-    CURSOR_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    Screen, add_window, compile_program, glfw_post_empty_event,
-    init_cell_program, init_cursor_program, set_clipboard_string,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BG_PROGRAM,
+    CELL_FG_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_PROGRAM,
+    GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
+    add_window, compile_program, glfw_post_empty_event, init_cell_program,
+    init_cursor_program, set_clipboard_string, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -52,14 +51,19 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs():
+def load_shader_programs(semi_transparent=0):
     v, f = load_shaders('cell')
     compile_program(GRAPHICS_PROGRAM, *load_shaders('graphics'))
     for which, p in {
-            'ALL': CELL_PROGRAM, 'BACKGROUND': CELL_BACKGROUND_PROGRAM, 'SPECIAL': CELL_SPECIAL_PROGRAM,
-            'FOREGROUND': CELL_FOREGROUND_PROGRAM
+            'SIMPLE': CELL_PROGRAM,
+            'BACKGROUND': CELL_BG_PROGRAM,
+            'SPECIAL': CELL_SPECIAL_PROGRAM,
+            'FOREGROUND': CELL_FG_PROGRAM,
     }.items():
         vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
+        if semi_transparent:
+            vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+            ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
         compile_program(p, vv, ff)
     init_cell_program()
     compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))

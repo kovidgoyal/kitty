@@ -9,7 +9,7 @@
 #include "fonts.h"
 #include <sys/sysctl.h>
 
-enum { CELL_PROGRAM, CELL_BACKGROUND_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FOREGROUND_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT };
 
 // Sprites {{{
@@ -145,7 +145,7 @@ static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 
 static void
 init_cell_program() {
-    for (int i = CELL_PROGRAM; i <= CELL_FOREGROUND_PROGRAM; i++) {
+    for (int i = CELL_PROGRAM; i < CURSOR_PROGRAM; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
         cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
@@ -154,7 +154,7 @@ init_cell_program() {
     }
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
-    for (int p = CELL_PROGRAM; p <= CELL_FOREGROUND_PROGRAM; p++) {
+    for (int p = CELL_PROGRAM; p < CURSOR_PROGRAM; p++) {
         C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
 #undef C
@@ -197,7 +197,7 @@ create_graphics_vao() {
 static inline void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted) {
     struct CellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
 
@@ -228,6 +228,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     sprite_tracker_current_layout(&x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->color1 = inverted & 1; rd->color2 = 1 - (inverted & 1);
+    rd->background_opacity = OPT(background_opacity);
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -312,21 +313,22 @@ draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
 
 static void
 draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
-    bind_program(CELL_BACKGROUND_PROGRAM); 
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
-
-    bind_program(CELL_SPECIAL_PROGRAM); 
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
-
-    bind_program(CELL_FOREGROUND_PROGRAM); 
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
-
-    if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
-    glDisable(GL_BLEND);
+    (void)vao_idx; (void)gvao_idx; (void)screen;
+    /* bind_program(CELL_BACKGROUND_PROGRAM);  */
+    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
+    /* glEnable(GL_BLEND); */
+    /* glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); */
+    /*  */
+    /* if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs); */
+    /*  */
+    /* bind_program(CELL_SPECIAL_PROGRAM);  */
+    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
+    /*  */
+    /* bind_program(CELL_FOREGROUND_PROGRAM);  */
+    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
+    /*  */
+    /* if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs); */
+    /* glDisable(GL_BLEND); */
 }
 
 void 
@@ -345,11 +347,10 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     if (!cell_constants_set) { 
         bind_program(CELL_PROGRAM);
         glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
-        bind_program(CELL_FOREGROUND_PROGRAM);
-        glUniform1i(glGetUniformLocation(program_id(CELL_FOREGROUND_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
         cell_constants_set = true; 
     }
-    if (screen->grman->num_of_negative_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
+    bool needs_complex_rendering = screen->grman->num_of_negative_refs || (screen->grman->num_of_positive_refs && os_window->is_semi_transparent);
+    if (needs_complex_rendering) draw_cells_interleaved(vao_idx, gvao_idx, screen);
     else draw_all_cells(vao_idx, gvao_idx, screen);
 }
 // }}}
@@ -526,7 +527,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BACKGROUND_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FOREGROUND_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

@@ -26,8 +26,8 @@ from .utils import (
 from .window import load_shader_programs
 
 
-def load_all_shaders():
-    load_shader_programs()
+def load_all_shaders(semi_transparent=0):
+    load_shader_programs(semi_transparent)
     load_borders_program()
 
 

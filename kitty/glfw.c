@@ -238,7 +238,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
     if (is_first_window) { 
         gl_init();
-        PyObject *ret = PyObject_CallFunction(load_programs, NULL);
+        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
 #ifdef __APPLE__
