@@ -178,6 +178,8 @@ void main() {
 #if defined(TRANSPARENT) && !defined(SPECIAL)
     // If the background color is default, set its opacity to background_opacity, otherwise it should be opaque
     bg_alpha = step(0.5, float(colors[bg_index] & BYTE_MASK));
+    // Cursor must not be affected by background_opacity
+    bg_alpha = mix(bg_alpha, 1.0, cursor);
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
 #endif
 
