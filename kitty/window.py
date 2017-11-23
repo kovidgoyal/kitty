@@ -53,8 +53,8 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 
 
 def load_shader_programs(semi_transparent=0):
-    v, f = load_shaders('cell')
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
+    v, f = load_shaders('cell')
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
