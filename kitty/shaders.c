@@ -9,7 +9,7 @@
 #include "fonts.h"
 #include <sys/sysctl.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
@@ -278,12 +278,13 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 }
 
 static void
-draw_graphics(ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
+draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
     bind_vertex_array(gvao_idx);
-    bind_program(GRAPHICS_PROGRAM);
+    bind_program(program);
     static bool graphics_constants_set = false;
     if (!graphics_constants_set) { 
         glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT);  
+        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "image"), GRAPHICS_UNIT);  
         graphics_constants_set = true; 
     }
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT); 
@@ -308,7 +309,8 @@ draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     if (screen->grman->count) {
         glEnable(GL_BLEND);
-        draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
+        draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
         glDisable(GL_BLEND);
     }
 }
@@ -329,7 +331,8 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
     bind_program(CELL_BG_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     glEnable(GL_BLEND);
-    if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
+    if (screen->grman->num_of_negative_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
     bind_program(CELL_SPECIAL_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
@@ -337,7 +340,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
     bind_program(CELL_FG_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
 
-    if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
+    if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
     glDisable(GL_BLEND);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
@@ -350,6 +353,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         blit_constants_set = true; 
     }
     glActiveTexture(GL_TEXTURE0 + BLIT_UNIT); 
+    glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id); 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4); 
     glDisable(GL_SCISSOR_TEST);
 }
@@ -370,6 +374,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     if (!cell_constants_set) { 
         bind_program(CELL_PROGRAM);
         glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
+        glUniform1i(glGetUniformLocation(program_id(CELL_FG_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
         cell_constants_set = true; 
     }
     bool needs_complex_rendering = screen->grman->num_of_negative_refs || (screen->grman->num_of_positive_refs && os_window->is_semi_transparent);
@@ -550,7 +555,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(BLIT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(BLIT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
