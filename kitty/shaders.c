@@ -9,8 +9,8 @@
 #include "fonts.h"
 #include <sys/sysctl.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, NUM_PROGRAMS };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -142,6 +142,8 @@ typedef struct {
 } CellProgramLayout;
 
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
+static GLuint offscreen_framebuffer = 0;
+static ssize_t blit_vertex_array;
 
 static void
 init_cell_program() {
@@ -158,7 +160,8 @@ init_cell_program() {
         C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
 #undef C
-
+    glGenFramebuffers(1, &offscreen_framebuffer);
+    blit_vertex_array = create_vao();
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -278,7 +281,6 @@ static void
 draw_graphics(ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
     bind_vertex_array(gvao_idx);
     bind_program(GRAPHICS_PROGRAM);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     static bool graphics_constants_set = false;
     if (!graphics_constants_set) { 
         glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT);  
@@ -312,34 +314,55 @@ draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
-    (void)vao_idx; (void)gvao_idx; (void)screen;
-    /* bind_program(CELL_BACKGROUND_PROGRAM);  */
-    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
-    /* glEnable(GL_BLEND); */
-    /* glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); */
-    /*  */
-    /* if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs); */
-    /*  */
-    /* bind_program(CELL_SPECIAL_PROGRAM);  */
-    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
-    /*  */
-    /* bind_program(CELL_FOREGROUND_PROGRAM);  */
-    /* glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);  */
-    /*  */
-    /* if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs); */
-    /* glDisable(GL_BLEND); */
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window) {
+    if (!os_window->offscreen_texture_id) {
+        glGenTextures(1, &os_window->offscreen_texture_id);
+        glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    }
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, offscreen_framebuffer);
+    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, os_window->offscreen_texture_id, 0);
+    /* if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) fatal("offscreen framebuffer not complete"); */
+
+    bind_program(CELL_BG_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+    glEnable(GL_BLEND);
+    if (screen->grman->num_of_negative_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+
+    bind_program(CELL_SPECIAL_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+
+    bind_program(CELL_FG_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+
+    if (screen->grman->num_of_positive_refs) draw_graphics(vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
+    glDisable(GL_BLEND);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    // Now render the framebuffer to the screen reversing alpha pre-multiplication
+    glEnable(GL_SCISSOR_TEST);
+    bind_program(BLIT_PROGRAM); bind_vertex_array(blit_vertex_array); 
+    static bool blit_constants_set = false;
+    if (!blit_constants_set) { 
+        glUniform1i(glGetUniformLocation(program_id(BLIT_PROGRAM), "image"), BLIT_UNIT);  
+        blit_constants_set = true; 
+    }
+    glActiveTexture(GL_TEXTURE0 + BLIT_UNIT); 
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4); 
+    glDisable(GL_SCISSOR_TEST);
 }
 
 void 
 draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
     cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
-    GLfloat h = (GLfloat)screen->lines * dy;
+    GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
             (GLint)(SCALE(width, (xstart + 1.0f) / 2.0f)), 
             (GLint)(SCALE(height, ((ystart - h) + 1.0f) / 2.0f)),
-            (GLsizei)(ceilf(SCALE(width, (float)screen->columns * dx / 2.0f))),
+            (GLsizei)(ceilf(SCALE(width, w / 2.0f))),
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
@@ -350,7 +373,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         cell_constants_set = true; 
     }
     bool needs_complex_rendering = screen->grman->num_of_negative_refs || (screen->grman->num_of_positive_refs && os_window->is_semi_transparent);
-    if (needs_complex_rendering) draw_cells_interleaved(vao_idx, gvao_idx, screen);
+    if (needs_complex_rendering) draw_cells_interleaved(vao_idx, gvao_idx, screen, os_window);
     else draw_all_cells(vao_idx, gvao_idx, screen);
 }
 // }}}
@@ -527,7 +550,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(BLIT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

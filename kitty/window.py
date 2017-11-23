@@ -12,7 +12,7 @@ from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
-    BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BG_PROGRAM,
+    BLIT_PROGRAM, BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BG_PROGRAM,
     CELL_FG_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_PROGRAM,
     GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
     add_window, compile_program, glfw_post_empty_event, init_cell_program,
@@ -54,6 +54,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
 def load_shader_programs(semi_transparent=0):
     v, f = load_shaders('cell')
     compile_program(GRAPHICS_PROGRAM, *load_shaders('graphics'))
+    compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,

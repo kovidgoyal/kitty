@@ -103,6 +103,7 @@ typedef struct {
     double last_resize_at;
     bool has_pending_resizes;
     bool is_semi_transparent;
+    uint32_t offscreen_texture_id;
 } OSWindow;
 
 
@@ -159,7 +160,7 @@ ssize_t create_graphics_vao();
 ssize_t create_border_vao();
 void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cursor(CursorRenderInfo *, bool);
-void update_surface_size(int, int);
+void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(unsigned int, unsigned int, unsigned int, uint8_t*);

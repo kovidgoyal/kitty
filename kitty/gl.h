@@ -63,8 +63,12 @@ gl_init() {
 }
 
 void
-update_surface_size(int w, int h) {
+update_surface_size(int w, int h, GLuint offscreen_texture_id) {
     glViewport(0, 0, w, h); 
+    if (offscreen_texture_id) {
+        glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    }
 }
 
 void
@@ -251,7 +255,7 @@ typedef struct {
     ssize_t buffers[10];
 } VAO;
 
-static VAO vaos[2*MAX_CHILDREN + 10] = {{0}};
+static VAO vaos[4*MAX_CHILDREN + 10] = {{0}};
 
 static ssize_t
 create_vao() {
