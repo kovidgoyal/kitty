@@ -12,7 +12,8 @@ from .fast_data_types import (
     GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, create_os_window,
     current_os_window, destroy_global_data, destroy_sprite_map,
     get_clipboard_string, glfw_post_empty_event, layout_sprite_map,
-    mark_os_window_for_close, toggle_fullscreen, viewport_for_window
+    mark_os_window_for_close, show_window, toggle_fullscreen,
+    viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_key_map, get_shortcut
@@ -104,9 +105,11 @@ class Boss:
             args = option_parser().parse_args(msg['args'][1:])
             opts = create_opts(args)
             session = create_session(opts, args)
-            os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts))
+            os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False)
             if startup_id:
                 ctx = init_startup_notification(os_window_id, startup_id)
+            show_window(os_window_id)
+            if startup_id:
                 end_startup_notification(ctx)
         else:
             safe_print('Unknown message received from peer, ignoring')
