@@ -1,13 +1,13 @@
 #version GLSL_VERSION
-#define vleft  -1.0
-#define vtop  1.0
-#define vright  1.0
-#define vbottom  -1.0
+#define vleft  -1.0f
+#define vtop  1.0f
+#define vright  1.0f
+#define vbottom  -1.0f
 
-#define tleft 0
-#define ttop 1
-#define tright 1
-#define tbottom 0
+#define tleft 0.0f
+#define ttop 1.0f
+#define tright 1.0f
+#define tbottom 0.0f
 
 const vec2 viewport_xpos = vec2(vleft, vright);
 const vec2 viewport_ypos = vec2(vtop, vbottom);
