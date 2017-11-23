@@ -12,7 +12,7 @@
 
 #ifdef NEEDS_BACKROUND
 in vec3 background;
-#ifdef TRANSPARENT
+#if defined(TRANSPARENT) || defined(SPECIAL)
 in float bg_alpha;
 #endif
 #endif
@@ -63,7 +63,7 @@ vec4 calculate_foreground() {
 
 void main() {
 #if defined(BACKGROUND) || defined(SPECIAL)
-#ifdef TRANSPARENT
+#if defined(TRANSPARENT) || defined(SPECIAL)
     final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, 1.0f);

@@ -41,7 +41,7 @@ const uvec2 cell_pos_map[] = uvec2[4](
 
 #ifdef NEEDS_BACKROUND
 out vec3 background;
-#ifdef TRANSPARENT
+#if defined(TRANSPARENT) || defined(SPECIAL)
 out float bg_alpha;
 #endif
 #endif
@@ -173,16 +173,22 @@ void main() {
 
 #if defined(BACKGROUND)
     background = bg;
-#else
-    // Selection and cursor
-    bg = choose_color(is_selected, color_to_vec(highlight_bg), bg);
-    background = choose_color(cursor, color_to_vec(cursor_color), bg);
 #endif
 
-#ifdef TRANSPARENT
+#if defined(TRANSPARENT) && !defined(SPECIAL)
     // If the background color is default, set its opacity to background_opacity, otherwise it should be opaque
     bg_alpha = step(0.5, float(colors[bg_index] & BYTE_MASK));
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
+#endif
+
+#if defined(SPECIAL) || defined(SIMPLE)
+    // Selection and cursor
+    bg = choose_color(is_selected, color_to_vec(highlight_bg), bg);
+    background = choose_color(cursor, color_to_vec(cursor_color), bg);
+#ifdef SPECIAL
+    // bg_alpha should be 1 if cursor/selection otherwise 0
+    bg_alpha = mix(0.0, 1.0, step(0.5, is_selected + cursor));
+#endif
 #endif
 
 #endif
