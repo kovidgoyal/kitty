@@ -958,6 +958,7 @@ handle_peer(ChildMonitor *self, int s) {
         Message *m = self->messages + self->messages_count++;
         m->data = buf; m->sz = buf_used;
         children_mutex(unlock);
+        wakeup_main_loop();
     } else free(buf);
 }
 
