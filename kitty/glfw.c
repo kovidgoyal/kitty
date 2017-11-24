@@ -206,7 +206,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-        glfwWindowHint(GLFW_SAMPLES, 0);
+        // We dont use depth and stencil buffers
+        glfwWindowHint(GLFW_DEPTH_BITS, 0);
+        glfwWindowHint(GLFW_STENCIL_BITS, 0);
 #ifdef __APPLE__
         if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
