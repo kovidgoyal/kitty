@@ -365,6 +365,14 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 
 void 
 draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
+    if (os_window->clear_count < 2) {
+        os_window->clear_count++;
+#define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
+        glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? OPT(background_opacity) : 1.0f);
+#undef C
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+
     cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))

@@ -601,6 +601,7 @@ render(double now) {
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
         make_os_window_context_current(w);
         if (w->viewport_size_dirty) {
+            w->clear_count = 0;
             update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
             w->viewport_size_dirty = false;
         }
