@@ -62,19 +62,36 @@ vec4 calculate_foreground() {
 #endif
 
 void main() {
-#if defined(BACKGROUND) || defined(SPECIAL)
-#if defined(TRANSPARENT) || defined(SPECIAL)
+#ifdef BACKGROUND
+#ifdef TRANSPARENT
     final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, 1.0f);
 #endif 
+#endif
 
-#else 
+#ifdef SPECIAL
+#ifdef TRANSPARENT
+    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+#else
+    final_color = vec4(background.rgb, bg_alpha);
+#endif 
+#endif
+
+#if defined(FOREGROUND) || defined(SIMPLE) 
+    // FOREGROUND or SIMPLE
     vec4 fg = calculate_foreground();  // pre-multiplied foreground
+
 #ifdef FOREGROUND
+    // FOREGROUND
+#ifdef TRANSPARENT
     final_color = fg;
 #else
+    final_color = vec4(fg.rgb / fg.a, fg.a);
+#endif
 
+#else
+    // SIMPLE
 #ifdef TRANSPARENT
     final_color = alpha_blend_premul(fg.rgb, fg.a, background * bg_alpha, bg_alpha);
     final_color = vec4(final_color.rgb / final_color.a, final_color.a);

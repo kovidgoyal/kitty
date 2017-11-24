@@ -303,20 +303,43 @@ draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *d
     bind_vertex_array(vao_idx);
 }
 
+#define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
+#define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
+
 static void
-draw_all_cells(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
+draw_cells_simple(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     bind_program(CELL_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     if (screen->grman->count) {
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
+        BLEND_ONTO_OPAQUE;
         draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->count);
         glDisable(GL_BLEND);
     }
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
+    bind_program(CELL_BG_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+    glEnable(GL_BLEND);
+    BLEND_ONTO_OPAQUE;
+
+    if (screen->grman->num_of_negative_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
+
+    bind_program(CELL_SPECIAL_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+
+    bind_program(CELL_FG_PROGRAM); 
+    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
+
+    if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs, screen->grman->num_of_positive_refs);
+
+    glDisable(GL_BLEND);
+}
+
+static void
+draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window) {
     if (!os_window->offscreen_texture_id) {
         glGenTextures(1, &os_window->offscreen_texture_id);
         glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
@@ -334,7 +357,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
     bind_program(CELL_BG_PROGRAM); 
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns); 
     glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
+    BLEND_PREMULT;
 
     if (screen->grman->num_of_negative_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_negative_refs);
 
@@ -390,9 +413,13 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         glUniform1i(glGetUniformLocation(program_id(CELL_FG_PROGRAM), "sprites"), SPRITE_MAP_UNIT);  
         cell_constants_set = true; 
     }
-    bool needs_complex_rendering = screen->grman->num_of_negative_refs || (screen->grman->num_of_positive_refs && os_window->is_semi_transparent);
-    if (needs_complex_rendering) draw_cells_interleaved(vao_idx, gvao_idx, screen, os_window);
-    else draw_all_cells(vao_idx, gvao_idx, screen);
+    if (os_window->is_semi_transparent) {
+        if (screen->grman->count) draw_cells_interleaved_premult(vao_idx, gvao_idx, screen, os_window);
+        else draw_cells_simple(vao_idx, gvao_idx, screen);
+    } else {
+        if (screen->grman->num_of_negative_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
+        else draw_cells_simple(vao_idx, gvao_idx, screen);
+    }
 }
 // }}}
 
