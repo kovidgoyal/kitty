@@ -356,6 +356,12 @@ glfw_post_empty_event(PyObject UNUSED *self) {
     Py_RETURN_NONE;
 }
 
+PyObject*
+glfw_poll_events(PyObject UNUSED *self) {
+    glfwPollEvents();
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 get_physical_dpi(GLFWmonitor *m) {
     int width = 0, height = 0;
@@ -647,6 +653,7 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
+    METHODB(glfw_poll_events, METH_NOARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""}, 
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
     {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
