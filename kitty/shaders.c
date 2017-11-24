@@ -375,7 +375,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
-    glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
     static bool cell_constants_set = false;
     if (!cell_constants_set) { 
         bind_program(CELL_PROGRAM);
