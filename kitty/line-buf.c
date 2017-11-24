@@ -268,7 +268,7 @@ linebuf_index(LineBuf* self, index_type top, index_type bottom) {
 }
 
 static PyObject*
-index(LineBuf *self, PyObject *args) {
+pyw_index(LineBuf *self, PyObject *args) {
 #define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
     unsigned int top, bottom;
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
@@ -435,7 +435,7 @@ static PyMethodDef methods[] = {
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
     METHOD(dirty_lines, METH_NOARGS)
-    METHOD(index, METH_VARARGS)
+    {"index", (PyCFunction)pyw_index, METH_VARARGS, NULL},
     METHOD(reverse_index, METH_VARARGS)
     METHOD(insert_lines, METH_VARARGS)
     METHOD(delete_lines, METH_VARARGS)
