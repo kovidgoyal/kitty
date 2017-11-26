@@ -13,13 +13,13 @@
 extern PyTypeObject Screen_Type;
 
 // utils {{{
-static unsigned long pow10[] = {
+static uint64_t pow10[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
-static inline unsigned long
+static inline uint64_t
 utoi(uint32_t *buf, unsigned int sz) {
-    unsigned long ans = 0;
+    uint64_t ans = 0;
     uint32_t *p = buf;
     // Ignore leading zeros
     while(sz > 0) {
@@ -27,7 +27,7 @@ utoi(uint32_t *buf, unsigned int sz) {
         else break;
     }
     if (sz < sizeof(pow10)/sizeof(pow10[0])) {
-        for (int i = sz-1, j=0; i >=0; i--, j++) {
+        for (int i = sz-1, j=0; i >= 0; i--, j++) {
             ans += (p[i] - '0') * pow10[j];
         }
     }
@@ -1053,7 +1053,7 @@ extern uint32_t *latin1_charset;
 static inline void 
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state;
-    for (unsigned int i = 0; i < len; i++) {
+    for (unsigned int i = 0; i < (unsigned int)len; i++) {
         if (screen->use_latin1) dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
         else {
             switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, buf[i])) {
