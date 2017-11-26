@@ -9,9 +9,17 @@ from itertools import repeat
 from kitty.utils import get_logical_dpi
 
 
+scale = (0.001, 1, 1.5, 2)
+
+
+def set_scale(new_scale):
+    global scale
+    scale = tuple(new_scale)
+
+
 def thickness(level=1, horizontal=True):
     dpi = get_logical_dpi()[0 if horizontal else 1]
-    pts = (0.001, 1, 1.5, 2)[level]
+    pts = scale[level]
     return int(math.ceil(pts * dpi / 72.0))
 
 

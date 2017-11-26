@@ -220,6 +220,13 @@ def adjust_line_height(x):
     return int(x)
 
 
+def box_drawing_scale(x):
+    ans = tuple(float(x.strip()) for x in x.split(','))
+    if len(ans) != 4:
+        raise ValueError('Invalid box_drawing scale, must have four entries')
+    return ans
+
+
 type_map = {
     'adjust_line_height': adjust_line_height,
     'scrollback_lines': positive_int,
@@ -249,6 +256,7 @@ type_map = {
     'use_system_wcwidth': to_bool,
     'macos_hide_titlebar': to_bool,
     'macos_option_as_alt': to_bool,
+    'box_drawing_scale': box_drawing_scale,
 }
 
 for name in (

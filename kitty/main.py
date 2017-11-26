@@ -26,6 +26,7 @@ from .fast_data_types import (
     glfw_init, glfw_init_hint_string, glfw_swap_interval, glfw_terminate,
     glfw_window_hint, install_sigchld_handler, set_logical_dpi, set_options
 )
+from .fonts.box_drawing import set_scale
 from .layout import all_layouts
 from .utils import (
     color_as_int, detach, end_startup_notification, get_logical_dpi,
@@ -170,6 +171,7 @@ def initialize_window(window, opts, debug_gl=False):
 def run_app(opts, args):
     set_options(opts)
     setup_opengl(opts)
+    set_scale(opts.box_drawing_scale)
     load_cached_values()
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
