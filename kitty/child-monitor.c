@@ -495,9 +495,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_w
     Cursor *cursor = rd->screen->cursor;
     ans->x = cursor->x; ans->y = cursor->y;
     ans->is_visible = false;
-    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) {
-        ans->is_visible = false;
-    }
+    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
     double time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && os_window->is_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
     bool do_draw_cursor = true;
