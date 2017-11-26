@@ -220,10 +220,17 @@ GLFWAPI int glfwInit(void)
 
     glfwDefaultWindowHints();
 
-    if (!glfwUpdateGamepadMappings(_glfwDefaultMappings))
     {
-        terminate();
-        return GLFW_FALSE;
+        int i;
+
+        for (i = 0;  _glfwDefaultMappings[i];  i++)
+        {
+            if (!glfwUpdateGamepadMappings(_glfwDefaultMappings[i]))
+            {
+                terminate();
+                return GLFW_FALSE;
+            }
+        }
     }
 
     return GLFW_TRUE;

@@ -686,17 +686,17 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
                         [sender draggingLocation].x,
                         contentRect.size.height - [sender draggingLocation].y);
 
-    const int count = [files count];
+    const NSUInteger count = [files count];
     if (count)
     {
         NSEnumerator* e = [files objectEnumerator];
         char** paths = calloc(count, sizeof(char*));
-        int i;
+        NSUInteger i;
 
         for (i = 0;  i < count;  i++)
             paths[i] = strdup([[e nextObject] UTF8String]);
 
-        _glfwInputDrop(window, count, (const char**) paths);
+        _glfwInputDrop(window, (int) count, (const char**) paths);
 
         for (i = 0;  i < count;  i++)
             free(paths[i]);

@@ -102,7 +102,7 @@ def collect_source_information():
             ans[group]['sources'].append('linux_joystick.c')
         elif group == 'wayland':
             ans[group]['protocols'] = p = []
-            for m in re.finditer(r'WAYLAND_PROTOCOLS_PKGDATADIR\}/([^"]+)"', raw):
+            for m in re.finditer(r'WAYLAND_PROTOCOLS_PKGDATADIR\}/(.+?)"?$', raw, flags=re.M):
                 p.append(m.group(1))
     return ans
 
