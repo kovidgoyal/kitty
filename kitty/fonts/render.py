@@ -201,18 +201,22 @@ def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None
         set_send_sprite_to_gpu(None)
 
 
-def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
+def display_bitmap(rgb_data, width, height):
     from tempfile import NamedTemporaryFile
-    from kitty.fast_data_types import concat_cells, current_fonts
     from kitty.icat import detect_support, show
-    if not hasattr(test_render_string, 'detected') and not detect_support():
+    if not hasattr(display_bitmap, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
-    test_render_string.detected = True
+    display_bitmap.detected = True
+    with NamedTemporaryFile(delete=False) as f:
+        f.write(rgb_data)
+    show(f.name, width, height, 24)
+
+
+def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
+    from kitty.fast_data_types import concat_cells, current_fonts
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
     rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
-    with NamedTemporaryFile(delete=False) as f:
-        f.write(rgb_data)
     cf = current_fonts()
     fonts = [cf['medium'].display_name()]
     fonts.extend(f.display_name() for f in cf['fallback'])
@@ -221,7 +225,7 @@ def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi
         print(msg)
     except UnicodeEncodeError:
         sys.stdout.buffer.write(msg.encode('utf-8') + b'\n')
-    show(f.name, cell_width * len(cells), cell_height, 24)
+    display_bitmap(rgb_data, cell_width * len(cells), cell_height)
     print('\n')
 
 
