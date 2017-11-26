@@ -344,8 +344,6 @@ for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('�
     for ch in chars:
         box_chars[ch] = [p(func, which=ch)]
 
-is_renderable_box_char = box_chars.__contains__
-
 
 def render_box_char(ch, buf, width, height):
     for func in box_chars[ch]:
@@ -362,34 +360,41 @@ def render_missing_glyph(buf, width, height):
     draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
 
 
-def join_rows(width, height, rows):
-    import ctypes
-    ans = (ctypes.c_ubyte * (width * height * len(rows)))()
-    pos = ctypes.addressof(ans)
-    row_sz = width * height
-    for row in rows:
-        ctypes.memmove(pos, ctypes.addressof(row), row_sz)
-        pos += row_sz
-    return ans
-
-
 def test_drawing(sz=32, family='monospace'):
-    from .render import join_cells, display_bitmap, render_cell, set_font_family
-    from kitty.config import defaults
-    opts = defaults._replace(font_family=family, font_size=sz)
-    width, height = set_font_family(opts)
+    from .render import display_bitmap, setup_for_testing
+    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
+
+    width, height = setup_for_testing(family, sz)[1:]
+    space = bytearray(width * height)
+
+    def join_cells(cells):
+        cells = tuple(bytes(x) for x in cells)
+        return concat_cells(width, height, cells)
+
+    def render_chr(ch):
+        if ch in box_chars:
+            cell = bytearray(len(space))
+            render_box_char(ch, cell, width, height)
+            return cell
+        return space
+
     pos = 0x2500
     rows = []
-    space = render_cell()[0]
-    space_row = join_cells(width, height, *repeat(space, 32))
+    space_row = join_cells(repeat(space, 32))
 
-    for r in range(8):
-        row = []
-        for i in range(16):
-            row.append(render_cell(chr(pos))[0]), row.append(space)
-            pos += 1
-        rows.append(join_cells(width, height, *row))
-        rows.append(space_row)
-    width *= 32
-    im = join_rows(width, height, rows)
-    display_bitmap(im, width, height * len(rows))
+    try:
+        for r in range(8):
+            row = []
+            for i in range(16):
+                row.append(render_chr(chr(pos)))
+                row.append(space)
+                pos += 1
+            rows.append(join_cells(row))
+            rows.append(space_row)
+        rgb_data = b''.join(rows)
+        width *= 32
+        height *= len(rows)
+        assert len(rgb_data) == width * height * 3, '{} != {}'.format(len(rgb_data), width * height * 3)
+        display_bitmap(rgb_data, width, height)
+    finally:
+        set_send_sprite_to_gpu(None)
