@@ -3,11 +3,11 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import math
+import os
 from functools import partial as p
 from itertools import repeat
 
 from kitty.utils import get_logical_dpi
-
 
 scale = (0.001, 1, 1.5, 2)
 
@@ -272,6 +272,49 @@ def inner_corner(buf, width, height, which='tl', level=1):
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
+def vblock(buf, width, height, frac=1, gravity='top'):
+    num_rows = min(height, round(frac * height))
+    start = 0 if gravity == 'top' else height - num_rows
+    for r in range(start, start + num_rows):
+        off = r * width
+        for c in range(off, off + width):
+            buf[c] = 255
+
+
+def hblock(buf, width, height, frac=1, gravity='left'):
+    num_cols = min(width, round(frac * width))
+    start = 0 if gravity == 'left' else width - num_cols
+    for r in range(height):
+        off = r * width + start
+        for c in range(off, off + num_cols):
+            buf[c] = 255
+
+
+def shade(buf, width, height, frac=1/4):
+    rand = bytearray(os.urandom(width * height))
+    cutoff = int(frac * 255)
+
+    for r in range(height):
+        off = width * r
+        for c in range(width):
+            q = off + c
+            if rand[q] < cutoff:
+                buf[q] = 255
+
+
+def quad(buf, width, height, x=0, y=0):
+    num_cols = width // 2
+    left = x * num_cols
+    right = width if x else num_cols
+    num_rows = height // 2
+    top = y * num_rows
+    bottom = height if y else num_rows
+    for r in range(top, bottom):
+        off = r * width
+        for c in range(left, right):
+            buf[off + c] = 255
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -316,6 +359,38 @@ box_chars = {
     '╣': [p(inner_corner, which='tl'), p(inner_corner, which='bl'), p(dvline, only='right')],
     '╦': [p(inner_corner, which='bl'), p(inner_corner, which='br'), p(dhline, only='top')],
     '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
+    '▀': [p(vblock, frac=1/2)],
+    '▁': [p(vblock, frac=1/8, gravity='bottom')],
+    '▂': [p(vblock, frac=1/4, gravity='bottom')],
+    '▃': [p(vblock, frac=3/8, gravity='bottom')],
+    '▄': [p(vblock, frac=1/2, gravity='bottom')],
+    '▅': [p(vblock, frac=5/8, gravity='bottom')],
+    '▆': [p(vblock, frac=3/4, gravity='bottom')],
+    '▇': [p(vblock, frac=7/8, gravity='bottom')],
+    '█': [p(vblock, frac=1, gravity='bottom')],
+    '▉': [p(hblock, frac=7/8)],
+    '▊': [p(hblock, frac=3/4)],
+    '▋': [p(hblock, frac=5/8)],
+    '▌': [p(hblock, frac=1/2)],
+    '▍': [p(hblock, frac=3/8)],
+    '▎': [p(hblock, frac=1/4)],
+    '▏': [p(hblock, frac=1/8)],
+    '▐': [p(hblock, frac=1/2, gravity='right')],
+    '░': [p(shade, frac=1/4)],
+    '▒': [p(shade, frac=2/4)],
+    '▓': [p(shade, frac=3/4)],
+    '▔': [p(vblock, frac=1/8)],
+    '▕': [p(hblock, frac=1/8, gravity='right')],
+    '▖': [p(quad, y=1)],
+    '▗': [p(quad, x=1, y=1)],
+    '▘': [quad],
+    '▙': [quad, p(quad, y=1), p(quad, x=1, y=1)],
+    '▚': [quad, p(quad, x=1, y=1)],
+    '▛': [quad, p(quad, x=1), p(quad, y=1)],
+    '▜': [quad, p(quad, x=1, y=1), p(quad, x=1)],
+    '▝': [p(quad, x=1)],
+    '▞': [p(quad, x=1), p(quad, y=1)],
+    '▟': [p(quad, x=1), p(quad, y=1), p(quad, x=1, y=1)],
 }
 
 t, f = 1, 3
@@ -383,7 +458,7 @@ def test_drawing(sz=32, family='monospace'):
     space_row = join_cells(repeat(space, 32))
 
     try:
-        for r in range(8):
+        for r in range(10):
             row = []
             for i in range(16):
                 row.append(render_chr(chr(pos)))

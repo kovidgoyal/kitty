@@ -376,7 +376,7 @@ START_ALLOW_CASE_RANGE
         case ' ':
             return BLANK_FONT;
         case 0x2500 ... 0x2570:
-        case 0x2574 ... 0x257f:
+        case 0x2574 ... 0x259f:
         case 0xe0b0:
         case 0xe0b2:
             return BOX_FONT;
@@ -409,14 +409,14 @@ static inline glyph_index
 box_glyph_id(char_type ch) {
 START_ALLOW_CASE_RANGE
     switch(ch) {
-        case 0x2500 ... 0x257f:
+        case 0x2500 ... 0x259f:
             return ch - 0x2500;
         case 0xe0b0:
-            return 0x80;
+            return 0xfa;
         case 0xe0b2:
-            return 0x81;
+            return 0xfb;
         default:
-            return 0x82;
+            return 0xff;
     }
 END_ALLOW_CASE_RANGE
 }
