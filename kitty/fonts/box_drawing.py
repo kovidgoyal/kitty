@@ -9,7 +9,7 @@ from itertools import repeat
 from kitty.utils import get_logical_dpi
 
 
-def thickness(level=1, horizontal=True):
+def thickness(level=0, horizontal=True):
     dpi = get_logical_dpi()[0 if horizontal else 1]
     pts = (0.001, 1, 1.5, 2)[level]
     return int(math.ceil(pts * dpi / 72.0))
@@ -34,12 +34,12 @@ def draw_vline(buf, width, y1, y2, x, level):
             buf[x + y * width] = 255
 
 
-def half_hline(buf, width, height, level=1, which='left', extend_by=0):
+def half_hline(buf, width, height, level=0, which='left', extend_by=0):
     x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
     draw_hline(buf, width, x1, x2, height // 2, level)
 
 
-def half_vline(buf, width, height, level=1, which='top', extend_by=0):
+def half_vline(buf, width, height, level=0, which='top', extend_by=0):
     y1, y2 = (0, height // 2 + extend_by) if which == 'top' else (height // 2 - extend_by, height)
     draw_vline(buf, width, y1, y2, width // 2, level)
 
@@ -62,7 +62,7 @@ def get_holes(sz, hole_sz, num):
 hole_factor = 8
 
 
-def add_hholes(buf, width, height, level=1, num=1):
+def add_hholes(buf, width, height, level=0, num=1):
     line_sz = thickness(level=level, horizontal=True)
     hole_sz = width // hole_factor
     start = height // 2 - line_sz // 2
@@ -74,7 +74,7 @@ def add_hholes(buf, width, height, level=1, num=1):
                 buf[offset + x] = 0
 
 
-def add_vholes(buf, width, height, level=1, num=1):
+def add_vholes(buf, width, height, level=0, num=1):
     line_sz = thickness(level=level, horizontal=False)
     hole_sz = height // hole_factor
     start = width // 2 - line_sz // 2
@@ -85,27 +85,27 @@ def add_vholes(buf, width, height, level=1, num=1):
                 buf[x + width * y] = 0
 
 
-def hline(*a, level=1):
+def hline(*a, level=0):
     half_hline(*a, level=level)
     half_hline(*a, level=level, which='right')
 
 
-def vline(*a, level=1):
+def vline(*a, level=0):
     half_vline(*a, level=level)
     half_vline(*a, level=level, which='bottom')
 
 
-def hholes(*a, level=1, num=1):
+def hholes(*a, level=0, num=1):
     hline(*a, level=level)
     add_hholes(*a, level=level, num=num)
 
 
-def vholes(*a, level=1, num=1):
+def vholes(*a, level=0, num=1):
     vline(*a, level=level)
     add_vholes(*a, level=level, num=num)
 
 
-def corner(*a, hlevel=1, vlevel=1, which=None):
+def corner(*a, hlevel=0, vlevel=0, which=None):
     wh = 'right' if which in '┌└' else 'left'
     half_hline(*a, level=hlevel, which=wh, extend_by=thickness(vlevel, horizontal=True) // 2)
     wv = 'top' if which in '└┘' else 'bottom'
@@ -163,7 +163,7 @@ def triangle(buf, width, height, left=True):
                     buf[off] = min(255, buf[off] + int((1 - abs(y - ypx)) * 255))
 
 
-def half_dhline(buf, width, height, level=1, which='left', only=None):
+def half_dhline(buf, width, height, level=0, which='left', only=None):
     x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
     gap = thickness(level + 1, horizontal=False)
     if only != 'bottom':
@@ -173,7 +173,7 @@ def half_dhline(buf, width, height, level=1, which='left', only=None):
     return height // 2 - gap, height // 2 + gap
 
 
-def half_dvline(buf, width, height, level=1, which='top', only=None):
+def half_dvline(buf, width, height, level=0, which='top', only=None):
     y1, y2 = (0, height // 2) if which == 'top' else (height // 2, height)
     gap = thickness(level + 1, horizontal=True)
     if only != 'right':
@@ -183,17 +183,17 @@ def half_dvline(buf, width, height, level=1, which='top', only=None):
     return width // 2 - gap, width // 2 + gap
 
 
-def dvline(*s, only=None, level=1):
+def dvline(*s, only=None, level=0):
     half_dvline(*s, only=only, level=level)
     return half_dvline(*s, only=only, which='bottom', level=level)
 
 
-def dhline(*s, only=None, level=1):
+def dhline(*s, only=None, level=0):
     half_dhline(*s, only=only, level=level)
     return half_dhline(*s, only=only, which='bottom', level=level)
 
 
-def dvcorner(*s, level=1, which='╒'):
+def dvcorner(*s, level=0, which='╒'):
     hw = 'right' if which in '╒╘' else 'left'
     half_dhline(*s, which=hw)
     vw = 'top' if which in '╘╛' else 'bottom'
@@ -201,7 +201,7 @@ def dvcorner(*s, level=1, which='╒'):
     half_vline(*s, which=vw, extend_by=gap // 2 + thickness(level, horizontal=False))
 
 
-def dhcorner(*s, level=1, which='╓'):
+def dhcorner(*s, level=0, which='╓'):
     vw = 'top' if which in '╙╜' else 'bottom'
     half_dvline(*s, which=vw)
     hw = 'right' if which in '╓╙' else 'left'
@@ -209,7 +209,7 @@ def dhcorner(*s, level=1, which='╓'):
     half_hline(*s, which=hw, extend_by=gap // 2 + thickness(level, horizontal=True))
 
 
-def dcorner(buf, width, height, level=1, which='╔'):
+def dcorner(buf, width, height, level=0, which='╔'):
     hw = 'right' if which in '╔╚' else 'left'
     vw = 'top' if which in '╚╝' else 'bottom'
     hgap = thickness(level + 1, horizontal=False)
@@ -241,7 +241,7 @@ def dcorner(buf, width, height, level=1, which='╔'):
     draw_vline(buf, width, y1, y2, width // 2 + xdelta, level)
 
 
-def dpip(*a, level=1, which='╟'):
+def dpip(*a, level=0, which='╟'):
     if which in '╟╢':
         left, right = dvline(*a)
         x1, x2 = (0, left) if which == '╢' else (right, a[1])
@@ -252,7 +252,7 @@ def dpip(*a, level=1, which='╟'):
         draw_vline(a[0], a[1], y1, y2, a[1] // 2, level)
 
 
-def inner_corner(buf, width, height, which='tl', level=1):
+def inner_corner(buf, width, height, which='tl', level=0):
     hgap = thickness(level + 1, horizontal=True)
     vgap = thickness(level + 1, horizontal=False)
     vthick = thickness(level, horizontal=True) // 2
@@ -310,7 +310,7 @@ box_chars = {
     '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
 }
 
-t, f = 1, 3
+t, f = 0, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
