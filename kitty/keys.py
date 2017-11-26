@@ -79,6 +79,8 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_END: key_as_bytes('kEND'),
     defines.GLFW_KEY_LEFT: key_as_bytes('kLFT'),
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
+    defines.GLFW_KEY_UP: key_as_bytes('kri'),
+    defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
 }
 
 control_codes.update({

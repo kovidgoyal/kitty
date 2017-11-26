@@ -190,6 +190,8 @@ string_capabilities = {
     'kpp': r'\E[5~',
     # Scroll backwards (reverse index)
     'kri': r'\E[1;2A',
+    # scroll forwards (index)
+    'kind': r'\E[1;2B',
     # Restore cursor
     'rc': r'\E8',
     # Reverse video
@@ -276,8 +278,6 @@ string_capabilities = {
     # 'is2': r'\E[!p\E[?3;4l\E[4l\E>',
     # # Enter/send key
     # 'kent': r'\EOM',
-    # # scroll forwards
-    # 'kind': r'\E[1;2B',
     # # reset2
     # 'rs2': r'\E[!p\E[?3;4l\E[4l\E>',
 }
@@ -350,6 +350,7 @@ termcap_aliases.update({
     'kN': 'knp',
     'kP': 'kpp',
     'kR': 'kri',
+    'kF': 'kind',
     'rc': 'rc',
     'mr': 'rev',
     'sr': 'ri',
@@ -400,7 +401,6 @@ termcap_aliases.update({
     # 'mk': 'invis',
     # 'is': 'is2',
     # '@8': 'kent',
-    # 'kF': 'kind',
     # 'r2': 'rs2',
 })
 

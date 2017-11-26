@@ -569,9 +569,9 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 57: // LEFT
                     return "\x06\x1b\x5b\x31\x3b\x32\x44";
                   case 58: // DOWN
-                    return "\x03\x1b\x5b\x42";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x42";
                   case 59: // UP
-                    return "\x03\x1b\x5b\x41";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x41";
                   case 60: // PAGE_UP
                     return "\x04\x1b\x5b\x35\x7e";
                   case 61: // PAGE_DOWN
@@ -1767,9 +1767,9 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 57: // LEFT
                     return "\x06\x1b\x5b\x31\x3b\x32\x44";
                   case 58: // DOWN
-                    return "\x03\x1b\x5b\x42";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x42";
                   case 59: // UP
-                    return "\x03\x1b\x5b\x41";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x41";
                   case 60: // PAGE_UP
                     return "\x04\x1b\x5b\x35\x7e";
                   case 61: // PAGE_DOWN
@@ -2973,9 +2973,9 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 57: // LEFT
                       return "\x06\x1b\x5b\x31\x3b\x32\x44";
                     case 58: // DOWN
-                      return "\x03\x1b\x4f\x42";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x42";
                     case 59: // UP
-                      return "\x03\x1b\x4f\x41";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x41";
                     case 60: // PAGE_UP
                       return "\x04\x1b\x5b\x35\x7e";
                     case 61: // PAGE_DOWN
@@ -4171,9 +4171,9 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 57: // LEFT
                       return "\x06\x1b\x5b\x31\x3b\x32\x44";
                     case 58: // DOWN
-                      return "\x03\x1b\x4f\x42";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x42";
                     case 59: // UP
-                      return "\x03\x1b\x4f\x41";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x41";
                     case 60: // PAGE_UP
                       return "\x04\x1b\x5b\x35\x7e";
                     case 61: // PAGE_DOWN
