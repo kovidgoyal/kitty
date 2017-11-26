@@ -9,6 +9,7 @@
 #include "state.h"
 
 #define MISSING_GLYPH 4
+#define MAX_NUM_EXTRA_GLYPHS 8
 
 typedef uint16_t glyph_index;
 typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, uint8_t*);
@@ -21,13 +22,17 @@ typedef struct SpecialGlyphCache SpecialGlyphCache;
 enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
 
 
+typedef struct {
+    glyph_index data[MAX_NUM_EXTRA_GLYPHS];
+} ExtraGlyphs;
+
 struct SpritePosition {
     SpritePosition *next;
     bool filled, rendered;
     sprite_index x, y, z;
     uint8_t ligature_index;
     glyph_index glyph;
-    uint64_t extra_glyphs;
+    ExtraGlyphs extra_glyphs;
 };
 
 struct SpecialGlyphCache {
@@ -70,6 +75,7 @@ typedef struct {
 
 static Fonts fonts = {0};
 
+
 // Sprites {{{
 
 static inline void 
@@ -104,15 +110,25 @@ do_increment(int *error) {
 }
 
 
+static inline bool
+extra_glyphs_equal(ExtraGlyphs *a, ExtraGlyphs *b) {
+    for (size_t i = 0; i < MAX_NUM_EXTRA_GLYPHS; i++) {
+        if (a->data[i] != b->data[i]) return false;
+        if (a->data[i] == 0) return true;
+    }
+    return true;
+}
+
+
 static SpritePosition*
-sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, uint8_t ligature_index, int *error) {
+sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, uint8_t ligature_index, int *error) {
     glyph_index idx = glyph & 0x3ff;
     SpritePosition *s = font->sprite_map + idx;
     // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->filled && s->extra_glyphs == extra_glyphs && s->ligature_index == ligature_index)) return s;  // Cache hit
+    if (LIKELY(s->glyph == glyph && s->filled && extra_glyphs_equal(&s->extra_glyphs, extra_glyphs) && s->ligature_index == ligature_index)) return s;  // Cache hit
     while(true) {
         if (s->filled) {
-            if (s->glyph == glyph && s->extra_glyphs == extra_glyphs && s->ligature_index == ligature_index) return s;  // Cache hit
+            if (s->glyph == glyph && extra_glyphs_equal(&s->extra_glyphs, extra_glyphs) && s->ligature_index == ligature_index) return s;  // Cache hit
         } else {
             break;
         }
@@ -123,7 +139,7 @@ sprite_position_for(Font *font, glyph_index glyph, uint64_t extra_glyphs, uint8_
         s = s->next;
     }
     s->glyph = glyph;
-    s->extra_glyphs = extra_glyphs;
+    memcpy(&s->extra_glyphs, extra_glyphs, sizeof(ExtraGlyphs));
     s->ligature_index = ligature_index;
     s->filled = true;
     s->rendered = false;
@@ -179,7 +195,7 @@ free_maps(Font *font) {
 
 void
 clear_sprite_map(Font *font) {
-#define CLEAR(s) s->filled = false; s->rendered = false; s->glyph = 0; s->extra_glyphs = 0; s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
+#define CLEAR(s) s->filled = false; s->rendered = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
     for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
         s = font->sprite_map + i;
@@ -246,7 +262,7 @@ del_font(Font *f) {
 
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static uint8_t *canvas = NULL;
-#define CELLS_IN_CANVAS 16
+#define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
 static inline void 
 clear_canvas(void) { memset(canvas, 0, CELLS_IN_CANVAS * cell_width * cell_height); }
 
@@ -411,7 +427,8 @@ static void
 render_box_cell(Cell *cell) {
     int error = 0;
     glyph_index glyph = box_glyph_id(cell->ch);
-    SpritePosition *sp = sprite_position_for(&fonts.fonts[BOX_FONT], glyph, 0, false, &error);
+    static ExtraGlyphs extra_glyphs = {{0}};
+    SpritePosition *sp = sprite_position_for(&fonts.fonts[BOX_FONT], glyph, &extra_glyphs, false, &error);
     if (sp == NULL) {
         sprite_map_set_error(error); PyErr_Print();
         set_sprite(cell, 0, 0, 0);
@@ -462,7 +479,7 @@ extract_cell_from_canvas(unsigned int i, unsigned int num_cells) {
 }
 
 static inline void
-render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, uint64_t extra_glyphs) {
+render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs) {
     static SpritePosition* sprite_position[16];
     int error = 0;
     num_cells = MIN(sizeof(sprite_position)/sizeof(sprite_position[0]), num_cells);
@@ -550,7 +567,7 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
 }
 
 static inline glyph_index
-next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, unsigned int max_num_glyphs, unsigned int max_num_cells, uint64_t *extra_glyphs) {
+next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, unsigned int max_num_glyphs, unsigned int max_num_cells, ExtraGlyphs *extra_glyphs) {
     // See https://github.com/behdad/harfbuzz/issues/615 for a discussion of
     // how to break text into cells. In addition, we have to deal with
     // monospace ligature fonts that use dummy glyphs of zero size to implement
@@ -558,7 +575,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     
     CellData cell_data;
     cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0; cell_data.current_codepoint = cells->ch;
-#define LIMIT 5
+#define LIMIT (MAX_NUM_EXTRA_GLYPHS + 1)
     glyph_index glyphs_in_group[LIMIT];
     unsigned int ncells = 0, nglyphs = 0, n;
     uint32_t previous_cluster = UINT32_MAX, cluster;
@@ -584,27 +601,16 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     }
     *num_group_cells = MAX(1, MIN(ncells, cell_limit));
     *num_group_glyphs = MAX(1, MIN(nglyphs, glyph_limit));
+    memset(extra_glyphs, 0, sizeof(ExtraGlyphs));
 
-#define G(n) ((uint64_t)(glyphs_in_group[n] & 0xffff))
     switch(nglyphs) {
         case 0:
         case 1:
-            *extra_glyphs = 0;
             break;
-        case 2:
-            *extra_glyphs = G(1);
-            break;
-        case 3:
-            *extra_glyphs = G(1) | (G(2) << 16);
-            break;
-        case 4:
-            *extra_glyphs = G(1) | (G(2) << 16) | (G(3) << 32);
-            break;
-        default:  // we only support a maximum of four extra glyphs per cell
-            *extra_glyphs = G(1) | (G(2) << 16) | (G(3) << 32) | (G(4) << 48);
+        default:
+            memcpy(&extra_glyphs->data, glyphs_in_group + 1, sizeof(glyph_index) * MIN(MAX_NUM_EXTRA_GLYPHS, nglyphs - 1));
             break;
     }
-#undef G
 #undef LIMIT
     return glyphs_in_group[0];
 }
@@ -633,11 +639,12 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         clear_canvas();
 #endif
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
-    uint64_t extra_glyphs; glyph_index first_glyph;
+    ExtraGlyphs extra_glyphs;
+    glyph_index first_glyph;
     while(run_pos < num_glyphs && cell_pos < num_cells) {
         first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, num_glyphs - run_pos, num_cells - cell_pos, &extra_glyphs);
         /* printf("Group: num_group_cells: %u num_group_glyphs: %u\n", num_group_cells, num_group_glyphs); */
-        render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font, first_glyph, extra_glyphs);
+        render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font, first_glyph, &extra_glyphs);
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
 }
@@ -665,10 +672,13 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 
     PyObject *ans = PyList_New(0);
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
-    uint64_t extra_glyphs; glyph_index first_glyph;
+    ExtraGlyphs extra_glyphs; 
+    glyph_index first_glyph;
     while(run_pos < num_glyphs && cell_pos < num) {
         first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, line->cells + cell_pos, info + run_pos, num_glyphs - run_pos, num - cell_pos, &extra_glyphs);
-        PyList_Append(ans, Py_BuildValue("IIIK", num_group_cells, num_group_glyphs, first_glyph, extra_glyphs));
+        PyObject *eg = PyTuple_New(MAX_NUM_EXTRA_GLYPHS);
+        for (size_t g = 0; g < MAX_NUM_EXTRA_GLYPHS; g++) PyTuple_SET_ITEM(eg, g, Py_BuildValue("H", extra_glyphs.data[g]));
+        PyList_Append(ans, Py_BuildValue("IIIN", num_group_cells, num_group_glyphs, first_glyph, eg));
         run_pos += num_group_glyphs; cell_pos += num_group_cells;
     }
     if (face) { Py_CLEAR(face); free(font); }
@@ -778,10 +788,10 @@ sprite_map_set_layout(PyObject UNUSED *self, PyObject *args) {
 static PyObject*
 test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     glyph_index glyph;
-    uint64_t extra_glyphs = 0;
-    if (!PyArg_ParseTuple(args, "H|I", &glyph, &extra_glyphs)) return NULL;
+    ExtraGlyphs extra_glyphs = {{0}};
+    if (!PyArg_ParseTuple(args, "H|I", &glyph, &extra_glyphs.data)) return NULL;
     int error;
-    SpritePosition *pos = sprite_position_for(&fonts.fonts[fonts.medium_font_idx], glyph, extra_glyphs, 0, &error);
+    SpritePosition *pos = sprite_position_for(&fonts.fonts[fonts.medium_font_idx], glyph, &extra_glyphs, 0, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
