@@ -211,13 +211,54 @@ def version():
     return '{} {} created by {}'.format(italic(appname), green(str_version), title('Kovid Goyal'))
 
 
+def wrap(text, limit=80):
+    NORMAL, IN_FORMAT = 'NORMAL', 'IN_FORMAT'
+    state = NORMAL
+    spaces = []
+    chars_in_line = 0
+    breaks = []
+    for i, ch in enumerate(text):
+        if state is IN_FORMAT:
+            if ch == 'm':
+                state = NORMAL
+            continue
+        if ch == '\033':
+            state = IN_FORMAT
+            continue
+        if ch == ' ':
+            spaces.append(i)
+        if chars_in_line < limit:
+            chars_in_line += 1
+            continue
+        if spaces:
+            breaks.append(spaces.pop())
+            chars_in_line = i - breaks[-1]
+
+    lines = []
+    for b in reversed(breaks):
+        lines.append(text[b:].lstrip())
+        text = text[:b]
+    if text:
+        lines.append(text)
+    return reversed(lines)
+
+
 def print_help_for_seq(seq):
+    from kitty.icat import screen_size
+    linesz = min(screen_size().cols, 76)
     blocks = []
     a = blocks.append
+
+    def wa(text, indent=0, leading_indent=None):
+        if leading_indent is None:
+            leading_indent = indent
+        j = '\n' + (' ' * indent)
+        a((' ' * leading_indent) + j.join(wrap(text, limit=linesz - indent)))
+
     a('{}: {} [options] [program-to-run ...]'.format(title('Usage'), bold(yellow(appname))))
     a('')
-    a('Run the {appname} terminal emulator. You can also specify the {program} to run inside {appname} as normal'
-      ' arguments following the {options}. For example: {appname} /bin/sh'.format(
+    wa('Run the {appname} terminal emulator. You can also specify the {program} to run inside {appname} as normal'
+       ' arguments following the {options}. For example: {appname} /bin/sh'.format(
           appname=italic(appname), options=italic('options'), program=italic('program')))
     a('')
     a('{}:'.format(title('Options')))
@@ -228,7 +269,7 @@ def print_help_for_seq(seq):
         a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
         if opt.get('help'):
             t = opt['help'].replace('%default', str(opt.get('default')))
-            a(' ' * 4 + prettify(t))
+            wa(prettify(t), indent=4)
 
     print('\n'.join(blocks))
     print('\n' + version())
