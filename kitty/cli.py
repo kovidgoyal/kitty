@@ -3,13 +3,13 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+import subprocess
 import sys
 from collections import deque
 
 from .config import load_config
 from .constants import appname, defconf, is_macos, str_version
 from .layout import all_layouts
-
 
 is_macos
 OPTIONS = '''
@@ -271,8 +271,13 @@ def print_help_for_seq(seq):
             t = opt['help'].replace('%default', str(opt.get('default')))
             wa(prettify(t), indent=4)
 
-    print('\n'.join(blocks))
-    print('\n' + version())
+    text = '\n'.join(blocks) + '\n\n' + version()
+    if sys.stdout.isatty():
+        p = subprocess.Popen(['less', '-isR'], stdin=subprocess.PIPE)
+        p.communicate(text.encode('utf-8'))
+        raise SystemExit(p.wait())
+    else:
+        print(text)
 
 
 def defval_for_opt(opt):
