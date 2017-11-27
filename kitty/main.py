@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 from .borders import load_borders_program
 from .boss import Boss
-from .cli import create_opts, option_parser
+from .cli import create_opts, parse_args
 from .config import initial_window_size, load_cached_values, save_cached_values
 from .constants import glfw_path, is_macos, is_wayland, logo_data_file
 from .fast_data_types import (
@@ -116,7 +116,8 @@ def main():
         os.chdir(os.path.expanduser('~'))
     if not os.path.isdir(os.getcwd()):
         os.chdir(os.path.expanduser('~'))
-    args = option_parser().parse_args()
+    args, rest = parse_args()
+    args.args = rest
     if getattr(args, 'detach', False):
         detach()
     if args.cmd:

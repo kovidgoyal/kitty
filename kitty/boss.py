@@ -5,7 +5,7 @@
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
-from .cli import create_opts, option_parser
+from .cli import create_opts, parse_args
 from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
 from .constants import set_boss, wakeup
 from .fast_data_types import (
@@ -102,7 +102,8 @@ class Boss:
         msg = json.loads(msg.decode('utf-8'))
         if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
             startup_id = msg.get('startup_id')
-            args = option_parser().parse_args(msg['args'][1:])
+            args, rest = parse_args(msg['args'][1:])
+            args.args = rest
             opts = create_opts(args)
             session = create_session(opts, args)
             os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False)
