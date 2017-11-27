@@ -97,23 +97,24 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def peer_msg_received(self, msg):
+    def peer_messages_received(self, messages):
         import json
-        msg = json.loads(msg.decode('utf-8'))
-        if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
-            startup_id = msg.get('startup_id')
-            args, rest = parse_args(msg['args'][1:])
-            args.args = rest
-            opts = create_opts(args)
-            session = create_session(opts, args)
-            os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False)
-            if startup_id:
-                ctx = init_startup_notification(os_window_id, startup_id)
-            show_window(os_window_id)
-            if startup_id:
-                end_startup_notification(ctx)
-        else:
-            safe_print('Unknown message received from peer, ignoring')
+        for msg in messages:
+            msg = json.loads(msg.decode('utf-8'))
+            if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+                startup_id = msg.get('startup_id')
+                args, rest = parse_args(msg['args'][1:])
+                args.args = rest
+                opts = create_opts(args)
+                session = create_session(opts, args)
+                os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False)
+                if startup_id:
+                    ctx = init_startup_notification(os_window_id, startup_id)
+                show_window(os_window_id)
+                if startup_id:
+                    end_startup_notification(ctx)
+            else:
+                safe_print('Unknown message received from peer, ignoring')
 
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)

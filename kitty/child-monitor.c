@@ -339,11 +339,15 @@ parse_input(ChildMonitor *self) {
     }
 
     if (UNLIKELY(self->messages_count)) {
-        while(self->messages_count) {
-            Message *m = self->messages + --self->messages_count;
-            msg = PyBytes_FromStringAndSize(m->data, m->sz);
-            free(m->data); m->data = NULL; m->sz = 0;
-        }
+        msg = PyTuple_New(self->messages_count);
+        if (msg) {
+            for (size_t i = 0; i < self->messages_count; i++) {
+                Message *m = self->messages + i;
+                PyTuple_SET_ITEM(msg, i, PyBytes_FromStringAndSize(m->data, m->sz));
+                free(m->data); m->data = NULL; m->sz = 0;
+            }
+            self->messages_count = 0;
+        } else fatal("Out of memory");
     }
 
     if (UNLIKELY(signal_received)) {
@@ -357,7 +361,7 @@ parse_input(ChildMonitor *self) {
     }
     children_mutex(unlock);
     if (msg) {
-        call_boss(peer_msg_received, "O", msg);
+        call_boss(peer_messages_received, "(O)", msg);
         Py_CLEAR(msg);
     }
 
