@@ -66,17 +66,17 @@ Path to a file containing the startup |_ session| (tabs, windows, layout, progra
 
 --single-instance -1
 type=bool-set
-If specified only a single instance of {appname} will run. New invocations will
-instead create a new top-level window in the existing {appname} instance. This
-allows {appname} to share a single sprite cache on the GPU and also reduces
-startup time. You can also have separate groups of {appname} instances by using the
+If specified only a single instance of |_ {appname}| will run. New invocations will
+instead create a new top-level window in the existing |_ {appname}| instance. This
+allows |_ {appname}| to share a single sprite cache on the GPU and also reduces
+startup time. You can also have separate groups of |_ {appname}| instances by using the
 |_ --instance-group| option
 
 
 --instance-group
-Used in combination with the |_ --single-instance| option. All {appname} invocations
+Used in combination with the |_ --single-instance| option. All |_ {appname}| invocations
 with the same |_ --instance-group| will result in new windows being created
-in the first {appname} instance with that group
+in the first |_ {appname}| instance within that group
 
 
 # Debugging options
@@ -214,7 +214,7 @@ def version():
 def wrap(text, limit=80):
     NORMAL, IN_FORMAT = 'NORMAL', 'IN_FORMAT'
     state = NORMAL
-    spaces = []
+    last_space_at = None
     chars_in_line = 0
     breaks = []
     for i, ch in enumerate(text):
@@ -226,12 +226,13 @@ def wrap(text, limit=80):
             state = IN_FORMAT
             continue
         if ch == ' ':
-            spaces.append(i)
+            last_space_at = i
         if chars_in_line < limit:
             chars_in_line += 1
             continue
-        if spaces:
-            breaks.append(spaces.pop())
+        if last_space_at is not None:
+            breaks.append(last_space_at)
+            last_space_at = None
             chars_in_line = i - breaks[-1]
 
     lines = []
