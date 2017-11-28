@@ -73,6 +73,26 @@ class Layout:
             self(windows, active_window_idx)
         return active_window_idx
 
+    def xlayout(self, num):
+        return layout_dimension(
+            viewport_width, cell_width, num, self.border_width,
+            margin_length=self.margin_width, padding_length=self.padding_width)
+
+    def ylayout(self, num, left_align=True):
+        return layout_dimension(
+            available_height, cell_height, num, self.border_width, left_align=left_align,
+            margin_length=self.margin_width, padding_length=self.padding_width)
+
+    def simple_blank_rects(self, first_window, last_window):
+        br, vh = self.blank_rects, available_height
+        left_blank_rect(first_window, br, vh), top_blank_rect(first_window, br, vh), right_blank_rect(last_window, br, vh)
+
+    def between_blank_rect(self, left_window, right_window):
+        self.blank_rects.append(Rect(left_window.geometry.right, 0, right_window.geometry.left, available_height))
+
+    def bottom_blank_rect(self, window):
+        self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, available_height))
+
     def set_active_window(self, windows, active_window_idx):
         pass
 
@@ -146,31 +166,77 @@ class Tall(Layout):
     name = 'tall'
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = br = []
+        self.blank_rects = []
         if len(windows) == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
             windows[0].set_geometry(0, wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
-        xlayout = layout_dimension(
-            viewport_width, cell_width, 2, self.border_width,
-            margin_length=self.margin_width, padding_length=self.padding_width)
+        xlayout = self.xlayout(2)
         xstart, xnum = next(xlayout)
-        ystart, ynum = next(layout_dimension(
-            available_height, cell_height, 1, self.border_width, left_align=True,
-            margin_length=self.margin_width, padding_length=self.padding_width))
+        ystart, ynum = next(self.ylayout(1))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
-        vh = available_height
         xstart, xnum = next(xlayout)
-        ylayout = layout_dimension(
-            available_height, cell_height, len(windows) - 1, self.border_width, left_align=True,
-            margin_length=self.margin_width, padding_length=self.padding_width)
+        ylayout = self.ylayout(len(windows) - 1)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
-        left_blank_rect(windows[0], br, vh), top_blank_rect(windows[0], br, vh), right_blank_rect(windows[-1], br, vh)
-        br.append(Rect(windows[0].geometry.right, 0, windows[1].geometry.left, vh))
-        br.append(Rect(0, windows[0].geometry.bottom, windows[0].geometry.right, vh))
-        br.append(Rect(windows[-1].geometry.left, windows[-1].geometry.bottom, viewport_width, vh))
+
+        # left, top and right blank rects
+        self.simple_blank_rects(windows[0], windows[-1])
+        # between blank rect
+        self.between_blank_rect(windows[0], windows[1])
+        # left bottom blank rect
+        self.bottom_blank_rect(windows[0])
+        # right bottom blank rect
+        self.bottom_blank_rect(windows[-1])
+
+
+class Grid(Tall):
+
+    name = 'grid'
+
+    def do_layout(self, windows, active_window_idx):
+        n = len(windows)
+        if n < 4:
+            return Tall.do_layout(self, windows, active_window_idx)
+        self.blank_rects = []
+        if n <= 5:
+            ncols = 2
+        else:
+            for ncols in range(3, (n // 2) + 1):
+                if ncols * ncols >= n:
+                    break
+        nrows = n // ncols
+        special_rows = n - (nrows * (ncols - 1))
+        special_col = 0 if special_rows < nrows else ncols - 1
+
+        # Distribute windows top-to-bottom, left-to-right (i.e. in columns)
+        xlayout = self.xlayout(ncols)
+        yvals_normal = tuple(self.ylayout(nrows))
+        yvals_special = yvals_normal if special_rows == nrows else tuple(self.ylayout(special_rows))
+
+        winmap = list(enumerate(windows))
+        pos = 0
+        win_col_map = []
+        for col in range(ncols):
+            rows = special_rows if col == special_col else nrows
+            yl = yvals_special if col == special_col else yvals_normal
+            xstart, xnum = next(xlayout)
+            col_windows = []
+            for (ystart, ynum), (window_idx, w) in zip(yl, winmap[pos:pos + rows]):
+                w.set_geometry(window_idx, window_geometry(xstart, xnum, ystart, ynum))
+                col_windows.append(w)
+            # bottom blank rect
+            self.bottom_blank_rect(w)
+            pos += rows
+            win_col_map.append(col_windows)
+
+        # left, top and right blank rects
+        self.simple_blank_rects(windows[0], windows[-1])
+
+        # the in-between columns blank rects
+        for i in range(ncols - 1):
+            self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
