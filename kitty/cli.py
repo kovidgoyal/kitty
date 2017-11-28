@@ -57,7 +57,7 @@ Detach from the controlling terminal, if any
 --window-layout
 type=choices
 choices={window_layout_choices}
-The window layout to use on startup
+The window layout to use on startup. Choices are: {window_layout_choices}
 
 
 --session
@@ -405,7 +405,7 @@ def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
             appname=appname, config_path=defconf,
-            window_layout_choices=','.join(all_layouts)
+            window_layout_choices=', '.join(all_layouts)
         )
     return options_spec.ans
 
