@@ -391,7 +391,7 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     if (fd == -1) FIND(add_queue, add_queue_count);
     if (fd != -1) {
         if (!pty_resize(fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
-    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %lu)\n", window_id, self->count, add_queue_count);
+    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %zu)\n", window_id, self->count, add_queue_count);
     children_mutex(unlock);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

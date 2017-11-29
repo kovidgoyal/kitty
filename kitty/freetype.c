@@ -130,7 +130,8 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 bool
 set_size_for_face(PyObject *s, unsigned int desired_height, bool force) {
     Face *self = (Face*)s;
-    FT_UInt w = (FT_UInt)(ceil(global_state.font_sz_in_pts * 64.0)), xdpi = (FT_UInt)global_state.logical_dpi_x, ydpi = (FT_UInt)global_state.logical_dpi_y;
+    FT_F26Dot6 w = (FT_F26Dot6)(ceil(global_state.font_sz_in_pts * 64.0));
+    FT_UInt xdpi = (FT_UInt)global_state.logical_dpi_x, ydpi = (FT_UInt)global_state.logical_dpi_y;
     if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
     ((Face*)self)->size_in_pts = global_state.font_sz_in_pts;
     return set_font_size(self, w, w, xdpi, ydpi, desired_height);

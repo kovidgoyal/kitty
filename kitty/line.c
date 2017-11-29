@@ -161,7 +161,7 @@ url_end_at(Line *self, PyObject *x) {
 static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
-    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
     return line_text_at(self->cells[xval].ch, self->cells[xval].cc);
 }
 
