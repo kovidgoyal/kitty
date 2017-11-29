@@ -283,11 +283,17 @@ update_cell_metrics() {
     CALL(fonts.bold_font_idx, 0, false); CALL(fonts.italic_font_idx, 0, false); CALL(fonts.bi_font_idx, 0, false);
     cell_metrics(fonts.fonts[fonts.medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness);
     if (!cell_width) { PyErr_SetString(PyExc_ValueError, "Failed to calculate cell width for the specified font."); return NULL; }
+    unsigned int before_cell_height = cell_height;
     if (OPT(adjust_line_height_px) != 0) cell_height += OPT(adjust_line_height_px);
     if (OPT(adjust_line_height_frac) != 0.f) cell_height *= OPT(adjust_line_height_frac);
+    int line_height_adjustment = cell_height - before_cell_height;
     if (cell_height < 4) { PyErr_SetString(PyExc_ValueError, "line height too small after adjustment"); return NULL; }
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
+    if (line_height_adjustment > 1) {
+        baseline += line_height_adjustment / 2;
+        underline_position += line_height_adjustment / 2;
+    }
     sprite_tracker_set_layout(cell_width, cell_height);
     global_state.cell_width = cell_width; global_state.cell_height = cell_height;
     free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);

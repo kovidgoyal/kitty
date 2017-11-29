@@ -3,6 +3,20 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.5.0 [future]
+---------------------------
+
+- Add an option to control the thickness of lines in box drawing characters
+
+- Increase max. allowed ligature length to nine characters
+
+- Fix text not vertically centered when adjusting line height
+
+- Fix unicode block characters not being rendered properly
+
+- Fix shift+up/down not rendering correct escape codes
+
+
 version 0.5.0 [2017-11-19]
 ---------------------------
 
