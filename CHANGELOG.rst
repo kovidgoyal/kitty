@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.6.0 [future]
+version 0.5.1 [future]
 ---------------------------
 
 - Add an option to control the thickness of lines in box drawing characters
