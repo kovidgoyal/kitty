@@ -291,8 +291,8 @@ update_cell_metrics() {
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
     if (line_height_adjustment > 1) {
-        baseline += line_height_adjustment / 2;
-        underline_position += line_height_adjustment / 2;
+        baseline += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
+        underline_position += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
     }
     sprite_tracker_set_layout(cell_width, cell_height);
     global_state.cell_width = cell_width; global_state.cell_height = cell_height;
