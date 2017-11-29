@@ -20,6 +20,15 @@ version 0.6.0 [future]
   All future invocations simply open new top-level windows in the existing
   instance.
 
+- Add a new "grid" window layout
+
+- Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)
+
+- Add an option to control the audio bell volume on X11 systems
+
+- Add a command line switch to set the name part of the WM_CLASS window
+  property independently.
+
 
 version 0.5.1 [2017-12-01]
 ---------------------------
@@ -36,15 +45,6 @@ version 0.5.1 [2017-12-01]
 
 - Image display: Fix displaying images taller than two screen heights not
   scrolling properly
-
-- Add a new "grid" window layout
-
-- Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)
-
-- Add an option to control the audio bell volume on X11 systems
-
-- Add a command line switch to set the name part of the WM_CLASS window
-  property independently.
 
 
 version 0.5.0 [2017-11-19]
