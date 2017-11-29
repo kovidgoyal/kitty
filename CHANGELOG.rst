@@ -16,6 +16,9 @@ version 0.6.0 [future]
 
 - Fix shift+up/down not rendering correct escape codes
 
+- Image display: Fix displaying images taller than two screen heights not
+  scrolling properly
+
 
 version 0.5.0 [2017-11-19]
 ---------------------------

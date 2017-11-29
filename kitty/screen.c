@@ -436,7 +436,8 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     if (response != NULL) write_to_child(self, response, strlen(response));
     if (x != self->cursor->x || y != self->cursor->y) {
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
-        if (self->cursor->y > self->margin_bottom) { screen_scroll(self, self->cursor->y - self->margin_bottom); }
+        if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom); 
+        screen_ensure_bounds(self, false);
     }
 }
 // }}}
@@ -701,7 +702,6 @@ screen_index(Screen *self) {
 void 
 screen_scroll(Screen *self, unsigned int count) {
     // Scroll the screen up by count lines, not moving the cursor
-    count = MIN(self->lines, count);
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     while (count > 0) {
         count--;
