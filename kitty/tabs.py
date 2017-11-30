@@ -228,6 +228,17 @@ class TabBar:  # {{{
             color_as_int(opts.inactive_tab_background)
         )
         self.blank_rects = ()
+        sep = opts.tab_separator
+        self.trailing_spaces = self.leading_spaces = 0
+        while sep and sep[0] == ' ':
+            sep = sep[1:]
+            self.trailing_spaces += 1
+        while sep and sep[-1] == ' ':
+            self.leading_spaces += 1
+            sep = sep[:-1]
+        self.sep = sep
+        self.active_font_style = opts.active_tab_font_style
+        self.inactive_font_style = opts.inactive_tab_font_style
 
         def as_rgb(x):
             return (x << 8) | 2
@@ -264,9 +275,9 @@ class TabBar:  # {{{
         for t in data:
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
-            s.cursor.bold = s.cursor.italic = t.is_active
+            s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            s.draw(t.title)
+            s.draw(' ' * self.leading_spaces + t.title + ' ' * self.trailing_spaces)
             extra = s.cursor.x - before - max_title_length
             if extra > 0:
                 s.cursor.x -= extra + 1
@@ -274,7 +285,7 @@ class TabBar:  # {{{
             cr.append((before, s.cursor.x))
             s.cursor.bold = s.cursor.italic = False
             s.cursor.fg = s.cursor.bg = 0
-            s.draw('┇')
+            s.draw(self.sep)
             if s.cursor.x > s.columns - max_title_length and not t.is_last:
                 s.draw('…')
                 break
@@ -405,7 +416,7 @@ class TabManager:  # {{{
         at = self.active_tab
         ans = []
         for t in self.tabs:
-            title = (t.name or t.title or appname) + ' '
+            title = (t.name or t.title or appname).strip()
             ans.append(TabbarData(title, t is at, t is self.tabs[-1]))
         return ans
 

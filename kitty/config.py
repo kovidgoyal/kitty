@@ -231,6 +231,20 @@ def box_drawing_scale(x):
     return ans
 
 
+def tab_separator(x):
+    for q in '\'"':
+        if x.startswith(q) and x.endswith(q):
+            x = x[1:-1]
+            break
+    if not x.strip():
+        x = defaults.tab_separator
+    return x
+
+
+def tab_font_style(x):
+    return {'bold-italic': (True, True), 'bold': (True, False), 'italic': (False, True)}.get(x.lower().replace('_', '-'), (False, False))
+
+
 type_map = {
     'adjust_line_height': adjust_line_height,
     'scrollback_lines': positive_int,
@@ -263,6 +277,9 @@ type_map = {
     'box_drawing_scale': box_drawing_scale,
     'x11_bell_volume': int,
     'background_opacity': unit_float,
+    'tab_separator': tab_separator,
+    'active_tab_font_style': tab_font_style,
+    'inactive_tab_font_style': tab_font_style,
 }
 
 for name in (

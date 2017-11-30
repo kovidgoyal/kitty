@@ -31,6 +31,10 @@ version 0.6.0 [future]
 
 - Add a command line switch to set the window title.
 
+- Add more options to customize the tab-bar's appearance (font styles and
+  separator)
+
+
 version 0.5.1 [2017-12-01]
 ---------------------------
 
