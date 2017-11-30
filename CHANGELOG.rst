@@ -29,6 +29,7 @@ version 0.6.0 [future]
 - Add a command line switch to set the name part of the WM_CLASS window
   property independently.
 
+- Add a command line switch to set the window title.
 
 version 0.5.1 [2017-12-01]
 ---------------------------

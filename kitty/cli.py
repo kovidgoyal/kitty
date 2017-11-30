@@ -25,6 +25,11 @@ condition=not is_macos
 Set the name part of the |_ WM_CLASS| property (defaults to using the value from |_ --class|)
 
 
+--title
+Set the window title. This will override any title set by the program running inside kitty. So
+only use this if you are running a program that does not set titles.
+
+
 --config
 type=list
 default={config_path}
@@ -61,7 +66,8 @@ The window layout to use on startup. Choices are: {window_layout_choices}
 
 
 --session
-Path to a file containing the startup |_ session| (tabs, windows, layout, programs)
+Path to a file containing the startup |_ session| (tabs, windows, layout, programs).
+See the README file for details and an example.
 
 
 --single-instance -1

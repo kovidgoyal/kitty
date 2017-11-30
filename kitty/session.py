@@ -100,7 +100,11 @@ def create_session(opts, args=None, special_window=None):
     ans.tabs[-1].layout = current_layout
     if special_window is None:
         cmd = args.args if args and args.args else [shell_path]
-        ans.add_window(cmd)
+        if args.title:
+            from kitty.tabs import SpecialWindow
+            ans.add_window(SpecialWindow(cmd, override_title=args.title))
+        else:
+            ans.add_window(cmd)
     else:
         ans.add_special_window(special_window)
     return ans
