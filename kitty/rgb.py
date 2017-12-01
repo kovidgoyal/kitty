@@ -7,32 +7,43 @@ from collections import namedtuple
 
 Color = namedtuple('Color', 'red green blue')
 
-color_pat = re.compile(r'^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$')
-color_pat2 = re.compile(
-    r'rgb:([a-f0-9]{2})/([a-f0-9]{2})/([a-f0-9]{2})$', re.IGNORECASE
-)
+
+def parse_single_color(c):
+    if len(c) == 1:
+        c += c
+    return int(c[:2], 16)
+
+
+def parse_sharp(spec):
+    if len(spec) in (3, 6, 9, 12):
+        part_len = len(spec) // 3
+        colors = re.findall(r'[a-fA-F0-9]{%d}' % part_len, spec)
+        return Color(*map(parse_single_color, colors))
+
+
+def parse_rgb(spec):
+    colors = spec.split('/')
+    if len(colors) == 3:
+        return Color(*map(parse_single_color, colors))
 
 
 def to_color(raw, validate=False):
+    # See man XParseColor
     x = raw.strip().lower()
     ans = color_names.get(x)
     if ans is not None:
         return ans
-    m = color_pat.match(x)
     val = None
-    if m is not None:
-        val = m.group(1)
-        if len(val) == 3:
-            val = ''.join(2 * s for s in val)
-    else:
-        m = color_pat2.match(x)
-        if m is not None:
-            val = m.group(1) + m.group(2) + m.group(3)
-    if val is None:
-        if validate:
-            raise ValueError('Invalid color name: {}'.format(raw))
-        return
-    return Color(int(val[:2], 16), int(val[2:4], 16), int(val[4:], 16))
+    try:
+        if raw.startswith('#'):
+            val = parse_sharp(raw[1:])
+        elif raw.startswith('rgb:'):
+            val = parse_rgb(raw[4:])
+    except Exception:
+        pass
+    if val is None and validate:
+        raise ValueError('Invalid color name: {}'.format(raw))
+    return val
 
 
 # BEGIN_DATA_SECTION {{{

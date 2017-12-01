@@ -10,6 +10,7 @@ from kitty.fast_data_types import (
     REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf
 )
 from kitty.utils import sanitize_title, wcwidth
+from kitty.rgb import to_color
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -26,6 +27,21 @@ def create_lbuf(*lines):
 
 
 class TestDataTypes(BaseTest):
+
+    def test_to_color(self):
+        for x in 'xxx #12 #1234 rgb:a/b'.split():
+            self.assertIsNone(to_color(x))
+
+        def c(spec, r=0, g=0, b=0):
+            self.ae(tuple(to_color(spec)), (r, g, b))
+
+        c('#eee', 0xee, 0xee, 0xee)
+        c('#234567', 0x23, 0x45, 0x67)
+        c('#abcabcdef', 0xab, 0xab, 0xde)
+        c('rgb:e/e/e', 0xee, 0xee, 0xee)
+        c('rgb:23/45/67', 0x23, 0x45, 0x67)
+        c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
+        c('red', 0xff)
 
     def test_linebuf(self):
         old = filled_line_buf(2, 3, filled_cursor())
