@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.5.1 [future]
+version 0.5.1 [2017-12-01]
 ---------------------------
 
 - Add an option to control the thickness of lines in box drawing characters
@@ -14,7 +14,7 @@ version 0.5.1 [future]
 
 - Fix unicode block characters not being rendered properly
 
-- Fix shift+up/down not rendering correct escape codes
+- Fix shift+up/down not generating correct escape codes
 
 - Image display: Fix displaying images taller than two screen heights not
   scrolling properly
