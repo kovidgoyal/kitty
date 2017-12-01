@@ -87,7 +87,6 @@ install: |
             brew update;
             brew install python3;
             brew install glfw;
-            brew install libunistring;
             brew install freetype;
             brew install harfbuzz --without-glib --without-gobject-introspection --without-graphite2 --without-icu4c;
         else
