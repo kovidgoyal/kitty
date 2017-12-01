@@ -37,7 +37,7 @@ def to_color(raw, validate=False):
     try:
         if raw.startswith('#'):
             val = parse_sharp(raw[1:])
-        elif raw.startswith('rgb:'):
+        elif raw[:4].lower() == 'rgb:':
             val = parse_rgb(raw[4:])
     except Exception:
         pass

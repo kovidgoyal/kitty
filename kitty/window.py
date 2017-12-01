@@ -206,6 +206,12 @@ class Window:
         if dirtied:
             self.screen.mark_as_dirty()
 
+    def report_color(self, osc, r, g, b):
+        r |= r << 8
+        g |= g << 8
+        b |= b << 8
+        self.write_to_child('\033]{};rgb:{:04x}/{:04x}/{:04x}\033\\'.format(osc, r, g, b))
+
     def set_dynamic_color(self, code, value):
         if isinstance(value, bytes):
             value = value.decode('utf-8')
@@ -213,19 +219,30 @@ class Window:
         for val in value.split(';'):
             w = DYNAMIC_COLOR_CODES.get(code)
             if w is not None:
-                if code >= 110:
-                    val = None
-                color_changes[w] = val
+                if val == '?':
+                    col = getattr(self.screen.color_profile, w.name)
+                    self.report_color(str(code), col >> 16, (col >> 8) & 0xff, col & 0xff)
+                else:
+                    if code >= 110:
+                        val = None
+                    color_changes[w] = val
             code += 1
-        self.change_colors(color_changes)
-        glfw_post_empty_event()
+        if color_changes:
+            self.change_colors(color_changes)
+            glfw_post_empty_event()
 
     def set_color_table_color(self, code, value):
         cp = self.screen.color_profile
         if code == 4:
+            changed = False
             for c, val in parse_color_set(value):
-                cp.set_color(c, val)
-            self.refresh()
+                if val is None:  # color query
+                    self.report_color('4;{}'.format(c), *self.screen.color_profile.as_color((c << 8) | 1))
+                else:
+                    changed = True
+                    cp.set_color(c, val)
+            if changed:
+                self.refresh()
         elif code == 104:
             if not value.strip():
                 cp.reset_color_table()

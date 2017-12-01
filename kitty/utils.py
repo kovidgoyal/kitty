@@ -109,9 +109,12 @@ def parse_color_set(raw):
         try:
             c = int(c)
             if c < 0 or c > 255:
-                raise IndexError('Out of bounds')
-            r, g, b = to_color(spec)
-            yield c, r << 16 | g << 8 | b
+                continue
+            if spec == '?':
+                yield c, None
+            else:
+                r, g, b = to_color(spec)
+                yield c, r << 16 | g << 8 | b
         except Exception:
             continue
 
