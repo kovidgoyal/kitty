@@ -154,6 +154,19 @@ window_focus_callback(GLFWwindow *w, int focused) {
     }
     global_state.callback_os_window = NULL;
 }
+
+static void 
+drop_callback(GLFWwindow *w, int count, const char **paths) {
+    if (!set_callback_window(w)) return;
+    PyObject *p = PyTuple_New(count);
+    if (p) {
+        for (int i = 0; i < count; i++) PyTuple_SET_ITEM(p, i, PyUnicode_FromString(paths[i]));
+        WINDOW_CALLBACK(on_drop, "O", p);
+        Py_CLEAR(p);
+    }
+    global_state.callback_os_window = NULL;
+}
+
 // }}}
 
 void
@@ -266,6 +279,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetCursorPosCallback(glfw_window, cursor_pos_callback);
     glfwSetKeyCallback(glfw_window, key_callback);
     glfwSetWindowFocusCallback(glfw_window, window_focus_callback);
+    glfwSetDropCallback(glfw_window, drop_callback);
 #ifdef __APPLE__
     if (OPT(macos_hide_titlebar)) {
         if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }

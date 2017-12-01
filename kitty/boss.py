@@ -255,6 +255,13 @@ class Boss:
             if w is not None:
                 w.focus_changed(focused)
 
+    def on_drop(self, os_window_id, paths):
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            w = tm.active_window
+            if w is not None:
+                w.paste('\n'.join(paths))
+
     def on_os_window_closed(self, os_window_id, viewport_width, viewport_height):
         cached_values['window-size'] = viewport_width, viewport_height
         tm = self.os_window_map.pop(os_window_id, None)

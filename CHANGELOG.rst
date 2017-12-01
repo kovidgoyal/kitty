@@ -34,6 +34,9 @@ version 0.6.0 [future]
 - Add more options to customize the tab-bar's appearance (font styles and
   separator)
 
+- Allow drag and drop of files into kitty. On drop kitty will paste the
+  file path to the running program.
+
 
 version 0.5.1 [2017-12-01]
 ---------------------------
