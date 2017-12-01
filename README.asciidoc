@@ -251,14 +251,15 @@ hold down `ctrl+shift` and click on a URL to open it in a browser.
 
 == Layouts
 
-Currently, there are two layouts available,
+Currently, there are three layouts available,
 
 * Stack -- Only a single maximized window is shown at a time
 * Tall -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right.
+* Grid -- All windows are shown in a grid
 
 You can switch between layouts using the {sc_next_layout} key combination.
 
-Writing a new layout only requires about thirty lines of code, so if there is
+Writing a new layout only requires about fifty lines of code, so if there is
 some layout you want, take a look at link:kitty/layout.py[layout.py] and submit
 a pull request!
 
