@@ -994,8 +994,6 @@ void _glfwPlatformTerminate(void)
         _glfw.x11.im = NULL;
     }
 
-    _glfwTerminateEGL();
-
     if (_glfw.x11.display)
     {
         XCloseDisplay(_glfw.x11.display);
@@ -1026,8 +1024,9 @@ void _glfwPlatformTerminate(void)
         _glfw.x11.xinerama.handle = NULL;
     }
 
-    // NOTE: This needs to be done after XCloseDisplay, as libGL registers
-    //       cleanup callbacks that get called by it
+    // NOTE: These need to be unloaded after XCloseDisplay, as they register
+    //       cleanup callbacks that get called by that function
+    _glfwTerminateEGL();
     _glfwTerminateGLX();
 
 #if defined(__linux__)
