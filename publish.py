@@ -43,6 +43,7 @@ def run_build(args):
 
 
 def run_tag(args):
+    call('git push')
     call('git tag -s v{0} -m version-{0}'.format(version))
     call('git push origin v{0}'.format(version))
 
@@ -274,7 +275,14 @@ def run_upload(args):
     gh()
 
 
+def require_git_master(branch='master'):
+    b = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').strip()
+    if b != branch:
+        raise SystemExit('You must be in the {} got branch'.format(branch))
+
+
 def main():
+    require_git_master()
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
         '--only',
@@ -292,6 +300,13 @@ def main():
     actions = ALL_ACTIONS[idx:]
     if args.only:
         del actions[1:]
+    else:
+        try:
+            ans = input('Publish version \033[91m{}\033[m (y/n): '.format(version))
+        except KeyboardInterrupt:
+            ans = 'n'
+        if ans.lower() != 'y':
+            return
     for action in actions:
         print('Running', action)
         cwd = os.getcwd()
