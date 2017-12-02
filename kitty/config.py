@@ -206,6 +206,7 @@ def to_layout_names(raw):
     for p in parts:
         if p not in all_layouts:
             raise ValueError('The window layout {} is unknown'.format(p))
+    return parts
 
 
 def positive_int(x):
