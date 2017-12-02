@@ -663,19 +663,19 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // DCS mode {{{
 static inline void
 dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
-    PyObject *string = NULL;
     if (screen->parser_buf_pos < 2) return;
     switch(screen->parser_buf[0]) {
         case '+':
+        case '$':
             if (screen->parser_buf[1] == 'q') {
-                string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 2, screen->parser_buf_pos - 2);
+                PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 2, screen->parser_buf_pos - 2);
                 if (string != NULL) {
-                    REPORT_OSC(screen_request_capabilities, string);
-                    screen_request_capabilities(screen, string);
-                    Py_CLEAR(string);
+                    REPORT_OSC2(screen_request_capabilities, (char)screen->parser_buf[0], string);
+                    screen_request_capabilities(screen, (char)screen->parser_buf[0], string);
+                    Py_DECREF(string);
                 }
             } else {
-                REPORT_ERROR("Unrecognized DCS+ code: 0x%x", screen->parser_buf[1]);
+                REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)screen->parser_buf[0], screen->parser_buf[1]);
             }
             break;
         default:

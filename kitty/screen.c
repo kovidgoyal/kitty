@@ -346,80 +346,7 @@ screen_alignment_display(Screen *self) {
 
 void 
 select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count) {
-#define SET_COLOR(which) \
-    if (i < count) { \
-        attr = params[i++];\
-        switch(attr) { \
-            case 5: \
-                if (i < count) \
-                    self->cursor->which = (params[i++] & 0xFF) << 8 | 1; \
-                break; \
-            case 2: \
-                if (i < count - 2) { \
-                    r = params[i++] & 0xFF; \
-                    g = params[i++] & 0xFF; \
-                    b = params[i++] & 0xFF; \
-                    self->cursor->which = r << 24 | g << 16 | b << 8 | 2; \
-                }\
-                break; \
-        } \
-    } \
-    break;
-
-    unsigned int i = 0, attr;
-    uint8_t r, g, b;
-    if (!count) { params[0] = 0; count = 1; }
-    while (i < count) {
-        attr = params[i++];
-        switch(attr) {
-            case 0:
-                cursor_reset_display_attrs(self->cursor);  break;
-            case 1:
-                self->cursor->bold = true;  break;
-            case 3:
-                self->cursor->italic = true;  break;
-            case 4:
-                self->cursor->decoration = 1;  break;
-            case UNDERCURL_CODE:
-                self->cursor->decoration = 2;  break;
-            case 7:
-                self->cursor->reverse = true;  break;
-            case 9:
-                self->cursor->strikethrough = true;  break;
-            case 22:
-                self->cursor->bold = false;  break;
-            case 23:
-                self->cursor->italic = false;  break;
-            case 24:
-                self->cursor->decoration = 0;  break;
-            case 27:
-                self->cursor->reverse = false;  break;
-            case 29:
-                self->cursor->strikethrough = false;  break;
-START_ALLOW_CASE_RANGE
-            case 30 ... 37:
-                self->cursor->fg = ((attr - 30) << 8) | 1;  break;
-            case 38: 
-                SET_COLOR(fg);
-            case 39:
-                self->cursor->fg = 0;  break;
-            case 40 ... 47:
-                self->cursor->bg = ((attr - 40) << 8) | 1;  break;
-            case 48: 
-                SET_COLOR(bg);
-            case 49:
-                self->cursor->bg = 0;  break;
-            case 90 ... 97:
-                self->cursor->fg = ((attr - 90 + 8) << 8) | 1;  break;
-            case 100 ... 107:
-                self->cursor->bg = ((attr - 100 + 8) << 8) | 1;  break;
-END_ALLOW_CASE_RANGE
-            case DECORATION_FG_CODE:
-                SET_COLOR(decoration_fg);
-            case DECORATION_FG_CODE + 1:
-                self->cursor->decoration_fg = 0; break;
-        }
-    }
+    cursor_from_sgr(self->cursor, params, count);
 }
 
 static inline void
@@ -1123,22 +1050,60 @@ set_title(Screen *self, PyObject *title) {
     CALLBACK("title_changed", "O", title);
 }
 
-void set_icon(Screen *self, PyObject *icon) {
+void 
+set_icon(Screen *self, PyObject *icon) {
     CALLBACK("icon_changed", "O", icon);
 }
 
-void set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
+void 
+set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_dynamic_color", "Is", code, ""); }
     else { CALLBACK("set_dynamic_color", "IO", code, color); }
 }
 
-void set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
+void 
+set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
     else { CALLBACK("set_color_table_color", "IO", code, color); }
 }
 
-void screen_request_capabilities(Screen *self, PyObject *q) {
-    CALLBACK("request_capabilities", "O", q);
+void 
+screen_request_capabilities(Screen *self, char c, PyObject *q) {
+    static char buf[128];
+    int shape = 0;
+    const char *query;
+    switch(c) {
+        case '+':
+            CALLBACK("request_capabilities", "O", q);
+            break;
+        case '$':
+            // report status
+            query = PyUnicode_AsUTF8(q);
+            if (strcmp(" q", query) == 0) {
+                // cursor shape
+                switch(self->cursor->shape) {
+                    case NO_CURSOR_SHAPE:
+                    case NUM_OF_CURSOR_SHAPES:
+                        shape = 1; break;
+                    case CURSOR_BLOCK:
+                        shape = self->cursor->blink ? 0 : 2; break;
+                    case CURSOR_UNDERLINE:
+                        shape = self->cursor->blink ? 3 : 4; break;
+                    case CURSOR_BEAM:
+                        shape = self->cursor->blink ? 5 : 6; break;
+                }
+                shape = snprintf(buf, sizeof(buf), "\033P1$r%d q\033\\", shape);
+            } else if (strcmp("m", query) == 0) {
+                // SGR
+                shape = snprintf(buf, sizeof(buf), "\033P1$r%sm\033\\", cursor_as_sgr(self->cursor));
+            } else if (strcmp("r", query) == 0) {
+                shape = snprintf(buf, sizeof(buf), "\033P1$r%u;%ur\033\\", self->margin_top + 1, self->margin_bottom + 1);
+            } else {
+                shape = snprintf(buf, sizeof(buf), "\033P0$r%s\033\\", query);
+            }
+            if (shape) write_to_child(self, buf, shape);
+            break;
+    }
 }
 
 // }}}

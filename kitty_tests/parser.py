@@ -3,11 +3,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from binascii import hexlify
 from functools import partial
 from unittest import skipIf
 
+from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump
+
 from . import BaseTest
-from kitty.fast_data_types import parse_bytes, parse_bytes_dump, CURSOR_BLOCK
 
 
 class CmdDump(list):
@@ -191,9 +193,27 @@ class TestParser(BaseTest):
 
     def test_dcs_codes(self):
         s = self.create_screen()
+        c = s.callbacks
         pb = partial(self.parse_bytes_dump, s)
-        pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
+        q = hexlify(b'kind').decode('ascii')
+        pb('a\033P+q{}\x9cbcde'.format(q), 'a', ('screen_request_capabilities', 43, q), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
+        self.ae(c.wtcbuf, '\033P1+r{}={}\033\\'.format(q, '5c455b313b3242').encode('ascii'))
+        c.clear()
+        pb('\033P$q q\033\\', ('screen_request_capabilities', ord('$'), ' q'))
+        self.ae(c.wtcbuf, b'\033P1$r1 q\033\\')
+        c.clear()
+        pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
+        self.ae(c.wtcbuf, b'\033P1$r0m\033\\')
+        for sgr in '0;34;102;1;3;4 0;38:5:200;58:2:10:11:12'.split():
+            expected = set(sgr.split(';')) - {'0'}
+            c.clear()
+            parse_bytes(s, '\033[{}m\033P$qm\033\\'.format(sgr).encode('ascii'))
+            r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
+            self.ae(expected, set(r.split(';')))
+        c.clear()
+        pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
+        self.ae(c.wtcbuf, '\033P1$r{};{}r\033\\'.format(s.margin_top + 1, s.margin_bottom + 1).encode('ascii'))
 
     def test_oth_codes(self):
         s = self.create_screen()

@@ -448,7 +448,7 @@ def get_capabilities(query_string):
                     except Exception as e:
                         safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
-            ans.append(q + '=' + hexlify(str(val)))
+            ans.append(q + '=' + hexlify(str(val).encode('utf-8')).decode('ascii'))
         return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
     except Exception:
         return b'\033P0+r' + query_string.encode('utf-8') + b'\033\\'

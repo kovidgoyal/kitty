@@ -28,14 +28,15 @@ class Callbacks:
         self.ctbuf += ''
 
     def request_capabilities(self, q):
-        self.qbuf += q
+        from kitty.terminfo import get_capabilities
+        self.write(get_capabilities(q))
 
     def use_utf8(self, on):
         self.iutf8 = on
 
     def clear(self):
         self.wtcbuf = b''
-        self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = self.ctbuf = ''
+        self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True
 
 

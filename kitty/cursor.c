@@ -39,9 +39,126 @@ repr(Cursor *self) {
     );
 }
 
-void cursor_reset_display_attrs(Cursor *self) {
+void 
+cursor_reset_display_attrs(Cursor *self) {
     self->bg = 0; self->fg = 0; self->decoration_fg = 0;
     self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
+}
+
+void
+cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count) {
+#define SET_COLOR(which) \
+    if (i < count) { \
+        attr = params[i++];\
+        switch(attr) { \
+            case 5: \
+                if (i < count) \
+                    self->which = (params[i++] & 0xFF) << 8 | 1; \
+                break; \
+            case 2: \
+                if (i < count - 2) { \
+                    r = params[i++] & 0xFF; \
+                    g = params[i++] & 0xFF; \
+                    b = params[i++] & 0xFF; \
+                    self->which = r << 24 | g << 16 | b << 8 | 2; \
+                }\
+                break; \
+        } \
+    } \
+    break;
+
+    unsigned int i = 0, attr;
+    uint8_t r, g, b;
+    if (!count) { params[0] = 0; count = 1; }
+    while (i < count) {
+        attr = params[i++];
+        switch(attr) {
+            case 0:
+                cursor_reset_display_attrs(self);  break;
+            case 1:
+                self->bold = true;  break;
+            case 3:
+                self->italic = true;  break;
+            case 4:
+                self->decoration = 1;  break;
+            case UNDERCURL_CODE:
+                self->decoration = 2;  break;
+            case 7:
+                self->reverse = true;  break;
+            case 9:
+                self->strikethrough = true;  break;
+            case 22:
+                self->bold = false;  break;
+            case 23:
+                self->italic = false;  break;
+            case 24:
+                self->decoration = 0;  break;
+            case 27:
+                self->reverse = false;  break;
+            case 29:
+                self->strikethrough = false;  break;
+START_ALLOW_CASE_RANGE
+            case 30 ... 37:
+                self->fg = ((attr - 30) << 8) | 1;  break;
+            case 38: 
+                SET_COLOR(fg);
+            case 39:
+                self->fg = 0;  break;
+            case 40 ... 47:
+                self->bg = ((attr - 40) << 8) | 1;  break;
+            case 48: 
+                SET_COLOR(bg);
+            case 49:
+                self->bg = 0;  break;
+            case 90 ... 97:
+                self->fg = ((attr - 90 + 8) << 8) | 1;  break;
+            case 100 ... 107:
+                self->bg = ((attr - 100 + 8) << 8) | 1;  break;
+END_ALLOW_CASE_RANGE
+            case DECORATION_FG_CODE:
+                SET_COLOR(decoration_fg);
+            case DECORATION_FG_CODE + 1:
+                self->decoration_fg = 0; break;
+        }
+    }
+}
+
+static inline int
+color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsigned aix_code, unsigned complex_code) {
+    switch(val & 0xff) {
+        case 1:
+            val >>= 8;
+            if (val < 16 && simple_code) {
+                return snprintf(buf, sz, "%ld;", (val < 8) ? simple_code + val : aix_code + (val - 8));
+            }
+            return snprintf(buf, sz, "%d:5:%ld;", complex_code, val);
+        case 2:
+            return snprintf(buf, sz, "%d:2:%ld:%ld:%ld;", complex_code, (val >> 24) & 0xff, (val >> 16) & 0xff, (val >> 8) & 0xff);
+        default:
+            return 0;
+    }
+}
+
+const char* 
+cursor_as_sgr(Cursor *self) {
+    static char buf[128], *p;
+#define SZ sizeof(buf) - (p - buf) - 2
+#define P(fmt, ...) { p += snprintf(p, SZ, fmt ";", __VA_ARGS__); }
+    p = buf;
+    if (self->bold) P("%d", 1);
+    if (self->italic) P("%d", 3);
+    if (self->reverse) P("%d", 7);
+    if (self->strikethrough) P("%d", 9);
+    if (self->decoration) P("%d", self->decoration == 1 ? 4 : UNDERCURL_CODE);
+    if (self->fg) p += color_as_sgr(p, SZ, self->fg, 30, 90, 38);
+    if (self->bg) p += color_as_sgr(p, SZ, self->bg, 40, 100, 48);
+    if (self->decoration_fg) p += color_as_sgr(p, SZ, self->decoration_fg, 0, 0, DECORATION_FG_CODE);
+#undef P
+#undef SZ
+    if (p > buf) *(p - 1) = 0;  // remove trailing semi-colon
+    else *(p++) = '0';  // no formatting
+    *p = 0;  // ensure string is null-terminated
+    return buf;
 }
 
 static PyObject *

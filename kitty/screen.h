@@ -110,7 +110,7 @@ void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
-void screen_request_capabilities(Screen *, PyObject *);
+void screen_request_capabilities(Screen *, char, PyObject *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
