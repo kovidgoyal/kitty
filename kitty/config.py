@@ -109,6 +109,8 @@ def parse_key_action(action):
         args = tuple(map(parse_key_action, filter(None, parts)))
     elif func == 'send_text':
         args = rest.split(' ', 1)
+    elif func == 'goto_tab':
+        args = (max(0, int(rest)),)
     elif func in shlex_actions:
         args = shlex.split(rest)
     return KeyAction(func, args)
@@ -338,7 +340,7 @@ with open(
     defaults = parse_config(f.readlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine', 'send_text'})
+actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine', 'send_text', 'goto_tab'})
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 

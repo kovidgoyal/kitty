@@ -360,6 +360,10 @@ class TabManager:  # {{{
         if len(self.tabs) > 1:
             self.set_active_tab((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
+    def goto_tab(self, tab_num):
+        if tab_num < len(self.tabs) and 0 <= tab_num:
+            self.set_active_tab(tab_num)
+
     def __iter__(self):
         return iter(self.tabs)
 

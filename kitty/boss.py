@@ -331,6 +331,11 @@ class Boss:
             if text:
                 set_primary_selection(text)
 
+    def goto_tab(self, tab_num):
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.goto_tab(tab_num - 1)
+
     def next_tab(self):
         tm = self.active_tab_manager
         if tm is not None:
