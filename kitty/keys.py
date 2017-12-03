@@ -105,10 +105,6 @@ rmkx_key_map.update({
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
 
 
-def get_key_map(screen):
-    return cursor_key_mode_map[screen.cursor_key_mode]
-
-
 def keyboard_mode_name(screen):
     if screen.extended_keyboard:
         return 'kitty'
