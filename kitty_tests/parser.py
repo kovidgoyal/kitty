@@ -198,7 +198,7 @@ class TestParser(BaseTest):
         q = hexlify(b'kind').decode('ascii')
         pb('a\033P+q{}\x9cbcde'.format(q), 'a', ('screen_request_capabilities', 43, q), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
-        self.ae(c.wtcbuf, '\033P1+r{}={}\033\\'.format(q, '5c455b313b3242').encode('ascii'))
+        self.ae(c.wtcbuf, '\033P1+r{}={}\033\\'.format(q, '1b5b313b3242').encode('ascii'))
         c.clear()
         pb('\033P$q q\033\\', ('screen_request_capabilities', ord('$'), ' q'))
         self.ae(c.wtcbuf, b'\033P1$r1 q\033\\')

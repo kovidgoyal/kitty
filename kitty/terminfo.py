@@ -436,7 +436,7 @@ def get_capabilities(query_string):
     ans = []
     try:
         for q in query_string.split(';'):
-            name = unhexlify(q).decode('utf-8')
+            name = qname = unhexlify(q).decode('utf-8')
             if name == 'TN':
                 val = names[0]
             else:
@@ -444,10 +444,13 @@ def get_capabilities(query_string):
                     val = queryable_capabilities[name]
                 except KeyError:
                     try:
-                        val = queryable_capabilities[termcap_aliases[name]]
+                        qname = termcap_aliases[name]
+                        val = queryable_capabilities[qname]
                     except Exception as e:
                         safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
+                if qname in string_capabilities and '%' not in val:
+                    val = key_as_bytes(qname).decode('ascii')
             ans.append(q + '=' + hexlify(str(val).encode('utf-8')).decode('ascii'))
         return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
     except Exception:
