@@ -283,8 +283,9 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                             REPORT_COMMAND(screen_set_8bit_controls, ch == 'G');
                             screen_set_8bit_controls(screen, ch == 'G');
                             break;
+                        default:
+                            REPORT_ERROR("Unhandled ESC SP escape code: 0x%x", ch); break;
                     }
-                    REPORT_ERROR("Unhandled ESC SP escape code: 0x%x", ch); break;
                     break;
                 default:
                     REPORT_ERROR("Unhandled charset related escape code: 0x%x 0x%x", screen->parser_buf[0], ch); break;

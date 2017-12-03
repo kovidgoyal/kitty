@@ -215,6 +215,17 @@ class TestParser(BaseTest):
         pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
         self.ae(c.wtcbuf, '\033P1$r{};{}r\033\\'.format(s.margin_top + 1, s.margin_bottom + 1).encode('ascii'))
 
+    def test_sc81t(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033 G', ('screen_set_8bit_controls', 1))
+        c = s.callbacks
+        pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
+        self.ae(c.wtcbuf, b'\x901$r0m\x9c')
+        c.clear()
+        pb('\033[0c', ('report_device_attributes', 0, 0))
+        self.ae(c.wtcbuf, b'\x9b?62;c')
+
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
