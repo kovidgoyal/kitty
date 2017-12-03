@@ -9,14 +9,13 @@ from .cli import create_opts, parse_args
 from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
 from .constants import set_boss, wakeup
 from .fast_data_types import (
-    GLFW_KEY_DOWN, GLFW_KEY_UP, ChildMonitor, create_os_window,
-    current_os_window, destroy_global_data, destroy_sprite_map,
-    get_clipboard_string, glfw_post_empty_event, layout_sprite_map,
-    mark_os_window_for_close, show_window, toggle_fullscreen,
-    viewport_for_window
+    ChildMonitor, create_os_window, current_os_window, destroy_global_data,
+    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
+    layout_sprite_map, mark_os_window_for_close, show_window,
+    toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
-from .keys import get_key_map, get_shortcut
+from .keys import get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
@@ -287,12 +286,6 @@ class Boss:
         if not old_focus.destroyed:
             old_focus.focus_changed(False)
         tab.active_window.focus_changed(True)
-
-    def send_fake_scroll(self, window_idx, amt, upwards):
-        tab = self.active_tab
-        w = tab.windows[window_idx]
-        k = get_key_map(w.screen)[GLFW_KEY_UP if upwards else GLFW_KEY_DOWN]
-        w.write_to_child(k * amt)
 
     def open_url(self, url):
         if url:

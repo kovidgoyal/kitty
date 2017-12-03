@@ -73,8 +73,8 @@
 // Bracketed paste mode
 // http://cirw.in/blog/bracketed-paste
 #define BRACKETED_PASTE (2004 << 5)
-#define BRACKETED_PASTE_START "\033[200~"
-#define BRACKETED_PASTE_END  "\033[201~"
+#define BRACKETED_PASTE_START "200~"
+#define BRACKETED_PASTE_END  "201~"
 
 // Styled underlines
 #define STYLED_UNDERLINES (2016 << 5)

@@ -151,10 +151,10 @@ decoration_as_sgr(uint8_t decoration) {
 
 const char* 
 cursor_as_sgr(Cursor *self, Cursor *prev) {
-    static char buf[128], *p;
+    static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(fmt, ...) { p += snprintf(p, SZ, fmt ";", __VA_ARGS__); }
-    p = buf;
+    char *p = buf;
     if (self->bold != prev->bold) P("%d", self->bold ? 1 : 22);
     if (self->italic != prev->italic) P("%d", self->italic ? 3 : 23);
     if (self->reverse != prev->reverse) P("%d", self->reverse ? 7 : 27);

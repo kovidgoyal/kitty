@@ -452,6 +452,6 @@ def get_capabilities(query_string):
                 if qname in string_capabilities and '%' not in val:
                     val = key_as_bytes(qname).decode('ascii')
             ans.append(q + '=' + hexlify(str(val).encode('utf-8')).decode('ascii'))
-        return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
+        return '1+r' + ';'.join(ans)
     except Exception:
-        return b'\033P0+r' + query_string.encode('utf-8') + b'\033\\'
+        return '0+r' + query_string

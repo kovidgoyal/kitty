@@ -19,6 +19,7 @@
 #include "unicode-data.h"
 #include "modes.h"
 #include "wcwidth9.h"
+#include "control-codes.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {0};
@@ -104,9 +105,9 @@ screen_reset(Screen *self) {
     linebuf_clear(self->linebuf, BLANK_CHAR);
     grman_clear(self->grman);
     self->modes = empty_modes;
-#define RC(name) self->color_profile->overridden.name = 0
-    RC(default_fg); RC(default_bg); RC(cursor_color); RC(highlight_fg); RC(highlight_bg);
-#undef RC
+#define R(name) self->color_profile->overridden.name = 0
+    R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
+#undef R
     RESET_CHARSETS;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     screen_normal_keypad_mode(self);
@@ -355,13 +356,37 @@ write_to_child(Screen *self, const char *data, size_t sz) {
     if (self->test_child != Py_None) { PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r); }
 }
 
-#define write_str_to_child(s) write_to_child(self, (s), sizeof((s)) - 1)
+void
+write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
+    static char buf[512];
+    size_t sz;
+    switch(which) {
+        case DCS:
+            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x90" : "\033P", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            break;
+        case CSI:
+            sz = snprintf(buf, sizeof(buf) - 1, "%s%s", self->modes.eight_bit_controls ? "\x9b" : "\033[", data);
+            break;
+        case OSC:
+            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9d" : "\033]", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            break;
+        case PM:
+            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9e" : "\033^", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            break;
+        case APC:
+            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9f" : "\033_", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            break;
+        default:
+            fatal("Unknown escape code to write: %u", which);
+    }
+    write_to_child(self, buf, sz);
+}
 
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty);
-    if (response != NULL) write_to_child(self, response, strlen(response));
+    if (response != NULL) write_escape_code_to_child(self, APC, response);
     if (x != self->cursor->x || y != self->cursor->y) {
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
         if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom); 
@@ -470,14 +495,20 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 #undef MOUSE_MODE
 }
 
-void screen_set_mode(Screen *self, unsigned int mode) {
+void 
+screen_set_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, true);
 }
 
-void screen_reset_mode(Screen *self, unsigned int mode) {
+void 
+screen_reset_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, false);
 }
 
+void
+screen_set_8bit_controls(Screen *self, bool yes) {
+    self->modes.eight_bit_controls = yes;
+}
 // }}}
 
 // Cursor {{{
@@ -944,10 +975,10 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     if (mode == 0) {
         switch(start_modifier) {
             case 0:
-                write_str_to_child("\x1b[?62;c"); // VT-220 with no extra info
+                write_escape_code_to_child(self, CSI, "?62;c");
                 break;
             case '>':
-                write_str_to_child("\x1b[>1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
+                write_escape_code_to_child(self, CSI, ">1;" xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c");  // VT-220 + primary version + secondary version
                 break;
         }
     }
@@ -958,10 +989,10 @@ report_device_status(Screen *self, unsigned int which, bool private) {
     // We dont implement the private device status codes, since I haven't come
     // across any programs that use them
     unsigned int x, y;
-    static char buf[50];
+    static char buf[64];
     switch(which) {
         case 5:  // device status
-            write_str_to_child("\x1b[0n");
+            write_escape_code_to_child(self, CSI, "0n");
             break;
         case 6:  // cursor position
             x = self->cursor->x; y = self->cursor->y;
@@ -971,8 +1002,8 @@ report_device_status(Screen *self, unsigned int which, bool private) {
             }
             if (self->modes.mDECOM) y -= MAX(y, self->margin_top);
             // 1-based indexing
-            int sz = snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%uR", (private ? "?": ""), y + 1, x + 1);
-            if (sz > 0) write_to_child(self, buf, sz);
+            int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%uR", (private ? "?": ""), y + 1, x + 1);
+            if (sz > 0) write_escape_code_to_child(self, CSI, buf);
             break;
     }
 }
@@ -1002,8 +1033,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         case STYLED_UNDERLINES:
             ans = 3; break;
     }
-    int sz = snprintf(buf, sizeof(buf) - 1, "\x1b[%s%u;%u$y", (private ? "?" : ""), which, ans);
-    if (sz > 0) write_to_child(self, buf, sz);
+    int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
+    if (sz > 0) write_escape_code_to_child(self, CSI, buf);
 }
 
 void 
@@ -1093,16 +1124,16 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
                     case CURSOR_BEAM:
                         shape = self->cursor->blink ? 5 : 6; break;
                 }
-                shape = snprintf(buf, sizeof(buf), "\033P1$r%d q\033\\", shape);
+                shape = snprintf(buf, sizeof(buf), "1$r%d q", shape);
             } else if (strcmp("m", query) == 0) {
                 // SGR
-                shape = snprintf(buf, sizeof(buf), "\033P1$r%sm\033\\", cursor_as_sgr(self->cursor, &blank_cursor));
+                shape = snprintf(buf, sizeof(buf), "1$r%sm", cursor_as_sgr(self->cursor, &blank_cursor));
             } else if (strcmp("r", query) == 0) {
-                shape = snprintf(buf, sizeof(buf), "\033P1$r%u;%ur\033\\", self->margin_top + 1, self->margin_bottom + 1);
+                shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
             } else {
-                shape = snprintf(buf, sizeof(buf), "\033P0$r%s\033\\", query);
+                shape = snprintf(buf, sizeof(buf), "0$r%s", query);
             }
-            if (shape) write_to_child(self, buf, shape);
+            if (shape > 0) write_escape_code_to_child(self, DCS, buf);
             break;
     }
 }
@@ -1523,6 +1554,23 @@ toggle_alt_screen(Screen *self) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+send_escape_code_to_child(Screen *self, PyObject *args) {
+    int code;
+    char *text;
+    if (!PyArg_ParseTuple(args, "is", &code, &text)) return NULL;
+    write_escape_code_to_child(self, code, text);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+paste(Screen *self, PyObject *bytes) {
+    if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
+    write_to_child(self, PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes));
+    if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_END);
+    Py_RETURN_NONE;
+}
+
 WRAP2(cursor_position, 1, 1)
 
 #define COUNT_WRAP(name) WRAP1(name, 1)
@@ -1580,8 +1628,10 @@ static PyMethodDef methods[] = {
     MND(rescale_images, METH_VARARGS)
     MND(text_for_selection, METH_NOARGS)
     MND(scroll, METH_VARARGS)
+    MND(send_escape_code_to_child, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
+    MND(paste, METH_O)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

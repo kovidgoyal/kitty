@@ -515,7 +515,7 @@ create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid
             if (!data_loaded) return NULL;
             snprintf(add_response, 10, "OK"); 
         }
-        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "\033_Gi=%u;%s\033\\", iid, add_response);
+        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, add_response);
         return rbuf;
     }
     return NULL;

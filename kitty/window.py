@@ -12,13 +12,12 @@ from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
-    BLIT_PROGRAM, BRACKETED_PASTE_END, BRACKETED_PASTE_START, CELL_BG_PROGRAM,
-    CELL_FG_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_PROGRAM,
-    GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM, SCROLL_FULL, SCROLL_LINE,
-    SCROLL_PAGE, Screen, add_window, compile_program, glfw_post_empty_event,
-    init_cell_program, init_cursor_program, set_clipboard_string,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
+    CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, GRAPHICS_PREMULT_PROGRAM,
+    GRAPHICS_PROGRAM, OSC, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
+    add_window, compile_program, glfw_post_empty_event, init_cell_program,
+    init_cursor_program, set_clipboard_string, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -171,10 +170,10 @@ class Window:
     def focus_changed(self, focused):
         if focused:
             if self.screen.focus_tracking_enabled:
-                self.write_to_child(b'\x1b[I')
+                self.screen.send_escape_code_to_child(CSI, 'I')
         else:
             if self.screen.focus_tracking_enabled:
-                self.write_to_child(b'\x1b[O')
+                self.screen.send_escape_code_to_child(CSI, 'O')
 
     def title_changed(self, new_title):
         if self.override_title is None:
@@ -206,11 +205,11 @@ class Window:
         if dirtied:
             self.screen.mark_as_dirty()
 
-    def report_color(self, osc, r, g, b):
+    def report_color(self, code, r, g, b):
         r |= r << 8
         g |= g << 8
         b |= b << 8
-        self.write_to_child('\033]{};rgb:{:04x}/{:04x}/{:04x}\033\\'.format(osc, r, g, b))
+        self.screen.send_escape_code_to_child(OSC, '{};rgb:{:04x}/{:04x}/{:04x}'.format(code, r, g, b))
 
     def set_dynamic_color(self, code, value):
         if isinstance(value, bytes):
@@ -257,7 +256,7 @@ class Window:
             self.refresh()
 
     def request_capabilities(self, q):
-        self.write_to_child(get_capabilities(q))
+        self.screen.send_escape_code_to_child(DCS, get_capabilities(q))
 
     # }}}
 
@@ -290,9 +289,8 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                bpe = BRACKETED_PASTE_END.encode('ascii')
-                text = BRACKETED_PASTE_START.encode('ascii') + text.replace(bpe, b'') + bpe
-            self.write_to_child(text)
+                text = text.replace(b'\033[201~', b'')
+            self.screen.paste(text)
 
     def copy_to_clipboard(self):
         text = self.text_for_selection()

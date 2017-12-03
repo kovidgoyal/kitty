@@ -9,6 +9,7 @@
 #include "state.h"
 #include "screen.h"
 #include "glfw-wrapper.h"
+#include "control-codes.h"
 
 const char*
 key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
@@ -133,6 +134,16 @@ get_localized_key(int key, int scancode) {
     }
 }
 
+static inline void
+send_key_to_child(Window *w, int key, int mods, int action) {
+    Screen *screen = w->render_data.screen;
+    const char *data = key_to_bytes(key, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
+    if (data) {
+        if (screen->modes.mEXTENDED_KEYBOARD) write_escape_code_to_child(screen, APC, data + 1);
+        else schedule_write_to_child(w->id, (data + 1), *data);
+    }
+}
+
 void
 on_key_input(int key, int scancode, int action, int mods) {
     Window *w = active_window();
@@ -168,9 +179,17 @@ on_key_input(int key, int scancode, int action, int mods) {
             (action == GLFW_REPEAT && screen->modes.mDECARM) ||
             screen->modes.mEXTENDED_KEYBOARD
        ) {
-        const char *data = key_to_bytes(lkey, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
-        if (data) schedule_write_to_child(w->id, (data + 1), *data);
+        send_key_to_child(w, lkey, mods, action);
     }
+}
+
+void
+fake_scroll(bool upwards) {
+    Window *w = active_window();
+    if (!w) return;
+    Screen *screen = w->render_data.screen;
+    send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_PRESS);
+    if (screen->modes.mEXTENDED_KEYBOARD) send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_RELEASE);
 }
 
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)

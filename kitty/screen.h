@@ -15,6 +15,7 @@ typedef struct {
          mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
+    bool eight_bit_controls;  // S8C1T
 } ScreenModes;
 
 typedef struct {
@@ -66,6 +67,7 @@ void parse_worker_dump(Screen *screen, PyObject *dump_callback);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
+void write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_line(Screen *, unsigned int, bool);
@@ -111,6 +113,7 @@ void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
 void screen_request_capabilities(Screen *, char, PyObject *);
+void screen_set_8bit_controls(Screen *, bool);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);

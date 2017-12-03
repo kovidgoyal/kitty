@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <math.h>
 #include "glfw-wrapper.h"
+#include "control-codes.h"
 
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
@@ -41,7 +42,7 @@ button_map(int button) {
 
 static char mouse_event_buf[64];
 
-size_t
+int
 encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
     unsigned int cb = 0;
@@ -60,14 +61,14 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     if (mods & GLFW_MOD_CONTROL) cb |= CONTROL_INDICATOR;
     switch(screen->modes.mouse_tracking_protocol) {
         case SGR_PROTOCOL:
-            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
+            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
             break;
         case URXVT_PROTOCOL:
-            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "\033[%d;%d;%dM", cb + 32, x, y);
+            return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;%d;%dM", cb + 32, x, y);
             break;
         case UTF8_PROTOCOL:
-            mouse_event_buf[0] = 033; mouse_event_buf[1] = '['; mouse_event_buf[2] = 'M'; mouse_event_buf[3] = cb + 32; 
-            unsigned int sz = 4;
+            mouse_event_buf[0] = 'M'; mouse_event_buf[1] = cb + 32; 
+            unsigned int sz = 2;
             sz += encode_utf8(x + 32, mouse_event_buf + sz);
             sz += encode_utf8(y + 32, mouse_event_buf + sz);
             return sz;
@@ -75,8 +76,8 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
         default:
             if (x > 223 || y > 223) return 0;
             else {
-                mouse_event_buf[0] = 033; mouse_event_buf[1] = '['; mouse_event_buf[2] = 'M'; mouse_event_buf[3] = cb + 32; mouse_event_buf[4] = x + 32; mouse_event_buf[5] = y + 32;
-                return 6;
+                mouse_event_buf[0] = 'M'; mouse_event_buf[1] = cb + 32; mouse_event_buf[2] = x + 32; mouse_event_buf[3] = y + 32;
+                return 4;
             }
             break;
     }
@@ -190,8 +191,8 @@ HANDLER(handle_move_event) {
         }
     } else {
         if (!mouse_cell_changed) return;
-        size_t sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
-        if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
+        int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
+        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
 }
 
@@ -279,8 +280,8 @@ HANDLER(handle_button_event) {
                 break;
         }
     } else {
-        size_t sz = encode_mouse_event(w, button, is_release ? RELEASE : PRESS, modifiers);
-        if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
+        int sz = encode_mouse_event(w, button, is_release ? RELEASE : PRESS, modifiers);
+        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
 }
 
@@ -354,10 +355,10 @@ scroll_event(double UNUSED xoffset, double yoffset) {
             screen_history_scroll(screen, abs(s), upwards);
         } else {
             if (screen->modes.mouse_tracking_mode) {
-                size_t sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
-                if (sz) schedule_write_to_child(w->id, mouse_event_buf, sz);
+                int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
+                if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
             } else {
-                call_boss(send_fake_scroll, "IiO", window_idx, abs(s), upwards ? Py_True : Py_False);
+                fake_scroll(upwards);
             }
         }
     }

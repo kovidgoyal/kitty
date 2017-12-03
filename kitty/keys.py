@@ -144,7 +144,7 @@ def extended_key_event(key, mods, action):
         m |= 0x4
     if mods & defines.GLFW_MOD_SUPER:
         m |= 0x8
-    return '\033_K{}{}{}\033\\'.format(
+    return 'K{}{}{}'.format(
         action_map[action], base64_encode(m), name
     ).encode('ascii')
 

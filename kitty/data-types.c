@@ -12,6 +12,7 @@
 #undef _DARWIN_C_SOURCE
 #endif
 #include "data-types.h"
+#include "control-codes.h"
 #include "modes.h"
 #include <stddef.h>
 #include <termios.h>
@@ -229,8 +230,6 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
         PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
-        PyModule_AddStringMacro(m, BRACKETED_PASTE_START);
-        PyModule_AddStringMacro(m, BRACKETED_PASTE_END);
         PyModule_AddStringMacro(m, ERROR_PREFIX);
         PyModule_AddIntMacro(m, CURSOR_BLOCK);
         PyModule_AddIntMacro(m, CURSOR_BEAM);
@@ -239,6 +238,10 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, DECCOLM);
         PyModule_AddIntMacro(m, DECOM);
         PyModule_AddIntMacro(m, IRM);
+        PyModule_AddIntMacro(m, CSI);
+        PyModule_AddIntMacro(m, DCS);
+        PyModule_AddIntMacro(m, APC);
+        PyModule_AddIntMacro(m, OSC);
     }
 
     return m;
