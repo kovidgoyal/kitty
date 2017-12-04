@@ -72,8 +72,8 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
             ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) 
 
 #define ATTRS_TO_CURSOR(a, c) \
-    c->decoration = (a >> DECORATION_SHIFT) & 3; c->bold = (a >> BOLD_SHIFT) & 1; c->italic = (a >> ITALIC_SHIFT) & 1; \
-    c->reverse = (a >> REVERSE_SHIFT) & 1; c->strikethrough = (a >> STRIKE_SHIFT) & 1;
+    (c)->decoration = (a >> DECORATION_SHIFT) & 3; (c)->bold = (a >> BOLD_SHIFT) & 1; (c)->italic = (a >> ITALIC_SHIFT) & 1; \
+    (c)->reverse = (a >> REVERSE_SHIFT) & 1; (c)->strikethrough = (a >> STRIKE_SHIFT) & 1;
 
 #define COPY_CELL(src, s, dest, d) \
     (dest)->cells[d] = (src)->cells[s];
@@ -256,7 +256,7 @@ Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 void cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count);
-const char* cursor_as_sgr(Cursor*);
+const char* cursor_as_sgr(Cursor*, Cursor*);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);

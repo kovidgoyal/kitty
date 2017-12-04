@@ -1072,6 +1072,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;
     const char *query;
+    Cursor blank_cursor = {{0}};
     switch(c) {
         case '+':
             CALLBACK("request_capabilities", "O", q);
@@ -1095,7 +1096,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
                 shape = snprintf(buf, sizeof(buf), "\033P1$r%d q\033\\", shape);
             } else if (strcmp("m", query) == 0) {
                 // SGR
-                shape = snprintf(buf, sizeof(buf), "\033P1$r%sm\033\\", cursor_as_sgr(self->cursor));
+                shape = snprintf(buf, sizeof(buf), "\033P1$r%sm\033\\", cursor_as_sgr(self->cursor, &blank_cursor));
             } else if (strcmp("r", query) == 0) {
                 shape = snprintf(buf, sizeof(buf), "\033P1$r%u;%ur\033\\", self->margin_top + 1, self->margin_bottom + 1);
             } else {

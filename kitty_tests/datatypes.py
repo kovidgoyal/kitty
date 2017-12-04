@@ -399,8 +399,8 @@ class TestDataTypes(BaseTest):
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
         c.decoration_fg = (5 << 8) | 1
         l2.set_text('1', 0, 1, c)
-        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1m\x1b[3m\x1b[7m\x1b[9m\x1b[38;5;4m\x1b[48;2;1;2;3m\x1b[58;5;5m' '1'
-                '\x1b[22m\x1b[23m\x1b[27m\x1b[29m\x1b[39m\x1b[49m\x1b[59m' '0000')
+        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
+                '\x1b[22;23;27;29;39;49;59m' '0000')
         lb = filled_line_buf()
         for i in range(lb.ynum):
             lb.set_continued(i, True)

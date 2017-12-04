@@ -204,7 +204,7 @@ class TestParser(BaseTest):
         self.ae(c.wtcbuf, b'\033P1$r1 q\033\\')
         c.clear()
         pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
-        self.ae(c.wtcbuf, b'\033P1$r0m\033\\')
+        self.ae(c.wtcbuf, b'\033P1$rm\033\\')
         for sgr in '0;34;102;1;3;4 0;38:5:200;58:2:10:11:12'.split():
             expected = set(sgr.split(';')) - {'0'}
             c.clear()

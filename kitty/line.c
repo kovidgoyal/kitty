@@ -229,28 +229,10 @@ sprite_at(Line* self, PyObject *x) {
     return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
 }
 
-
 static inline bool
-write_sgr(unsigned int val, Py_UCS4 *buf, index_type buflen, index_type *i) {
-    static char s[20] = {0};
-    unsigned int num = snprintf(s, 20, "\x1b[%um", val);
-    if (buflen - (*i) < num + 3) return false;
-    for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
-    return true;
-}
-
-static inline bool
-write_color(uint32_t val, int code, Py_UCS4 *buf, index_type buflen, index_type *i) {
-    static char s[50] = {0};
-    unsigned int num;
-    switch(val & 3) {
-        case 1:
-            num = snprintf(s, 50, "\x1b[%d;5;%um", code, (val >> 8) & 0xFF); break;
-        case 2:
-            num = snprintf(s, 50, "\x1b[%d;2;%u;%u;%um", code, (val >> 24) & 0xFF, (val >> 16) & 0xFF, (val >> 8) & 0xFF); break;
-        default:
-            return true;
-    }
+write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
+    static char s[128];
+    unsigned int num = snprintf(s, sizeof(s), "\x1b[%sm", val);
     if (buflen - (*i) < num + 3) return false;
     for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
     return true;
@@ -258,46 +240,29 @@ write_color(uint32_t val, int code, Py_UCS4 *buf, index_type buflen, index_type 
 
 index_type
 line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
-#define WRITE_SGR(val) if (!write_sgr(val, buf, buflen, &i)) return i;
-#define WRITE_COLOR(val, code) if (val) { if (!write_color(val, code, buf, buflen, &i)) return i; } else { WRITE_SGR(code+1); }
-#define CHECK_BOOL(name, shift, on, off) \
-        if (((attrs >> shift) & 1) != name) { \
-            name ^= 1; \
-            if (name) { WRITE_SGR(on); } else { WRITE_SGR(off); } \
-        }
-#define CHECK_COLOR(name, val, off_code) if (name != (val)) { name = (val); WRITE_COLOR(name, off_code); }
+#define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) return i; }
 #define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val; 
 
     index_type limit = xlimit_for_line(self), i=0;
-    bool bold = false, italic = false, reverse = false, strike = false;
-    uint32_t fg = 0, bg = 0, decoration_fg = 0, decoration = 0;
     char_type previous_width = 0;
 
-    WRITE_SGR(0);
+    WRITE_SGR("0");
+    Cursor c1 = {{0}}, c2 = {{0}};
+    Cursor *cursor = &c1, *prev_cursor = &c2, *t;
+
     for (index_type pos=0; pos < limit; pos++) {
         char_type attrs = self->cells[pos].attrs, ch = self->cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
         }
-        CHECK_BOOL(bold, BOLD_SHIFT, 1, 22);
-        CHECK_BOOL(italic, ITALIC_SHIFT, 3, 23);
-        CHECK_BOOL(reverse, REVERSE_SHIFT, 7, 27);
-        CHECK_BOOL(strike, STRIKE_SHIFT, 9, 29);
-        if (((attrs >> DECORATION_SHIFT) & DECORATION_MASK) != decoration) {
-            decoration = ((attrs >> DECORATION_SHIFT) & DECORATION_MASK);
-            switch(decoration) {
-                case 1:
-                    WRITE_SGR(4); break;
-                case 2:
-                    WRITE_SGR(UNDERCURL_CODE); break;
-                default:
-                    WRITE_SGR(0); break;
-            }
-        }
-        CHECK_COLOR(fg, self->cells[pos].fg, 38);
-        CHECK_COLOR(bg, self->cells[pos].bg, 48);
-        CHECK_COLOR(decoration_fg, self->cells[pos].decoration_fg, DECORATION_FG_CODE);
+        ATTRS_TO_CURSOR(attrs, cursor);
+        cursor->fg = self->cells[pos].fg; cursor->bg = self->cells[pos].bg;
+        cursor->decoration_fg = self->cells[pos].decoration_fg & COL_MASK;
+
+        const char *sgr = cursor_as_sgr(cursor, prev_cursor);
+        t = prev_cursor; prev_cursor = cursor; cursor = t;
+        if (*sgr) WRITE_SGR(sgr);
         WRITE_CH(ch);
         char_type cc = self->cells[pos].cc;
         Py_UCS4 cc1 = cc & CC_MASK;
