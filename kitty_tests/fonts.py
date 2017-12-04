@@ -33,7 +33,7 @@ class Rendering(BaseTest):
         get_logical_dpi((96.0, 96.0))
         self.cell_width, self.cell_height = set_font_family()
         prerender()
-        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4])
+        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5])
 
     def tearDown(self):
         set_send_sprite_to_gpu(None)
