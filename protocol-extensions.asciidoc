@@ -28,11 +28,15 @@ in terminal editors such as vim and emacs to display red, wavy underlines under
 mis-spelled words and/or syntax errors. This is done by re-purposing some SGR escape codes
 that are not used in modern terminals (https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes)
 
-To change the underline style from straight line to curl (this used to be the
-code for rapid blinking text, only previous use I know of was in MS-DOS ANSI.sys):
+To set the underline style:
 
 ```
-<ESC>[6m
+<ESC>[4:0m  # this is no underline
+<ESC>[4:1m  # this is a straight underline
+<ESC>[4:2m  # this is a double underline
+<ESC>[4:3m  # this is a curly underline
+<ESC>[4m    # this is a straight underline (for backwards compat)
+<ESC>[24m   # this is no underline (for backwards compat)
 ```
 
 To set the underline color (this is reserved and as far as I can tell not actually used for anything):

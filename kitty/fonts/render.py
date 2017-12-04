@@ -74,10 +74,15 @@ def add_line(buf, cell_width, position, thickness, cell_height):
     y = position - thickness // 2
     while thickness:
         thickness -= 1
-        offset = cell_width * y
-        for x in range(cell_width):
-            buf[offset + x] = 255
+        ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
         y += 1
+
+
+def add_dline(buf, cell_width, position, thickness, cell_height):
+    bottom = min(position - thickness, cell_height - 1)
+    top = min(position, cell_height - 1)
+    for y in {top, bottom}:
+        ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
 
 
 def add_curl(buf, cell_width, position, thickness, cell_height):
@@ -119,12 +124,9 @@ def render_special(underline=0, strikethrough=False, missing=False):
 
     if underline:
         t = underline_thickness
-        if underline == 2:
+        if underline > 1:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl(
-            add_curl
-            if underline == 2 else add_line, underline_position, t, cell_height
-        )
+        dl([None, add_line, add_dline, add_curl][underline], underline_position, t, cell_height)
     if strikethrough:
         pos = int(0.65 * baseline)
         dl(add_line, pos, underline_thickness, cell_height)
@@ -138,7 +140,7 @@ def render_special(underline=0, strikethrough=False, missing=False):
 
 def prerender():
     # Pre-render the special blank, underline and strikethrough cells
-    cells = render_special(1), render_special(2), render_special(0, True), render_special(missing=True)
+    cells = render_special(1), render_special(2), render_special(3), render_special(0, True), render_special(missing=True)
     if send_prerendered_sprites(*map(ctypes.addressof, cells)) != len(cells):
         raise RuntimeError('Your GPU has too small a max texture size')
 

@@ -58,7 +58,6 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define CC_SHIFT 16
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
-#define UNDERCURL_CODE 6
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 #define CONTINUED_MASK 1

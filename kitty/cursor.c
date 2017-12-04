@@ -80,9 +80,9 @@ cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count) {
             case 3:
                 self->italic = true;  break;
             case 4:
-                self->decoration = 1;  break;
-            case UNDERCURL_CODE:
-                self->decoration = 2;  break;
+                if (i < count) { self->decoration = MIN(3, params[i]); i++; }
+                else self->decoration = 1;
+                break;
             case 7:
                 self->reverse = true;  break;
             case 9:
@@ -143,7 +143,8 @@ static inline const char*
 decoration_as_sgr(uint8_t decoration) {
     switch(decoration) {
         case 1: return "4"; 
-        case 2: return "6";  // UNDERCURL_CODE
+        case 2: return "4:2";  
+        case 3: return "4:3";
         default: return "24";
     }
 }

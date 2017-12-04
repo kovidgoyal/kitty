@@ -62,6 +62,7 @@ const uint ZERO = uint(0);
 const uint ONE = uint(1);
 const uint TWO = uint(2);
 const uint THREE = uint(3);
+const uint FOUR = uint(4);
 const uint DECORATION_MASK = uint(3);
 const uint STRIKE_MASK = uint(1);
 const uint REVERSE_MASK = uint(1);
@@ -159,8 +160,8 @@ void main() {
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(c, r);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
-    underline_pos = choose_color(in_url, to_sprite_pos(pos, TWO, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
-    strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * THREE, ZERO, ZERO);
+    underline_pos = choose_color(in_url, to_sprite_pos(pos, THREE, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
+    strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * FOUR, ZERO, ZERO);
 
     // Cursor
     foreground = choose_color(cursor, bg, foreground);
