@@ -24,7 +24,7 @@ typedef struct {
     unsigned int units_per_EM;
     int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
     int hinting, hintstyle, index;
-    bool is_scalable;
+    bool is_scalable, has_color;
     float size_in_pts;
     FT_F26Dot6 char_width, char_height;
     FT_UInt xdpi, ydpi;
@@ -154,6 +154,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
     CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
     self->is_scalable = FT_IS_SCALABLE(self->face);
+    self->has_color = FT_HAS_COLOR(self->face);
     self->hinting = hinting; self->hintstyle = hintstyle;
     if (!set_size_for_face((PyObject*)self, 0, false)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
@@ -257,11 +258,11 @@ dealloc(Face* self) {
 static PyObject *
 repr(Face *self) {
     return PyUnicode_FromFormat(
-        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, units_per_EM=%u, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i)",
+        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i)",
         self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
         FT_Get_Postscript_Name(self->face),
-        self->path, self->index, self->is_scalable ? Py_True : Py_False, 
-        self->ascender, self->descender, self->height, self->max_advance_width, self->max_advance_height, self->underline_position, self->underline_thickness
+        self->path, self->index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
+        self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness
     );
 }
 
