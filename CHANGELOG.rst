@@ -37,6 +37,7 @@ version 0.6.0 [future]
 - Allow drag and drop of files into kitty. On drop kitty will paste the
   file path to the running program.
 
+- Add an option to control the underline style for URL highlighting on hover
 
 version 0.5.1 [2017-12-01]
 ---------------------------

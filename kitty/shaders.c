@@ -202,7 +202,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
+        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style;
 
         GLint color1, color2;
 
@@ -236,7 +236,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
 #undef COLOR
-    rd->cursor_color = cursor->color; rd->url_color = OPT(url_color);
+    rd->cursor_color = cursor->color; rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }

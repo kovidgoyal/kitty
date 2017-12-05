@@ -248,6 +248,13 @@ def tab_font_style(x):
     return {'bold-italic': (True, True), 'bold': (True, False), 'italic': (False, True)}.get(x.lower().replace('_', '-'), (False, False))
 
 
+def url_style(x):
+    return url_style.map.get(x, url_style.map['curly'])
+
+
+url_style.map = dict(((v, i) for i, v in enumerate('none single double curly'.split())))
+
+
 type_map = {
     'adjust_line_height': adjust_line_height,
     'scrollback_lines': positive_int,
@@ -283,6 +290,7 @@ type_map = {
     'tab_separator': tab_separator,
     'active_tab_font_style': tab_font_style,
     'inactive_tab_font_style': tab_font_style,
+    'url_style': url_style,
 }
 
 for name in (

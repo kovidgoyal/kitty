@@ -6,7 +6,7 @@
 layout(std140) uniform CellRenderData {
     float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color;
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style;
 
     int color1, color2;
 
@@ -160,7 +160,7 @@ void main() {
     // Underline and strike through (rendered via sprites)
     float in_url = in_range(c, r);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
-    underline_pos = choose_color(in_url, to_sprite_pos(pos, THREE, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
+    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * FOUR, ZERO, ZERO);
 
     // Cursor

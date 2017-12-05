@@ -15,6 +15,7 @@ typedef struct {
     bool enable_audio_bell;
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
+    unsigned int url_style;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
     color_type url_color, background;
     double repaint_delay, input_delay;
