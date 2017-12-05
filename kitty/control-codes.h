@@ -221,11 +221,6 @@
 // Soft reset
 #define DECSTR 'p'
 
-// *Select top and bottom margins*: Selects margins, defining the
-// scrolling region; parameters are top and bottom line. If called
-// without any arguments, whole screen is used.
-#define DECSTBM 'r'
-
 // *Horizontal position adjust*: Same as :data:`CHA`.
 #define HPA '`'
 

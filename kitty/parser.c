@@ -649,8 +649,13 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             CALL_CSI_HANDLER1P(save_cursor, 0, '?'); 
         case RC: 
             CALL_CSI_HANDLER1P(restore_cursor, 0, '?'); 
-        case DECSTBM: 
-            CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
+        case 'r': 
+            if (!start_modifier && !end_modifier) {
+                // DECSTBM
+                CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
+            }
+            REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            break;
         case DECSCUSR: 
             CALL_CSI_HANDLER1M(screen_set_cursor, 1); 
         case SU:
