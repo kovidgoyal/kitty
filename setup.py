@@ -208,7 +208,7 @@ def kitty_env():
     cflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
     at_least_version('harfbuzz', 1, 5)
-    cflags.extend(pkg_config('libpng', '--cflags-only-I'))
+    cflags.extend(pkg_config('libpng16', '--cflags-only-I'))
     if is_macos:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
         cflags.extend(pkg_config('freetype2', '--cflags-only-I'))
