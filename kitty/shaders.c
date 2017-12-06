@@ -32,15 +32,14 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
             copy_image_warned = true;
             fprintf(stderr, "WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation.\n");
         }
-        uint8_t *src = malloc(5 * width * height * num_levels);
+        size_t sz = width * height * num_levels;
+        pixel *src = malloc(sz * sizeof(pixel));
         if (src == NULL) { fatal("Out of memory."); }
-        uint8_t *dest = src + (4 * width * height * num_levels);
         glBindTexture(GL_TEXTURE_2D_ARRAY, src_texture_id); 
         glGetTexImage(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, GL_UNSIGNED_BYTE, src); 
         glBindTexture(GL_TEXTURE_2D_ARRAY, dest_texture_id); 
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
-        for(size_t i = 0; i < width * height * num_levels; i++) dest[i] = src[4*i];
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RED, GL_UNSIGNED_BYTE, dest); 
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4); 
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels, GL_RGBA, GL_UNSIGNED_BYTE, src); 
         free(src);
     } else {
         glCopyImageSubData(src_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, dest_texture_id, GL_TEXTURE_2D_ARRAY, 0, 0, 0, 0, width, height, num_levels); 
@@ -63,7 +62,7 @@ realloc_sprite_texture() {
     sprite_tracker_current_layout(&xnum, &ynum, &z);
     znum = z + 1;
     width = xnum * global_state.cell_width; height = ynum * global_state.cell_height;
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, width, height, znum); 
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, width, height, znum); 
     if (sprite_map.texture_id) {
         // need to re-alloc
         src_ynum = MAX(1, sprite_map.last_ynum);
@@ -86,14 +85,14 @@ ensure_sprite_map() {
 }
 
 void 
-send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t *buf) {
+send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, pixel *buf) {
     unsigned int xnum, ynum, znum;
     sprite_tracker_current_layout(&xnum, &ynum, &znum);
     if ((int)znum >= sprite_map.last_num_of_layers || (znum == 0 && (int)ynum > sprite_map.last_ynum)) realloc_sprite_texture();
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id); 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4); 
     x *= global_state.cell_width; y *= global_state.cell_height;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, global_state.cell_width, global_state.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, buf); 
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, global_state.cell_width, global_state.cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf); 
 }
 
 void

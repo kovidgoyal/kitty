@@ -12,7 +12,7 @@
 #define MAX_NUM_EXTRA_GLYPHS 8
 
 typedef uint16_t glyph_index;
-typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, uint8_t*);
+typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, pixel*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
 extern PyTypeObject Line_Type;
@@ -261,15 +261,15 @@ del_font(Font *f) {
 }
 
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
-static uint8_t *canvas = NULL;
+static pixel *canvas = NULL;
 #define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
 static inline void 
-clear_canvas(void) { memset(canvas, 0, CELLS_IN_CANVAS * cell_width * cell_height); }
+clear_canvas(void) { memset(canvas, 0, CELLS_IN_CANVAS * cell_width * cell_height * sizeof(pixel)); }
 
 static void
-python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t* buf) {
+python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, pixel* buf) {
     if (python_send_to_gpu_impl != NULL && python_send_to_gpu_impl != Py_None) {
-        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, cell_width * cell_height));
+        PyObject *ret = PyObject_CallFunction(python_send_to_gpu_impl, "IIIN", x, y, z, PyBytes_FromStringAndSize((const char*)buf, sizeof(pixel) * cell_width * cell_height));
         if (ret == NULL) PyErr_Print();
         else Py_DECREF(ret);
     }
@@ -296,7 +296,7 @@ update_cell_metrics() {
     }
     sprite_tracker_set_layout(cell_width, cell_height);
     global_state.cell_width = cell_width; global_state.cell_height = cell_height;
-    free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height);
+    free(canvas); canvas = malloc(CELLS_IN_CANVAS * cell_width * cell_height * sizeof(pixel));
     if (canvas == NULL) return PyErr_NoMemory();
     for (ssize_t i = 0, j = fonts.first_symbol_font_idx; i < (ssize_t)fonts.symbol_map_fonts_count; i++, j++)  {
         CALL(j, cell_height, true);
@@ -429,6 +429,21 @@ END_ALLOW_CASE_RANGE
 
 static PyObject* box_drawing_function = NULL;
 
+void
+render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
+    for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
+        pixel *d = dest + dest_stride * dr;
+        uint8_t *s = alpha_mask + src_stride * sr;
+        for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
+            pixel val = d[dc];
+            uint8_t alpha = s[sc];
+#define C(shift) ((MIN(0xff, alpha + ((val >> shift) & 0xff))) << shift)
+            d[dc] = C(24) | C(16) | C(8) | MIN(0xff, alpha + (val & 0xff));
+#undef C
+        }
+    }
+}
+
 static void 
 render_box_cell(Cell *cell) {
     int error = 0;
@@ -445,7 +460,11 @@ render_box_cell(Cell *cell) {
     sp->rendered = true;
     PyObject *ret = PyObject_CallFunction(box_drawing_function, "I", cell->ch);
     if (ret == NULL) { PyErr_Print(); return; }
-    current_send_sprite_to_gpu(sp->x, sp->y, sp->z, PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0)));
+    uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
+    clear_canvas();
+    Region r = { .right = cell_width, .bottom = cell_height };
+    render_alpha_mask(alpha_mask, canvas, &r, &r, cell_width, cell_width);
+    current_send_sprite_to_gpu(sp->x, sp->y, sp->z, canvas);
     Py_DECREF(ret);
 }
 
@@ -476,11 +495,11 @@ set_cell_sprite(Cell *cell, SpritePosition *sp) {
     cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
 }
 
-static inline uint8_t*
+static inline pixel*
 extract_cell_from_canvas(unsigned int i, unsigned int num_cells) {
-    uint8_t *ans = canvas + (cell_width * cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans, *src = canvas + (i * cell_width);
+    pixel *ans = canvas + (cell_width * cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans, *src = canvas + (i * cell_width);
     unsigned int stride = cell_width * num_cells;
-    for (unsigned int r = 0; r < cell_height; r++, dest += cell_width, src += stride) memcpy(dest, src, cell_width);
+    for (unsigned int r = 0; r < cell_height; r++, dest += cell_width, src += stride) memcpy(dest, src, cell_width * sizeof(pixel));
     return ans;
 }
 
@@ -504,7 +523,7 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
     for (unsigned int i = 0; i < num_cells; i++) { 
         sprite_position[i]->rendered = true;
         set_cell_sprite(cells + i, sprite_position[i]); 
-        uint8_t *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i, num_cells);
+        pixel *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i, num_cells);
         current_send_sprite_to_gpu(sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
     }
 
@@ -640,8 +659,8 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     unsigned int num_glyphs = shape(first_cell, num_cells, font->hb_font, &info, &positions);
 #if 0
         // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
-        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
-        printf("\n%s\n", canvas);
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+        printf("\n%s\n", (char*)canvas);
         clear_canvas();
 #endif
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
@@ -815,7 +834,11 @@ send_prerendered_sprites(PyObject UNUSED *s, PyObject *args) {
         x = sprite_tracker.x; y = sprite_tracker.y; z = sprite_tracker.z;
         do_increment(&error);
         if (error != 0) { sprite_map_set_error(error); return NULL; }
-        current_send_sprite_to_gpu(x, y, z, PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i)));
+        uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
+        clear_canvas();
+        Region r = { .right = cell_width, .bottom = cell_height };
+        render_alpha_mask(alpha_mask, canvas, &r, &r, cell_width, cell_width);
+        current_send_sprite_to_gpu(x, y, z, canvas);
     }
     return Py_BuildValue("H", x);
 }
@@ -839,18 +862,41 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 concat_cells(PyObject UNUSED *self, PyObject *args) {
+    // Concatenate cells returning RGBA data
     unsigned int cell_width, cell_height;
+    int is_32_bit;
     PyObject *cells;
-    if (!PyArg_ParseTuple(args, "IIO!", &cell_width, &cell_height, &PyTuple_Type, &cells)) return NULL;
+    if (!PyArg_ParseTuple(args, "IIpO!", &cell_width, &cell_height, &is_32_bit, &PyTuple_Type, &cells)) return NULL;
     size_t num_cells = PyTuple_GET_SIZE(cells), r, c, i;
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, 3 * cell_width * cell_height * num_cells);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, 4 * cell_width * cell_height * num_cells);
     if (ans == NULL) return PyErr_NoMemory();
-    uint8_t *dest = (uint8_t*)PyBytes_AS_STRING(ans), *src;
+    pixel *dest = (pixel*)PyBytes_AS_STRING(ans);
     for (r = 0; r < cell_height; r++) {
         for (c = 0; c < num_cells; c++) {
-            src = ((uint8_t*)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c))) + cell_width * r;
-            for (i = 0; i < cell_width; i++, dest += 3) {
-                dest[0] = src[i]; dest[1] = src[i]; dest[2] = src[i];
+            void *s = ((uint8_t*)PyBytes_AS_STRING(PyTuple_GET_ITEM(cells, c)));
+            if (is_32_bit) {
+                pixel *src = (pixel*)s + cell_width * r;
+                for (i = 0; i < cell_width; i++, dest++) {
+                    uint8_t *rgba = (uint8_t*)dest;
+                    rgba[0] = (src[i] >> 24) & 0xff;
+                    rgba[1] = (src[i] >> 16) & 0xff;
+                    rgba[2] = (src[i] >> 8) & 0xff;
+                    rgba[3] = src[i] & 0xff;
+                    // pre-multiplied, so de-multiply
+                    if (rgba[3]) {
+                        float f = 255.f / (float)rgba[3];
+                        rgba[0] = MAX(255.f, ((float)rgba[0] * f));
+                        rgba[1] = MAX(255.f, ((float)rgba[1] * f));
+                        rgba[2] = MAX(255.f, ((float)rgba[2] * f));
+                    }
+                }
+            } else {
+                uint8_t *src = (uint8_t*)s + cell_width * r;
+                for (i = 0; i < cell_width; i++, dest++) {
+                    uint8_t *rgba = (uint8_t*)dest;
+                    if (src[i]) { memset(rgba, 0xff, 3); rgba[3] = src[i]; }
+                    else *dest = 0;
+                }
             }
 
         }

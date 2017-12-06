@@ -220,16 +220,17 @@ def display_bitmap(rgb_data, width, height):
     if not hasattr(display_bitmap, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
     display_bitmap.detected = True
-    with NamedTemporaryFile(delete=False) as f:
+    with NamedTemporaryFile(suffix='.rgba', delete=False) as f:
         f.write(rgb_data)
-    show(f.name, width, height, 24)
+    assert len(rgb_data) == 4 * width * height
+    show(f.name, width, height, 32)
 
 
 def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
     from kitty.fast_data_types import concat_cells, current_fonts
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
-    rgb_data = concat_cells(cell_width, cell_height, tuple(cells))
+    rgb_data = concat_cells(cell_width, cell_height, True, tuple(cells))
     cf = current_fonts()
     fonts = [cf['medium'].display_name()]
     fonts.extend(f.display_name() for f in cf['fallback'])

@@ -31,6 +31,7 @@ typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
 typedef uint32_t combining_type;
+typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
 typedef uint16_t attrs_type;
@@ -126,6 +127,10 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 #endif
+
+typedef struct {
+    uint32_t left, top, right, bottom;
+} Region;
 
 typedef struct {
     char_type ch;

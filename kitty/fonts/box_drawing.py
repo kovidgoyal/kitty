@@ -435,7 +435,7 @@ def render_missing_glyph(buf, width, height):
     draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
 
 
-def test_drawing(sz=32, family='monospace'):
+def test_drawing(sz=48, family='monospace'):
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
 
@@ -444,7 +444,7 @@ def test_drawing(sz=32, family='monospace'):
 
     def join_cells(cells):
         cells = tuple(bytes(x) for x in cells)
-        return concat_cells(width, height, cells)
+        return concat_cells(width, height, False, cells)
 
     def render_chr(ch):
         if ch in box_chars:
@@ -469,7 +469,7 @@ def test_drawing(sz=32, family='monospace'):
         rgb_data = b''.join(rows)
         width *= 32
         height *= len(rows)
-        assert len(rgb_data) == width * height * 3, '{} != {}'.format(len(rgb_data), width * height * 3)
+        assert len(rgb_data) == width * height * 4, '{} != {}'.format(len(rgb_data), width * height * 4)
         display_bitmap(rgb_data, width, height)
     finally:
         set_send_sprite_to_gpu(None)

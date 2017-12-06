@@ -363,57 +363,50 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
 }
 
 static inline void
-place_bitmap_in_canvas(unsigned char *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
+place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
+    Region src = { .left = bm->start_x, .bottom = bm->rows, .right = bm->width }, dest = { .bottom = cell_height, .right = cell_width };
+
     // Calculate column bounds
     float bearing_x = (float)metrics->horiBearingX / 64.f;
-    ssize_t xoff = (ssize_t)(x_offset + bearing_x);
-    size_t src_start_column = bm->start_x, dest_start_column = 0, extra;
-    if (xoff < 0) src_start_column += -xoff;
-    else dest_start_column = xoff;
+    int32_t xoff = (ssize_t)(x_offset + bearing_x);
+    uint32_t extra;
+    if (xoff < 0) src.left += -xoff;
+    else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it
-    if (dest_start_column > 0 && dest_start_column + bm->width > cell_width) {
-        extra = dest_start_column + bm->width - cell_width;
-        dest_start_column = extra > dest_start_column ? 0 : dest_start_column - extra;
+    if (dest.left > 0 && dest.left + bm->width > cell_width) {
+        extra = dest.left + bm->width - cell_width;
+        dest.left = extra > dest.left ? 0 : dest.left - extra;
     }
 
     // Calculate row bounds
     float bearing_y = (float)metrics->horiBearingY / 64.f;
-    ssize_t yoff = (ssize_t)(y_offset + bearing_y);
-    size_t src_start_row, dest_start_row;
+    int32_t yoff = (ssize_t)(y_offset + bearing_y);
     if (yoff > 0 && (size_t)yoff > baseline) {
-        src_start_row = 0;
-        dest_start_row = 0;
+        dest.top = 0;
     } else {
-        src_start_row = 0;
-        dest_start_row = baseline - yoff;
+        dest.top = baseline - yoff;
     }
 
     /* printf("x_offset: %f bearing_x: %f y_offset: %f bearing_y: %f src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu bm_width: %lu bitmap_rows: %lu\n", x_offset, bearing_x, y_offset, bearing_y, src_start_row, src_start_column, dest_start_row, dest_start_column, bm->width, bm->rows); */
 
-    for (size_t sr = src_start_row, dr = dest_start_row; sr < bm->rows && dr < cell_height; sr++, dr++) {
-        for(size_t sc = src_start_column, dc = dest_start_column; sc < bm->width && dc < cell_width; sc++, dc++) {
-            uint16_t val = cell[dr * cell_width + dc];
-            val = MIN(255, ((uint16_t)val + (uint16_t)bm->buf[sr * bm->stride + sc]));
-            cell[dr * cell_width + dc] = val;
-        }
-    }
+    render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
 }
 
 static inline void
-right_shift_canvas(uint8_t *canvas, size_t width, size_t height, size_t amt) {
-    uint8_t *src;
+right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
+    pixel *src;
     size_t r;
     for (r = 0, src = canvas; r < height; r++, src += width) {
-        memmove(src + amt, src, width - amt);
-        memset(src, 0, amt);
+        memmove(src + amt, src, sizeof(pixel) * (width - amt));
+        memset(src, 0, sizeof(pixel) * amt);
     }
 }
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, uint8_t *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     Face *self = (Face*)f;
     float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
