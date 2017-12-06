@@ -94,7 +94,6 @@ send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, uint8_t *buf)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
     x *= global_state.cell_width; y *= global_state.cell_height;
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, global_state.cell_width, global_state.cell_height, 1, GL_RED, GL_UNSIGNED_BYTE, buf); 
-    Py_DECREF(buf);
 }
 
 void
