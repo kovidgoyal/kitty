@@ -230,7 +230,7 @@ def display_bitmap(rgb_data, width, height):
     show(f.name, width, height, 32)
 
 
-def test_render_string(text='Hello, world!', family='monospace', size=144.0, dpi=96.0):
+def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=96.0):
     from kitty.fast_data_types import concat_cells, current_fonts
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)

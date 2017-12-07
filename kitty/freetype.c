@@ -318,6 +318,7 @@ typedef struct {
     size_t rows;
     FT_Pixel_Mode pixel_mode;
     bool needs_free;
+    unsigned int factor, right_edge;
 } ProcessedBitmap;
 
 
@@ -393,10 +394,11 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
         }
     }
     bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
+    bm->factor = factor;
 }
 
 static inline bool
-render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic) {
+render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells) {
     unsigned short best = 0, diff = USHRT_MAX;
     for (short i = 0; i < self->face->num_fixed_sizes; i++) {
         unsigned short w = self->face->available_sizes[i].width;
@@ -411,13 +413,20 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     if (!load_glyph(self, glyph_id, FT_LOAD_COLOR)) return false;
     FT_Set_Char_Size(self->face, 0, self->char_height, self->xdpi, self->ydpi);
     FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, true);
+    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return false;
     ans->buf = bitmap->buffer;
     ans->start_x = 0; ans->width = bitmap->width;
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
+
+    for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
+        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
+            uint8_t *p = ans->buf + x * 4 + y * ans->stride;
+            if (p[3] > 20) ans->right_edge = x;
+        }
+    }
     return true;
 }
 
@@ -448,6 +457,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     // Calculate column bounds
     float bearing_x = (float)metrics->horiBearingX / 64.f;
+    bearing_x /= bm->factor;
     int32_t xoff = (ssize_t)(x_offset + bearing_x);
     uint32_t extra;
     if (xoff < 0) src.left += -xoff;
@@ -460,6 +470,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     // Calculate row bounds
     float bearing_y = (float)metrics->horiBearingY / 64.f;
+    bearing_y /= bm->factor;
     int32_t yoff = (ssize_t)(y_offset + bearing_y);
     if (yoff > 0 && (size_t)yoff > baseline) {
         dest.top = 0;
@@ -484,18 +495,23 @@ right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
     }
 }
 
-static const ProcessedBitmap EMPTY_PBM = {0};
+static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 
 bool
 render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     Face *self = (Face*)f;
     bool is_emoji = *was_colored; *was_colored = is_emoji && self->face->num_fixed_sizes > 0 && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
-    ProcessedBitmap bm = {0};
+    ProcessedBitmap bm;
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
+        bm = EMPTY_PBM;
         if (*was_colored) {
-            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic)) return false;
+            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells)) {
+                if (PyErr_Occurred()) PyErr_Print();
+                *was_colored = false;
+                if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
+            }
         } else {
             if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
         }
@@ -504,11 +520,13 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
         if (bm.needs_free) free(bm.buf); 
-        bm = EMPTY_PBM;
     }
+
+    // center the glyphs in the canvas
     unsigned int right_edge = (unsigned int)x, delta;
+    // x_advance is wrong for colored bitmaps that have been downsampled
+    if (*was_colored) right_edge = num_glyphs == 1 ? bm.right_edge : canvas_width;
     if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
-        // center the glyphs in the canvas
         right_shift_canvas(canvas, canvas_width, cell_height, delta);
     }
     return true;
