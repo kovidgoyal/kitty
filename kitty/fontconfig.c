@@ -9,6 +9,7 @@
 #include "lineops.h"
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
+#include "emoji.h"
 #ifndef FC_COLOR
 #define FC_COLOR "color"
 #endif
@@ -190,9 +191,10 @@ create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool ita
     PyObject *ans = NULL;
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)"monospace", "family");
-    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    bool emoji = is_emoji(cell->ch);
+    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji ? "emoji" : "monospace"), "family");
+    if (!emoji && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (!emoji && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     size_t num = cell_as_unicode(cell, true, char_buf, ' ');
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);

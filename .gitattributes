@@ -1,4 +1,5 @@
 kitty/wcwidth9.h linguist-generated=true
+kitty/emoji.h linguist-generated=true
 kitty/keys.h linguist-generated=true
 kitty/charsets.c linguist-generated=true
 kitty/key_encoding.py linguist-generated=true
