@@ -297,8 +297,8 @@ PYWRAP1(handle_for_window_id) {
 
 PYWRAP1(set_options) {
     PyObject *ret, *opts;
-    int is_wayland, debug_gl = 0;
-    PA("Op|p", &opts, &is_wayland, &debug_gl);
+    int is_wayland = 0, debug_gl = 0;
+    PA("O|pp", &opts, &is_wayland, &debug_gl);
     global_state.is_wayland = is_wayland ? true : false;
     global_state.debug_gl = debug_gl ? true : false;
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;

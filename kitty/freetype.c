@@ -117,7 +117,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
             }
             if (strike_index > -1) {
                 error = FT_Select_Size(self->face, strike_index);
-                if (error) { set_freetype_error("Failed to set char size for non-scaleable font, with error:", error); return false; }
+                if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
                 return true;
             }
         }
@@ -316,6 +316,7 @@ typedef struct {
     unsigned char* buf;
     size_t start_x, width, stride;
     size_t rows;
+    FT_Pixel_Mode pixel_mode;
 } ProcessedBitmap;
 
 
@@ -336,7 +337,6 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
 }
 
 
-
 static inline bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, bool bold, bool italic, bool rescale) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
@@ -346,6 +346,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     ans->start_x = 0; ans->width = bitmap->width;
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
+    ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > max_width) {
         size_t extra = bitmap->width - max_width;
         if (italic && extra < cell_width / 2) {
@@ -360,6 +361,49 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         }
     }
     return true;
+}
+
+
+static inline bool
+render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, bool bold, bool italic) {
+    unsigned short best = 0, diff = USHRT_MAX;
+    for (short i = 0; i < self->face->num_fixed_sizes; i++) {
+        unsigned short w = self->face->available_sizes[i].width;
+        unsigned short d = w > (unsigned short)cell_width ? w - (unsigned short)cell_width : (unsigned short)cell_width - w;
+        if (d < diff) {
+            diff = d;
+            best = i;
+        }
+    }
+    FT_Error error = FT_Select_Size(self->face, best);
+    if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
+    if (!load_glyph(self, glyph_id, FT_LOAD_COLOR)) return false;
+    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, true);
+    ans->buf = bitmap->buffer;
+    ans->start_x = 0; ans->width = bitmap->width;
+    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
+    ans->rows = bitmap->rows;
+    ans->pixel_mode = bitmap->pixel_mode;
+    return true;
+}
+
+
+static inline void
+copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
+    for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
+        pixel *d = dest + dest_stride * dr;
+        uint8_t *s = src + src_stride * sr;
+        for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
+            uint8_t *bgra = s + 4 * sc;
+            // TODO: Convert from sRGB to linear color space? 
+            if (bgra[3]) {
+#define C(idx, shift) ( (uint8_t)(((float)bgra[idx] / (float)bgra[3]) * 255) << shift)
+                d[dc] = C(2, 24) | C(1, 16) | C(0, 8) | bgra[3];
+#undef C
+        } else d[dc] = 0;
+        }
+    }
 }
 
 static inline void
@@ -392,7 +436,9 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     /* printf("x_offset: %f bearing_x: %f y_offset: %f bearing_y: %f src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu bm_width: %lu bitmap_rows: %lu\n", x_offset, bearing_x, y_offset, bearing_y, src_start_row, src_start_column, dest_start_row, dest_start_column, bm->width, bm->rows); */
 
-    render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
+    if (bm->pixel_mode == FT_PIXEL_MODE_BGRA) {
+        copy_color_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width);
+    } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
 }
 
 static inline void
@@ -406,13 +452,18 @@ right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
 }
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     Face *self = (Face*)f;
+    bool is_emoji = *was_colored; *was_colored = is_emoji && self->face->num_fixed_sizes > 0 && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
-        if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
+        if (*was_colored) {
+            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic)) return false;
+        } else {
+            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
+        }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
         if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);

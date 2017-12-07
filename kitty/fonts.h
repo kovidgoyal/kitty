@@ -13,13 +13,12 @@
 #pragma GCC diagnostic pop
 
 
-
 unsigned int glyph_id_for_codepoint(PyObject *, char_type);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, unsigned int, bool);
 void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*); 
 void sprite_tracker_current_layout(unsigned int *x, unsigned int *y, unsigned int *z);
-bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline);
+bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored);
 void render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride);
 void render_line(Line *line);
 void sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len);

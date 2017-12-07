@@ -11,8 +11,9 @@ from kitty.config import defaults
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
     Screen, change_wcwidth, get_fallback_font, send_prerendered_sprites,
-    set_font, set_font_size, set_logical_dpi, set_send_sprite_to_gpu,
-    sprite_map_set_limits, test_render_line, test_shape
+    set_font, set_font_size, set_logical_dpi, set_options,
+    set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line,
+    test_shape
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
 
@@ -169,6 +170,7 @@ def render_box_drawing(codepoint):
 def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
     from kitty.utils import get_logical_dpi
     opts = defaults._replace(font_family=family)
+    set_options(opts)
     sprites = {}
 
     def send_to_gpu(x, y, z, data):
@@ -195,7 +197,9 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     cells = []
     found_content = False
     for i in reversed(range(s.columns)):
-        sp = line.sprite_at(i)
+        sp = list(line.sprite_at(i))
+        sp[2] &= 0xfff
+        sp = tuple(sp)
         if sp == (0, 0, 0) and not found_content:
             continue
         found_content = True
@@ -260,5 +264,5 @@ def showcase():
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
-    test_render_string('|\U0001F601|\U0001F64f|\U0001F63a|', family=f)
+    test_render_string('|😁|🙏|😺|', family=f)
     test_render_string('A=>>B!=C', family='Fira Code')

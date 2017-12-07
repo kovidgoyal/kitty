@@ -7,6 +7,7 @@
 
 #include "fonts.h"
 #include "state.h"
+#include "emoji.h"
 
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8
@@ -17,7 +18,6 @@ send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
 extern PyTypeObject Line_Type;
 
-typedef struct SpritePosition SpritePosition;
 typedef struct SpecialGlyphCache SpecialGlyphCache;
 enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
 
@@ -26,14 +26,16 @@ typedef struct {
     glyph_index data[MAX_NUM_EXTRA_GLYPHS];
 } ExtraGlyphs;
 
+typedef struct SpritePosition SpritePosition;
 struct SpritePosition {
     SpritePosition *next;
-    bool filled, rendered;
+    bool filled, rendered, colored;
     sprite_index x, y, z;
     uint8_t ligature_index;
     glyph_index glyph;
     ExtraGlyphs extra_glyphs;
 };
+
 
 struct SpecialGlyphCache {
     SpecialGlyphCache *next;
@@ -93,7 +95,7 @@ sprite_map_set_error(int error) {
 void
 sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len) {
     sprite_tracker.max_texture_size = max_texture_size;
-    sprite_tracker.max_array_len = max_array_len;
+    sprite_tracker.max_array_len = MIN(0xfff, max_array_len);
 }
 
 static inline void
@@ -143,6 +145,7 @@ sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, ui
     s->ligature_index = ligature_index;
     s->filled = true;
     s->rendered = false;
+    s->colored = false;
     s->x = sprite_tracker.x; s->y = sprite_tracker.y; s->z = sprite_tracker.z;
     do_increment(error);
     return s;
@@ -195,7 +198,7 @@ free_maps(Font *font) {
 
 void
 clear_sprite_map(Font *font) {
-#define CLEAR(s) s->filled = false; s->rendered = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
+#define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
     for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
         s = font->sprite_map + i;
@@ -437,9 +440,7 @@ render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *de
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             pixel val = d[dc];
             uint8_t alpha = s[sc];
-#define C(shift) ((MIN(0xff, alpha + ((val >> shift) & 0xff))) << shift)
-            d[dc] = C(24) | C(16) | C(8) | MIN(0xff, alpha + (val & 0xff));
-#undef C
+            d[dc] = 0xffffff00 | MIN(0xff, alpha + (val & 0xff));
         }
     }
 }
@@ -458,6 +459,7 @@ render_box_cell(Cell *cell) {
     set_sprite(cell, sp->x, sp->y, sp->z);
     if (sp->rendered) return;
     sp->rendered = true;
+    sp->colored = false;
     PyObject *ret = PyObject_CallFunction(box_drawing_function, "I", cell->ch);
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
@@ -493,6 +495,7 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
 static inline void
 set_cell_sprite(Cell *cell, SpritePosition *sp) {
     cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
+    if (sp->colored) cell->sprite_z |= 0x4000;
 }
 
 static inline pixel*
@@ -518,10 +521,12 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
     }
 
     clear_canvas();
-    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline);
+    bool was_colored = is_emoji(cells->ch);
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, &was_colored);
 
     for (unsigned int i = 0; i < num_cells; i++) { 
         sprite_position[i]->rendered = true;
+        sprite_position[i]->colored = was_colored;
         set_cell_sprite(cells + i, sprite_position[i]); 
         pixel *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i, num_cells);
         current_send_sprite_to_gpu(sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
@@ -882,13 +887,6 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
                     rgba[1] = (src[i] >> 16) & 0xff;
                     rgba[2] = (src[i] >> 8) & 0xff;
                     rgba[3] = src[i] & 0xff;
-                    // pre-multiplied, so de-multiply
-                    if (rgba[3]) {
-                        float f = 255.f / (float)rgba[3];
-                        rgba[0] = MAX(255.f, ((float)rgba[0] * f));
-                        rgba[1] = MAX(255.f, ((float)rgba[1] * f));
-                        rgba[2] = MAX(255.f, ((float)rgba[2] * f));
-                    }
                 }
             } else {
                 uint8_t *src = (uint8_t*)s + cell_width * r;

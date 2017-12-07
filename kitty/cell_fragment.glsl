@@ -24,6 +24,7 @@ in vec3 underline_pos;
 in vec3 strike_pos;
 in vec3 foreground;
 in vec3 decoration_fg;
+in float colored_sprite;
 #endif
 
 out vec4 final_color;
@@ -51,13 +52,15 @@ vec4 alpha_blend_premul(vec3 over, float over_alpha, vec3 under, float under_alp
 
 #ifdef NEEDS_FOREGROUND
 vec4 calculate_foreground() {
-    float text_alpha = texture(sprites, sprite_pos).r;
-    float underline_alpha = texture(sprites, underline_pos).r;
-    float strike_alpha = texture(sprites, strike_pos).r;
+    vec4 text_fg = texture(sprites, sprite_pos);
+    vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
+    float text_alpha = text_fg.a;
+    float underline_alpha = texture(sprites, underline_pos).a;
+    float strike_alpha = texture(sprites, strike_pos).a;
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    return alpha_blend(decoration_fg, underline_alpha, foreground, combined_alpha);
+    return alpha_blend(decoration_fg, underline_alpha, fg, combined_alpha);
 }
 #endif
 

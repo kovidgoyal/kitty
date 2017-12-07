@@ -52,12 +52,14 @@ out vec3 underline_pos;
 out vec3 strike_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
+out float colored_sprite;
 #endif
 
 
 // Utility functions {{{
 const uint BYTE_MASK = uint(0xFF);
-const uint SHORT_MASK = uint(0xFFFF);
+const uint Z_MASK = uint(0xFFF);
+const uint COLOR_MASK = uint(0x4000);
 const uint ZERO = uint(0);
 const uint ONE = uint(1);
 const uint TWO = uint(2);
@@ -150,7 +152,8 @@ void main() {
 #ifdef NEEDS_FOREGROUND
 
     // The character sprite being rendered
-    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & SHORT_MASK);
+    sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
+    colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
     // Foreground 
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
