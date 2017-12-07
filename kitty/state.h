@@ -21,6 +21,7 @@ typedef struct {
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt, macos_hide_titlebar;
+    bool prefer_color_emoji;
     int adjust_line_height_px;
     int x11_bell_volume;
     float adjust_line_height_frac;

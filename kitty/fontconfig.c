@@ -195,7 +195,7 @@ create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool ita
     AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji ? "emoji" : "monospace"), "family");
     if (!emoji && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (emoji) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
+    if (emoji) { AP(FcPatternAddBool, FC_COLOR, OPT(prefer_color_emoji), "color"); }
     size_t num = cell_as_unicode(cell, true, char_buf, ' ');
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);

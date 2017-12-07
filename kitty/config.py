@@ -291,6 +291,7 @@ type_map = {
     'active_tab_font_style': tab_font_style,
     'inactive_tab_font_style': tab_font_style,
     'url_style': url_style,
+    'prefer_color_emoji': to_bool,
 }
 
 for name in (

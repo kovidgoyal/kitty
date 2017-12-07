@@ -305,6 +305,7 @@ PYWRAP1(set_options) {
 #define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
+    S(prefer_color_emoji, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
     S(cursor_blink_interval, PyFloat_AsDouble);
     S(cursor_stop_blinking_after, PyFloat_AsDouble);
