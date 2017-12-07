@@ -317,6 +317,7 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
+    bool needs_free;
 } ProcessedBitmap;
 
 
@@ -338,7 +339,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
 
 
 static inline bool
-render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, bool bold, bool italic, bool rescale) {
+render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
     unsigned int max_width = cell_width * num_cells;
     FT_Bitmap *bitmap = &self->face->glyph->bitmap;
@@ -355,7 +356,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)bitmap->width;
             if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0)) {
-                if (!render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, false)) return false;
+                if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false)) return false;
                 if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0)) return false;
             } else return false;
         }
@@ -363,9 +364,39 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     return true;
 }
 
+static void
+downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
+    // Downsample using a simple area averaging algorithm. Could probably do
+    // better with bi-cubic or lanczos, but at these small sizes I dont think
+    // it matters
+    float ratio = MAX((float)bm->width / width, (float)bm->rows / cell_height);
+    int factor = ceilf(ratio);
+    uint8_t *dest = calloc(4, width * cell_height);
+    if (dest == NULL) fatal("Out of memory");
+    uint8_t *d = dest;
+
+    for (unsigned int i = 0, sr = 0; i < cell_height; i++, sr += factor) {
+        for (unsigned int j = 0, sc = 0; j < width; j++, sc += factor, d += 4) {
+
+            // calculate area average
+            unsigned int r=0, g=0, b=0, a=0, count=0;
+            for (unsigned int y=sr; y < MIN(sr + factor, bm->rows); y++) {
+                uint8_t *p = bm->buf + (y * bm->stride) + sc * 4;
+                for (unsigned int x=sc; x < MIN(sc + factor, bm->width); x++, count++) {
+                    b += *(p++); g += *(p++); r += *(p++); a += *(p++); 
+                }
+            }
+            if (count) {
+                d[0] = b / count; d[1] = g / count; d[2] = r / count; d[3] = a / count;
+            } 
+
+        }
+    }
+    bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
+}
 
 static inline bool
-render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int num_cells, bool bold, bool italic) {
+render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic) {
     unsigned short best = 0, diff = USHRT_MAX;
     for (short i = 0; i < self->face->num_fixed_sizes; i++) {
         unsigned short w = self->face->available_sizes[i].width;
@@ -378,13 +409,15 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     FT_Error error = FT_Select_Size(self->face, best);
     if (error) { set_freetype_error("Failed to set char size for non-scalable font, with error:", error); return false; }
     if (!load_glyph(self, glyph_id, FT_LOAD_COLOR)) return false;
+    FT_Set_Char_Size(self->face, 0, self->char_height, self->xdpi, self->ydpi);
     FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return render_bitmap(self, glyph_id, ans, cell_width, num_cells, bold, italic, true);
+    if (bitmap->pixel_mode != FT_PIXEL_MODE_BGRA) return render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, true);
     ans->buf = bitmap->buffer;
     ans->start_x = 0; ans->width = bitmap->width;
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
+    if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
     return true;
 }
 
@@ -451,23 +484,27 @@ right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
     }
 }
 
+static const ProcessedBitmap EMPTY_PBM = {0};
+
 bool
 render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     Face *self = (Face*)f;
     bool is_emoji = *was_colored; *was_colored = is_emoji && self->face->num_fixed_sizes > 0 && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
-    ProcessedBitmap bm;
+    ProcessedBitmap bm = {0};
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
         if (*was_colored) {
-            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic)) return false;
+            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic)) return false;
         } else {
-            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, num_cells, bold, italic, true)) return false;
+            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
         if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
+        if (bm.needs_free) free(bm.buf); 
+        bm = EMPTY_PBM;
     }
     unsigned int right_edge = (unsigned int)x, delta;
     if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
