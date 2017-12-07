@@ -344,9 +344,9 @@ def parse_config(lines, check_keys=True):
 
 
 with open(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf'), 'rb'
 ) as f:
-    defaults = parse_config(f.readlines(), check_keys=False)
+    defaults = parse_config(f.read().decode('utf-8').splitlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
 actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine', 'send_text', 'goto_tab'})
