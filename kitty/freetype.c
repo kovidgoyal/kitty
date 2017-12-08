@@ -523,7 +523,7 @@ static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 bool
 render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     Face *self = (Face*)f;
-    bool is_emoji = *was_colored; *was_colored = is_emoji && self->face->num_fixed_sizes > 0 && self->has_color;
+    bool is_emoji = *was_colored; *was_colored = is_emoji && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
     ProcessedBitmap bm;
     unsigned int canvas_width = cell_width * num_cells;
