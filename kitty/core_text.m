@@ -148,7 +148,7 @@ create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNU
     if (lp == NULL) return NULL;
     CTFontRef font = PyLong_AsVoidPtr(lp);
     Py_CLEAR(lp);
-    static char text[128];
+    char text[128] = {0};
     cell_as_utf8(cell, true, text, ' ');
     CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
     if (str == NULL) return PyErr_NoMemory();
@@ -156,6 +156,32 @@ create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNU
     CFRelease(str);
     if (new_font == NULL) return NULL;
     return ft_face(new_font);
+}
+
+uint8_t*
+coretext_render_color_glyph(void *f, int glyph_id, unsigned int width, unsigned int height, unsigned int baseline) {
+    CTFontRef font = f;
+    CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
+    if (color_space == NULL) fatal("Out of memory");
+    uint8_t* buf = calloc(4, width * height);
+    if (buf == NULL) fatal("Out of memory");
+    CGContextRef ctx = CGBitmapContextCreate(buf, width, height, 8, 4 * width, color_space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
+    if (ctx == NULL) fatal("Out of memory");
+    CGContextSetShouldAntialias(ctx, true);
+    CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
+    CGContextSetRGBFillColor(ctx, 1, 1, 1, 1); 
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    CGContextSetTextDrawingMode(ctx, kCGTextFill);
+    CGGlyph glyph = glyph_id;
+    // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
+    /* CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1); */
+    CGContextSetTextMatrix(ctx, transform);
+    CGFloat pos_y = height - 1.2f * baseline;  // we want the emoji to be rendered a little below the baseline
+    CGContextSetTextPosition(ctx, 0, MAX(2, pos_y)); 
+    CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
+    CGContextRelease(ctx);
+    CGColorSpaceRelease(color_space);
+    return buf;
 }
 
 PyObject*

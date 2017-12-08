@@ -20,6 +20,8 @@ version 0.6.0 [future]
   All future invocations simply open new top-level windows in the existing
   instance.
 
+- Support colored emoji
+
 - Add a new "grid" window layout
 
 - Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)

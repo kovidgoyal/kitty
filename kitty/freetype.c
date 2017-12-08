@@ -189,7 +189,7 @@ load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
     if (num_faces < 2) return true;
     do {
         if (ans->face) {
-            if (strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
+            if (!psname || strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
             FT_Done_Face(ans->face); ans->face = NULL;
         }
         error = FT_New_Face(library, path, ++index, &ans->face);
@@ -317,7 +317,7 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
-    bool needs_free;
+    bool needs_free, ignore_bearing_y;
     unsigned int factor, right_edge;
 } ProcessedBitmap;
 
@@ -365,6 +365,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     return true;
 }
 
+#ifndef __APPLE__
 static void
 downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
     // Downsample using a simple area averaging algorithm. Could probably do
@@ -396,9 +397,33 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
     bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
     bm->factor = factor;
 }
+#endif
+
+static inline void
+detect_right_edge(ProcessedBitmap *ans) {
+    ans->right_edge = 0;
+    for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
+        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
+            uint8_t *p = ans->buf + x * 4 + y * ans->stride;
+            if (p[3] > 20) ans->right_edge = x;
+        }
+    }
+}
 
 static inline bool
-render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells) {
+render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
+#ifdef __APPLE__
+    ans->width = cell_width * num_cells;
+    ans->buf = coretext_render_color_glyph(self->extra_data, glyph_id, ans->width, cell_height, baseline);
+    ans->start_x = 0; ans->stride = ans->width * 4;
+    ans->rows = cell_height;
+    ans->pixel_mode = FT_PIXEL_MODE_BGRA;
+    ans->needs_free = true;
+    ans->ignore_bearing_y = true;
+    detect_right_edge(ans);
+    return true;
+#else
+    (void)baseline;
     unsigned short best = 0, diff = USHRT_MAX;
     for (short i = 0; i < self->face->num_fixed_sizes; i++) {
         unsigned short w = self->face->available_sizes[i].width;
@@ -420,14 +445,9 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
-
-    for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
-        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
-            uint8_t *p = ans->buf + x * 4 + y * ans->stride;
-            if (p[3] > 20) ans->right_edge = x;
-        }
-    }
+    detect_right_edge(ans);
     return true;
+#endif
 }
 
 
@@ -438,10 +458,13 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
         uint8_t *s = src + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             uint8_t *bgra = s + 4 * sc;
-            // TODO: Convert from sRGB to linear color space? 
             if (bgra[3]) {
 #define C(idx, shift) ( (uint8_t)(((float)bgra[idx] / (float)bgra[3]) * 255) << shift)
+#ifdef __APPLE__
+                d[dc] = C(0, 24) | C(1, 16) | C(2, 8) | bgra[3];
+#else
                 d[dc] = C(2, 24) | C(1, 16) | C(0, 8) | bgra[3];
+#endif
 #undef C
         } else d[dc] = 0;
         }
@@ -472,13 +495,13 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     float bearing_y = (float)metrics->horiBearingY / 64.f;
     bearing_y /= bm->factor;
     int32_t yoff = (ssize_t)(y_offset + bearing_y);
-    if (yoff > 0 && (size_t)yoff > baseline) {
+    if ((yoff > 0 && (size_t)yoff > baseline) || bm->ignore_bearing_y) {
         dest.top = 0;
     } else {
         dest.top = baseline - yoff;
     }
 
-    /* printf("x_offset: %f bearing_x: %f y_offset: %f bearing_y: %f src_start_row: %zu src_start_column: %zu dest_start_row: %zu dest_start_column: %zu bm_width: %lu bitmap_rows: %lu\n", x_offset, bearing_x, y_offset, bearing_y, src_start_row, src_start_column, dest_start_row, dest_start_column, bm->width, bm->rows); */
+    /* printf("x_offset: %d bearing_x: %f y_offset: %d bearing_y: %f src_start_row: %u src_start_column: %u dest_start_row: %u dest_start_column: %u bm_width: %lu bitmap_rows: %lu\n", xoff, bearing_x, yoff, bearing_y, src.top, src.left, dest.top, dest.left, bm->width, bm->rows); */
 
     if (bm->pixel_mode == FT_PIXEL_MODE_BGRA) {
         copy_color_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width);
@@ -507,7 +530,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
     for (unsigned int i = 0; i < num_glyphs; i++) {
         bm = EMPTY_PBM;
         if (*was_colored) {
-            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells)) {
+            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
                 if (PyErr_Occurred()) PyErr_Print();
                 *was_colored = false;
                 if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
@@ -517,7 +540,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        if (self->face->glyph->metrics.width > 0 && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
+        if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
         if (bm.needs_free) free(bm.buf); 
     }

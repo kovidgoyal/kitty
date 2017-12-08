@@ -30,3 +30,6 @@ PyObject* specialize_font_descriptor(PyObject *base_descriptor);
 PyObject* create_fallback_face(PyObject *base_face, Cell* cell, bool bold, bool italic);
 PyObject* face_from_descriptor(PyObject*);
 PyObject* face_from_path(const char *path, int index);
+#ifdef __APPLE__
+uint8_t* coretext_render_color_glyph(void *f, int glyph_id, unsigned int width, unsigned int height, unsigned int);
+#endif
