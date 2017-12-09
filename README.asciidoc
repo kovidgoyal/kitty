@@ -396,7 +396,7 @@ brew or MacPorts as well.
 The number of cells a unicode character takes up are controlled by the
 `wcwidth()` system function. If wcwidth() returns 2 then kitty will render the
 character in two cells, otherwise it will render it in one cell. Often the
-system `wcwidth()` is old/outdated. You can use the `use_system_width=no`
+system `wcwidth()` is old/outdated. You can use the `use_system_wcwidth=no`
 setting in your kitty.conf to workaround this. But note that it might cause
 other issues, since now kitty and the programs running inside it may not agree
 on how wide characters should be. When a symbol does not fit, it will either be
