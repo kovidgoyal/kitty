@@ -401,14 +401,15 @@ setting in your kitty.conf to workaround this. But note that it might cause
 other issues, since now kitty and the programs running inside it may not agree
 on how wide characters should be. When a symbol does not fit, it will either be
 rescaled to be smaller or truncated (depending on how much extra space it
-needs). This is often different from other terminal which just let the
+needs). This is often different from other terminals which just let the
 character overflow into neighboring cells, leading to ugly artifacts.
 
 Additionally, some things like powerline use square icons via private use
 unicode codepoints that are single width. The correct solution for this is to
 use either use different icons that are not square, or to use a font that
-defines ligatures with the space character for these symbols. See #182 for a
-discussion of this approach.
+defines ligatures with the space character for these symbols. See
+link:https://github.com/kovidgoyal/kitty/issues/182[#182] for a discussion of
+this approach.
 
 == A tribute
 
