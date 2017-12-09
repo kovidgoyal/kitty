@@ -49,6 +49,8 @@ pattern_as_dict(FcPattern *pat) {
     I(FC_SLANT, slant);
     I(FC_HINT_STYLE, hint_style);
     I(FC_INDEX, index);
+    I(FC_RGBA, subpixel);
+    I(FC_LCD_FILTER, lcdfilter);
     B(FC_HINTING, hinting);
     B(FC_SCALABLE, scalable);
     B(FC_OUTLINE, outline);
