@@ -173,7 +173,6 @@ extern bool init_child_monitor(PyObject *);
 extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
-extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
 extern bool init_desktop(PyObject*);
 extern bool init_fonts(PyObject*);
@@ -185,6 +184,8 @@ extern bool init_shaders(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
+#else
+extern bool init_freetype_library(PyObject*);
 #endif
 
 
@@ -211,11 +212,11 @@ PyInit_fast_data_types(void) {
         if (!init_keys(m)) return NULL;
         if (!init_graphics(m)) return NULL;
         if (!init_shaders(m)) return NULL;
-        if (!init_freetype_library(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
         if (!init_cocoa(m)) return NULL;
 #else
+        if (!init_freetype_library(m)) return NULL;
         if (!init_fontconfig_library(m)) return NULL;
         if (!init_desktop(m)) return NULL;
 #endif

@@ -212,7 +212,6 @@ ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_dat
     return (PyObject*)ans;
 }
 
-#ifndef __APPLE__
 PyObject*
 face_from_descriptor(PyObject *descriptor) {
 #define D(key, conv) { PyObject *t = PyDict_GetItemString(descriptor, #key); if (t == NULL) return NULL; key = conv(t); t = NULL; }
@@ -233,7 +232,6 @@ face_from_descriptor(PyObject *descriptor) {
     }
     return (PyObject*)self;
 }
-#endif
  
 PyObject*
 face_from_path(const char *path, int index) {
@@ -292,12 +290,6 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = CALC_CELL_HEIGHT(self);
-#ifdef __APPLE__
-    // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
-    if (self->apple_leading <= 0) {
-        *cell_height += floor(0.2 * (double)(*cell_height) + 0.5);
-    }
-#endif
     *baseline = font_units_to_pixels(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = MAX(1, font_units_to_pixels(self, self->underline_thickness));
@@ -317,7 +309,7 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
-    bool needs_free, ignore_bearing_y;
+    bool needs_free;
     unsigned int factor, right_edge;
 } ProcessedBitmap;
 
@@ -365,7 +357,6 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     return true;
 }
 
-#ifndef __APPLE__
 static void
 downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
     // Downsample using a simple area averaging algorithm. Could probably do
@@ -397,7 +388,6 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
     bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
     bm->factor = factor;
 }
-#endif
 
 static inline void
 detect_right_edge(ProcessedBitmap *ans) {
@@ -412,17 +402,6 @@ detect_right_edge(ProcessedBitmap *ans) {
 
 static inline bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
-#ifdef __APPLE__
-    ans->width = cell_width * num_cells;
-    ans->buf = coretext_render_color_glyph(self->extra_data, glyph_id, ans->width, cell_height, baseline);
-    ans->start_x = 0; ans->stride = ans->width * 4;
-    ans->rows = cell_height;
-    ans->pixel_mode = FT_PIXEL_MODE_BGRA;
-    ans->needs_free = true;
-    ans->ignore_bearing_y = true;
-    detect_right_edge(ans);
-    return true;
-#else
     (void)baseline;
     unsigned short best = 0, diff = USHRT_MAX;
     for (short i = 0; i < self->face->num_fixed_sizes; i++) {
@@ -447,7 +426,6 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
     detect_right_edge(ans);
     return true;
-#endif
 }
 
 
@@ -460,11 +438,7 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
             uint8_t *bgra = s + 4 * sc;
             if (bgra[3]) {
 #define C(idx, shift) ( (uint8_t)(((float)bgra[idx] / (float)bgra[3]) * 255) << shift)
-#ifdef __APPLE__
-                d[dc] = C(0, 24) | C(1, 16) | C(2, 8) | bgra[3];
-#else
                 d[dc] = C(2, 24) | C(1, 16) | C(0, 8) | bgra[3];
-#endif
 #undef C
         } else d[dc] = 0;
         }
@@ -495,7 +469,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     float bearing_y = (float)metrics->horiBearingY / 64.f;
     bearing_y /= bm->factor;
     int32_t yoff = (ssize_t)(y_offset + bearing_y);
-    if ((yoff > 0 && (size_t)yoff > baseline) || bm->ignore_bearing_y) {
+    if ((yoff > 0 && (size_t)yoff > baseline)) {
         dest.top = 0;
     } else {
         dest.top = baseline - yoff;
