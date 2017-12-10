@@ -91,7 +91,7 @@ font_descriptor_from_python(PyObject *src) {
     return CTFontDescriptorCreateWithAttributes((CFDictionaryRef) attrs);
 }
 
-PyObject*
+static PyObject*
 coretext_all_fonts(PyObject UNUSED *_self) {
     static CTFontCollectionRef collection = NULL;
     if (collection == NULL) collection = CTFontCollectionCreateFromAvailableFonts(NULL);
