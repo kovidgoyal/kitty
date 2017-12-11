@@ -301,6 +301,12 @@ coretext_render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned
     CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
     CGContextRelease(ctx);
     CGColorSpaceRelease(color_space);
+    for (size_t r = 0; r < width; r++) {
+        for (size_t c = 0; c < height; c++, buf += 4) {
+            uint32_t px = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+            *((pixel*)buf) = px;
+        }
+    }
 }
 
 
