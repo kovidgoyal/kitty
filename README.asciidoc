@@ -404,12 +404,16 @@ rescaled to be smaller or truncated (depending on how much extra space it
 needs). This is often different from other terminals which just let the
 character overflow into neighboring cells, leading to ugly artifacts.
 
-Additionally, some things like powerline use square icons via private use
-unicode codepoints that are single width. The correct solution for this is to
-use either use different icons that are not square, or to use a font that
-defines ligatures with the space character for these symbols. See
+In addition to the problem with `wcwidth()` above, some programs, like
+powerline, vim with fancy gutter symbols/status-bar, etc. use unicode
+characters from the private use area to represent symbols. Often these symbols
+are square and should be rendered in two cells.  However, since private use
+area symbols all have `wcwdith() == 1` kitty renders them either smaller or
+truncated. The correct solution for this is to use either use different symbols
+that are not square, or to use a font that defines ligatures with the space
+character for these symbols. See
 link:https://github.com/kovidgoyal/kitty/issues/182[#182] for a discussion of
-this approach.
+the approach using ligatures.
 
 == A tribute
 
