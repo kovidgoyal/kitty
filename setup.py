@@ -305,7 +305,7 @@ def parallel_run(todo, desc='Compiling {} ...'):
         num_workers = max(1, cpu_count())
     except Exception:
         num_workers = 2
-    items = list(todo.items())
+    items = list(reversed(tuple(todo.items())))
     workers = {}
     failed = None
 
