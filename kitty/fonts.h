@@ -32,3 +32,13 @@ void sprite_tracker_set_layout(unsigned int cell_width, unsigned int cell_height
 typedef void (*free_extra_data_func)(void*);
 PyObject* ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float);
 PyObject* ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float);
+
+static inline void
+right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
+    pixel *src;
+    size_t r;
+    for (r = 0, src = canvas; r < height; r++, src += width) {
+        memmove(src + amt, src, sizeof(pixel) * (width - amt));
+        memset(src, 0, sizeof(pixel) * amt);
+    }
+}

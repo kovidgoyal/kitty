@@ -264,5 +264,5 @@ def showcase():
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
-    test_render_string('|😁|🙏|😺|', family=f)
+    test_render_string('│😁│🙏│😺│', family=f)
     test_render_string('A=>>B!=C', family='Fira Code')

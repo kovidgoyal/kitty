@@ -482,16 +482,6 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
 }
 
-static inline void
-right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
-    pixel *src;
-    size_t r;
-    for (r = 0, src = canvas; r < height; r++, src += width) {
-        memmove(src + amt, src, sizeof(pixel) * (width - amt));
-        memset(src, 0, sizeof(pixel) * amt);
-    }
-}
-
 static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 
 bool

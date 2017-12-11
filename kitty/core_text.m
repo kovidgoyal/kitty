@@ -281,8 +281,19 @@ specialize_font_descriptor(PyObject *base_descriptor) {
     return base_descriptor;
 }
 
+static uint8_t *render_buf = NULL;
+static size_t render_buf_sz = 0;
+static CGGlyph glyphs[128];
+static CGRect boxes[128];
+
+static void
+finalize(void) {
+    free(render_buf);
+}
+
+
 static inline void
-coretext_render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned int width, unsigned int height, unsigned int baseline) {
+render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned int width, unsigned int height, unsigned int baseline) {
     CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
     if (color_space == NULL) fatal("Out of memory");
     CGContextRef ctx = CGBitmapContextCreate(buf, width, height, 8, 4 * width, color_space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
@@ -293,12 +304,10 @@ coretext_render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned
     CGAffineTransform transform = CGAffineTransformIdentity;
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
     CGGlyph glyph = glyph_id;
-    // TODO: Scale the glyph if its bbox is larger than the image by using a non-identity transform
-    /* CGRect rect = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationHorizontal, glyphs, 0, 1); */
     CGContextSetTextMatrix(ctx, transform);
-    CGFloat pos_y = height - 1.2f * baseline;  // we want the emoji to be rendered a little below the baseline
-    CGContextSetTextPosition(ctx, 0, MAX(2, pos_y)); 
-    CTFontDrawGlyphs(font, &glyph, &CGPointZero, 1, ctx);
+    CGContextSetTextPosition(ctx, -boxes[0].origin.x, MAX(2, height - 1.2f * baseline));  // lower the emoji a bit so its bottom is not on the baseline
+    CGPoint p = CGPointMake(0, 0);
+    CTFontDrawGlyphs(font, &glyph, &p, 1, ctx);
     CGContextRelease(ctx);
     CGColorSpaceRelease(color_space);
     for (size_t r = 0; r < width; r++) {
@@ -307,15 +316,6 @@ coretext_render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned
             *((pixel*)buf) = px;
         }
     }
-}
-
-
-static uint8_t *render_buf = NULL;
-static size_t render_buf_sz = 0;
-
-static void
-finalize(void) {
-    free(render_buf);
 }
 
 static inline void
@@ -328,44 +328,54 @@ ensure_render_space(size_t width, size_t height) {
 }
 
 static inline void
-render_glyph(CTFontRef font, CGGlyph glyph, unsigned int width, unsigned int height, unsigned int y_origin, CGFloat x, CGFloat y) {
+render_glyph(CTFontRef font, CGGlyph glyph, unsigned int width, unsigned int height, unsigned int baseline, unsigned int i) {
     memset(render_buf, 0, render_buf_sz);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
     CGContextRef render_ctx = CGBitmapContextCreate(render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
     if (render_ctx == NULL || gray_color_space == NULL) fatal("Out of memory");
     CGContextSetShouldAntialias(render_ctx, true);
-    CGContextSetShouldSmoothFonts(render_ctx, true);  // sub-pixel antialias
-    CGContextSetRGBFillColor(render_ctx, 1, 1, 1, 1); // white glyphs
+    CGContextSetShouldSmoothFonts(render_ctx, true);
+    CGContextSetGrayFillColor(render_ctx, 1, 1); // white glyphs
     CGContextSetTextDrawingMode(render_ctx, kCGTextFill);
     CGContextSetTextMatrix(render_ctx, CGAffineTransformIdentity);
-    CGContextSetTextPosition(render_ctx, 0, y_origin); 
-    CGPoint p = CGPointMake(x, y);
+    CGContextSetTextPosition(render_ctx, MAX(0, -boxes[i].origin.x), height - baseline); 
+    CGPoint p = CGPointMake(0, 0);
     CTFontDrawGlyphs(font, &glyph, &p, 1, render_ctx);
 }
 
 static inline void
-place_glyph_in_canvas(float x, pixel *canvas, unsigned int canvas_width, unsigned int cell_height) {
-    Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.left=(unsigned int)ceil(x), .right=canvas_width, .bottom=cell_height};
+place_glyph_in_canvas(unsigned int i, float x_offset, float y_offset, pixel *canvas, unsigned int canvas_width, unsigned int cell_height) {
+    Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
+    // Calculate column bounds
+    float bearing_x = boxes[i].origin.x;
+    (void)bearing_x;
+    (void)x_offset;
+    (void)y_offset;
+
     render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
 }
 
 bool
 render_glyphs_in_cells(PyObject *s, bool UNUSED bold, bool UNUSED italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     CTFace *self = (CTFace*)s;
-    printf("was_colored: %d num_glyphs: %u\n", *was_colored, num_glyphs);
-    if (*was_colored) {
-        coretext_render_color_glyph(self->ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
-        return true;
-    }
     unsigned int canvas_width = cell_width * num_cells;
-    ensure_render_space(canvas_width, cell_height);
+    for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
+    CGRect br = CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
     float x = 0.f, y_offset = 0.f, x_offset = 0.f;
-    for (unsigned int i = 0; i < num_glyphs; i++) {
-        x_offset = (float)positions[i].x_offset / 64.0f;
-        y_offset = (float)positions[i].y_offset / 64.0f;
-        render_glyph(self->ct_font, info[i].codepoint, canvas_width, cell_height, cell_height - baseline, x_offset, y_offset);
-        place_glyph_in_canvas(x, canvas, canvas_width, cell_height);
-        x += (float)positions[i].x_advance / 64.0f;
+    if (*was_colored) {
+        render_color_glyph(self->ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
+    } else {
+        ensure_render_space(canvas_width, cell_height);
+        for (unsigned int i = 0; i < num_glyphs; i++) {
+            render_glyph(self->ct_font, info[i].codepoint, canvas_width, cell_height, baseline, i);
+            place_glyph_in_canvas(i, x + x_offset, y_offset, canvas, canvas_width, cell_height);
+            x += (float)positions[i].x_advance / 64.0f;
+        }
+    }
+    if (num_cells > 1) {
+        // center glyphs
+        CGFloat delta = canvas_width - br.size.width;
+        if (delta > 1) right_shift_canvas(canvas, canvas_width, cell_height, (unsigned)(delta / 2.f));
     }
     return true;
 }
