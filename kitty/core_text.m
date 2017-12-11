@@ -343,21 +343,32 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
     CTFontDrawGlyphs(font, glyphs, positions, num_glyphs, render_ctx);
 }
 
-bool
-render_glyphs_in_cells(PyObject *s, bool UNUSED bold, bool UNUSED italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
-    CTFace *self = (CTFace*)s;
+static inline bool
+do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize) {
     unsigned int canvas_width = cell_width * num_cells;
-    for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
-    CGRect br = CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
+    CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
+    if (allow_resize) {
+        // Resize glyphs that would bleed into neighboring cells, by scaling the font size
+        float right = 0;
+        for (unsigned i=0; i < num_glyphs; i++) right = MAX(right, boxes[i].origin.x + boxes[i].size.width);
+        if (!bold && !italic && right > canvas_width + 1) {
+            CGFloat sz = CTFontGetSize(ct_font);
+            sz *= canvas_width / right;
+            CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
+            bool ret = do_render(new_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false);
+            CFRelease(new_font);
+            return ret;
+        }
+    }
     for (unsigned i=0; i < num_glyphs; i++) {
         positions[i].x = MAX(0, -boxes[i].origin.x) + hb_positions[i].x_offset / 64.f;
         positions[i].y = hb_positions[i].y_offset / 64.f;
     }
     if (*was_colored) {
-        render_color_glyph(self->ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
+        render_color_glyph(ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
     } else {
         ensure_render_space(canvas_width, cell_height);
-        render_glyphs(self->ct_font, canvas_width, cell_height, baseline, num_glyphs);
+        render_glyphs(ct_font, canvas_width, cell_height, baseline, num_glyphs);
         Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
         render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
     }
@@ -368,6 +379,15 @@ render_glyphs_in_cells(PyObject *s, bool UNUSED bold, bool UNUSED italic, hb_gly
     }
     return true;
 }
+
+bool
+render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
+    CTFace *self = (CTFace*)s;
+    for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
+    return do_render(self->ct_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true);
+}
+
+
 
 // Boilerplate {{{
 
