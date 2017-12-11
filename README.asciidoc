@@ -93,7 +93,7 @@ the following dependencies are installed first.
 * libunistring 
 * zlib
 * libpng
-* freetype
+* freetype (not needed on macOS)
 * fontconfig (not needed on macOS)
 * ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
 * gcc or clang (required only for building)
