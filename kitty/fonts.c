@@ -56,7 +56,6 @@ static char_type shape_buffer[2048] = {0};
 
 typedef struct {
     PyObject *face;
-    hb_font_t *hb_font;
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024]; 
     SpecialGlyphCache special_glyph_cache[1024];
@@ -249,15 +248,12 @@ init_font(Font *f, PyObject *descriptor, bool bold, bool italic, bool is_face) {
     if (is_face) { face = descriptor; Py_INCREF(face); }
     else { face = desc_to_face(descriptor); if (face == NULL) return false; }
     f->face = face; 
-    f->hb_font = harfbuzz_font_for_face(face);
-    if (f->hb_font == NULL) { PyErr_NoMemory(); return false; }
     f->bold = bold; f->italic = italic;
     return true;
 }
 
 static inline void
 del_font(Font *f) { 
-    f->hb_font = NULL;
     Py_CLEAR(f->face); 
     free_maps(f);
     f->bold = false; f->italic = false;
@@ -281,7 +277,7 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, pixel* buf) {
 
 static inline PyObject*
 update_cell_metrics() {
-#define CALL(idx, desired_height, force) { if (idx >= 0) { Font *f = fonts.fonts + idx; if ((f)->face) { if(!set_size_for_face((f)->face, desired_height, force)) return NULL; (f)->hb_font = harfbuzz_font_for_face((f)->face); } clear_sprite_map((f)); }}
+#define CALL(idx, desired_height, force) { if (idx >= 0) { Font *f = fonts.fonts + idx; if ((f)->face) { if(!set_size_for_face((f)->face, desired_height, force)) return NULL; } clear_sprite_map((f)); }}
     CALL(BOX_FONT, 0, false); CALL(fonts.medium_font_idx, 0, false);
     CALL(fonts.bold_font_idx, 0, false); CALL(fonts.italic_font_idx, 0, false); CALL(fonts.bi_font_idx, 0, false);
     cell_metrics(fonts.fonts[fonts.medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness);
@@ -662,10 +658,10 @@ static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
     hb_glyph_info_t *info;
     hb_glyph_position_t *positions;
-    unsigned int num_glyphs = shape(first_cell, num_cells, font->hb_font, &info, &positions);
+    unsigned int num_glyphs = shape(first_cell, num_cells, harfbuzz_font_for_face(font->face), &info, &positions);
 #if 0
-        // You can also generate this easily using hb-shape --show-flags --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
-        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, font->hb_font, HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS | HB_BUFFER_SERIALIZE_FLAG_GLYPH_FLAGS);
+        // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
         printf("\n%s\n", (char*)canvas);
         clear_canvas();
 #endif
@@ -694,12 +690,11 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         face = face_from_path(path, index);
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
-        font->hb_font = harfbuzz_font_for_face(face); 
         font->face = face;
     } 
     hb_glyph_info_t *info;
     hb_glyph_position_t *positions;
-    unsigned int num_glyphs = shape(line->cells, num, font->hb_font, &info, &positions);
+    unsigned int num_glyphs = shape(line->cells, num, harfbuzz_font_for_face(font->face), &info, &positions);
 
     PyObject *ans = PyList_New(0);
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;

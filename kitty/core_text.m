@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <hb-coretext.h>
+#include <hb-ot.h>
 #import <CoreGraphics/CGBitmapContext.h>
 #import <CoreText/CTFont.h>
 #include <Foundation/Foundation.h>
@@ -217,7 +218,11 @@ set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force) {
 hb_font_t* 
 harfbuzz_font_for_face(PyObject* s) {
     CTFace *self = (CTFace*)s;
-    if (!self->hb_font) self->hb_font = hb_coretext_font_create (self->ct_font);
+    if (!self->hb_font) {
+        self->hb_font = hb_coretext_font_create(self->ct_font);
+        if (!self->hb_font) fatal("Failed to create hb_font");
+        hb_ot_font_set_funcs(self->hb_font);
+    }
     return self->hb_font;
 }
 
