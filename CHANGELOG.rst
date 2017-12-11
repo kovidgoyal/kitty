@@ -22,6 +22,8 @@ version 0.6.0 [future]
 
 - Support colored emoji
 
+- Use CoreText instead of FreeType to render text on macOS
+
 - Add a new "grid" window layout
 
 - Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)

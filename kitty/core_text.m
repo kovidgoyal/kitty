@@ -285,6 +285,7 @@ static uint8_t *render_buf = NULL;
 static size_t render_buf_sz = 0;
 static CGGlyph glyphs[128];
 static CGRect boxes[128];
+static CGPoint positions[128];
 
 static void
 finalize(void) {
@@ -328,7 +329,7 @@ ensure_render_space(size_t width, size_t height) {
 }
 
 static inline void
-render_glyph(CTFontRef font, CGGlyph glyph, unsigned int width, unsigned int height, unsigned int baseline, unsigned int i) {
+render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
     memset(render_buf, 0, render_buf_sz);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
     CGContextRef render_ctx = CGBitmapContextCreate(render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
@@ -338,39 +339,27 @@ render_glyph(CTFontRef font, CGGlyph glyph, unsigned int width, unsigned int hei
     CGContextSetGrayFillColor(render_ctx, 1, 1); // white glyphs
     CGContextSetTextDrawingMode(render_ctx, kCGTextFill);
     CGContextSetTextMatrix(render_ctx, CGAffineTransformIdentity);
-    CGContextSetTextPosition(render_ctx, MAX(0, -boxes[i].origin.x), height - baseline); 
-    CGPoint p = CGPointMake(0, 0);
-    CTFontDrawGlyphs(font, &glyph, &p, 1, render_ctx);
-}
-
-static inline void
-place_glyph_in_canvas(unsigned int i, float x_offset, float y_offset, pixel *canvas, unsigned int canvas_width, unsigned int cell_height) {
-    Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
-    // Calculate column bounds
-    float bearing_x = boxes[i].origin.x;
-    (void)bearing_x;
-    (void)x_offset;
-    (void)y_offset;
-
-    render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
+    CGContextSetTextPosition(render_ctx, 0, height - baseline); 
+    CTFontDrawGlyphs(font, glyphs, positions, num_glyphs, render_ctx);
 }
 
 bool
-render_glyphs_in_cells(PyObject *s, bool UNUSED bold, bool UNUSED italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
+render_glyphs_in_cells(PyObject *s, bool UNUSED bold, bool UNUSED italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
     CTFace *self = (CTFace*)s;
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
     CGRect br = CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
-    float x = 0.f, y_offset = 0.f, x_offset = 0.f;
+    for (unsigned i=0; i < num_glyphs; i++) {
+        positions[i].x = MAX(0, -boxes[i].origin.x) + hb_positions[i].x_offset / 64.f;
+        positions[i].y = hb_positions[i].y_offset / 64.f;
+    }
     if (*was_colored) {
         render_color_glyph(self->ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
     } else {
         ensure_render_space(canvas_width, cell_height);
-        for (unsigned int i = 0; i < num_glyphs; i++) {
-            render_glyph(self->ct_font, info[i].codepoint, canvas_width, cell_height, baseline, i);
-            place_glyph_in_canvas(i, x + x_offset, y_offset, canvas, canvas_width, cell_height);
-            x += (float)positions[i].x_advance / 64.0f;
-        }
+        render_glyphs(self->ct_font, canvas_width, cell_height, baseline, num_glyphs);
+        Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
+        render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
     }
     if (num_cells > 1) {
         // center glyphs
