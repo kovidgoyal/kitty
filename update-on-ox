@@ -30,7 +30,7 @@ if False:
 
 # EOF_REMOTE
 
-HOST = 'macos-test'
+HOST = 'ox'
 
 base = os.path.dirname(os.path.abspath(__file__))
 if True:
