@@ -415,6 +415,26 @@ character for these symbols. See
 link:https://github.com/kovidgoyal/kitty/issues/182[#182] for a discussion of
 the approach using ligatures.
 
+=== How do I build kitty.app on macOS?
+
+You dont need to build kitty.app to run kitty from source. Simply install the dependencies
+listed above using brew/MacPorts or similar and then compile and run with:
+
+```
+make 
+python3 .
+```
+
+If you only want to make some small changes to a python file, you can do that
+and simply replace the corresponding file inside an existing kitty.app. (Note
+that kitty.app will contain `.pyo` files which are compiled versions of `.py`
+files, delete the `.pyo` file and replace it with a `.py` file).
+
+Finally, note that the released kitty.dmg is built automatically by using the
+`kitty` branch of
+link:https://github.com/kovidgoyal/build-calibre[build-calibre] however, that
+is designed to run on linux and is not for the faint of heart.
+
 == A tribute
 
 While over the decades I am sure many people have contributed to the
