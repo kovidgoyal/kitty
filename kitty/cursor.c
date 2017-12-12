@@ -57,6 +57,9 @@ cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count) {
                 break; \
             case 2: \
                 if (i < count - 2) { \
+                    /* Ignore the first parameter in a four parameter RGB */ \
+                    /* sequence (unused color space id), see https://github.com/kovidgoyal/kitty/issues/227 */ \
+                    if (i < count - 3) i++; \
                     r = params[i++] & 0xFF; \
                     g = params[i++] & 0xFF; \
                     b = params[i++] & 0xFF; \
