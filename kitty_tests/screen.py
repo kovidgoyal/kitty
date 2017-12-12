@@ -317,6 +317,11 @@ class TestScreen(BaseTest):
         c = s.line(1).cursor_from(0)
         self.ae(c.fg, (5 << 8) | 1)
         self.ae(c.bg, 0)
+        s.cursor_position(2, 2)
+        s.select_graphic_rendition(38, 2, 99, 1, 2, 3)
+        s.draw('c')
+        c = s.line(1).cursor_from(1)
+        self.ae(c.fg, (1 << 24) | (2 << 16) | (3 << 8) | 2)
 
     def test_cursor_hidden(self):
         s = self.create_screen()
