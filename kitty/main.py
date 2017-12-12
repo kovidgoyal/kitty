@@ -111,6 +111,12 @@ def main():
             locale.setlocale(locale.LC_ALL, '')
         except Exception:
             print('Failed to set locale with no LANG, ignoring', file=sys.stderr)
+    rpath = getattr(sys, 'bundle_exe_dir', None)
+    if rpath:
+        # Ensure kitty bin directory is in PATH
+        items = frozenset(os.environ['PATH'].split(os.pathsep))
+        if rpath not in items:
+            os.environ['PATH'] += os.pathsep + rpath
     if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
                       None) == '1' and getattr(sys, 'frozen', True):
         os.chdir(os.path.expanduser('~'))
