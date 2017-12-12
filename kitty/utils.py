@@ -78,13 +78,10 @@ def get_logical_dpi(override_dpi=None):
     if override_dpi is not None:
         get_logical_dpi.ans = override_dpi
     if not hasattr(get_logical_dpi, 'ans'):
-        if is_macos:
-            # TODO: Investigate if this needs a different implementation on OS X
-            get_logical_dpi.ans = glfw_get_physical_dpi()
-        else:
-            xscale, yscale = glfw_primary_monitor_content_scale()
-            xdpi, ydpi = xscale * 96.0, yscale * 96.0
-            get_logical_dpi.ans = xdpi, ydpi
+        factor = 72.0 if is_macos else 96.0
+        xscale, yscale = glfw_primary_monitor_content_scale()
+        xdpi, ydpi = xscale * factor, yscale * factor
+        get_logical_dpi.ans = xdpi, ydpi
     return get_logical_dpi.ans
 
 
