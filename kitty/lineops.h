@@ -51,7 +51,7 @@ void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bo
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
-index_type line_url_end_at(Line *self, index_type x);
+index_type line_url_end_at(Line *self, index_type x, bool);
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
 unsigned int line_length(Line *self);
 size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type);

@@ -10,7 +10,7 @@ layout(std140) uniform CellRenderData {
 
     int color1, color2;
 
-    uint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
+    uint xnum, ynum, cursor_x, cursor_y, cursor_w;
 
     uint color_table[256]; 
 };
@@ -18,7 +18,7 @@ layout(std140) uniform CellRenderData {
 // Have to use fixed locations here as all variants of the cell program share the same VAO
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec4 sprite_coords;
-layout(location=2) in float is_selected;
+layout(location=2) in uint is_selected;
 
 
     
@@ -108,11 +108,6 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
 
-float in_range(uint x, uint y) {
-    if (url_yl == y && url_xl <= x && x <= url_xr) return 1.0;
-    return 0.0;
-}
-
 float is_cursor(uint x, uint y) {
     if (y == cursor_y && (x == cursor_x || x == cursor_w)) return 1.0;
     return 0.0;
@@ -159,9 +154,9 @@ void main() {
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
     foreground = color_to_vec(resolved_fg);
     // Selection
-    foreground = choose_color(is_selected, color_to_vec(highlight_fg), foreground);
+    foreground = choose_color(float(is_selected & ONE), color_to_vec(highlight_fg), foreground);
     // Underline and strike through (rendered via sprites)
-    float in_url = in_range(c, r);
+    float in_url = float((is_selected & TWO) >> 1);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
     underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
     strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * FOUR, ZERO, ZERO);
@@ -189,11 +184,11 @@ void main() {
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
-    bg = choose_color(is_selected, color_to_vec(highlight_bg), bg);
+    bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
     background = choose_color(cursor, color_to_vec(cursor_color), bg);
 #ifdef SPECIAL
     // bg_alpha should be 1 if cursor/selection otherwise 0
-    bg_alpha = mix(0.0, 1.0, step(0.5, is_selected + cursor));
+    bg_alpha = mix(0.0, 1.0, step(0.5, float(is_selected & ONE) + cursor));
 #endif
 #endif
 

@@ -135,9 +135,9 @@ line_url_start_at(Line *self, index_type x) {
 }
 
 index_type
-line_url_end_at(Line *self, index_type x) {
+line_url_end_at(Line *self, index_type x, bool check_short) {
     index_type ans = x;
-    if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return 0;
+    if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
     while (ans < self->xnum && is_url_char(self->cells[ans].ch)) ans++;
     ans--;
     while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch)) ans--;
@@ -153,7 +153,7 @@ url_start_at(Line *self, PyObject *x) {
 static PyObject*
 url_end_at(Line *self, PyObject *x) {
 #define url_end_at_doc "url_end_at(x) -> Return the end cell number for a URL containing x or 0 if not found"
-    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, PyLong_AsUnsignedLong(x)));
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, PyLong_AsUnsignedLong(x), true));
 }
 
 // }}}

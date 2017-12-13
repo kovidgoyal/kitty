@@ -142,20 +142,33 @@ drag_scroll(Window *w, OSWindow *frame) {
     return false;
 }
 
+static inline void
+extend_url(Screen *screen, Line *line, index_type *x, index_type *y) {
+    while(true) {
+        if (*x != line->xnum - 1) break;
+        line = screen_visual_line(screen, *y + 1);
+        if (!line) break; // we deliberately allow non-continued lines as some programs, like mutt split URLs with newlines at line boundaries
+        index_type new_x = line_url_end_at(line, 0, false);
+        if (!new_x) break;
+        *y += 1; *x = new_x;
+    }
+}
 
 static inline void
-detect_url(Window *w, Screen *screen, unsigned int x, unsigned int y) {
+detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
     if (line) {
         url_start = line_url_start_at(line, x);
-        if (url_start < line->xnum) url_end = line_url_end_at(line, x);
+        if (url_start < line->xnum) url_end = line_url_end_at(line, x, true);
         has_url = url_end > url_start;
     }
     if (has_url) {
         mouse_cursor_shape = HAND;
-        screen_mark_url(screen, url_start, w->mouse_cell_y, url_end, w->mouse_cell_y);
+        index_type y_extended = y;
+        extend_url(screen, line, &url_end, &y_extended);
+        screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else {
         mouse_cursor_shape = BEAM;
         screen_mark_url(screen, 0, 0, 0, 0);
@@ -173,7 +186,7 @@ HANDLER(handle_move_event) {
     }
     if (!cell_for_pos(w, &x, &y)) return;
     Screen *screen = w->render_data.screen;
-    detect_url(w, screen, x, y);
+    detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y;
     w->mouse_cell_x = x; w->mouse_cell_y = y;
     bool handle_in_kitty = (
@@ -237,16 +250,8 @@ HANDLER(add_click) {
 
 static inline void
 open_url(Window *w) {
-    Line *line = screen_visual_line(w->render_data.screen, w->mouse_cell_y);
-    if (line) {
-        index_type start = line_url_start_at(line, w->mouse_cell_x); 
-        if (start < line->xnum) {
-            index_type end = line_url_end_at(line, w->mouse_cell_x);
-            if (end > start) {
-                call_boss(open_url, "N", unicode_in_range(line, start, end + 1, true, 0));
-            }
-        }
-    }
+    Screen *screen = w->render_data.screen;
+    screen_open_url(screen);
 }
 
 HANDLER(handle_button_event) {

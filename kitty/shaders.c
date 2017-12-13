@@ -177,7 +177,7 @@ create_cell_vao() {
     A1(colors, 3, GL_UNSIGNED_INT, fg);
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A(is_selected, 1, GL_FLOAT, NULL, 0);
+    A(is_selected, 1, GL_UNSIGNED_BYTE, NULL, 0);
 
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
@@ -204,7 +204,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
         GLint color1, color2;
 
-        GLuint xnum, ynum, cursor_x, cursor_y, cursor_w, url_xl, url_yl, url_xr, url_yr;
+        GLuint xnum, ynum, cursor_x, cursor_y, cursor_w;
     };
     static struct CellRenderData *rd;
 
@@ -222,7 +222,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     rd->cursor_w = rd->cursor_x + MAX(1, screen_current_char_width(screen)) - 1;
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;
-    screen_url_range(screen, &rd->url_xl);
     
     rd->xstart = xstart; rd->ystart = ystart; rd->dx = dx; rd->dy = dy;
     unsigned int x, y, z;
@@ -255,7 +254,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     if (screen_is_selection_dirty(screen)) {
-        sz = sizeof(GLfloat) * screen->lines * screen->columns;
+        sz = screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;

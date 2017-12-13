@@ -180,6 +180,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
     self->url_range = EMPTY_SELECTION;
+    self->selection_updated_once = false;
 
     // Ensure cursor is on the correct line
     self->cursor->x = 0;
@@ -1225,33 +1226,57 @@ visual_line_(Screen *self, index_type y) {
     return self->linebuf->line;
 }
 
-void
-screen_apply_selection(Screen *self, void *address, size_t size) {
-#define start (self->last_rendered_selection_start)
-#define end (self->last_rendered_selection_end)
-    float *data = address;
-    memset(data, 0, size);
-    selection_limits_(selection, &start, &end);
-    self->last_selection_scrolled_by = self->scrolled_by;
-    self->selection_updated_once = true;
-    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { return; }
-    for (index_type y = start.y; y <= end.y; y++) {
+static inline void
+apply_selection(Screen *self, uint8_t *data, SelectionBoundary *start, SelectionBoundary *end, uint8_t set_mask) {
+    if (is_selection_empty(self, start->x, start->y, end->x, end->y)) return; 
+    for (index_type y = start->y; y <= end->y; y++) {
         Line *line = visual_line_(self, y);
         index_type xlimit = xlimit_for_line(line);
-        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
-        float *line_start = data + self->columns * y;
-        for (index_type x = (y == start.y ? start.x : 0); x < xlimit; x++) line_start[x] = 1.0;
+        if (y == end->y) xlimit = MIN(end->x + 1, xlimit);
+        uint8_t *line_start = data + self->columns * y;
+        for (index_type x = (y == start->y ? start->x : 0); x < xlimit; x++) line_start[x] |= set_mask;
     }
-#undef start
-#undef end
+
 }
 
 void
-screen_url_range(Screen *self, uint32_t *data) {
+screen_apply_selection(Screen *self, void *address, size_t size) {
+    memset(address, 0, size);
+    self->last_selection_scrolled_by = self->scrolled_by;
+    self->selection_updated_once = true;
+    selection_limits_(selection, &self->last_rendered_selection_start, &self->last_rendered_selection_end);
+    apply_selection(self, address, &self->last_rendered_selection_start, &self->last_rendered_selection_end, 1);
+    selection_limits_(url_range, &self->last_rendered_url_start, &self->last_rendered_url_end);
+    apply_selection(self, address, &self->last_rendered_url_start, &self->last_rendered_url_end, 2);
+}
+
+static inline PyObject*
+text_for_range(Screen *self, SelectionBoundary start, SelectionBoundary end) {
+    Py_ssize_t i = 0, num_of_lines = end.y - start.y + 1;
+    PyObject *ans = PyTuple_New(num_of_lines);
+    if (ans == NULL) return PyErr_NoMemory();
+    for (index_type y = start.y; y <= end.y; y++, i++) {
+        Line *line = visual_line_(self, y);
+        index_type xlimit = xlimit_for_line(line);
+        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
+        index_type xstart = (y == start.y ? start.x : 0);
+        char leading_char = i > 0 && !line->continued ? '\n' : 0;
+        PyObject *text = unicode_in_range(line, xstart, xlimit, true, leading_char);
+        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+        PyTuple_SET_ITEM(ans, i, text);
+    }
+    return ans;
+}
+
+bool
+screen_open_url(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(url_range, &start, &end);
-    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) { *(data + 1) = self->lines; *(data + 3) = self->lines; *data = self->columns; *(data + 2) = self->columns; }
-    else { *data = start.x; *(data+1) = start.y; *(data + 2) = end.x; *(data + 3) = end.y; }
+    if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return false;
+    PyObject *text = text_for_range(self, start, end);
+    if (text) { call_boss(open_url_lines, "(O)", text); Py_CLEAR(text); }
+    else PyErr_Print();
+    return true;
 }
 
 // }}}
@@ -1410,20 +1435,7 @@ text_for_selection(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(selection, &start, &end);
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return PyTuple_New(0);
-    Py_ssize_t i = 0, num_of_lines = end.y - start.y + 1;
-    PyObject *ans = PyTuple_New(num_of_lines);
-    if (ans == NULL) return PyErr_NoMemory();
-    for (index_type y = start.y; y <= end.y; y++, i++) {
-        Line *line = visual_line_(self, y);
-        index_type xlimit = xlimit_for_line(line);
-        if (y == end.y) xlimit = MIN(end.x + 1, xlimit);
-        index_type xstart = (y == start.y ? start.x : 0);
-        char leading_char = i > 0 && !line->continued ? '\n' : 0;
-        PyObject *text = unicode_in_range(line, xstart, xlimit, true, leading_char);
-        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
-        PyTuple_SET_ITEM(ans, i, text);
-    }
-    return ans;
+    return text_for_range(self, start, end);
 }
  
 bool
@@ -1506,6 +1518,8 @@ screen_is_selection_dirty(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(selection, &start, &end);
     if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered_selection_start.x || start.y != self->last_rendered_selection_start.y || end.x != self->last_rendered_selection_end.x || end.y != self->last_rendered_selection_end.y || !self->selection_updated_once) return true;
+    selection_limits_(url_range, &start, &end);
+    if (start.x != self->last_rendered_url_start.x || start.y != self->last_rendered_url_start.y || end.x != self->last_rendered_url_end.x || end.y != self->last_rendered_url_end.y) return true;
     return false;
 }
 

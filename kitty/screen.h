@@ -34,7 +34,7 @@ typedef struct {
     id_type window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     Selection selection;
-    SelectionBoundary last_rendered_selection_start, last_rendered_selection_end;
+    SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
     Selection url_range;
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
     Cursor *cursor;
@@ -130,9 +130,9 @@ void screen_update_selection(Screen *self, index_type x, index_type y, bool ende
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
-void screen_url_range(Screen *self, uint32_t *);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
+bool screen_open_url(Screen*);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

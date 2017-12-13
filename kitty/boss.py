@@ -291,6 +291,9 @@ class Boss:
         if url:
             open_url(url, self.opts.open_url_with)
 
+    def open_url_lines(self, lines):
+        self.open_url(''.join(lines))
+
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
