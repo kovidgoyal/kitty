@@ -108,6 +108,9 @@ handle_sigchld(int UNUSED signum, siginfo_t *sinfo, void UNUSED *unused) {
             if (errno != EINTR) break;
         } else break;
     }
+    // wakeup I/O loop as without this on macOS sometimes poll() does not detect the fd close, so
+    // kitty does not detect child death.
+    wakeup_io_loop(true);
     errno = sav_errno;
 }
 

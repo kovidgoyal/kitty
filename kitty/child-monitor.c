@@ -191,13 +191,13 @@ dealloc(ChildMonitor* self) {
     close(signal_fds[1]);
 }
 
-static void
-wakeup_io_loop() {
+void
+wakeup_io_loop(bool in_signal_handler) {
     while(true) {
         ssize_t ret = write(wakeup_fds[1], "w", 1);
         if (ret < 0) {
             if (errno == EINTR) continue;
-            perror("Failed to write to wakeup fd with error");
+            if (!in_signal_handler) perror("Failed to write to wakeup fd with error");
         }
         break;
     }
@@ -230,7 +230,7 @@ join(ChildMonitor *self) {
 static PyObject *
 wakeup(ChildMonitor UNUSED *self) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_io_loop();
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -249,7 +249,7 @@ add_child(ChildMonitor *self, PyObject *args) {
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
-    wakeup_io_loop();
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -281,7 +281,7 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
-            if (screen->write_buf_used) wakeup_io_loop();
+            if (screen->write_buf_used) wakeup_io_loop(false);
             screen_mutex(unlock, write);
             break;
         }
@@ -316,7 +316,7 @@ do_parse(ChildMonitor *self, Screen *screen, double now) {
         double time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
             parse_func(screen, self->dump_callback);
-            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop();  // Ensure the read fd has POLLIN set
+            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop(false);  // Ensure the read fd has POLLIN set
             screen->read_buf_sz = 0;
             screen->new_input_at = 0;
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
@@ -392,7 +392,7 @@ mark_child_for_close(ChildMonitor *self, id_type window_id) {
         }
     }
     children_mutex(unlock);
-    wakeup_io_loop();
+    wakeup_io_loop(false);
 }
 
 

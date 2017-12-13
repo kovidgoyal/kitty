@@ -275,6 +275,7 @@ void change_wcwidth(bool use9);
 void set_mouse_cursor(MouseShape);
 void mouse_event(int, int);
 void focus_in_event();
+void wakeup_io_loop(bool);
 void scroll_event(double, double);
 void fake_scroll(bool);
 void set_special_key_combo(int glfw_key, int mods);
