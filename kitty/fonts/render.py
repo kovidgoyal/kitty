@@ -93,6 +93,8 @@ def add_dline(buf, cell_width, position, thickness, cell_height):
                 top -= deficit - 1
         else:
             top -= deficit
+    top = max(0, min(top, cell_height - 1))
+    bottom = max(0, min(bottom, cell_height - 1))
     for y in {top, bottom}:
         ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
 
