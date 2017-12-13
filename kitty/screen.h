@@ -36,7 +36,7 @@ typedef struct {
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
     Selection url_range;
-    bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
+    bool use_latin1, selection_updated_once, is_dirty, scroll_changed, rectangle_select;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     PyObject *callbacks, *test_child;
@@ -125,7 +125,7 @@ void screen_update_cell_data(Screen *self, void *address, size_t sz);
 bool screen_is_cursor_visible(Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_type *start, index_type *end);
-void screen_start_selection(Screen *self, index_type x, index_type y);
+void screen_start_selection(Screen *self, index_type x, index_type y, bool);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool ended);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);

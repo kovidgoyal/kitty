@@ -107,11 +107,11 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
 #define HANDLER(name) static inline void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
 
 static inline void
-update_drag(bool from_button, Window *w, bool is_release) {
+update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     Screen *screen = w->render_data.screen;
     if (from_button) {
         if (is_release) screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
-        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y);
+        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (GLFW_MOD_CONTROL | GLFW_MOD_ALT));
     } else if (screen->selection.in_progress) {
         screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
         call_boss(set_primary_selection, NULL);
@@ -130,7 +130,7 @@ drag_scroll(Window *w, OSWindow *frame) {
         Screen *screen = w->render_data.screen;
         if (screen->linebuf == screen->main_linebuf) {
             screen_history_scroll(screen, SCROLL_LINE, upwards);
-            update_drag(false, w, false);
+            update_drag(false, w, false, 0);
             frame->last_mouse_activity_at = monotonic();
             if (mouse_cursor_shape != ARROW) {
                 mouse_cursor_shape = ARROW;
@@ -199,7 +199,7 @@ HANDLER(handle_move_event) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
             double now = monotonic();
             if ((now - w->last_drag_scroll_at) >= 0.02 || mouse_cell_changed) {
-                update_drag(false, w, false);
+                update_drag(false, w, false, 0);
                 w->last_drag_scroll_at = monotonic();
             }
         }
@@ -226,7 +226,7 @@ multi_click(Window *w, unsigned int count) {
             break;
     }
     if (found_selection) {
-        screen_start_selection(screen, start, w->mouse_cell_y);
+        screen_start_selection(screen, start, w->mouse_cell_y, false);
         screen_update_selection(screen, end, w->mouse_cell_y, true);
         call_boss(set_primary_selection, NULL);
     }
@@ -272,7 +272,7 @@ HANDLER(handle_button_event) {
     if (handle_in_kitty) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
-                update_drag(true, w, is_release);
+                update_drag(true, w, is_release, modifiers);
                 if (is_release) {
                     if (modifiers == (int)OPT(open_url_modifiers)) {
                         open_url(w);
