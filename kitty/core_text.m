@@ -245,11 +245,26 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         }
     }
     *cell_width = MAX(1, width); 
-    float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
-    *cell_height = (unsigned int)line_height;  
     *underline_position = floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
     *baseline = (unsigned int)self->ascent;
+    // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
+    // Let CoreText's layout engine calculate the line height. Slower, but hopefully more accurate.
+    CFStringRef ts = CFSTR("test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test test");
+    CFMutableAttributedStringRef test_string = CFAttributedStringCreateMutable(kCFAllocatorDefault, CFStringGetLength(ts));
+    CFAttributedStringReplaceString(test_string, CFRangeMake(0, 0), ts); 
+    CFAttributedStringSetAttribute(test_string, CFRangeMake(0, CFStringGetLength(ts)), kCTFontAttributeName, self->ct_font);
+    CGMutablePathRef path = CGPathCreateMutable();
+    CGPathAddRect(path, NULL, CGRectMake(10, 10, 200, 200));
+    CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString(test_string);
+    CFRelease(test_string);
+    CTFrameRef test_frame = CTFramesetterCreateFrame(framesetter, CFRangeMake(0, 0), path, NULL);
+    CGPoint origin1, origin2;
+    CTFrameGetLineOrigins(test_frame, CFRangeMake(0, 1), &origin1);
+    CTFrameGetLineOrigins(test_frame, CFRangeMake(1, 1), &origin2);
+    CGFloat line_height = origin1.y - origin2.y;
+    CFRelease(test_frame); CFRelease(path); CFRelease(framesetter); 
+    *cell_height = MAX(4, (unsigned int)ceilf(line_height));
 #undef count
 }
 
