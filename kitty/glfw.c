@@ -145,7 +145,10 @@ static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_focused = focused ? true : false;
-    if (focused) show_mouse_cursor(w); 
+    if (focused) {
+        show_mouse_cursor(w); 
+        focus_in_event();
+    }
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;

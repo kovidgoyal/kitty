@@ -325,6 +325,17 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
 }
 
 void
+focus_in_event() {
+    // Ensure that no URL is highlighted and the mouse cursor is in default shape
+    bool in_tab_bar;
+    unsigned int window_idx = 0;
+    mouse_cursor_shape = BEAM;
+    set_mouse_cursor(BEAM);
+    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (w) screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+}
+
+void
 mouse_event(int button, int modifiers) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
