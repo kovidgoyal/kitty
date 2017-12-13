@@ -228,6 +228,7 @@ harfbuzz_font_for_face(PyObject* s) {
 
 void 
 cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
+    // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     CTFace *self = (CTFace*)s;
 #define count (128 - 32)
     unichar chars[count+1] = {0};
@@ -242,15 +243,10 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
             if (w > width) width = w; 
         }
     }
-    // See https://stackoverflow.com/questions/5511830/how-does-line-spacing-work-in-core-text-and-why-is-it-different-from-nslayoutm
-    CGFloat leading = MAX(0, self->leading);
-    leading = floor(leading + 0.5);
-    CGFloat line_height = floor(self->ascent + 0.5) + floor(self->descent + 0.5) + leading;
-    CGFloat ascender_delta = (leading > 0) ? 0 : floor(0.2 * line_height + 0.5);
-    *cell_width = width; *cell_height = (unsigned int)(line_height + ascender_delta);  
+    *cell_width = width; 
+    *cell_height = (unsigned int)floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5);  
     *underline_position = (unsigned int)self->underline_position;
     *underline_thickness = (unsigned int)self->underline_thickness;
-    // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     *baseline = (unsigned int)self->ascent;
 }
 
