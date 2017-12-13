@@ -144,7 +144,8 @@ drag_scroll(Window *w, OSWindow *frame) {
 
 static inline void
 extend_url(Screen *screen, Line *line, index_type *x, index_type *y) {
-    while(true) {
+    unsigned int count = 0;
+    while(count++ < 10) {
         if (*x != line->xnum - 1) break;
         line = screen_visual_line(screen, *y + 1);
         if (!line) break; // we deliberately allow non-continued lines as some programs, like mutt split URLs with newlines at line boundaries
