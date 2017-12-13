@@ -75,10 +75,11 @@ ct_face(CTFontRef font) {
 
 static void
 dealloc(CTFace* self) {
-    if (self->ct_font) CFRelease(self->ct_font);
     if (self->hb_font) hb_font_destroy(self->hb_font);
+    if (self->ct_font) CFRelease(self->ct_font);
     self->hb_font = NULL;
     self->ct_font = NULL;
+    Py_CLEAR(self->family_name); Py_CLEAR(self->full_name); Py_CLEAR(self->postscript_name); Py_CLEAR(self->path);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
