@@ -250,6 +250,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     *underline_position = floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
     *baseline = (unsigned int)self->ascent;
+#undef count
 }
 
 PyObject*
