@@ -73,7 +73,7 @@ def resize_fonts(new_sz):
 
 def add_line(buf, cell_width, position, thickness, cell_height):
     y = position - thickness // 2
-    while thickness:
+    while thickness > 0 and y > -1 and y < cell_height - 1:
         thickness -= 1
         ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
         y += 1
