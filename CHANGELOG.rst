@@ -24,6 +24,8 @@ version 0.6.0 [future]
 
 - Use CoreText instead of FreeType to render text on macOS
 
+- Support running on the "low power" GPU on dual GPU macOS machines
+
 - Add a new "grid" window layout
 
 - Drop the dependency on glfw (kitty now uses a modified, bundled copy of glfw)

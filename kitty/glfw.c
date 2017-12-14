@@ -227,6 +227,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
 #ifdef __APPLE__
         if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
+        glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
 #endif
 
         standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);

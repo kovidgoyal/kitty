@@ -114,6 +114,12 @@ layout_sprite_map() {
     if (!limits_updated) {
         glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size)); 
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers)); 
+#ifdef __APPLE__
+        // Since on Apple we could have multiple GPUs, with different capabilities,
+        // upper bound the values according to the data from http://developer.apple.com/graphicsimaging/opengl/capabilities/
+        sprite_map.max_texture_size = MIN(8192, sprite_map.max_texture_size);
+        sprite_map.max_array_texture_layers = MIN(512, sprite_map.max_array_texture_layers);
+#endif
         sprite_tracker_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
         limits_updated = true;
     }
