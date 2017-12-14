@@ -7,7 +7,7 @@ import os
 from functools import partial as p
 from itertools import repeat
 
-from kitty.utils import get_logical_dpi
+from kitty.fast_data_types import pt_to_px_ceil
 
 scale = (0.001, 1, 1.5, 2)
 
@@ -18,9 +18,8 @@ def set_scale(new_scale):
 
 
 def thickness(level=1, horizontal=True):
-    dpi = get_logical_dpi()[0 if horizontal else 1]
     pts = scale[level]
-    return int(math.ceil(pts * dpi / 72.0))
+    return pt_to_px_ceil(pts)
 
 
 def draw_hline(buf, width, x1, x2, y, level):

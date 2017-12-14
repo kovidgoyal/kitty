@@ -14,7 +14,6 @@ from kitty.fonts.box_drawing import box_chars
 from kitty.fonts.render import (
     prerender, render_string, set_font_family, shape_string
 )
-from kitty.utils import get_logical_dpi
 
 from . import BaseTest
 
@@ -30,7 +29,6 @@ class Rendering(BaseTest):
 
         set_send_sprite_to_gpu(send_to_gpu)
         set_logical_dpi(96.0, 96.0)
-        get_logical_dpi((96.0, 96.0))
         self.cell_width, self.cell_height = set_font_family()
         prerender()
         self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5])

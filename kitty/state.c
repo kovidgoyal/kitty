@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include <math.h>
 
 GlobalState global_state = {{0}};
 
@@ -424,7 +425,13 @@ PYWRAP1(set_logical_dpi) {
 PYWRAP1(pt_to_px) {
     long pt = PyLong_AsLong(args);
     double dpi = (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.f;
-    return PyLong_FromLong((long)(pt * (dpi / 72.0)));
+    return PyLong_FromLong((long)round((pt * (dpi / 72.0))));
+}
+
+PYWRAP1(pt_to_px_ceil) {
+    long pt = PyLong_AsLong(args);
+    double dpi = (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.f;
+    return PyLong_FromLong((long)ceil((pt * (dpi / 72.0))));
 }
 
 
@@ -468,6 +475,7 @@ static PyMethodDef module_methods[] = {
     MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
     MW(pt_to_px, METH_O),
+    MW(pt_to_px_ceil, METH_O),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),

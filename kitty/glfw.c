@@ -209,6 +209,60 @@ make_os_window_context_current(OSWindow *w) {
     }
 }
 
+
+static GLFWmonitor*
+current_monitor(GLFWwindow *window) {
+    // Find the monitor that has the maximum overlap with this window
+    int nmonitors, i;
+    int wx, wy, ww, wh;
+    int mx, my, mw, mh;
+    int overlap = 0, bestoverlap = 0;
+    GLFWmonitor *bestmonitor = NULL;
+    GLFWmonitor **monitors = NULL;
+    const GLFWvidmode *mode;
+
+    glfwGetWindowPos(window, &wx, &wy);
+    glfwGetWindowSize(window, &ww, &wh);
+    monitors = glfwGetMonitors(&nmonitors);
+    if (monitors == NULL || nmonitors < 1) { PyErr_SetString(PyExc_ValueError, "No monitors connected"); return NULL; }
+
+    for (i = 0; i < nmonitors; i++) {
+        mode = glfwGetVideoMode(monitors[i]);
+        glfwGetMonitorPos(monitors[i], &mx, &my);
+        mw = mode->width;
+        mh = mode->height;
+
+        overlap =
+            MAX(0, MIN(wx + ww, mx + mw) - MAX(wx, mx)) *
+            MAX(0, MIN(wy + wh, my + mh) - MAX(wy, my));
+
+        if (bestoverlap < overlap || bestmonitor == NULL) {
+            bestoverlap = overlap;
+            bestmonitor = monitors[i];
+        }
+    }
+
+    return bestmonitor;
+}
+
+
+static inline void
+set_dpi_from_window(OSWindow *w) {
+    GLFWmonitor *monitor = NULL;
+    if (w) { monitor = current_monitor(w->handle); }
+    if (monitor == NULL) monitor = glfwGetPrimaryMonitor();
+    float xscale = 1, yscale = 1;
+    if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+#ifdef __APPLE__
+    double factor = 72.0;
+#else
+    double factor = 96.0;
+#endif
+    global_state.logical_dpi_x = xscale * factor;
+    global_state.logical_dpi_y = yscale * factor;
+}
+
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height, visible = 1, swap_interval = 0, x = -1, y = -1;
@@ -256,6 +310,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
     if (is_first_window) { 
+        set_dpi_from_window(NULL);
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
         if (ret == NULL) return NULL;
@@ -441,41 +496,6 @@ set_clipboard_string(PyObject UNUSED *self, PyObject *args) {
     OSWindow *w = current_os_window();
     if (w) glfwSetClipboardString(w->handle, title);
     Py_RETURN_NONE;
-}
-
-static GLFWmonitor*
-current_monitor(GLFWwindow *window) {
-    // Find the monitor that has the maximum overlap with this window
-    int nmonitors, i;
-    int wx, wy, ww, wh;
-    int mx, my, mw, mh;
-    int overlap = 0, bestoverlap = 0;
-    GLFWmonitor *bestmonitor = NULL;
-    GLFWmonitor **monitors = NULL;
-    const GLFWvidmode *mode;
-
-    glfwGetWindowPos(window, &wx, &wy);
-    glfwGetWindowSize(window, &ww, &wh);
-    monitors = glfwGetMonitors(&nmonitors);
-    if (monitors == NULL || nmonitors < 1) { PyErr_SetString(PyExc_ValueError, "No monitors connected"); return NULL; }
-
-    for (i = 0; i < nmonitors; i++) {
-        mode = glfwGetVideoMode(monitors[i]);
-        glfwGetMonitorPos(monitors[i], &mx, &my);
-        mw = mode->width;
-        mh = mode->height;
-
-        overlap =
-            MAX(0, MIN(wx + ww, mx + mw) - MAX(wx, mx)) *
-            MAX(0, MIN(wy + wh, my + mh) - MAX(wy, my));
-
-        if (bestoverlap < overlap || bestmonitor == NULL) {
-            bestoverlap = overlap;
-            bestmonitor = monitors[i];
-        }
-    }
-
-    return bestmonitor;
 }
 
 static PyObject*

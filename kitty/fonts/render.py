@@ -170,7 +170,6 @@ def render_box_drawing(codepoint):
 
 
 def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
-    from kitty.utils import get_logical_dpi
     opts = defaults._replace(font_family=family)
     set_options(opts)
     sprites = {}
@@ -181,7 +180,6 @@ def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
     sprite_map_set_limits(100000, 100)
     set_send_sprite_to_gpu(send_to_gpu)
     set_logical_dpi(dpi, dpi)
-    get_logical_dpi((dpi, dpi))
     cell_width, cell_height = set_font_family(opts, override_font_size=size)
     prerender()
     return sprites, cell_width, cell_height

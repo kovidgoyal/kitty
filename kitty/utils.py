@@ -19,8 +19,8 @@ from time import monotonic
 
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    GLSL_VERSION, glfw_primary_monitor_content_scale,
-    redirect_std_streams, wcwidth as wcwidth_impl, x11_display, x11_window_id
+    GLSL_VERSION, redirect_std_streams, wcwidth as wcwidth_impl, x11_display,
+    x11_window_id
 )
 from .rgb import Color, to_color
 
@@ -63,19 +63,6 @@ def timeit(name, do_timing=False):
 
 def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
-
-
-def get_logical_dpi(override_dpi=None):
-    # See https://github.com/glfw/glfw/issues/1019 for why we cant use
-    # glfw_get_physical_dpi()
-    if override_dpi is not None:
-        get_logical_dpi.ans = override_dpi
-    if not hasattr(get_logical_dpi, 'ans'):
-        factor = 72.0 if is_macos else 96.0
-        xscale, yscale = glfw_primary_monitor_content_scale()
-        xdpi, ydpi = xscale * factor, yscale * factor
-        get_logical_dpi.ans = xdpi, ydpi
-    return get_logical_dpi.ans
 
 
 def color_as_int(val):

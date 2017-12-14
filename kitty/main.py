@@ -15,12 +15,11 @@ from .config import initial_window_size, load_cached_values, save_cached_values
 from .constants import glfw_path, is_macos, is_wayland, logo_data_file
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_terminate,
-    install_sigchld_handler, set_default_window_icon, set_logical_dpi,
-    set_options, show_window
+    install_sigchld_handler, set_default_window_icon, set_options, show_window
 )
 from .fonts.box_drawing import set_scale
 from .utils import (
-    detach, encode_wm_class, end_startup_notification, get_logical_dpi,
+    detach, encode_wm_class, end_startup_notification,
     init_startup_notification, single_instance
 )
 from .window import load_shader_programs
@@ -49,7 +48,6 @@ def run_app(opts, args):
     if not is_wayland and not is_macos:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
-    set_logical_dpi(*get_logical_dpi())
     boss = Boss(window_id, opts, args)
     boss.start()
     end_startup_notification(startup_ctx)
