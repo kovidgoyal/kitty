@@ -421,6 +421,13 @@ PYWRAP1(set_logical_dpi) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(pt_to_px) {
+    long pt = PyLong_AsLong(args);
+    double dpi = (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.f;
+    return PyLong_FromLong((long)(pt * (dpi / 72.0)));
+}
+
+
 PYWRAP1(set_boss) {
     Py_CLEAR(global_state.boss);
     global_state.boss = args;
@@ -460,6 +467,7 @@ static PyMethodDef module_methods[] = {
     MW(set_options, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
+    MW(pt_to_px, METH_O),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),

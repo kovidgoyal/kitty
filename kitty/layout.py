@@ -6,9 +6,7 @@ from collections import namedtuple
 from itertools import islice
 
 from .constants import WindowGeometry
-from .utils import pt_to_px
-from .fast_data_types import viewport_for_window
-
+from .fast_data_types import pt_to_px, viewport_for_window
 
 viewport_width = viewport_height = available_height = 400
 cell_width = cell_height = 20

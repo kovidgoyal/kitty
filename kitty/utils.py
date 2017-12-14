@@ -19,7 +19,7 @@ from time import monotonic
 
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    GLSL_VERSION, glfw_get_physical_dpi, glfw_primary_monitor_content_scale,
+    GLSL_VERSION, glfw_primary_monitor_content_scale,
     redirect_std_streams, wcwidth as wcwidth_impl, x11_display, x11_window_id
 )
 from .rgb import Color, to_color
@@ -52,13 +52,6 @@ def wcwidth(c: str) -> int:
         return wcwidth_impl(ord(c[0]))
 
 
-@lru_cache()
-def pt_to_px(pts):
-    dpix, dpiy = get_dpi()['logical']
-    dpi = (dpix + dpiy) / 2
-    return round(pts * dpi / 72)
-
-
 @contextmanager
 def timeit(name, do_timing=False):
     if do_timing:
@@ -83,13 +76,6 @@ def get_logical_dpi(override_dpi=None):
         xdpi, ydpi = xscale * factor, yscale * factor
         get_logical_dpi.ans = xdpi, ydpi
     return get_logical_dpi.ans
-
-
-def get_dpi():
-    if not hasattr(get_dpi, 'ans'):
-        pdpi = glfw_get_physical_dpi()
-        get_dpi.ans = {'physical': pdpi, 'logical': get_logical_dpi()}
-    return get_dpi.ans
 
 
 def color_as_int(val):

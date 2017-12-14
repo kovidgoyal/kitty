@@ -6,9 +6,10 @@ from functools import partial
 from itertools import chain
 
 from .fast_data_types import (
-    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program
+    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
+    pt_to_px
 )
-from .utils import color_as_int, load_shaders, pt_to_px
+from .utils import color_as_int, load_shaders
 
 
 def vertical_edge(os_window_id, tab_id, color, width, top, bottom, left):
