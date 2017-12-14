@@ -146,6 +146,7 @@ void mark_os_window_for_close(OSWindow* w, bool yes);
 void update_os_window_viewport(OSWindow *window, bool);
 bool should_os_window_close(OSWindow* w);
 bool should_os_window_be_rendered(OSWindow* w);
+void set_dpi_from_os_window(OSWindow *w);
 void wakeup_main_loop();
 void event_loop_wait(double timeout);
 void swap_window_buffers(OSWindow *w);

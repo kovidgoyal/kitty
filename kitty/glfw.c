@@ -21,12 +21,14 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h;
     glfwGetFramebufferSize(window->handle, &window->viewport_width, &window->viewport_height);
     glfwGetWindowSize(window->handle, &w, &h);
+    double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
+    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio);
     window->viewport_size_dirty = true;
     window->has_pending_resizes = false;
     if (notify_boss) {
-        call_boss(on_window_resize, "Kii", window->id, window->viewport_width, window->viewport_height);
+        call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }
     window->last_resize_at = monotonic();
 }
@@ -246,8 +248,8 @@ current_monitor(GLFWwindow *window) {
 }
 
 
-static inline void
-set_dpi_from_window(OSWindow *w) {
+void
+set_dpi_from_os_window(OSWindow *w) {
     GLFWmonitor *monitor = NULL;
     if (w) { monitor = current_monitor(w->handle); }
     if (monitor == NULL) monitor = glfwGetPrimaryMonitor();
@@ -315,7 +317,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
-        set_dpi_from_window(NULL);
+        set_dpi_from_os_window(NULL);
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
         if (ret == NULL) return NULL;

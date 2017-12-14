@@ -11,8 +11,8 @@ from .constants import appname, set_boss, wakeup
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, mark_os_window_for_close, show_window,
-    toggle_fullscreen, viewport_for_window
+    layout_sprite_map, mark_os_window_for_close, set_dpi_from_os_window,
+    show_window, toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut
@@ -162,10 +162,16 @@ class Boss:
         if tm is not None:
             tm.activate_tab_at(x)
 
-    def on_window_resize(self, os_window_id, w, h):
+    def on_window_resize(self, os_window_id, w, h, dpi_changed):
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
-            tm.resize()
+            if dpi_changed:
+                if set_dpi_from_os_window(os_window_id):
+                    self.on_dpi_change(os_window_id)
+                else:
+                    tm.resize()
+            else:
+                tm.resize()
 
     def increase_font_size(self):
         self.change_font_size(
@@ -182,10 +188,9 @@ class Boss:
     def restore_font_size(self):
         self.change_font_size(self.opts.font_size)
 
-    def change_font_size(self, new_size):
-        if new_size == self.current_font_size:
-            return
-        self.current_font_size = new_size
+    def _change_font_size(self, new_size=None):
+        if new_size is not None:
+            self.current_font_size = new_size
         old_cell_width, old_cell_height = viewport_for_window()[-2:]
         windows = tuple(filter(None, self.window_id_map.values()))
         resize_fonts(self.current_font_size)
@@ -198,6 +203,14 @@ class Boss:
             tm.resize()
             tm.refresh_sprite_positions()
         glfw_post_empty_event()
+
+    def change_font_size(self, new_size):
+        if new_size == self.current_font_size:
+            return
+        self._change_font_size(new_size)
+
+    def on_dpi_change(self, os_window_id):
+        self._change_font_size()
 
     @property
     def active_tab_manager(self):

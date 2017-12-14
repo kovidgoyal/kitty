@@ -373,6 +373,15 @@ PYWRAP1(viewport_for_window) {
     return Py_BuildValue("iiII", 400, 400, global_state.cell_width, global_state.cell_height);
 }
 
+PYWRAP1(set_dpi_from_os_window) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    WITH_OS_WINDOW(os_window_id)
+        set_dpi_from_os_window(os_window);
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
 PYWRAP1(mark_os_window_for_close) {
     id_type os_window_id;
     int yes = 1;
@@ -476,6 +485,7 @@ static PyMethodDef module_methods[] = {
     MW(set_logical_dpi, METH_VARARGS),
     MW(pt_to_px, METH_O),
     MW(pt_to_px_ceil, METH_O),
+    MW(set_dpi_from_os_window, METH_O),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),
