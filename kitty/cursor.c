@@ -90,6 +90,8 @@ cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count) {
                 self->reverse = true;  break;
             case 9:
                 self->strikethrough = true;  break;
+            case 21:
+                self->decoration = 2; break;
             case 22:
                 self->bold = false;  break;
             case 23:
