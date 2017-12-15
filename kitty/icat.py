@@ -46,6 +46,17 @@ type=choices
 choices=center,left,right
 default=center
 Horizontal alignment for the displayed image. Defaults to centered.
+
+
+--transfer-mode
+type=choices
+choices=detect,file,stream
+default=detect
+What mechanism to use to transfer images to the terminal. The default is to
+auto-detect. |_ file| means to use a temporary file and |_ stream| means to
+send the data via terminal escape codes. Note that if you use the |_ file|
+transfer mode and you are connecting over a remote session then image display
+will not work.
 '''
 
 
@@ -256,13 +267,16 @@ def main(args=sys.argv):
         )
     msg = (
         'A cat like utility to display images in the terminal.'
-        ' You can specify multiple images files and/or directories.'
+        ' You can specify multiple image files and/or directories.'
         ' Directories are scanned recursively for image files.')
     args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
     if not items:
         raise SystemExit('You must specify at least one file to cat')
-    if not detect_support():
-        raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
+    if args.transfer_mode == 'detect':
+        if not detect_support():
+            raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
+    else:
+        detect_support.has_files = args.transfer_mode == 'file'
     errors = []
     for item in items:
         try:
