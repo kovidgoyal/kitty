@@ -45,7 +45,7 @@ OPTIONS = '''\
 type=choices
 choices=center,left,right
 default=center
-Horizontal alignment for the displayed image. Defaults to centered.
+Horizontal alignment for the displayed image.
 
 
 --transfer-mode
@@ -57,6 +57,20 @@ auto-detect. |_ file| means to use a temporary file and |_ stream| means to
 send the data via terminal escape codes. Note that if you use the |_ file|
 transfer mode and you are connecting over a remote session then image display
 will not work.
+
+
+--detect-support
+type=bool-set
+Detect support for image display in the terminal. If not supported, will exit
+with exit code 1, otherwise will exit with code 0 and print the supported
+transfer mode to stderr, which can be used with the |_ --transfer-mode| option.
+
+
+--detection-timeout
+type=float
+default=10
+The amount of time (in seconds) to wait for a response form the terminal, when
+detecting image display support.
 '''
 
 
@@ -208,12 +222,13 @@ def scan(d):
                 yield os.path.join(dirpath, f), mt
 
 
-def detect_support(wait_for=10):
+def detect_support(wait_for=10, silent=False):
     fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
     oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
-    print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
+    if not silent:
+        print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
     sys.stdout.flush()
     tty.setraw(fd)
     try:
@@ -248,7 +263,8 @@ def detect_support(wait_for=10):
                 for key, mask in sel.select(0.1):
                     read()
     finally:
-        sys.stdout.buffer.write(b'\033[J'), sys.stdout.flush()
+        if not silent:
+            sys.stdout.buffer.write(b'\033[J'), sys.stdout.flush()
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
         fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
     detect_support.has_files = bool(responses.get(2))
@@ -256,24 +272,32 @@ def detect_support(wait_for=10):
 
 
 def main(args=sys.argv):
+    msg = (
+        'A cat like utility to display images in the terminal.'
+        ' You can specify multiple image files and/or directories.'
+        ' Directories are scanned recursively for image files.')
+    args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
+
     signal.signal(signal.SIGWINCH, lambda: screen_size(refresh=True))
     if not sys.stdout.isatty() or not sys.stdin.isatty():
         raise SystemExit(
             'Must be run in a terminal, stdout is currently not a terminal'
         )
     if screen_size().width == 0:
+        if args.detect_support:
+            raise SystemExit(1)
         raise SystemExit(
             'Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl'
         )
-    msg = (
-        'A cat like utility to display images in the terminal.'
-        ' You can specify multiple image files and/or directories.'
-        ' Directories are scanned recursively for image files.')
-    args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
+    if args.detect_support:
+        if not detect_support(wait_for=args.detection_timeout, silent=True):
+            raise SystemExit(1)
+        print('file' if detect_support.has_files else 'stream', end='', file=sys.stderr)
+        return
     if not items:
         raise SystemExit('You must specify at least one file to cat')
     if args.transfer_mode == 'detect':
-        if not detect_support():
+        if not detect_support(wait_for=args.detection_timeout):
             raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
     else:
         detect_support.has_files = args.transfer_mode == 'file'

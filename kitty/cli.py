@@ -304,6 +304,8 @@ def defval_for_opt(opt):
             dv = dv.lower() in ('true', 'yes', 'y')
     elif typ == 'list':
         dv = []
+    elif typ in ('int', 'float'):
+        dv = (int if typ == 'int' else float)(dv or 0)
     return dv
 
 
@@ -345,6 +347,7 @@ class Options:
         opt = self.opt_for_alias(alias)
         typ = opt.get('type', '')
         name = opt['dest']
+        nmap = {'float': float, 'int': int}
         if typ == 'bool-set':
             self.values_map[name] = True
         elif typ == 'bool-reset':
@@ -358,6 +361,13 @@ class Options:
                 raise SystemExit('{} is not a valid value for the {} option. Valid values are: {}'.format(
                     val, emph(alias), ', '.join(choices)))
             self.values_map[name] = val
+        elif typ in nmap:
+            f = nmap[typ]
+            try:
+                self.values_map[name] = f(val)
+            except Exception:
+                raise SystemExit('{} is not a valid value for the {} option, a number is required.'.format(
+                    val, emph(alias)))
         else:
             self.values_map[name] = val
 
