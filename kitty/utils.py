@@ -62,7 +62,7 @@ def timeit(name, do_timing=False):
 
 
 def sanitize_title(x):
-    return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19]', '', x))
+    return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19\x80-\x9f]', '', x))
 
 
 def color_as_int(val):

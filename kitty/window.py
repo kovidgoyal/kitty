@@ -289,7 +289,7 @@ class Window:
             if isinstance(text, str):
                 text = text.encode('utf-8')
             if self.screen.in_bracketed_paste_mode:
-                text = text.replace(b'\033[201~', b'')
+                text = text.replace(b'\033[201~', b'').replace(b'\x9b201~', b'')
             self.screen.paste(text)
 
     def copy_to_clipboard(self):
