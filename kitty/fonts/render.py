@@ -227,7 +227,7 @@ def display_bitmap(rgb_data, width, height):
     with NamedTemporaryFile(suffix='.rgba', delete=False) as f:
         f.write(rgb_data)
     assert len(rgb_data) == 4 * width * height
-    show(f.name, width, height, 32)
+    show(f.name, width, height, 32, align='left')
 
 
 def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=96.0):

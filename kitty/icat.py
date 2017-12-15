@@ -41,6 +41,11 @@ class OpenFailed(ValueError):
 
 
 OPTIONS = '''\
+--align
+type=choices
+choices=center,left,right
+default=center
+Horizontal alignment for the displayed image. Defaults to centered.
 '''
 
 
@@ -84,7 +89,7 @@ def fit_image(width, height, pwidth, pheight):
     return int(width), int(height)
 
 
-def set_cursor(cmd, width, height):
+def set_cursor(cmd, width, height, align):
     ss = screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
@@ -98,7 +103,11 @@ def set_cursor(cmd, width, height):
     else:
         x_off = width % cw
         cmd['X'] = x_off
-        extra_cells = (ss.cols - num_of_cells_needed) // 2
+        extra_cells = 0
+        if align == 'center':
+            extra_cells = (ss.cols - num_of_cells_needed) // 2
+        elif align == 'right':
+            extra_cells = (ss.cols - num_of_cells_needed)
         if extra_cells:
             sys.stdout.buffer.write(b' ' * extra_cells)
 
@@ -116,9 +125,9 @@ def write_chunked(cmd, data):
         cmd.clear()
 
 
-def show(outfile, width, height, fmt, transmit_mode='t'):
+def show(outfile, width, height, fmt, transmit_mode='t', align='center'):
     cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height}
-    set_cursor(cmd, width, height)
+    set_cursor(cmd, width, height, align)
     if detect_support.has_files:
         cmd['t'] = transmit_mode
         write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(fsenc)))
@@ -161,7 +170,7 @@ def convert(path, m, ss):
     return outfile.name, width, height
 
 
-def process(path):
+def process(path, args):
     m = identify(path)
     ss = screen_size()
     needs_scaling = m.width > ss.width
@@ -174,7 +183,7 @@ def process(path):
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
         outfile, width, height = convert(path, m, ss)
-    show(outfile, width, height, fmt, transmit_mode)
+    show(outfile, width, height, fmt, transmit_mode, align=args.align)
     print()  # ensure cursor is on a new line
 
 
@@ -257,9 +266,9 @@ def main(args=sys.argv):
         try:
             if os.path.isdir(item):
                 for x in scan(item):
-                    process(item)
+                    process(item, args)
             else:
-                process(item)
+                process(item, args)
         except OpenFailed as e:
             errors.append(e)
     if not errors:
