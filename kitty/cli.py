@@ -35,7 +35,6 @@ type=list
 default={config_path}
 Specify a path to the configuration file(s) to use.
 Can be specified multiple times to read multiple configuration files in sequence, which are merged.
-Default: |_ %default|
 
 
 --override -o
@@ -62,7 +61,7 @@ Detach from the controlling terminal, if any
 --window-layout
 type=choices
 choices={window_layout_choices}
-The window layout to use on startup. Choices are: {window_layout_choices}
+The window layout to use on startup.
 
 
 --session
@@ -281,9 +280,17 @@ def print_help_for_seq(seq, usage, message, appname):
             a('{}:'.format(title(opt)))
             continue
         a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
+        if not opt.get('type', '').startswith('bool-'):
+            blocks[-1] += '={}'.format(italic(opt['dest'].upper()))
         if opt.get('help'):
-            t = opt['help'].replace('%default', str(opt.get('default')))
-            wa(prettify(t), indent=4)
+            defval = opt.get('default')
+            t = opt['help'].replace('%default', str(defval))
+            wa(prettify(t.strip()), indent=4)
+            if defval is not None:
+                wa('Default: {}'.format(defval), indent=4)
+            if 'choices' in opt:
+                wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
+            a('')
 
     text = '\n'.join(blocks) + '\n\n' + version()
     if sys.stdout.isatty():
