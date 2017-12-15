@@ -1285,10 +1285,10 @@ text_for_range(Screen *self, SelectionBoundary start, SelectionBoundary end, boo
     if (rectangle_select) {
         iterate_over_rectangle((&start), (&end))
             action
-    }}} else {
+    } }} else {
         iterate_over_region((&start), (&end))
             action
-    }}}
+    } }}
 #undef action
     return ans;
 }
