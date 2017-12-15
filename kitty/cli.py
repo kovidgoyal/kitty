@@ -157,6 +157,7 @@ def parse_option_spec(spec=OPTIONS):
     seq = []
     disabled = []
     mpat = re.compile('([a-z]+)=(.+)')
+    current_cmd = None
 
     for line in lines:
         line = line.strip()
@@ -250,7 +251,7 @@ def wrap(text, limit=80):
     return reversed(lines)
 
 
-def print_help_for_seq(seq):
+def print_help_for_seq(seq, usage, message, appname):
     from kitty.icat import screen_size
     try:
         linesz = min(screen_size().cols, 76)
@@ -265,11 +266,14 @@ def print_help_for_seq(seq):
         j = '\n' + (' ' * indent)
         a((' ' * leading_indent) + j.join(wrap(text, limit=linesz - indent)))
 
-    a('{}: {} [options] [program-to-run ...]'.format(title('Usage'), bold(yellow(appname))))
+    usage = usage or '[program-to-run ...]'
+    a('{}: {} [options] {}'.format(title('Usage'), bold(yellow(appname)), usage))
     a('')
-    wa('Run the {appname} terminal emulator. You can also specify the {program} to run inside {appname} as normal'
-       ' arguments following the {options}. For example: {appname} /bin/sh'.format(
-          appname=italic(appname), options=italic('options'), program=italic('program')))
+    message = message or (
+        'Run the |_ {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
+        ' arguments following the |_ options|. For example: {appname} /bin/sh'
+    ).format(appname=appname)
+    wa(prettify(message))
     a('')
     a('{}:'.format(title('Options')))
     for opt in seq:
@@ -283,7 +287,7 @@ def print_help_for_seq(seq):
 
     text = '\n'.join(blocks) + '\n\n' + version()
     if sys.stdout.isatty():
-        p = subprocess.Popen(['less', '-isR'], stdin=subprocess.PIPE)
+        p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
         p.communicate(text.encode('utf-8'))
         raise SystemExit(p.wait())
     else:
@@ -305,11 +309,12 @@ def defval_for_opt(opt):
 
 class Options:
 
-    def __init__(self, seq):
+    def __init__(self, seq, usage, message, appname):
         self.alias_map = {}
         self.seq = seq
         self.names_map = {}
         self.values_map = {}
+        self.usage, self.message, self.appname = usage, message, appname
         for opt in seq:
             if isinstance(opt, str):
                 continue
@@ -327,7 +332,7 @@ class Options:
 
     def needs_arg(self, alias):
         if alias in ('-h', '--help'):
-            print_help_for_seq(self.seq)
+            print_help_for_seq(self.seq, self.usage, self.message, self.appname or appname)
             raise SystemExit(0)
         opt = self.opt_for_alias(alias)
         if opt['dest'] == 'version':
@@ -364,14 +369,12 @@ class Namespace:
             setattr(self, name, kwargs[name])
 
 
-def parse_cmdline(options, args=None):
+def parse_cmdline(oc, disabled, args=None):
     NORMAL, EXPECTING_ARG = 'NORMAL', 'EXPECTING_ARG'
     state = NORMAL
     if args is None:
         args = sys.argv[1:]
     args = deque(args)
-    seq, disabled = options
-    oc = Options(seq)
     current_option = None
 
     while args:
@@ -416,9 +419,11 @@ def options_spec():
     return options_spec.ans
 
 
-def parse_args(args=None):
-    options = parse_option_spec(options_spec())
-    return parse_cmdline(options, args=args)
+def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=None):
+    options = parse_option_spec(ospec())
+    seq, disabled = options
+    oc = Options(seq, usage, message, appname)
+    return parse_cmdline(oc, disabled, args=args)
 
 
 def create_opts(args):

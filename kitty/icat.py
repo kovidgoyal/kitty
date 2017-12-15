@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-import argparse
 import codecs
 import fcntl
 import mimetypes
@@ -18,15 +17,12 @@ import tty
 import zlib
 from base64 import standard_b64encode
 from collections import namedtuple
-from gettext import gettext as _
 from math import ceil, floor
 from tempfile import NamedTemporaryFile
 from time import monotonic
 
-try:
-    from kitty.constants import appname
-except ImportError:
-    appname = ''
+from kitty.constants import appname
+from kitty.cli import parse_args
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -44,20 +40,16 @@ class OpenFailed(ValueError):
         self.path = path
 
 
-def option_parser():
-    parser = argparse.ArgumentParser(
-        prog=appname + '-icat' if appname else 'icat',
-        description=_('Display images in the terminal')
-    )
-    a = parser.add_argument
-    a(
-        'items',
-        nargs='+',
-        help=_(
-            'Image files or directories. Directories are scanned recursively.'
+OPTIONS = '''\
+'''
+
+
+def options_spec():
+    if not hasattr(options_spec, 'ans'):
+        options_spec.ans = OPTIONS.format(
+            appname='{}-icat'.format(appname),
         )
-    )
-    return parser
+    return options_spec.ans
 
 
 Size = namedtuple('Size', 'rows cols width height')
@@ -251,13 +243,17 @@ def main(args=sys.argv):
         raise SystemExit(
             'Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl'
         )
-    args = option_parser().parse_args(args[1:])
-    if not args.items:
+    msg = (
+        'A cat like utility to display images in the terminal.'
+        ' You can specify multiple images files and/or directories.'
+        ' Directories are scanned recursively for image files.')
+    args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
+    if not items:
         raise SystemExit('You must specify at least one file to cat')
     if not detect_support():
         raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
     errors = []
-    for item in args.items:
+    for item in items:
         try:
             if os.path.isdir(item):
                 for x in scan(item):
