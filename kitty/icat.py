@@ -134,6 +134,8 @@ def show(outfile, width, height, fmt, transmit_mode='t', align='center'):
     else:
         with open(outfile, 'rb') as f:
             data = f.read()
+        if transmit_mode == 't':
+            os.unlink(outfile)
         if fmt == 100:
             cmd['S'] = len(data)
         write_chunked(cmd, data)
