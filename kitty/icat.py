@@ -48,11 +48,19 @@ default=center
 Horizontal alignment for the displayed image.
 
 
+--place
+Choose where on the screen to display the image. The image will
+be scaled to fit into the specified rectangle. The syntax for
+specifying rectanges is <|_ width|>x<|_ height|>@<|_ left|>x<|_ top|>. All measurements
+are in cells (i.e. cursor positions) with the origin |_ (0, 0)| at
+the top-left corner of the screen.
+
+
 --transfer-mode
 type=choices
 choices=detect,file,stream
 default=detect
-What mechanism to use to transfer images to the terminal. The default is to
+Which mechanism to use to transfer images to the terminal. The default is to
 auto-detect. |_ file| means to use a temporary file and |_ stream| means to
 send the data via terminal escape codes. Note that if you use the |_ file|
 transfer mode and you are connecting over a remote session then image display
@@ -137,6 +145,21 @@ def set_cursor(cmd, width, height, align):
             sys.stdout.buffer.write(b' ' * extra_cells)
 
 
+def set_cursor_for_place(place, cmd, width, height, align):
+    x = place.left + 1
+    ss = screen_size()
+    cw = int(ss.width / ss.cols)
+    num_of_cells_needed = int(ceil(width / cw))
+    x_off = width % cw
+    cmd['X'] = x_off
+    extra_cells = 0
+    if align == 'center':
+        extra_cells = (place.width - num_of_cells_needed) // 2
+    elif align == 'right':
+        extra_cells = place.width - num_of_cells_needed
+    sys.stdout.buffer.write('\033[{};{}H'.format(place.top + 1, x + extra_cells).encode('ascii'))
+
+
 def write_chunked(cmd, data):
     if cmd['f'] != 100:
         data = zlib.compress(data)
@@ -150,9 +173,12 @@ def write_chunked(cmd, data):
         cmd.clear()
 
 
-def show(outfile, width, height, fmt, transmit_mode='t', align='center'):
+def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=None):
     cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height}
-    set_cursor(cmd, width, height, align)
+    if place:
+        set_cursor_for_place(place, cmd, width, height, align)
+    else:
+        set_cursor(cmd, width, height, align)
     if detect_support.has_files:
         cmd['t'] = transmit_mode
         write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(fsenc)))
@@ -186,11 +212,11 @@ def identify(path):
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
-def convert(path, m, ss):
+def convert(path, m, available_width, available_height):
     width, height = m.width, m.height
     cmd = ['convert', '-background', 'none', path]
-    if width > ss.width:
-        width, height = fit_image(width, height, ss.width, height)
+    if width > available_width or height > available_height:
+        width, height = fit_image(width, height, available_width, available_height)
         cmd += ['-resize', '{}x{}'.format(width, height)]
     with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False) as outfile:
         run_imagemagick(path, cmd + [outfile.name])
@@ -200,7 +226,9 @@ def convert(path, m, ss):
 def process(path, args):
     m = identify(path)
     ss = screen_size()
-    needs_scaling = m.width > ss.width
+    available_width = args.place.width * (ss.width / ss.cols) if args.place else ss.width
+    available_height = args.place.height * (ss.height / ss.rows) if args.place else 10 * m.height
+    needs_scaling = m.width > available_width or m.height > available_height
     if m.fmt == 'png' and not needs_scaling:
         outfile = path
         transmit_mode = 'f'
@@ -209,9 +237,10 @@ def process(path, args):
     else:
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
-        outfile, width, height = convert(path, m, ss)
-    show(outfile, width, height, fmt, transmit_mode, align=args.align)
-    print()  # ensure cursor is on a new line
+        outfile, width, height = convert(path, m, available_width, available_height)
+    show(outfile, width, height, fmt, transmit_mode, align=args.align, place=args.place)
+    if not args.place:
+        print()  # ensure cursor is on a new line
 
 
 def scan(d):
@@ -271,6 +300,14 @@ def detect_support(wait_for=10, silent=False):
     return responses.get(1, False)
 
 
+def parse_place(raw):
+    if raw:
+        area, pos = raw.split('@', 1)
+        w, h = map(int, area.split('x'))
+        l, t = map(int, pos.split('x'))
+        return namedtuple('Place', 'width height left top')(w, h, l, t)
+
+
 def main(args=sys.argv):
     msg = (
         'A cat like utility to display images in the terminal.'
@@ -289,6 +326,11 @@ def main(args=sys.argv):
         raise SystemExit(
             'Terminal does not support reporting screen sizes via the TIOCGWINSZ ioctl'
         )
+    try:
+        args.place = parse_place(args.place)
+    except Exception:
+        raise SystemExit('Not a valid place specification: {}'.format(args.place))
+
     if args.detect_support:
         if not detect_support(wait_for=args.detection_timeout, silent=True):
             raise SystemExit(1)
@@ -302,6 +344,10 @@ def main(args=sys.argv):
     else:
         detect_support.has_files = args.transfer_mode == 'file'
     errors = []
+    if args.place:
+        if len(items) > 1 or os.path.isdir(items[0]):
+            raise SystemExit('The --place option can only be used with a single image')
+        sys.stdout.buffer.write(b'\0337')  # save cursor
     for item in items:
         try:
             if os.path.isdir(item):
@@ -311,6 +357,8 @@ def main(args=sys.argv):
                 process(item, args)
         except OpenFailed as e:
             errors.append(e)
+    if args.place:
+        sys.stdout.buffer.write(b'\0338')  # restore cursor
     if not errors:
         return
     for err in errors:
