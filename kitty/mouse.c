@@ -318,7 +318,7 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
 static inline Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     *in_tab_bar = global_state.callback_os_window->num_tabs > 1 && global_state.callback_os_window->mouse_y >= global_state.callback_os_window->viewport_height - global_state.cell_height;
-    if (!*in_tab_bar) {
+    if (!*in_tab_bar && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
