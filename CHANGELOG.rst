@@ -45,6 +45,8 @@ version 0.6.0 [future]
 
 - Add an option to control the underline style for URL highlighting on hover
 
+- X11: Set the WINDOWID environment variable 
+
 version 0.5.1 [2017-12-01]
 ---------------------------
 

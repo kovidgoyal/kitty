@@ -9,11 +9,13 @@ from functools import partial
 from .borders import Borders
 from .child import Child
 from .config import build_ansi_color_table
-from .constants import WindowGeometry, appname, get_boss, shell_path
+from .constants import (
+    WindowGeometry, appname, get_boss, is_macos, is_wayland, shell_path
+)
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, remove_tab, remove_window,
     set_active_tab, set_active_window, set_tab_bar_render_data, swap_tabs,
-    swap_windows, viewport_for_window
+    swap_windows, viewport_for_window, x11_window_id
 )
 from .layout import Rect, all_layouts
 from .utils import color_as_int
@@ -113,7 +115,14 @@ class Tab:  # {{{
                 cmd = [shell_path]
             else:
                 cmd = self.args.args or [shell_path]
-        ans = Child(cmd, self.cwd, self.opts, stdin)
+        env = {}
+        if not is_macos and not is_wayland:
+            try:
+                env['WINDOWID'] = str(x11_window_id(self.os_window_id))
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        ans = Child(cmd, self.cwd, self.opts, stdin, env)
         ans.fork()
         return ans
 

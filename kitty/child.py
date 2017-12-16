@@ -20,11 +20,12 @@ class Child:
     child_fd = pid = None
     forked = False
 
-    def __init__(self, argv, cwd, opts, stdin=None):
+    def __init__(self, argv, cwd, opts, stdin=None, env=None):
         self.argv = argv
         self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
         self.opts = opts
         self.stdin = stdin
+        self.env = env or {}
 
     def fork(self):
         if self.forked:
@@ -37,6 +38,7 @@ class Child:
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
+        env = self.env
         pid = os.fork()
         if pid == 0:  # child
             try:
@@ -54,6 +56,7 @@ class Child:
             os.closerange(3, 200)
             # Establish the controlling terminal (see man 7 credentials)
             os.close(os.open(os.ttyname(1), os.O_RDWR))
+            os.environ.update(env)
             os.environ['TERM'] = self.opts.term
             os.environ['COLORTERM'] = 'truecolor'
             if os.path.isdir(terminfo_dir):
