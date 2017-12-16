@@ -338,7 +338,7 @@ focus_in_event() {
     mouse_cursor_shape = BEAM;
     set_mouse_cursor(BEAM);
     Window *w = window_for_event(&window_idx, &in_tab_bar);
-    if (w) screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+    if (w && w->render_data.screen) screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
 }
 
 void
