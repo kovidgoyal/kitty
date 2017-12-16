@@ -327,7 +327,7 @@ def main(args=sys.argv):
     signal.signal(signal.SIGWINCH, lambda: screen_size(refresh=True))
     if not sys.stdout.isatty() or not sys.stdin.isatty():
         raise SystemExit(
-            'Must be run in a terminal, stdout is currently not a terminal'
+            'Must be run in a terminal, stdout and/or stdin is currently not a terminal'
         )
     if screen_size().width == 0:
         if args.detect_support:
