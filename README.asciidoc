@@ -425,6 +425,16 @@ make
 python3 .
 ```
 
+You can also create a shell script to run kitty:
+
+```
+#!/bin/sh
+exec python3 /path/to/kitty/source/dir
+```
+
+And using something like link:https://mathiasbynens.be/notes/shell-script-mac-apps[app-wrapper-for-shell-script]
+you can create a simple launcher app to run the shell script.
+
 If you only want to make some small changes to a python file, you can do that
 and simply replace the corresponding file inside an existing kitty.app. (Note
 that kitty.app will contain `.pyo` files which are compiled versions of `.py`
