@@ -56,6 +56,11 @@ are in cells (i.e. cursor positions) with the origin |_ (0, 0)| at
 the top-left corner of the screen.
 
 
+--clear
+type=bool-set
+Remove all images currently displayed on the screen.
+
+
 --transfer-mode
 type=choices
 choices=detect,file,stream
@@ -101,10 +106,14 @@ def screen_size(refresh=False):
     return screen_size.ans
 
 
-def write_gr_cmd(cmd, payload):
+def write_gr_cmd(cmd, payload=None):
     cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
     w = sys.stdout.buffer.write
-    w(b'\033_G'), w(cmd.encode('ascii')), w(b';'), w(payload), w(b'\033\\')
+    w(b'\033_G'), w(cmd.encode('ascii'))
+    if payload:
+        w(b';')
+        w(payload)
+    w(b'\033\\')
     sys.stdout.flush()
 
 
@@ -336,14 +345,18 @@ def main(args=sys.argv):
             raise SystemExit(1)
         print('file' if detect_support.has_files else 'stream', end='', file=sys.stderr)
         return
-    if not items:
-        raise SystemExit('You must specify at least one file to cat')
     if args.transfer_mode == 'detect':
         if not detect_support(wait_for=args.detection_timeout):
             raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
     else:
         detect_support.has_files = args.transfer_mode == 'file'
     errors = []
+    if args.clear:
+        write_gr_cmd({'a': 'd'})
+        if not items:
+            return
+    if not items:
+        raise SystemExit('You must specify at least one file to cat')
     if args.place:
         if len(items) > 1 or os.path.isdir(items[0]):
             raise SystemExit('The --place option can only be used with a single image')
