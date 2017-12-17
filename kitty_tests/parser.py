@@ -278,3 +278,37 @@ class TestParser(BaseTest):
         e('s=', 'Malformed graphics control block, expecting an integer value')
         e('s==', 'Malformed graphics control block, expecting an integer value for key: s')
         e('s=1=', 'Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3d')
+
+    def test_deccara(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033[$r', ('deccara', '0 0 0 0 0 '))
+        pb('\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
+           ('deccara', '0 0 0 0 4 3 '), ('deccara', '0 0 0 0 38 5 10 '), ('deccara', '0 0 0 0 48 2 1 2 3 '), ('deccara', '0 0 0 0 1 '))
+        for y in range(s.lines):
+            line = s.line(y)
+            for x in range(s.columns):
+                c = line.cursor_from(x)
+                self.ae(c.bold, True)
+                self.ae(c.italic, False)
+                self.ae(c.decoration, 3)
+                self.ae(c.fg, (10 << 8) | 1)
+                self.ae(c.bg, (1 << 24 | 2 << 16 | 3 << 8 | 2))
+        self.ae(s.line(0).cursor_from(0).bold, True)
+        pb('\033[1;2;2;3;22;39$r', ('deccara', '1 2 2 3 22 '), ('deccara', '1 2 2 3 39 '))
+        self.ae(s.line(0).cursor_from(0).bold, True)
+        line = s.line(0)
+        for x in range(1, s.columns):
+            c = line.cursor_from(x)
+            self.ae(c.bold, False)
+            self.ae(c.fg, 0)
+        line = s.line(1)
+        for x in range(0, 3):
+            c = line.cursor_from(x)
+            self.ae(c.bold, False)
+        self.ae(line.cursor_from(3).bold, True)
+        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3 2 4 3 34 '), ('screen_decsace', 0))
+        for y in range(2, 4):
+            line = s.line(y)
+            for x in range(s.columns):
+                self.ae(line.cursor_from(x).fg, (10 << 8 | 1) if x < 1 or x > 2 else (4 << 8) | 1)

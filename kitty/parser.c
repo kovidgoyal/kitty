@@ -75,10 +75,11 @@ _report_error(PyObject *dump_callback, const char *fmt, ...) {
 }
 
 static void 
-_report_params(PyObject *dump_callback, const char *name, unsigned int *params, unsigned int count) {
+_report_params(PyObject *dump_callback, const char *name, unsigned int *params, unsigned int count, Region *r) {
     static char buf[MAX_PARAMS*3] = {0};
-    unsigned int i, p;
-    for(i = 0, p=0; i < count && p < MAX_PARAMS*3-20; i++) {
+    unsigned int i, p=0;
+    if (r) p += snprintf(buf + p, sizeof(buf) - 2, "%u %u %u %u ", r->top, r->left, r->bottom, r->right);
+    for(i = 0; i < count && p < MAX_PARAMS*3-20; i++) {
         int n = snprintf(buf + p, MAX_PARAMS*3 - p, "%u ", params[i]);
         if (n < 0) break;
         p += n;
@@ -107,7 +108,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_DRAW(ch) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sC", "draw", ch)); PyErr_Clear();
 
-#define REPORT_PARAMS(name, params, num) _report_params(dump_callback, #name, params, num_params)
+#define REPORT_PARAMS(name, params, num, region) _report_params(dump_callback, name, params, num_params, region)
 
 #define FLUSH_DRAW \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", "draw", Py_None)); PyErr_Clear();
@@ -395,13 +396,13 @@ repr_csi_params(unsigned int *params, unsigned int num_params) {
 }
 
 static inline void
-parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject DUMP_UNUSED *dump_callback) {
+parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject DUMP_UNUSED *dump_callback, const char *report_name DUMP_UNUSED, Region *region) {
     enum State { START, NORMAL, MULTIPLE, COLOR, COLOR1, COLOR3 };
     enum State state = START;
     unsigned int num_params, num_start, i;
 
 #define READ_PARAM { params[num_params++] = utoi(buf + num_start, i - num_start); }
-#define SEND_SGR { REPORT_PARAMS(select_graphic_rendition, params, num_params); select_graphic_rendition(screen, params, num_params); state = START; num_params = 0; }
+#define SEND_SGR { REPORT_PARAMS(report_name, params, num_params, region); select_graphic_rendition(screen, params, num_params, region); state = START; num_params = 0; }
 
     for (i=0, num_start=0, num_params=0; i < num && num_params < MAX_PARAMS; i++) {
         switch(buf[i]) {
@@ -521,6 +522,40 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
 #undef SEND_SGR
 }
 
+static inline unsigned int
+parse_region(Region *r, uint32_t *buf, unsigned int num) {
+    unsigned int i, start, params[8] = {0}, num_params=0;
+    for (i=0, start=0; i < num && num_params < 4; i++) {
+        switch(buf[i]) {
+            IS_DIGIT
+                break;
+            default:
+                if (i > start) params[num_params++] = utoi(buf + start, i - start);
+                else if (i == start && buf[i] == ';') params[num_params++] = 0;
+                start = i + 1; 
+                break;
+        }
+    }
+
+    switch(num_params) {
+        case 0:
+            break;
+        case 1:
+            r->top = params[0]; 
+            break;
+        case 2:
+            r->top = params[0]; r->left = params[1]; 
+            break;
+        case 3:
+            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; 
+            break;
+        default:
+            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; r->right = params[3]; 
+            break;
+    }
+    return i;
+}
+
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define CALL_CSI_HANDLER1(name, defval) \
@@ -573,9 +608,18 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         buf++; num--;
     }
     if (code == SGR && !start_modifier) {
-        parse_sgr(screen, buf, num, params, dump_callback);
+        parse_sgr(screen, buf, num, params, dump_callback, "select_graphic_rendition", NULL);
         return;
     }
+    if (code == 'r' && !start_modifier && num > 0 && buf[num - 1] == '$') {
+        // DECCARA
+        Region r = {0};
+        unsigned int consumed = parse_region(&r, buf, --num);
+        num -= consumed; buf += consumed;
+        parse_sgr(screen, buf, num, params, dump_callback, "deccara", &r);
+        return;
+    }
+
     if (num > 0) {
         switch(buf[num-1]) {
             CSI_SECONDARY
@@ -655,6 +699,12 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
             }
             REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            break;
+        case 'x':
+            if (!start_modifier && end_modifier == '*') {
+                CALL_CSI_HANDLER1(screen_decsace, 0); 
+            }
+            REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
         case DECSCUSR: 
             CALL_CSI_HANDLER1M(screen_set_cursor, 1); 

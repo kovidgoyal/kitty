@@ -347,8 +347,36 @@ screen_alignment_display(Screen *self) {
 }
 
 void 
-select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count) {
-    cursor_from_sgr(self->cursor, params, count);
+select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count, Region *region_) {
+    if (region_) {
+        Region region = *region_;
+        if (!region.top) region.top = 1;
+        if (!region.left) region.left = 1;
+        if (!region.bottom) region.bottom = self->lines;
+        if (!region.right) region.right = self->columns;
+        if (self->modes.mDECOM) {
+            region.top += self->margin_top; region.bottom += self->margin_top;
+        }
+        region.left -= 1; region.top -= 1; region.right -= 1; region.bottom -= 1;  // switch to zero based indexing
+        if (self->modes.mDECSACE) {
+            index_type x = MIN(region.left, self->columns - 1);
+            index_type num = region.right >= x ? region.right - x + 1 : 0;
+            num = MIN(num, self->columns - x);
+            for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
+                linebuf_init_line(self->linebuf, y);
+                apply_sgr_to_cells(self->linebuf->line->cells + x, num, params, count);
+            }
+        } else {
+            index_type x, num;
+            for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
+                if (y == region.top) { x = MIN(region.left, self->columns - 1); num = self->columns - x; }
+                else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
+                else { x = 0; num = self->columns; }
+                linebuf_init_line(self->linebuf, y);
+                apply_sgr_to_cells(self->linebuf->line->cells + x, num, params, count);
+            }
+        }
+    } else cursor_from_sgr(self->cursor, params, count);
 }
 
 static inline void
@@ -499,6 +527,11 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 void 
 screen_set_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, true);
+}
+
+void
+screen_decsace(Screen *self, unsigned int val) {
+    self->modes.mDECSACE = val == 2 ? true : false;
 }
 
 void 
@@ -1390,7 +1423,7 @@ static PyObject*
 _select_graphic_rendition(Screen *self, PyObject *args) {
     unsigned int params[256] = {0};
     for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, i)); }
-    select_graphic_rendition(self, params, PyList_GET_SIZE(args));
+    select_graphic_rendition(self, params, PyList_GET_SIZE(args), NULL);
     Py_RETURN_NONE;
 }
 

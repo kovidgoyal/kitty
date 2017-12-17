@@ -12,7 +12,7 @@ typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } Scr
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
-         mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD;
+         mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD, mDECSACE;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
     bool eight_bit_controls;  // S8C1T
@@ -90,6 +90,7 @@ void screen_backtab(Screen *self, unsigned int);
 void screen_clear_tab_stop(Screen *self, unsigned int how);
 void screen_set_mode(Screen *self, unsigned int mode);
 void screen_reset_mode(Screen *self, unsigned int mode);
+void screen_decsace(Screen *self, unsigned int);
 void screen_insert_characters(Screen *self, unsigned int count);
 void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/);
 void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);
@@ -115,7 +116,7 @@ uint32_t* translation_table(uint32_t which);
 void screen_request_capabilities(Screen *, char, PyObject *);
 void screen_set_8bit_controls(Screen *, bool);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
-void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count);
+void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count, Region*);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);

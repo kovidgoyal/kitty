@@ -176,7 +176,7 @@ typedef struct {
     unsigned int x, y;
     uint8_t decoration;
     CursorShape shape;
-    unsigned long fg, bg, decoration_fg;
+    color_type fg, bg, decoration_fg;
 
 } Cursor;
 
@@ -260,6 +260,7 @@ Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 void cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count);
+void apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *params, unsigned int count);
 const char* cursor_as_sgr(Cursor*, Cursor*);
 
 double monotonic();
