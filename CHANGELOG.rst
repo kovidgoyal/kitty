@@ -50,6 +50,9 @@ version 0.6.0 [future]
 - Fix middle and right buttons swapped when sending mouse events to child
   processes
 
+- Allow selecting in a rectangle by holding down Ctrl+Alt while dragging with
+  the mouse.
+
 
 version 0.5.1 [2017-12-01]
 ---------------------------
