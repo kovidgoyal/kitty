@@ -3,8 +3,8 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.6.0 [future]
-------------------------
+version 0.6.0 [2017-12-18]
+---------------------------
 
 - Support background transparency via the background_opacity option. Provided
   that your OS/window manager supports transparency, you can now have kitty
