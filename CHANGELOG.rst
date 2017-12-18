@@ -47,6 +47,10 @@ version 0.6.0 [future]
 
 - X11: Set the WINDOWID environment variable 
 
+- Fix middle and right buttons swapped when sending mouse events to child
+  processes
+
+
 version 0.5.1 [2017-12-01]
 ---------------------------
 
