@@ -25,12 +25,12 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 static inline unsigned int
 button_map(int button) {
     switch(button) {
-        case GLFW_MOUSE_BUTTON_1:
+        case GLFW_MOUSE_BUTTON_LEFT:
             return 0;
-        case GLFW_MOUSE_BUTTON_2:
-            return 1;
-        case GLFW_MOUSE_BUTTON_3:
+        case GLFW_MOUSE_BUTTON_RIGHT:
             return 2;
+        case GLFW_MOUSE_BUTTON_MIDDLE:
+            return 1;
         case GLFW_MOUSE_BUTTON_4:
             return EXTRA_BUTTON_INDICATOR;
         case GLFW_MOUSE_BUTTON_5:
