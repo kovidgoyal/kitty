@@ -289,6 +289,8 @@ update_cell_metrics() {
     if (cell_height < 4) { PyErr_SetString(PyExc_ValueError, "line height too small after adjustment"); return NULL; }
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
     underline_position = MIN(cell_height - 1, underline_position);
+    // ensure there is at least a couple of pixels available to render styled underlines
+    while (underline_position > baseline + 1 && cell_height - underline_position < 2) underline_position--;
     if (line_height_adjustment > 1) {
         baseline += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
         underline_position += MIN(cell_height - 1, (unsigned)line_height_adjustment / 2);
