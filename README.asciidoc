@@ -119,7 +119,9 @@ python3 /path/to/kitty/folder
 
 === Linux packages
 
-* Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+* Arch Linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+
+* Arch Linux: AUR stable package https://aur.archlinux.org/packages/kitty/
 
 * NixOS / nixpkgs: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix
 
