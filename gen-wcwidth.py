@@ -150,7 +150,7 @@ def gen_emoji():
             p('\t\t\treturn true;')
         p('\t\tdefault: return false;')
         p('\t}')
-        p('\treturn false; \n}')
+        p('\treturn false;\n}')
         p('static inline bool\nis_emoji_modifier(char_type code) {')
         p('\tswitch(code) {')
         for spec in get_ranges(list(emoji_categories['Emoji_Modifier'])):
@@ -158,7 +158,7 @@ def gen_emoji():
             p('\t\t\treturn true;')
         p('\t\tdefault: return false;')
         p('\t}')
-        p('\treturn false; \n}')
+        p('\treturn false;\n}')
 
 
 def gen_wcwidth():
@@ -189,7 +189,7 @@ def gen_wcwidth():
 
         p('\t\tdefault: return 1;')
         p('\t}')
-        p('\treturn 1; \n}')
+        p('\treturn 1;\n}')
 
 
 parse_ucd()

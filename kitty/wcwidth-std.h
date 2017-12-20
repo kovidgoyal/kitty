@@ -2429,7 +2429,7 @@ wcwidth_std(int32_t code) {
 
 		default: return 1;
 	}
-	return 1; 
+	return 1;
 }
 
 END_ALLOW_CASE_RANGE

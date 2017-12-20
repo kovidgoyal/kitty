@@ -282,7 +282,7 @@ is_emoji(char_type code) {
 			return true;
 		default: return false;
 	}
-	return false; 
+	return false;
 }
 static inline bool
 is_emoji_modifier(char_type code) {
@@ -291,7 +291,7 @@ is_emoji_modifier(char_type code) {
 			return true;
 		default: return false;
 	}
-	return false; 
+	return false;
 }
 
 END_ALLOW_CASE_RANGE
