@@ -56,7 +56,7 @@ matrix:
           env:
             - RUN_FLAKE=1 BUILD_PKG=1
           language: python
-          python: "3.5"
+          python: "3.6"
           addons:
             apt:
               packages:
