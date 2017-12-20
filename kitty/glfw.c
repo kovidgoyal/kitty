@@ -374,8 +374,17 @@ show_window(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "K|p", &os_window_id, &yes)) return NULL;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
+        set_dpi_from_os_window(w);
         if (w->id == os_window_id) {
-            if (yes) glfwShowWindow(w->handle); else glfwHideWindow(w->handle);
+            if (yes) {
+                bool first_show = !w->shown_once;
+                glfwShowWindow(w->handle);
+                w->shown_once = true;
+                if (first_show) {
+                    w->has_pending_resizes = true;
+                    global_state.has_pending_resizes = true;
+                }
+            } else glfwHideWindow(w->handle);
             break;
         }
     }

@@ -105,6 +105,7 @@ typedef struct {
     double last_resize_at;
     bool has_pending_resizes;
     bool is_semi_transparent;
+    bool shown_once;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;
 } OSWindow;
