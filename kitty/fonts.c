@@ -1,4 +1,5 @@
 /*
+ * vim:fileencoding=utf-8
  * fonts.c
  * Copyright (C) 2017 Kovid Goyal <kovid at kovidgoyal.net>
  *
@@ -331,20 +332,11 @@ has_cell_text(Font *self, Cell *cell) {
     return true;
 }
 
+
 static inline ssize_t
-fallback_font(Cell *cell) {
-    bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
-    bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
-    ssize_t f;
-
-    for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
-        Font *ff = fonts.fonts +j;
-        if (ff->bold == bold && ff->italic == italic && has_cell_text(ff, cell)) {
-            return j;
-        }
-    }
-
+load_fallback_font(Cell *cell, bool bold, bool italic) {
     if (fonts.fallback_fonts_count > 100) { fprintf(stderr, "Too many fallback fonts\n"); return MISSING_FONT; }
+    ssize_t f;
 
     if (bold) f = fonts.italic_font_idx > 0 ? fonts.bi_font_idx : fonts.bold_font_idx;
     else f = italic ? fonts.italic_font_idx : fonts.medium_font_idx;
@@ -363,6 +355,31 @@ fallback_font(Cell *cell) {
     fonts.fallback_fonts_count++;
     fonts.fonts_count++;
     return ans;
+}
+
+
+static inline ssize_t
+fallback_font(Cell *cell) {
+    bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
+    bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
+
+    // Load the emoji fallback font first as on Linux there are a bunch of
+    // non-color fonts that provide some emoji glyphs.
+    if (fonts.fallback_fonts_count < 1) {
+        Cell c = {0};
+        c.ch = 0x1f648;  // 🙈
+        load_fallback_font(&c, false, false);
+    }
+
+    // Check if one of the existing fallback fonts has this text
+    for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
+        Font *ff = fonts.fonts +j;
+        if (ff->bold == bold && ff->italic == italic && has_cell_text(ff, cell)) {
+            return j;
+        }
+    }
+
+    return load_fallback_font(cell, bold, italic);
 }
 
 static inline ssize_t
