@@ -69,7 +69,7 @@
 // Sharp control codes
 // -------------------
 
-// Align display 
+// Align display
 #define DECALN '8'
 
 // Esc control codes
@@ -180,7 +180,7 @@
 
 // Scroll down by the specified number of lines
 #define SD 'T'
- 
+
 // *Erase character*: Erase the indicated # of characters on the
 // current line.
 #define ECH 'X'
@@ -212,7 +212,7 @@
 
 // *Select graphics rendition*: The terminal can display the following
 // character attributes that change the character display without
-// changing the character 
+// changing the character
 #define SGR 'm'
 
 // *Device status report*.

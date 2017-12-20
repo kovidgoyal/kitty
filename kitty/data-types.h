@@ -69,7 +69,7 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 
 #define CURSOR_TO_ATTRS(c, w) \
     ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
-            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT))) 
+            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT)))
 
 #define ATTRS_TO_CURSOR(a, c) \
     (c)->decoration = (a >> DECORATION_SHIFT) & 3; (c)->bold = (a >> BOLD_SHIFT) & 1; (c)->italic = (a >> ITALIC_SHIFT) & 1; \
@@ -221,7 +221,7 @@ typedef struct {
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)
 
-#define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0; 
+#define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;
 
 #define left_shift_line(line, at, num) \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
@@ -243,7 +243,7 @@ typedef struct {
     }
 
 
-// Global functions 
+// Global functions
 const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);
 Line* alloc_line();
 Cursor* alloc_cursor();

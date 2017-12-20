@@ -62,7 +62,7 @@ utf8(char_type codepoint) {
 
 
 #ifdef DUMP_COMMANDS
-static void 
+static void
 _report_error(PyObject *dump_callback, const char *fmt, ...) {
     va_list argptr;
     va_start(argptr, fmt);
@@ -74,7 +74,7 @@ _report_error(PyObject *dump_callback, const char *fmt, ...) {
     }
 }
 
-static void 
+static void
 _report_params(PyObject *dump_callback, const char *name, unsigned int *params, unsigned int count, Region *r) {
     static char buf[MAX_PARAMS*3] = {0};
     unsigned int i, p=0;
@@ -126,7 +126,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_ERROR(...) fprintf(stderr, "%s ", ERROR_PREFIX); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
 
 #define REPORT_COMMAND(...)
-#define REPORT_VA_COMMAND(...) 
+#define REPORT_VA_COMMAND(...)
 #define REPORT_DRAW(ch)
 #define REPORT_PARAMS(...)
 #define FLUSH_DRAW
@@ -142,7 +142,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 static inline void
 screen_nel(Screen *screen) { screen_carriage_return(screen); screen_linefeed(screen); }
 
-static inline void 
+static inline void
 handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(screen); break;
     switch(ch) {
@@ -191,11 +191,11 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
 } // }}}
 
 // Esc mode {{{
-static inline void 
+static inline void
 handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
-#define CALL_ED(name) REPORT_COMMAND(name); name(screen); SET_STATE(0); 
-#define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(screen, ch); SET_STATE(0); 
-#define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(screen, a, b); SET_STATE(0); 
+#define CALL_ED(name) REPORT_COMMAND(name); name(screen); SET_STATE(0);
+#define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(screen, ch); SET_STATE(0);
+#define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(screen, a, b); SET_STATE(0);
     switch(screen->parser_buf_pos) {
         case 0:
             switch (ch) {
@@ -223,9 +223,9 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     CALL_ED(screen_save_cursor); break;
                 case ESC_DECRC:
                     CALL_ED(screen_restore_cursor); break;
-                case ESC_DECPNM: 
+                case ESC_DECPNM:
                     CALL_ED(screen_normal_keypad_mode); break;
-                case ESC_DECPAM: 
+                case ESC_DECPAM:
                     CALL_ED(screen_alternate_keypad_mode); break;
                 case '%':
                 case '(':
@@ -240,7 +240,7 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     screen->parser_buf[screen->parser_buf_pos++] = ch;
                     break;
                 default:
-                    REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch); 
+                    REPORT_ERROR("%s0x%x", "Unknown char after ESC: ", ch);
                     SET_STATE(0); break;
             }
             break;
@@ -363,11 +363,11 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case '$':
 
 
-static inline void 
+static inline void
 screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
-static inline void 
+static inline void
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
-static inline void 
+static inline void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
 static inline void
 save_cursor(Screen *s, unsigned int UNUSED param, bool private) {
@@ -481,8 +481,8 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
                         READ_PARAM;
                         num_start = i + 1;
                         break;
-                    case COLOR: 
-                    case COLOR1: 
+                    case COLOR:
+                    case COLOR1:
                     case COLOR3:
                         REPORT_ERROR("Invalid SGR code containing disallowed character: %s", utf8(buf[i]));
                         return;
@@ -510,7 +510,7 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params,
             break;
         case COLOR3:
             if (i > num_start && num_params < MAX_PARAMS) READ_PARAM;
-            if (num_params != 5) { 
+            if (num_params != 5) {
                 REPORT_ERROR("Invalid SGR code containing incomplete semi-colon separated color sequence");
                 break;
             }
@@ -532,7 +532,7 @@ parse_region(Region *r, uint32_t *buf, unsigned int num) {
             default:
                 if (i > start) params[num_params++] = utoi(buf + start, i - start);
                 else if (i == start && buf[i] == ';') params[num_params++] = 0;
-                start = i + 1; 
+                start = i + 1;
                 break;
         }
     }
@@ -541,16 +541,16 @@ parse_region(Region *r, uint32_t *buf, unsigned int num) {
         case 0:
             break;
         case 1:
-            r->top = params[0]; 
+            r->top = params[0];
             break;
         case 2:
-            r->top = params[0]; r->left = params[1]; 
+            r->top = params[0]; r->left = params[1];
             break;
         case 3:
-            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; 
+            r->top = params[0]; r->left = params[1]; r->bottom = params[2];
             break;
         default:
-            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; r->right = params[3]; 
+            r->top = params[0]; r->left = params[1]; r->bottom = params[2]; r->right = params[3];
             break;
     }
     return i;
@@ -639,83 +639,83 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     }
     if (i > start) params[num_params++] = utoi(buf + start, i - start);
     switch(code) {
-        case ICH: 
-            CALL_CSI_HANDLER1(screen_insert_characters, 1); 
-        case CUU: 
-            CALL_CSI_HANDLER1(screen_cursor_up2, 1); 
-        case CUD: 
-        case VPR: 
-            CALL_CSI_HANDLER1(screen_cursor_down, 1); 
-        case CUF: 
-        case HPR: 
-            CALL_CSI_HANDLER1(screen_cursor_forward, 1); 
-        case CUB: 
-            CALL_CSI_HANDLER1(screen_cursor_back1, 1); 
-        case CNL:  
-            CALL_CSI_HANDLER1(screen_cursor_down1, 1); 
-        case CPL:  
-            CALL_CSI_HANDLER1(screen_cursor_up1, 1); 
-        case CHA: 
-        case HPA: 
-            CALL_CSI_HANDLER1(screen_cursor_to_column, 1); 
-        case VPA: 
-            CALL_CSI_HANDLER1(screen_cursor_to_line, 1); 
+        case ICH:
+            CALL_CSI_HANDLER1(screen_insert_characters, 1);
+        case CUU:
+            CALL_CSI_HANDLER1(screen_cursor_up2, 1);
+        case CUD:
+        case VPR:
+            CALL_CSI_HANDLER1(screen_cursor_down, 1);
+        case CUF:
+        case HPR:
+            CALL_CSI_HANDLER1(screen_cursor_forward, 1);
+        case CUB:
+            CALL_CSI_HANDLER1(screen_cursor_back1, 1);
+        case CNL:
+            CALL_CSI_HANDLER1(screen_cursor_down1, 1);
+        case CPL:
+            CALL_CSI_HANDLER1(screen_cursor_up1, 1);
+        case CHA:
+        case HPA:
+            CALL_CSI_HANDLER1(screen_cursor_to_column, 1);
+        case VPA:
+            CALL_CSI_HANDLER1(screen_cursor_to_line, 1);
         case CBT:
-            CALL_CSI_HANDLER1(screen_backtab, 1); 
+            CALL_CSI_HANDLER1(screen_backtab, 1);
         case CHT:
-            CALL_CSI_HANDLER1(screen_tabn, 1); 
-        case CUP:  
-        case HVP: 
-            CALL_CSI_HANDLER2(screen_cursor_position, 1, 1); 
-        case ED: 
-            CALL_CSI_HANDLER1P(screen_erase_in_display, 0, '?'); 
-        case EL: 
-            CALL_CSI_HANDLER1P(screen_erase_in_line, 0, '?'); 
-        case IL: 
-            CALL_CSI_HANDLER1(screen_insert_lines, 1); 
-        case DL: 
-            CALL_CSI_HANDLER1(screen_delete_lines, 1); 
-        case DCH: 
-            CALL_CSI_HANDLER1(screen_delete_characters, 1); 
-        case ECH: 
-            CALL_CSI_HANDLER1(screen_erase_characters, 1); 
-        case DA: 
-            CALL_CSI_HANDLER1S(report_device_attributes, 0); 
-        case TBC: 
-            CALL_CSI_HANDLER1(screen_clear_tab_stop, 0); 
-        case SM: 
-            SET_MODE(screen_set_mode); 
-        case RM: 
-            SET_MODE(screen_reset_mode); 
-        case DSR: 
-            CALL_CSI_HANDLER1P(report_device_status, 0, '?'); 
-        case SC: 
-            CALL_CSI_HANDLER1P(save_cursor, 0, '?'); 
-        case RC: 
-            CALL_CSI_HANDLER1P(restore_cursor, 0, '?'); 
-        case 'r': 
+            CALL_CSI_HANDLER1(screen_tabn, 1);
+        case CUP:
+        case HVP:
+            CALL_CSI_HANDLER2(screen_cursor_position, 1, 1);
+        case ED:
+            CALL_CSI_HANDLER1P(screen_erase_in_display, 0, '?');
+        case EL:
+            CALL_CSI_HANDLER1P(screen_erase_in_line, 0, '?');
+        case IL:
+            CALL_CSI_HANDLER1(screen_insert_lines, 1);
+        case DL:
+            CALL_CSI_HANDLER1(screen_delete_lines, 1);
+        case DCH:
+            CALL_CSI_HANDLER1(screen_delete_characters, 1);
+        case ECH:
+            CALL_CSI_HANDLER1(screen_erase_characters, 1);
+        case DA:
+            CALL_CSI_HANDLER1S(report_device_attributes, 0);
+        case TBC:
+            CALL_CSI_HANDLER1(screen_clear_tab_stop, 0);
+        case SM:
+            SET_MODE(screen_set_mode);
+        case RM:
+            SET_MODE(screen_reset_mode);
+        case DSR:
+            CALL_CSI_HANDLER1P(report_device_status, 0, '?');
+        case SC:
+            CALL_CSI_HANDLER1P(save_cursor, 0, '?');
+        case RC:
+            CALL_CSI_HANDLER1P(restore_cursor, 0, '?');
+        case 'r':
             if (!start_modifier && !end_modifier) {
                 // DECSTBM
-                CALL_CSI_HANDLER2(screen_set_margins, 0, 0); 
+                CALL_CSI_HANDLER2(screen_set_margins, 0, 0);
             }
             REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
         case 'x':
             if (!start_modifier && end_modifier == '*') {
-                CALL_CSI_HANDLER1(screen_decsace, 0); 
+                CALL_CSI_HANDLER1(screen_decsace, 0);
             }
             REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
-        case DECSCUSR: 
-            CALL_CSI_HANDLER1M(screen_set_cursor, 1); 
+        case DECSCUSR:
+            CALL_CSI_HANDLER1M(screen_set_cursor, 1);
         case SU:
-            CALL_CSI_HANDLER1(screen_scroll, 1); 
+            CALL_CSI_HANDLER1(screen_scroll, 1);
         case SD:
-            CALL_CSI_HANDLER1(screen_reverse_scroll, 1); 
+            CALL_CSI_HANDLER1(screen_reverse_scroll, 1);
         case DECSTR:
             if (end_modifier == '$') {
                 // DECRQM
-                CALL_CSI_HANDLER1P(report_mode_status, 0, '?'); 
+                CALL_CSI_HANDLER1P(report_mode_status, 0, '?');
             } else {
                 REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             }
@@ -758,19 +758,19 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     unsigned int pos = 1;
     enum GR_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
     enum GR_STATES state = KEY, value_state = FLAG;
-    enum KEYS { 
-        action='a', 
+    enum KEYS {
+        action='a',
         delete_action='d',
         transmission_type='t',
         compressed='o',
         format = 'f',
         more = 'm',
         id = 'i',
-        width = 'w', 
+        width = 'w',
         height = 'h',
         x_offset = 'x',
         y_offset = 'y',
-        data_height = 'v', 
+        data_height = 'v',
         data_width = 's',
         data_sz = 'S',
         data_offset = 'O',
@@ -778,7 +778,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
         num_lines = 'r',
         cell_x_offset = 'X',
         cell_y_offset = 'Y',
-        z_index = 'z'  
+        z_index = 'z'
     };
     enum KEYS key = 'a';
     static GraphicsCommand g;
@@ -840,8 +840,8 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 is_negative = false;
                 if(screen->parser_buf[pos] == '-') { is_negative = true; pos++; }
 #define U(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
-                READ_UINT; 
-                switch(key) { 
+                READ_UINT;
+                switch(key) {
                     U(z_index);
                     default: break;
                 }
@@ -851,9 +851,9 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
             case UINT:
                 READ_UINT;
 #define U(x) case x: g.x = code; break
-                switch(key) { 
+                switch(key) {
                     U(format); U(more); U(id); U(data_sz); U(data_offset); U(width); U(height); U(x_offset); U(y_offset); U(data_height); U(data_width); U(num_cells); U(num_lines); U(cell_x_offset); U(cell_y_offset);
-                    default: break; 
+                    default: break;
                 }
                 state = AFTER_VALUE;
                 break;
@@ -869,7 +869,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                         state = PAYLOAD;
                         break;
                     default:
-                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x%x", screen->parser_buf[pos - 1]); 
+                        REPORT_ERROR("Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x%x", screen->parser_buf[pos - 1]);
                         return;
                 }
                 break;
@@ -879,7 +879,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
                 err = base64_decode(screen->parser_buf + pos, sz, payload, sizeof(payload), &g.payload_sz);
                 if (err != NULL) { REPORT_ERROR("Failed to parse graphics command payload with error: %s", err); return; }
                 pos = screen->parser_buf_pos;
-                break;  
+                break;
         }
     }
     switch(state) {
@@ -887,16 +887,16 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
             REPORT_ERROR("Malformed graphics control block, no = after key"); return;
         case INT:
         case UINT:
-            REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return; 
+            REPORT_ERROR("Malformed graphics control block, expecting an integer value"); return;
         case FLAG:
-            REPORT_ERROR("Malformed graphics control block, expecting a flag value"); return; 
+            REPORT_ERROR("Malformed graphics control block, expecting a flag value"); return;
         default:
             break;
     }
 #define A(x) #x, g.x
 #define U(x) #x, (unsigned int)(g.x)
 #define I(x) #x, (int)(g.x)
-    REPORT_VA_COMMAND("s {sc sc sc sc sI sI sI sI sI  sI sI sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command", 
+    REPORT_VA_COMMAND("s {sc sc sc sc sI sI sI sI sI  sI sI sI sI sI sI sI sI sI sI  sI si} y#", "graphics_command",
             A(action), A(delete_action), A(transmission_type), A(compressed),
             U(format), U(more), U(id), U(data_sz), U(data_offset),
             U(width), U(height), U(x_offset), U(y_offset), U(data_height), U(data_width), U(num_cells), U(num_lines), U(cell_x_offset), U(cell_y_offset),
@@ -1027,7 +1027,7 @@ accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
         REPORT_ERROR("CSI sequence too long, ignoring"); \
         SET_STATE(0); \
         return false; \
-    } 
+    }
 
     switch(ch) {
         IS_DIGIT
@@ -1073,8 +1073,8 @@ END_ALLOW_CASE_RANGE
         case HTS:
             handle_normal_mode_char(screen, ch, dump_callback);
             break;
-        case NUL: 
-        case DEL: 
+        case NUL:
+        case DEL:
             break;  // no-op
         default:
             REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
@@ -1116,7 +1116,7 @@ dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *
 
 extern uint32_t *latin1_charset;
 
-static inline void 
+static inline void
 _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state;
     for (unsigned int i = 0; i < (unsigned int)len; i++) {

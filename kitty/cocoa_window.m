@@ -22,7 +22,7 @@
 
 static NSMenuItem* title_menu = NULL;
 
-static NSString* 
+static NSString*
 find_app_name(void) {
     size_t i;
     NSDictionary* infoDictionary = [[NSBundle mainBundle] infoDictionary];
@@ -141,7 +141,7 @@ cocoa_update_title(PyObject *pytitle) {
 bool
 cocoa_make_window_resizable(void *w) {
     NSWindow *window = (NSWindow*)w;
-    
+
     @try {
         [window setStyleMask:
             [window styleMask] | NSWindowStyleMaskResizable];
@@ -167,7 +167,7 @@ cocoa_get_lang(PyObject UNUSED *self) {
 }
 
 static PyMethodDef module_methods[] = {
-    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, 
+    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

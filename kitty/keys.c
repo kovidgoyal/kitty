@@ -61,7 +61,7 @@ static inline bool
 is_modifier_key(int key) {
     switch(key) {
         case GLFW_KEY_LEFT_SHIFT:
-        case GLFW_KEY_RIGHT_SHIFT: 
+        case GLFW_KEY_RIGHT_SHIFT:
         case GLFW_KEY_LEFT_ALT:
         case GLFW_KEY_RIGHT_ALT:
         case GLFW_KEY_LEFT_CONTROL:
@@ -83,7 +83,7 @@ get_localized_key(int key, int scancode) {
         // key names {{{
         K('A', A); K('a', A);
         K('B', B); K('b', B);
-        K('C', C); K('c', C); 
+        K('C', C); K('c', C);
         K('D', D); K('d', D);
         K('E', E); K('e', E);
         K('F', F); K('f', F);
@@ -209,7 +209,7 @@ PYWRAP1(key_to_bytes) {
 }
 
 static PyMethodDef module_methods[] = {
-    M(key_to_bytes, METH_VARARGS), 
+    M(key_to_bytes, METH_VARARGS),
     {0}
 };
 

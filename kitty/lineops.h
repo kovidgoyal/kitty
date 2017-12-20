@@ -12,7 +12,7 @@ static inline void
 set_attribute_on_line(Cell *cells, uint32_t shift, uint32_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
     attrs_type mask = shift == DECORATION_SHIFT ? 3 : 1;
-    attrs_type aval = (val & mask) << shift; 
+    attrs_type aval = (val & mask) << shift;
     mask = ~(mask << shift);
     for (index_type i = 0; i < xnum; i++) cells[i].attrs = (cells[i].attrs & mask) | aval;
 }

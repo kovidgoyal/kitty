@@ -81,7 +81,7 @@ static inline void
 remove_from_array(void *array, size_t item_size, size_t idx, size_t array_count) {
     size_t num_to_right = array_count - 1 - idx;
     uint8_t *p = (uint8_t*)array;
-    if (num_to_right > 0) memmove(p + (idx * item_size), p + ((idx + 1) * item_size), num_to_right * item_size);  
+    if (num_to_right > 0) memmove(p + (idx * item_size), p + ((idx + 1) * item_size), num_to_right * item_size);
     memset(p + (item_size * (array_count - 1)), 0, item_size);
 }
 
@@ -130,7 +130,7 @@ trim_predicate(Image *img) {
 static int
 oldest_last(const void* a, const void *b) {
     double ans = ((Image*)(b))->atime - ((Image*)(a))->atime;
-    return ans < 0 ? -1 : (ans == 0 ? 0 : 1); 
+    return ans < 0 ? -1 : (ans == 0 ? 0 : 1);
 }
 
 static inline void
@@ -171,7 +171,7 @@ mmap_img_file(GraphicsManager UNUSED *self, Image *img, int fd, size_t sz, off_t
         sz = s.st_size;
     }
     void *addr = mmap(0, sz, PROT_READ, MAP_SHARED, fd, offset);
-    if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, offset, sz, errno, strerror(errno)); 
+    if (addr == MAP_FAILED) ABRT(EBADF, "Failed to map image file fd: %d at offset: %zd with size: %zu with error: [%d] %s", fd, offset, sz, errno, strerror(errno));
     img->load_data.mapped_file = addr;
     img->load_data.mapped_file_sz = sz;
     return true;
@@ -267,7 +267,7 @@ inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
     if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
 
     if (setjmp(jb)) goto err;
-    
+
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);
     png_byte color_type, bit_depth;
@@ -312,7 +312,7 @@ inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz
     if (d.ok) {
         free_load_data(&img->load_data);
         img->load_data.buf = d.decompressed;
-        img->load_data.buf_capacity = d.sz; 
+        img->load_data.buf_capacity = d.sz;
         img->load_data.buf_used = d.sz;
         img->load_data.data_sz = d.sz;
         img->width = d.width; img->height = d.height;
@@ -376,7 +376,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         img->atime = monotonic(); img->used_storage = 0;
         img->width = g->data_width; img->height = g->data_height;
         switch(fmt) {
-            case PNG:  
+            case PNG:
                 if (g->data_sz > MAX_DATA_SZ) ABRT(EINVAL, "PNG data size too large");
                 img->load_data.is_4byte_aligned = true;
                 img->load_data.is_opaque = false;
@@ -513,7 +513,7 @@ create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid
     if (iid) {
         if (!has_add_respose) {
             if (!data_loaded) return NULL;
-            snprintf(add_response, 10, "OK"); 
+            snprintf(add_response, 10, "OK");
         }
         snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, add_response);
         return rbuf;
@@ -541,18 +541,18 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows) {
         t = ref->src_width + ref->cell_x_offset;
         num_cols = t / global_state.cell_width;
         if (t > num_cols * global_state.cell_width) num_cols += 1;
-    } 
+    }
     if (num_rows == 0) {
         t = ref->src_height + ref->cell_y_offset;
         num_rows = t / global_state.cell_height;
         if (t > num_rows * global_state.cell_height) num_rows += 1;
-    } 
+    }
     ref->effective_num_rows = num_rows;
     ref->effective_num_cols = num_cols;
 }
 
 
-static void 
+static void
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
     has_add_respose = false;
     if (img == NULL) img = img_by_client_id(self, g->id);
@@ -584,12 +584,12 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
 }
 
-static int 
-cmp_by_zindex_and_image(const void *a_, const void *b_) { 
+static int
+cmp_by_zindex_and_image(const void *a_, const void *b_) {
     const ImageRenderData *a = (const ImageRenderData*)a_, *b = (const ImageRenderData*)b_;
     int ans = a->z_index - b->z_index;
     if (ans == 0) ans = a->image_id - b->image_id;
-    return ans; 
+    return ans;
 }
 
 bool
@@ -656,9 +656,9 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
     size_t i, j;
 
     if (self->image_count) {
-        for (i = self->image_count; i-- > 0;) { 
+        for (i = self->image_count; i-- > 0;) {
             img = self->images + i;
-            for (j = img->refcnt; j-- > 0;) { 
+            for (j = img->refcnt; j-- > 0;) {
                 ref = img->refs + j;
                 if (filter_func(ref, img, data)) {
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
@@ -718,7 +718,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
     return false;
 }
 
-void 
+void
 grman_scroll_images(GraphicsManager *self, const ScrollData *data) {
     filter_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func);
 }
@@ -799,18 +799,18 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 
 // }}}
 
-void 
+void
 grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUSED lines, index_type UNUSED old_columns, index_type UNUSED columns) {
     self->layers_dirty = true;
 }
 
-void 
+void
 grman_rescale(GraphicsManager *self, unsigned int UNUSED old_cell_width, unsigned int UNUSED old_cell_height) {
     ImageRef *ref; Image *img;
     self->layers_dirty = true;
-    for (size_t i = self->image_count; i-- > 0;) { 
+    for (size_t i = self->image_count; i-- > 0;) {
         img = self->images + i;
-        for (size_t j = img->refcnt; j-- > 0;) { 
+        for (size_t j = img->refcnt; j-- > 0;) {
             ref = img->refs + j;
             ref->cell_x_offset = MIN(ref->cell_x_offset, global_state.cell_width - 1);
             ref->cell_y_offset = MIN(ref->cell_y_offset, global_state.cell_height - 1);
@@ -925,7 +925,7 @@ W(update_layers) {
     for (size_t i = 0; i < self->count; i++) {
         ImageRenderData *r = self->render_data + i;
 #define R(offset) Py_BuildValue("{sf sf sf sf}", "left", r->vertices[offset + 8], "top", r->vertices[offset + 1], "right", r->vertices[offset], "bottom", r->vertices[offset + 5])
-        PyTuple_SET_ITEM(ans, i, 
+        PyTuple_SET_ITEM(ans, i,
             Py_BuildValue("{sN sN sI si sI}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
         );
 #undef R
@@ -950,10 +950,10 @@ PyTypeObject GraphicsManager_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.GraphicsManager",
     .tp_basicsize = sizeof(GraphicsManager),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "GraphicsManager",
-    .tp_new = new,                
+    .tp_new = new,
     .tp_methods = methods,
     .tp_members = members,
 };
@@ -969,7 +969,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_graphics(PyObject *module) {
     if (PyType_Ready(&GraphicsManager_Type) < 0) return false;
-    if (PyModule_AddObject(module, "GraphicsManager", (PyObject *)&GraphicsManager_Type) != 0) return false; 
+    if (PyModule_AddObject(module, "GraphicsManager", (PyObject *)&GraphicsManager_Type) != 0) return false;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     Py_INCREF(&GraphicsManager_Type);
     return true;

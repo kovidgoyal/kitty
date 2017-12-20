@@ -58,7 +58,7 @@ dealloc(HistoryBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline index_type 
+static inline index_type
 index_of(HistoryBuf *self, index_type lnum) {
     // The index (buffer position) of the line with line number lnum
     // This is reverse indexing, i.e. lnum = 0 corresponds to the *last* line in the buffer.
@@ -67,7 +67,7 @@ index_of(HistoryBuf *self, index_type lnum) {
     return (self->start_of_data + idx) % self->ynum;
 }
 
-static inline void 
+static inline void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cells = lineptr(self, num);
@@ -75,22 +75,22 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     l->has_dirty_text = self->line_attrs[num] & TEXT_DIRTY_MASK ? true : false;
 }
 
-void 
+void
 historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
 }
 
-void 
+void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
     self->line_attrs[index_of(self, y)] &= ~TEXT_DIRTY_MASK;
 }
 
-void 
+void
 historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
     self->line_attrs[index_of(self, y)] |= TEXT_DIRTY_MASK;
 }
 
-static inline index_type 
+static inline index_type
 historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);
@@ -124,7 +124,7 @@ historybuf_resize(HistoryBuf *self, index_type lines) {
     return true;
 }
 
-void 
+void
 historybuf_add_line(HistoryBuf *self, const Line *line) {
     index_type idx = historybuf_push(self);
     copy_line(line, self->line);
@@ -234,11 +234,11 @@ PyTypeObject HistoryBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.HistoryBuf",
     .tp_basicsize = sizeof(HistoryBuf),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "History buffers",
     .tp_methods = methods,
-    .tp_members = members,            
+    .tp_members = members,
     .tp_str = (reprfunc)__str__,
     .tp_new = new
 };
@@ -258,9 +258,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 
 #define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (src->line_attrs[map_src_index(src_y + 1)] & CONTINUED_MASK) : false)
 
-#define next_dest_line(cont) dest->line_attrs[historybuf_push(dest)] = cont & CONTINUED_MASK; dest->line->continued = cont; 
+#define next_dest_line(cont) dest->line_attrs[historybuf_push(dest)] = cont & CONTINUED_MASK; dest->line->continued = cont;
 
-#define first_dest_line next_dest_line(false); 
+#define first_dest_line next_dest_line(false);
 
 #include "rewrap.h"
 

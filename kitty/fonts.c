@@ -57,7 +57,7 @@ static char_type shape_buffer[2048] = {0};
 typedef struct {
     PyObject *face;
     // Map glyphs to sprite map co-ords
-    SpritePosition sprite_map[1024]; 
+    SpritePosition sprite_map[1024];
     SpecialGlyphCache special_glyph_cache[1024];
     bool bold, italic;
 } Font;
@@ -79,7 +79,7 @@ static Fonts fonts = {0};
 
 // Sprites {{{
 
-static inline void 
+static inline void
 sprite_map_set_error(int error) {
     switch(error) {
         case 1:
@@ -163,7 +163,7 @@ special_glyph_cache_for(Font *font, glyph_index glyph) {
         }
         if (!s->next) {
             s->next = calloc(1, sizeof(SpecialGlyphCache));
-            if (s->next == NULL) return NULL; 
+            if (s->next == NULL) return NULL;
         }
         s = s->next;
     }
@@ -211,7 +211,7 @@ clear_sprite_map(Font *font) {
 
 void
 clear_special_glyph_cache(Font *font) {
-#define CLEAR(s) s->filled = false; s->glyph = 0; 
+#define CLEAR(s) s->filled = false; s->glyph = 0;
     SpecialGlyphCache *s;
     for (size_t i = 0; i < sizeof(font->special_glyph_cache)/sizeof(font->special_glyph_cache[0]); i++) {
         s = font->special_glyph_cache + i;
@@ -247,14 +247,14 @@ init_font(Font *f, PyObject *descriptor, bool bold, bool italic, bool is_face) {
     PyObject *face;
     if (is_face) { face = descriptor; Py_INCREF(face); }
     else { face = desc_to_face(descriptor); if (face == NULL) return false; }
-    f->face = face; 
+    f->face = face;
     f->bold = bold; f->italic = italic;
     return true;
 }
 
 static inline void
-del_font(Font *f) { 
-    Py_CLEAR(f->face); 
+del_font(Font *f) {
+    Py_CLEAR(f->face);
     free_maps(f);
     f->bold = false; f->italic = false;
 }
@@ -262,7 +262,7 @@ del_font(Font *f) {
 static unsigned int cell_width = 0, cell_height = 0, baseline = 0, underline_position = 0, underline_thickness = 0;
 static pixel *canvas = NULL;
 #define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
-static inline void 
+static inline void
 clear_canvas(void) { memset(canvas, 0, CELLS_IN_CANVAS * cell_width * cell_height * sizeof(pixel)); }
 
 static void
@@ -320,7 +320,7 @@ face_has_codepoint(PyObject* face, char_type cp) {
     return glyph_id_for_codepoint(face, cp) > 0;
 }
 
-static inline bool 
+static inline bool
 has_cell_text(Font *self, Cell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;
     if (cell->cc) {
@@ -443,7 +443,7 @@ render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *de
     }
 }
 
-static void 
+static void
 render_box_cell(Cell *cell) {
     int error = 0;
     glyph_index glyph = box_glyph_id(cell->ch);
@@ -469,7 +469,7 @@ render_box_cell(Cell *cell) {
 }
 
 static inline void
-load_hb_buffer(Cell *first_cell, index_type num_cells) {  
+load_hb_buffer(Cell *first_cell, index_type num_cells) {
     index_type num;
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
@@ -523,10 +523,10 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, &was_colored);
     if (PyErr_Occurred()) PyErr_Print();
 
-    for (unsigned int i = 0; i < num_cells; i++) { 
+    for (unsigned int i = 0; i < num_cells; i++) {
         sprite_position[i]->rendered = true;
         sprite_position[i]->colored = was_colored;
-        set_cell_sprite(cells + i, sprite_position[i]); 
+        set_cell_sprite(cells + i, sprite_position[i]);
         pixel *buf = num_cells == 1 ? canvas : extract_cell_from_canvas(i, num_cells);
         current_send_sprite_to_gpu(sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
     }
@@ -549,11 +549,11 @@ is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
     if (s == NULL) return false;
     if (!s->filled) {
         s->is_special = cell_data->current_codepoint ? (
-            glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? true : false) 
+            glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? true : false)
             :
             false;
         s->filled = true;
-    } 
+    }
     return s->is_special;
 }
 
@@ -601,7 +601,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
     // how to break text into cells. In addition, we have to deal with
     // monospace ligature fonts that use dummy glyphs of zero size to implement
     // their ligatures.
-    
+
     CellData cell_data;
     cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0; cell_data.current_codepoint = cells->ch;
 #define LIMIT (MAX_NUM_EXTRA_GLYPHS + 1)
@@ -616,7 +616,7 @@ next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_gl
         glyph_index glyph_id = info[nglyphs].codepoint;
         cluster = info[nglyphs].cluster;
         is_special = is_special_glyph(glyph_id, font, &cell_data);
-        if (prev_was_special && !is_special) break; 
+        if (prev_was_special && !is_special) break;
         glyphs_in_group[nglyphs++] = glyph_id;
         // Soak up a number of codepoints indicated by the difference in cluster numbers.
         if (cluster > previous_cluster || nglyphs == 1) {
@@ -693,14 +693,14 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
         font->face = face;
-    } 
+    }
     hb_glyph_info_t *info;
     hb_glyph_position_t *positions;
     unsigned int num_glyphs = shape(line->cells, num, harfbuzz_font_for_face(font->face), &info, &positions);
 
     PyObject *ans = PyList_New(0);
     unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
-    ExtraGlyphs extra_glyphs; 
+    ExtraGlyphs extra_glyphs;
     glyph_index first_glyph;
     while(run_pos < num_glyphs && cell_pos < num) {
         first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, line->cells + cell_pos, info + run_pos, num_glyphs - run_pos, num - cell_pos, &extra_glyphs);
@@ -713,7 +713,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     return ans;
 }
 
-static inline void 
+static inline void
 render_run(Cell *first_cell, index_type num_cells, ssize_t font_idx) {
     switch(font_idx) {
         default:
@@ -763,7 +763,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     for (size_t i = 0; i < fonts.fonts_count; i++) del_font(fonts.fonts + i);
     ensure_space_for(&fonts, fonts, Font, num_fonts, fonts_capacity, 5, true);
     fonts.fonts_count = 1;
-#define A(attr, bold, italic) { if(attr) { if (!init_font(&fonts.fonts[fonts.fonts_count], attr, bold, italic, false)) return NULL; fonts.attr##_font_idx = fonts.fonts_count++; } else fonts.attr##_font_idx = -1; } 
+#define A(attr, bold, italic) { if(attr) { if (!init_font(&fonts.fonts[fonts.fonts_count], attr, bold, italic, false)) return NULL; fonts.attr##_font_idx = fonts.fonts_count++; } else fonts.attr##_font_idx = -1; }
     A(medium, false, false);
     A(bold, true, false); A(italic, false, true); A(bi, true, true);
 #undef A
@@ -925,7 +925,7 @@ error:
 
 static PyObject*
 get_fallback_font(PyObject UNUSED *self, PyObject *args) {
-    PyObject *text; 
+    PyObject *text;
     int bold, italic;
     if (!PyArg_ParseTuple(args, "Upp", &text, &bold, &italic)) return NULL;
     static Py_UCS4 char_buf[16];
@@ -958,7 +958,7 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-bool 
+bool
 init_fonts(PyObject *module) {
     if (Py_AtExit(finalize) != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to register the fonts module at exit handler");

@@ -131,9 +131,9 @@ add_charset(FcPattern *pat, size_t num) {
         charset = FcCharSetCreate();
         if (charset == NULL) { PyErr_NoMemory(); goto end; }
         for (size_t i = 0; i < num; i++) {
-            if (!FcCharSetAddChar(charset, char_buf[i])) { 
-                PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset"); 
-                goto end; 
+            if (!FcCharSetAddChar(charset, char_buf[i])) {
+                PyErr_SetString(PyExc_RuntimeError, "Failed to add character to fontconfig charset");
+                goto end;
             }
         }
         AP(FcPatternAddCharSet, FC_CHARSET, charset, "charset");
@@ -214,7 +214,7 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-bool 
+bool
 init_fontconfig_library(PyObject *module) {
     if (!FcInit()) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize the fontconfig library");

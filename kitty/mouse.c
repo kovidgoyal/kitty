@@ -67,7 +67,7 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
             return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;%d;%dM", cb + 32, x, y);
             break;
         case UTF8_PROTOCOL:
-            mouse_event_buf[0] = 'M'; mouse_event_buf[1] = cb + 32; 
+            mouse_event_buf[0] = 'M'; mouse_event_buf[1] = cb + 32;
             unsigned int sz = 2;
             sz += encode_utf8(x + 32, mouse_event_buf + sz);
             sz += encode_utf8(y + 32, mouse_event_buf + sz);
@@ -264,7 +264,7 @@ HANDLER(handle_button_event) {
     Screen *screen = w->render_data.screen;
     if (!screen) return;
     bool handle_in_kitty = (
-            modifiers == GLFW_MOD_SHIFT || 
+            modifiers == GLFW_MOD_SHIFT ||
             screen->modes.mouse_tracking_mode == 0 ||
             button == GLFW_MOUSE_BUTTON_MIDDLE ||
             (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)
@@ -297,7 +297,7 @@ HANDLER(handle_event) {
             for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.callback_os_window->mouse_button_pressed[i]) { button = i; break; } }
             handle_move_event(w, button, modifiers, window_idx);
             break;
-        case GLFW_MOUSE_BUTTON_LEFT:  
+        case GLFW_MOUSE_BUTTON_LEFT:
         case GLFW_MOUSE_BUTTON_RIGHT:
         case GLFW_MOUSE_BUTTON_MIDDLE:
         case GLFW_MOUSE_BUTTON_4:
@@ -309,7 +309,7 @@ HANDLER(handle_event) {
     }
 }
 
-static inline void 
+static inline void
 handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
     call_boss(activate_tab_at, "Kd", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x);
@@ -347,9 +347,9 @@ mouse_event(int button, int modifiers) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
-    if (in_tab_bar) { 
+    if (in_tab_bar) {
         mouse_cursor_shape = HAND;
-        handle_tab_bar_mouse(button, modifiers); 
+        handle_tab_bar_mouse(button, modifiers);
     } else if(w) {
         handle_event(w, button, modifiers, window_idx);
     }

@@ -804,7 +804,7 @@
  *  @sa @ref glfwGetProcAddress
  *
  *  @since Added in version 3.0.
- 
+
  *  @ingroup context
  */
 typedef void (*GLFWglproc)(void);

@@ -20,12 +20,12 @@ GlobalState global_state = {{0}};
             (count)--; \
             break; \
         } \
-    }} 
+    }}
 
 #define WITH_OS_WINDOW(os_window_id) \
     for (size_t o = 0; o < global_state.num_os_windows; o++) { \
         OSWindow *os_window = global_state.os_windows + o; \
-        if (os_window->id == os_window_id) { 
+        if (os_window->id == os_window_id) {
 #define END_WITH_OS_WINDOW break; }}
 
 #define WITH_TAB(os_window_id, tab_id) \
@@ -50,7 +50,7 @@ GlobalState global_state = {{0}};
     }}
 
 
-OSWindow* 
+OSWindow*
 current_os_window() {
     if (global_state.callback_os_window) return global_state.callback_os_window;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
@@ -187,7 +187,7 @@ remove_os_window(id_type os_window_id) {
         found = true;
         make_os_window_context_current(os_window);
     END_WITH_OS_WINDOW
-    if (found) { 
+    if (found) {
         WITH_OS_WINDOW_REFS
             REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window_item, global_state.capacity);
         END_WITH_OS_WINDOW_REFS
@@ -337,7 +337,7 @@ PYWRAP1(set_options) {
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
     PyObject *al = PyObject_GetAttrString(opts, "adjust_line_height");
-    if (PyFloat_Check(al)) { 
+    if (PyFloat_Check(al)) {
         OPT(adjust_line_height_frac) = (float)PyFloat_AsDouble(al);
         OPT(adjust_line_height_px) = 0;
     } else {
@@ -498,7 +498,7 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-bool 
+bool
 init_state(PyObject *module) {
     global_state.cell_width = 1; global_state.cell_height = 1;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;

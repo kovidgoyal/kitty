@@ -34,7 +34,7 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
 
 // callbacks {{{
 
-void 
+void
 update_os_window_references() {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -68,10 +68,10 @@ is_window_ready_for_callbacks() {
 
 static inline void
 show_mouse_cursor(GLFWwindow *w) {
-    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); } 
+    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
 }
 
-static void 
+static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width > 100 && height > 100) {
@@ -86,7 +86,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
@@ -94,7 +94,7 @@ char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
@@ -105,7 +105,7 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
@@ -118,7 +118,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
@@ -131,7 +131,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
@@ -141,12 +141,12 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_focused = focused ? true : false;
     if (focused) {
-        show_mouse_cursor(w); 
+        show_mouse_cursor(w);
         focus_in_event();
     }
     double now = monotonic();
@@ -158,7 +158,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     global_state.callback_os_window = NULL;
 }
 
-static void 
+static void
 drop_callback(GLFWwindow *w, int count, const char **paths) {
     if (!set_callback_window(w)) return;
     PyObject *p = PyTuple_New(count);
@@ -201,7 +201,7 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
 
 static GLFWwindow *current_os_window_ctx = NULL;
 
-void 
+void
 make_os_window_context_current(OSWindow *w) {
     if (w->handle != current_os_window_ctx) {
         current_os_window_ctx = w->handle;
@@ -288,7 +288,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
         arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
         if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL; 
+            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL;
         }
     }
 
@@ -309,7 +309,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
-    if (is_first_window) { 
+    if (is_first_window) {
         set_dpi_from_window(NULL);
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
@@ -378,14 +378,14 @@ show_window(PyObject UNUSED *self, PyObject *args) {
 void
 destroy_os_window(OSWindow *w) {
     if (w->handle) {
-        glfwDestroyWindow(w->handle); 
+        glfwDestroyWindow(w->handle);
         if (current_os_window_ctx == w->handle) current_os_window_ctx = NULL;
     }
     w->handle = NULL;
 }
 
 // Global functions {{{
-static void 
+static void
 error_callback(int error, const char* description) {
     fprintf(stderr, "[glfw error %d]: %s\n", error, description);
 }
@@ -522,11 +522,11 @@ toggle_fullscreen(PyObject UNUSED *self) {
     }
 }
 
-void 
+void
 ring_audio_bell(OSWindow *w) {
     static double last_bell_at = -1;
     double now = monotonic();
-    if (now - last_bell_at <= 0.1) return; 
+    if (now - last_bell_at <= 0.1) return;
     last_bell_at = now;
     if (w->handle) {
         glfwWindowBell(w->handle, OPT(x11_bell_volume));
@@ -555,7 +555,7 @@ hide_mouse(OSWindow *w) {
     }
 }
 
-void 
+void
 swap_window_buffers(OSWindow *w) {
     glfwSwapBuffers(w->handle);
 }
@@ -571,7 +571,7 @@ wakeup_main_loop() {
     glfwPostEmptyEvent();
 }
 
-void 
+void
 mark_os_window_for_close(OSWindow* w, bool yes) {
     glfwSetWindowShouldClose(w->handle, yes);
 }
@@ -694,14 +694,14 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
     METHODB(glfw_poll_events, METH_NOARGS),
-    {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""}, 
-    {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""}, 
-    {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""}, 
-    {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""}, 
-    {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""}, 
-    {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""}, 
-    {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""}, 
-    {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""}, 
+    {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
+    {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
+    {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""},
+    {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""},
+    {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
+    {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
+    {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
+    {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

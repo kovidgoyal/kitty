@@ -22,7 +22,7 @@ clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
 }
 
-void 
+void
 linebuf_clear(LineBuf *self, char_type ch) {
     memset(self->buf, 0, self->xnum * self->ynum * sizeof(Cell));
     memset(self->line_attrs, 0, self->ynum * sizeof(line_attrs_type));
@@ -97,8 +97,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(LineBuf* self) {
     PyMem_Free(self->buf);
-    PyMem_Free(self->line_map); 
-    PyMem_Free(self->line_attrs); 
+    PyMem_Free(self->line_map);
+    PyMem_Free(self->line_attrs);
     PyMem_Free(self->scratch);
     Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -109,7 +109,7 @@ init_line(LineBuf *lb, Line *l, index_type ynum) {
     l->cells = lineptr(lb, ynum);
 }
 
-void 
+void
 linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
@@ -131,12 +131,12 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
-unsigned int 
+unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
     return (lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
 }
 
-void 
+void
 linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
     for (index_type y = 0; y < self->ynum; y++) {
         set_attribute_on_line(lineptr(self, y), shift, val, self->xnum);
@@ -192,7 +192,7 @@ allocate_line_storage(Line *line, bool initialize) {
     return true;
 }
 
-static inline PyObject* 
+static inline PyObject*
 create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
     line = alloc_line();
@@ -237,7 +237,7 @@ clear_line_(Line *l, index_type xnum) {
     l->has_dirty_text = false;
 }
 
-void 
+void
 linebuf_clear_line(LineBuf *self, index_type y) {
     Line l;
     init_line(self, &l, self->line_map[y]);
@@ -254,7 +254,7 @@ clear_line(LineBuf *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
@@ -276,7 +276,7 @@ pyw_index(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_bottom = self->line_map[bottom];
@@ -308,7 +308,7 @@ is_continued(LineBuf *self, PyObject *val) {
     Py_RETURN_FALSE;
 }
 
-void 
+void
 linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
     index_type i;
     if (y >= self->ynum || y > bottom || bottom >= self->ynum) return;
@@ -344,7 +344,7 @@ insert_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom) {
     index_type i;
     index_type ylimit = bottom + 1;
@@ -368,7 +368,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
         self->line_attrs[i] = 0;
     }
 }
- 
+
 static PyObject*
 delete_lines(LineBuf *self, PyObject *args) {
 #define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num lines at y, only changing lines in the range [y, bottom]."
@@ -377,7 +377,7 @@ delete_lines(LineBuf *self, PyObject *args) {
     linebuf_delete_lines(self, num, y, bottom);
     Py_RETURN_NONE;
 }
- 
+
 static PyObject*
 as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
@@ -453,11 +453,11 @@ PyTypeObject LineBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.LineBuf",
     .tp_basicsize = sizeof(LineBuf),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Line buffers",
     .tp_methods = methods,
-    .tp_members = members,            
+    .tp_members = members,
     .tp_str = (reprfunc)__str__,
     .tp_new = new
 };
@@ -485,7 +485,7 @@ copy_old(LineBuf *self, PyObject *y) {
 
 #include "rewrap.h"
 
-void 
+void
 linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf) {
     index_type first, i;
     bool is_empty = true;
@@ -510,9 +510,9 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     } while(is_empty && first > 0);
 
     if (is_empty) {  // All lines are empty
-        *num_content_lines_after = 0; 
+        *num_content_lines_after = 0;
         *num_content_lines_before = 0;
-        return; 
+        return;
     }
 
     rewrap_inner(self, other, first + 1, historybuf);

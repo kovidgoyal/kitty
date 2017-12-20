@@ -34,7 +34,7 @@ line_length(Line *self) {
     return 0;
 }
 
-PyObject* 
+PyObject*
 line_text_at(char_type ch, combining_type cc) {
     PyObject *ans;
     if (LIKELY(cc == 0)) {
@@ -67,7 +67,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
         if (!is_url_char(ch)) return false;
         switch(state) {
             case ANY:
-                if (ch == '/') state = FIRST_SLASH; 
+                if (ch == '/') state = FIRST_SLASH;
                 break;
             case FIRST_SLASH:
                 state = ch == '/' ? SECOND_SLASH : ANY;
@@ -202,7 +202,7 @@ PyObject*
 unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
     size_t n = 0;
     static Py_UCS4 buf[4096];
-    if (leading_char) buf[n++] = leading_char; 
+    if (leading_char) buf[n++] = leading_char;
     char_type previous_width = 0;
     for(index_type i = start; i < limit && n < sizeof(buf)/sizeof(buf[0]) - 4; i++) {
         char_type ch = self->cells[i].ch;
@@ -241,7 +241,7 @@ write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
 index_type
 line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 #define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) return i; }
-#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val; 
+#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val;
 
     index_type limit = xlimit_for_line(self), i=0;
     char_type previous_width = 0;
@@ -316,7 +316,7 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
-void 
+void
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     if (!self->cells[x].ch) return;  // dont allow adding combining chars to a null cell
     combining_type c = self->cells[x].cc;
@@ -398,7 +398,7 @@ cursor_from(Line* self, PyObject *args) {
     return (PyObject*)ans;
 }
 
-void 
+void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     attrs_type width = ch ? 1 : 0;
 #define PREFIX \
@@ -423,13 +423,13 @@ clear_text(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
     color_type dfg = cursor->decoration_fg & COL_MASK;
     if (!clear_char) attrs = attrs & ATTRS_MASK_WITHOUT_WIDTH;
-    
+
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
             self->cells[i].ch = BLANK_CHAR;
@@ -496,8 +496,8 @@ left_shift(Line *self, PyObject *args) {
     if (num > 0) left_shift_line(self, at, num);
     Py_RETURN_NONE;
 }
- 
-void 
+
+void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {
         self->cells[at].attrs = (self->cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
@@ -556,7 +556,7 @@ richcmp(PyObject *obj1, PyObject *obj2, int op);
 
 
 static PySequenceMethods sequence_methods = {
-    .sq_length = __len__,                  
+    .sq_length = __len__,
     .sq_item = (ssizeargfunc)text_at
 };
 
@@ -577,7 +577,7 @@ static PyMethodDef methods[] = {
     METHOD(url_start_at, METH_O)
     METHOD(url_end_at, METH_O)
     METHOD(sprite_at, METH_O)
-        
+
     {NULL}  /* Sentinel */
 };
 
@@ -590,7 +590,7 @@ PyTypeObject Line_Type = {
     .tp_str = (reprfunc)as_unicode,
     .tp_as_sequence = &sequence_methods,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_richcompare = richcmp,                   
+    .tp_richcompare = richcmp,
     .tp_doc = "Lines",
     .tp_methods = methods,
     .tp_new = new
@@ -605,7 +605,7 @@ Line *alloc_line() {
 RICHCMP(Line)
 INIT_TYPE(Line)
 // }}}
- 
+
 static PyObject*
 copy_char(Line* self, PyObject *args) {
     unsigned int src, dest;

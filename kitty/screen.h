@@ -26,7 +26,7 @@ typedef struct {
     unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
     bool in_progress;
 } Selection;
-    
+
 typedef struct {
     PyObject_HEAD
 
@@ -75,8 +75,8 @@ void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw(Screen *screen, uint32_t codepoint);
 void screen_ensure_bounds(Screen *self, bool use_margins);
 void screen_toggle_screen_buffer(Screen *self);
-void screen_normal_keypad_mode(Screen *self); 
-void screen_alternate_keypad_mode(Screen *self);  
+void screen_normal_keypad_mode(Screen *self);
+void screen_alternate_keypad_mode(Screen *self);
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
 void screen_alignment_display(Screen *self);
 void screen_reverse_index(Screen *self);

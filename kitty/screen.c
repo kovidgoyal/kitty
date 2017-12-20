@@ -13,7 +13,7 @@
 #include "screen.h"
 #include <structmember.h>
 #include <limits.h>
-#include <sys/types.h>                                                                                          
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "unicode-data.h"
@@ -26,7 +26,7 @@ static Selection EMPTY_SELECTION = {0};
 
 // Constructor/destructor {{{
 
-static inline void 
+static inline void
 init_tabstops(bool *tabstops, index_type count) {
     // In terminfo we specify the number of initial tabstops (it) as 8
     for (unsigned int t=0; t < count; t++) {
@@ -40,7 +40,7 @@ init_tabstops(bool *tabstops, index_type count) {
         self->g_charset = self->g0_charset; \
         self->utf8_state = 0; \
         self->utf8_codepoint = 0; \
-        self->use_latin1 = false; 
+        self->use_latin1 = false;
 #define CALLBACK(...) \
     if (self->callbacks != Py_None) { \
         PyObject *callback_ret = PyObject_CallMethod(self->callbacks, __VA_ARGS__); \
@@ -84,7 +84,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
-        self->main_grman = grman_alloc(); 
+        self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
@@ -99,7 +99,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     return (PyObject*) self;
 }
 
-void 
+void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
@@ -121,7 +121,7 @@ screen_reset(Screen *self) {
     set_color_table_color(self, 104, NULL);
 }
 
-static inline HistoryBuf* 
+static inline HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
     HistoryBuf *ans = alloc_historybuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
@@ -129,7 +129,7 @@ realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
     return ans;
 }
 
-static inline LineBuf* 
+static inline LineBuf*
 realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
@@ -137,7 +137,7 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
     return ans;
 }
 
-static bool 
+static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     lines = MAX(1, lines); columns = MAX(1, columns);
 
@@ -203,7 +203,7 @@ screen_rescale_images(Screen *self, unsigned int old_cell_width, unsigned int ol
 }
 
 
-static bool 
+static bool
 screen_change_scrollback_size(Screen *self, unsigned int size) {
     if (size != self->historybuf->ynum) return historybuf_resize(self->historybuf, size);
     return true;
@@ -221,13 +221,13 @@ static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
-    Py_CLEAR(self->main_grman); 
+    Py_CLEAR(self->main_grman);
     Py_CLEAR(self->alt_grman);
     PyMem_RawFree(self->write_buf);
     Py_CLEAR(self->callbacks);
     Py_CLEAR(self->test_child);
-    Py_CLEAR(self->cursor); 
-    Py_CLEAR(self->main_linebuf); 
+    Py_CLEAR(self->cursor);
+    Py_CLEAR(self->main_linebuf);
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->historybuf);
     Py_CLEAR(self->color_profile);
@@ -236,8 +236,8 @@ dealloc(Screen* self) {
 } // }}}
 
 // Draw text {{{
- 
-void 
+
+void
 screen_change_charset(Screen *self, uint32_t which) {
     switch(which) {
         case 0:
@@ -247,7 +247,7 @@ screen_change_charset(Screen *self, uint32_t which) {
     }
 }
 
-void 
+void
 screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     bool change_g = false;
     switch(which) {
@@ -267,7 +267,7 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
 
 static int (*wcwidth_impl)(wchar_t) = wcwidth;
 
-unsigned int 
+unsigned int
 safe_wcwidth(uint32_t ch) {
     int ans = wcwidth_impl(ch);
     if (ans < 0) ans = 1;
@@ -334,9 +334,9 @@ screen_align(Screen *self) {
 
 // Graphics {{{
 
-void 
+void
 screen_alignment_display(Screen *self) {
-    // http://www.vt100.net/docs/vt510-rm/DECALN.html 
+    // http://www.vt100.net/docs/vt510-rm/DECALN.html
     screen_cursor_position(self, 1, 1);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     for (unsigned int y = 0; y < self->linebuf->ynum; y++) {
@@ -346,7 +346,7 @@ screen_alignment_display(Screen *self) {
     }
 }
 
-void 
+void
 select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count, Region *region_) {
     if (region_) {
         Region region = *region_;
@@ -418,7 +418,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
     if (response != NULL) write_escape_code_to_child(self, APC, response);
     if (x != self->cursor->x || y != self->cursor->y) {
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
-        if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom); 
+        if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom);
         screen_ensure_bounds(self, false);
     }
 }
@@ -427,7 +427,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 // Modes {{{
 
 
-void 
+void
 screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
     grman_clear(self->alt_grman);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
@@ -452,7 +452,7 @@ screen_toggle_screen_buffer(Screen *self) {
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
 void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
 
-static inline void 
+static inline void
 set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 #define SIMPLE_MODE(name) \
     case name: \
@@ -481,40 +481,40 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case DECNRCM:
             break;  // we ignore these modes
         case DECCKM:
-            self->modes.mDECCKM = val; 
+            self->modes.mDECCKM = val;
             break;
-        case DECTCEM: 
-            self->modes.mDECTCEM = val; 
+        case DECTCEM:
+            self->modes.mDECTCEM = val;
             break;
-        case DECSCNM: 
+        case DECSCNM:
             // Render screen in reverse video
             if (self->modes.mDECSCNM != val) {
-                self->modes.mDECSCNM = val; 
+                self->modes.mDECSCNM = val;
                 self->is_dirty = true;
             }
             break;
-        case DECOM: 
-            self->modes.mDECOM = val; 
+        case DECOM:
+            self->modes.mDECOM = val;
             // According to `vttest`, DECOM should also home the cursor, see
             // vttest/main.c:303.
             screen_cursor_position(self, 1, 1);
             break;
-        case DECAWM: 
+        case DECAWM:
             self->modes.mDECAWM = val; break;
-        case DECCOLM: 
+        case DECCOLM:
             // When DECCOLM mode is set, the screen is erased and the cursor
             // moves to the home position.
-            self->modes.mDECCOLM = val; 
+            self->modes.mDECCOLM = val;
             screen_erase_in_display(self, 2, false);
             screen_cursor_position(self, 1, 1);
             break;
         case CONTROL_CURSOR_BLINK:
-            self->cursor->blink = val; 
+            self->cursor->blink = val;
             break;
         case ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
             else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self);
-            break;  
+            break;
         default:
             private = mode >= 1 << 5;
             if (private) mode >>= 5;
@@ -524,7 +524,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 #undef MOUSE_MODE
 }
 
-void 
+void
 screen_set_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, true);
 }
@@ -534,7 +534,7 @@ screen_decsace(Screen *self, unsigned int val) {
     self->modes.mDECSACE = val == 2 ? true : false;
 }
 
-void 
+void
 screen_reset_mode(Screen *self, unsigned int mode) {
     set_mode_from_const(self, mode, false);
 }
@@ -561,12 +561,12 @@ screen_is_cursor_visible(Screen *self) {
     return self->modes.mDECTCEM;
 }
 
-void 
+void
 screen_backspace(Screen *self) {
     screen_cursor_back(self, 1, -1);
 }
 
-void 
+void
 screen_tab(Screen *self) {
     // Move to the next tab space, or the end of the screen if there aren't anymore left.
     unsigned int found = 0;
@@ -579,7 +579,7 @@ screen_tab(Screen *self) {
     }
 }
 
-void 
+void
 screen_backtab(Screen *self, unsigned int count) {
     // Move back count tabs
     if (!count) count = 1;
@@ -593,7 +593,7 @@ screen_backtab(Screen *self, unsigned int count) {
     }
 }
 
-void 
+void
 screen_clear_tab_stop(Screen *self, unsigned int how) {
     switch(how) {
         case 0:
@@ -610,13 +610,13 @@ screen_clear_tab_stop(Screen *self, unsigned int how) {
     }
 }
 
-void 
+void
 screen_set_tab_stop(Screen *self) {
     if (self->cursor->x < self->columns)
         self->tabstops[self->cursor->x] = true;
 }
 
-void 
+void
 screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/) {
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
@@ -624,12 +624,12 @@ screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=
     screen_ensure_bounds(self, false);
 }
 
-void 
+void
 screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_back(self, count, 1);
 }
 
-void 
+void
 screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
@@ -638,22 +638,22 @@ screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return
     if (do_carriage_return) self->cursor->x = 0;
 }
 
-void 
+void
 screen_cursor_up1(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, true, -1);
 }
 
-void 
+void
 screen_cursor_down(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, false, 1);
 }
 
-void 
+void
 screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
     screen_cursor_up(self, count, true, 1);
 }
 
-void 
+void
 screen_cursor_to_column(Screen *self, unsigned int column) {
     unsigned int x = MAX(column, 1) - 1;
     if (x != self->cursor->x) {
@@ -683,7 +683,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     linebuf_clear_line(self->linebuf, bottom); \
     self->is_dirty = true;
 
-void 
+void
 screen_index(Screen *self) {
     // Move cursor down one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
@@ -692,7 +692,7 @@ screen_index(Screen *self) {
     } else screen_cursor_down(self, 1);
 }
 
-void 
+void
 screen_scroll(Screen *self, unsigned int count) {
     // Scroll the screen up by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
@@ -708,7 +708,7 @@ screen_scroll(Screen *self, unsigned int count) {
     INDEX_GRAPHICS(1) \
     self->is_dirty = true;
 
-void 
+void
 screen_reverse_index(Screen *self) {
     // Move cursor up one line, scrolling screen if needed
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
@@ -717,7 +717,7 @@ screen_reverse_index(Screen *self) {
     } else screen_cursor_up(self, 1, false, -1);
 }
 
-void 
+void
 screen_reverse_scroll(Screen *self, unsigned int count) {
     // Scroll the screen down by count lines, not moving the cursor
     count = MIN(self->lines, count);
@@ -729,21 +729,21 @@ screen_reverse_scroll(Screen *self, unsigned int count) {
 }
 
 
-void 
+void
 screen_carriage_return(Screen *self) {
     if (self->cursor->x != 0) {
         self->cursor->x = 0;
     }
 }
 
-void 
+void
 screen_linefeed(Screen *self) {
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
     screen_ensure_bounds(self, false);
 }
 
-static inline Savepoint* 
+static inline Savepoint*
 savepoints_push(SavepointBuffer *self) {
     Savepoint *ans = self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
     if (self->count == SAVEPOINTS_SZ) self->start_of_data = (self->start_of_data + 1) % SAVEPOINTS_SZ;
@@ -751,7 +751,7 @@ savepoints_push(SavepointBuffer *self) {
     return ans;
 }
 
-static inline Savepoint* 
+static inline Savepoint*
 savepoints_pop(SavepointBuffer *self) {
     if (self->count == 0) return NULL;
     self->count--;
@@ -766,7 +766,7 @@ savepoints_pop(SavepointBuffer *self) {
     sp->g_charset = self->g_charset; \
     sp->use_latin1 = self->use_latin1;
 
-void 
+void
 screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_push(pts);
@@ -777,7 +777,7 @@ screen_save_cursor(Screen *self) {
     COPY_CHARSETS(self, sp);
 }
 
-void 
+void
 screen_restore_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
     Savepoint *sp = savepoints_pop(pts);
@@ -796,7 +796,7 @@ screen_restore_cursor(Screen *self) {
     }
 }
 
-void 
+void
 screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/) {
     unsigned int top, bottom;
     if (force_use_margins || self->modes.mDECOM) {
@@ -808,7 +808,7 @@ screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/) {
     self->cursor->y = MAX(top, MIN(self->cursor->y, bottom));
 }
 
-void 
+void
 screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
@@ -820,7 +820,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
     screen_ensure_bounds(self, false);
 }
 
-void 
+void
 screen_cursor_to_line(Screen *self, unsigned int line) {
     screen_cursor_position(self, line, self->cursor->x + 1);
 }
@@ -829,7 +829,7 @@ screen_cursor_to_line(Screen *self, unsigned int line) {
 
 // Editing {{{
 
-void 
+void
 screen_erase_in_line(Screen *self, unsigned int how, bool private) {
     /*Erases a line in a specific way.
 
@@ -870,7 +870,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
     }
 }
 
-void 
+void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
 
@@ -913,7 +913,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
 }
 
-void 
+void
 screen_insert_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
@@ -924,7 +924,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
     }
 }
 
-void 
+void
 screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
@@ -935,7 +935,7 @@ screen_delete_lines(Screen *self, unsigned int count) {
     }
 }
 
-void 
+void
 screen_insert_characters(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
@@ -950,7 +950,7 @@ screen_insert_characters(Screen *self, unsigned int count) {
     }
 }
 
-void 
+void
 screen_delete_characters(Screen *self, unsigned int count) {
     // Delete characters, later characters are moved left
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
@@ -966,7 +966,7 @@ screen_delete_characters(Screen *self, unsigned int count) {
     }
 }
 
-void 
+void
 screen_erase_characters(Screen *self, unsigned int count) {
     // Delete characters replacing them by spaces
     if (count == 0) count = 1;
@@ -984,7 +984,7 @@ screen_erase_characters(Screen *self, unsigned int count) {
 
 void
 screen_use_latin1(Screen *self, bool on) {
-    self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0; 
+    self->use_latin1 = on; self->utf8_state = 0; self->utf8_codepoint = 0;
     CALLBACK("use_utf8", "O", on ? Py_False : Py_True);
 }
 
@@ -999,12 +999,12 @@ screen_invert_colors(Screen *self) {
     return inverted;
 }
 
-void 
-screen_bell(Screen *self) {  
+void
+screen_bell(Screen *self) {
     request_window_attention(self->window_id, OPT(enable_audio_bell));
-} 
+}
 
-void 
+void
 report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     if (mode == 0) {
         switch(start_modifier) {
@@ -1018,7 +1018,7 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
     }
 }
 
-void 
+void
 report_device_status(Screen *self, unsigned int which, bool private) {
     // We dont implement the private device status codes, since I haven't come
     // across any programs that use them
@@ -1042,7 +1042,7 @@ report_device_status(Screen *self, unsigned int which, bool private) {
     }
 }
 
-void 
+void
 report_mode_status(Screen *self, unsigned int which, bool private) {
     unsigned int q = private ? which << 5 : which;
     unsigned int ans = 0;
@@ -1071,7 +1071,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
     if (sz > 0) write_escape_code_to_child(self, CSI, buf);
 }
 
-void 
+void
 screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
     if (!top) top = 1;
     if (!bottom) bottom = self->lines;
@@ -1089,7 +1089,7 @@ screen_set_margins(Screen *self, unsigned int top, unsigned int bottom) {
     }
 }
 
-void 
+void
 screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     uint8_t shape; bool blink;
     switch(secondary) {
@@ -1110,29 +1110,29 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
     }
 }
 
-void 
+void
 set_title(Screen *self, PyObject *title) {
     CALLBACK("title_changed", "O", title);
 }
 
-void 
+void
 set_icon(Screen *self, PyObject *icon) {
     CALLBACK("icon_changed", "O", icon);
 }
 
-void 
+void
 set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_dynamic_color", "Is", code, ""); }
     else { CALLBACK("set_dynamic_color", "IO", code, color); }
 }
 
-void 
+void
 set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
     else { CALLBACK("set_color_table_color", "IO", code, color); }
 }
 
-void 
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;
@@ -1252,7 +1252,7 @@ visual_line_(Screen *self, index_type y) {
         if (y < self->scrolled_by) {
             historybuf_init_line(self->historybuf, self->scrolled_by - 1 - y, self->historybuf->line);
             return self->historybuf->line;
-        } 
+        }
         y -= self->scrolled_by;
     }
     linebuf_init_line(self->linebuf, y);
@@ -1274,11 +1274,11 @@ visual_line_(Screen *self, index_type y) {
         index_type xlimit = xlimit_for_line(line); \
         if (y == end->y) xlimit = MIN(end->x + 1, xlimit); \
         index_type x_start = y == start->y ? start->x : 0;
- 
+
 
 static inline void
 apply_selection(Screen *self, uint8_t *data, SelectionBoundary *start, SelectionBoundary *end, uint8_t set_mask, bool rectangle_select) {
-    if (is_selection_empty(self, start->x, start->y, end->x, end->y)) return; 
+    if (is_selection_empty(self, start->x, start->y, end->x, end->y)) return;
     if (rectangle_select) {
         iterate_over_rectangle(start, end)
             uint8_t *line_start = data + self->columns * y;
@@ -1397,7 +1397,7 @@ visual_line(Screen *self, PyObject *args) {
     if (y >= self->lines) { Py_RETURN_NONE; }
     return Py_BuildValue("O", visual_line_(self, y));
 }
- 
+
 static PyObject*
 draw(Screen *self, PyObject *src) {
     if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
@@ -1418,7 +1418,7 @@ reset_mode(Screen *self, PyObject *args) {
     screen_reset_mode(self, mode);
     Py_RETURN_NONE;
 }
- 
+
 static PyObject*
 _select_graphic_rendition(Screen *self, PyObject *args) {
     unsigned int params[256] = {0};
@@ -1482,8 +1482,8 @@ WRAP2(rescale_images, 1, 1)
 
 static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
-    unsigned int count = 1; 
-    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL; 
+    unsigned int count = 1;
+    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL;
     if (!screen_change_scrollback_size(self, MAX(self->lines, count))) return NULL;
     Py_RETURN_NONE;
 }
@@ -1495,7 +1495,7 @@ text_for_selection(Screen *self) {
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return PyTuple_New(0);
     return text_for_range(self, start, end, self->rectangle_select, true);
 }
- 
+
 bool
 screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
     if (y >= self->lines) { return false; }
@@ -1526,7 +1526,7 @@ screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_
     } else {
         start = x, end = x;
         while(start > 0 && is_ok(start - 1)) start--;
-        while(end < self->columns - 1 && is_ok(end + 1)) end++; 
+        while(end < self->columns - 1 && is_ok(end + 1)) end++;
     }
     *s = start; *e = end;
     return true;
@@ -1592,7 +1592,7 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_
 void
 screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
 #define A(attr, val) self->url_range.attr = val;
-    A(start_x, start_x); A(end_x, end_x); A(start_y, start_y); A(end_y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); 
+    A(start_x, start_x); A(end_x, end_x); A(start_y, start_y); A(end_y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
 #undef A
 }
 
@@ -1602,19 +1602,19 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     if (ended) self->selection.in_progress = false;
 }
 
-static PyObject* 
+static PyObject*
 mark_as_dirty(Screen *self) {
     self->is_dirty = true;
     Py_RETURN_NONE;
 }
 
-static PyObject* 
+static PyObject*
 current_char_width(Screen *self) {
 #define current_char_width_doc "The width of the character under the cursor"
     return PyLong_FromUnsignedLong(screen_current_char_width(self));
 }
 
-static PyObject* 
+static PyObject*
 is_main_linebuf(Screen *self) {
     PyObject *ans = (self->linebuf == self->main_linebuf) ? Py_True : Py_False;
     Py_INCREF(ans);
@@ -1743,17 +1743,17 @@ static PyMemberDef members[] = {
     {"history_line_added_count", T_UINT, offsetof(Screen, history_line_added_count), 0, "history_line_added_count"},
     {NULL}
 };
- 
+
 PyTypeObject Screen_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Screen",
     .tp_basicsize = sizeof(Screen),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Screen",
     .tp_methods = methods,
     .tp_members = members,
-    .tp_new = new,                
+    .tp_new = new,
     .tp_getset = getsetters,
 };
 

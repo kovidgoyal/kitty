@@ -274,7 +274,7 @@ static inline bool is_emoji(uint32_t code) {
 			return true;
 		default: return false;
 	}
-	return false; 
+	return false;
 }
 static inline bool is_emoji_modifier(uint32_t code) {
 	switch(code) {
@@ -282,6 +282,6 @@ static inline bool is_emoji_modifier(uint32_t code) {
 			return true;
 		default: return false;
 	}
-	return false; 
+	return false;
 }
 END_ALLOW_CASE_RANGE

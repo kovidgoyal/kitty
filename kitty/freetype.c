@@ -38,7 +38,7 @@ PyTypeObject Face_Type;
 
 static PyObject* FreeType_Exception = NULL;
 
-void 
+void
 set_freetype_error(const char* prefix, int err_code) {
     int i = 0;
 #undef FTERRORS_H_
@@ -54,7 +54,7 @@ set_freetype_error(const char* prefix, int err_code) {
 
 #ifdef FT_ERRORS_H
 #include FT_ERRORS_H
-#else 
+#else
     FT_ERROR_START_LIST FT_ERROR_END_LIST
 #endif
 
@@ -121,8 +121,8 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
                 return true;
             }
         }
-        set_freetype_error("Failed to set char size, with error:", error); 
-        return false; 
+        set_freetype_error("Failed to set char size, with error:", error);
+        return false;
     }
     return !error;
 }
@@ -170,7 +170,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
 PyObject*
 ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float apple_leading) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
-    if (ans == NULL) return NULL; 
+    if (ans == NULL) return NULL;
     int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
     if(error) { set_freetype_error("Failed to load memory face, with error:", error); Py_CLEAR(ans); return NULL; }
     if (!init_ft_face(ans, path, hinting, hintstyle)) { Py_CLEAR(ans); return NULL; }
@@ -232,7 +232,7 @@ face_from_descriptor(PyObject *descriptor) {
     }
     return (PyObject*)self;
 }
- 
+
 PyObject*
 face_from_path(const char *path, int index) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
@@ -265,7 +265,7 @@ repr(Face *self) {
 }
 
 
-static inline bool 
+static inline bool
 load_glyph(Face *self, int glyph_index, int load_type) {
     int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
@@ -285,7 +285,7 @@ calc_cell_width(Face *self) {
     return ans;
 }
 
-void 
+void
 cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
@@ -295,7 +295,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     *underline_thickness = MAX(1, font_units_to_pixels(self, self->underline_thickness));
 }
 
-unsigned int 
+unsigned int
 glyph_id_for_codepoint(PyObject *s, char_type cp) {
     return FT_Get_Char_Index(((Face*)s)->face, cp);
 }
@@ -376,12 +376,12 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
             for (unsigned int y=sr; y < MIN(sr + factor, bm->rows); y++) {
                 uint8_t *p = bm->buf + (y * bm->stride) + sc * 4;
                 for (unsigned int x=sc; x < MIN(sc + factor, bm->width); x++, count++) {
-                    b += *(p++); g += *(p++); r += *(p++); a += *(p++); 
+                    b += *(p++); g += *(p++); r += *(p++); a += *(p++);
                 }
             }
             if (count) {
                 d[0] = b / count; d[1] = g / count; d[2] = r / count; d[3] = a / count;
-            } 
+            }
 
         }
     }
@@ -506,7 +506,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         y = (float)positions[i].y_offset / 64.0f;
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
-        if (bm.needs_free) free(bm.buf); 
+        if (bm.needs_free) free(bm.buf);
     }
 
     // center the glyphs in the canvas
@@ -560,8 +560,8 @@ PyTypeObject Face_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Face",
     .tp_basicsize = sizeof(Face),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "FreeType Font face",
     .tp_methods = methods,
     .tp_members = members,
@@ -573,11 +573,11 @@ free_freetype() {
     FT_Done_FreeType(library);
 }
 
-bool 
+bool
 init_freetype_library(PyObject *m) {
     if (PyType_Ready(&Face_Type) < 0) return 0;
-    if (PyModule_AddObject(m, "Face", (PyObject *)&Face_Type) != 0) return 0; 
-    Py_INCREF(&Face_Type); 
+    if (PyModule_AddObject(m, "Face", (PyObject *)&Face_Type) != 0) return 0;
+    Py_INCREF(&Face_Type);
     FreeType_Exception = PyErr_NewException("fast_data_types.FreeTypeError", NULL, NULL);
     if (FreeType_Exception == NULL) return false;
     if (PyModule_AddObject(m, "FreeTypeError", FreeType_Exception) != 0) return false;

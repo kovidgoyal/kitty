@@ -43,7 +43,7 @@ static uint32_t charset_translations[5][256] = {
     0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
     0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7,
     0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff
-  }, 
+  },
   /* VT100 graphics mapped to Unicode */
   {
     0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007,
@@ -81,7 +81,7 @@ static uint32_t charset_translations[5][256] = {
   },
   /* IBM Codepage 437 mapped to Unicode */
   {
-    0x0000, 0x263a, 0x263b, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022, 
+    0x0000, 0x263a, 0x263b, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
     0x25d8, 0x25cb, 0x25d9, 0x2642, 0x2640, 0x266a, 0x266b, 0x263c,
     0x25b6, 0x25c0, 0x2195, 0x203c, 0x00b6, 0x00a7, 0x25ac, 0x21a8,
     0x2191, 0x2193, 0x2192, 0x2190, 0x221f, 0x2194, 0x25b2, 0x25bc,
@@ -113,7 +113,7 @@ static uint32_t charset_translations[5][256] = {
     0x03a6, 0x0398, 0x03a9, 0x03b4, 0x221e, 0x03c6, 0x03b5, 0x2229,
     0x2261, 0x00b1, 0x2265, 0x2264, 0x2320, 0x2321, 0x00f7, 0x2248,
     0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0
-  }, 
+  },
   // VAX 42 map
   {
     0x0000, 0x263a, 0x263b, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022,
@@ -183,13 +183,13 @@ static uint32_t charset_translations[5][256] = {
     0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef,
     0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7,
     0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff
-  }, 
+  },
 
 };
 
-uint32_t* 
+uint32_t*
 translation_table(uint32_t which) {
-    switch(which){ 
+    switch(which){
         case 'B':
             return charset_translations[0];
         case '0':
@@ -208,7 +208,7 @@ translation_table(uint32_t which) {
 uint32_t *latin1_charset = charset_translations[0];
 
 // UTF-8 decode taken from: http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
- 
+
 static const uint8_t utf8_data[] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 20..3f
@@ -226,7 +226,7 @@ static const uint8_t utf8_data[] = {
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
 };
 
-uint32_t 
+uint32_t
 decode_utf8(uint32_t* state, uint32_t* codep, uint8_t byte) {
   uint32_t type = utf8_data[byte];
 
@@ -278,7 +278,7 @@ base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_cap
     if (!src_sz) { *dest_sz = 0; return NULL; }
     if (src_sz % 4 != 0) return "base64 encoded data must have a length that is a multiple of four";
     *dest_sz = (src_sz / 4) * 3;
-    if (src[src_sz - 1] == '=') (*dest_sz)--; 
+    if (src[src_sz - 1] == '=') (*dest_sz)--;
     if (src[src_sz - 2] == '=') (*dest_sz)--;
     if (*dest_sz > dest_capacity) return "output buffer too small";
     for (size_t i = 0, j = 0; i < src_sz;) {

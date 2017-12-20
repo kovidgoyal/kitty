@@ -22,24 +22,24 @@ static void
 check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, ...) {
 #define f(msg) fatal("OpenGL error: %s (calling function: %s)", msg, name); break;
     GLenum code = glad_glGetError();
-    switch(code) { 
+    switch(code) {
         case GL_NO_ERROR: break;
-        case GL_INVALID_ENUM: 
-            f("An enum value is invalid (GL_INVALID_ENUM)"); 
-        case GL_INVALID_VALUE: 
-            f("An numeric value is invalid (GL_INVALID_VALUE)"); 
-        case GL_INVALID_OPERATION: 
-            f("This operation is invalid (GL_INVALID_OPERATION)"); 
-        case GL_INVALID_FRAMEBUFFER_OPERATION: 
-            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)"); 
-        case GL_OUT_OF_MEMORY: 
-            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)"); 
-        case GL_STACK_UNDERFLOW: 
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"); 
-        case GL_STACK_OVERFLOW: 
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"); 
-        default: 
-            fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name); 
+        case GL_INVALID_ENUM:
+            f("An enum value is invalid (GL_INVALID_ENUM)");
+        case GL_INVALID_VALUE:
+            f("An numeric value is invalid (GL_INVALID_VALUE)");
+        case GL_INVALID_OPERATION:
+            f("This operation is invalid (GL_INVALID_OPERATION)");
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)");
+        case GL_OUT_OF_MEMORY:
+            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)");
+        case GL_STACK_UNDERFLOW:
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)");
+        case GL_STACK_OVERFLOW:
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)");
+        default:
+            fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name);
             break;
     }
 }
@@ -73,7 +73,7 @@ update_surface_size(int w, int h, GLuint offscreen_texture_id) {
 
 void
 free_texture(GLuint *tex_id) {
-    glDeleteTextures(1, tex_id); 
+    glDeleteTextures(1, tex_id);
     *tex_id = 0;
 }
 
@@ -288,7 +288,7 @@ add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
 static void
 add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
     VAO *vao = vaos + vao_idx;
-    if (!vao->num_buffers) fatal("You must create a buffer for this attribute first"); 
+    if (!vao->num_buffers) fatal("You must create a buffer for this attribute first");
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
@@ -315,7 +315,7 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
 static inline void
 add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
     GLint aloc = attrib_location(p, name);
-    if (aloc == -1) fatal("No attribute named: %s found in this program", name); 
+    if (aloc == -1) fatal("No attribute named: %s found in this program", name);
     add_located_attribute_to_vao(vao_idx, aloc, size, data_type, stride, offset, divisor);
 }
 

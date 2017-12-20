@@ -16,7 +16,7 @@
 /* *Insert/Replace Mode*: When enabled, new display characters move
    old display characters to the right. Characters moved past the
    right margin are lost. Otherwise, new display characters replace
-   old display characters at the cursor position. 
+   old display characters at the cursor position.
 */
 #define IRM 4
 

@@ -39,7 +39,7 @@ repr(Cursor *self) {
     );
 }
 
-void 
+void
 cursor_reset_display_attrs(Cursor *self) {
     self->bg = 0; self->fg = 0; self->decoration_fg = 0;
     self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
@@ -50,25 +50,25 @@ static inline void
 parse_color(unsigned int *params, unsigned int *i, unsigned int count, uint32_t *result) {
     unsigned int attr;
     uint8_t r, g, b;
-    if (*i < count) { 
+    if (*i < count) {
         attr = params[(*i)++];
-        switch(attr) { 
-            case 5: 
-                if (*i < count) *result = (params[(*i)++] & 0xFF) << 8 | 1; 
-                break; 
+        switch(attr) {
+            case 5:
+                if (*i < count) *result = (params[(*i)++] & 0xFF) << 8 | 1;
+                break;
             case 2: \
-                if (*i < count - 2) { 
-                    /* Ignore the first parameter in a four parameter RGB */ 
-                    /* sequence (unused color space id), see https://github.com/kovidgoyal/kitty/issues/227 */ 
-                    if (*i < count - 3) (*i)++; 
-                    r = params[(*i)++] & 0xFF; 
-                    g = params[(*i)++] & 0xFF; 
-                    b = params[(*i)++] & 0xFF; 
-                    *result = r << 24 | g << 16 | b << 8 | 2; 
+                if (*i < count - 2) {
+                    /* Ignore the first parameter in a four parameter RGB */
+                    /* sequence (unused color space id), see https://github.com/kovidgoyal/kitty/issues/227 */
+                    if (*i < count - 3) (*i)++;
+                    r = params[(*i)++] & 0xFF;
+                    g = params[(*i)++] & 0xFF;
+                    b = params[(*i)++] & 0xFF;
+                    *result = r << 24 | g << 16 | b << 8 | 2;
                 }
-                break; 
-        } 
-    } 
+                break;
+        }
+    }
 }
 
 
@@ -109,13 +109,13 @@ START_ALLOW_CASE_RANGE
                 self->strikethrough = false;  break;
             case 30 ... 37:
                 self->fg = ((attr - 30) << 8) | 1;  break;
-            case 38: 
+            case 38:
                 SET_COLOR(fg);
             case 39:
                 self->fg = 0;  break;
             case 40 ... 47:
                 self->bg = ((attr - 40) << 8) | 1;  break;
-            case 48: 
+            case 48:
                 SET_COLOR(bg);
             case 49:
                 self->bg = 0;  break;
@@ -124,7 +124,7 @@ START_ALLOW_CASE_RANGE
             case 100 ... 107:
                 self->bg = ((attr - 100 + 8) << 8) | 1;  break;
             case DECORATION_FG_CODE:
-                SET_COLOR(decoration_fg); 
+                SET_COLOR(decoration_fg);
             case DECORATION_FG_CODE + 1:
                 self->decoration_fg = 0; break;
         }
@@ -149,7 +149,7 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
         attr = params[i++];
         switch(attr) {
             case 0:
-                RANGE { cell->attrs &= WIDTH_MASK; cell->fg = 0; cell->bg = 0; cell->decoration_fg = 0; } 
+                RANGE { cell->attrs &= WIDTH_MASK; cell->fg = 0; cell->bg = 0; cell->decoration_fg = 0; }
                 break;
             case 1:
                 SET(BOLD_SHIFT);
@@ -177,13 +177,13 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
 START_ALLOW_CASE_RANGE
             case 30 ... 37:
                 SIMPLE(fg, ((attr - 30) << 8) | 1);
-            case 38: 
+            case 38:
                 SET_COLOR(fg);
             case 39:
                 SIMPLE(fg, 0);
             case 40 ... 47:
                 SIMPLE(bg, ((attr - 40) << 8) | 1);
-            case 48: 
+            case 48:
                 SET_COLOR(bg);
             case 49:
                 SIMPLE(bg, 0);
@@ -224,14 +224,14 @@ color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsi
 static inline const char*
 decoration_as_sgr(uint8_t decoration) {
     switch(decoration) {
-        case 1: return "4"; 
-        case 2: return "4:2";  
+        case 1: return "4";
+        case 2: return "4:2";
         case 3: return "4:3";
         default: return "24";
     }
 }
 
-const char* 
+const char*
 cursor_as_sgr(Cursor *self, Cursor *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
@@ -267,8 +267,8 @@ void cursor_reset(Cursor *self) {
 
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
-    CCY(x); CCY(y); CCY(shape); CCY(blink); 
-    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg); 
+    CCY(x); CCY(y); CCY(shape); CCY(blink);
+    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
 }
 
 static PyObject*
@@ -317,21 +317,21 @@ PyTypeObject Cursor_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.Cursor",
     .tp_basicsize = sizeof(Cursor),
-    .tp_dealloc = (destructor)dealloc, 
+    .tp_dealloc = (destructor)dealloc,
     .tp_repr = (reprfunc)repr,
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Cursors",
-    .tp_richcompare = richcmp,                   
+    .tp_richcompare = richcmp,
     .tp_methods = methods,
-    .tp_members = members,            
+    .tp_members = members,
     .tp_getset = getseters,
-    .tp_new = new,                
+    .tp_new = new,
 };
 
 RICHCMP(Cursor)
 
 // }}}
- 
+
 Cursor*
 cursor_copy(Cursor *self) {
     Cursor* ans;

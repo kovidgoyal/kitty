@@ -7,7 +7,7 @@
 
 #pragma once
 
-#ifndef BufType 
+#ifndef BufType
 #define BufType LineBuf
 #endif
 
@@ -41,13 +41,13 @@
 #define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? (src->line_attrs[src_y + 1] & CONTINUED_MASK) : false)
 #endif
 
-static inline void 
+static inline void
 copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
     memcpy(dest->cells + dest_at, src->cells + src_at, num * sizeof(Cell));
 }
 
 
-static void 
+static void
 rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf) {
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
@@ -60,7 +60,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         if (!src_line_is_continued) {
             // Trim trailing blanks since there is a hard line break at the end of this line
             while(src_x_limit && (src->line->cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
-            
+
         }
         while (src_x < src_x_limit) {
             if (dest_x >= dest->xnum) { next_dest_line(true); dest_x = 0; }
