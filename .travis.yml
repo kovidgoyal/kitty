@@ -123,6 +123,7 @@ before_script:
     - $PYTHON setup.py build --debug --verbose $SANITIZE_ARG;
 
 script:
+    - if grep -Inr '\s$' kitty kitty_tests *.py *.asciidoc .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
     - if [[ -z $SANITIZE_ARG ]]; then $PYTHON test.py; else ./asan-launcher test.py; fi
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
     - if [[ "$BUILD_PKG" == "1" ]]; then $PYTHON setup.py linux-package; fi
