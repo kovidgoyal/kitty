@@ -7,7 +7,7 @@ from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
 from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
-from .constants import set_boss, wakeup
+from .constants import appname, set_boss, wakeup
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -19,9 +19,8 @@ from .keys import get_shortcut
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
-    encode_wm_class, end_startup_notification, get_primary_selection,
-    init_startup_notification, open_url, safe_print, set_primary_selection,
-    single_instance
+    end_startup_notification, get_primary_selection, init_startup_notification,
+    open_url, safe_print, set_primary_selection, single_instance
 )
 
 
@@ -82,7 +81,8 @@ class Boss:
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, visible=True):
         if os_window_id is None:
             w, h = initial_window_size(self.opts) if size is None else size
-            os_window_id = create_os_window(w, h, encode_wm_class(wname or self.args.name, wclass or self.args.cls), visible)
+            cls = wclass or self.args.cls or appname
+            os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls, visible)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id

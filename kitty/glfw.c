@@ -266,9 +266,9 @@ set_dpi_from_window(OSWindow *w) {
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height, visible = 1, swap_interval = 0, x = -1, y = -1;
-    char *title;
+    char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iis|pOiii", &width, &height, &title, &visible, &load_programs, &swap_interval, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "iisss|pOiii", &width, &height, &title, &wm_class_name, &wm_class_class, &visible, &load_programs, &swap_interval, &x, &y)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
@@ -291,6 +291,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
             PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL;
         }
     }
+
+#ifndef __APPLE__
+    glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
+    glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
+#endif
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {
         PyErr_SetString(PyExc_ValueError, "Too many windows");

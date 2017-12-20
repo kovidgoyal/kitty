@@ -12,15 +12,15 @@ from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, parse_args
 from .config import initial_window_size, load_cached_values, save_cached_values
-from .constants import glfw_path, is_macos, is_wayland, logo_data_file
+from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file
 from .fast_data_types import (
     change_wcwidth, create_os_window, glfw_init, glfw_terminate,
     install_sigchld_handler, set_default_window_icon, set_options, show_window
 )
 from .fonts.box_drawing import set_scale
 from .utils import (
-    detach, encode_wm_class, end_startup_notification,
-    init_startup_notification, single_instance
+    detach, end_startup_notification, init_startup_notification,
+    single_instance
 )
 from .window import load_shader_programs
 
@@ -42,7 +42,7 @@ def run_app(opts, args):
     set_options(opts, is_wayland, args.debug_gl)
     load_cached_values()
     w, h = initial_window_size(opts)
-    window_id = create_os_window(w, h, encode_wm_class(args.name, args.cls), False, load_all_shaders)
+    window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, False, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
     show_window(window_id)
     if not is_wayland and not is_macos:  # no window icons on wayland
