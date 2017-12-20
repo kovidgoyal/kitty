@@ -212,6 +212,10 @@ static int translateState(int state)
         mods |= GLFW_MOD_ALT;
     if (state & Mod4Mask)
         mods |= GLFW_MOD_SUPER;
+    if (state & LockMask)
+        mods |= GLFW_MOD_CAPS_LOCK;
+    if (state & Mod2Mask)
+        mods |= GLFW_MOD_NUM_LOCK;
 
     return mods;
 }
@@ -703,49 +707,34 @@ static GLFWbool createNativeWindow(_GLFWwindow* window,
 
     updateNormalHints(window, wndconfig->width, wndconfig->height);
 
-    // Set ICCCM WM_CLASS property and window title
+    // Set ICCCM WM_CLASS property
     {
         XClassHint* hint = XAllocClassHint();
-        char *wm_cclass = NULL, *wm_cname = NULL;
-        const char *real_title = wndconfig->title;
 
-        if (strlen(_glfw.hints.init.x11.className) &&
-            strlen(_glfw.hints.init.x11.classClass))
+        if (strlen(wndconfig->x11.instanceName) &&
+            strlen(wndconfig->x11.className))
         {
-            hint->res_name = (char*) _glfw.hints.init.x11.className;
-            hint->res_class = (char*) _glfw.hints.init.x11.classClass;
-        }
-        else if (strlen(real_title))
-        {
-            if (*real_title == 1) {
-                char *p = strchr(real_title, 30);
-                if (p && p > real_title + 1) {
-                    wm_cname = calloc(p - real_title + 1, 1);
-                    if (wm_cname) memcpy(wm_cname, real_title + 1, p - real_title - 1);
-                    hint->res_name = wm_cname;
-                    char *q = strchr(p + 1, 30);
-                    if (q && q > p + 1) {
-                        wm_cclass = calloc(q - p + 1, 1);
-                        if (wm_cclass) memcpy(wm_cclass, p + 1, q - p - 1);
-                        hint->res_class = wm_cclass;
-                        real_title = q + 1;
-                    }
-                }
-            } else {
-                hint->res_name = (char*) real_title;
-                hint->res_class = (char*) real_title;
-            }
+            hint->res_name = (char*) wndconfig->x11.instanceName;
+            hint->res_class = (char*) wndconfig->x11.className;
         }
         else
         {
-            hint->res_name = (char*) "glfw-application";
-            hint->res_class = (char*) "GLFW-Application";
+            const char* resourceName = getenv("RESOURCE_NAME");
+            if (resourceName && strlen(resourceName))
+                hint->res_name = (char*) resourceName;
+            else if (strlen(wndconfig->title))
+                hint->res_name = (char*) wndconfig->title;
+            else
+                hint->res_name = (char*) "glfw-application";
+
+            if (strlen(wndconfig->title))
+                hint->res_class = (char*) wndconfig->title;
+            else
+                hint->res_class = (char*) "GLFW-Application";
         }
 
         XSetClassHint(_glfw.x11.display, window->x11.handle, hint);
         XFree(hint);
-        free(wm_cclass); free(wm_cname);
-        _glfwPlatformSetWindowTitle(window, real_title);
     }
 
     // Announce support for Xdnd (drag and drop)
@@ -756,6 +745,7 @@ static GLFWbool createNativeWindow(_GLFWwindow* window,
                         PropModeReplace, (unsigned char*) &version, 1);
     }
 
+    _glfwPlatformSetWindowTitle(window, wndconfig->title);
 
     if (_glfw.x11.im)
     {

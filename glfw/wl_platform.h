@@ -183,6 +183,8 @@ typedef struct _GLFWlibraryWayland
         xkb_mod_mask_t          altMask;
         xkb_mod_mask_t          shiftMask;
         xkb_mod_mask_t          superMask;
+        xkb_mod_mask_t          capsLockMask;
+        xkb_mod_mask_t          numLockMask;
         unsigned int            modifiers;
 
         PFN_xkb_context_new context_new;

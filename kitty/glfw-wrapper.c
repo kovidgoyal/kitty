@@ -23,9 +23,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwInitHint_impl) = dlsym(handle, "glfwInitHint");
     if (glfwInitHint_impl == NULL) fail("Failed to load glfw function glfwInitHint with error: %s", dlerror());
 
-    *(void **) (&glfwInitHintString_impl) = dlsym(handle, "glfwInitHintString");
-    if (glfwInitHintString_impl == NULL) fail("Failed to load glfw function glfwInitHintString with error: %s", dlerror());
-
     *(void **) (&glfwGetVersion_impl) = dlsym(handle, "glfwGetVersion");
     if (glfwGetVersion_impl == NULL) fail("Failed to load glfw function glfwGetVersion with error: %s", dlerror());
 
@@ -56,6 +53,12 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetMonitorName_impl) = dlsym(handle, "glfwGetMonitorName");
     if (glfwGetMonitorName_impl == NULL) fail("Failed to load glfw function glfwGetMonitorName with error: %s", dlerror());
 
+    *(void **) (&glfwSetMonitorUserPointer_impl) = dlsym(handle, "glfwSetMonitorUserPointer");
+    if (glfwSetMonitorUserPointer_impl == NULL) fail("Failed to load glfw function glfwSetMonitorUserPointer with error: %s", dlerror());
+
+    *(void **) (&glfwGetMonitorUserPointer_impl) = dlsym(handle, "glfwGetMonitorUserPointer");
+    if (glfwGetMonitorUserPointer_impl == NULL) fail("Failed to load glfw function glfwGetMonitorUserPointer with error: %s", dlerror());
+
     *(void **) (&glfwSetMonitorCallback_impl) = dlsym(handle, "glfwSetMonitorCallback");
     if (glfwSetMonitorCallback_impl == NULL) fail("Failed to load glfw function glfwSetMonitorCallback with error: %s", dlerror());
 
@@ -79,6 +82,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwWindowHint_impl) = dlsym(handle, "glfwWindowHint");
     if (glfwWindowHint_impl == NULL) fail("Failed to load glfw function glfwWindowHint with error: %s", dlerror());
+
+    *(void **) (&glfwWindowHintString_impl) = dlsym(handle, "glfwWindowHintString");
+    if (glfwWindowHintString_impl == NULL) fail("Failed to load glfw function glfwWindowHintString with error: %s", dlerror());
 
     *(void **) (&glfwCreateWindow_impl) = dlsym(handle, "glfwCreateWindow");
     if (glfwCreateWindow_impl == NULL) fail("Failed to load glfw function glfwCreateWindow with error: %s", dlerror());
@@ -286,6 +292,12 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetJoystickGUID_impl) = dlsym(handle, "glfwGetJoystickGUID");
     if (glfwGetJoystickGUID_impl == NULL) fail("Failed to load glfw function glfwGetJoystickGUID with error: %s", dlerror());
+
+    *(void **) (&glfwSetJoystickUserPointer_impl) = dlsym(handle, "glfwSetJoystickUserPointer");
+    if (glfwSetJoystickUserPointer_impl == NULL) fail("Failed to load glfw function glfwSetJoystickUserPointer with error: %s", dlerror());
+
+    *(void **) (&glfwGetJoystickUserPointer_impl) = dlsym(handle, "glfwGetJoystickUserPointer");
+    if (glfwGetJoystickUserPointer_impl == NULL) fail("Failed to load glfw function glfwGetJoystickUserPointer with error: %s", dlerror());
 
     *(void **) (&glfwJoystickIsGamepad_impl) = dlsym(handle, "glfwJoystickIsGamepad");
     if (glfwJoystickIsGamepad_impl == NULL) fail("Failed to load glfw function glfwJoystickIsGamepad with error: %s", dlerror());

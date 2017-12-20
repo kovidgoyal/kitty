@@ -710,8 +710,6 @@ bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
-    ADDC(GLFW_X11_WM_CLASS_NAME)
-    ADDC(GLFW_X11_WM_CLASS_CLASS)
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);

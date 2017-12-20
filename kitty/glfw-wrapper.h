@@ -251,17 +251,37 @@
  *  @{ */
 
 /*! @brief If this bit is set one or more Shift keys were held down.
+ *
+ *  If this bit is set one or more Shift keys were held down.
  */
 #define GLFW_MOD_SHIFT           0x0001
 /*! @brief If this bit is set one or more Control keys were held down.
+ *
+ *  If this bit is set one or more Control keys were held down.
  */
 #define GLFW_MOD_CONTROL         0x0002
 /*! @brief If this bit is set one or more Alt keys were held down.
+ *
+ *  If this bit is set one or more Alt keys were held down.
  */
 #define GLFW_MOD_ALT             0x0004
 /*! @brief If this bit is set one or more Super keys were held down.
+ *
+ *  If this bit is set one or more Super keys were held down.
  */
 #define GLFW_MOD_SUPER           0x0008
+/*! @brief If this bit is set the Caps Lock key is enabled.
+ *
+ *  If this bit is set the Caps Lock key is enabled and the @ref
+ *  GLFW_LOCK_KEY_MODS input mode is set.
+ */
+#define GLFW_MOD_CAPS_LOCK       0x0010
+/*! @brief If this bit is set the Num Lock key is enabled.
+ *
+ *  If this bit is set the Num Lock key is enabled and the @ref
+ *  GLFW_LOCK_KEY_MODS input mode is set.
+ */
+#define GLFW_MOD_NUM_LOCK        0x0020
 
 /*! @} */
 
@@ -702,8 +722,11 @@
 #define GLFW_CONTEXT_CREATION_API   0x0002200B
 
 #define GLFW_COCOA_RETINA_FRAMEBUFFER 0x00023001
-#define GLFW_COCOA_FRAME_AUTOSAVE     0x00023002
+#define GLFW_COCOA_FRAME_NAME         0x00023002
 #define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
+
+#define GLFW_X11_CLASS_NAME         0x00024001
+#define GLFW_X11_INSTANCE_NAME      0x00024002
 /*! @} */
 
 #define GLFW_NO_API                          0
@@ -721,6 +744,7 @@
 #define GLFW_CURSOR                 0x00033001
 #define GLFW_STICKY_KEYS            0x00033002
 #define GLFW_STICKY_MOUSE_BUTTONS   0x00033003
+#define GLFW_LOCK_KEY_MODS          0x00033004
 
 #define GLFW_CURSOR_NORMAL          0x00034001
 #define GLFW_CURSOR_HIDDEN          0x00034002
@@ -783,9 +807,6 @@
 
 #define GLFW_COCOA_CHDIR_RESOURCES  0x00051001
 #define GLFW_COCOA_MENUBAR          0x00051002
-
-#define GLFW_X11_WM_CLASS_NAME      0x00052001
-#define GLFW_X11_WM_CLASS_CLASS     0x00052002
 /*! @} */
 
 #define GLFW_DONT_CARE              -1
@@ -804,7 +825,7 @@
  *  @sa @ref glfwGetProcAddress
  *
  *  @since Added in version 3.0.
-
+ *
  *  @ingroup context
  */
 typedef void (*GLFWglproc)(void);
@@ -1359,10 +1380,6 @@ typedef void (*glfwInitHint_func)(int, int);
 glfwInitHint_func glfwInitHint_impl;
 #define glfwInitHint glfwInitHint_impl
 
-typedef void (*glfwInitHintString_func)(int, const char*);
-glfwInitHintString_func glfwInitHintString_impl;
-#define glfwInitHintString glfwInitHintString_impl
-
 typedef void (*glfwGetVersion_func)(int*, int*, int*);
 glfwGetVersion_func glfwGetVersion_impl;
 #define glfwGetVersion glfwGetVersion_impl
@@ -1403,6 +1420,14 @@ typedef const char* (*glfwGetMonitorName_func)(GLFWmonitor*);
 glfwGetMonitorName_func glfwGetMonitorName_impl;
 #define glfwGetMonitorName glfwGetMonitorName_impl
 
+typedef void (*glfwSetMonitorUserPointer_func)(GLFWmonitor*, void*);
+glfwSetMonitorUserPointer_func glfwSetMonitorUserPointer_impl;
+#define glfwSetMonitorUserPointer glfwSetMonitorUserPointer_impl
+
+typedef void* (*glfwGetMonitorUserPointer_func)(GLFWmonitor*);
+glfwGetMonitorUserPointer_func glfwGetMonitorUserPointer_impl;
+#define glfwGetMonitorUserPointer glfwGetMonitorUserPointer_impl
+
 typedef GLFWmonitorfun (*glfwSetMonitorCallback_func)(GLFWmonitorfun);
 glfwSetMonitorCallback_func glfwSetMonitorCallback_impl;
 #define glfwSetMonitorCallback glfwSetMonitorCallback_impl
@@ -1434,6 +1459,10 @@ glfwDefaultWindowHints_func glfwDefaultWindowHints_impl;
 typedef void (*glfwWindowHint_func)(int, int);
 glfwWindowHint_func glfwWindowHint_impl;
 #define glfwWindowHint glfwWindowHint_impl
+
+typedef void (*glfwWindowHintString_func)(int, const char*);
+glfwWindowHintString_func glfwWindowHintString_impl;
+#define glfwWindowHintString glfwWindowHintString_impl
 
 typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, GLFWwindow*);
 glfwCreateWindow_func glfwCreateWindow_impl;
@@ -1710,6 +1739,14 @@ glfwGetJoystickName_func glfwGetJoystickName_impl;
 typedef const char* (*glfwGetJoystickGUID_func)(int);
 glfwGetJoystickGUID_func glfwGetJoystickGUID_impl;
 #define glfwGetJoystickGUID glfwGetJoystickGUID_impl
+
+typedef void (*glfwSetJoystickUserPointer_func)(int, void*);
+glfwSetJoystickUserPointer_func glfwSetJoystickUserPointer_impl;
+#define glfwSetJoystickUserPointer glfwSetJoystickUserPointer_impl
+
+typedef void* (*glfwGetJoystickUserPointer_func)(int);
+glfwGetJoystickUserPointer_func glfwGetJoystickUserPointer_impl;
+#define glfwGetJoystickUserPointer glfwGetJoystickUserPointer_impl
 
 typedef int (*glfwJoystickIsGamepad_func)(int);
 glfwJoystickIsGamepad_func glfwJoystickIsGamepad_impl;

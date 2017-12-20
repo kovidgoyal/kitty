@@ -281,10 +281,6 @@ struct _GLFWinitconfig
         GLFWbool  menubar;
         GLFWbool  chdir;
     } ns;
-    struct {
-        char      className[256];
-        char      classClass[256];
-    } x11;
 };
 
 /*! @brief Window configuration.
@@ -308,8 +304,12 @@ struct _GLFWwndconfig
     GLFWbool      centerCursor;
     struct {
         GLFWbool  retina;
-        GLFWbool  frame;
+        char      frameName[256];
     } ns;
+    struct {
+        char      className[256];
+        char      instanceName[256];
+    } x11;
 };
 
 /*! @brief Context configuration.
@@ -419,6 +419,7 @@ struct _GLFWwindow
 
     GLFWbool            stickyKeys;
     GLFWbool            stickyMouseButtons;
+    GLFWbool            lockKeyMods;
     int                 cursorMode;
     char                mouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     char                keys[GLFW_KEY_LAST + 1];
@@ -455,6 +456,7 @@ struct _GLFWwindow
 struct _GLFWmonitor
 {
     char*           name;
+    void*           userPointer;
 
     // Physical dimensions in millimeters.
     int             widthMM, heightMM;
@@ -513,6 +515,7 @@ struct _GLFWjoystick
     unsigned char*  hats;
     int             hatCount;
     char*           name;
+    void*           userPointer;
     char            guid[33];
     _GLFWmapping*   mapping;
 
