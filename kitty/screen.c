@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include "unicode-data.h"
 #include "modes.h"
-#include "wcwidth9.h"
+#include "wcwidth-std.h"
 #include "control-codes.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
@@ -275,8 +275,8 @@ safe_wcwidth(uint32_t ch) {
 }
 
 void
-change_wcwidth(bool use9) {
-    wcwidth_impl = (use9) ? wcwidth9 : wcwidth;
+change_wcwidth(bool use_std) {
+    wcwidth_impl = use_std ? wcwidth_std : wcwidth;
 }
 
 

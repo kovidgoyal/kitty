@@ -1,9 +1,17 @@
+// unicode data, built from the unicode standard on: 2017-12-20
+// see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
 
 START_ALLOW_CASE_RANGE
-static inline bool is_emoji(uint32_t code) {
+
+static inline bool
+is_emoji(char_type code) {
 	switch(code) {
+		case 0x2194 ... 0x2199:
+			return true;
+		case 0x21a9 ... 0x21aa:
+			return true;
 		case 0x231a ... 0x231b:
 			return true;
 		case 0x2328:
@@ -274,14 +282,16 @@ static inline bool is_emoji(uint32_t code) {
 			return true;
 		default: return false;
 	}
-	return false;
+	return false; 
 }
-static inline bool is_emoji_modifier(uint32_t code) {
+static inline bool
+is_emoji_modifier(char_type code) {
 	switch(code) {
 		case 0x1f3fb ... 0x1f3ff:
 			return true;
 		default: return false;
 	}
-	return false;
+	return false; 
 }
+
 END_ALLOW_CASE_RANGE
