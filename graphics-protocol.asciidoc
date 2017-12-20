@@ -8,7 +8,7 @@ to render arbitrary pixel (raster) graphics to the screen of the terminal
 emulator. The major design goals are
 
  * Should not require terminal emulators to understand image formats.
- * Should allow specifying graphics to be drawn at individual pixel positions. 
+ * Should allow specifying graphics to be drawn at individual pixel positions.
  * The graphics should integrate with the text, in particular it should be possible to draw graphics
    below as well as above the text, with alpha blending. The graphics should also scroll with the text, automatically.
  * Should use optimizations when the client is running on the same computer as the terminal emulator.
@@ -21,7 +21,7 @@ To see a quick demo, inside a kitty terminal run:
 kitty icat path/to/some/image.png
 ```
 
-You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics 
+You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics
 link:https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100[here].
 
 toc::[]
@@ -33,7 +33,7 @@ window size in pixels and the number of cells per row and column. This can be do
 Some C code to demonstrate its use
 
 ```C
-struct ttysize ts; 
+struct ttysize ts;
 ioctl(0, TIOCGWINSZ, &ts);
 printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
 ```
@@ -50,7 +50,7 @@ All graphics escape codes are of the form:
 ```
 
 This is a so-called _Application Programming Command (APC)_. Most terminal
-emulators ignore APC codes, making it safe to use.  
+emulators ignore APC codes, making it safe to use.
 
 The control data is a comma-separated list of `key=value` pairs.  The payload
 is arbitrary binary data, base64-encoded to prevent interoperation problems
@@ -124,12 +124,12 @@ The transmission medium is specified using the `t` key. The `t` key defaults to 
 and can take the values:
 
 |===
-| Value of `t` | Meaning 
+| Value of `t` | Meaning
 
 | d | Direct (the data is transmitted within the escape code itself)
 | f | A simple file
 | t | A temporary file, the terminal emulator will delete the file after reading the pixel data
-| s | A http://man7.org/linux/man-pages/man7/shm_overview.7.html[POSIX shared memory object]. The terminal emulator will delete it after reading the pixel data 
+| s | A http://man7.org/linux/man-pages/man7/shm_overview.7.html[POSIX shared memory object]. The terminal emulator will delete it after reading the pixel data
 |===
 
 ==== Local client
@@ -175,9 +175,9 @@ if the data is split into three chunks, the client would send the following
 sequence of escape codes to the terminal emulator:
 
 ```
-<ESC>_Gs=100,v=30,m=1;<encoded pixel data first chunk><ESC>\                  
-<ESC>_Gm=1;<encoded pixel data second chunk><ESC>\                  
-<ESC>_Gm=0;<encoded pixel data last chunk><ESC>\                  
+<ESC>_Gs=100,v=30,m=1;<encoded pixel data first chunk><ESC>\
+<ESC>_Gm=1;<encoded pixel data second chunk><ESC>\
+<ESC>_Gm=0;<encoded pixel data last chunk><ESC>\
 ```
 
 Note that only the first escape code needs to have the full set of control
@@ -189,7 +189,7 @@ before sending any other graphics related escape codes.
 === Detecting available transmission mediums
 
 Since a client has no a-priori knowledge of whether it shares a filesystem/shared memory
-with the terminal emulator, it can send an id with the control data, using the `i` key 
+with the terminal emulator, it can send an id with the control data, using the `i` key
 (which can be an arbitrary positive integer up to 4294967295, it must not be zero).
 If it does so, the terminal emulator will reply after trying to load the image, saying
 whether loading was successful or not. For example:
@@ -207,7 +207,7 @@ to which the terminal emulator will reply (after trying to load the data):
 Here the `i` value will be the same as was sent by the client in the original
 request.  The message data will be a ASCII encoded string containing only
 printable characters and spaces. The string will be `OK` if reading the pixel
-data succeeded or an error message. 
+data succeeded or an error message.
 
 Sometimes, using an id is not appropriate, for example, if you do not want to
 replace a previously sent image with the same id, or if you are sending a dummy
@@ -245,7 +245,7 @@ be re-transmitted.
 === Controlling displayed image layout
 
 The image is rendered at the current cursor position, from the upper left corner of
-the current cell. You can also specify extra `X=3` and `Y=4` pixel offsets to display from 
+the current cell. You can also specify extra `X=3` and `Y=4` pixel offsets to display from
 a different origin within the cell. Note that the offsets must be smaller that the size of the cell.
 
 By default, the entire image will be displayed (images wider than the available
@@ -255,7 +255,7 @@ the top-left corner, width and height of the source rectangle.
 
 You can also ask the terminal emulator to display the image in a specified rectangle
 (num of columns / num of lines), using the control codes `c,r`. `c` is the number of columns
-and `r` the number of rows. The image will be scaled (enlarged/shrunk) as needed to fit 
+and `r` the number of rows. The image will be scaled (enlarged/shrunk) as needed to fit
 the specified area. Note that if you specify a start cell offset via the `X,Y` keys, it is not
 added to the number of rows/columns.
 
@@ -269,7 +269,7 @@ allows rendering of text on top of images.
 
 Images can be deleted by using the delete action `a=d`. If specified without any
 other keys, it will delete all images visible on screen. To delete specific images,
-use the `d` key as described in the table below. Note that each value of d has 
+use the `d` key as described in the table below. Note that each value of d has
 both a lowercase and an uppercase variant. The lowercase variant only deletes the
 images without necessarily freeing up the stored image data, so that the images can be
 re-displayed without needing to resend the data. The uppercase variants will delete
@@ -278,7 +278,7 @@ scrollback buffer. The values of the `x` and `y` keys are the same as cursor pos
 x=1, y=1 is the top left cell).
 
 |===
-| Value of `d` | Meaning 
+| Value of `d` | Meaning
 
 | `a` or `A` | Delete all images visible on screen
 | `i` or `I` | Delete all images with the specified id, specified using the `i` key.
@@ -313,7 +313,7 @@ delete older images to make space for the new one.
 == Control data reference
 
 The table below shows all the control data keys as well as what values they can
-take, and the default value they take when missing. All integers are 32-bit. 
+take, and the default value they take when missing. All integers are 32-bit.
 
 [cols="^1,<3,^1,<6"]
 |===

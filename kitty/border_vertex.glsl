@@ -11,10 +11,10 @@ const int RIGHT = 2;
 const int BOTTOM = 3;
 
 const uvec2 pos_map[] = uvec2[4](
-    uvec2(RIGHT, TOP),  
-    uvec2(RIGHT, BOTTOM),  
-    uvec2(LEFT, BOTTOM),  
-    uvec2(LEFT, TOP)   
+    uvec2(RIGHT, TOP),
+    uvec2(RIGHT, BOTTOM),
+    uvec2(LEFT, BOTTOM),
+    uvec2(LEFT, TOP)
 );
 
 vec2 to_opengl(uint x, uint y) {

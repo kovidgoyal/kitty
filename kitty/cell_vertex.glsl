@@ -12,7 +12,7 @@ layout(std140) uniform CellRenderData {
 
     uint xnum, ynum, cursor_x, cursor_y, cursor_w;
 
-    uint color_table[256]; 
+    uint color_table[256];
 };
 
 // Have to use fixed locations here as all variants of the cell program share the same VAO
@@ -21,7 +21,7 @@ layout(location=1) in uvec4 sprite_coords;
 layout(location=2) in uint is_selected;
 
 
-    
+
 const uvec2 cell_pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
     uvec2(1, 1),  // right, bottom
@@ -118,27 +118,27 @@ float is_cursor(uint x, uint y) {
 void main() {
 
     // set cell vertex position  {{{
-    uint instance_id = uint(gl_InstanceID); 
+    uint instance_id = uint(gl_InstanceID);
     /* The current cell being rendered */
-    uint r = instance_id / xnum; 
-    uint c = instance_id - r * xnum; 
+    uint r = instance_id / xnum;
+    uint c = instance_id - r * xnum;
 
-    /* The position of this vertex, at a corner of the cell  */ 
-    float left = xstart + c * dx; 
-    float top = ystart - r * dy; 
-    vec2 xpos = vec2(left, left + dx); 
-    vec2 ypos = vec2(top, top - dy); 
-    uvec2 pos = cell_pos_map[gl_VertexID]; 
+    /* The position of this vertex, at a corner of the cell  */
+    float left = xstart + c * dx;
+    float top = ystart - r * dy;
+    vec2 xpos = vec2(left, left + dx);
+    vec2 ypos = vec2(top, top - dy);
+    uvec2 pos = cell_pos_map[gl_VertexID];
     gl_Position = vec4(xpos[pos.x], ypos[pos.y], 0, 1);
 
     // }}}
-    
+
     // set cell color indices {{{
-    uvec2 default_colors = uvec2(default_fg, default_bg); 
-    ivec2 color_indices = ivec2(color1, color2); 
-    uint text_attrs = sprite_coords[3]; 
-    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK]; 
-    int bg_index = color_indices[1 - fg_index]; 
+    uvec2 default_colors = uvec2(default_fg, default_bg);
+    ivec2 color_indices = ivec2(color1, color2);
+    uint text_attrs = sprite_coords[3];
+    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
+    int bg_index = color_indices[1 - fg_index];
     float cursor = is_cursor(c, r);
     vec3 bg = to_color(colors[bg_index], default_colors[bg_index]);
     // }}}
@@ -150,7 +150,7 @@ void main() {
     sprite_pos = to_sprite_pos(pos, sprite_coords.x, sprite_coords.y, sprite_coords.z & Z_MASK);
     colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
-    // Foreground 
+    // Foreground
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
     foreground = color_to_vec(resolved_fg);
     // Selection
@@ -165,7 +165,7 @@ void main() {
     foreground = choose_color(cursor, bg, foreground);
     decoration_fg = choose_color(cursor, bg, decoration_fg);
 #endif
-    // }}} 
+    // }}}
 
     // Background {{{
 #ifdef NEEDS_BACKROUND

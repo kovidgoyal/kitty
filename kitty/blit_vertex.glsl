@@ -5,10 +5,10 @@
 #define bottom  -1.0f
 
 const vec2 pos_map[] = vec2[4](
-    vec2(right, top),  
-    vec2(right, bottom),  
-    vec2(left, bottom),  
-    vec2(left, top)   
+    vec2(right, top),
+    vec2(right, bottom),
+    vec2(left, bottom),
+    vec2(left, top)
 );
 
 out vec2 texcoord;

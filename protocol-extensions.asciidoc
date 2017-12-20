@@ -54,8 +54,8 @@ To reset the underline color (also previously reserved and unused):
 <ESC>[59m
 ```
 
-A client can query if the terminal emulator supports this underline extension using the 
-standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence, with the 
+A client can query if the terminal emulator supports this underline extension using the
+standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence, with the
 mode value `2016`, like this:
 
 Client sends:
@@ -86,8 +86,8 @@ include:
   * No way to use modifiers other than `Ctrl` and `Alt`
   * No way to use multiple modifier keys, other than, `Shift+Alt`.
   * No way to handle different types of keyboard events, such as press, release or repeat
-  * No reliable way to distinguish single `Esc` keypresses from the 
-    start of a escape sequence. Currently, client programs use 
+  * No reliable way to distinguish single `Esc` keypresses from the
+    start of a escape sequence. Currently, client programs use
     fragile timing related hacks for this, leading to bugs, for example:
     link:https://github.com/neovim/neovim/issues/2035[neovim #2035]
 
@@ -112,7 +112,7 @@ and to leave _full mode_, use DECRST
 ```
 
 The number `2017` above is not used for any existing modes, as far as I know.
-Client programs can query if the terminal emulator is in _full mode_ by using 
+Client programs can query if the terminal emulator is in _full mode_ by using
 the standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence.
 
 The new mode works as follows:
@@ -135,7 +135,7 @@ The escape sequence encodes the following properties:
 
   * Type of event: `press,repeat,release`
   * Modifiers pressed at the time of the event
-  * The actual key being pressed 
+  * The actual key being pressed
 
 ```
 <ESC>_K<type><modifiers><key><ESC>\
@@ -165,13 +165,13 @@ regions of the screen,
 link:https://vt100.net/docs/vt510-rm/DECCARA.html[DECCARA].  However, it is
 limited to only a few attributes. kitty extends this to work with *all* SGR
 attributes.  So, for example, this can be used to set the background color in
-an arbitrary region of the screen. 
+an arbitrary region of the screen.
 
 The motivation for this extension is the various problems with the existing
 solution for erasing to background color, namely the *background color erase
-(bce)* capability. See 
+(bce)* capability. See
 link:https://github.com/kovidgoyal/kitty/issues/160#issuecomment-346470545[this discussion]
-for a summary of problems with *bce*. 
+for a summary of problems with *bce*.
 
 For example, to set the background color to blue in a
 rectangular region of the screen from (3, 4) to (10, 11), you use:

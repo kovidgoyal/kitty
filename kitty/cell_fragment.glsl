@@ -34,7 +34,7 @@ vec4 alpha_blend(vec3 over, float over_alpha, vec3 under, float under_alpha) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
     // See https://en.wikipedia.org/wiki/Alpha_compositing
-    float alpha = mix(under_alpha, 1.0f, over_alpha);  
+    float alpha = mix(under_alpha, 1.0f, over_alpha);
     vec3 combined_color = mix(under * under_alpha, over, over_alpha);
     return vec4(combined_color, alpha);
 }
@@ -45,7 +45,7 @@ vec3 premul_blend(vec3 over, float over_alpha, vec3 under) {
 
 vec4 alpha_blend_premul(vec3 over, float over_alpha, vec3 under, float under_alpha) {
     // Same as alpha_blend() except that it assumes over and under are both premultiplied.
-    float alpha = mix(under_alpha, 1.0f, over_alpha);  
+    float alpha = mix(under_alpha, 1.0f, over_alpha);
     return vec4(premul_blend(over, over_alpha, under), alpha);
 }
 // }}}
@@ -70,7 +70,7 @@ void main() {
     final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, 1.0f);
-#endif 
+#endif
 #endif
 
 #ifdef SPECIAL
@@ -78,10 +78,10 @@ void main() {
     final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, bg_alpha);
-#endif 
+#endif
 #endif
 
-#if defined(FOREGROUND) || defined(SIMPLE) 
+#if defined(FOREGROUND) || defined(SIMPLE)
     // FOREGROUND or SIMPLE
     vec4 fg = calculate_foreground();  // pre-multiplied foreground
 
