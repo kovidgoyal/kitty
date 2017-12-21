@@ -8,7 +8,13 @@ import sys
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import terminfo_dir
+from .constants import terminfo_dir, is_macos
+
+
+def cwd_of_process(pid):
+    if is_macos:
+        raise NotImplementedError('getting cwd of child processes not implemented')
+    return os.readlink('/proc/{}/cwd'.format(pid))
 
 
 def remove_cloexec(fd):
@@ -20,8 +26,14 @@ class Child:
     child_fd = pid = None
     forked = False
 
-    def __init__(self, argv, cwd, opts, stdin=None, env=None):
+    def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None):
         self.argv = argv
+        if cwd_from is not None:
+            try:
+                cwd = cwd_of_process(cwd_from)
+            except Exception:
+                import traceback
+                traceback.print_exc()
         self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
         self.opts = opts
         self.stdin = stdin

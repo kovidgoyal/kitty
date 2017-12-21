@@ -94,7 +94,7 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
-shlex_actions = {'pass_selection_to_program', 'new_window', 'new_tab'}
+shlex_actions = {'pass_selection_to_program', 'new_window', 'new_tab', 'new_os_window', 'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd'}
 
 
 def parse_key_action(action):
@@ -350,7 +350,9 @@ with open(
     defaults = parse_config(f.read().decode('utf-8').splitlines(), check_keys=False)
 Options = namedtuple('Defaults', ','.join(defaults.keys()))
 defaults = Options(**defaults)
-actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset({'combine', 'send_text', 'goto_tab'})
+actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset(
+    'combine send_text goto_tab new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.split()
+)
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 

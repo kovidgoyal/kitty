@@ -22,16 +22,16 @@ from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title')
+SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from')
 
 
-def SpecialWindow(cmd, stdin=None, override_title=None):
-    return SpecialWindowInstance(cmd, stdin, override_title)
+def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None):
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from)
 
 
 class Tab:  # {{{
 
-    def __init__(self, tab_manager, session_tab=None, special_window=None):
+    def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None):
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
         self.id = add_tab(self.os_window_id)
@@ -50,7 +50,7 @@ class Tab:  # {{{
             sl = self.enabled_layouts[0]
             self.current_layout = all_layouts[sl](self.os_window_id, self.opts, self.borders.border_width, self.windows)
             if special_window is None:
-                self.new_window()
+                self.new_window(cwd_from=cwd_from)
             else:
                 self.new_special_window(special_window)
         else:
@@ -109,7 +109,7 @@ class Tab:  # {{{
                 w.set_visible_in_layout(i, True)
             self.relayout()
 
-    def launch_child(self, use_shell=False, cmd=None, stdin=None):
+    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None):
         if cmd is None:
             if use_shell:
                 cmd = [shell_path]
@@ -122,12 +122,12 @@ class Tab:  # {{{
             except Exception:
                 import traceback
                 traceback.print_exc()
-        ans = Child(cmd, self.cwd, self.opts, stdin, env)
+        ans = Child(cmd, self.cwd, self.opts, stdin, env, cwd_from)
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None):
-        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin)
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None):
+        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from)
         window = Window(self, child, self.opts, self.args, override_title=override_title)
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
@@ -401,10 +401,10 @@ class TabManager:  # {{{
     def title_changed(self, new_title):
         self.update_tab_bar()
 
-    def new_tab(self, special_window=None):
+    def new_tab(self, special_window=None, cwd_from=None):
         needs_resize = len(self.tabs) == 1
         idx = len(self.tabs)
-        self._add_tab(Tab(self, special_window=special_window))
+        self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
         self.update_tab_bar()
         if needs_resize:

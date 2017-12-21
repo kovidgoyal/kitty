@@ -94,10 +94,18 @@ class Boss:
         if dpi_changed:
             self.on_dpi_change(os_window_id)
 
-    def new_os_window(self, *args):
-        sw = self.args_to_special_window(args) if args else None
-        startup_session = create_session(self.opts, special_window=sw)
+    def _new_os_window(self, args, cwd_from=None):
+        sw = self.args_to_special_window(args, cwd_from) if args else None
+        startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)
         self.add_os_window(startup_session)
+
+    def new_os_window(self, *args):
+        self._new_os_window(args)
+
+    def new_os_window_with_cwd(self, *args):
+        w = self.active_window
+        cwd_from = w.child.pid if w is not None else None
+        self._new_os_window(args, cwd_from)
 
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
@@ -357,7 +365,7 @@ class Boss:
         if tm is not None:
             tm.next_tab(-1)
 
-    def args_to_special_window(self, args):
+    def args_to_special_window(self, args, cwd_from=None):
         args = list(args)
         stdin = None
         w = self.active_window
@@ -383,23 +391,39 @@ class Boss:
                 if not arg:
                     continue
             cmd.append(arg)
-        return SpecialWindow(cmd, stdin)
+        return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
 
-    def new_tab(self, *args):
+    def _new_tab(self, args, cwd_from=None):
         special_window = None
         if args:
-            special_window = self.args_to_special_window(args)
+            special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         tm = self.active_tab_manager
         if tm is not None:
-            tm.new_tab(special_window=special_window)
+            tm.new_tab(special_window=special_window, cwd_from=cwd_from)
 
-    def new_window(self, *args):
+    def new_tab(self, *args):
+        self._new_tab(args)
+
+    def new_tab_with_cwd(self, *args):
+        w = self.active_window
+        cwd_from = w.child.pid if w is not None else None
+        self._new_tab(args, cwd_from=cwd_from)
+
+    def _new_window(self, args, cwd_from=None):
         tab = self.active_tab
         if tab is not None:
             if args:
-                tab.new_special_window(self.args_to_special_window(args))
+                tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from))
             else:
-                tab.new_window()
+                tab.new_window(cwd_from=cwd_from)
+
+    def new_window(self, *args):
+        self._new_window(args)
+
+    def new_window_with_cwd(self, *args):
+        w = self.active_window
+        cwd_from = w.child.pid if w is not None else None
+        self._new_window(args, cwd_from=cwd_from)
 
     def move_tab_forward(self):
         tm = self.active_tab_manager
