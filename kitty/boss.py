@@ -78,19 +78,26 @@ class Boss:
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
-    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, visible=True):
+    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, startup_id=None):
+        dpi_changed = False
         if os_window_id is None:
             w, h = initial_window_size(self.opts) if size is None else size
             cls = wclass or self.args.cls or appname
-            os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls, visible)
+            os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls)
+            if startup_id:
+                ctx = init_startup_notification(os_window_id, startup_id)
+            dpi_changed = show_window(os_window_id)
+            if startup_id:
+                end_startup_notification(ctx)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
-        return os_window_id
+        if dpi_changed:
+            self.on_dpi_change(os_window_id)
 
     def new_os_window(self, *args):
         sw = self.args_to_special_window(args) if args else None
         startup_session = create_session(self.opts, special_window=sw)
-        return self.add_os_window(startup_session)
+        self.add_os_window(startup_session)
 
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
@@ -106,12 +113,7 @@ class Boss:
                 args.args = rest
                 opts = create_opts(args)
                 session = create_session(opts, args)
-                os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False)
-                if startup_id:
-                    ctx = init_startup_notification(os_window_id, startup_id)
-                show_window(os_window_id)
-                if startup_id:
-                    end_startup_notification(ctx)
+                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), visible=False, startup_id=startup_id)
             else:
                 safe_print('Unknown message received from peer, ignoring')
 

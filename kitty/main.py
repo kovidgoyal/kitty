@@ -42,7 +42,7 @@ def run_app(opts, args):
     set_options(opts, is_wayland, args.debug_gl)
     load_cached_values()
     w, h = initial_window_size(opts)
-    window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, False, load_all_shaders)
+    window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
     startup_ctx = init_startup_notification(window_id)
     show_window(window_id)
     if not is_wayland and not is_macos:  # no window icons on wayland

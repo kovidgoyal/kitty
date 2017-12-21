@@ -267,13 +267,14 @@ set_dpi_from_os_window(OSWindow *w) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
-    int width, height, visible = 1, swap_interval = 0, x = -1, y = -1;
+    int width, height, swap_interval = 0, x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iisss|pOiii", &width, &height, &title, &wm_class_name, &wm_class_class, &visible, &load_programs, &swap_interval, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "iisss|Oiii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &swap_interval, &x, &y)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -303,7 +304,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Too many windows");
         return NULL;
     }
-    glfwWindowHint(GLFW_VISIBLE, visible ? GLFW_TRUE : GLFW_FALSE);
     bool want_semi_transparent = (1.0 - OPT(background_opacity) > 0.1) ? true : false;
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
@@ -371,16 +371,19 @@ static PyObject*
 show_window(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id;
     int yes = 1;
+    bool dpi_changed = false;
     if (!PyArg_ParseTuple(args, "K|p", &os_window_id, &yes)) return NULL;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        set_dpi_from_os_window(w);
         if (w->id == os_window_id) {
             if (yes) {
                 bool first_show = !w->shown_once;
                 glfwShowWindow(w->handle);
                 w->shown_once = true;
                 if (first_show) {
+                    double before_x = global_state.logical_dpi_x, before_y = global_state.logical_dpi_y;
+                    set_dpi_from_os_window(w);
+                    dpi_changed = before_x != global_state.logical_dpi_x || before_y != global_state.logical_dpi_y;
                     w->has_pending_resizes = true;
                     global_state.has_pending_resizes = true;
                 }
@@ -388,7 +391,8 @@ show_window(PyObject UNUSED *self, PyObject *args) {
             break;
         }
     }
-    Py_RETURN_NONE;
+    if (dpi_changed) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 void
