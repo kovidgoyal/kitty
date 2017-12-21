@@ -12,6 +12,8 @@
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
+typedef void* rusage_info_t;  // needed for libproc.h
+#include <libproc.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
@@ -166,8 +168,19 @@ cocoa_get_lang(PyObject UNUSED *self) {
     return Py_BuildValue("s", [locale UTF8String]);
 }
 
+PyObject*
+cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    long pid = PyLong_AsLong(pid_);
+    struct proc_vnodepathinfo vpi;
+    int ret = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &vpi, sizeof(vpi));
+    if (ret < 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    return PyUnicode_FromString(vpi.pvi_cdir.vip_path);
+}
+
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
+    {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

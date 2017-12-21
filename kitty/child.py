@@ -13,8 +13,11 @@ from .constants import terminfo_dir, is_macos
 
 def cwd_of_process(pid):
     if is_macos:
-        raise NotImplementedError('getting cwd of child processes not implemented')
-    return os.readlink('/proc/{}/cwd'.format(pid))
+        from kitty.fast_data_types import cwd_of_process
+        ans = cwd_of_process(pid)
+    else:
+        ans = '/proc/{}/cwd'.format(pid)
+    return os.path.realpath(ans)
 
 
 def remove_cloexec(fd):
@@ -34,7 +37,9 @@ class Child:
             except Exception:
                 import traceback
                 traceback.print_exc()
-        self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
+        else:
+            cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
+        self.cwd = os.path.abspath(cwd)
         self.opts = opts
         self.stdin = stdin
         self.env = env or {}
