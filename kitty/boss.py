@@ -115,13 +115,25 @@ class Boss:
         import json
         for msg in messages:
             msg = json.loads(msg.decode('utf-8'))
-            if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
-                startup_id = msg.get('startup_id')
-                args, rest = parse_args(msg['args'][1:])
-                args.args = rest
-                opts = create_opts(args)
-                session = create_session(opts, args)
-                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), startup_id=startup_id)
+            if isinstance(msg, dict):
+                cmd = msg.get('cmd')
+                if cmd == 'new_instance':
+                    startup_id = msg.get('startup_id')
+                    args, rest = parse_args(msg['args'][1:])
+                    args.args = rest
+                    opts = create_opts(args)
+                    session = create_session(opts, args)
+                    self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), startup_id=startup_id)
+                elif cmd == 'rename_tab':
+                    self.active_tab.name = ' '.join(msg['args'])
+                    self.active_tab_manager.update_tab_bar()
+                elif hasattr(self, cmd):
+                    args = msg.get('args', [])
+                    func = getattr(self, cmd)
+                    func(*args)
+                else:
+                    safe_print('Unknown command {}'.format(cmd))
+
             else:
                 safe_print('Unknown message received from peer, ignoring')
 

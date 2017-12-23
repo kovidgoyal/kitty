@@ -131,13 +131,25 @@ def main():
         from kitty.client import main
         main(args.replay_commands)
         return
-    if args.single_instance:
+    if args.single_instance or args.remote:
         is_first = single_instance(args.instance_group)
         if not is_first:
             import json
-            data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'startup_id': os.environ.get('DESKTOP_STARTUP_ID')}
-            data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            if not args.remote:
+                data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'startup_id': os.environ.get('DESKTOP_STARTUP_ID')}
+                data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+            else:
+                # allow for full json data or "<cmd> <args>"
+                try:
+                    json.loads(args.remote)
+                    data = args.remote.encode('utf-8')
+                except json.JSONDecodeError:
+                    cmds = args.remote.split()
+                    data = {'cmd': cmds[0], 'args': cmds[1:]}
+                    data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+
             single_instance.socket.sendall(data)
+            single_instance.socket.close()
             return
     opts = create_opts(args)
     change_wcwidth(not opts.use_system_wcwidth)
