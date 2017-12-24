@@ -111,7 +111,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     Screen *screen = w->render_data.screen;
     if (from_button) {
         if (is_release) screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
-        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (GLFW_MOD_CONTROL | GLFW_MOD_ALT));
+        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (int)OPT(rectangle_select_modifiers));
     } else if (screen->selection.in_progress) {
         screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
         call_boss(set_primary_selection, NULL);

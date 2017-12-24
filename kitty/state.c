@@ -317,6 +317,7 @@ PYWRAP1(set_options) {
     S(mouse_hide_wait, PyFloat_AsDouble);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, PyLong_AsUnsignedLong);
+    S(rectangle_select_modifiers, PyLong_AsUnsignedLong);
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
     S(background, color_as_int);
