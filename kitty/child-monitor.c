@@ -517,7 +517,8 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_w
     ColorProfile *cp = rd->screen->color_profile;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
-    if (ans->shape == CURSOR_BLOCK) return;
+    ans->is_focused = os_window->is_focused;
+    if (ans->shape == CURSOR_BLOCK && !ans->is_focused) return;
     double left = rd->xstart + cursor->x * rd->dx;
     double top = rd->ystart - cursor->y * rd->dy;
     unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
@@ -577,7 +578,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
                 update_window_title(w, os_window);
             } else WD.screen->cursor_render_info.is_visible = false;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window);
-            if (is_active_window && WD.screen->cursor_render_info.is_visible && WD.screen->cursor_render_info.shape != CURSOR_BLOCK) {
+            if (is_active_window && WD.screen->cursor_render_info.is_visible && (!WD.screen->cursor_render_info.is_focused || WD.screen->cursor_render_info.shape != CURSOR_BLOCK)) {
                 draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
             }
             if (WD.screen->start_visual_bell_at != 0) {
@@ -1029,4 +1030,3 @@ init_child_monitor(PyObject *module) {
 }
 
 // }}}
-

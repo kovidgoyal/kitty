@@ -220,7 +220,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
     // Cursor position
-    if (cursor->is_visible && cursor->shape == CURSOR_BLOCK) {
+    if (cursor->is_visible && cursor->shape == CURSOR_BLOCK && cursor->is_focused) {
         rd->cursor_x = screen->cursor->x, rd->cursor_y = screen->cursor->y;
     } else {
         rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;

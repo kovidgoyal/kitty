@@ -181,7 +181,7 @@ typedef struct {
 } Cursor;
 
 typedef struct {
-    bool is_visible;
+    bool is_visible, is_focused;
     CursorShape shape;
     unsigned int x, y;
     double left, right, top, bottom;
