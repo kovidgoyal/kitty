@@ -195,7 +195,7 @@ def parse_send_text(val, keymap):
     return parse_key(key_str, keymap)
 
 
-def to_open_url_modifiers(val):
+def to_modifiers(val):
     return parse_mods(val.split('+'))
 
 
@@ -264,7 +264,8 @@ type_map = {
     'font_size_delta': positive_float,
     'focus_follows_mouse': to_bool,
     'cursor_shape': to_cursor_shape,
-    'open_url_modifiers': to_open_url_modifiers,
+    'open_url_modifiers': to_modifiers,
+    'rectangle_select_modifiers': to_modifiers,
     'repaint_delay': positive_int,
     'input_delay': positive_int,
     'window_border_width': positive_float,
