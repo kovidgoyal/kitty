@@ -269,6 +269,9 @@ class TestDataTypes(BaseTest):
         no_url('http: //acme.com')
         no_url('http:/ /acme.com')
 
+        l4 = create(' xxxxxtekljhgdkjgd')
+        self.ae(l4.url_end_at(0), 0)
+
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)
         cy = lb.rewrap(lb2, hb)

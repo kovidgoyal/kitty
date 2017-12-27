@@ -139,7 +139,7 @@ line_url_end_at(Line *self, index_type x, bool check_short) {
     index_type ans = x;
     if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
     while (ans < self->xnum && is_url_char(self->cells[ans].ch)) ans++;
-    ans--;
+    if (ans) ans--;
     while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch)) ans--;
     return ans;
 }
@@ -618,4 +618,3 @@ copy_char(Line* self, PyObject *args) {
     COPY_CELL(self, src, to, dest);
     Py_RETURN_NONE;
 }
-
