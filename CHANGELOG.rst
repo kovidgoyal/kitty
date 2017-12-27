@@ -3,6 +3,34 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.6.1 [future]
+---------------------------
+
+- Add new actions to open windows/tabs/etc. with the working directory set to 
+  the working directory of the current window.
+
+- Automatically adjust cell size when DPI changes, for example when kitty is
+  moved from one monitor to another with a different DPI
+
+- Ensure underlines are rendered even for fonts with very poor metrics
+
+- Fix some emoji glyphs not colored on Linux
+
+- Internal wcwidth() implementation is now auto-generated from the unicode
+  standard database
+
+- Support background transparency via the background_opacity option. Provided
+
+- Allow configuring the modifiers to use for rectangular selection with the
+  mouse.
+
+- Fix incorrect minimum wayland version in the build script
+
+- Fix a crash when detecting a URL that ends at the end of the line
+
+- Fix regression that broke drawing of hollow cursor when window loses focus
+
+
 version 0.6.0 [2017-12-18]
 ---------------------------
 
