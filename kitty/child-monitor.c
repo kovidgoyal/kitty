@@ -518,7 +518,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_w
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
     ans->is_focused = os_window->is_focused;
-    if (ans->shape == CURSOR_BLOCK && !ans->is_focused) return;
+    if (ans->shape == CURSOR_BLOCK && ans->is_focused) return;
     double left = rd->xstart + cursor->x * rd->dx;
     double top = rd->ystart - cursor->y * rd->dy;
     unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
