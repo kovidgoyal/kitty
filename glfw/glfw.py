@@ -69,6 +69,8 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
 def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
+        if not os.path.exists(src):
+            raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
