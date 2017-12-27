@@ -52,7 +52,7 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
             ans.ldpaths.extend(('-framework', f))
 
     elif module == 'wayland':
-        at_least_version('wayland-protocols', 1, 1)
+        at_least_version('wayland-protocols', 1, 6)
         ans.wayland_packagedir = os.path.abspath(pkg_config('wayland-protocols', '--variable=pkgdatadir')[0])
         ans.wayland_scanner = os.path.abspath(pkg_config('wayland-scanner', '--variable=wayland_scanner')[0])
         ans.wayland_protocols = tuple(sinfo[module]['protocols'])
