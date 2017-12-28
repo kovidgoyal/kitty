@@ -201,6 +201,14 @@ create_graphics_vao() {
     return vao_idx;
 }
 
+struct CellUniformData {
+    bool constants_set;
+    GLint gploc, gpploc, cploc, cfploc;
+    GLfloat prev_inactive_text_alpha;
+};
+
+static struct CellUniformData cell_uniform_data = {0, .prev_inactive_text_alpha=-1};
+
 static inline void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted) {
     struct CellRenderData {
@@ -284,12 +292,6 @@ static void
 draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
     bind_program(program);
     bind_vertex_array(gvao_idx);
-    static bool graphics_constants_set = false;
-    if (!graphics_constants_set) {
-        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "image"), GRAPHICS_UNIT);
-        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "image"), GRAPHICS_UNIT);
-        graphics_constants_set = true;
-    }
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
 
     GLuint base = 4 * start;
@@ -389,8 +391,29 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glDisable(GL_SCISSOR_TEST);
 }
 
+static inline void
+set_cell_uniforms(float current_inactive_text_alpha) {
+    if (!cell_uniform_data.constants_set) {
+        cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
+#define S(prog, name, val) { bind_program(prog); glUniform1i(glGetUniformLocation(program_id(prog), #name), val); }
+        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT); S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT);
+        S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT);
+#undef S
+        cell_uniform_data.constants_set = true;
+    }
+    if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha) {
+        cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
+#define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
+        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
+#undef S
+    }
+}
+
 void
-draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
+draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window, bool is_active_window) {
     if (os_window->clear_count < 2) {
         os_window->clear_count++;
 #define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
@@ -400,6 +423,8 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     }
 
     cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
+    float current_inactive_text_alpha = screen->cursor_render_info.is_focused && is_active_window ? 1.0 : OPT(inactive_text_alpha);
+    set_cell_uniforms(current_inactive_text_alpha);
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
@@ -409,13 +434,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
             (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
     );
 #undef SCALE
-    static bool cell_constants_set = false;
-    if (!cell_constants_set) {
-        bind_program(CELL_PROGRAM);
-        glUniform1i(glGetUniformLocation(program_id(CELL_PROGRAM), "sprites"), SPRITE_MAP_UNIT);
-        glUniform1i(glGetUniformLocation(program_id(CELL_FG_PROGRAM), "sprites"), SPRITE_MAP_UNIT);
-        cell_constants_set = true;
-    }
     if (os_window->is_semi_transparent) {
         if (screen->grman->count) draw_cells_interleaved_premult(vao_idx, gvao_idx, screen, os_window);
         else draw_cells_simple(vao_idx, gvao_idx, screen);

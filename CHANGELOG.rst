@@ -6,6 +6,8 @@ kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 version 0.6.1 [future]
 ---------------------------
 
+- Add an option to fade the text in inactive windows
+
 - Add new actions to open windows/tabs/etc. with the working directory set to 
   the working directory of the current window.
 

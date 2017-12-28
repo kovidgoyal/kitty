@@ -19,6 +19,7 @@ in float bg_alpha;
 
 #ifdef NEEDS_FOREGROUND
 uniform sampler2DArray sprites;
+uniform float inactive_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
 in vec3 strike_pos;
@@ -60,7 +61,7 @@ vec4 calculate_foreground() {
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    return alpha_blend(decoration_fg, underline_alpha, fg, combined_alpha);
+    return alpha_blend(decoration_fg, underline_alpha * inactive_text_alpha, fg, combined_alpha * inactive_text_alpha);
 }
 #endif
 
@@ -99,7 +100,7 @@ void main() {
     final_color = alpha_blend_premul(fg.rgb, fg.a, background * bg_alpha, bg_alpha);
     final_color = vec4(final_color.rgb / final_color.a, final_color.a);
 #else
-    // since background alpha is 1.0, it is effectively premultipled
+    // since background alpha is 1.0, it is effectively pre-multiplied
     final_color = vec4(premul_blend(fg.rgb, fg.a, background), 1.0f);
     final_color = vec4(final_color.rgb / final_color.a, final_color.a);
 #endif

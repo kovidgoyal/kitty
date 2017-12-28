@@ -551,7 +551,7 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
     if (vao_idx == -1) vao_idx = create_cell_vao();
     if (gvao_idx == -1) gvao_idx = create_graphics_vao();
     if (!PyArg_ParseTuple(args, "O!ffff", &Screen_Type, &screen, &xstart, &ystart, &dx, &dy)) return NULL;
-    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window());
+    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window(), true);
     Py_RETURN_NONE;
 }
 
@@ -577,7 +577,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 update_window_title(w, os_window);
             } else WD.screen->cursor_render_info.is_visible = false;
-            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window);
+            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window, is_active_window);
             if (is_active_window && WD.screen->cursor_render_info.is_visible && (!WD.screen->cursor_render_info.is_focused || WD.screen->cursor_render_info.shape != CURSOR_BLOCK)) {
                 draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
             }
@@ -613,7 +613,7 @@ render(double now) {
         Tab *active_tab = w->tabs + w->active_tab;
         BorderRects *br = &active_tab->border_rects;
         draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
-        if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w);
+        if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w, true);
         swap_window_buffers(w);
         w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
         br->is_dirty = false;

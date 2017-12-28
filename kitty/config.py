@@ -291,6 +291,7 @@ type_map = {
     'tab_separator': tab_separator,
     'active_tab_font_style': tab_font_style,
     'inactive_tab_font_style': tab_font_style,
+    'inactive_text_alpha': unit_float,
     'url_style': url_style,
     'prefer_color_emoji': to_bool,
 }

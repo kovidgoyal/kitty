@@ -27,6 +27,7 @@ typedef struct {
     int x11_bell_volume;
     float adjust_line_height_frac;
     float background_opacity;
+    float inactive_text_alpha;
 } Options;
 
 typedef struct {
@@ -164,7 +165,7 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao();
 ssize_t create_graphics_vao();
 ssize_t create_border_vao();
-void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
+void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *, bool);
 void draw_cursor(CursorRenderInfo *, bool);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
