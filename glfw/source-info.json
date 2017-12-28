@@ -79,6 +79,10 @@
       "osmesa_context.c"
     ]
   }, 
+  "wayland_protocols": [
+    1, 
+    6
+  ], 
   "win32": {
     "headers": [
       "win32_platform.h", 

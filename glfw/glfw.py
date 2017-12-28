@@ -52,7 +52,7 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
             ans.ldpaths.extend(('-framework', f))
 
     elif module == 'wayland':
-        at_least_version('wayland-protocols', 1, 6)
+        at_least_version('wayland-protocols', *sinfo['wayland_protocols'])
         ans.wayland_packagedir = os.path.abspath(pkg_config('wayland-protocols', '--variable=pkgdatadir')[0])
         ans.wayland_scanner = os.path.abspath(pkg_config('wayland-scanner', '--variable=wayland_scanner')[0])
         ans.wayland_protocols = tuple(sinfo[module]['protocols'])
@@ -82,6 +82,7 @@ def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
 
 def collect_source_information():
     raw = open('src/CMakeLists.txt').read()
+    mraw = open('CMakeLists.txt').read()
 
     def extract_sources(group, start_pos=0):
         for which in 'HEADERS SOURCES'.split():
@@ -93,8 +94,11 @@ def collect_source_information():
                 ).group(1).strip().split()
             )
 
+    wayland_protocols = re.search('WaylandProtocols\s+(\S+)\s+', mraw).group(1)
+    wayland_protocols = list(map(int, wayland_protocols.split('.')))
     ans = {
         'common': dict(extract_sources('common')),
+        'wayland_protocols': wayland_protocols,
     }
     for group in 'cocoa win32 x11 wayland osmesa'.split():
         m = re.search('_GLFW_' + group.upper(), raw)
@@ -244,9 +248,10 @@ def main():
     sinfo = collect_source_information()
     files_to_copy = set()
     for x in sinfo.values():
-        headers, sources = x['headers'], x['sources']
-        for name in headers + sources:
-            files_to_copy.add(os.path.abspath(os.path.join('src', name)))
+        if isinstance(x, dict):
+            headers, sources = x['headers'], x['sources']
+            for name in headers + sources:
+                files_to_copy.add(os.path.abspath(os.path.join('src', name)))
     glfw_header = os.path.abspath('include/GLFW/glfw3.h')
     glfw_native_header = os.path.abspath('include/GLFW/glfw3native.h')
     os.chdir(base)
