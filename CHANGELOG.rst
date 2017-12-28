@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.6.1 [future]
+version 0.6.1 [2017-12-28]
 ---------------------------
 
 - Add an option to fade the text in inactive windows
@@ -20,8 +20,6 @@ version 0.6.1 [future]
 
 - Internal wcwidth() implementation is now auto-generated from the unicode
   standard database
-
-- Support background transparency via the background_opacity option. Provided
 
 - Allow configuring the modifiers to use for rectangular selection with the
   mouse.
