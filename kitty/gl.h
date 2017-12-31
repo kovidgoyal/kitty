@@ -59,6 +59,9 @@ gl_init() {
         ARB_TEST(texture_storage);
 #undef ARB_TEST
         glad_loaded = true;
+        if (GLVersion.major < 3 || (GLVersion.major == 3 && GLVersion.minor < 3)) {
+            fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", GLVersion.major, GLVersion.minor);
+        }
     }
 }
 
