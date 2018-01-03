@@ -51,7 +51,7 @@ def to_bool(x):
 def parse_mods(parts):
 
     def map_mod(m):
-        return {'CTRL': 'CONTROL', 'CMD': 'CONTROL'}.get(m, m)
+        return {'CTRL': 'CONTROL', 'CMD': 'SUPER', 'OPTION': 'ALT'}.get(m, m)
 
     mods = 0
     for m in parts:
