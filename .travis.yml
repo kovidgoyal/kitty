@@ -95,7 +95,7 @@ install: |
         if [[ "$USE_BREW" == "1" ]]; then
             brew update;
             brew install python3;
-            brew install harfbuzz --without-glib --without-gobject-introspection --without-graphite2 --without-icu4c --without-freetype --without-cairo;
+            brew install harfbuzz --without-glib --without-gobject-introspection --without-graphite2 --without-icu4c --without-freetype;
         else
             mkdir -p $SW;
             curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
