@@ -191,10 +191,10 @@ void
 fake_scroll(int amount, bool upwards) {
     Window *w = active_window();
     if (!w) return;
-    Screen *screen = w->render_data.screen;
+    int key = upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN;
     while (amount-- > 0) {
-        send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_PRESS);
-        if (screen->modes.mEXTENDED_KEYBOARD) send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_RELEASE);
+        send_key_to_child(w, key, 0, GLFW_PRESS);
+        send_key_to_child(w, key, 0, GLFW_RELEASE);
     }
 }
 
