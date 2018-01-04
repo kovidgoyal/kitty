@@ -36,7 +36,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     if (pid == 0) {
         // child
         // We cannot use malloc before exec() as it might deadlock if a thread in the parent process is in the middle of a malloc itself
-        if (chdir(cwd) != 0) chdir("/");
+        if (chdir(cwd) != 0) if (chdir("/") != 0) {};  // ignore failure to chdir to /
         if (setsid() == -1) { perror("setsid() in child process failed"); exit(EXIT_FAILURE); }
         if (dup2(slave, 1) == -1) { perror("dup2() failed for fd number 1"); exit(EXIT_FAILURE); }
         if (dup2(slave, 2) == -1) { perror("dup2() failed for fd number 2"); exit(EXIT_FAILURE); }
