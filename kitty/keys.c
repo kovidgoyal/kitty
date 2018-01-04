@@ -188,12 +188,14 @@ on_key_input(int key, int scancode, int action, int mods) {
 }
 
 void
-fake_scroll(bool upwards) {
+fake_scroll(int amount, bool upwards) {
     Window *w = active_window();
     if (!w) return;
     Screen *screen = w->render_data.screen;
-    send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_PRESS);
-    if (screen->modes.mEXTENDED_KEYBOARD) send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_RELEASE);
+    while (amount-- > 0) {
+        send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_PRESS);
+        if (screen->modes.mEXTENDED_KEYBOARD) send_key_to_child(w, upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN, 0, GLFW_RELEASE);
+    }
 }
 
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
