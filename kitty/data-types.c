@@ -180,6 +180,7 @@ extern bool init_fontconfig_library(PyObject*);
 extern bool init_desktop(PyObject*);
 extern bool init_fonts(PyObject*);
 extern bool init_glfw(PyObject *m);
+extern bool init_child(PyObject *m);
 extern bool init_state(PyObject *module);
 extern bool init_keys(PyObject *module);
 extern bool init_graphics(PyObject *module);
@@ -211,6 +212,7 @@ PyInit_fast_data_types(void) {
         if (!init_ColorProfile(m)) return NULL;
         if (!init_Screen(m)) return NULL;
         if (!init_glfw(m)) return NULL;
+        if (!init_child(m)) return NULL;
         if (!init_state(m)) return NULL;
         if (!init_keys(m)) return NULL;
         if (!init_graphics(m)) return NULL;

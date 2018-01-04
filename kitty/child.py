@@ -4,7 +4,6 @@
 
 import fcntl
 import os
-import sys
 
 import kitty.fast_data_types as fast_data_types
 
@@ -55,44 +54,20 @@ class Child:
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
-        env = self.env
-        pid = os.fork()
-        if pid == 0:  # child
-            try:
-                os.chdir(self.cwd)
-            except EnvironmentError:
-                os.chdir('/')
-            os.setsid()
-            for i in range(3):
-                if stdin is not None and i == 0:
-                    os.dup2(stdin_read_fd, i)
-                    os.close(stdin_read_fd), os.close(stdin_write_fd)
-                else:
-                    os.dup2(slave, i)
-            os.close(slave), os.close(master)
-            os.closerange(3, 200)
-            # Establish the controlling terminal (see man 7 credentials)
-            os.close(os.open(os.ttyname(1), os.O_RDWR))
-            os.environ.update(env)
-            os.environ['TERM'] = self.opts.term
-            os.environ['COLORTERM'] = 'truecolor'
-            if os.path.isdir(terminfo_dir):
-                os.environ['TERMINFO'] = terminfo_dir
-            try:
-                os.execvp(self.argv[0], self.argv)
-            except Exception as err:
-                # Report he failure and exec a shell instead so that
-                # we are not left with a forked but not execed process
-                print('Could not launch:', self.argv[0])
-                print('\t', err)
-                print('\nPress Enter to exit:', end=' ')
-                sys.stdout.flush()
-                os.execvp('/bin/sh', ['/bin/sh', '-c', 'read w'])
-        else:  # master
-            os.close(slave)
-            self.pid = pid
-            self.child_fd = master
-            if stdin is not None:
-                os.close(stdin_read_fd)
-                fast_data_types.thread_write(stdin_write_fd, stdin)
-            return pid
+        else:
+            stdin_read_fd = stdin_write_fd = -1
+        env = os.environ.copy()
+        env.update(self.env)
+        env['TERM'] = self.opts.term
+        env['COLORTERM'] = 'truecolor'
+        if os.path.isdir(terminfo_dir):
+            env['TERMINFO'] = terminfo_dir
+        env = tuple('{}={}'.format(k, v) for k, v in env.items())
+        pid = fast_data_types.spawn(self.cwd, tuple(self.argv), env, master, slave, stdin_read_fd, stdin_write_fd)
+        os.close(slave)
+        self.pid = pid
+        self.child_fd = master
+        if stdin is not None:
+            os.close(stdin_read_fd)
+            fast_data_types.thread_write(stdin_write_fd, stdin)
+        return pid
