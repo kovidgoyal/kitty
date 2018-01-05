@@ -51,45 +51,52 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
 #define exit_on_err(m) { write_to_stderr(m); write_to_stderr(": "); write_to_stderr(strerror(errno)); exit(EXIT_FAILURE); }
     pid_t pid = fork();
-    if (pid == 0) {
-        // child
-        // Use only signal-safe functions (man 7 signal-safety)
-        if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
-        if (setsid() == -1) exit_on_err("setsid() in child process failed");
-        if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
-        if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
-        if (stdin_read_fd > -1) {
-            if (dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
-            close(stdin_read_fd);
-            close(stdin_write_fd);
-        } else {
-            if (dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
-        }
-        close(slave);
-        close(master);
-        for (int c = 3; c < 201; c++) close(c);
+    switch(pid) {
+        case 0:
+            // child
+            // Use only signal-safe functions (man 7 signal-safety)
+            if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
+            if (setsid() == -1) exit_on_err("setsid() in child process failed");
+            if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
+            if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
+            if (stdin_read_fd > -1) {
+                if (dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+                close(stdin_read_fd);
+                close(stdin_write_fd);
+            } else {
+                if (dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
+            }
+            close(slave);
+            close(master);
+            for (int c = 3; c < 201; c++) close(c);
 
-        // Establish the controlling terminal (see man 7 credentials)
-        int tfd = open(name, O_RDWR);
-        if (tfd == -1) exit_on_err("Failed to open controlling terminal");
-        close(tfd);
+            // Establish the controlling terminal (see man 7 credentials)
+            int tfd = open(name, O_RDWR);
+            if (tfd == -1) exit_on_err("Failed to open controlling terminal");
+            close(tfd);
 
-        environ = env;
-        execvp(argv[0], argv);
-        // Report the failure and exec a shell instead, so that we are not left
-        // with a forked but not exec'ed process
-        write_to_stderr("Failed to launch child: ");
-        write_to_stderr(argv[0]);
-        write_to_stderr("\nWith error: ");
-        write_to_stderr(strerror(errno));
-        write_to_stderr("\nPress Enter to exit.\n");
-        execlp("sh", "sh", "-c", "read w", NULL);
-        exit(EXIT_FAILURE);
-    } else {
-        free(argv);
-        free(env);
+            environ = env;
+            execvp(argv[0], argv);
+            // Report the failure and exec a shell instead, so that we are not left
+            // with a forked but not exec'ed process
+            write_to_stderr("Failed to launch child: ");
+            write_to_stderr(argv[0]);
+            write_to_stderr("\nWith error: ");
+            write_to_stderr(strerror(errno));
+            write_to_stderr("\nPress Enter to exit.\n");
+            execlp("sh", "sh", "-c", "read w", NULL);
+            exit(EXIT_FAILURE);
+            break;
+        case -1:
+            PyErr_SetFromErrno(PyExc_OSError);
+            break;
+        default:
+            break;
     }
 #undef exit_on_err
+    free(argv);
+    free(env);
+    if (pid == -1) return NULL;
     return PyLong_FromLong(pid);
 }
 
