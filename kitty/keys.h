@@ -487,12 +487,12 @@ static inline const char*
 key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
   switch(mode) {
     case NORMAL:
-      switch(action & 3) { case 3: return NULL;
+      switch(action & 3) { case 3: return NULL; 
         case 0: // RELEASE
           return NULL;
 
         case 1: // PRESS
-          switch (mods & 0xf) {
+          switch (mods & 0xf) { 
               case 0x0:
                 switch(key & 0x7f) { default: return NULL;
                   case 50: // ESCAPE
@@ -920,7 +920,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x02\x1b\x09";
                   case 53: // BACKSPACE
-                    return "\x02\x1b\x7f";
+                    return "\x01\x17";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                   case 55: // DELETE
@@ -1071,7 +1071,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x03\x1b\x5b\x5a";
                   case 53: // BACKSPACE
-                    return "\x02\x1b\x7f";
+                    return "\x01\x17";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                   case 55: // DELETE
@@ -1690,7 +1690,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
           }  // end switch(mods)
 
         case 2: // REPEAT
-          switch (mods & 0xf) {
+          switch (mods & 0xf) { 
               case 0x0:
                 switch(key & 0x7f) { default: return NULL;
                   case 50: // ESCAPE
@@ -2118,7 +2118,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x02\x1b\x09";
                   case 53: // BACKSPACE
-                    return "\x02\x1b\x7f";
+                    return "\x01\x17";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                   case 55: // DELETE
@@ -2269,7 +2269,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x03\x1b\x5b\x5a";
                   case 53: // BACKSPACE
-                    return "\x02\x1b\x7f";
+                    return "\x01\x17";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                   case 55: // DELETE
@@ -2891,12 +2891,12 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
 
 
       case APPLICATION:
-        switch(action & 3) { case 3: return NULL;
+        switch(action & 3) { case 3: return NULL; 
           case 0: // RELEASE
             return NULL;
 
           case 1: // PRESS
-            switch (mods & 0xf) {
+            switch (mods & 0xf) { 
                 case 0x0:
                   switch(key & 0x7f) { default: return NULL;
                     case 50: // ESCAPE
@@ -3324,7 +3324,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x02\x1b\x09";
                     case 53: // BACKSPACE
-                      return "\x02\x1b\x7f";
+                      return "\x01\x17";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                     case 55: // DELETE
@@ -3475,7 +3475,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x03\x1b\x5b\x5a";
                     case 53: // BACKSPACE
-                      return "\x02\x1b\x7f";
+                      return "\x01\x17";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                     case 55: // DELETE
@@ -4094,7 +4094,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
             }  // end switch(mods)
 
           case 2: // REPEAT
-            switch (mods & 0xf) {
+            switch (mods & 0xf) { 
                 case 0x0:
                   switch(key & 0x7f) { default: return NULL;
                     case 50: // ESCAPE
@@ -4522,7 +4522,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x02\x1b\x09";
                     case 53: // BACKSPACE
-                      return "\x02\x1b\x7f";
+                      return "\x01\x17";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                     case 55: // DELETE
@@ -4673,7 +4673,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x03\x1b\x5b\x5a";
                     case 53: // BACKSPACE
-                      return "\x02\x1b\x7f";
+                      return "\x01\x17";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                     case 55: // DELETE
@@ -5295,9 +5295,9 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
 
 
         case EXTENDED:
-          switch(action & 3) { case 3: return NULL;
+          switch(action & 3) { case 3: return NULL; 
             case 0: // RELEASE
-              switch (mods & 0xf) {
+              switch (mods & 0xf) { 
                   case 0x0:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
@@ -9061,7 +9061,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
               }  // end switch(mods)
 
             case 1: // PRESS
-              switch (mods & 0xf) {
+              switch (mods & 0xf) { 
                   case 0x0:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
@@ -12825,7 +12825,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
               }  // end switch(mods)
 
             case 2: // REPEAT
-              switch (mods & 0xf) {
+              switch (mods & 0xf) { 
                   case 0x0:
                     switch(key & 0x7f) { default: return NULL;
                       case 0: // SPACE
