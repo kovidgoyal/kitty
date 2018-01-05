@@ -4,12 +4,29 @@
 
 import sys
 
-if len(sys.argv) > 1 and sys.argv[1] == 'icat':
+first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
+
+
+def icat(args):
     from kitty.icat import main
-    main(sys.argv[1:])
-elif len(sys.argv) > 1 and sys.argv[1] == 'list-fonts':
+    main(args)
+
+
+def list_fonts(args):
     from kitty.fonts.list import main
-    main(sys.argv[1:])
+    main(args)
+
+
+if first_arg in ('icat', '+icat'):
+    icat(sys.argv[1:])
+elif first_arg in ('list-fonts', '+list-fonts'):
+    list_fonts(sys.argv[1:])
+elif first_arg == '+' and len(sys.argv) > 2:
+    q = sys.argv[2]
+    if q == 'icat':
+        icat(sys.argv[2:])
+    elif q == 'list-fonts':
+        list_fonts(sys.argv[2:])
 else:
     from kitty.main import main
     main()
