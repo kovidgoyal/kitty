@@ -287,7 +287,7 @@ def generate_key_table():
             ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
             i += 1
             if action != defines.GLFW_RELEASE or mode == 'EXTENDED':
-                ind('switch (mods & 0xf) { ')
+                ind('switch (mods & 0xf) {')
                 i += 1
                 for mods in range(16):
                     key_bytes = {}
