@@ -487,7 +487,7 @@ static inline const char*
 key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
   switch(mode) {
     case NORMAL:
-      switch(action & 3) { case 3: return NULL; 
+      switch(action & 3) { case 3: return NULL;
         case 0: // RELEASE
           return NULL;
 
@@ -2891,7 +2891,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
 
 
       case APPLICATION:
-        switch(action & 3) { case 3: return NULL; 
+        switch(action & 3) { case 3: return NULL;
           case 0: // RELEASE
             return NULL;
 
@@ -5295,7 +5295,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
 
 
         case EXTENDED:
-          switch(action & 3) { case 3: return NULL; 
+          switch(action & 3) { case 3: return NULL;
             case 0: // RELEASE
               switch (mods & 0xf) {
                   case 0x0:

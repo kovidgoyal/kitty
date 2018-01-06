@@ -281,7 +281,7 @@ def generate_key_table():
         i += 1
         ind('case {}:'.format(mode))
         i += 1
-        ind('switch(action & 3) { case 3: return NULL; ')
+        ind('switch(action & 3) { case 3: return NULL;')
         for action in (defines.GLFW_RELEASE, defines.GLFW_PRESS, defines.GLFW_REPEAT):
             i += 1
             ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
