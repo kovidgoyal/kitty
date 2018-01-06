@@ -90,6 +90,12 @@ historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
     self->line_attrs[index_of(self, y)] |= TEXT_DIRTY_MASK;
 }
 
+inline void
+historybuf_clear(HistoryBuf *self) {
+    self->count = 0;
+    self->start_of_data = 0;
+}
+
 static inline index_type
 historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;

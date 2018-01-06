@@ -728,9 +728,14 @@ clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data) {
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 
+static inline bool
+clear_all_filter_func(ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data) {
+    return true;
+}
+
 void
-grman_clear(GraphicsManager *self) {
-    filter_refs(self, NULL, true, clear_filter_func);
+grman_clear(GraphicsManager *self, bool all) {
+    filter_refs(self, NULL, true, all ? clear_all_filter_func : clear_filter_func);
 }
 
 static inline bool

@@ -79,3 +79,4 @@ void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
+void historybuf_clear(HistoryBuf *self);

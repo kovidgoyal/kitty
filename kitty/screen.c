@@ -103,7 +103,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
-    grman_clear(self->grman);
+    grman_clear(self->grman, false);
     self->modes = empty_modes;
 #define R(name) self->color_profile->overridden.name = 0
     R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
@@ -430,7 +430,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 void
 screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
-    grman_clear(self->alt_grman);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
+    grman_clear(self->alt_grman, true);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
         linebuf_clear(self->alt_linebuf, BLANK_CHAR);
         screen_save_cursor(self);
@@ -882,6 +882,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
               including cursor position.
             * ``2`` -- Erases complete display. All lines are erased
               and changed to single-width. Cursor does not move.
+            * ``3`` -- Erase complete display and scrollback buffer as well.
         :param bool private: when ``True`` character attributes are left unchanged
     */
     unsigned int a, b;
@@ -891,7 +892,8 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         case 1:
             a = 0; b = self->cursor->y; break;
         case 2:
-            grman_clear(self->grman);
+        case 3:
+            grman_clear(self->grman, how == 3);
             a = 0; b = self->lines; break;
         default:
             return;
@@ -910,6 +912,13 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
+    }
+    if (how == 3 && self->linebuf == self->main_linebuf) {
+        historybuf_clear(self->historybuf);
+        if (self->scrolled_by != 0) {
+            self->scrolled_by = 0;
+            self->scroll_changed = true;
+        }
     }
 }
 
