@@ -49,7 +49,7 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     Screen *screen = w->render_data.screen;
 
     if (action == MOVE) {
-        if (screen->modes.mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
+        cb = 3;
     } else {
         cb = button_map(button);
         if (cb == UINT_MAX) return 0;
