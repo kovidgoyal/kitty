@@ -16,6 +16,7 @@ from .fast_data_types import (
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut
+from .remote_control import handle_cmd
 from .session import create_session
 from .tabs import SpecialWindow, TabManager
 from .utils import (
@@ -128,7 +129,11 @@ class Boss:
     def handle_remote_cmd(self, cmd, window=None):
         response = None
         if self.opts.allow_remote_control:
-            pass
+            try:
+                response = handle_cmd(self, window, cmd)
+            except Exception as err:
+                import traceback
+                response = {'ok': False, 'error': str(err), 'tb': traceback.format_exc()}
         else:
             response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control yes to your kitty.conf'}
         if response is not None:

@@ -757,7 +757,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             break;
         case '@':
             if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, "kitty-cmd{")) {
-                PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 11, screen->parser_buf_pos - 11);
+                PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 10, screen->parser_buf_pos - 10);
                 if (cmd != NULL) {
                     REPORT_OSC2(screen_handle_cmd, (char)screen->parser_buf[0], cmd);
                     screen_handle_cmd(screen, cmd);

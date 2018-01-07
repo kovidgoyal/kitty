@@ -28,9 +28,29 @@ def parse_subcommand_cli(func, args):
     return opts, items
 
 
-@cmd('List all windows')
+@cmd(
+    'List all tabs/windows'
+)
 def cmd_ls(global_opts, opts, args):
     pass
+
+
+def ls(boss, window):
+    raise NotImplementedError()
+
+
+def handle_cmd(boss, window, cmd):
+    cmd = json.loads(cmd)
+    v = cmd['version']
+    if tuple(v)[:2] > version[:2]:
+        return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
+    func = partial(globals()[cmd['cmd']], boss, window)
+    payload = cmd.get('payload')
+    ans = func(payload) if payload is not None else func()
+    response = {'ok': True}
+    if ans is not None:
+        response['data'] = ans
+    return response
 
 
 global_options_spec = partial('''\
@@ -97,3 +117,5 @@ def main(args):
         if response.get('tb'):
             print(response['tb'], file=sys.stderr)
         raise SystemExit(response['error'])
+    if 'data' in response:
+        print(response['data'])
