@@ -7,22 +7,20 @@ import fcntl
 import mimetypes
 import os
 import re
-import selectors
 import signal
 import struct
 import subprocess
 import sys
 import termios
-import tty
 import zlib
 from base64 import standard_b64encode
 from collections import namedtuple
 from math import ceil, floor
 from tempfile import NamedTemporaryFile
-from time import monotonic
 
 from kitty.constants import appname
 from kitty.cli import parse_args
+from kitty.utils import read_with_timeout
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -261,17 +259,11 @@ def scan(d):
 
 
 def detect_support(wait_for=10, silent=False):
-    fd = sys.stdin.fileno()
-    old = termios.tcgetattr(fd)
-    oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
     if not silent:
         print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
     sys.stdout.flush()
-    tty.setraw(fd)
     try:
         received = b''
-        start_time = monotonic()
         responses = {}
 
         def parse_responses():
@@ -282,29 +274,20 @@ def detect_support(wait_for=10, silent=False):
                     if iid not in responses:
                         responses[iid] = m.group(2) == b'OK'
 
-        def read():
+        def more_needed(data):
             nonlocal received
-            d = sys.stdin.buffer.read()
-            if not d:  # EOF
-                responses[1] = responses[2] = False
-                return
-            received += d
+            received += data
             parse_responses()
+            return 1 not in responses or 2 not in responses
 
         with NamedTemporaryFile() as f:
             f.write(b'abcd'), f.flush()
             write_gr_cmd(dict(a='q', s=1, v=1, i=1), standard_b64encode(b'abcd'))
             write_gr_cmd(dict(a='q', s=1, v=1, i=2, t='f'), standard_b64encode(f.name.encode(fsenc)))
-            sel = selectors.DefaultSelector()
-            sel.register(sys.stdin, selectors.EVENT_READ, read)
-            while monotonic() - start_time < wait_for and 1 not in responses and 2 not in responses:
-                for key, mask in sel.select(0.1):
-                    read()
+            read_with_timeout(more_needed, timeout=wait_for)
     finally:
         if not silent:
             sys.stdout.buffer.write(b'\033[J'), sys.stdout.flush()
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
     detect_support.has_files = bool(responses.get(2))
     return responses.get(1, False)
 
