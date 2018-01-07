@@ -206,7 +206,7 @@ def prettify(text):
     def sub(m):
         t = m.group(2)
         for ch in m.group(1):
-            t = {'C': cyan, '_': italic, '*': bold}[ch](t)
+            t = {'C': cyan, '_': italic, '*': bold, 'G': green, 'T': title}[ch](t)
         return t
 
     text = re.sub(r'[|]([a-zA-Z_*]+?) (.+?)[|]', sub, text)
@@ -263,18 +263,25 @@ def print_help_for_seq(seq, usage, message, appname):
         if leading_indent is None:
             leading_indent = indent
         j = '\n' + (' ' * indent)
-        a((' ' * leading_indent) + j.join(wrap(text, limit=linesz - indent)))
+        lines = []
+        for l in text.splitlines():
+            if l:
+                lines.extend(wrap(l, limit=linesz - indent))
+            else:
+                lines.append('')
+        a((' ' * leading_indent) + j.join(lines))
 
     usage = usage or '[program-to-run ...]'
     a('{}: {} [options] {}'.format(title('Usage'), bold(yellow(appname)), usage))
     a('')
     message = message or (
-        'Run the |_ {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
+        'Run the |G {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
         ' arguments following the |_ options|. For example: {appname} /bin/sh'
     ).format(appname=appname)
     wa(prettify(message))
     a('')
-    a('{}:'.format(title('Options')))
+    if seq:
+        a('{}:'.format(title('Options')))
     for opt in seq:
         if isinstance(opt, str):
             a('{}:'.format(title(opt)))

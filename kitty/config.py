@@ -256,6 +256,7 @@ url_style.map = dict(((v, i) for i, v in enumerate('none single double curly'.sp
 
 
 type_map = {
+    'allow_remote_control': to_bool,
     'adjust_line_height': adjust_line_height,
     'scrollback_lines': positive_int,
     'scrollback_pager': shlex.split,

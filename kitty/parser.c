@@ -727,6 +727,17 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // }}}
 
 // DCS mode {{{
+
+static inline bool
+startswith(const uint32_t *string, size_t sz, const char *prefix) {
+    size_t l = strlen(prefix);
+    if (sz < l) return false;
+    for (size_t i = 0; i < l; i++) {
+        if (string[i] != (unsigned char)prefix[i]) return false;
+    }
+    return true;
+}
+
 static inline void
 dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
@@ -739,9 +750,21 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     REPORT_OSC2(screen_request_capabilities, (char)screen->parser_buf[0], string);
                     screen_request_capabilities(screen, (char)screen->parser_buf[0], string);
                     Py_DECREF(string);
-                }
+                } else PyErr_Clear();
             } else {
                 REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)screen->parser_buf[0], screen->parser_buf[1]);
+            }
+            break;
+        case '@':
+            if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, "kitty-cmd{")) {
+                PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 11, screen->parser_buf_pos - 11);
+                if (cmd != NULL) {
+                    REPORT_OSC2(screen_handle_cmd, (char)screen->parser_buf[0], cmd);
+                    screen_handle_cmd(screen, cmd);
+                    Py_DECREF(cmd);
+                } else PyErr_Clear();
+            } else {
+                REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
             }
             break;
         default:

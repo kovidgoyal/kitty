@@ -1142,6 +1142,11 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
+screen_handle_cmd(Screen *self, PyObject *cmd) {
+    CALLBACK("handle_remote_cmd", "O", cmd);
+}
+
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;

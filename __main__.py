@@ -15,21 +15,35 @@ def list_fonts(args):
     main(args)
 
 
+def remote_control(args):
+    from kitty.remote_control import main
+    main(args)
+
+
+def namespaced(args):
+    func = namespaced_entry_points[args[0]]
+    func(args[1:])
+
+
+entry_points = {
+    'icat': icat,
+    'list-fonts': list_fonts,
+    '+icat': icat,
+    '+list-fonts': list_fonts,
+    '@': remote_control,
+    '+': namespaced,
+}
+namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
+
+
 def main():
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
-    if first_arg in ('icat', '+icat'):
-        icat(sys.argv[1:])
-    elif first_arg in ('list-fonts', '+list-fonts'):
-        list_fonts(sys.argv[1:])
-    elif first_arg == '+' and len(sys.argv) > 2:
-        q = sys.argv[2]
-        if q == 'icat':
-            icat(sys.argv[2:])
-        elif q == 'list-fonts':
-            list_fonts(sys.argv[2:])
-    else:
+    func = entry_points.get(first_arg)
+    if func is None:
         from kitty.main import main
         main()
+    else:
+        func(sys.argv[1:])
 
 
 if __name__ == '__main__':

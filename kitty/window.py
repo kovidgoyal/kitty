@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import sys
 import weakref
 from collections import deque
@@ -257,6 +258,12 @@ class Window:
 
     def request_capabilities(self, q):
         self.screen.send_escape_code_to_child(DCS, get_capabilities(q))
+
+    def handle_remote_cmd(self, cmd):
+        get_boss().handle_remote_cmd(cmd, self)
+
+    def send_cmd_response(self, response):
+        self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 
     # }}}
 

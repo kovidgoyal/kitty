@@ -125,6 +125,16 @@ class Boss:
             else:
                 safe_print('Unknown message received from peer, ignoring')
 
+    def handle_remote_cmd(self, cmd, window=None):
+        response = None
+        if self.opts.allow_remote_control:
+            pass
+        else:
+            response = {'ok': False, 'err': 'NOT_ALLOWED'}
+        if response is not None:
+            if window is not None:
+                window.send_cmd_response(response)
+
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)
         if window is None:
