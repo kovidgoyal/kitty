@@ -385,3 +385,23 @@ scroll_event(double UNUSED xoffset, double yoffset) {
         }
     }
 }
+
+static PyObject*
+test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
+    unsigned int x, y;
+    int mouse_tracking_protocol, button, action, mods;
+    if (!PyArg_ParseTuple(args, "IIiiii", &x, &y, &mouse_tracking_protocol, &button, &action, &mods)) return NULL;
+    int sz = encode_mouse_event_impl(x, y, mouse_tracking_protocol, button, action, mods);
+    return PyUnicode_FromStringAndSize(mouse_event_buf, sz);
+}
+
+static PyMethodDef module_methods[] = {
+    METHODB(test_encode_mouse, METH_VARARGS),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+bool
+init_mouse(PyObject *module) {
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
+}

@@ -185,6 +185,7 @@ extern bool init_state(PyObject *module);
 extern bool init_keys(PyObject *module);
 extern bool init_graphics(PyObject *module);
 extern bool init_shaders(PyObject *module);
+extern bool init_mouse(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -217,6 +218,7 @@ PyInit_fast_data_types(void) {
         if (!init_keys(m)) return NULL;
         if (!init_graphics(m)) return NULL;
         if (!init_shaders(m)) return NULL;
+        if (!init_mouse(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
         if (!init_cocoa(m)) return NULL;

@@ -78,3 +78,30 @@ class TestParser(BaseTest):
                 keycode = getattr(defines, 'GLFW_KEY_' + key)
                 base_key = smkx_key_map[keycode]
                 km(modify_key_bytes(base_key, num).decode('ascii')[1:], key)
+
+    def test_encode_mouse_event(self):
+        PRESS, RELEASE, DRAG, MOVE = range(4)
+        NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
+        L, M, R = defines.GLFW_MOUSE_BUTTON_LEFT, defines.GLFW_MOUSE_BUTTON_MIDDLE, defines.GLFW_MOUSE_BUTTON_RIGHT
+        protocol = SGR_PROTOCOL
+
+        def enc(button=L, action=PRESS, mods=0, x=1, y=1):
+            return defines.test_encode_mouse(x, y, protocol, button, action, mods)
+
+        self.ae(enc(), '<0;1;1M')
+        self.ae(enc(action=RELEASE), '<0;1;1m')
+        self.ae(enc(action=MOVE), '<35;1;1M')
+        self.ae(enc(action=DRAG), '<32;1;1M')
+
+        self.ae(enc(R), '<2;1;1M')
+        self.ae(enc(R, action=RELEASE), '<2;1;1m')
+        self.ae(enc(R, action=DRAG), '<34;1;1M')
+
+        self.ae(enc(M), '<1;1;1M')
+        self.ae(enc(M, action=RELEASE), '<1;1;1m')
+        self.ae(enc(M, action=DRAG), '<33;1;1M')
+
+        self.ae(enc(x=1234, y=5678), '<0;1234;5678M')
+        self.ae(enc(mods=defines.GLFW_MOD_SHIFT), '<4;1;1M')
+        self.ae(enc(mods=defines.GLFW_MOD_ALT), '<8;1;1M')
+        self.ae(enc(mods=defines.GLFW_MOD_CONTROL), '<16;1;1M')
