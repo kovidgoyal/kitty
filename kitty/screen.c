@@ -387,28 +387,29 @@ write_to_child(Screen *self, const char *data, size_t sz) {
 
 void
 write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
-    static char buf[512];
-    size_t sz;
+    const char *prefix, *suffix = self->modes.eight_bit_controls ? "\x9c" : "\033\\";
     switch(which) {
         case DCS:
-            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x90" : "\033P", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            prefix = self->modes.eight_bit_controls ? "\x90" : "\033P";
             break;
         case CSI:
-            sz = snprintf(buf, sizeof(buf) - 1, "%s%s", self->modes.eight_bit_controls ? "\x9b" : "\033[", data);
+            prefix = self->modes.eight_bit_controls ? "\x9b" : "\033["; suffix = "";
             break;
         case OSC:
-            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9d" : "\033]", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            prefix = self->modes.eight_bit_controls ? "\x9d" : "\033]";
             break;
         case PM:
-            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9e" : "\033^", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            prefix = self->modes.eight_bit_controls ? "\x9e" : "\033^";
             break;
         case APC:
-            sz = snprintf(buf, sizeof(buf) - 1, "%s%s%s", self->modes.eight_bit_controls ? "\x9f" : "\033_", data, self->modes.eight_bit_controls ? "\x9c" : "\033\\");
+            prefix = self->modes.eight_bit_controls ? "\x9f" : "\033_";
             break;
         default:
             fatal("Unknown escape code to write: %u", which);
     }
-    write_to_child(self, buf, sz);
+    write_to_child(self, prefix, strlen(prefix));
+    write_to_child(self, data, strlen(data));
+    if (suffix[0]) write_to_child(self, suffix, strlen(suffix));
 }
 
 void
