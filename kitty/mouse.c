@@ -19,7 +19,8 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define SHIFT_INDICATOR  (1 << 2)
 #define ALT_INDICATOR (1 << 3)
 #define CONTROL_INDICATOR (1 << 4)
-#define MOTION_INDICATOR  (1 << 5)
+#define DRAG_INDICATOR  (1 << 5)
+#define MOVE_INDICATOR ((1 << 5) + 3)
 #define EXTRA_BUTTON_INDICATOR (1 << 6)
 
 static inline unsigned int
@@ -54,7 +55,9 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
         cb = button_map(button);
         if (cb == UINT_MAX) return 0;
     }
-    if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
+
+    if (action == DRAG) cb |= DRAG_INDICATOR;
+    else if (action == MOVE) cb |= MOVE_INDICATOR;
     else if (action == RELEASE && screen->modes.mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
     if (mods & GLFW_MOD_SHIFT) cb |= SHIFT_INDICATOR;
     if (mods & GLFW_MOD_ALT) cb |= ALT_INDICATOR;
