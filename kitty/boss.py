@@ -95,6 +95,13 @@ class Boss:
         if dpi_changed:
             self.on_dpi_change(os_window_id)
 
+    def list_os_windows(self):
+        for os_window_id, tm in self.os_window_map.items():
+            yield {
+                'id': os_window_id,
+                'tabs': list(tm.list_tabs()),
+            }
+
     def _new_os_window(self, args, cwd_from=None):
         sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)

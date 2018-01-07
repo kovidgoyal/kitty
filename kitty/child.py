@@ -19,6 +19,13 @@ def cwd_of_process(pid):
     return os.path.realpath(ans)
 
 
+def cmdline_of_process(pid):
+    if is_macos:
+        # TODO: macOS implementation, see DarwinProcess.c in htop for inspiration
+        raise NotImplementedError()
+    return open('/proc/{}/cmdline'.format(pid), 'rb').read().decode('utf-8').split('\0')
+
+
 def remove_cloexec(fd):
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
 

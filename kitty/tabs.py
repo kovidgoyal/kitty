@@ -202,6 +202,10 @@ class Tab:  # {{{
     def move_window_backward(self):
         self.move_window(-1)
 
+    def list_windows(self):
+        for w in self:
+            yield w.as_dict()
+
     def __iter__(self):
         yield from iter(self.windows)
 
@@ -378,6 +382,14 @@ class TabManager:  # {{{
 
     def __len__(self):
         return len(self.tabs)
+
+    def list_tabs(self):
+        for tab in self:
+            yield {
+                'id': tab.id,
+                'title': tab.name or tab.title,
+                'windows': list(tab.list_windows()),
+            }
 
     @property
     def active_tab(self):

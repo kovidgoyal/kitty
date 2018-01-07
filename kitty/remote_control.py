@@ -36,7 +36,9 @@ def cmd_ls(global_opts, opts, args):
 
 
 def ls(boss, window):
-    raise NotImplementedError()
+    data = list(boss.list_os_windows())
+    data = json.dumps(data, indent=2, sort_keys=True)
+    return data
 
 
 def handle_cmd(boss, window, cmd):

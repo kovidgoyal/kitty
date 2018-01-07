@@ -8,6 +8,7 @@ import weakref
 from collections import deque
 from enum import Enum
 
+from .child import cmdline_of_process, cwd_of_process
 from .config import build_ansi_color_table, parse_send_text_bytes
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
@@ -106,6 +107,22 @@ class Window:
 
     def __repr__(self):
         return 'Window(title={}, id={})'.format(self.title, self.id)
+
+    def as_dict(self):
+        try:
+            cwd = cwd_of_process(self.child.pid)
+        except Exception:
+            cwd = None
+        try:
+            cmdline = cmdline_of_process(self.child.pid)
+        except Exception:
+            cmdline = None
+        return dict(
+            id=self.id,
+            title=self.override_title or self.title,
+            pid=self.child.pid,
+            cwd=cwd, cmdline=cmdline
+        )
 
     def set_visible_in_layout(self, window_idx, val):
         val = bool(val)
