@@ -130,7 +130,7 @@ class Boss:
         if self.opts.allow_remote_control:
             pass
         else:
-            response = {'ok': False, 'err': 'NOT_ALLOWED'}
+            response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control yes to your kitty.conf'}
         if response is not None:
             if window is not None:
                 window.send_cmd_response(response)
