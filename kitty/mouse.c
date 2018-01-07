@@ -42,12 +42,9 @@ button_map(int button) {
 
 static char mouse_event_buf[64];
 
-int
-encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
-    unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
+static inline int
+encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
     unsigned int cb = 0;
-    Screen *screen = w->render_data.screen;
-
     if (action == MOVE) {
         cb = 3;
     } else {
@@ -55,11 +52,11 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
         if (cb == UINT_MAX) return 0;
     }
     if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
-    else if (action == RELEASE && screen->modes.mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
+    else if (action == RELEASE && mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
     if (mods & GLFW_MOD_SHIFT) cb |= SHIFT_INDICATOR;
     if (mods & GLFW_MOD_ALT) cb |= ALT_INDICATOR;
     if (mods & GLFW_MOD_CONTROL) cb |= CONTROL_INDICATOR;
-    switch(screen->modes.mouse_tracking_protocol) {
+    switch(mouse_tracking_protocol) {
         case SGR_PROTOCOL:
             return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
             break;
@@ -82,6 +79,14 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
             break;
     }
     return 0;
+}
+
+static int
+encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
+    unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
+    Screen *screen = w->render_data.screen;
+    return encode_mouse_event_impl(x, y, screen->modes.mouse_tracking_protocol, button, action, mods);
+
 }
 
 static inline bool
