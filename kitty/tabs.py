@@ -22,11 +22,11 @@ from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from')
+SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd')
 
 
-def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None):
-    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from)
+def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None):
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd)
 
 
 class Tab:  # {{{
@@ -109,7 +109,7 @@ class Tab:  # {{{
                 w.set_visible_in_layout(i, True)
             self.relayout()
 
-    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None):
+    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None):
         if cmd is None:
             if use_shell:
                 cmd = [shell_path]
@@ -122,12 +122,12 @@ class Tab:  # {{{
             except Exception:
                 import traceback
                 traceback.print_exc()
-        ans = Child(cmd, self.cwd, self.opts, stdin, env, cwd_from)
+        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, env, cwd_from)
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None):
-        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from)
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None):
+        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd)
         window = Window(self, child, self.opts, self.args, override_title=override_title)
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)

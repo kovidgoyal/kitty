@@ -41,7 +41,8 @@ class Session:
             cmd = shlex.split(cmd) if isinstance(cmd, str) else cmd
         else:
             cmd = None
-        self.tabs[-1].windows.append(cmd)
+        from .tabs import SpecialWindow
+        self.tabs[-1].windows.append(SpecialWindow(cmd, cwd=self.tabs[-1].cwd))
 
     def add_special_window(self, sw):
         self.tabs[-1].windows.append(sw)

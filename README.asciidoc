@@ -286,7 +286,7 @@ command line flag. For example:
 ....
 # Set the window layout for the current tab
 layout tall
-# Set the working directory for the current tab
+# Set the working directory for windows in the current tab
 cd ~
 # Create a window and run the specified command in it
 launch zsh
