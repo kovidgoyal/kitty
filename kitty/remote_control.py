@@ -28,7 +28,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False):
 
 
 def parse_subcommand_cli(func, args):
-    opts, items = parse_args(args[1:], func.options_spec or '\n'.format, '...', func.desc, '{} @ {}'.format(appname, func.name))
+    opts, items = parse_args(args[1:], (func.options_spec or '\n').format, '...', func.desc, '{} @ {}'.format(appname, func.name))
     return opts, items
 
 
@@ -37,8 +37,8 @@ def parse_subcommand_cli(func, args):
     'List all windows. The list is returned as JSON tree. The top-level is a list of'
     ' operating system {appname} windows. Each OS window has an |_ id| and a list'
     ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
-    ' Each window has an |_ id|, |_ title|, |_ current working directory| and |_ process id (PID)| of'
-    ' the process running in it, and, on Linux, the command-line used to launch it.\n\n'
+    ' Each window has an |_ id|, |_ title|, |_ current working directory|, |_ process id (PID)| and'
+    ' |_ command-line| of the process running in the window.\n\n'
     'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname)
 )
 def cmd_ls(global_opts, opts, args):
@@ -51,17 +51,38 @@ def ls(boss, window):
     return data
 
 
+MATCH_WINDOW_OPTION = '''\
+--match
+The window to match. Match specifications are of the form:
+|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline.
+You can use the |_ ls| command to get a list of windows. Note that for
+numeric fields such as id and pid the expression is interpreted as a number,
+not a regular expression.
+'''
+
+
 @cmd(
-    'Send arbitrary text to the specified window',
+    'Send arbitrary text specified windows',
+    'Send arbitrary text specified windows. The text follows Python'
+    ' escaping rules. So you can use escapes like |_ \\x1b| to send control codes'
+    ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
+    ' the text will be sent to all matched windows. By default, text is sent to'
+    ' only the currently active window.',
+    options_spec=MATCH_WINDOW_OPTION,
     no_response=True
 )
 def cmd_send_text(global_opts, opts, args):
-    return {'text': ' '.join(args)}
+    return {'text': ' '.join(args), 'match': opts.match}
 
 
 def send_text(boss, window, payload):
-    window = boss.active_window or window
-    window.write_to_child(parse_send_text_bytes(payload['text']))
+    windows = [boss.active_window]
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+    for window in windows:
+        if window is not None:
+            window.write_to_child(parse_send_text_bytes(payload['text']))
 
 
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}

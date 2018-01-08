@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import re
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
@@ -101,6 +102,15 @@ class Boss:
                 'id': os_window_id,
                 'tabs': list(tm.list_tabs()),
             }
+
+    def match_windows(self, match):
+        field, exp = match.split(':', 1)
+        pat = re.compile(exp)
+        for os_window_id, tm in self.os_window_map.items():
+            for tab in tm:
+                for window in tab:
+                    if window.matches(field, pat):
+                        yield window
 
     def _new_os_window(self, args, cwd_from=None):
         sw = self.args_to_special_window(args, cwd_from) if args else None

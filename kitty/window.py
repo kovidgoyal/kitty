@@ -124,6 +124,29 @@ class Window:
             cwd=cwd, cmdline=cmdline
         )
 
+    def matches(self, field, pat):
+        if field == 'id':
+            return pat.pattern == str(self.id)
+        if field == 'pid':
+            return pat.pattern == str(self.child.pid)
+        if field == 'title':
+            return pat.search(self.override_title or self.title) is not None
+        if field in 'cwd':
+            try:
+                cwd = cwd_of_process(self.child.pid)
+            except Exception:
+                return False
+            return pat.search(cwd) is not None
+        if field == 'cmdline':
+            try:
+                cmdline = cmdline_of_process(self.child.pid)
+            except Exception:
+                return False
+            for x in cmdline:
+                if pat.search(x) is not None:
+                    return True
+        return False
+
     def set_visible_in_layout(self, window_idx, val):
         val = bool(val)
         if val is not self.is_visible_in_layout:
