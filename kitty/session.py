@@ -18,6 +18,7 @@ class Tab:
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
         self.cwd = None
+        self.next_title = None
 
 
 class Session:
@@ -31,6 +32,9 @@ class Session:
             del self.tabs[-1]
         self.tabs.append(Tab(opts, name))
 
+    def set_next_title(self, title):
+        self.tabs[-1].next_title = title.strip()
+
     def set_layout(self, val):
         if val not in all_layouts:
             raise ValueError('{} is not a valid layout'.format(val))
@@ -42,7 +46,9 @@ class Session:
         else:
             cmd = None
         from .tabs import SpecialWindow
-        self.tabs[-1].windows.append(SpecialWindow(cmd, cwd=self.tabs[-1].cwd))
+        t = self.tabs[-1]
+        t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title))
+        t.next_title = None
 
     def add_special_window(self, sw):
         self.tabs[-1].windows.append(sw)
@@ -78,6 +84,8 @@ def parse_session(raw, opts):
                 ans.set_enabled_layouts(rest)
             elif cmd == 'cd':
                 ans.set_cwd(rest)
+            elif cmd == 'title':
+                ans.set_next_title(rest)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     for t in ans.tabs:

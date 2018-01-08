@@ -291,6 +291,8 @@ cd ~
 # Create a window and run the specified command in it
 launch zsh
 launch vim
+# Set the title for the next window
+title Chat with x
 launch irssi --profile x
 
 # Create a new tab (the part after new_tab is the optional tab name which will
