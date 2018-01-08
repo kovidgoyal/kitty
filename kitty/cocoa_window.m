@@ -143,7 +143,6 @@ cocoa_update_title(PyObject *pytitle) {
 bool
 cocoa_make_window_resizable(void *w) {
     NSWindow *window = (NSWindow*)w;
-
     @try {
         [window setStyleMask:
             [window styleMask] | NSWindowStyleMaskResizable];

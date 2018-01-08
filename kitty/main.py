@@ -150,6 +150,7 @@ def main():
     change_wcwidth(not opts.use_system_wcwidth)
     init_graphics()
     try:
+        os.chdir(os.path.expanduser('~'))
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies
             install_sigchld_handler()

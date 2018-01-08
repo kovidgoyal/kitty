@@ -167,7 +167,7 @@ def init_env(
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99 -D_XOPEN_SOURCE=700'
-            ' -pedantic-errors -Werror {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
+            ' -pedantic-errors {} {} -D{}DEBUG -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
             optimize,
             ' '.join(sanitize_args),
@@ -367,7 +367,7 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        run_tool([kenv.cc] + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
+        run_tool([kenv.cc] + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest] + ['-L', '/opt/local/lib'], desc='Linking {} ...'.format(emphasis(module)))
 
 
 def find_c_files():
@@ -451,12 +451,12 @@ def build_asan_launcher(args):
     pylib = get_python_flags(cflags)
     sanitize_lib = ['-lasan'] if cc == 'gcc' and not is_macos else []
     cflags.extend(get_sanitize_args(cc, ccver))
-    cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
+    cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib + ['-L', '/opt/local/lib']
     run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
 
 
 def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
-    cflags = '-Wall -Werror -fpie'.split()
+    cflags = '-Wall -fpie'.split()
     libs = []
     if args.profile:
         cflags.append('-DWITH_PROFILER'), cflags.append('-g')
@@ -471,7 +471,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
     cmd = [env.cc] + cflags + [
         'linux-launcher.c', '-o',
         os.path.join(launcher_dir, exe)
-    ] + libs + pylib
+    ] + libs + pylib + ['-L', '/opt/local/lib']
     run_tool(cmd)
 
 
@@ -620,10 +620,10 @@ def main():
             sys.executable, sys.executable, os.path.join(base, 'test.py')
         )
     elif args.action == 'linux-package':
-        build(args, native_optimizations=False)
+        build(args)
         package(args)
     elif args.action == 'osx-bundle':
-        build(args, native_optimizations=False)
+        build(args)
         package(args, for_bundle=True)
     elif args.action == 'clean':
         clean()

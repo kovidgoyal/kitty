@@ -315,6 +315,8 @@ render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned int widt
     if (ctx == NULL) fatal("Out of memory");
     CGContextSetShouldAntialias(ctx, true);
     CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
+    // CGContextSetShouldSubpixelQuantizeFonts(ctx, true);
+    // CGContextSetShouldSubpixelPositionFonts(ctx, true);
     CGContextSetRGBFillColor(ctx, 1, 1, 1, 1);
     CGAffineTransform transform = CGAffineTransformIdentity;
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
@@ -462,7 +464,6 @@ PyTypeObject CTFace_Type = {
     .tp_members = members,
     .tp_repr = (reprfunc)repr,
 };
-
 
 
 int

@@ -697,7 +697,6 @@ os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
 }
 
 // Boilerplate {{{
-
 static PyMethodDef module_methods[] = {
     METHODB(create_os_window, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),

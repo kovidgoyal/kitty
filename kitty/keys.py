@@ -197,13 +197,13 @@ def key_to_bytes(key, smkx, extended, mods, action):
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
         # Map Ctrl-key to ascii control code
         data.extend(control_codes[key])
-    elif mods in alt_mods:
-        if key in alt_codes:
-            data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
-        elif key in UN_SHIFTED_PRINTABLE:
-            m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
-            data.append(0o33)
-            data.extend(m[key])
+    #elif mods in alt_mods:
+    #    if key in alt_codes:
+    #        data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+    #    elif key in UN_SHIFTED_PRINTABLE:
+    #        m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
+    #        data.append(0o33)
+    #        data.extend(m[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
