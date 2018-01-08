@@ -128,6 +128,7 @@ class Window:
             for x in self.child.cmdline:
                 if pat.search(x) is not None:
                     return True
+            return False
         return False
 
     def set_visible_in_layout(self, window_idx, val):
