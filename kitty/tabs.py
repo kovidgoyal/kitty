@@ -75,6 +75,12 @@ class Tab:  # {{{
     def title(self):
         return getattr(self.active_window, 'title', appname)
 
+    def set_title(self, title):
+        self.name = title or ''
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.title_changed(self.name)
+
     def title_changed(self, window):
         if window is self.active_window:
             tm = self.tab_manager_ref()
@@ -205,6 +211,13 @@ class Tab:  # {{{
     def list_windows(self):
         for w in self:
             yield w.as_dict()
+
+    def matches(self, field, pat):
+        if field == 'id':
+            return pat.pattern == str(self.id)
+        if field == 'title':
+            return pat.search(self.name or self.title) is not None
+        return False
 
     def __iter__(self):
         yield from iter(self.windows)

@@ -52,12 +52,22 @@ def ls(boss, window):
 
 
 MATCH_WINDOW_OPTION = '''\
---match
+--match -m
 The window to match. Match specifications are of the form:
 |_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline.
 You can use the |_ ls| command to get a list of windows. Note that for
 numeric fields such as id and pid the expression is interpreted as a number,
 not a regular expression.
+'''
+MATCH_TAB_OPTION = '''\
+--match -m
+The tab to match. Match specifications are of the form:
+|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline.
+You can use the |_ ls| command to get a list of tabs. Note that for
+numeric fields such as id and pid the expression is interpreted as a number,
+not a regular expression. When using title or id, first a matching tab is
+looked for and if not found a matching window is looked for, and the tab
+for that window is used.
 '''
 
 
@@ -67,7 +77,8 @@ not a regular expression.
     ' escaping rules. So you can use escapes like |_ \\x1b| to send control codes'
     ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
     ' the text will be sent to all matched windows. By default, text is sent to'
-    ' only the currently active window.',
+    ' only the currently active window. Note that sending more than ~ 2KB of text'
+    ' will not work, so split up large texts into multiple invocations.',
     options_spec=MATCH_WINDOW_OPTION,
     no_response=True
 )
@@ -107,6 +118,31 @@ def set_window_title(boss, window, payload):
     for window in windows:
         if window:
             window.set_title(payload['title'])
+
+
+@cmd(
+    'Set the tab title',
+    'Set the title for the specified tab(s). If you use the |_ --match| option'
+    ' the title will be set for all matched tabs. By default, only the tab'
+    ' in which the command is run is affected. If you do not specify a title, the'
+    ' title of the currently active window in the tab is used.',
+    options_spec=MATCH_TAB_OPTION
+)
+def cmd_set_tab_title(global_opts, opts, args):
+    return {'title': ' '.join(args), 'match': opts.match}
+
+
+def set_tab_title(boss, window, payload):
+    match = payload['match']
+    if match:
+        tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    else:
+        tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+    for tab in tabs:
+        if tab:
+            tab.set_title(payload['title'])
 
 
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}

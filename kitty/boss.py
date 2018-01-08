@@ -106,11 +106,35 @@ class Boss:
     def match_windows(self, match):
         field, exp = match.split(':', 1)
         pat = re.compile(exp)
-        for os_window_id, tm in self.os_window_map.items():
+        for tm in self.os_window_map.values():
             for tab in tm:
                 for window in tab:
                     if window.matches(field, pat):
                         yield window
+
+    def tab_for_window(self, window):
+        for tm in self.os_window_map.values():
+            for tab in tm:
+                for w in tab:
+                    if w.id == window.id:
+                        return tab
+
+    def match_tabs(self, match):
+        field, exp = match.split(':', 1)
+        pat = re.compile(exp)
+        tms = tuple(self.os_window_map.values())
+        found = False
+        if field in ('title', 'id'):
+            for tm in tms:
+                for tab in tm:
+                    if tab.matches(field, pat):
+                        yield tab
+                        found = True
+        if not found:
+            tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
+            for tab in tabs:
+                if tab:
+                    yield tab
 
     def _new_os_window(self, args, cwd_from=None):
         sw = self.args_to_special_window(args, cwd_from) if args else None
