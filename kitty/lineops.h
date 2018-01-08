@@ -9,25 +9,12 @@
 #include "data-types.h"
 
 static inline void
-update_sprites_in_line(Cell *cells, index_type xnum) {
-    if (LIKELY(xnum > 0)) {
-        if (CHAR_IS_BLANK(cells->ch)) { clear_sprite_position(cells[0]); }
-        else set_sprite_position(cells, NULL);
-        for (index_type i = 1; i < xnum; i++) {
-            if (CHAR_IS_BLANK(cells[i].ch)) { clear_sprite_position(cells[i]); }
-            else set_sprite_position(cells + i, cells + i - 1);
-        }
-    }
-}
-
-static inline void
 set_attribute_on_line(Cell *cells, uint32_t shift, uint32_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
     attrs_type mask = shift == DECORATION_SHIFT ? 3 : 1;
-    attrs_type aval = (val & mask) << shift; 
+    attrs_type aval = (val & mask) << shift;
     mask = ~(mask << shift);
     for (index_type i = 0; i < xnum; i++) cells[i].attrs = (cells[i].attrs & mask) | aval;
-    if (shift == BOLD_SHIFT || shift == ITALIC_SHIFT) update_sprites_in_line(cells, xnum);
 }
 
 static inline void
@@ -64,9 +51,11 @@ void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bo
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
-index_type line_url_end_at(Line *self, index_type x);
+index_type line_url_end_at(Line *self, index_type x, bool);
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
 unsigned int line_length(Line *self);
+size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type);
+size_t cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type);
 PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
 
 void linebuf_init_line(LineBuf *, index_type);
@@ -79,10 +68,15 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *);
+void linebuf_mark_line_dirty(LineBuf *self, index_type y);
+void linebuf_mark_line_clean(LineBuf *self, index_type y);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
 bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
+void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
+void historybuf_clear(HistoryBuf *self);

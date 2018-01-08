@@ -7,10 +7,10 @@ from unittest import skipIf
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
-    sprite_map_set_layout, sprite_map_set_limits, sprite_position_for
+    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf
 )
 from kitty.utils import sanitize_title, wcwidth
+from kitty.rgb import to_color
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -19,14 +19,29 @@ def create_lbuf(*lines):
     maxw = max(map(len, lines))
     ans = LineBuf(len(lines), maxw)
     prev_full_length = False
-    for i, l in enumerate(lines):
-        ans.line(i).set_text(l, 0, len(l), C())
+    for i, l0 in enumerate(lines):
+        ans.line(i).set_text(l0, 0, len(l0), C())
         ans.set_continued(i, prev_full_length)
-        prev_full_length = len(l) == maxw
+        prev_full_length = len(l0) == maxw
     return ans
 
 
 class TestDataTypes(BaseTest):
+
+    def test_to_color(self):
+        for x in 'xxx #12 #1234 rgb:a/b'.split():
+            self.assertIsNone(to_color(x))
+
+        def c(spec, r=0, g=0, b=0):
+            self.ae(tuple(to_color(spec)), (r, g, b))
+
+        c('#eee', 0xee, 0xee, 0xee)
+        c('#234567', 0x23, 0x45, 0x67)
+        c('#abcabcdef', 0xab, 0xab, 0xde)
+        c('rgb:e/e/e', 0xee, 0xee, 0xee)
+        c('rgb:23/45/67', 0x23, 0x45, 0x67)
+        c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
+        c('red', 0xff)
 
     def test_linebuf(self):
         old = filled_line_buf(2, 3, filled_cursor())
@@ -38,8 +53,8 @@ class TestDataTypes(BaseTest):
         old.set_attribute(REVERSE, False)
         for y in range(old.ynum):
             for x in range(old.xnum):
-                l = old.line(y)
-                c = l.cursor_from(x)
+                l0 = old.line(y)
+                c = l0.cursor_from(x)
                 self.assertFalse(c.reverse)
                 self.assertTrue(c.bold)
         self.assertFalse(old.is_continued(0))
@@ -62,9 +77,9 @@ class TestDataTypes(BaseTest):
         self.ae(lb.line(3), lb2.line(1))
         self.ae(lb.line(4), lb2.line(4))
         self.ae(lb.create_line_copy(1), lb2.line(2))
-        l = lb.create_line_copy(2)
-        lb.copy_line_to(1, l)
-        self.ae(l, lb2.line(2))
+        l2 = lb.create_line_copy(2)
+        lb.copy_line_to(1, l2)
+        self.ae(l2, lb2.line(2))
         lb.clear_line(0)
         self.ae(lb.line(0), LineBuf(1, lb.xnum).create_line_copy(0))
         lb = filled_line_buf(5, 5, filled_cursor())
@@ -124,11 +139,11 @@ class TestDataTypes(BaseTest):
         self.ae(lb.line(4), clb.line(4))
 
         lb = filled_line_buf(5, 5, filled_cursor())
-        l = lb.line(0)
-        l.add_combining_char(1, 'a')
-        l.clear_text(1, 2)
-        self.ae(str(l), '0  00')
-        self.assertEqualAttributes(l.cursor_from(1), l.cursor_from(0))
+        l0 = lb.line(0)
+        l0.add_combining_char(1, 'a')
+        l0.clear_text(1, 2)
+        self.ae(str(l0), '0  00')
+        self.assertEqualAttributes(l0.cursor_from(1), l0.cursor_from(0))
 
         lb = filled_line_buf(10, 10, filled_cursor())
         lb.clear()
@@ -147,23 +162,23 @@ class TestDataTypes(BaseTest):
             lb.line(lb.ynum)
         with self.assertRaises(IndexError):
             lb.line(0)[lb.xnum]
-        l = lb.line(0)
-        l.set_text(' ', 0, len(' '), C())
-        l.add_combining_char(0, '1')
-        self.ae(l[0], ' 1')
-        l.add_combining_char(0, '2')
-        self.ae(l[0], ' 12')
-        l.add_combining_char(0, '3')
-        self.ae(l[0], ' 13')
-        self.ae(l[1], '\0')
-        self.ae(str(l), ' 13')
+        l0 = lb.line(0)
+        l0.set_text(' ', 0, len(' '), C())
+        l0.add_combining_char(0, '1')
+        self.ae(l0[0], ' 1')
+        l0.add_combining_char(0, '2')
+        self.ae(l0[0], ' 12')
+        l0.add_combining_char(0, '3')
+        self.ae(l0[0], ' 13')
+        self.ae(l0[1], '\0')
+        self.ae(str(l0), ' 13')
         t = 'Testing with simple text'
         lb = LineBuf(2, len(t))
-        l = lb.line(0)
-        l.set_text(t, 0, len(t), C())
-        self.ae(str(l), t)
-        l.set_text('a', 0, 1, C())
-        self.assertEqual(str(l), 'a' + t[1:])
+        l0 = lb.line(0)
+        l0.set_text(t, 0, len(t), C())
+        self.ae(str(l0), t)
+        l0.set_text('a', 0, 1, C())
+        self.assertEqual(str(l0), 'a' + t[1:])
 
         c = C(3, 5)
         c.bold = c.italic = c.reverse = c.strikethrough = True
@@ -174,85 +189,88 @@ class TestDataTypes(BaseTest):
         self.ae(c, c2)
         c2.bold = False
         self.assertNotEqual(c, c2)
-        l.set_text(t, 0, len(t), C())
-        l.apply_cursor(c2, 3)
-        self.assertEqualAttributes(c2, l.cursor_from(3))
-        l.apply_cursor(c2, 0, len(l))
-        for i in range(len(l)):
-            self.assertEqualAttributes(c2, l.cursor_from(i))
-        l.apply_cursor(c3, 0)
-        self.assertEqualAttributes(c3, l.cursor_from(0))
-        l.copy_char(0, l, 1)
-        self.assertEqualAttributes(c3, l.cursor_from(1))
+        l0.set_text(t, 0, len(t), C())
+        l0.apply_cursor(c2, 3)
+        self.assertEqualAttributes(c2, l0.cursor_from(3))
+        l0.apply_cursor(c2, 0, len(l0))
+        for i in range(len(l0)):
+            self.assertEqualAttributes(c2, l0.cursor_from(i))
+        l0.apply_cursor(c3, 0)
+        self.assertEqualAttributes(c3, l0.cursor_from(0))
+        l0.copy_char(0, l0, 1)
+        self.assertEqualAttributes(c3, l0.cursor_from(1))
 
         t = '0123456789'
         lb = LineBuf(1, len(t))
-        l = lb.line(0)
-        l.set_text(t, 0, len(t), C())
-        self.ae(t, str(l))
-        l.right_shift(4, 2)
-        self.ae('0123454567', str(l))
-        l.set_text(t, 0, len(t), C())
-        l.right_shift(0, 0)
-        self.ae(t, str(l))
-        l.right_shift(0, 1)
-        self.ae(str(l), '0' + t[:-1])
-        l.set_text(t, 0, len(t), C())
-        l.left_shift(0, 2)
-        self.ae(str(l), t[2:] + '89')
-        l.set_text(t, 0, len(t), C())
-        l.left_shift(7, 3)
-        self.ae(str(l), t)
+        l3 = lb.line(0)
+        l3.set_text(t, 0, len(t), C())
+        self.ae(t, str(l3))
+        l3.right_shift(4, 2)
+        self.ae('0123454567', str(l3))
+        l3.set_text(t, 0, len(t), C())
+        l3.right_shift(0, 0)
+        self.ae(t, str(l3))
+        l3.right_shift(0, 1)
+        self.ae(str(l3), '0' + t[:-1])
+        l3.set_text(t, 0, len(t), C())
+        l3.left_shift(0, 2)
+        self.ae(str(l3), t[2:] + '89')
+        l3.set_text(t, 0, len(t), C())
+        l3.left_shift(7, 3)
+        self.ae(str(l3), t)
 
-        l.set_text(t, 0, len(t), C())
+        l3.set_text(t, 0, len(t), C())
         q = C()
         q.bold = q.italic = q.reverse = q.strikethrough = True
         q.decoration = 2
         c = C()
         c.x = 3
-        l.set_text('axyb', 1, 2, c)
-        self.ae(str(l), '012xy56789')
-        l.set_char(0, 'x', 1, q)
-        self.assertEqualAttributes(l.cursor_from(0), q)
+        l3.set_text('axyb', 1, 2, c)
+        self.ae(str(l3), '012xy56789')
+        l3.set_char(0, 'x', 1, q)
+        self.assertEqualAttributes(l3.cursor_from(0), q)
 
     def test_url_at(self):
         def create(t):
             lb = create.lb = LineBuf(1, len(t))
-            l = lb.line(0)
-            l.set_text(t, 0, len(t), C())
-            return l
+            lf = lb.line(0)
+            lf.set_text(t, 0, len(t), C())
+            return lf
 
         for trail in '.,]>)\\':
-            l = create("http://xyz.com" + trail)
-            self.ae(l.url_end_at(0), len(l) - 2)
-        l = create("ftp://abc/")
-        self.ae(l.url_end_at(0), len(l) - 1)
-        l = create("http://-abcd] ")
-        self.ae(l.url_end_at(0), len(l) - 3)
+            lx = create("http://xyz.com" + trail)
+            self.ae(lx.url_end_at(0), len(lx) - 2)
+        l0 = create("ftp://abc/")
+        self.ae(l0.url_end_at(0), len(l0) - 1)
+        l2 = create("http://-abcd] ")
+        self.ae(l2.url_end_at(0), len(l2) - 3)
 
         def lspace_test(n, scheme='http'):
-            l = create(' ' * n + scheme + '://acme.com')
+            lf = create(' ' * n + scheme + '://acme.com')
             for i in range(0, n):
-                self.ae(l.url_start_at(i), len(l))
-            for i in range(n, len(l)):
-                self.ae(l.url_start_at(i), n)
+                self.ae(lf.url_start_at(i), len(lf))
+            for i in range(n, len(lf)):
+                self.ae(lf.url_start_at(i), n)
         for i in range(7):
             for scheme in 'http https ftp file'.split():
                 lspace_test(i)
-        l = create('b https://testing.me a')
-        for s in (0, 1, len(l) - 1, len(l) - 2):
-            self.ae(l.url_start_at(s), len(l), 'failed with start at: %d' % s)
-        for s in range(2, len(l) - 2):
-            self.ae(l.url_start_at(s), 2, 'failed with start at: %d (%s)' % (s, str(l)[s:]))
+        l3 = create('b https://testing.me a')
+        for s in (0, 1, len(l3) - 1, len(l3) - 2):
+            self.ae(l3.url_start_at(s), len(l3), 'failed with start at: %d' % s)
+        for s in range(2, len(l3) - 2):
+            self.ae(l3.url_start_at(s), 2, 'failed with start at: %d (%s)' % (s, str(l3)[s:]))
 
         def no_url(t):
-            l = create(t)
-            for s in range(len(l)):
-                self.ae(l.url_start_at(s), len(l))
+            lf = create(t)
+            for s in range(len(lf)):
+                self.ae(lf.url_start_at(s), len(lf))
         no_url('https:// testing.me a')
         no_url('h ttp://acme.com')
         no_url('http: //acme.com')
         no_url('http:/ /acme.com')
+
+        l4 = create(' xxxxxtekljhgdkjgd')
+        self.ae(l4.url_end_at(0), 0)
 
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)
@@ -279,11 +297,13 @@ class TestDataTypes(BaseTest):
         self.ae(cy, 3)
         for i in range(lb2.ynum):
             self.ae(lb2.line(i), lb.line(i + 2))
+        self.assertFalse(lb.dirty_lines())
+        self.ae(lb2.dirty_lines(), list(range(lb2.ynum)))
 
     def line_comparison(self, buf, *lines):
-        for i, l in enumerate(lines):
+        for i, l0 in enumerate(lines):
             l2 = buf.line(i)
-            self.ae(l, str(l2))
+            self.ae(l0, str(l2))
 
     def line_comparison_rewrap(self, lb, *lines):
         lb2 = LineBuf(len(lines), max(map(len, lines)))
@@ -299,6 +319,7 @@ class TestDataTypes(BaseTest):
         lb = create_lbuf('0123 ', '56789')
         lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789', '')
         self.assertContinued(lb2, False, True)
+        self.ae(lb2.dirty_lines(), [0, 1])
 
         lb = create_lbuf('12', 'abc')
         lb2 = self.line_comparison_rewrap(lb, '12', 'abc')
@@ -325,20 +346,6 @@ class TestDataTypes(BaseTest):
             col = getattr(defaults, 'color{}'.format(i))
             self.assertEqual(c.as_color(i << 8 | 1), (col[0], col[1], col[2]))
         self.ae(c.as_color(255 << 8 | 1), (0xee, 0xee, 0xee))
-
-    def test_sprite_map(self):
-        sprite_map_set_limits(10, 2)
-        sprite_map_set_layout(5, 5)
-        self.ae(sprite_position_for(0), (0, 0, 0))
-        self.ae(sprite_position_for(1), (1, 0, 0))
-        self.ae(sprite_position_for(2), (0, 1, 0))
-        self.ae(sprite_position_for(3), (1, 1, 0))
-        self.ae(sprite_position_for(4), (0, 0, 1))
-        self.ae(sprite_position_for(5), (1, 0, 1))
-        self.ae(sprite_position_for(0, 1), (0, 1, 1))
-        self.ae(sprite_position_for(0, 2), (1, 1, 1))
-        self.ae(sprite_position_for(0, 2), (1, 1, 1))
-        sprite_map_set_limits(1000, 1000)
 
     def test_historybuf(self):
         lb = filled_line_buf()
@@ -372,6 +379,7 @@ class TestDataTypes(BaseTest):
         hb.rewrap(hb2)
         for i in range(hb2.ynum):
             self.ae(hb2.line(i), hb.line(i))
+        self.ae(hb2.dirty_lines(), list(range(hb2.ynum)))
         hb = filled_history_buf(5, 5)
         hb2 = HistoryBuf(hb.ynum, hb.xnum * 2)
         hb.rewrap(hb2)
@@ -382,20 +390,20 @@ class TestDataTypes(BaseTest):
 
     def test_ansi_repr(self):
         lb = filled_line_buf()
-        l = lb.line(0)
-        self.ae(l.as_ansi(), '\x1b[0m00000')
+        l0 = lb.line(0)
+        self.ae(l0.as_ansi(), '\x1b[0m00000')
         a = []
         lb.as_ansi(a.append)
         self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
-        l = lb.line(0)
+        l2 = lb.line(0)
         c = C()
         c.bold = c.italic = c.reverse = c.strikethrough = True
         c.fg = (4 << 8) | 1
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
         c.decoration_fg = (5 << 8) | 1
-        l.set_text('1', 0, 1, c)
-        self.ae(l.as_ansi(), '\x1b[0m\x1b[1m\x1b[3m\x1b[7m\x1b[9m\x1b[38;5;4m\x1b[48;2;1;2;3m\x1b[58;5;5m' '1'
-                '\x1b[22m\x1b[23m\x1b[27m\x1b[29m\x1b[39m\x1b[49m\x1b[59m' '0000')
+        l2.set_text('1', 0, 1, c)
+        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
+                '\x1b[22;23;27;29;39;49;59m' '0000')
         lb = filled_line_buf()
         for i in range(lb.ynum):
             lb.set_continued(i, True)

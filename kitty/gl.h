@@ -6,94 +6,84 @@
 
 #pragma once
 
+#include "gl-wrapper.h"
 #include "state.h"
 #include "screen.h"
-#include "sprites.h"
-#ifdef __APPLE__
-#include <OpenGL/gl3.h>
-#include <OpenGL/gl3ext.h>
-#else
-#include <GL/glew.h>
-#endif
 #include <string.h>
 #include <stddef.h>
+#include "glfw-wrapper.h"
 
 static char glbuf[4096];
 
 // GL setup and error handling {{{
-// Required minimum OpenGL version
-#define REQUIRED_VERSION_MAJOR 3
-#define REQUIRED_VERSION_MINOR 3
-#define GLSL_VERSION (REQUIRED_VERSION_MAJOR * 100 + REQUIRED_VERSION_MINOR * 10)
+#define GLSL_VERSION (OPENGL_REQUIRED_VERSION_MAJOR * 100 + OPENGL_REQUIRED_VERSION_MINOR * 10)
 
-#ifndef GL_STACK_UNDERFLOW
-#define GL_STACK_UNDERFLOW 0x0504
-#endif
-
-#ifndef GL_STACK_OVERFLOW
-#define GL_STACK_OVERFLOW 0x0503
-#endif
-
-#ifdef ENABLE_DEBUG_GL
 static void
-check_for_gl_error(int line) {
-#define f(msg) fatal("%s (at line: %d)", msg, line); break;
-    int code = glGetError();
-    switch(code) { 
+check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, ...) {
+#define f(msg) fatal("OpenGL error: %s (calling function: %s)", msg, name); break;
+    GLenum code = glad_glGetError();
+    switch(code) {
         case GL_NO_ERROR: break;
-        case GL_INVALID_ENUM: 
-            f("An enum value is invalid (GL_INVALID_ENUM)"); 
-        case GL_INVALID_VALUE: 
-            f("An numeric value is invalid (GL_INVALID_VALUE)"); 
-        case GL_INVALID_OPERATION: 
-            f("This operation is invalid (GL_INVALID_OPERATION)"); 
-        case GL_INVALID_FRAMEBUFFER_OPERATION: 
-            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)"); 
-        case GL_OUT_OF_MEMORY: 
-            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)"); 
-        case GL_STACK_UNDERFLOW: 
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)"); 
-        case GL_STACK_OVERFLOW: 
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)"); 
-        default: 
-            fatal("An unknown OpenGL error occurred with code: %d (at line: %d)", code, line); 
+        case GL_INVALID_ENUM:
+            f("An enum value is invalid (GL_INVALID_ENUM)");
+        case GL_INVALID_VALUE:
+            f("An numeric value is invalid (GL_INVALID_VALUE)");
+        case GL_INVALID_OPERATION:
+            f("This operation is invalid (GL_INVALID_OPERATION)");
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)");
+        case GL_OUT_OF_MEMORY:
+            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)");
+        case GL_STACK_UNDERFLOW:
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)");
+        case GL_STACK_OVERFLOW:
+            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)");
+        default:
+            fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name);
             break;
     }
 }
 
-#define check_gl() { check_for_gl_error(__LINE__); }
-#else
-#define check_gl() {}
-#endif
-
-static PyObject* 
-glew_init(PyObject UNUSED *self) {
-#ifndef __APPLE__
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        PyErr_Format(PyExc_RuntimeError, "GLEW init failed: %s", glewGetErrorString(err));
-        return NULL;
-    }
+void
+gl_init() {
+    static bool glad_loaded = false;
+    if (!glad_loaded) {
+        if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
+            fatal("Loading the OpenGL library failed");
+        }
+        glad_set_post_callback(check_for_gl_error);
 #define ARB_TEST(name) \
-    if (!GLEW_ARB_##name) { \
-        PyErr_Format(PyExc_RuntimeError, "The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
-        return NULL; \
-    }
-    ARB_TEST(texture_storage);
+        if (!GLAD_GL_ARB_##name) { \
+            fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
+        }
+        ARB_TEST(texture_storage);
 #undef ARB_TEST
-#endif
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    Py_RETURN_NONE;
+        glad_loaded = true;
+        if (GLVersion.major < OPENGL_REQUIRED_VERSION_MAJOR || (GLVersion.major == OPENGL_REQUIRED_VERSION_MAJOR && GLVersion.minor < OPENGL_REQUIRED_VERSION_MINOR)) {
+            fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", GLVersion.major, GLVersion.minor);
+        }
+    }
 }
 
-static void
-update_viewport_size_impl(int w, int h) {
-    glViewport(0, 0, w, h); check_gl();
+void
+update_surface_size(int w, int h, GLuint offscreen_texture_id) {
+    glViewport(0, 0, w, h);
+    if (offscreen_texture_id) {
+        glBindTexture(GL_TEXTURE_2D, offscreen_texture_id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    }
 }
+
+void
+free_texture(GLuint *tex_id) {
+    glDeleteTextures(1, tex_id);
+    *tex_id = 0;
+}
+
+
 // }}}
 
 // Programs {{{
-enum ProgramNames { CELL_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, NUM_PROGRAMS };
 
 typedef struct {
     GLint size, index;
@@ -115,16 +105,13 @@ typedef struct {
     GLint num_of_uniforms;
 } Program;
 
-static Program programs[NUM_PROGRAMS] = {{0}};
+static Program programs[64] = {{0}};
 
 static inline GLuint
 compile_shader(GLenum shader_type, const char *source) {
     GLuint shader_id = glCreateShader(shader_type);
-    check_gl();
     glShaderSource(shader_id, 1, (const GLchar **)&source, NULL);
-    check_gl();
     glCompileShader(shader_id);
-    check_gl();
     GLint ret = GL_FALSE;
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &ret);
     if (ret != GL_TRUE) {
@@ -145,11 +132,9 @@ static inline void
 init_uniforms(int program) {
     Program *p = programs + program;
     glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &(p->num_of_uniforms));
-    check_gl();
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
         glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
-        check_gl();
         u->location = glGetUniformLocation(p->id, u->name);
         u->idx = i;
     }
@@ -169,14 +154,12 @@ get_uniform_information(int program, const char *name, GLenum information_type) 
 static inline GLint
 attrib_location(int program, const char *name) {
     GLint ans = glGetAttribLocation(programs[program].id, name);
-    check_gl();
     return ans;
 }
 
 static inline GLuint
 block_index(int program, const char *name) {
     GLuint ans = glGetUniformBlockIndex(programs[program].id, name);
-    check_gl();
     if (ans == GL_INVALID_INDEX) { fatal("Could not find block index"); }
     return ans;
 }
@@ -186,20 +169,17 @@ static inline GLint
 block_size(int program, GLuint block_index) {
     GLint ans;
     glGetActiveUniformBlockiv(programs[program].id, block_index, GL_UNIFORM_BLOCK_DATA_SIZE, &ans);
-    check_gl();
     return ans;
 }
 
 static inline void
 bind_program(int program) {
     glUseProgram(programs[program].id);
-    check_gl();
 }
 
 static inline void
 unbind_program() {
     glUseProgram(0);
-    check_gl();
 }
 // }}}
 
@@ -218,7 +198,6 @@ static ssize_t
 create_buffer(GLenum usage) {
     GLuint buffer_id;
     glGenBuffers(1, &buffer_id);
-    check_gl();
     for (size_t i = 0; i < sizeof(buffers)/sizeof(buffers[0]); i++) {
         if (buffers[i].id == 0) {
             buffers[i].id = buffer_id;
@@ -235,7 +214,6 @@ create_buffer(GLenum usage) {
 static void
 delete_buffer(ssize_t buf_idx) {
     glDeleteBuffers(1, &(buffers[buf_idx].id));
-    check_gl();
     buffers[buf_idx].id = 0;
     buffers[buf_idx].size = 0;
 }
@@ -243,14 +221,12 @@ delete_buffer(ssize_t buf_idx) {
 static GLuint
 bind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, buffers[buf_idx].id);
-    check_gl();
     return buffers[buf_idx].id;
 }
 
 static void
 unbind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, 0);
-    check_gl();
 }
 
 static inline void
@@ -259,20 +235,17 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     if (b->size == size) return;
     b->size = size;
     glBufferData(b->usage, size, NULL, usage);
-    check_gl();
 }
 
 static inline void*
 map_buffer(ssize_t idx, GLenum access) {
     void *ans = glMapBuffer(buffers[idx].usage, access);
-    check_gl();
     return ans;
 }
 
 static inline void
 unmap_buffer(ssize_t idx) {
     glUnmapBuffer(buffers[idx].usage);
-    check_gl();
 }
 
 // }}}
@@ -285,19 +258,17 @@ typedef struct {
     ssize_t buffers[10];
 } VAO;
 
-static VAO vaos[2*MAX_CHILDREN + 10] = {{0}};
+static VAO vaos[4*MAX_CHILDREN + 10] = {{0}};
 
 static ssize_t
 create_vao() {
     GLuint vao_id;
     glGenVertexArrays(1, &vao_id);
-    check_gl();
     for (size_t i = 0; i < sizeof(vaos)/sizeof(vaos[0]); i++) {
         if (!vaos[i].id) {
             vaos[i].id = vao_id;
             vaos[i].num_buffers = 0;
             glBindVertexArray(vao_id);
-            check_gl();
             return i;
         }
     }
@@ -318,15 +289,12 @@ add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
 }
 
 static void
-add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
     VAO *vao = vaos + vao_idx;
-    if (!vao->num_buffers) { fatal("You must create a buffer for this attribute first"); return; }
-    GLint aloc = attrib_location(p, name);
-    if (aloc == -1) { fatal("No attribute named: %s found in this program", name); return; }
+    if (!vao->num_buffers) fatal("You must create a buffer for this attribute first");
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
-    check_gl();
     switch(data_type) {
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
@@ -340,16 +308,21 @@ add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenu
             glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset);
             break;
     }
-    check_gl();
     if (divisor) {
         glVertexAttribDivisor(aloc, divisor);
-        check_gl();
     }
     unbind_buffer(buf);
-    return;
 }
 
-static void
+
+static inline void
+add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+    GLint aloc = attrib_location(p, name);
+    if (aloc == -1) fatal("No attribute named: %s found in this program", name);
+    add_located_attribute_to_vao(vao_idx, aloc, size, data_type, stride, offset, divisor);
+}
+
+void
 remove_vao(ssize_t vao_idx) {
     VAO *vao = vaos + vao_idx;
     while (vao->num_buffers) {
@@ -357,20 +330,17 @@ remove_vao(ssize_t vao_idx) {
         delete_buffer(vao->buffers[vao->num_buffers]);
     }
     glDeleteVertexArrays(1, &(vao->id));
-    check_gl();
     vaos[vao_idx].id = 0;
 }
 
 static void
 bind_vertex_array(ssize_t vao_idx) {
     glBindVertexArray(vaos[vao_idx].id);
-    check_gl();
 }
 
 static void
 unbind_vertex_array() {
     glBindVertexArray(0);
-    check_gl();
 }
 
 static ssize_t
@@ -398,7 +368,6 @@ static void
 bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     glBindBufferBase(GL_UNIFORM_BUFFER, block_index, buffers[buf_idx].id);
-    check_gl();
 }
 
 static void

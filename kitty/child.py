@@ -4,11 +4,26 @@
 
 import fcntl
 import os
-import sys
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import terminfo_dir
+from .constants import terminfo_dir, is_macos
+
+
+def cwd_of_process(pid):
+    if is_macos:
+        from kitty.fast_data_types import cwd_of_process
+        ans = cwd_of_process(pid)
+    else:
+        ans = '/proc/{}/cwd'.format(pid)
+    return os.path.realpath(ans)
+
+
+def cmdline_of_process(pid):
+    if is_macos:
+        # TODO: macOS implementation, see DarwinProcess.c in htop for inspiration
+        raise NotImplementedError()
+    return open('/proc/{}/cmdline'.format(pid), 'rb').read().decode('utf-8').split('\0')
 
 
 def remove_cloexec(fd):
@@ -20,11 +35,20 @@ class Child:
     child_fd = pid = None
     forked = False
 
-    def __init__(self, argv, cwd, opts, stdin=None):
+    def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None):
         self.argv = argv
-        self.cwd = os.path.abspath(os.path.expandvars(os.path.expanduser(cwd or os.getcwd())))
+        if cwd_from is not None:
+            try:
+                cwd = cwd_of_process(cwd_from)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        else:
+            cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
+        self.cwd = os.path.abspath(cwd)
         self.opts = opts
         self.stdin = stdin
+        self.env = env or {}
 
     def fork(self):
         if self.forked:
@@ -37,42 +61,34 @@ class Child:
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
-        pid = os.fork()
-        if pid == 0:  # child
-            try:
-                os.chdir(self.cwd)
-            except EnvironmentError:
-                os.chdir('/')
-            os.setsid()
-            for i in range(3):
-                if stdin is not None and i == 0:
-                    os.dup2(stdin_read_fd, i)
-                    os.close(stdin_read_fd), os.close(stdin_write_fd)
-                else:
-                    os.dup2(slave, i)
-            os.close(slave), os.close(master)
-            os.closerange(3, 200)
-            # Establish the controlling terminal (see man 7 credentials)
-            os.close(os.open(os.ttyname(1), os.O_RDWR))
-            os.environ['TERM'] = self.opts.term
-            os.environ['COLORTERM'] = 'truecolor'
-            if os.path.isdir(terminfo_dir):
-                os.environ['TERMINFO'] = terminfo_dir
-            try:
-                os.execvp(self.argv[0], self.argv)
-            except Exception as err:
-                # Report he failure and exec a shell instead so that
-                # we are not left with a forked but not execed process
-                print('Could not launch:', self.argv[0])
-                print('\t', err)
-                print('\nPress Enter to exit:', end=' ')
-                sys.stdout.flush()
-                os.execvp('/bin/sh', ['/bin/sh', '-c', 'read w'])
-        else:  # master
-            os.close(slave)
-            self.pid = pid
-            self.child_fd = master
-            if stdin is not None:
-                os.close(stdin_read_fd)
-                fast_data_types.thread_write(stdin_write_fd, stdin)
-            return pid
+        else:
+            stdin_read_fd = stdin_write_fd = -1
+        env = os.environ.copy()
+        env.update(self.env)
+        env['TERM'] = self.opts.term
+        env['COLORTERM'] = 'truecolor'
+        if os.path.isdir(terminfo_dir):
+            env['TERMINFO'] = terminfo_dir
+        env = tuple('{}={}'.format(k, v) for k, v in env.items())
+        pid = fast_data_types.spawn(self.cwd, tuple(self.argv), env, master, slave, stdin_read_fd, stdin_write_fd)
+        os.close(slave)
+        self.pid = pid
+        self.child_fd = master
+        if stdin is not None:
+            os.close(stdin_read_fd)
+            fast_data_types.thread_write(stdin_write_fd, stdin)
+        return pid
+
+    @property
+    def cmdline(self):
+        try:
+            return cmdline_of_process(self.pid)
+        except Exception:
+            return list(self.argv)
+
+    @property
+    def current_cwd(self):
+        try:
+            return cwd_of_process(self.pid)
+        except Exception:
+            pass

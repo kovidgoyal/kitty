@@ -21,18 +21,34 @@ extern int pthread_setname_np(const char *name);
 #include <unistd.h>
 #include <float.h>
 #include <fcntl.h>
-#ifndef __APPLE__
-#include <stropts.h>
-#endif
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <GLFW/glfw3.h>
+#include <sys/socket.h>
+extern PyTypeObject Screen_Type;
 
 #define EXTRA_FDS 2
-#define wakeup_main_loop glfwPostEmptyEvent
 
 static void (*parse_func)(Screen*, PyObject*);
+
+typedef struct {
+    char *data;
+    size_t sz;
+} Message;
+
+typedef struct {
+    PyObject_HEAD
+
+    PyObject *dump_callback, *update_screen, *death_notify;
+    unsigned int count;
+    bool shutting_down;
+    pthread_t io_thread, talk_thread;
+
+    int talk_fd;
+    Message *messages;
+    size_t messages_capacity, messages_count;
+} ChildMonitor;
+
 
 typedef struct {
     Screen *screen;
@@ -60,7 +76,6 @@ static bool signal_received = false;
 static ChildMonitor *the_monitor = NULL;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
-static void *glfw_window_id = NULL;
 
 
 static inline void
@@ -80,7 +95,7 @@ set_thread_name(const char *name) {
 #define FREE_CHILD(x) \
     Py_CLEAR((x).screen); x = EMPTY_CHILD;
 
-#define XREF_CHILD(x, OP) OP(x.screen); 
+#define XREF_CHILD(x, OP) OP(x.screen);
 #define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
 #define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 
@@ -119,33 +134,36 @@ self_pipe(int fds[2]) {
     return true;
 }
 
+
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify, *wid; 
+    PyObject *dump_callback, *death_notify;
+    int talk_fd = -1;
     int ret;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "OOO", &wid, &death_notify, &dump_callback)) return NULL; 
-    glfw_window_id = PyLong_AsVoidPtr(wid);
+    if (!PyArg_ParseTuple(args, "OO|i", &death_notify, &dump_callback, &talk_fd)) return NULL;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
     }
     if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
     if (!self_pipe(signal_fds)) return PyErr_SetFromErrno(PyExc_OSError);
-    if (signal(SIGINT, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
-    if (signal(SIGTERM, handle_signal) == SIG_ERR) return PyErr_SetFromErrno(PyExc_OSError);
+    struct sigaction act = {.sa_handler=handle_signal};
+    if (sigaction(SIGINT, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    if (sigaction(SIGTERM, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     if (siginterrupt(SIGINT, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     if (siginterrupt(SIGTERM, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     self = (ChildMonitor *)type->tp_alloc(type, 0);
+    self->talk_fd = talk_fd;
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
         parse_func = parse_worker_dump;
     } else parse_func = parse_worker;
-    self->count = 0; 
+    self->count = 0;
     fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fds[0];
     fds[0].events = POLLIN; fds[1].events = POLLIN;
     the_monitor = self;
@@ -169,29 +187,34 @@ dealloc(ChildMonitor* self) {
     }
     close(wakeup_fds[0]);
     close(wakeup_fds[1]);
-    close(signal_fds[0]); 
+    close(signal_fds[0]);
     close(signal_fds[1]);
 }
 
-static void
-wakeup_io_loop() {
+void
+wakeup_io_loop(bool in_signal_handler) {
     while(true) {
         ssize_t ret = write(wakeup_fds[1], "w", 1);
         if (ret < 0) {
             if (errno == EINTR) continue;
-            perror("Failed to write to wakeup fd with error");
+            if (!in_signal_handler) perror("Failed to write to wakeup fd with error");
         }
         break;
     }
 }
 
 static void* io_loop(void *data);
+static void* talk_loop(void *data);
 
 static PyObject *
 start(ChildMonitor *self) {
 #define start_doc "start() -> Start the I/O thread"
+    if (self->talk_fd > -1) {
+        if (pthread_create(&self->talk_thread, NULL, talk_loop, self) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    }
     int ret = pthread_create(&self->io_thread, NULL, io_loop, self);
     if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+
     Py_RETURN_NONE;
 }
 
@@ -207,7 +230,7 @@ join(ChildMonitor *self) {
 static PyObject *
 wakeup(ChildMonitor UNUSED *self) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_io_loop();
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -220,13 +243,13 @@ add_child(ChildMonitor *self, PyObject *args) {
 #define A(attr) &add_queue[add_queue_count].attr
     if (!PyArg_ParseTuple(args, "kiiO", A(id), A(pid), A(fd), A(screen))) {
         children_mutex(unlock);
-        return NULL; 
+        return NULL;
     }
 #undef A
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
-    wakeup_io_loop();
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -236,12 +259,12 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
     bool found = false;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
-        if (children[i].id == id) { 
+        if (children[i].id == id) {
             found = true;
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
             size_t space_left = screen->write_buf_sz - screen->write_buf_used;
-            if (space_left < sz) { 
+            if (space_left < sz) {
                 if (screen->write_buf_used + sz > 100 * 1024 * 1024) {
                     fprintf(stderr, "Too much data being sent to child with id: %lu, ignoring it\n", id);
                     screen_mutex(unlock, write);
@@ -258,7 +281,7 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
-            if (screen->write_buf_used) wakeup_io_loop();
+            if (screen->write_buf_used) wakeup_io_loop(false);
             screen_mutex(unlock, write);
             break;
         }
@@ -272,14 +295,14 @@ needs_write(ChildMonitor UNUSED *self, PyObject *args) {
 #define needs_write_doc "needs_write(id, data) -> Queue data to be written to child."
     unsigned long id, sz;
     const char *data;
-    if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL; 
+    if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL;
     if (schedule_write_to_child(id, data, sz)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
 static PyObject *
-shutdown(ChildMonitor *self) {
-#define shutdown_doc "shutdown() -> Shutdown the monitor loop."
+shutdown_monitor(ChildMonitor *self) {
+#define shutdown_monitor_doc "shutdown_monitor() -> Shutdown the monitor loop."
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
     self->shutting_down = true;
@@ -293,7 +316,7 @@ do_parse(ChildMonitor *self, Screen *screen, double now) {
         double time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
             parse_func(screen, self->dump_callback);
-            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop();  // Ensure the read fd has POLLIN set
+            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop(false);  // Ensure the read fd has POLLIN set
             screen->read_buf_sz = 0;
             screen->new_input_at = 0;
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
@@ -306,16 +329,29 @@ parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
     double now = monotonic();
+    PyObject *msg = NULL;
     children_mutex(lock);
     while (remove_queue_count) {
-        remove_queue_count--; 
+        remove_queue_count--;
         remove_notify[remove_count] = remove_queue[remove_queue_count].id;
         remove_count++;
         FREE_CHILD(remove_queue[remove_queue_count]);
     }
 
+    if (UNLIKELY(self->messages_count)) {
+        msg = PyTuple_New(self->messages_count);
+        if (msg) {
+            for (size_t i = 0; i < self->messages_count; i++) {
+                Message *m = self->messages + i;
+                PyTuple_SET_ITEM(msg, i, PyBytes_FromStringAndSize(m->data, m->sz));
+                free(m->data); m->data = NULL; m->sz = 0;
+            }
+            self->messages_count = 0;
+        } else fatal("Out of memory");
+    }
+
     if (UNLIKELY(signal_received)) {
-        glfwSetWindowShouldClose(glfw_window_id, true);
+        global_state.close_all_windows = true;
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -324,6 +360,10 @@ parse_input(ChildMonitor *self) {
         }
     }
     children_mutex(unlock);
+    if (msg) {
+        call_boss(peer_messages_received, "(O)", msg);
+        Py_CLEAR(msg);
+    }
 
     while(remove_count) {
         // must be done while no locks are held, since the locks are non-recursive and
@@ -342,11 +382,8 @@ parse_input(ChildMonitor *self) {
     }
 }
 
-static PyObject *
-mark_for_close(ChildMonitor *self, PyObject *args) {
-#define mark_for_close_doc "Mark a child to be removed from the child monitor"
-    unsigned long window_id;
-    if (!PyArg_ParseTuple(args, "k", &window_id)) return NULL;
+static inline void
+mark_child_for_close(ChildMonitor *self, id_type window_id) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
@@ -355,7 +392,16 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
         }
     }
     children_mutex(unlock);
-    wakeup_io_loop();
+    wakeup_io_loop(false);
+}
+
+
+static PyObject *
+mark_for_close(ChildMonitor *self, PyObject *args) {
+#define mark_for_close_doc "Mark a child to be removed from the child monitor"
+    id_type window_id;
+    if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
+    mark_child_for_close(self, window_id);
     Py_RETURN_NONE;
 }
 
@@ -393,7 +439,7 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     if (fd == -1) FIND(add_queue, add_queue_count);
     if (fd != -1) {
         if (!pty_resize(fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
-    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %lu)\n", window_id, self->count, add_queue_count);
+    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %zu)\n", window_id, self->count, add_queue_count);
     children_mutex(unlock);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
@@ -436,29 +482,26 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef DECREF_CHILD
 
 static double last_render_at = -DBL_MAX;
-draw_borders_func draw_borders = NULL;
-draw_cells_func draw_cells = NULL;
-draw_cursor_func draw_cursor = NULL;
 
 static inline double
-cursor_width(double w, bool vert) {
+cursor_width(double w, bool vert, OSWindow *os_window) {
     double dpi = vert ? global_state.logical_dpi_x : global_state.logical_dpi_y;
     double ans = w * dpi / 72.0;  // as pixels
-    double factor = 2.0 / (vert ? global_state.viewport_width : global_state.viewport_height);
+    double factor = 2.0 / (vert ? os_window->viewport_width : os_window->viewport_height);
     return ans * factor;
 }
 
 extern void cocoa_update_title(PyObject*);
 
 static inline void
-collect_cursor_info(CursorRenderInfo *ans, Window *w, double now) {
+collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
-    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) {
-        ans->is_visible = false;
-        return;
-    }
-    double time_since_start_blink = now - global_state.cursor_blink_zero_time;
-    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && global_state.application_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
+    Cursor *cursor = rd->screen->cursor;
+    ans->x = cursor->x; ans->y = cursor->y;
+    ans->is_visible = false;
+    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
+    double time_since_start_blink = now - os_window->cursor_blink_zero_time;
+    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && os_window->is_focused && time_since_start_blink <= OPT(cursor_stop_blinking_after) ? true : false;
     bool do_draw_cursor = true;
     if (cursor_blinking) {
         int t = (int)(time_since_start_blink * 1000);
@@ -472,77 +515,113 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now) {
     if (!do_draw_cursor) { ans->is_visible = false; return; }
     ans->is_visible = true;
     ColorProfile *cp = rd->screen->color_profile;
-    Cursor *cursor = rd->screen->cursor;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
-    if (ans->shape == CURSOR_BLOCK) return;
+    ans->is_focused = os_window->is_focused;
+    if (ans->shape == CURSOR_BLOCK && ans->is_focused) return;
     double left = rd->xstart + cursor->x * rd->dx;
     double top = rd->ystart - cursor->y * rd->dy;
     unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
-    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true) : rd->dx * mult);
+    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true, os_window) : rd->dx * mult);
     double bottom = top - rd->dy;
-    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false);
+    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false, os_window);
     ans->left = left; ans->right = right; ans->top = top; ans->bottom = bottom;
 }
 
-static inline void
-update_window_title(Window *w) {
-    if (w->title && w->title != global_state.application_title) {
-        global_state.application_title = w->title;
-        glfwSetWindowTitle(glfw_window_id, PyUnicode_AsUTF8(w->title));
+static inline bool
+update_window_title(Window *w, OSWindow *os_window) {
+    if (w->title && w->title != os_window->window_title) {
+        os_window->window_title = w->title;
+        Py_INCREF(os_window->window_title);
+        set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
-        cocoa_update_title(w->title);
+        if (os_window->is_focused) cocoa_update_title(w->title);
 #endif
+        return true;
     }
+    return false;
+}
+
+static PyObject*
+simple_render_screen(PyObject UNUSED *self, PyObject *args) {
+#define simple_render_screen_doc "Render a Screen object, with no cursor"
+    Screen *screen;
+    float xstart, ystart, dx, dy;
+    static ssize_t vao_idx = -1, gvao_idx = -1;
+    if (vao_idx == -1) vao_idx = create_cell_vao();
+    if (gvao_idx == -1) gvao_idx = create_graphics_vao();
+    if (!PyArg_ParseTuple(args, "O!ffff", &Screen_Type, &screen, &xstart, &ystart, &dx, &dy)) return NULL;
+    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window(), true);
+    Py_RETURN_NONE;
+}
+
+static inline void
+render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
+    if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
+    Tab *tab = os_window->tabs + os_window->active_tab;
+    for (unsigned int i = 0; i < tab->num_windows; i++) {
+        Window *w = tab->windows + i;
+#define WD w->render_data
+        if (w->visible && WD.screen) {
+            if (w->last_drag_scroll_at > 0) {
+                if (now - w->last_drag_scroll_at >= 0.02) {
+                    if (drag_scroll(w, os_window)) {
+                        w->last_drag_scroll_at = now;
+                        set_maximum_wait(0.02);
+                    } else w->last_drag_scroll_at = 0;
+                } else set_maximum_wait(now - w->last_drag_scroll_at);
+            }
+            bool is_active_window = i == tab->active_window;
+            if (is_active_window) {
+                *active_window_id = w->id;
+                collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
+                update_window_title(w, os_window);
+            } else WD.screen->cursor_render_info.is_visible = false;
+            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window, is_active_window);
+            if (is_active_window && WD.screen->cursor_render_info.is_visible && (!WD.screen->cursor_render_info.is_focused || WD.screen->cursor_render_info.shape != CURSOR_BLOCK)) {
+                draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
+            }
+            if (WD.screen->start_visual_bell_at != 0) {
+                double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
+                set_maximum_wait(bell_left);
+            }
+        }
+    }
+#undef WD
 }
 
 static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
-    static CursorRenderInfo cursor_info;
-    if (time_since_last_render < OPT(repaint_delay)) { 
+    if (time_since_last_render < OPT(repaint_delay)) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
+#define TD w->tab_bar_render_data
 
-    draw_borders();
-    cursor_info.is_visible = false;
-#define TD global_state.tab_bar_render_data
-    if (TD.screen && global_state.num_tabs > 1) draw_cells(TD.vao_idx, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, &cursor_info);
-#undef TD
-    if (global_state.num_tabs) {
-        Tab *tab = global_state.tabs + global_state.active_tab;
-        for (unsigned int i = 0; i < tab->num_windows; i++) {
-            Window *w = tab->windows + i;
-#define WD w->render_data
-            if (w->visible && WD.screen) {
-                if (w->last_drag_scroll_at > 0) {
-                    if (now - w->last_drag_scroll_at >= 0.02) { 
-                        if (drag_scroll(w)) {
-                            w->last_drag_scroll_at = now;
-                            set_maximum_wait(0.02);
-                        } else w->last_drag_scroll_at = 0;
-                    } else set_maximum_wait(now - w->last_drag_scroll_at);
-                }
-                bool is_active_window = i == tab->active_window;
-                if (is_active_window) {
-                    collect_cursor_info(&cursor_info, w, now);
-                    update_window_title(w);
-                } else cursor_info.is_visible = false;
-                draw_cells(WD.vao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, &cursor_info);
-                if (is_active_window && cursor_info.is_visible && cursor_info.shape != CURSOR_BLOCK) draw_cursor(&cursor_info);
-                if (WD.screen->start_visual_bell_at != 0) {
-                    double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
-                    set_maximum_wait(bell_left);
-                }
-            }
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
+        make_os_window_context_current(w);
+        if (w->viewport_size_dirty) {
+            w->clear_count = 0;
+            update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
+            w->viewport_size_dirty = false;
         }
-        
-#undef WD
+        unsigned int active_window_id = 0;
+        render_os_window(w, now, &active_window_id);
+        Tab *active_tab = w->tabs + w->active_tab;
+        BorderRects *br = &active_tab->border_rects;
+        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
+        if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w, true);
+        swap_window_buffers(w);
+        w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
+        br->is_dirty = false;
     }
-    glfwSwapBuffers(glfw_window_id);
     last_render_at = now;
+#undef TD
 }
+
 
 typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
 
@@ -585,7 +664,7 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "is#", &fd, &buf, &sz)) return NULL;
     ThreadWriteData *data = alloc_twd(sz);
     if (data == NULL) return PyErr_NoMemory();
-    data->fd = fd; 
+    data->fd = fd;
     memcpy(data->buf, buf, data->sz);
     int ret = pthread_create(&thread, NULL, thread_write, data);
     if (ret != 0) { free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
@@ -593,30 +672,54 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
 }
 
 static inline void
-hide_mouse(double now) {
-    if (glfwGetInputMode(glfw_window_id, GLFW_CURSOR) == GLFW_CURSOR_NORMAL && OPT(mouse_hide_wait) > 0 && now - global_state.last_mouse_activity_at > OPT(mouse_hide_wait)) {
-        glfwSetInputMode(glfw_window_id, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    }
-}
-
-
-static inline void
 wait_for_events() {
-    if (maximum_wait < 0) glfwWaitEvents();
-    else if (maximum_wait > 0) glfwWaitEventsTimeout(maximum_wait);
+    event_loop_wait(maximum_wait);
     maximum_wait = -1;
 }
 
+static inline void
+process_pending_resizes(double now) {
+    global_state.has_pending_resizes = false;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->has_pending_resizes) {
+            if (now - w->last_resize_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
+            else {
+                global_state.has_pending_resizes = true;
+                set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_at);
+            }
+        }
+    }
+}
 
 static PyObject*
 main_loop(ChildMonitor *self) {
 #define main_loop_doc "The main thread loop"
-    while (!glfwWindowShouldClose(glfw_window_id)) {
+    bool has_open_windows = true;
+
+    while (has_open_windows) {
         double now = monotonic();
+        if (global_state.has_pending_resizes) process_pending_resizes(now);
         render(now);
-        hide_mouse(now);
         wait_for_events();
         parse_input(self);
+        if (global_state.close_all_windows) {
+            for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
+            global_state.close_all_windows = false;
+        }
+        has_open_windows = false;
+        for (size_t w = global_state.num_os_windows; w > 0; w--) {
+            OSWindow *os_window = global_state.os_windows + w - 1;
+            if (should_os_window_close(os_window)) {
+                destroy_os_window(os_window);
+                call_boss(on_os_window_closed, "Kii", os_window->id, os_window->viewport_width, os_window->viewport_width);
+                for (size_t t=0; t < os_window->num_tabs; t++) {
+                    Tab *tab = os_window->tabs + t;
+                    for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
+                }
+                remove_os_window(os_window->id);
+            } else has_open_windows = true;
+        }
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
@@ -646,48 +749,22 @@ hangup(pid_t pid) {
     if (errno == ESRCH) return;
     if (errno != 0) { perror("Failed to get process group id for child"); return; }
     if (killpg(pgid, SIGHUP) != 0) {
-        if (errno != ESRCH) perror("Failed to kill child"); 
+        if (errno != ESRCH) perror("Failed to kill child");
     }
 }
 
-static pid_t pid_buf[MAX_CHILDREN] = {0};
-static size_t pid_buf_pos = 0;
-static pthread_t reap_thread;
-
-
-static void*
-reap(void *pid_p) {
-    set_thread_name("KittyReapChild");
-    pid_t pid = *((pid_t*)pid_p);
-    while(true) {
-        pid_t ret = waitpid(pid, NULL, 0);
-        if (ret != pid) {
-            if (errno == EINTR) continue;
-            fprintf(stderr, "Failed to reap child process with pid: %d with error: %s\n", pid, strerror(errno));
-        }
-        break;
-    }
-    return 0;
-}
 
 static inline void
 cleanup_child(ssize_t i) {
     close(children[i].fd);
     hangup(children[i].pid);
-    pid_buf[pid_buf_pos] = children[i].pid;
-    if (waitpid(pid_buf[pid_buf_pos], NULL, WNOHANG) != pid_buf[pid_buf_pos]) {
-        errno = 0;
-        int ret = pthread_create(&reap_thread, NULL, reap, pid_buf + pid_buf_pos);
-        if (ret != 0) perror("Failed to create thread to reap child");
-    }
-    pid_buf_pos = (pid_buf_pos + 1) % MAX_CHILDREN;
 }
 
 
 static inline void
 remove_children(ChildMonitor *self) {
     if (self->count > 0) {
-        size_t count = 0; 
+        size_t count = 0;
         for (ssize_t i = self->count - 1; i >= 0; i--) {
             if (children[i].needs_removal) {
                 count++;
@@ -763,7 +840,7 @@ write_to_child(int fd, Screen *screen) {
     while (written < screen->write_buf_used) {
         ret = write(fd, screen->write_buf + written, screen->write_buf_used - written);
         if (ret > 0) { written += ret; }
-        else if (ret == 0) { 
+        else if (ret == 0) {
             // could mean anything, ignore
             break;
         } else {
@@ -782,7 +859,7 @@ io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, data_received; 
+    bool has_more, data_received;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyChildMon");
@@ -804,7 +881,7 @@ io_loop(void *data) {
         ret = poll(fds, self->count + EXTRA_FDS, -1);
         if (ret > 0) {
             if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
-            if (fds[1].revents && POLLIN) { 
+            if (fds[1].revents && POLLIN) {
                 data_received = true;
                 drain_fd(fds[1].fd);
                 children_mutex(lock);
@@ -815,7 +892,7 @@ io_loop(void *data) {
                 if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     data_received = true;
                     has_more = read_bytes(fds[EXTRA_FDS + i].fd, children[i].screen);
-                    if (!has_more) { 
+                    if (!has_more) {
                         // child is dead
                         children_mutex(lock);
                         children[i].needs_removal = true;
@@ -855,6 +932,62 @@ io_loop(void *data) {
 }
 // }}}
 
+// {{{ Talk thread functions
+
+static inline void
+handle_peer(ChildMonitor *self, int s) {
+    size_t bufsz = 0;
+    char *buf = NULL;
+    size_t buf_used = 0;
+
+    while(true) {
+        if (buf_used >= bufsz) {
+            bufsz = MAX(1024, bufsz) * 2;
+            if (bufsz > 1024 * 1024) return;
+            buf = realloc(buf, bufsz);
+            if (buf == NULL) return;
+        }
+        ssize_t n = recv(s, buf + buf_used, bufsz - buf_used, 0);
+        if (n == 0) break;
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            perror("Error reading from talk peer");
+            break;
+        }
+        buf_used += n;
+    }
+    if (buf_used) {
+        children_mutex(lock);
+        ensure_space_for(self, messages, Message, self->messages_count + 1, messages_capacity, 16, true);
+        Message *m = self->messages + self->messages_count++;
+        m->data = buf; m->sz = buf_used;
+        children_mutex(unlock);
+        wakeup_main_loop();
+    } else free(buf);
+}
+
+static void*
+talk_loop(void *data) {
+    // The I/O thread loop
+
+    ChildMonitor *self = (ChildMonitor*)data;
+    set_thread_name("KittyTalkMon");
+
+    while (LIKELY(!self->shutting_down)) {
+        int peer = accept(self->talk_fd, NULL, NULL);
+        if (peer == -1) {
+            if (errno == EINTR) continue;
+            if (!self->shutting_down) perror("accept() on talk socket failed!");
+            break;
+        }
+        handle_peer(self, peer);
+        shutdown(peer, SHUT_RDWR);
+        close(peer);
+    }
+    return 0;
+}
+// }}}
+
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
@@ -862,7 +995,7 @@ static PyMethodDef methods[] = {
     METHOD(start, METH_NOARGS)
     METHOD(join, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
-    METHOD(shutdown, METH_NOARGS)
+    METHOD(shutdown_monitor, METH_NOARGS)
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
@@ -875,14 +1008,25 @@ PyTypeObject ChildMonitor_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.ChildMonitor",
     .tp_basicsize = sizeof(ChildMonitor),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ChildMonitor",
     .tp_methods = methods,
-    .tp_new = new,                
+    .tp_new = new,
 };
 
+static PyMethodDef module_methods[] = {
+    METHOD(simple_render_screen, METH_VARARGS)
+    {NULL}  /* Sentinel */
+};
 
-INIT_TYPE(ChildMonitor)
+bool
+init_child_monitor(PyObject *module) {
+    if (PyType_Ready(&ChildMonitor_Type) < 0) return false;
+    if (PyModule_AddObject(module, "ChildMonitor", (PyObject *)&ChildMonitor_Type) != 0) return false;
+    Py_INCREF(&ChildMonitor_Type);
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
+}
+
 // }}}
-

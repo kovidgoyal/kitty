@@ -18,6 +18,7 @@ class Tab:
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
         self.cwd = None
+        self.next_title = None
 
 
 class Session:
@@ -31,6 +32,9 @@ class Session:
             del self.tabs[-1]
         self.tabs.append(Tab(opts, name))
 
+    def set_next_title(self, title):
+        self.tabs[-1].next_title = title.strip()
+
     def set_layout(self, val):
         if val not in all_layouts:
             raise ValueError('{} is not a valid layout'.format(val))
@@ -41,7 +45,13 @@ class Session:
             cmd = shlex.split(cmd) if isinstance(cmd, str) else cmd
         else:
             cmd = None
-        self.tabs[-1].windows.append(cmd)
+        from .tabs import SpecialWindow
+        t = self.tabs[-1]
+        t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title))
+        t.next_title = None
+
+    def add_special_window(self, sw):
+        self.tabs[-1].windows.append(sw)
 
     def focus(self):
         self.active_tab_idx = max(0, len(self.tabs) - 1)
@@ -74,6 +84,8 @@ def parse_session(raw, opts):
                 ans.set_enabled_layouts(rest)
             elif cmd == 'cd':
                 ans.set_cwd(rest)
+            elif cmd == 'title':
+                ans.set_next_title(rest)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     for t in ans.tabs:
@@ -82,12 +94,12 @@ def parse_session(raw, opts):
     return ans
 
 
-def create_session(opts, args):
-    if args.session:
+def create_session(opts, args=None, special_window=None, cwd_from=None):
+    if args and args.session:
         with open(args.session) as f:
             return parse_session(f.read(), opts)
     ans = Session()
-    if args.window_layout:
+    if args and args.window_layout:
         if args.window_layout not in opts.enabled_layouts:
             opts.enabled_layouts.insert(0, args.window_layout)
         current_layout = args.window_layout
@@ -95,6 +107,12 @@ def create_session(opts, args):
         current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout
-    cmd = args.args or [shell_path]
-    ans.add_window(cmd)
+    if special_window is None:
+        cmd = args.args if args and args.args else [shell_path]
+        from kitty.tabs import SpecialWindow
+        k = {'cwd_from': cwd_from}
+        if getattr(args, 'title', None):
+            k['override_title'] = args.title
+        special_window = SpecialWindow(cmd, **k)
+    ans.add_special_window(special_window)
     return ans

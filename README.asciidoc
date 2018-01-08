@@ -5,25 +5,30 @@
 :sc_close_tab: pass:quotes[`ctrl+shift+q`]
 :sc_close_window: pass:quotes[`ctrl+shift+w`]
 :sc_copy_to_clipboard: pass:quotes[`ctrl+shift+c`]
+:sc_decrease_font_size: pass:quotes[`ctrl+shift+minus`]
 :sc_eighth_window: pass:quotes[`ctrl+shift+8`]
 :sc_fifth_window: pass:quotes[`ctrl+shift+5`]
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
+:sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
 :sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
 :sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
 :sc_move_window_forward: pass:quotes[`ctrl+shift+f`]
 :sc_move_window_to_top: pass:quotes[`ctrl+shift+``]
+:sc_new_os_window: pass:quotes[`ctrl+shift+n`]
 :sc_new_tab: pass:quotes[`ctrl+shift+t`]
 :sc_new_window: pass:quotes[`ctrl+shift+enter`]
 :sc_next_layout: pass:quotes[`ctrl+shift+l`]
 :sc_next_tab: pass:quotes[`ctrl+shift+right`]
 :sc_next_window: pass:quotes[`ctrl+shift+]`]
 :sc_ninth_window: pass:quotes[`ctrl+shift+9`]
+:sc_pass_selection_to_program: pass:quotes[`ctrl+shift+o`]
 :sc_paste_from_clipboard: pass:quotes[`ctrl+shift+v`]
 :sc_paste_from_selection: pass:quotes[`ctrl+shift+s` or `shift+insert`]
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
+:sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -36,6 +41,7 @@
 :sc_sixth_window: pass:quotes[`ctrl+shift+6`]
 :sc_tenth_window: pass:quotes[`ctrl+shift+0`]
 :sc_third_window: pass:quotes[`ctrl+shift+3`]
+:sc_toggle_fullscreen: pass:quotes[`ctrl+shift+f11`]
 // END_SHORTCUT_BLOCK
 
 ++++
@@ -48,23 +54,27 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 * Supports tiling multiple terminal windows side by side in different
 layouts without needing to use an extra program like tmux
 
-* Supports all modern terminal features: unicode, true-color, mouse
-protocol, focus tracking, bracketed paste and so on.
+* Supports all modern terminal features: graphics (images), unicode,
+true-color, OpenType ligatures, mouse protocol, focus tracking, bracketed paste and so on.
 
-* Allows you to view the scrollback buffer in a separate window
-using your favorite pager program such as less
-
-* Support startup sessions which allow you to specify the window/tab layout,
+* Supports startup sessions which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
+
+* Uses OpenGL for rendering, offloads rendering to the GPU for lower system
+load and buttery smooth scrolling. Uses threaded rendering to minimize input
+latency.
+
+* Cross-platform support: kitty currently works on Linux and macOS, but because
+it uses only OpenGL for rendering, it should be trivial to port to other
+platforms.
+
+* Allows you to open the scrollback buffer and window contents in a separate
+window using arbitrary programs of your choice. This is useful for browsing
+the history comfortably in a pager or editor and also for doing things like
+opening URLs using only the keyboard.
 
 * Easily hackable (UI layer written in python, inner loops in C for
 speed). Less than fifteen thousand lines of code.
-
-* Uses OpenGL for rendering, offloads rendering work to the GPU for lower system load.
-
-* Cross-platform support: kitty currently works on Linux and macOS, but because it
-uses only OpenGL for rendering, it should be trivial to port to
-other platforms. 
 
 image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
@@ -79,13 +89,16 @@ the following dependencies are installed first.
 === Dependencies
 
 * python >= 3.5
-* glfw   >= 3.2
-* libunistring 
-* glew   >= 2.0 (not needed on macOS)
+* harfbuzz >= 1.5.0
+* libunistring
+* zlib
+* libpng
+* freetype (not needed on macOS)
 * fontconfig (not needed on macOS)
-* xrdb and xsel (only on X11 based systems)
+* ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
+* For building on linux in addition to the above dependencies you might also need to install the `-dev` packages for `xcursor`, `xrandr`, `xinerama` and `xkbcommon-x11`, if they are not already installed by your distro.
 
 === Install and run from source
 
@@ -107,7 +120,11 @@ python3 /path/to/kitty/folder
 
 === Linux packages
 
-* Arch linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+* Arch Linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+
+* Arch Linux: AUR stable package https://aur.archlinux.org/packages/kitty/
+
+* NixOS / nixpkgs: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix
 
 
 === macOS packages
@@ -115,8 +132,7 @@ python3 /path/to/kitty/folder
 kitty is available as a macOS `dmg` file for easy installation from the
 link:../../releases[releases page].  You can also run kitty directly from
 source using the above install from source instructions, after installing its
-two dependencies (`python >= 3.5` and `glfw >= 3.2` using http://brew.sh/[brew]
-or a similar package manager)
+dependencies using http://brew.sh/[brew] or a similar package manager.
 
 
 == Design philosophy
@@ -191,6 +207,7 @@ windows are:
 |Action |Shortcut
 
 |New window   | {sc_new_window}
+|New OS window| {sc_new_os_window}
 |Close window | {sc_close_window}
 |Next window  | {sc_next_window}
 |Previous window | {sc_previous_window}
@@ -200,6 +217,19 @@ windows are:
 |Focus specific window (windows are counted clockwise from the top left corner) | {sc_first_window}, {sc_second_window} ... {sc_tenth_window}
 
 |===
+
+=== Miscellaneous
+
+|===
+|Action |Shortcut
+
+|Increase font size   | {sc_increase_font_size}
+|Decrease font size   | {sc_decrease_font_size}
+|Restore font size    | {sc_restore_font_size}
+|Toggle fullscreen    | {sc_toggle_fullscreen}
+|Pass current selection to program | {sc_pass_selection_to_program}
+|===
+
 
 
 == The scrollback buffer
@@ -224,14 +254,15 @@ hold down `ctrl+shift` and click on a URL to open it in a browser.
 
 == Layouts
 
-Currently, there are two layouts available,
+Currently, there are three layouts available,
 
 * Stack -- Only a single maximized window is shown at a time
 * Tall -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right.
+* Grid -- All windows are shown in a grid
 
 You can switch between layouts using the {sc_next_layout} key combination.
 
-Writing a new layout only requires about thirty lines of code, so if there is
+Writing a new layout only requires about fifty lines of code, so if there is
 some layout you want, take a look at link:kitty/layout.py[layout.py] and submit
 a pull request!
 
@@ -255,11 +286,13 @@ command line flag. For example:
 ....
 # Set the window layout for the current tab
 layout tall
-# Set the working directory for the current tab
+# Set the working directory for windows in the current tab
 cd ~
 # Create a window and run the specified command in it
 launch zsh
 launch vim
+# Set the title for the next window
+title Chat with x
 launch irssi --profile x
 
 # Create a new tab (the part after new_tab is the optional tab name which will
@@ -309,9 +342,31 @@ render loop to reduce CPU usage. See the link:kitty/kitty.conf[config file] for 
 You can generate detailed per-function performance data using
 link:https://github.com/gperftools/gperftools[gperftools]. Build kitty with the
 `--profile` flag which will create an executable called `kitty-profile`.  Run
-that and perform the task you want to analyse, for example, scrolling a large 
+that and perform the task you want to analyse, for example, scrolling a large
 file with `less`. After you quit, function call statistics will be printed to
 `stdout` and you can use tools like *kcachegrind* for more detailed analysis.
+
+Here are some CPU usage numbers for the task of scrolling a file continuously in less.
+The CPU usage is for the terminal process and X together and is measured using htop.
+The measurements are taken at the same font and window size for all terminals on a
+`Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz` CPU with a
+`Advanced Micro Devices, Inc. [AMD/ATI] Cape Verde XT [Radeon HD 7770/8760 / R7 250X]` GPU.
+
+|===
+| Terminal | CPU usage (X + terminal)
+
+| kitty    | 6 - 8%
+| xterm    | 5 - 7% (but scrolling was extremely janky)
+| termite  | 10 - 13%
+| urxvt    | 12 - 14%
+| gnome-terminal | 15 - 17%
+| konsole  | 29 - 31%
+
+|===
+
+As you can see, kitty uses much less CPU than all terminals, except xterm, but
+its scrolling "smoothness" is much better than that of xterm (at least to my,
+admittedly biased, eyes).
 
 == Note for Linux/macOS packagers
 
@@ -338,6 +393,63 @@ without needing to install all of kitty.
 This applies to creating packages for kitty for macOS package managers such as
 brew or MacPorts as well.
 
+
+== Frequently Asked Questions
+
+=== Some special symbols are rendered small/truncated in kitty?
+
+The number of cells a unicode character takes up are controlled by the
+`wcwidth()` system function. If wcwidth() returns 2 then kitty will render the
+character in two cells, otherwise it will render it in one cell. Often the
+system `wcwidth()` is old/outdated. You can use the `use_system_wcwidth=no`
+setting in your kitty.conf to workaround this. But note that it might cause
+other issues, since now kitty and the programs running inside it may not agree
+on how wide characters should be. When a symbol does not fit, it will either be
+rescaled to be smaller or truncated (depending on how much extra space it
+needs). This is often different from other terminals which just let the
+character overflow into neighboring cells, leading to ugly artifacts.
+
+In addition to the problem with `wcwidth()` above, some programs, like
+powerline, vim with fancy gutter symbols/status-bar, etc. use unicode
+characters from the private use area to represent symbols. Often these symbols
+are square and should be rendered in two cells.  However, since private use
+area symbols all have `wcwdith() == 1` kitty renders them either smaller or
+truncated. The correct solution for this is to use either use different symbols
+that are not square, or to use a font that defines ligatures with the space
+character for these symbols. See
+link:https://github.com/kovidgoyal/kitty/issues/182[#182] for a discussion of
+the approach using ligatures.
+
+=== How do I build kitty.app on macOS?
+
+You dont need to build kitty.app to run kitty from source. Simply install the dependencies
+listed above using brew/MacPorts or similar and then compile and run with:
+
+```
+make
+python3 .
+```
+
+You can also create a shell script to run kitty:
+
+```
+#!/bin/sh
+exec python3 /path/to/kitty/source/dir
+```
+
+And using something like link:https://mathiasbynens.be/notes/shell-script-mac-apps[app-wrapper-for-shell-script]
+you can create a simple launcher app to run the shell script.
+
+If you only want to make some small changes to a python file, you can do that
+and simply replace the corresponding file inside an existing kitty.app. (Note
+that kitty.app will contain `.pyo` files which are compiled versions of `.py`
+files, delete the `.pyo` file and replace it with a `.py` file).
+
+Finally, note that the released kitty.dmg is built automatically by using the
+`kitty` branch of
+link:https://github.com/kovidgoyal/build-calibre[build-calibre] however, that
+is designed to run on linux and is not for the faint of heart.
+
 == A tribute
 
 While over the decades I am sure many people have contributed to the
@@ -349,7 +461,7 @@ kitty, I ran headlong into more and more gnarly corners of terminal behavior.
 On all those occasions, either the excellent documentation at
 link:http://invisible-island.net/xterm/ctlseqs/ctlseqs.html[xterm-ctlseqs] or
 investigating the behavior and code of xterm or vttest were invaluable tools to
-aid my understanding. 
+aid my understanding.
 
 My achievements, if any, in developing kitty would not have been possible without
 his prior work and the generous sharing of knowledge accumulated over decades.

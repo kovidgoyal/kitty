@@ -13,12 +13,17 @@ matrix:
             apt:
               packages:
                 - libfontconfig1-dev
-                - libglew-dev
+                - libharfbuzz-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libxcb-xkb-dev
+                - libxkbcommon-dev
+                - libxkbcommon-x11-dev
+                - libpng-dev
+                - python3-pil
 
         - os: linux
           dist: trusty
@@ -32,12 +37,17 @@ matrix:
             apt:
               packages:
                 - libfontconfig1-dev
-                - libglew-dev
+                - libharfbuzz-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libxcb-xkb-dev
+                - libxkbcommon-dev
+                - libxkbcommon-x11-dev
+                - libpng-dev
+                - python3-pil
 
         - os: linux
           dist: trusty
@@ -46,17 +56,22 @@ matrix:
           env:
             - RUN_FLAKE=1 BUILD_PKG=1
           language: python
-          python: "3.5"
+          python: "3.6"
           addons:
             apt:
               packages:
                 - libfontconfig1-dev
-                - libglew-dev
+                - libharfbuzz-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
                 - libunistring-dev
+                - libxcb-xkb-dev
+                - libxkbcommon-dev
+                - libxkbcommon-x11-dev
+                - libpng-dev
+                - python3-pil
                 - clang
         - os: osx
           language: generic
@@ -69,8 +84,8 @@ matrix:
 env:
     global:
         - PYTHON=python3
-        - PKG_CONFIG_PATH=$HOME/glfw/lib/pkgconfig:$PKG_CONFIG_PATH
-        - LD_LIBRARY_PATH=$HOME/glfw/lib:$LD_LIBRARY_PATH
+        - PKG_CONFIG_PATH=$HOME/harfbuzz/lib/pkgconfig:$PKG_CONFIG_PATH
+        - LD_LIBRARY_PATH=$HOME/harfbuzz/lib:$LD_LIBRARY_PATH
         - ASAN_OPTIONS=leak_check_at_exit=0
 
 install: |
@@ -80,22 +95,23 @@ install: |
         if [[ "$USE_BREW" == "1" ]]; then
             brew update;
             brew install python3;
-            brew install glfw;
-            brew install libunistring;
+            brew install harfbuzz --without-glib --without-gobject-introspection --without-graphite2 --without-icu4c --without-freetype;
         else
             mkdir -p $SW;
             curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
         fi
     else
-        wget -O glfw-3.2.1.zip https://github.com/glfw/glfw/archive/3.2.1.zip
-        unzip -q glfw-3.2.1.zip
-        cd glfw-3.2.1
-        cmake -DBUILD_SHARED_LIBS=ON -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/glfw
-        make
+        pushd /tmp
+        wget https://github.com/behdad/harfbuzz/releases/download/1.6.3/harfbuzz-1.6.3.tar.bz2
+        tar xf harfbuzz-1.6.3.tar.bz2
+        cd harfbuzz-1.6.3
+        ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static --with-glib=no --with-gobject=no --with-cairo=no --with-fontconfig=no --with-icu=no --with-directwrite=no --with-freetype=yes
+        make -j2
         make install
         cd ..
+        popd
     fi
-    pkg-config --cflags glfw3
+    pkg-config --cflags harfbuzz
     if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then
         PLIB=$(ldd `which python` | grep libpython | cut -d ' ' -f 3)
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`dirname $PLIB`
@@ -104,10 +120,10 @@ install: |
 
 before_script:
     - echo $LD_LIBRARY_PATH
-    - $PYTHON setup.py build --debug $SANITIZE_ARG;
-    - if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then ldd ./test-launcher `which $PYTHON`; fi
+    - $PYTHON setup.py build --debug --verbose $SANITIZE_ARG;
 
 script:
-    - ./test-launcher
+    - if grep -Inr '\s$' kitty kitty_tests *.py *.asciidoc .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+    - if [[ -z $SANITIZE_ARG ]]; then $PYTHON test.py; else ./asan-launcher test.py; fi
     - if [[ "$RUN_FLAKE" == "1" ]]; then flake8 --count .; fi
     - if [[ "$BUILD_PKG" == "1" ]]; then $PYTHON setup.py linux-package; fi

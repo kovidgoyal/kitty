@@ -9,6 +9,9 @@
 #include "lineops.h"
 #include <structmember.h>
 
+extern PyTypeObject Line_Type;
+extern PyTypeObject HistoryBuf_Type;
+
 static inline Cell*
 lineptr(LineBuf *linebuf, index_type y) {
     return linebuf->buf + y * linebuf->xnum;
@@ -19,14 +22,27 @@ clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
 }
 
-void 
+void
 linebuf_clear(LineBuf *self, char_type ch) {
     memset(self->buf, 0, self->xnum * self->ynum * sizeof(Cell));
-    memset(self->continued_map, 0, self->ynum * sizeof(bool));
+    memset(self->line_attrs, 0, self->ynum * sizeof(line_attrs_type));
     for (index_type i = 0; i < self->ynum; i++) self->line_map[i] = i;
     if (ch != 0) {
-        for (index_type i = 0; i < self->ynum; i++) clear_chars_to(self, i, ch);
+        for (index_type i = 0; i < self->ynum; i++) {
+            clear_chars_to(self, i, ch);
+            self->line_attrs[i] = TEXT_DIRTY_MASK;
+        }
     }
+}
+
+void
+linebuf_mark_line_dirty(LineBuf *self, index_type y) {
+    self->line_attrs[y] |= TEXT_DIRTY_MASK;
+}
+
+void
+linebuf_mark_line_clean(LineBuf *self, index_type y) {
+    self->line_attrs[y] &= ~TEXT_DIRTY_MASK;
 }
 
 static PyObject*
@@ -60,11 +76,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->buf = PyMem_Calloc(xnum * ynum, sizeof(Cell));
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
-        self->continued_map = PyMem_Calloc(ynum, sizeof(bool));
+        self->line_attrs = PyMem_Calloc(ynum, sizeof(line_attrs_type));
         self->line = alloc_line();
-        if (self->buf == NULL || self->line_map == NULL || self->scratch == NULL || self->continued_map == NULL || self->line == NULL) {
+        if (self->buf == NULL || self->line_map == NULL || self->scratch == NULL || self->line_attrs == NULL || self->line == NULL) {
             PyErr_NoMemory();
-            PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->continued_map); Py_CLEAR(self->line);
+            PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->line_attrs); Py_CLEAR(self->line);
             Py_CLEAR(self);
         } else {
             self->line->xnum = xnum;
@@ -81,8 +97,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(LineBuf* self) {
     PyMem_Free(self->buf);
-    PyMem_Free(self->line_map); 
-    PyMem_Free(self->continued_map); 
+    PyMem_Free(self->line_map);
+    PyMem_Free(self->line_attrs);
     PyMem_Free(self->scratch);
     Py_CLEAR(self->line);
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -93,11 +109,12 @@ init_line(LineBuf *lb, Line *l, index_type ynum) {
     l->cells = lineptr(lb, ynum);
 }
 
-void 
+void
 linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
-    self->line->continued = self->continued_map[idx];
+    self->line->continued = self->line_attrs[idx] & CONTINUED_MASK ? true : false;
+    self->line->has_dirty_text = self->line_attrs[idx] & TEXT_DIRTY_MASK ? true : false;
     init_line(self, self->line, self->line_map[idx]);
 }
 
@@ -114,15 +131,16 @@ line(LineBuf *self, PyObject *y) {
     return (PyObject*)self->line;
 }
 
-unsigned int 
+unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
     return (lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
 }
 
-void 
+void
 linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
     for (index_type y = 0; y < self->ynum; y++) {
         set_attribute_on_line(lineptr(self, y), shift, val, self->xnum);
+        self->line_attrs[y] |= TEXT_DIRTY_MASK;
     }
 }
 
@@ -143,8 +161,21 @@ set_continued(LineBuf *self, PyObject *args) {
     int val;
     if (!PyArg_ParseTuple(args, "Ip", &y, &val)) return NULL;
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    self->continued_map[y] = val & 1;
+    if (val) self->line_attrs[y] |= CONTINUED_MASK;
+    else self->line_attrs[y] &= ~CONTINUED_MASK;
     Py_RETURN_NONE;
+}
+
+static PyObject*
+dirty_lines(LineBuf *self) {
+#define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
+    PyObject *ans = PyList_New(0);
+    for (index_type i = 0; i < self->ynum; i++) {
+        if (self->line_attrs[i] & TEXT_DIRTY_MASK) {
+            PyList_Append(ans, PyLong_FromUnsignedLong(i));
+        }
+    }
+    return ans;
 }
 
 static inline bool
@@ -161,7 +192,7 @@ allocate_line_storage(Line *line, bool initialize) {
     return true;
 }
 
-static inline PyObject* 
+static inline PyObject*
 create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
     line = alloc_line();
@@ -169,7 +200,8 @@ create_line_copy_inner(LineBuf* self, index_type y) {
     src.xnum = self->xnum; line->xnum = self->xnum;
     if (!allocate_line_storage(line, 0)) { Py_CLEAR(line); return PyErr_NoMemory(); }
     line->ynum = y;
-    line->continued = self->continued_map[y];
+    line->continued = self->line_attrs[y] & CONTINUED_MASK ? true : false;
+    line->has_dirty_text = self->line_attrs[y] & TEXT_DIRTY_MASK ? true : false;
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, line);
     return (PyObject*)line;
@@ -191,7 +223,8 @@ copy_line_to(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "IO!", &y, &Line_Type, &dest)) return NULL;
     src.xnum = self->xnum; dest->xnum = self->xnum;
     dest->ynum = y;
-    dest->continued = self->continued_map[y];
+    dest->continued = self->line_attrs[y] & CONTINUED_MASK;
+    dest->has_dirty_text = self->line_attrs[y] & TEXT_DIRTY_MASK;
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, dest);
     Py_RETURN_NONE;
@@ -201,13 +234,15 @@ static inline void
 clear_line_(Line *l, index_type xnum) {
     memset(l->cells, 0, xnum * sizeof(Cell));
     if (BLANK_CHAR != 0) clear_chars_in_line(l->cells, xnum, BLANK_CHAR);
+    l->has_dirty_text = false;
 }
 
-void linebuf_clear_line(LineBuf *self, index_type y) {
+void
+linebuf_clear_line(LineBuf *self, index_type y) {
     Line l;
     init_line(self, &l, self->line_map[y]);
     clear_line_(&l, self->xnum);
-    self->continued_map[y] = 0;
+    self->line_attrs[y] = 0;
 }
 
 static PyObject*
@@ -219,20 +254,21 @@ clear_line(LineBuf *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-void linebuf_index(LineBuf* self, index_type top, index_type bottom) {
+void
+linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
-    bool old_cont = self->continued_map[top];
+    line_attrs_type old_attrs = self->line_attrs[top];
     for (index_type i = top; i < bottom; i++) {
         self->line_map[i] = self->line_map[i + 1];
-        self->continued_map[i] = self->continued_map[i + 1];
+        self->line_attrs[i] = self->line_attrs[i + 1];
     }
     self->line_map[bottom] = old_top;
-    self->continued_map[bottom] = old_cont;
+    self->line_attrs[bottom] = old_attrs;
 }
 
 static PyObject*
-index(LineBuf *self, PyObject *args) {
+pyw_index(LineBuf *self, PyObject *args) {
 #define index_doc "index(top, bottom) -> Scroll all lines in the range [top, bottom] by one upwards. After scrolling, bottom will be top."
     unsigned int top, bottom;
     if (!PyArg_ParseTuple(args, "II", &top, &bottom)) return NULL;
@@ -240,16 +276,17 @@ index(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
+void
+linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_bottom = self->line_map[bottom];
-    bool old_cont = self->continued_map[bottom];
+    line_attrs_type old_attrs = self->line_attrs[bottom];
     for (index_type i = bottom; i > top; i--) {
         self->line_map[i] = self->line_map[i - 1];
-        self->continued_map[i] = self->continued_map[i - 1];
+        self->line_attrs[i] = self->line_attrs[i - 1];
     }
     self->line_map[top] = old_bottom;
-    self->continued_map[top] = old_cont;
+    self->line_attrs[top] = old_attrs;
 }
 
 static PyObject*
@@ -267,11 +304,12 @@ is_continued(LineBuf *self, PyObject *val) {
 #define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    if (self->continued_map[y]) { Py_RETURN_TRUE; }
+    if (self->line_attrs[y] & CONTINUED_MASK) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
-void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
+void
+linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
     index_type i;
     if (y >= self->ynum || y > bottom || bottom >= self->ynum) return;
     index_type ylimit = bottom + 1;
@@ -282,9 +320,9 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
         }
         for (i = ylimit - 1; i >= y + num; i--) {
             self->line_map[i] = self->line_map[i - num];
-            self->continued_map[i] = self->continued_map[i - num];
+            self->line_attrs[i] = self->line_attrs[i - num];
         }
-        if (y + num < self->ynum) self->continued_map[y + num] = 0;
+        if (y + num < self->ynum) self->line_attrs[y + num] &= ~CONTINUED_MASK;
         for (i = 0; i < num; i++) {
             self->line_map[y + i] = self->scratch[ylimit - num + i];
         }
@@ -292,7 +330,7 @@ void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsig
         for (i = y; i < y + num; i++) {
             init_line(self, &l, self->line_map[i]);
             clear_line_(&l, self->xnum);
-            self->continued_map[i] = 0;
+            self->line_attrs[i] = 0;
         }
     }
 }
@@ -306,7 +344,7 @@ insert_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom) {
     index_type i;
     index_type ylimit = bottom + 1;
@@ -317,9 +355,9 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     }
     for (i = y; i < ylimit && i + num < self->ynum; i++) {
         self->line_map[i] = self->line_map[i + num];
-        self->continued_map[i] = self->continued_map[i + num];
+        self->line_attrs[i] = self->line_attrs[i + num];
     }
-    self->continued_map[y] = 0;
+    self->line_attrs[y] &= ~CONTINUED_MASK;
     for (i = 0; i < num; i++) {
         self->line_map[ylimit - num + i] = self->scratch[y + i];
     }
@@ -327,26 +365,26 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     for (i = ylimit - num; i < ylimit; i++) {
         init_line(self, &l, self->line_map[i]);
         clear_line_(&l, self->xnum);
-        self->continued_map[i] = 0;
+        self->line_attrs[i] = 0;
     }
 }
- 
+
 static PyObject*
 delete_lines(LineBuf *self, PyObject *args) {
-#define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num blank lines at y, only changing lines in the range [y, bottom]."
+#define delete_lines_doc "delete_lines(num, y, bottom) -> Delete num lines at y, only changing lines in the range [y, bottom]."
     unsigned int y, num, bottom;
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
     linebuf_delete_lines(self, num, y, bottom);
     Py_RETURN_NONE;
 }
- 
+
 static PyObject*
 as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
     static Py_UCS4 t[5120];
     Line l = {.xnum=self->xnum};
     for(index_type i = 0; i < self->ynum; i++) {
-        l.continued = (i < self->ynum - 1) ? self->continued_map[i+1] : self->continued_map[i];
+        l.continued = ((i < self->ynum - 1) ? self->line_attrs[i+1] : self->line_attrs[i]) & CONTINUED_MASK;
         init_line(self, (&l), self->line_map[i]);
         index_type num = line_as_ansi(&l, t, 5120);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
@@ -358,13 +396,6 @@ as_ansi(LineBuf *self, PyObject *callback) {
         Py_CLEAR(ret);
     }
     Py_RETURN_NONE;
-}
-
-void 
-linebuf_refresh_sprite_positions(LineBuf *self) {
-    for (index_type i = 0; i < self->ynum; i++) {
-        update_sprites_in_line(lineptr(self, i), self->xnum);
-    }
 }
 
 static PyObject*
@@ -403,7 +434,8 @@ static PyMethodDef methods[] = {
     METHOD(as_ansi, METH_O)
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
-    METHOD(index, METH_VARARGS)
+    METHOD(dirty_lines, METH_NOARGS)
+    {"index", (PyCFunction)pyw_index, METH_VARARGS, NULL},
     METHOD(reverse_index, METH_VARARGS)
     METHOD(insert_lines, METH_VARARGS)
     METHOD(delete_lines, METH_VARARGS)
@@ -421,11 +453,11 @@ PyTypeObject LineBuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.LineBuf",
     .tp_basicsize = sizeof(LineBuf),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "Line buffers",
     .tp_methods = methods,
-    .tp_members = members,            
+    .tp_members = members,
     .tp_str = (reprfunc)__str__,
     .tp_new = new
 };
@@ -443,7 +475,7 @@ copy_old(LineBuf *self, PyObject *y) {
 
     for (index_type i = 0; i < MIN(self->ynum, other->ynum); i++) {
         index_type s = self->ynum - 1 - i, o = other->ynum - 1 - i;
-        self->continued_map[s] = other->continued_map[o];
+        self->line_attrs[s] = other->line_attrs[o];
         s = self->line_map[s]; o = other->line_map[o];
         init_line(self, &sl, s); init_line(other, &ol, o);
         copy_line(&ol, &sl);
@@ -453,7 +485,7 @@ copy_old(LineBuf *self, PyObject *y) {
 
 #include "rewrap.h"
 
-void 
+void
 linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf) {
     index_type first, i;
     bool is_empty = true;
@@ -461,7 +493,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
-        memcpy(other->continued_map, self->continued_map, sizeof(bool) * self->ynum);
+        memcpy(other->line_attrs, self->line_attrs, sizeof(bool) * self->ynum);
         memcpy(other->buf, self->buf, self->xnum * self->ynum * sizeof(Cell));
         *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
         return;
@@ -478,13 +510,14 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     } while(is_empty && first > 0);
 
     if (is_empty) {  // All lines are empty
-        *num_content_lines_after = 0; 
+        *num_content_lines_after = 0;
         *num_content_lines_before = 0;
-        return; 
+        return;
     }
 
     rewrap_inner(self, other, first + 1, historybuf);
     *num_content_lines_after = other->line->ynum + 1;
+    for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i] |= TEXT_DIRTY_MASK;
     *num_content_lines_before = first + 1;
 }
 

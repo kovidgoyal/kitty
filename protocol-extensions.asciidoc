@@ -28,11 +28,15 @@ in terminal editors such as vim and emacs to display red, wavy underlines under
 mis-spelled words and/or syntax errors. This is done by re-purposing some SGR escape codes
 that are not used in modern terminals (https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes)
 
-To change the underline style from straight line to curl (this used to be the
-code for rapid blinking text, only previous use I know of was in MS-DOS ANSI.sys):
+To set the underline style:
 
 ```
-<ESC>[6m
+<ESC>[4:0m  # this is no underline
+<ESC>[4:1m  # this is a straight underline
+<ESC>[4:2m  # this is a double underline
+<ESC>[4:3m  # this is a curly underline
+<ESC>[4m    # this is a straight underline (for backwards compat)
+<ESC>[24m   # this is no underline (for backwards compat)
 ```
 
 To set the underline color (this is reserved and as far as I can tell not actually used for anything):
@@ -50,8 +54,8 @@ To reset the underline color (also previously reserved and unused):
 <ESC>[59m
 ```
 
-A client can query if the terminal emulator supports this underline extension using the 
-standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence, with the 
+A client can query if the terminal emulator supports this underline extension using the
+standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence, with the
 mode value `2016`, like this:
 
 Client sends:
@@ -70,260 +74,8 @@ link:http://vt100.net/docs/vt510-rm/DECRPM[DECRPM]
 
 == Graphics rendering
 
-The goal of this specification is to create a flexible and performant protocol
-that allows the program running in the terminal, hereafter called the _client_,
-to render arbitrary pixel (raster) graphics to the screen of the terminal
-emulator. The major design goals are
-
- * Should not require terminal emulators to understand image formats.
- * Should allow specifying graphics to be drawn per individual character cell. This allows graphics to mix with text using
-   the existing cursor based protocols.
- * Should use optimizations when the client is running on the same computer as the terminal emulator.
-
-For some discussion regarding the design choices, see link:../../issues/33[#33].
-
-=== Getting the window size
-
-In order to know what size of images to display and how to position them, the client must be able to get the
-window size in pixels and the number of cells per row and column. This can be done by using the `TIOCGWINSZ` ioctl.
-Some C code to demonstrate its use
-
-```C
-struct ttysize ts; 
-ioctl(0, TIOCGWINSZ, &ts);
-printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
-```
-
-Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
-Examples of terminals that return correct values: `kitty, xterm`
-
-=== Transferring pixel data
-
-```
-<ESC>_G<control data>;<payload><ESC>\
-```
-
-Before describing this escape code in detail, lets see some quick examples to get a flavor of it in action.
-
-```
-# Draw 10x20 pixels starting at the top-left corner of the current cell.
-<ESC>_Gw=10,h=20,s=100;<pixel data><ESC>\                  
-
-# Ditto, getting the pixel data from /tmp/pixel_data
-<ESC>_Gw=10,h=20,t=f,s=100;<encoded /tmp/pixel_data><ESC>\      
-
-# Ditto, getting the pixel data from /dev/shm/pixel_data, deleting the file after reading data
-<ESC>_Gw=10,h=20,t=t,s=100;<encoded /dev/shm/pixel_data><ESC>\  
-
-# Draw 10x20 pixels starting at the top-left corner of the current cell, ignoring the first 4 rows and 3 columns of the pixel data
-<ESC>_Gw=10,h=20,x=3,y=4,s=100;<pixel data><ESC>\     
-```
-
-This control code is an _Application-Programming Command (APC)_, indicated by
-the leading `<ESC>_`. No modern terminals that I know of use APC codes, and
-well-behaved terminals are supposed to ignore APC codes they do not understand.
-
-The next character `G` indicates this APC code is for graphics data. In the future, we might
-have different first letters for different needs. 
-
-The control data is a comma-separated list of key-value pairs with the restriction that
-keys and values must contain only the characters `0-9a-zA-Z_-+/*`. The payload is arbitrary binary
-data interpreted based on the control codes. The binary data must be base-64 encoded so as to minimize
-the probability of problems with legacy systems that might interpret control
-codes in the binary data incorrectly.
-
-The key to the operation of this escape code is understanding the way the control data works.
-The control data's keys are split up into categories for easier reference.
-
-==== Controlling drawing
-
-|===
-| Key | Default     | Meaning 
-
-| w   | full width  | width -- number of columns of the pixel data to draw 
-| h   | full height | height -- number of rows of the pixel data to draw 
-| x   | zero        | x-offset -- the column in the pixel data to start from (0-based)
-| y   | zero        | y-offset -- the row in the pixel data to start from (0-based)
-|===
-
-The origin for `(x, y)` is the top left corner of the pixel data, with `x`
-increasing from left-to-right and `y` increasing downwards. The terminal
-emulator will draw the specified region starting at the top-left corner of the
-current cell. If the width is greater than a single cell, the cursor will be
-moved one cell to the right and drawing will continue.  If the cursor reaches
-the end of the line, it moves to the next line and starts drawing the next row
-of data.  This means that the displayed image will be truncated at the right
-edge of the screen. If the cursor needs to move past the bottom of the screen,
-the screen is scrolled. After the entire region is drawn, the cursor will be
-positioned at the first cell after the image.
-
-Setting the width and/or height to zero means that no drawing is done and the
-cursor position remains unchanged.
-
-
-==== Transmitting data
-
-The first consideration when transferring data between the client and the
-terminal emulator is the format in which to do so. Since there is a vast and
-growing number of image formats in existence, it does not make sense to have
-every terminal emulator implement support for them. Instead, the client should
-send simple pixel data to the terminal emulator. The obvious downside to this
-is performance, especially when the client is running on a remote machine.
-Techniques for remedying this limitation are discussed later. The terminal
-emulator must understand pixel data in two formats, 24-bit RGB and 32-bit RGBA.
-This is specified using the `f` key in the control data. `f=32` (which is the
-default) indicates 32-bit RGBA data and `f=24` indicates 24-bit RGB data.
-
-One additional parameter is needed to describe the pixel data, the _stride_,
-that is the number of pixels per row. This is encoded using the `s` key, which
-is **required**. For example, `s=100` means there are one hundred pixels per
-row in the pixel data.
-
-Now let us turn to considering how the data is actually transmitted. 
-
-
-===== Local client
-
-When the client and the terminal emulator are on the same computer and share a
-filesystem or shared memory, transfer can happen efficiently using files or
-shared memory objects to pass the data around. The type of transfer is
-controlled by the `t` key. When sending data via files/shared memory, `t` can
-take three values, described below:
-
-|===
-| Value of `t` | Meaning 
-
-| f | A simple file
-| t | A temporary file, the terminal emulator will delete the file after reading the pixel data
-| s | A http://man7.org/linux/man-pages/man7/shm_overview.7.html[POSIX shared memory object]. The terminal emulator will delete it after reading the pixel data 
-|===
-
-In all these cases, the payload data must be the base-64 encoded absolute file path.
-
-[[query]]An important consideration is how the client can tell if the terminal emulator
-and it share a filesystem. This can be done by using the _response mode_, specifying
-the `q` key, with some unique id as the value. For example,
-
-```
-<ESC>_Gt=t,s=100,q=33;<encoded /tmp/pixel_data><ESC>\      
-```
-
-When the terminal emulator receives this escape code, it will read and display
-the pixel data as normal, and also send an escape code back to the client
-indicating whether the reading of the data was successful or not. The returned
-escape code will look like:
-
-```
-<ESC>_Gq=33;<encoded error message or OK><ESC>\
-```
-
-Here the `q` value will be the same as was sent by the client in the original
-request.  The payload data will be a base-64 encoded UTF-8 string. The string
-will be `OK` if reading the pixel data succeeded or an error message. Clients 
-can set the width and height to zero to avoid actually drawing anything on
-screen during the test.
-
-
-===== Remote client
-
-Remote clients, those that are unable to use the filesystem/shared memory to
-transmit data, must send the pixel data directly using escape codes. Since
-escape codes are of limited maximum length, the data will need to be chunked up
-for transfer. This is done using the `m` key. The pixel data must first be
-base64 encoded then chunked up into chunks no larger than `4096` bytes. The client
-then sends the graphics escape code as usual, with the addition of an `m` key that
-must have the value `1` for all but the last chunk, where it must be `0`. For example,
-if the data is split into three chunks, the client would send the following
-sequence of escape codes to the terminal emulator:
-
-```
-<ESC>_Gw=100,h=30,s=100,m=1;<base-64 pixel data first chunk><ESC>\                  
-<ESC>_Gm=1;<base-64 pixel data second chunk><ESC>\                  
-<ESC>_Gm=0;<base-64 pixel data last chunk><ESC>\                  
-```
-
-Note that only the first escape code needs to have the full set of control
-codes such as stride, width, height, format etc. Subsequent chunks must have
-only the `m` key. The client must finish sending all chunks for a single image
-before sending any other graphics related escape codes.
-
-
-=== Image persistence
-
-Full screen applications may need to render the same image multiple times or
-even render different parts of an image, in different locations, for example,
-if the image is sprite map. Resending the image data each time this happens is
-wasteful. Instead this protocol allows the client to have the terminal emulator
-manage a persistent store of images. 
-
-Persistence is implemented by simply assigning an id to transmitted pixel data using the 
-key `i`. So for example,
-
-```
-<ESC>_Gt=t,s=100,i=some-id;<encoded /tmp/pixel_data><ESC>\
-```
-
-Now, if the client wants to redraw that image in the future, all it has to do is send
-a code with the keys `t=i,i=some-id`, and no payload, like this:
-
-```
-<ESC>_Gt=i,i=some-id;<ESC>\
-```
-
-The client can use the `w, h, x, y` keys to draw different parts of the image
-and draw it at different locations by positioning the cursor before sending the
-code.
-
-Saved images can be deleted, to free up resources, by using the code:
-
-```
-<ESC>_Gt=d,i=some-id;<ESC>\
-```
-
-The special value of `i=*` will cause the terminal emulator to delete all
-stored images.  Well behaved clients should send this code before terminating.
-
-Terminal emulators may limit the maximum amount of saved data to avoid denial-of-service
-attacks.  Terminal emulators should make the limit fairly generous, at least a
-few hundred, full screen, RGBA images worth of data should be allowed. 
-
-Client applications can check if an image is still stored by sending the `q`
-key, as described <<query,above>>. For example,
-
-```
-<ESC>_Gt=i,i=some-id,q=some-id;<ESC>\
-```
-
-The terminal emulator will respond with:
-
-```
-<ESC>_Gq=some-id;<encoded OK or error message><ESC>\
-```
-
-If `OK` is sent the image was successfully loaded from the persistent storage, if not,
-then it must be resent.
-
-Note that when using the local filesystem to send data (`t=f`) mode, there is
-no need to use this persistence mechanism, as the client can directly refer to
-the file repeatedly with no overhead.
-
-=== A summary of the control keys used
-
-|===
-|Key | Description
-
-| f  | The _format_ of the transmitted pixel data
-| h  | _height_ -- number of rows of the pixel data to draw 
-| i  | _id_ to save transmitted data in persistent storage
-| m  | indicates whether there is _more_ data to come during a chunked transfer
-| q  | _query_ the terminal emulator to see if transmission succeeded
-| s  | The _stride_ of the transmitted pixel data
-| t  | The _type_ of transmission medium used
-| w  | _width_ -- number of columns of the pixel data to draw 
-| x  | _x-offset_ -- the column in the pixel data to start from (0-based)
-| y  | _y-offset_ -- the row in the pixel data to start from (0-based)
-
-|===
+See link:graphics-protocol.asciidoc[Graphics Protocol] for a description
+of this protocol to enable drawing of arbitrary raster images in the terminal.
 
 
 == Keyboard handling
@@ -334,8 +86,8 @@ include:
   * No way to use modifiers other than `Ctrl` and `Alt`
   * No way to use multiple modifier keys, other than, `Shift+Alt`.
   * No way to handle different types of keyboard events, such as press, release or repeat
-  * No reliable way to distinguish single `Esc` keypresses from the 
-    start of a escape sequence. Currently, client programs use 
+  * No reliable way to distinguish single `Esc` keypresses from the
+    start of a escape sequence. Currently, client programs use
     fragile timing related hacks for this, leading to bugs, for example:
     link:https://github.com/neovim/neovim/issues/2035[neovim #2035]
 
@@ -360,7 +112,7 @@ and to leave _full mode_, use DECRST
 ```
 
 The number `2017` above is not used for any existing modes, as far as I know.
-Client programs can query if the terminal emulator is in _full mode_ by using 
+Client programs can query if the terminal emulator is in _full mode_ by using
 the standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence.
 
 The new mode works as follows:
@@ -383,7 +135,7 @@ The escape sequence encodes the following properties:
 
   * Type of event: `press,repeat,release`
   * Modifiers pressed at the time of the event
-  * The actual key being pressed 
+  * The actual key being pressed
 
 ```
 <ESC>_K<type><modifiers><key><ESC>\
@@ -391,7 +143,7 @@ The escape sequence encodes the following properties:
 
 Where `<type>` is one of `p` -- press, `r` -- release and `t` -- repeat.
 Modifiers is a bitmask represented as a single base64 digit.  Shift -- `0x1`,
-Control -- `0x2`, Alt -- `0x4` and Super -- `0x8`.  `<key>` is a number
+Alt -- `0x2`, Control -- `0x4` and Super -- `0x8`.  `<key>` is a number
 (encoded in base85) corresponding to the key pressed. The key name to number
 mapping is defined in link:key_encoding.asciidoc[this table].
 
@@ -404,3 +156,26 @@ For example:
 
 This encoding means each key event is represented by 8 or 9 printable ascii
 only bytes, for maximum robustness.
+
+
+== Setting text styles/colors in arbitrary regions of the screen
+
+There already exists an escape code to set *some* text attributes in arbitrary
+regions of the screen,
+link:https://vt100.net/docs/vt510-rm/DECCARA.html[DECCARA].  However, it is
+limited to only a few attributes. kitty extends this to work with *all* SGR
+attributes.  So, for example, this can be used to set the background color in
+an arbitrary region of the screen.
+
+The motivation for this extension is the various problems with the existing
+solution for erasing to background color, namely the *background color erase
+(bce)* capability. See
+link:https://github.com/kovidgoyal/kitty/issues/160#issuecomment-346470545[this discussion]
+for a summary of problems with *bce*.
+
+For example, to set the background color to blue in a
+rectangular region of the screen from (3, 4) to (10, 11), you use:
+
+```
+<ESC>[2*x<ESC>[4;3;11;10;44$r<ESC>[*x
+```

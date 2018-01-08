@@ -3,11 +3,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from binascii import hexlify
 from functools import partial
 from unittest import skipIf
 
+from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump
+
 from . import BaseTest
-from kitty.fast_data_types import parse_bytes, parse_bytes_dump, CURSOR_BLOCK
 
 
 class CmdDump(list):
@@ -115,19 +117,32 @@ class TestParser(BaseTest):
         pb('\033[?1000;1004h', ('screen_set_mode', 1000, 1), ('screen_set_mode', 1004, 1))
         pb('\033[20;4;20l', ('screen_reset_mode', 20, 0), ('screen_reset_mode', 4, 0), ('screen_reset_mode', 20, 0))
         s.reset()
-        pb('\033[1;3;4;7;9;34;44m', ('select_graphic_rendition', '1 3 4 7 9 34 44 '))
+
+        def sgr(params):
+            return (('select_graphic_rendition', '{} '.format(x)) for x in params.split())
+
+        pb('\033[1;3;4;7;9;34;44m', *sgr('1 3 4 7 9 34 44'))
         for attr in 'bold italic reverse strikethrough'.split():
             self.assertTrue(getattr(s.cursor, attr))
         self.ae(s.cursor.decoration, 1)
         self.ae(s.cursor.fg, 4 << 8 | 1)
         self.ae(s.cursor.bg, 4 << 8 | 1)
-        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38 5 1 48 5 7 '))
+        pb('\033[38;5;1;48;5;7m', ('select_graphic_rendition', '38 5 1 '), ('select_graphic_rendition', '48 5 7 '))
         self.ae(s.cursor.fg, 1 << 8 | 1)
         self.ae(s.cursor.bg, 7 << 8 | 1)
-        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 48 2 7 8 9 '))
+        pb('\033[38;2;1;2;3;48;2;7;8;9m', ('select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 2 7 8 9 '))
         self.ae(s.cursor.fg, 1 << 24 | 2 << 16 | 3 << 8 | 2)
         self.ae(s.cursor.bg, 7 << 24 | 8 << 16 | 9 << 8 | 2)
-        pb('\033[;2m', ('select_graphic_rendition', '0 2 '))
+        pb('\033[0;2m', *sgr('0 2'))
+        pb('\033[;2m', *sgr('0 2'))
+        pb('\033[m', *sgr('0 '))
+        pb('\033[1;;2m', *sgr('1 0 2'))
+        pb('\033[38;5;1m', ('select_graphic_rendition', '38 5 1 '))
+        pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58 2 1 2 3 '))
+        pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38 2 1 2 3 '))
+        pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001 2 1 2 3 '))
+        pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
+            'select_graphic_rendition', '38 2 1 2 3 '), ('select_graphic_rendition', '48 5 9 '), ('select_graphic_rendition', '58 5 7 '))
         c = s.callbacks
         pb('\033[5n', ('report_device_status', 5, 0))
         self.ae(c.wtcbuf, b'\033[0n')
@@ -178,13 +193,122 @@ class TestParser(BaseTest):
 
     def test_dcs_codes(self):
         s = self.create_screen()
+        c = s.callbacks
         pb = partial(self.parse_bytes_dump, s)
-        pb('a\033P+q436f\x9cbcde', 'a', ('screen_request_capabilities', '436f'), 'bcde')
+        q = hexlify(b'kind').decode('ascii')
+        pb('a\033P+q{}\x9cbcde'.format(q), 'a', ('screen_request_capabilities', 43, q), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
+        self.ae(c.wtcbuf, '1+r{}={}'.format(q, '1b5b313b3242').encode('ascii'))
+        c.clear()
+        pb('\033P$q q\033\\', ('screen_request_capabilities', ord('$'), ' q'))
+        self.ae(c.wtcbuf, b'\033P1$r1 q\033\\')
+        c.clear()
+        pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
+        self.ae(c.wtcbuf, b'\033P1$rm\033\\')
+        for sgr in '0;34;102;1;3;4 0;38:5:200;58:2:10:11:12'.split():
+            expected = set(sgr.split(';')) - {'0'}
+            c.clear()
+            parse_bytes(s, '\033[{}m\033P$qm\033\\'.format(sgr).encode('ascii'))
+            r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
+            self.ae(expected, set(r.split(';')))
+        c.clear()
+        pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
+        self.ae(c.wtcbuf, '\033P1$r{};{}r\033\\'.format(s.margin_top + 1, s.margin_bottom + 1).encode('ascii'))
+
+    def test_sc81t(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033 G', ('screen_set_8bit_controls', 1))
+        c = s.callbacks
+        pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
+        self.ae(c.wtcbuf, b'\x901$rm\x9c')
+        c.clear()
+        pb('\033[0c', ('report_device_attributes', 0, 0))
+        self.ae(c.wtcbuf, b'\x9b?62;c')
 
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
-        for prefix in '\033_', '\033^', '\u009e', '\u009f':
+        for prefix in '\033_', '\u009f':
             for suffix in '\u009c', '\033\\':
-                pb('a{}+\\++{}bcde'.format(prefix, suffix), 'abcde')
+                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
+        for prefix in '\033^', '\u009e':
+            for suffix in '\u009c', '\033\\':
+                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
+
+    def test_graphics_command(self):
+        from base64 import standard_b64encode
+
+        def enc(x):
+            return standard_b64encode(x.encode('utf-8') if isinstance(x, str) else x).decode('ascii')
+
+        def c(**k):
+            for p, v in tuple(k.items()):
+                if isinstance(v, str) and p != 'payload':
+                    k[p] = v.encode('ascii')
+            for f in 'action delete_action transmission_type compressed'.split():
+                k.setdefault(f, b'\0')
+            for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width'
+                      ' num_cells num_lines cell_x_offset cell_y_offset z_index').split():
+                k.setdefault(f, 0)
+            p = k.pop('payload', '').encode('utf-8')
+            k['payload_sz'] = len(p)
+            return ('graphics_command', k, p)
+
+        def t(cmd, **kw):
+            pb('\033_G{};{}\033\\'.format(cmd, enc(kw.get('payload', ''))), c(**kw))
+
+        def e(cmd, err):
+            pb('\033_G{}\033\\'.format(cmd), (err,))
+
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        uint32_max = 2**32 - 1
+        t('i=%d' % uint32_max, id=uint32_max)
+        e('i=%d' % (uint32_max + 1), 'id is too large')
+        pb('\033_Gi=12\033\\', c(id=12))
+        t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9, payload_sz=1)
+        t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9, payload_sz=7)
+        t('a=t,t=d,s=100,z=9', action='t', transmission_type='d', data_width=100, z_index=9)
+        e(',s=1', 'Malformed graphics control block, invalid key character: 0x2c')
+        e('W=1', 'Malformed graphics control block, invalid key character: 0x57')
+        e('1=1', 'Malformed graphics control block, invalid key character: 0x31')
+        e('a=t,,w=2', 'Malformed graphics control block, invalid key character: 0x2c')
+        e('s', 'Malformed graphics control block, no = after key')
+        e('s=', 'Malformed graphics control block, expecting an integer value')
+        e('s==', 'Malformed graphics control block, expecting an integer value for key: s')
+        e('s=1=', 'Malformed graphics control block, expecting a comma or semi-colon after a value, found: 0x3d')
+
+    def test_deccara(self):
+        s = self.create_screen()
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033[$r', ('deccara', '0 0 0 0 0 '))
+        pb('\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
+           ('deccara', '0 0 0 0 4 3 '), ('deccara', '0 0 0 0 38 5 10 '), ('deccara', '0 0 0 0 48 2 1 2 3 '), ('deccara', '0 0 0 0 1 '))
+        for y in range(s.lines):
+            line = s.line(y)
+            for x in range(s.columns):
+                c = line.cursor_from(x)
+                self.ae(c.bold, True)
+                self.ae(c.italic, False)
+                self.ae(c.decoration, 3)
+                self.ae(c.fg, (10 << 8) | 1)
+                self.ae(c.bg, (1 << 24 | 2 << 16 | 3 << 8 | 2))
+        self.ae(s.line(0).cursor_from(0).bold, True)
+        pb('\033[1;2;2;3;22;39$r', ('deccara', '1 2 2 3 22 '), ('deccara', '1 2 2 3 39 '))
+        self.ae(s.line(0).cursor_from(0).bold, True)
+        line = s.line(0)
+        for x in range(1, s.columns):
+            c = line.cursor_from(x)
+            self.ae(c.bold, False)
+            self.ae(c.fg, 0)
+        line = s.line(1)
+        for x in range(0, 3):
+            c = line.cursor_from(x)
+            self.ae(c.bold, False)
+        self.ae(line.cursor_from(3).bold, True)
+        pb('\033[2*x\033[3;2;4;3;34$r\033[*x', ('screen_decsace', 2), ('deccara', '3 2 4 3 34 '), ('screen_decsace', 0))
+        for y in range(2, 4):
+            line = s.line(y)
+            for x in range(s.columns):
+                self.ae(line.cursor_from(x).fg, (10 << 8 | 1) if x < 1 or x > 2 else (4 << 8) | 1)

@@ -8,24 +8,21 @@
 #include "keys.h"
 #include "state.h"
 #include "screen.h"
-#include <GLFW/glfw3.h>
+#include "glfw-wrapper.h"
+#include "control-codes.h"
 
-const uint8_t*
+const char*
 key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
     if ((action & 3) == 3) return NULL;
     if ((unsigned)glfw_key >= sizeof(key_map)/sizeof(key_map[0]) || glfw_key < 0) return NULL;
     uint16_t key = key_map[glfw_key];
     if (key == UINT8_MAX) return NULL;
-    mods &= 0xF;
-    key |= (mods & 0xF) << 7;
-    key |= (action & 3) << 11;
-    key |= (smkx & 1) << 13;
-    key |= (extended & 1) << 14;
-    if (key >= SIZE_OF_KEY_BYTES_MAP) return NULL;
-    return key_bytes[key];
+    KeyboardMode mode = extended ? EXTENDED : (smkx ? APPLICATION : NORMAL);
+    return key_lookup(key, mode, mods, action);
 }
 
 #define SPECIAL_INDEX(key) ((key & 0x7f) | ( (mods & 0xF) << 7))
+#define IS_ALT_MODS(mods) (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))
 
 void
 set_special_key_combo(int glfw_key, int mods) {
@@ -38,7 +35,7 @@ set_special_key_combo(int glfw_key, int mods) {
 
 static inline Window*
 active_window() {
-    Tab *t = global_state.tabs + global_state.active_tab;
+    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     Window *w = t->windows + t->active_window;
     if (w->render_data.screen) return w;
     return NULL;
@@ -47,23 +44,15 @@ active_window() {
 void
 on_text_input(unsigned int codepoint, int mods) {
     Window *w = active_window();
-    static char buf[10];
+    static char buf[16];
     unsigned int sz = 0;
 
     if (w != NULL) {
-        /*
-        Screen *screen = w->render_data.screen;
-        bool in_alt_mods = !screen->modes.mEXTENDED_KEYBOARD && (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT));
-        bool is_text = mods <= GLFW_MOD_SHIFT;
-        if (in_alt_mods) {
-            sz = encode_utf8(codepoint, buf + 1);
-            if (sz) {
-                buf[0] = 033;
-                sz++;
-            }
-        } else if (is_text) sz = encode_utf8(codepoint, buf);
-        */
+        // bool is_text = mods <= GLFW_MOD_SHIFT;
         if (1) sz = encode_utf8(codepoint, buf);
+#ifdef __APPLE__
+        // if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) sz = encode_utf8(codepoint, buf);
+#endif
         if (sz) schedule_write_to_child(w->id, buf, sz);
     }
 }
@@ -92,31 +81,32 @@ get_localized_key(int key, int scancode) {
     switch(name[0]) {
 #define K(ch, name) case ch: return GLFW_KEY_##name
         // key names {{{
-        K('A', A);
-        K('B', B);
-        K('C', C);
-        K('D', D);
-        K('E', E);
-        K('F', F);
-        K('G', G);
-        K('H', H);
-        K('I', I);
-        K('J', J);
-        K('K', K);
-        K('L', L);
-        K('M', M);
-        K('N', N);
-        K('O', O);
-        K('P', P);
-        K('Q', Q);
-        K('S', S);
-        K('T', T);
-        K('U', U);
-        K('V', V);
-        K('W', W);
-        K('X', X);
-        K('Y', Y);
-        K('Z', Z);
+        K('A', A); K('a', A);
+        K('B', B); K('b', B);
+        K('C', C); K('c', C);
+        K('D', D); K('d', D);
+        K('E', E); K('e', E);
+        K('F', F); K('f', F);
+        K('G', G); K('g', G);
+        K('H', H); K('h', H);
+        K('I', I); K('i', I);
+        K('J', J); K('j', J);
+        K('K', K); K('k', K);
+        K('L', L); K('l', L);
+        K('M', M); K('m', M);
+        K('N', N); K('n', N);
+        K('O', O); K('o', O);
+        K('P', P); K('p', P);
+        K('Q', Q); K('q', Q);
+        K('R', R); K('r', R);
+        K('S', S); K('s', S);
+        K('T', T); K('t', T);
+        K('U', U); K('u', U);
+        K('V', V); K('v', V);
+        K('W', W); K('w', W);
+        K('X', X); K('x', X);
+        K('Y', Y); K('y', Y);
+        K('Z', Z); K('z', Z);
         K('0', 0);
         K('1', 1);
         K('2', 2);
@@ -141,6 +131,20 @@ get_localized_key(int key, int scancode) {
 #undef K
         default:
             return key;
+    }
+}
+
+static inline void
+send_key_to_child(Window *w, int key, int mods, int action) {
+    Screen *screen = w->render_data.screen;
+    const char *data = key_to_bytes(key, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
+    if (data) {
+        if (screen->modes.mEXTENDED_KEYBOARD) write_escape_code_to_child(screen, APC, data + 1);
+        else {
+            if (*data > 2 && data[1] == 0x1b && data[2] == '[') { // CSI code
+                write_escape_code_to_child(screen, CSI, data + 3);
+            } else schedule_write_to_child(w->id, (data + 1), *data);
+        }
     }
 }
 
@@ -171,13 +175,26 @@ on_key_input(int key, int scancode, int action, int mods) {
     if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
+#ifdef __APPLE__
+    if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) return;
+#endif
     if (
             action == GLFW_PRESS ||
             (action == GLFW_REPEAT && screen->modes.mDECARM) ||
             screen->modes.mEXTENDED_KEYBOARD
        ) {
-        const uint8_t *data = key_to_bytes(lkey, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
-        if (data) schedule_write_to_child(w->id, (char*)(data + 1), *data);
+        send_key_to_child(w, lkey, mods, action);
+    }
+}
+
+void
+fake_scroll(int amount, bool upwards) {
+    Window *w = active_window();
+    if (!w) return;
+    int key = upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN;
+    while (amount-- > 0) {
+        send_key_to_child(w, key, 0, GLFW_PRESS);
+        send_key_to_child(w, key, 0, GLFW_RELEASE);
     }
 }
 
@@ -188,7 +205,7 @@ on_key_input(int key, int scancode, int action, int mods) {
 PYWRAP1(key_to_bytes) {
     int glfw_key, smkx, extended, mods, action;
     PA("ippii", &glfw_key, &smkx, &extended, &mods, &action);
-    const uint8_t *ans = key_to_bytes(glfw_key, smkx & 1, extended & 1, mods, action);
+    const char *ans = key_to_bytes(glfw_key, smkx & 1, extended & 1, mods, action);
     if (ans == NULL) return Py_BuildValue("y#", "", 0);
     return Py_BuildValue("y#", ans + 1, *ans);
 }

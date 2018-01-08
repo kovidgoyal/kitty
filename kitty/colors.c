@@ -8,6 +8,8 @@
 #include "data-types.h"
 #include <structmember.h>
 
+PyTypeObject ColorProfile_Type;
+
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
     0xcd0000,  // 1
@@ -40,7 +42,7 @@ PyObject* create_256_color_table() {
         uint8_t v = 8 + i * 10;
         FG_BG_256[j] = (v << 16) | (v << 8) | v;
     }
-    
+
     PyObject *ans = PyTuple_New(255);
     if (ans == NULL) return PyErr_NoMemory();
     for (i=0; i < 255; i++) {
@@ -60,7 +62,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
         if (FG_BG_256[255] == 0) create_256_color_table();
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
-        self->dirty = true; 
+        self->dirty = true;
     }
     return (PyObject*) self;
 }
@@ -91,7 +93,7 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-color_type 
+color_type
 colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
     color_type t = entry & 0xFF, r;
     switch(t) {
@@ -126,7 +128,7 @@ as_color(ColorProfile *self, PyObject *val) {
         default:
             ans = Py_None; Py_INCREF(Py_None);
     }
-    if (ans == NULL) ans = Py_BuildValue("BBB", (unsigned char)(col >> 16), (unsigned char)((col >> 8) & 0xFF), (unsigned char)(col & 0xFF)); 
+    if (ans == NULL) ans = Py_BuildValue("BBB", (unsigned char)(col >> 16), (unsigned char)((col >> 8) & 0xFF), (unsigned char)(col & 0xFF));
     return ans;
 }
 
@@ -175,13 +177,13 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
     }
     self->dirty = false;
 }
- 
+
 static PyObject*
 color_table_address(ColorProfile *self) {
 #define color_table_address_doc "Pointer address to start of color table"
     return PyLong_FromVoidPtr((void*)self->color_table);
 }
- 
+
 
 // Boilerplate {{{
 
@@ -225,13 +227,13 @@ PyTypeObject ColorProfile_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.ColorProfile",
     .tp_basicsize = sizeof(ColorProfile),
-    .tp_dealloc = (destructor)dealloc, 
-    .tp_flags = Py_TPFLAGS_DEFAULT,        
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ColorProfile",
     .tp_members = members,
     .tp_methods = methods,
     .tp_getset = getsetters,
-    .tp_new = new,                
+    .tp_new = new,
 };
 
 INIT_TYPE(ColorProfile)

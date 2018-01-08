@@ -4,17 +4,17 @@
 
 import os
 import pwd
-import ctypes
 import sys
 from collections import namedtuple
 
 from .fast_data_types import set_boss as set_c_boss
 
 appname = 'kitty'
-version = (0, 3, 0)
+version = (0, 6, 1)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
-isosx = 'darwin' in _plat
+is_macos = 'darwin' in _plat
+base = os.path.dirname(os.path.abspath(__file__))
 
 
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
@@ -22,11 +22,10 @@ WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
 
 
 def _get_config_dir():
-    # This must be called before calling setApplicationName
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
-        return os.path.abspath(os.path.expanduser(os.environ['VISE_CONFIG_DIRECTORY']))
+        return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))
 
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if isosx else '~/.config')))
+    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if is_macos else '~/.config')))
     ans = os.path.join(candidate, appname)
     os.makedirs(ans, exist_ok=True)
     return ans
@@ -34,18 +33,7 @@ def _get_config_dir():
 
 config_dir = _get_config_dir()
 del _get_config_dir
-
-
-class ViewportSize:
-
-    __slots__ = ('width', 'height', 'x_ratio', 'y_ratio')
-
-    def __init__(self):
-        self.width = self.height = 1024
-        self.x_ratio = self.y_ratio = 1.0
-
-    def __repr__(self):
-        return '(width={}, height={}, x_ratio={}, y_ratio={})'.format(self.width, self.height, self.x_ratio, self.y_ratio)
+defconf = os.path.join(config_dir, 'kitty.conf')
 
 
 def get_boss():
@@ -61,17 +49,20 @@ def wakeup():
     get_boss.boss.child_monitor.wakeup()
 
 
-viewport_size = ViewportSize()
-cell_size = ViewportSize()
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
-shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+try:
+    shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+except KeyError:
+    print('Failed to read login shell from /etc/passwd for current user, falling back to /bin/sh', file=sys.stderr)
+    shell_path = '/bin/sh'
 
-GLint = ctypes.c_int if ctypes.sizeof(ctypes.c_int) == 4 else ctypes.c_long
-GLuint = ctypes.c_uint if ctypes.sizeof(ctypes.c_uint) == 4 else ctypes.c_ulong
-GLfloat = ctypes.c_float
-if ctypes.sizeof(GLfloat) != 4:
-    raise RuntimeError('float size is not 4')
-if ctypes.sizeof(GLint) != 4:
-    raise RuntimeError('int size is not 4')
+
+def glfw_path(module):
+    return os.path.join(base, 'glfw-{}.so'.format(module))
+
+
+is_wayland = False
+if os.environ.get('WAYLAND_DISPLAY') and 'KITTY_ENABLE_WAYLAND' in os.environ and os.path.exists(glfw_path('wayland')):
+    is_wayland = True

@@ -9,6 +9,8 @@
 #include "unicode-data.h"
 #include "lineops.h"
 
+extern PyTypeObject Cursor_Type;
+
 static PyObject *
 new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     PyErr_SetString(PyExc_TypeError, "Line objects cannot be instantiated directly, create them using LineBuf.line()");
@@ -32,25 +34,18 @@ line_length(Line *self) {
     return 0;
 }
 
-PyObject* 
+PyObject*
 line_text_at(char_type ch, combining_type cc) {
     PyObject *ans;
-    if (cc == 0) {
-        ans = PyUnicode_New(1, ch);
-        if (ans == NULL) return PyErr_NoMemory();
-        PyUnicode_WriteChar(ans, 0, ch);
+    if (LIKELY(cc == 0)) {
+        ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &ch, 1);
     } else {
-        Py_UCS4 cc1 = cc & CC_MASK, cc2 = cc >> 16;
-        Py_UCS4 normalized = normalize(ch, cc1, cc2);
-        if (normalized) { return line_text_at(normalized, 0); }
-        Py_UCS4 maxc = (ch > cc1) ? MAX(ch, cc2) : MAX(cc1, cc2);
-        ans = PyUnicode_New(cc2 ? 3 : 2, maxc);
-        if (ans == NULL) return PyErr_NoMemory();
-        PyUnicode_WriteChar(ans, 0, ch);
-        PyUnicode_WriteChar(ans, 1, cc1);
-        if (cc2) PyUnicode_WriteChar(ans, 2, cc2);
+        Py_UCS4 buf[3];
+        buf[0] = ch; buf[1] = cc & CC_MASK; buf[2] = cc >> 16;
+        Py_UCS4 normalized = normalize(ch, buf[1], buf[2]);
+        if (normalized) ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &normalized, 1);
+        else ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, buf[2] ? 3 : 2);
     }
-
     return ans;
 }
 
@@ -72,7 +67,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
         if (!is_url_char(ch)) return false;
         switch(state) {
             case ANY:
-                if (ch == '/') state = FIRST_SLASH; 
+                if (ch == '/') state = FIRST_SLASH;
                 break;
             case FIRST_SLASH:
                 state = ch == '/' ? SECOND_SLASH : ANY;
@@ -140,11 +135,11 @@ line_url_start_at(Line *self, index_type x) {
 }
 
 index_type
-line_url_end_at(Line *self, index_type x) {
+line_url_end_at(Line *self, index_type x, bool check_short) {
     index_type ans = x;
-    if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return 0;
+    if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
     while (ans < self->xnum && is_url_char(self->cells[ans].ch)) ans++;
-    ans--;
+    if (ans) ans--;
     while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch)) ans--;
     return ans;
 }
@@ -158,7 +153,7 @@ url_start_at(Line *self, PyObject *x) {
 static PyObject*
 url_end_at(Line *self, PyObject *x) {
 #define url_end_at_doc "url_end_at(x) -> Return the end cell number for a URL containing x or 0 if not found"
-    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, PyLong_AsUnsignedLong(x)));
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, PyLong_AsUnsignedLong(x), true));
 }
 
 // }}}
@@ -166,32 +161,55 @@ url_end_at(Line *self, PyObject *x) {
 static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
-    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
     return line_text_at(self->cells[xval].ch, self->cells[xval].cc);
 }
+
+size_t
+cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
+    size_t n = 1;
+    buf[0] = cell->ch ? cell->ch : zero_char;
+    if (include_cc) {
+        char_type cc = cell->cc;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2;
+        if (cc1) {
+            buf[1] = cc1; n++;
+            cc2 = cc >> 16;
+            if (cc2) { buf[2] = cc2; n++; }
+        }
+    }
+    return n;
+}
+
+size_t
+cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type zero_char) {
+    size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
+    if (include_cc) {
+        char_type cc = cell->cc;
+        Py_UCS4 cc1 = cc & CC_MASK, cc2;
+        if (cc1) {
+            n += encode_utf8(cc1, buf + n);
+            cc2 = cc >> 16;
+            if (cc2) { n += encode_utf8(cc2, buf + n); }
+        }
+    }
+    buf[n] = 0;
+    return n;
+}
+
 
 PyObject*
 unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
     size_t n = 0;
     static Py_UCS4 buf[4096];
-    if (leading_char) buf[n++] = leading_char; 
+    if (leading_char) buf[n++] = leading_char;
     char_type previous_width = 0;
     for(index_type i = start; i < limit && n < sizeof(buf)/sizeof(buf[0]) - 4; i++) {
         char_type ch = self->cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
-            ch = ' ';
         }
-        buf[n++] = ch;
-        if (include_cc) {
-            char_type cc = self->cells[i].cc;
-            Py_UCS4 cc1 = cc & CC_MASK, cc2;
-            if (cc1) {
-                buf[n++] = cc1;
-                cc2 = cc >> 16;
-                if (cc2) buf[n++] = cc2;
-            }
-        }
+        n += cell_as_unicode(self->cells + i, include_cc, buf + n, ' ');
         previous_width = self->cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
@@ -202,27 +220,19 @@ as_unicode(Line* self) {
     return unicode_in_range(self, 0, xlimit_for_line(self), true, 0);
 }
 
-static inline bool
-write_sgr(unsigned int val, Py_UCS4 *buf, index_type buflen, index_type *i) {
-    static char s[20] = {0};
-    unsigned int num = snprintf(s, 20, "\x1b[%um", val);
-    if (buflen - (*i) < num + 3) return false;
-    for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
-    return true;
+static PyObject*
+sprite_at(Line* self, PyObject *x) {
+#define sprite_at_doc "[x] -> Return the sprite in the specified cell"
+    unsigned long xval = PyLong_AsUnsignedLong(x);
+    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    Cell *c = self->cells + xval;
+    return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
 }
 
 static inline bool
-write_color(uint32_t val, int code, Py_UCS4 *buf, index_type buflen, index_type *i) {
-    static char s[50] = {0};
-    unsigned int num;
-    switch(val & 3) {
-        case 1:
-            num = snprintf(s, 50, "\x1b[%d;5;%um", code, (val >> 8) & 0xFF); break;
-        case 2:
-            num = snprintf(s, 50, "\x1b[%d;2;%u;%u;%um", code, (val >> 24) & 0xFF, (val >> 16) & 0xFF, (val >> 8) & 0xFF); break;
-        default:
-            return true;
-    }
+write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
+    static char s[128];
+    unsigned int num = snprintf(s, sizeof(s), "\x1b[%sm", val);
     if (buflen - (*i) < num + 3) return false;
     for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
     return true;
@@ -230,46 +240,29 @@ write_color(uint32_t val, int code, Py_UCS4 *buf, index_type buflen, index_type 
 
 index_type
 line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
-#define WRITE_SGR(val) if (!write_sgr(val, buf, buflen, &i)) return i;
-#define WRITE_COLOR(val, code) if (val) { if (!write_color(val, code, buf, buflen, &i)) return i; } else { WRITE_SGR(code+1); }
-#define CHECK_BOOL(name, shift, on, off) \
-        if (((attrs >> shift) & 1) != name) { \
-            name ^= 1; \
-            if (name) { WRITE_SGR(on); } else { WRITE_SGR(off); } \
-        }
-#define CHECK_COLOR(name, val, off_code) if (name != (val)) { name = (val); WRITE_COLOR(name, off_code); }
-#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val; 
+#define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) return i; }
+#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val;
 
     index_type limit = xlimit_for_line(self), i=0;
-    bool bold = false, italic = false, reverse = false, strike = false;
-    uint32_t fg = 0, bg = 0, decoration_fg = 0, decoration = 0;
     char_type previous_width = 0;
 
-    WRITE_SGR(0);
+    WRITE_SGR("0");
+    Cursor c1 = {{0}}, c2 = {{0}};
+    Cursor *cursor = &c1, *prev_cursor = &c2, *t;
+
     for (index_type pos=0; pos < limit; pos++) {
         char_type attrs = self->cells[pos].attrs, ch = self->cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
         }
-        CHECK_BOOL(bold, BOLD_SHIFT, 1, 22);
-        CHECK_BOOL(italic, ITALIC_SHIFT, 3, 23);
-        CHECK_BOOL(reverse, REVERSE_SHIFT, 7, 27);
-        CHECK_BOOL(strike, STRIKE_SHIFT, 9, 29);
-        if (((attrs >> DECORATION_SHIFT) & DECORATION_MASK) != decoration) {
-            decoration = ((attrs >> DECORATION_SHIFT) & DECORATION_MASK);
-            switch(decoration) {
-                case 1:
-                    WRITE_SGR(4); break;
-                case 2:
-                    WRITE_SGR(UNDERCURL_CODE); break;
-                default:
-                    WRITE_SGR(0); break;
-            }
-        }
-        CHECK_COLOR(fg, self->cells[pos].fg, 38);
-        CHECK_COLOR(bg, self->cells[pos].bg, 48);
-        CHECK_COLOR(decoration_fg, self->cells[pos].decoration_fg, DECORATION_FG_CODE);
+        ATTRS_TO_CURSOR(attrs, cursor);
+        cursor->fg = self->cells[pos].fg; cursor->bg = self->cells[pos].bg;
+        cursor->decoration_fg = self->cells[pos].decoration_fg & COL_MASK;
+
+        const char *sgr = cursor_as_sgr(cursor, prev_cursor);
+        t = prev_cursor; prev_cursor = cursor; cursor = t;
+        if (*sgr) WRITE_SGR(sgr);
         WRITE_CH(ch);
         char_type cc = self->cells[pos].cc;
         Py_UCS4 cc1 = cc & CC_MASK;
@@ -323,14 +316,12 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
-#define set_sprite_position_at(x) set_sprite_position(self->cells + x, x == 0 ? NULL : self->cells + x - 1);
-
-void 
+void
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
+    if (!self->cells[x].ch) return;  // dont allow adding combining chars to a null cell
     combining_type c = self->cells[x].cc;
     if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
     else self->cells[x].cc = ch & CC_MASK;
-    set_sprite_position_at(x);
 }
 
 static PyObject*
@@ -381,7 +372,6 @@ set_text(Line* self, PyObject *args) {
         self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
         self->cells[i].cc = 0;
-        set_sprite_position_at(i);
     }
 
     Py_RETURN_NONE;
@@ -408,19 +398,18 @@ cursor_from(Line* self, PyObject *args) {
     return (PyObject*)ans;
 }
 
-void 
+void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     attrs_type width = ch ? 1 : 0;
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
         self->cells[i].ch = ch; self->cells[i].cc = 0; \
-        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
+    }
     if (CHAR_IS_BLANK(ch)) {
         PREFIX
-        clear_sprite_position(self->cells[i]); }
     } else {
         PREFIX
-        set_sprite_position_at(i)}
     }
 }
 
@@ -434,13 +423,13 @@ clear_text(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-void 
+void
 line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
     char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
     color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
     color_type dfg = cursor->decoration_fg & COL_MASK;
     if (!clear_char) attrs = attrs & ATTRS_MASK_WITHOUT_WIDTH;
-    
+
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
             self->cells[i].ch = BLANK_CHAR;
@@ -450,7 +439,6 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
         } else {
             attrs_type w = self->cells[i].attrs & WIDTH_MASK;
             self->cells[i].attrs = attrs | w;
-            set_sprite_position_at(i);
         }
         self->cells[i].fg = fg; self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
@@ -508,9 +496,9 @@ left_shift(Line *self, PyObject *args) {
     if (num > 0) left_shift_line(self, at, num);
     Py_RETURN_NONE;
 }
- 
-void 
-line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool is_second) {
+
+void
+line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {
         self->cells[at].attrs = (self->cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     } else {
@@ -521,8 +509,6 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
     }
     self->cells[at].ch = ch;
     self->cells[at].cc = 0;
-    if (!is_second && CHAR_IS_BLANK(ch)) { clear_sprite_position(self->cells[at]); }
-    else set_sprite_position_at(at);
 }
 
 static PyObject*
@@ -570,7 +556,7 @@ richcmp(PyObject *obj1, PyObject *obj2, int op);
 
 
 static PySequenceMethods sequence_methods = {
-    .sq_length = __len__,                  
+    .sq_length = __len__,
     .sq_item = (ssizeargfunc)text_at
 };
 
@@ -590,7 +576,8 @@ static PyMethodDef methods[] = {
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)
     METHOD(url_end_at, METH_O)
-        
+    METHOD(sprite_at, METH_O)
+
     {NULL}  /* Sentinel */
 };
 
@@ -603,7 +590,7 @@ PyTypeObject Line_Type = {
     .tp_str = (reprfunc)as_unicode,
     .tp_as_sequence = &sequence_methods,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_richcompare = richcmp,                   
+    .tp_richcompare = richcmp,
     .tp_doc = "Lines",
     .tp_methods = methods,
     .tp_new = new
@@ -618,7 +605,7 @@ Line *alloc_line() {
 RICHCMP(Line)
 INIT_TYPE(Line)
 // }}}
- 
+
 static PyObject*
 copy_char(Line* self, PyObject *args) {
     unsigned int src, dest;
@@ -631,4 +618,3 @@ copy_char(Line* self, PyObject *args) {
     COPY_CELL(self, src, to, dest);
     Py_RETURN_NONE;
 }
-

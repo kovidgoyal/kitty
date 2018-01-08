@@ -5,10 +5,19 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#ifdef __APPLE__
+// Needed for _CS_DARWIN_USER_CACHE_DIR
+#define _DARWIN_C_SOURCE
+#include <unistd.h>
+#undef _DARWIN_C_SOURCE
+#endif
 #include "data-types.h"
+#include "control-codes.h"
 #include "modes.h"
 #include <stddef.h>
 #include <termios.h>
+#include <signal.h>
+#include <sys/wait.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -32,9 +41,18 @@
 #ifdef __APPLE__
 #include <mach/mach_time.h>
 static mach_timebase_info_data_t timebase = {0};
+
 static inline double monotonic_() {
 	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
 }
+
+static PyObject*
+user_cache_dir() {
+    static char buf[1024];
+    if (!confstr(_CS_DARWIN_USER_CACHE_DIR, buf, sizeof(buf) - 1)) return PyErr_SetFromErrno(PyExc_OSError);
+    return PyUnicode_FromString(buf);
+}
+
 #else
 #include <time.h>
 static inline double monotonic_() {
@@ -81,6 +99,31 @@ pyset_iutf8(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static void
+handle_sigchld(int UNUSED signum, siginfo_t *sinfo, void UNUSED *unused) {
+    if (sinfo->si_code != CLD_EXITED) return;
+    int sav_errno = errno, status;
+    while(true) {
+        if (waitpid(sinfo->si_pid, &status, WNOHANG) == -1) {
+            if (errno != EINTR) break;
+        } else break;
+    }
+    // wakeup I/O loop as without this on macOS sometimes poll() does not detect the fd close, so
+    // kitty does not detect child death.
+    wakeup_io_loop(true);
+    errno = sav_errno;
+}
+
+static PyObject*
+install_sigchld_handler(PyObject UNUSED *self) {
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = handle_sigchld;
+    sigemptyset(&sa.sa_mask);
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) return PyErr_SetFromErrno(PyExc_OSError);
+    Py_RETURN_NONE;
+}
+
 #ifdef WITH_PROFILER
 static PyObject*
 start_profiler(PyObject UNUSED *self, PyObject *args) {
@@ -105,6 +148,10 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
+    {"install_sigchld_handler", (PyCFunction)install_sigchld_handler, METH_NOARGS, ""},
+#ifdef __APPLE__
+    METHODB(user_cache_dir, METH_NOARGS),
+#endif
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},
     {"stop_profiler", (PyCFunction)stop_profiler, METH_NOARGS, ""},
@@ -116,8 +163,8 @@ static PyMethodDef module_methods[] = {
 static struct PyModuleDef module = {
    .m_base = PyModuleDef_HEAD_INIT,
    .m_name = "fast_data_types",   /* name of module */
-   .m_doc = NULL, 
-   .m_size = -1,       
+   .m_doc = NULL,
+   .m_size = -1,
    .m_methods = module_methods
 };
 
@@ -125,22 +172,25 @@ static struct PyModuleDef module = {
 extern int init_LineBuf(PyObject *);
 extern int init_HistoryBuf(PyObject *);
 extern int init_Cursor(PyObject *);
-extern int init_ChildMonitor(PyObject *);
+extern bool init_child_monitor(PyObject *);
 extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
 extern int init_Screen(PyObject *);
-extern int init_Face(PyObject *);
-extern bool init_freetype_library(PyObject*);
 extern bool init_fontconfig_library(PyObject*);
+extern bool init_desktop(PyObject*);
+extern bool init_fonts(PyObject*);
 extern bool init_glfw(PyObject *m);
-extern bool init_sprites(PyObject *module);
+extern bool init_child(PyObject *m);
 extern bool init_state(PyObject *module);
 extern bool init_keys(PyObject *module);
+extern bool init_graphics(PyObject *module);
 extern bool init_shaders(PyObject *module);
-extern bool init_shaders_debug(PyObject *module);
+extern bool init_mouse(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
+#else
+extern bool init_freetype_library(PyObject*);
 #endif
 
 
@@ -159,26 +209,25 @@ PyInit_fast_data_types(void) {
         if (!init_HistoryBuf(m)) return NULL;
         if (!init_Line(m)) return NULL;
         if (!init_Cursor(m)) return NULL;
-        if (!init_ChildMonitor(m)) return NULL;
+        if (!init_child_monitor(m)) return NULL;
         if (!init_ColorProfile(m)) return NULL;
         if (!init_Screen(m)) return NULL;
         if (!init_glfw(m)) return NULL;
-        if (!init_sprites(m)) return NULL;
+        if (!init_child(m)) return NULL;
         if (!init_state(m)) return NULL;
         if (!init_keys(m)) return NULL;
-        if (PySys_GetObject("debug_gl") == Py_True) {
-            if (!init_shaders_debug(m)) return NULL;
-        } else { 
-            if (!init_shaders(m)) return NULL;
-        }
+        if (!init_graphics(m)) return NULL;
+        if (!init_shaders(m)) return NULL;
+        if (!init_mouse(m)) return NULL;
 #ifdef __APPLE__
         if (!init_CoreText(m)) return NULL;
         if (!init_cocoa(m)) return NULL;
 #else
-        if (!init_Face(m)) return NULL;
         if (!init_freetype_library(m)) return NULL;
         if (!init_fontconfig_library(m)) return NULL;
+        if (!init_desktop(m)) return NULL;
 #endif
+        if (!init_fonts(m)) return NULL;
 
 #define OOF(n) #n, offsetof(Cell, n)
         if (PyModule_AddObject(m, "CELL", Py_BuildValue("{sI sI sI sI sI sI sI sI sI}",
@@ -189,8 +238,6 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
         PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
-        PyModule_AddStringMacro(m, BRACKETED_PASTE_START);
-        PyModule_AddStringMacro(m, BRACKETED_PASTE_END);
         PyModule_AddStringMacro(m, ERROR_PREFIX);
         PyModule_AddIntMacro(m, CURSOR_BLOCK);
         PyModule_AddIntMacro(m, CURSOR_BEAM);
@@ -199,6 +246,10 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntMacro(m, DECCOLM);
         PyModule_AddIntMacro(m, DECOM);
         PyModule_AddIntMacro(m, IRM);
+        PyModule_AddIntMacro(m, CSI);
+        PyModule_AddIntMacro(m, DCS);
+        PyModule_AddIntMacro(m, APC);
+        PyModule_AddIntMacro(m, OSC);
     }
 
     return m;

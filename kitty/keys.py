@@ -2,10 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import string
+
 from . import fast_data_types as defines
+from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes
 from .utils import base64_encode
-from .key_encoding import KEY_MAP
 
 
 def modify_key_bytes(keybytes, amt):
@@ -24,8 +26,15 @@ def modify_complex_key(name, amt):
 
 control_codes = {}
 smkx_key_map = {}
-alt_codes = {defines.GLFW_KEY_TAB: b'\033\t'}
-shift_alt_codes = {defines.GLFW_KEY_TAB: key_as_bytes('kcbt')}
+alt_codes = {
+    defines.GLFW_KEY_TAB: b'\033\t',
+    defines.GLFW_KEY_ENTER: b'\033\r',
+    defines.GLFW_KEY_ESCAPE: b'\033\033',
+    # alt+bs matches iTerm and gnome-terminal
+    defines.GLFW_KEY_BACKSPACE: b'\x17'
+}
+shift_alt_codes = alt_codes.copy()
+shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
 alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 
 for kf, kn in {
@@ -76,6 +85,8 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_END: key_as_bytes('kEND'),
     defines.GLFW_KEY_LEFT: key_as_bytes('kLFT'),
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
+    defines.GLFW_KEY_UP: key_as_bytes('kri'),
+    defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
 }
 
 control_codes.update({
@@ -86,7 +97,6 @@ control_codes.update({
 control_codes[defines.GLFW_KEY_6] = (30,)
 control_codes[defines.GLFW_KEY_SLASH] = (31,)
 control_codes[defines.GLFW_KEY_SPACE] = (0,)
-
 
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
@@ -99,10 +109,6 @@ rmkx_key_map.update({
 })
 
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
-
-
-def get_key_map(screen):
-    return cursor_key_mode_map[screen.cursor_key_mode]
 
 
 def keyboard_mode_name(screen):
@@ -131,9 +137,57 @@ def extended_key_event(key, mods, action):
     name = KEY_MAP.get(key)
     if name is None:
         return b''
-    return '\033_K{}{}{}\033\\'.format(
-        action_map[action], base64_encode(mods), name
+    m = 0
+    if mods & defines.GLFW_MOD_SHIFT:
+        m |= 0x1
+    if mods & defines.GLFW_MOD_ALT:
+        m |= 0x2
+    if mods & defines.GLFW_MOD_CONTROL:
+        m |= 0x4
+    if mods & defines.GLFW_MOD_SUPER:
+        m |= 0x8
+    return 'K{}{}{}'.format(
+        action_map[action], base64_encode(m), name
     ).encode('ascii')
+
+
+def pmap(names, r):
+    names = names.split()
+    r = [x.encode('ascii') for x in r]
+    if len(names) != len(r):
+        raise ValueError('Incorrect mapping for {}'.format(names))
+    names = [getattr(defines, 'GLFW_KEY_' + n) for n in names]
+    return dict(zip(names, r))
+
+
+UN_SHIFTED_PRINTABLE = {
+    getattr(defines, 'GLFW_KEY_' + x): x.lower().encode('ascii')
+    for x in string.digits + string.ascii_uppercase
+}
+UN_SHIFTED_PRINTABLE.update(pmap(
+    'SPACE APOSTROPHE COMMA MINUS PERIOD SLASH SEMICOLON EQUAL',
+    " ',-./;="
+))
+UN_SHIFTED_PRINTABLE.update(pmap(
+    'LEFT_BRACKET BACKSLASH RIGHT_BRACKET GRAVE_ACCENT',
+    "[\\]`"
+))
+SHIFTED_PRINTABLE = UN_SHIFTED_PRINTABLE.copy()
+SHIFTED_PRINTABLE.update({
+    getattr(defines, 'GLFW_KEY_' + x): x.encode('ascii') for x in string.ascii_uppercase
+})
+SHIFTED_PRINTABLE.update(pmap(
+    '1 2 3 4 5 6 7 8 9 0',
+    '!@#$%^&*()'
+))
+SHIFTED_PRINTABLE.update(pmap(
+    'APOSTROPHE COMMA MINUS PERIOD SLASH SEMICOLON EQUAL',
+    '"<_>?:+'
+))
+SHIFTED_PRINTABLE.update(pmap(
+    'LEFT_BRACKET BACKSLASH RIGHT_BRACKET GRAVE_ACCENT',
+    "{|}~"
+))
 
 
 def key_to_bytes(key, smkx, extended, mods, action):
@@ -143,9 +197,13 @@ def key_to_bytes(key, smkx, extended, mods, action):
     if mods == defines.GLFW_MOD_CONTROL and key in control_codes:
         # Map Ctrl-key to ascii control code
         data.extend(control_codes[key])
-    # elif mods in alt_mods and key in alt_codes:
-        # Printable keys handled by on_text_input()
-        # data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+    #elif mods in alt_mods:
+    #    if key in alt_codes:
+    #        data.extend((alt_codes if mods == defines.GLFW_MOD_ALT else shift_alt_codes)[key])
+    #    elif key in UN_SHIFTED_PRINTABLE:
+    #        m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
+    #        data.append(0o33)
+    #        data.extend(m[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
@@ -169,13 +227,6 @@ def interpret_key_event(key, scancode, mods, window, action):
 
 def get_shortcut(keymap, mods, key, scancode):
     return keymap.get((mods & 0b1111, key))
-
-
-def get_sent_data(send_text_map, key, scancode, mods, window, action):
-    if action in (defines.GLFW_PRESS, defines.GLFW_REPEAT):
-        m = keyboard_mode_name(window.screen)
-        keymap = send_text_map[m]
-        return keymap.get((mods & 0b1111, key))
 
 
 def generate_key_table():
@@ -218,46 +269,62 @@ def generate_key_table():
         if k is not None:
             w('case %d: return "%s";' % (i, key_name(k)))
     w('default: return NULL; }}\n')
-    number_entries = 128 * 256
-    inits = []
-    longest = 0
-    for i in range(number_entries):
-        key = i & 0x7f  # lowest seven bits
-        if key < key_count:
-            glfw_key = key_rmap[key]
-            k = keys.get(glfw_key)
-        else:
-            k = None
-        if k is None:
-            inits.append(None)
-        else:
-            mods = (i >> 7) & 0b1111
-            rest = i >> 11
-            action = rest & 0b11
-            if action == 0b11:  # no such action
-                inits.append(None)
+    w('typedef enum { NORMAL, APPLICATION, EXTENDED } KeyboardMode;\n')
+    w('static inline const char*\nkey_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {')
+    i = 1
+
+    def ind(*a):
+        w(('  ' * i)[:-1], *a)
+    ind('switch(mode) {')
+    mmap = [(False, False), (True, False), (False, True)]
+    for (smkx, extended), mode in zip(mmap, 'NORMAL APPLICATION EXTENDED'.split()):
+        i += 1
+        ind('case {}:'.format(mode))
+        i += 1
+        ind('switch(action & 3) { case 3: return NULL;')
+        for action in (defines.GLFW_RELEASE, defines.GLFW_PRESS, defines.GLFW_REPEAT):
+            i += 1
+            ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
+            i += 1
+            if action != defines.GLFW_RELEASE or mode == 'EXTENDED':
+                ind('switch (mods & 0xf) {')
+                i += 1
+                for mods in range(16):
+                    key_bytes = {}
+                    for key in range(key_count):
+                        glfw_key = key_rmap[key]
+                        data = key_to_bytes(glfw_key, smkx, extended, mods, action)
+                        if data:
+                            key_bytes[key] = data, glfw_key
+                    i += 1
+                    ind('case 0x{:x}:'.format(mods))
+                    i += 1
+                    if key_bytes:
+                        ind('switch(key & 0x7f) { default: return NULL;')
+                        i += 1
+                        for key, (data, glfw_key) in key_bytes.items():
+                            ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))
+                            i += 1
+                            items = bytearray(data)
+                            items.insert(0, len(items))
+                            ind('return "{}";'.format(''.join('\\x{:02x}'.format(x) for x in items)))
+                            i -= 1
+                        i -= 1
+                        ind('} // end switch(key)')
+                    else:
+                        ind('return NULL;')
+                    i -= 2
+                i -= 1
+                ind('}  // end switch(mods)\n')
+                i -= 1
             else:
-                smkx = bool(rest & 0b100)
-                extended = bool(rest & 0b1000)
-                data = key_to_bytes(glfw_key, smkx, extended, mods, action)
-                if data:
-                    longest = max(len(data), longest)
-                    inits.append((data, k, mods, smkx, extended))
-                else:
-                    inits.append(None)
-    longest += 1
-    w('#define SIZE_OF_KEY_BYTES_MAP %d\n' % number_entries)
-    w('static const uint8_t key_bytes[%d][%d] = {' % (number_entries, longest))
-    # empty = '{' + ('0, ' * longest) + '},'
-    empty = '{0},'
-    all_mods = {k.rpartition('_')[2]: v for k, v in vars(defines).items() if k.startswith('GLFW_MOD_')}
-    all_mods = {k: v for k, v in sorted(all_mods.items(), key=lambda x: x[0])}
-    for b in inits:
-        if b is None:
-            w(empty)
-        else:
-            b, k, mods, smkx, extended = b
-            b = bytearray(b)
-            name = '+'.join([k for k, v in all_mods.items() if v & mods] + [key_name(k)])
-            w('{%d, ' % len(b) + ', '.join(map(hex, b)) + '}, //', name, 'smkx:', smkx, 'extended:', extended)
-    w('};')
+                ind('return NULL;\n')
+                i -= 1
+            i -= 1
+        ind('}}  // end switch(action) in mode {}\n\n'.format(mode))
+        i -= 1
+    i -= 1
+    ind('}')
+    ind('return NULL;')
+    i -= 1
+    w('}')

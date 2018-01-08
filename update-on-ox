@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# vim:fileencoding=utf-8
+# License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
+
+import glob
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import atexit
+
+
+if False:
+    dmg = sys.argv[-1]
+    mp = tempfile.mkdtemp()
+    atexit.register(os.rmdir, mp)
+    subprocess.check_call('hdiutil attach {} -mountpoint {}'.format(dmg, mp).split())
+    try:
+        os.chdir(mp)
+        for app in glob.glob('*.app'):
+            d = os.path.join('/Applications', app)
+            if os.path.exists(d):
+                shutil.rmtree(d)
+            subprocess.check_call('ditto -v {} {}'.format(app, os.path.join('/Applications', app)).split())
+    finally:
+        os.chdir('/')
+        subprocess.check_call('hdiutil detach {}'.format(mp).split())
+
+# EOF_REMOTE
+
+HOST = 'ox'
+
+base = os.path.dirname(os.path.abspath(__file__))
+if True:
+    sys.path.insert(0, base)
+    from kitty.constants import str_version
+
+dmg = f'kitty-{str_version}.dmg'
+
+
+def run(what):
+    ret = subprocess.run(shlex.split(what))
+    if ret.returncode != 0:
+        raise SystemExit(ret.returncode)
+
+
+script = open(__file__, 'rb').read().decode('utf-8')
+script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
+os.chdir(os.path.expanduser('~/work/build-kitty'))
+with tempfile.NamedTemporaryFile(prefix='install-dmg-', suffix='.py') as f:
+    run('./osx kitty --debug-build')
+    f.write(script.encode('utf-8'))
+    f.flush()
+    run(f'scp build/osx/dist/{dmg} {f.name} {HOST}:/tmp')
+    run(f'ssh {HOST} python /tmp/{os.path.basename(f.name)} /tmp/{dmg}')

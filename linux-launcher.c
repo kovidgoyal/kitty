@@ -37,6 +37,7 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     int ret = 1;
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
+    PyObject *ed = PyUnicode_FromWideChar(exe_dir, -1);
     wchar_t stdlib[PATH_MAX+1] = {0};
     num = swprintf(stdlib, PATH_MAX, L"%ls/../Resources/Python/lib/python%s:%ls/../Resources/Python/lib/python%s/lib-dynload", exe_dir, PYVER, exe_dir, PYVER);
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python stdlib\n"); return 1; }
@@ -47,6 +48,7 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     Py_Initialize();
     PySys_SetArgvEx(argc - 1, argv + 1, 0);
     PySys_SetObject("frozen", Py_True);   // dont care if this fails 
+    if (ed) { PySys_SetObject("bundle_exe_dir", ed); Py_CLEAR(ed); }
     PyObject *kitty = PyUnicode_FromWideChar(stdlib, -1);
     if (kitty == NULL) { fprintf(stderr, "Failed to allocate python kitty lib object\n"); goto end; }
     PyObject *runpy = PyImport_ImportModule("runpy");

@@ -12,6 +12,8 @@
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
+typedef void* rusage_info_t;  // needed for libproc.h
+#include <libproc.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
@@ -20,13 +22,6 @@
 #define NSEventModifierFlagControl NSControlKeyMask
 #endif
 
-@interface MenuDispatcher : NSObject
-@end
-
-@implementation MenuDispatcher
-@end
-
-static NSObject* menu_dispatcher = NULL;
 static NSMenuItem* title_menu = NULL;
 
 static NSString*
@@ -62,21 +57,9 @@ find_app_name(void) {
 }
 
 
-PyObject*
-cocoa_init(PyObject UNUSED *_self) {
-    // Press and Hold prevents some keys from emitting repeated characters
-    // See https://github.com/glfw/glfw/issues/1010
-    NSDictionary* defaults = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO], @"ApplePressAndHoldEnabled", nil];
-    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
-    Py_RETURN_NONE;
-}
-
-
-PyObject*
-cocoa_create_global_menu(PyObject UNUSED *_self) {
-    if (menu_dispatcher != NULL) { Py_RETURN_NONE; }
+void
+cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
-    menu_dispatcher = [[MenuDispatcher alloc] init];
     NSMenu* bar = [[NSMenu alloc] init];
     [NSApp setMainMenu:bar];
 
@@ -141,7 +124,6 @@ cocoa_create_global_menu(PyObject UNUSED *_self) {
 
 
     [bar release];
-    Py_RETURN_NONE;
 }
 
 void
@@ -158,19 +140,18 @@ cocoa_update_title(PyObject *pytitle) {
     [title release];
 }
 
-PyObject*
-cocoa_make_window_resizable(PyObject UNUSED *self, PyObject *window_id) {
-    NSWindow *window = (NSWindow*)PyLong_AsVoidPtr(window_id);
-
+bool
+cocoa_make_window_resizable(void *w) {
+    NSWindow *window = (NSWindow*)w;
     @try {
         [window setStyleMask:
             [window styleMask] | NSWindowStyleMaskResizable];
     } @catch (NSException *e) {
         return PyErr_Format(PyExc_ValueError, "Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
+        return false;
     }
-    Py_RETURN_NONE;
+    return true;
 }
-
 
 PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
@@ -186,11 +167,19 @@ cocoa_get_lang(PyObject UNUSED *self) {
     return Py_BuildValue("s", [locale UTF8String]);
 }
 
+PyObject*
+cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    long pid = PyLong_AsLong(pid_);
+    struct proc_vnodepathinfo vpi;
+    int ret = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &vpi, sizeof(vpi));
+    if (ret < 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    return PyUnicode_FromString(vpi.pvi_cdir.vip_path);
+}
+
+
 static PyMethodDef module_methods[] = {
-    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""}, \
-    {"cocoa_make_window_resizable", (PyCFunction)cocoa_make_window_resizable, METH_O, ""}, \
-    {"cocoa_create_global_menu", (PyCFunction)cocoa_create_global_menu, METH_NOARGS, ""}, \
-    {"cocoa_init", (PyCFunction)cocoa_init, METH_NOARGS, ""}, \
+    {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
+    {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

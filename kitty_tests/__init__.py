@@ -28,14 +28,16 @@ class Callbacks:
         self.ctbuf += ''
 
     def request_capabilities(self, q):
-        self.qbuf += q
+        from kitty.terminfo import get_capabilities
+        c = get_capabilities(q)
+        self.write(c.encode('ascii'))
 
     def use_utf8(self, on):
         self.iutf8 = on
 
     def clear(self):
         self.wtcbuf = b''
-        self.iconbuf = self.titlebuf = self.colorbuf = self.qbuf = self.ctbuf = ''
+        self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True
 
 
@@ -68,6 +70,7 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
 class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
+    maxDiff = 2000
 
     def create_screen(self, cols=5, lines=5, scrollback=5):
         c = Callbacks()

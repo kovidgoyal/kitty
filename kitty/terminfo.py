@@ -190,6 +190,8 @@ string_capabilities = {
     'kpp': r'\E[5~',
     # Scroll backwards (reverse index)
     'kri': r'\E[1;2A',
+    # scroll forwards (index)
+    'kind': r'\E[1;2B',
     # Restore cursor
     'rc': r'\E8',
     # Reverse video
@@ -276,8 +278,6 @@ string_capabilities = {
     # 'is2': r'\E[!p\E[?3;4l\E[4l\E>',
     # # Enter/send key
     # 'kent': r'\EOM',
-    # # scroll forwards
-    # 'kind': r'\E[1;2B',
     # # reset2
     # 'rs2': r'\E[!p\E[?3;4l\E[4l\E>',
 }
@@ -350,6 +350,7 @@ termcap_aliases.update({
     'kN': 'knp',
     'kP': 'kpp',
     'kR': 'kri',
+    'kF': 'kind',
     'rc': 'rc',
     'mr': 'rev',
     'sr': 'ri',
@@ -400,7 +401,6 @@ termcap_aliases.update({
     # 'mk': 'invis',
     # 'is': 'is2',
     # '@8': 'kent',
-    # 'kF': 'kind',
     # 'r2': 'rs2',
 })
 
@@ -436,7 +436,7 @@ def get_capabilities(query_string):
     ans = []
     try:
         for q in query_string.split(';'):
-            name = unhexlify(q).decode('utf-8')
+            name = qname = unhexlify(q).decode('utf-8')
             if name == 'TN':
                 val = names[0]
             else:
@@ -444,11 +444,14 @@ def get_capabilities(query_string):
                     val = queryable_capabilities[name]
                 except KeyError:
                     try:
-                        val = queryable_capabilities[termcap_aliases[name]]
+                        qname = termcap_aliases[name]
+                        val = queryable_capabilities[qname]
                     except Exception as e:
                         safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
-            ans.append(q + '=' + hexlify(str(val)))
-        return b'\033P1+r' + ';'.join(ans).encode('utf-8') + b'\033\\'
+                if qname in string_capabilities and '%' not in val:
+                    val = key_as_bytes(qname).decode('ascii')
+            ans.append(q + '=' + hexlify(str(val).encode('utf-8')).decode('ascii'))
+        return '1+r' + ';'.join(ans)
     except Exception:
-        return b'\033P0+r' + query_string.encode('utf-8') + b'\033\\'
+        return '0+r' + query_string

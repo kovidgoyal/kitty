@@ -3,16 +3,23 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import math
+import os
 from functools import partial as p
 from itertools import repeat
 
-from kitty.utils import get_logical_dpi
+from kitty.fast_data_types import pt_to_px_ceil
+
+scale = (0.001, 1, 1.5, 2)
+
+
+def set_scale(new_scale):
+    global scale
+    scale = tuple(new_scale)
 
 
 def thickness(level=1, horizontal=True):
-    dpi = get_logical_dpi()[0 if horizontal else 1]
-    pts = (0.001, 1, 1.5, 2)[level]
-    return int(math.ceil(pts * dpi / 72.0))
+    pts = scale[level]
+    return pt_to_px_ceil(pts)
 
 
 def draw_hline(buf, width, x1, x2, y, level):
@@ -264,6 +271,49 @@ def inner_corner(buf, width, height, which='tl', level=1):
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
+def vblock(buf, width, height, frac=1, gravity='top'):
+    num_rows = min(height, round(frac * height))
+    start = 0 if gravity == 'top' else height - num_rows
+    for r in range(start, start + num_rows):
+        off = r * width
+        for c in range(off, off + width):
+            buf[c] = 255
+
+
+def hblock(buf, width, height, frac=1, gravity='left'):
+    num_cols = min(width, round(frac * width))
+    start = 0 if gravity == 'left' else width - num_cols
+    for r in range(height):
+        off = r * width + start
+        for c in range(off, off + num_cols):
+            buf[c] = 255
+
+
+def shade(buf, width, height, frac=1/4):
+    rand = bytearray(os.urandom(width * height))
+    cutoff = int(frac * 255)
+
+    for r in range(height):
+        off = width * r
+        for c in range(width):
+            q = off + c
+            if rand[q] < cutoff:
+                buf[q] = 255
+
+
+def quad(buf, width, height, x=0, y=0):
+    num_cols = width // 2
+    left = x * num_cols
+    right = width if x else num_cols
+    num_rows = height // 2
+    top = y * num_rows
+    bottom = height if y else num_rows
+    for r in range(top, bottom):
+        off = r * width
+        for c in range(left, right):
+            buf[off + c] = 255
+
+
 box_chars = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -308,6 +358,38 @@ box_chars = {
     '╣': [p(inner_corner, which='tl'), p(inner_corner, which='bl'), p(dvline, only='right')],
     '╦': [p(inner_corner, which='bl'), p(inner_corner, which='br'), p(dhline, only='top')],
     '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
+    '▀': [p(vblock, frac=1/2)],
+    '▁': [p(vblock, frac=1/8, gravity='bottom')],
+    '▂': [p(vblock, frac=1/4, gravity='bottom')],
+    '▃': [p(vblock, frac=3/8, gravity='bottom')],
+    '▄': [p(vblock, frac=1/2, gravity='bottom')],
+    '▅': [p(vblock, frac=5/8, gravity='bottom')],
+    '▆': [p(vblock, frac=3/4, gravity='bottom')],
+    '▇': [p(vblock, frac=7/8, gravity='bottom')],
+    '█': [p(vblock, frac=1, gravity='bottom')],
+    '▉': [p(hblock, frac=7/8)],
+    '▊': [p(hblock, frac=3/4)],
+    '▋': [p(hblock, frac=5/8)],
+    '▌': [p(hblock, frac=1/2)],
+    '▍': [p(hblock, frac=3/8)],
+    '▎': [p(hblock, frac=1/4)],
+    '▏': [p(hblock, frac=1/8)],
+    '▐': [p(hblock, frac=1/2, gravity='right')],
+    '░': [p(shade, frac=1/4)],
+    '▒': [p(shade, frac=2/4)],
+    '▓': [p(shade, frac=3/4)],
+    '▔': [p(vblock, frac=1/8)],
+    '▕': [p(hblock, frac=1/8, gravity='right')],
+    '▖': [p(quad, y=1)],
+    '▗': [p(quad, x=1, y=1)],
+    '▘': [quad],
+    '▙': [quad, p(quad, y=1), p(quad, x=1, y=1)],
+    '▚': [quad, p(quad, x=1, y=1)],
+    '▛': [quad, p(quad, x=1), p(quad, y=1)],
+    '▜': [quad, p(quad, x=1, y=1), p(quad, x=1)],
+    '▝': [p(quad, x=1)],
+    '▞': [p(quad, x=1), p(quad, y=1)],
+    '▟': [p(quad, x=1), p(quad, y=1), p(quad, x=1, y=1)],
 }
 
 t, f = 1, 3
@@ -336,8 +418,6 @@ for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('�
     for ch in chars:
         box_chars[ch] = [p(func, which=ch)]
 
-is_renderable_box_char = box_chars.__contains__
-
 
 def render_box_char(ch, buf, width, height):
     for func in box_chars[ch]:
@@ -354,34 +434,41 @@ def render_missing_glyph(buf, width, height):
     draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
 
 
-def join_rows(width, height, rows):
-    import ctypes
-    ans = (ctypes.c_ubyte * (width * height * len(rows)))()
-    pos = ctypes.addressof(ans)
-    row_sz = width * height
-    for row in rows:
-        ctypes.memmove(pos, ctypes.addressof(row), row_sz)
-        pos += row_sz
-    return ans
+def test_drawing(sz=48, family='monospace'):
+    from .render import display_bitmap, setup_for_testing
+    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
 
+    width, height = setup_for_testing(family, sz)[1:]
+    space = bytearray(width * height)
 
-def test_drawing(sz=32, family='monospace'):
-    from .render import join_cells, display_bitmap, render_cell, set_font_family
-    from kitty.config import defaults
-    opts = defaults._replace(font_family=family, font_size=sz)
-    width, height = set_font_family(opts)
+    def join_cells(cells):
+        cells = tuple(bytes(x) for x in cells)
+        return concat_cells(width, height, False, cells)
+
+    def render_chr(ch):
+        if ch in box_chars:
+            cell = bytearray(len(space))
+            render_box_char(ch, cell, width, height)
+            return cell
+        return space
+
     pos = 0x2500
     rows = []
-    space = render_cell()[0]
-    space_row = join_cells(width, height, *repeat(space, 32))
+    space_row = join_cells(repeat(space, 32))
 
-    for r in range(8):
-        row = []
-        for i in range(16):
-            row.append(render_cell(chr(pos))[0]), row.append(space)
-            pos += 1
-        rows.append(join_cells(width, height, *row))
-        rows.append(space_row)
-    width *= 32
-    im = join_rows(width, height, rows)
-    display_bitmap(im, width, height * len(rows))
+    try:
+        for r in range(10):
+            row = []
+            for i in range(16):
+                row.append(render_chr(chr(pos)))
+                row.append(space)
+                pos += 1
+            rows.append(join_cells(row))
+            rows.append(space_row)
+        rgb_data = b''.join(rows)
+        width *= 32
+        height *= len(rows)
+        assert len(rgb_data) == width * height * 4, '{} != {}'.format(len(rgb_data), width * height * 4)
+        display_bitmap(rgb_data, width, height)
+    finally:
+        set_send_sprite_to_gpu(None)
