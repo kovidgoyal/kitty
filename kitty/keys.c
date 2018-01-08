@@ -141,9 +141,15 @@ send_key_to_child(Window *w, int key, int mods, int action) {
     if (data) {
         if (screen->modes.mEXTENDED_KEYBOARD) write_escape_code_to_child(screen, APC, data + 1);
         else {
+            // printf("%d %d %d\n", data[0], data[1], data[2]);
             if (*data > 2 && data[1] == 0x1b && data[2] == '[') { // CSI code
                 write_escape_code_to_child(screen, CSI, data + 3);
-            } else schedule_write_to_child(w->id, (data + 1), *data);
+            } else {
+                // filter alt- and shift-alt keys for scandivation keyboard mode/layout,
+                // these are already handled properly by on_text_input
+                if (data[0] == 2 && data[1] == 27) return;
+                schedule_write_to_child(w->id, (data + 1), *data);
+            }
         }
     }
 }
