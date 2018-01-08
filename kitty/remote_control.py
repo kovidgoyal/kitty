@@ -85,6 +85,30 @@ def send_text(boss, window, payload):
             window.write_to_child(parse_send_text_bytes(payload['text']))
 
 
+@cmd(
+    'Set the window title',
+    'Set the title for the specified window(s). If you use the |_ --match| option'
+    ' the title will be set for all matched windows. By default, only the window'
+    ' in which the command is run is affected. If you do not specify a title, the'
+    ' last title set by the child process running in the window will be used.',
+    options_spec=MATCH_WINDOW_OPTION
+)
+def cmd_set_window_title(global_opts, opts, args):
+    return {'title': ' '.join(args), 'match': opts.match}
+
+
+def set_window_title(boss, window, payload):
+    windows = [window or boss.active_window]
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    for window in windows:
+        if window:
+            window.set_title(payload['title'])
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 

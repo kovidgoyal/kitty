@@ -88,7 +88,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
         self.override_title = override_title
-        self.title = self.override_title or appname
+        self.child_title = appname
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
@@ -103,6 +103,10 @@ class Window:
         self.child, self.opts = child, opts
         self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id)
         setup_colors(self.screen, opts)
+
+    @property
+    def title(self):
+        return self.override_title or self.child_title
 
     def __repr__(self):
         return 'Window(title={}, id={})'.format(self.title, self.id)
@@ -188,6 +192,17 @@ class Window:
             if get_boss().child_monitor.needs_write(self.id, data) is not True:
                 print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
 
+    def title_updated(self):
+        update_window_title(self.os_window_id, self.tab_id, self.id, self.title)
+        t = self.tabref()
+        if t is not None:
+            t.title_changed(self)
+        glfw_post_empty_event()
+
+    def set_title(self, title):
+        self.override_title = title or None
+        self.title_updated()
+
     # screen callbacks {{{
     def use_utf8(self, on):
         get_boss().child_monitor.set_iutf8(self.window_id, on)
@@ -201,13 +216,9 @@ class Window:
                 self.screen.send_escape_code_to_child(CSI, 'O')
 
     def title_changed(self, new_title):
+        self.child_title = sanitize_title(new_title or appname)
         if self.override_title is None:
-            self.title = sanitize_title(new_title or appname)
-            update_window_title(self.os_window_id, self.tab_id, self.id, self.title)
-            t = self.tabref()
-            if t is not None:
-                t.title_changed(self)
-            glfw_post_empty_event()
+            self.title_updated()
 
     def icon_changed(self, new_icon):
         pass  # TODO: Implement this
