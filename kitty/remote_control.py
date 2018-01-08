@@ -5,6 +5,7 @@
 import json
 import re
 import sys
+import types
 from functools import partial
 
 from .cli import emph, parse_args
@@ -77,13 +78,25 @@ for that window is used.
     ' escaping rules. So you can use escapes like |_ \\x1b| to send control codes'
     ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
     ' the text will be sent to all matched windows. By default, text is sent to'
-    ' only the currently active window. Note that sending more than ~ 2KB of text'
-    ' will not work, so split up large texts into multiple invocations.',
+    ' only the currently active window.',
     options_spec=MATCH_WINDOW_OPTION,
     no_response=True
 )
 def cmd_send_text(global_opts, opts, args):
-    return {'text': ' '.join(args), 'match': opts.match}
+    text = ' '.join(args)
+    limit = 1024
+    if len(text) <= limit:
+        return {'text': ' '.join(args), 'match': opts.match}
+
+    # Overly large escape sequences are ignored by kitty, so chunk up the
+    # data
+
+    def chunks():
+        nonlocal text
+        while text:
+            yield {'text': text[:limit], 'match': opts.match}
+            text = text[limit:]
+    return chunks()
 
 
 def send_text(boss, window, payload):
@@ -222,6 +235,11 @@ def main(args):
         'cmd': cmd,
         'version': version,
     }
+    if func.no_response and isinstance(payload, types.GeneratorType):
+        for item in payload:
+            send['payload'] = item
+            read_from_stdin(send, func.no_response)
+        return
     if payload is not None:
         send['payload'] = payload
     response = read_from_stdin(send, func.no_response)

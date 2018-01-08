@@ -240,7 +240,7 @@ def tab_separator(x):
             x = x[1:-1]
             break
     if not x.strip():
-        x = defaults.tab_separator
+        x = ('\xa0' * len(x)) if x else defaults.tab_separator
     return x
 
 
