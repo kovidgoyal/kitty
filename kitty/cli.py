@@ -47,6 +47,10 @@ Syntax: |_ name=value|. For example: |_ -o font_size=20|
 Run python code in the kitty context
 
 
+--remote -r
+Run command in running instance
+
+
 --directory -d
 default=.
 Change to the specified directory when launching
