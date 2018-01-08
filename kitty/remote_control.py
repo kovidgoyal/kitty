@@ -7,9 +7,10 @@ import re
 import sys
 from functools import partial
 
-from kitty.cli import emph, parse_args
-from kitty.constants import appname, version
-from kitty.utils import read_with_timeout
+from .cli import emph, parse_args
+from .config import parse_send_text_bytes
+from .constants import appname, version
+from .utils import read_with_timeout
 
 
 def cmd(short_desc, desc=None, options_spec=None):
@@ -17,8 +18,10 @@ def cmd(short_desc, desc=None, options_spec=None):
     def w(func):
         func.short_desc = short_desc
         func.desc = desc or short_desc
-        func.name = func.__name__[4:]
+        func.name = func.__name__[4:].replace('_', '-')
         func.options_spec = options_spec
+        func.is_cmd = True
+        func.impl = lambda: globals()[func.__name__[4:]]
         return func
     return w
 
@@ -47,14 +50,29 @@ def ls(boss, window):
     return data
 
 
+@cmd(
+    'Send arbitrary text to the specified window'
+)
+def cmd_send_text(global_opts, opts, args):
+    return {'text': ' '.join(args)}
+
+
+def send_text(boss, window, payload):
+    window = boss.active_window or window
+    window.write_to_child(parse_send_text_bytes(payload['text']))
+
+
+cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
+
+
 def handle_cmd(boss, window, cmd):
     cmd = json.loads(cmd)
     v = cmd['version']
     if tuple(v)[:2] > version[:2]:
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
-    func = partial(globals()[cmd['cmd']], boss, window)
+    func = partial(cmap[cmd['cmd']].impl(), boss, window)
     payload = cmd.get('payload')
-    ans = func(payload) if payload is not None else func()
+    ans = func() if payload is None else func(payload)
     response = {'ok': True}
     if ans is not None:
         response['data'] = ans
@@ -91,7 +109,6 @@ def read_from_stdin(send):
 
 
 def main(args):
-    cmap = {k[4:]: v for k, v in globals().items() if k.startswith('cmd_')}
     all_commands = tuple(sorted(cmap))
     cmds = ('  |G {}|\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
     msg = (
