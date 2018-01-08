@@ -78,3 +78,17 @@ class Child:
             os.close(stdin_read_fd)
             fast_data_types.thread_write(stdin_write_fd, stdin)
         return pid
+
+    @property
+    def cmdline(self):
+        try:
+            return cmdline_of_process(self.pid)
+        except Exception:
+            return list(self.argv)
+
+    @property
+    def current_cwd(self):
+        try:
+            return cwd_of_process(self.pid)
+        except Exception:
+            pass

@@ -8,7 +8,6 @@ import weakref
 from collections import deque
 from enum import Enum
 
-from .child import cmdline_of_process, cwd_of_process
 from .config import build_ansi_color_table, parse_send_text_bytes
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
@@ -109,19 +108,11 @@ class Window:
         return 'Window(title={}, id={})'.format(self.title, self.id)
 
     def as_dict(self):
-        try:
-            cwd = cwd_of_process(self.child.pid)
-        except Exception:
-            cwd = None
-        try:
-            cmdline = cmdline_of_process(self.child.pid)
-        except Exception:
-            cmdline = None
         return dict(
             id=self.id,
             title=self.override_title or self.title,
             pid=self.child.pid,
-            cwd=cwd, cmdline=cmdline
+            cwd=self.child.current_cwd or self.child.cwd, cmdline=self.child.cmdline
         )
 
     def matches(self, field, pat):
@@ -132,17 +123,9 @@ class Window:
         if field == 'title':
             return pat.search(self.override_title or self.title) is not None
         if field in 'cwd':
-            try:
-                cwd = cwd_of_process(self.child.pid)
-            except Exception:
-                return False
-            return pat.search(cwd) is not None
+            return pat.search(self.child.current_cwd or self.child.cwd) is not None
         if field == 'cmdline':
-            try:
-                cmdline = cmdline_of_process(self.child.pid)
-            except Exception:
-                return False
-            for x in cmdline:
+            for x in self.child.cmdline:
                 if pat.search(x) is not None:
                     return True
         return False
