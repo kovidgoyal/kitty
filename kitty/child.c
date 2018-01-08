@@ -96,7 +96,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 #undef exit_on_err
     free(argv);
     free(env);
-    if (pid == -1) return NULL;
+    if (PyErr_Occurred()) return NULL;
     return PyLong_FromLong(pid);
 }
 
