@@ -62,8 +62,8 @@ not a regular expression.
 
 
 @cmd(
-    'Send arbitrary text specified windows',
-    'Send arbitrary text specified windows. The text follows Python'
+    'Send arbitrary text to specified windows',
+    'Send arbitrary text to specified windows. The text follows Python'
     ' escaping rules. So you can use escapes like |_ \\x1b| to send control codes'
     ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
     ' the text will be sent to all matched windows. By default, text is sent to'
