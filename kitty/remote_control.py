@@ -29,7 +29,13 @@ def parse_subcommand_cli(func, args):
 
 
 @cmd(
-    'List all tabs/windows'
+    'List all tabs/windows',
+    'List all windows. The list is returned as JSON tree. The top-level is a list of'
+    ' operating system {appname} windows. Each OS window has an |_ id| and a list'
+    ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
+    ' Each window has an |_ id|, |_ title|, |_ current working directory| and |_ process id (PID)| of'
+    ' the process running in it, and, on Linux, the command-line used to launch it.\n\n'
+    'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname)
 )
 def cmd_ls(global_opts, opts, args):
     pass
