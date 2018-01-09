@@ -174,7 +174,7 @@ def parse_symbol_map(val):
 
 
 def parse_send_text_bytes(text):
-    return ast.literal_eval("'''" + text + "'''").encode('utf-8')
+    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''").encode('utf-8')
 
 
 def parse_send_text(val, keymap):
