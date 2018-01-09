@@ -64,6 +64,15 @@ class Session:
         self.tabs[-1].cwd = val
 
 
+def resolved_shell(opts):
+    ans = opts.shell
+    if ans == '.':
+        ans = [shell_path]
+    else:
+        ans = shlex.split(ans)
+    return ans
+
+
 def parse_session(raw, opts):
     ans = Session()
     ans.add_tab(opts)
@@ -90,7 +99,7 @@ def parse_session(raw, opts):
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     for t in ans.tabs:
         if not t.windows:
-            t.windows.append([shell_path])
+            t.windows.append(resolved_shell(opts))
     return ans
 
 
@@ -108,7 +117,7 @@ def create_session(opts, args=None, special_window=None, cwd_from=None):
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout
     if special_window is None:
-        cmd = args.args if args and args.args else [shell_path]
+        cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
         k = {'cwd_from': cwd_from}
         if getattr(args, 'title', None):
