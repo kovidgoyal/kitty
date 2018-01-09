@@ -209,6 +209,41 @@ def close_tab(boss, window, payload):
                 boss.close_tab(tab)
 
 
+@cmd(
+    'Open new window',
+    'Open a new window in the specified tab. If you use the |_ --match| option'
+    ' the first matching tab is used. Otherwise the currently active tab is used.'
+    ' Prints out the id of the newly opened window. Any command line arguments'
+    ' are assumed to be the command line used to run in the new window, if none'
+    ' are provided, the default shell is run. For example:\n'
+    '|_ kitty @ new-window --title Email mutt|',
+    options_spec=MATCH_TAB_OPTION + '''\n
+--title
+The title for the new window. By default it will use the title set by the
+program running in it.
+
+
+--cwd
+The initial working directory for the new window.
+'''
+)
+def cmd_new_window(global_opts, opts, args):
+    return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd, 'args': args or []}
+
+
+def new_window(boss, window, payload):
+    match = payload['match']
+    if match:
+        tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    else:
+        tabs = [boss.active_tab]
+    tab = tabs[0]
+    w = tab.new_window(use_shell=True, cmd=payload['args'] or None, override_title=payload['title'], cwd=payload['cwd'])
+    return str(w.id)
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 
