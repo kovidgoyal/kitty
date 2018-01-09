@@ -143,7 +143,7 @@ class Tab:  # {{{
         return window
 
     def new_special_window(self, special_window):
-        self.new_window(False, *special_window)
+        return self.new_window(False, *special_window)
 
     def close_window(self):
         if self.windows:

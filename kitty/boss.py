@@ -19,7 +19,7 @@ from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut
 from .remote_control import handle_cmd
 from .session import create_session
-from .tabs import SpecialWindow, TabManager
+from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
     end_startup_notification, get_primary_selection, init_startup_notification,
     open_url, safe_print, set_primary_selection, single_instance
@@ -452,7 +452,10 @@ class Boss:
     def _new_tab(self, args, cwd_from=None):
         special_window = None
         if args:
-            special_window = self.args_to_special_window(args, cwd_from=cwd_from)
+            if isinstance(args, SpecialWindowInstance):
+                special_window = args
+            else:
+                special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         tm = self.active_tab_manager
         if tm is not None:
             tm.new_tab(special_window=special_window, cwd_from=cwd_from)
