@@ -158,6 +158,31 @@ def set_tab_title(boss, window, payload):
             tab.set_title(payload['title'])
 
 
+@cmd(
+    'Close the specified window',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--self
+type=bool-set
+If specified close the window this command is run in, rather than the active window.
+'''
+)
+def cmd_close_window(global_opts, opts, args):
+    return {'match': opts.match, 'self': opts.self}
+
+
+def close_window(boss, window, payload):
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    else:
+        windows = [window if window and payload['self'] else boss.active_window]
+    for window in windows:
+        if window:
+            boss.close_window(window)
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 
