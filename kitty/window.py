@@ -312,14 +312,20 @@ class Window:
             self.screen.reset_callbacks()
         self.screen = None
 
-    def buffer_as_ansi(self):
+    def buffer_as_ansi(self, add_history=True):
         data = []
-        self.screen.historybuf.as_ansi(data.append)
+        if add_history:
+            self.screen.historybuf.as_ansi(data.append)
         self.screen.linebuf.as_ansi(data.append)
         return ''.join(data)
 
-    def buffer_as_text(self):
-        return str(self.screen.historybuf) + '\n' + str(self.screen.linebuf)
+    def buffer_as_text(self, add_history=True):
+        ans = str(self.screen.linebuf).rstrip('\n')
+        if add_history:
+            h = str(self.screen.historybuf)
+            if h.strip():
+                ans = h + '\n' + ans
+        return ans
 
     # actions {{{
 

@@ -383,7 +383,15 @@ as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
     static Py_UCS4 t[5120];
     Line l = {.xnum=self->xnum};
-    for(index_type i = 0; i < self->ynum; i++) {
+    // remove trailing empty lines
+    index_type ylimit = self->ynum - 1;
+    do {
+        init_line(self, (&l), self->line_map[ylimit]);
+        if (line_as_ansi(&l, t, 5120) != 0) break;
+        ylimit--;
+    } while(ylimit > 0);
+
+    for(index_type i = 0; i <= ylimit; i++) {
         l.continued = ((i < self->ynum - 1) ? self->line_attrs[i+1] : self->line_attrs[i]) & CONTINUED_MASK;
         init_line(self, (&l), self->line_map[i]);
         index_type num = line_as_ansi(&l, t, 5120);

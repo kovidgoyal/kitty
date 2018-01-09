@@ -244,6 +244,49 @@ def new_window(boss, window, payload):
     return str(w.id)
 
 
+@cmd(
+    'Get text from the specified window',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--extent
+default=screen
+choices=screen, all, selection
+What text to get. The default of screen means all text currently on the screen. all means
+all the screen+scrollback and selection means currently selected text.
+
+
+--ansi
+type=bool-set
+By default, only plain text is return. If you specify this flag, the text will
+include the formatting escape codes for colors/bold/italic/etc. Note that when
+getting the current selection, the result is always plain text.
+
+
+--self
+type=bool-set
+If specified get text from the window this command is run in, rather than the active window.
+'''
+)
+def cmd_get_text(global_opts, opts, args):
+    return {'match': opts.match, 'extent': opts.extent, 'ansi': opts.ansi, 'self': opts.self}
+
+
+def get_text(boss, window, payload):
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    else:
+        windows = [window if window and payload['self'] else boss.active_window]
+    window = windows[0]
+    if payload['extent'] == 'selection':
+        ans = window.text_for_selection()
+    else:
+        f = window.buffer_as_ansi if payload['ansi'] else window.buffer_as_text
+        ans = f(add_history=payload['extent'] == 'all')
+    return ans
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 
@@ -270,12 +313,15 @@ global_options_spec = partial('''\
 
 def read_from_stdin(send, no_response):
     send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
-    if not sys.stdout.isatty():
-        raise SystemExit('stdout is not a terminal')
-    sys.stdout.buffer.write(b'\x1bP' + send + b'\x1b\\')
-    sys.stdout.flush()
+    out = sys.stdout if sys.stdout.isatty() else sys.stderr
+    if not out.isatty():
+        raise SystemExit('Neither stdout nor stderr is a terminal')
+    out.buffer.write(b'\x1bP' + send + b'\x1b\\')
+    out.flush()
     if no_response:
         return {'ok': True}
+    if not sys.stdin.isatty():
+        raise SystemExit('stdin is not a terminal')
 
     received = b''
     dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')

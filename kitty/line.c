@@ -244,6 +244,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 #define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val;
 
     index_type limit = xlimit_for_line(self), i=0;
+    if (limit == 0) return 0;
     char_type previous_width = 0;
 
     WRITE_SGR("0");
