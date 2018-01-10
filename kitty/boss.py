@@ -136,6 +136,16 @@ class Boss:
                 if tab:
                     yield tab
 
+    def set_active_window(self, window):
+        for tm in self.os_window_map.values():
+            for tab in tm:
+                for w in tab:
+                    if w.id == window.id:
+                        if tab is not self.active_tab:
+                            tm.set_active_tab(tab)
+                        tab.set_active_window(w)
+                        return
+
     def _new_os_window(self, args, cwd_from=None):
         sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)

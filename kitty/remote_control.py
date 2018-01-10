@@ -281,6 +281,11 @@ program running in it.
 The initial working directory for the new window.
 
 
+--keep-focus
+type=bool-set
+Keep the current window focused instead of switching to the newly opened window
+
+
 --new-tab
 type=bool-set
 Open a new tab
@@ -293,17 +298,21 @@ When using --new-tab set the title of the tab.
 def cmd_new_window(global_opts, opts, args):
     return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
             'new_tab': opts.new_tab, 'tab_title': opts.tab_title,
-            'args': args or []}
+            'keep_focus': opts.keep_focus, 'args': args or []}
 
 
 def new_window(boss, window, payload):
     w = SpecialWindow(cmd=payload['args'] or None, override_title=payload['title'], cwd=payload['cwd'])
+    old_window = boss.active_window
     if payload['new_tab']:
         boss._new_tab(w)
         tab = boss.active_tab
         if payload['tab_title']:
             tab.set_title(payload['tab_title'])
-        return str(boss.active_window.id)
+        wid = boss.active_window.id
+        if payload['keep_focus'] and old_window:
+            boss.set_active_window(old_window)
+        return str(wid)
 
     match = payload['match']
     if match:
@@ -314,6 +323,8 @@ def new_window(boss, window, payload):
         tabs = [boss.active_tab]
     tab = tabs[0]
     w = tab.new_special_window(w)
+    if payload['keep_focus'] and old_window:
+        boss.set_active_window(old_window)
     return str(w.id)
 
 

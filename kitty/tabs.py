@@ -376,18 +376,25 @@ class TabManager:  # {{{
         for tab in self.tabs:
             tab.relayout()
 
-    def set_active_tab(self, idx):
+    def set_active_tab_idx(self, idx):
         self._set_active_tab(idx)
         self.active_tab.relayout_borders()
         self.update_tab_bar()
 
+    def set_active_tab(self, tab):
+        try:
+            idx = self.tabs.index(tab)
+        except Exception:
+            return
+        self.set_active_tab_idx(idx)
+
     def next_tab(self, delta=1):
         if len(self.tabs) > 1:
-            self.set_active_tab((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
+            self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
     def goto_tab(self, tab_num):
         if tab_num < len(self.tabs) and 0 <= tab_num:
-            self.set_active_tab(tab_num)
+            self.set_active_tab_idx(tab_num)
 
     def __iter__(self):
         return iter(self.tabs)
@@ -460,7 +467,7 @@ class TabManager:  # {{{
     def activate_tab_at(self, x):
         i = self.tab_bar.tab_at(x)
         if i is not None:
-            self.set_active_tab(i)
+            self.set_active_tab_idx(i)
 
     @property
     def blank_rects(self):
