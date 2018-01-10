@@ -54,6 +54,13 @@ are in cells (i.e. cursor positions) with the origin |_ (0, 0)| at
 the top-left corner of the screen.
 
 
+--scale-up
+type=bool-set
+When used in combination with |_ --place| it will cause images that
+are smaller than the specified area to be scaled up to use as much
+of the specified area as possible.
+
+
 --clear
 type=bool-set
 Remove all images currently displayed on the screen.
@@ -219,9 +226,13 @@ def identify(path):
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
-def convert(path, m, available_width, available_height):
+def convert(path, m, available_width, available_height, scale_up):
     width, height = m.width, m.height
     cmd = ['convert', '-background', 'none', path]
+    if scale_up:
+        if width < available_width:
+            r = available_width / width
+            width, height = available_width, int(height * r)
     if width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
         cmd += ['-resize', '{}x{}'.format(width, height)]
@@ -236,6 +247,7 @@ def process(path, args):
     available_width = args.place.width * (ss.width / ss.cols) if args.place else ss.width
     available_height = args.place.height * (ss.height / ss.rows) if args.place else 10 * m.height
     needs_scaling = m.width > available_width or m.height > available_height
+    needs_scaling = needs_scaling or args.scale_up
     if m.fmt == 'png' and not needs_scaling:
         outfile = path
         transmit_mode = 'f'
@@ -244,7 +256,7 @@ def process(path, args):
     else:
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
-        outfile, width, height = convert(path, m, available_width, available_height)
+        outfile, width, height = convert(path, m, available_width, available_height, args.scale_up)
     show(outfile, width, height, fmt, transmit_mode, align=args.align, place=args.place)
     if not args.place:
         print()  # ensure cursor is on a new line
