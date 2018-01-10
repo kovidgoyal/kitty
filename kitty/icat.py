@@ -330,7 +330,7 @@ def main(args=sys.argv):
         ' Directories are scanned recursively for image files.')
     args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
 
-    signal.signal(signal.SIGWINCH, lambda *a: setattr(screen_size, 'changed', True))
+    signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if not sys.stdout.isatty() or not sys.stdin.isatty():
         raise SystemExit(
             'Must be run in a terminal, stdout and/or stdin is currently not a terminal'
