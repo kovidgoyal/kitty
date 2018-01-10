@@ -140,6 +140,15 @@ def fit_image(width, height, pwidth, pheight):
     return int(width), int(height)
 
 
+def calculate_in_cell_x_offset(width, cell_width, align):
+    if align == 'left':
+        return 0
+    extra_pixels = cell_width - (width % cell_width)
+    if align == 'right':
+        return extra_pixels
+    return extra_pixels // 2
+
+
 def set_cursor(cmd, width, height, align):
     ss = screen_size()
     cw = int(ss.width / ss.cols)
@@ -148,12 +157,9 @@ def set_cursor(cmd, width, height, align):
         w, h = fit_image(width, height, ss.width, height)
         ch = int(ss.height / ss.rows)
         num_of_rows_needed = int(ceil(height / ch))
-        y_off = height % ch
         cmd['c'], cmd['r'] = ss.cols, num_of_rows_needed
-        cmd['Y'] = y_off
     else:
-        x_off = width % cw
-        cmd['X'] = x_off
+        cmd['X'] = calculate_in_cell_x_offset(width, cw, align)
         extra_cells = 0
         if align == 'center':
             extra_cells = (ss.cols - num_of_cells_needed) // 2
@@ -168,8 +174,7 @@ def set_cursor_for_place(place, cmd, width, height, align):
     ss = screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
-    x_off = width % cw
-    cmd['X'] = x_off
+    cmd['X'] = calculate_in_cell_x_offset(width, cw, align)
     extra_cells = 0
     if align == 'center':
         extra_cells = (place.width - num_of_cells_needed) // 2
