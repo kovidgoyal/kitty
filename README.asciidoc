@@ -236,7 +236,7 @@ windows are:
 You can control kitty from the command line/scripts by sending it messages.
 You can tell kitty to open/close/rename tabs and windows. You can even send
 arbitrary input/text to any specified window. Messages can be sent using
-```kitty @```. Note that you must set `allow_remote_control yes` in your
+`kitty @`. Note that you must set `allow_remote_control yes` in your
 kitty.conf to use this feature.  It even works over SSH connections.  This
 feature is best illustrated with a link:remote-control.asciidoc[tutorial].
 
