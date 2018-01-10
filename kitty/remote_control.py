@@ -12,7 +12,7 @@ from .cli import emph, parse_args
 from .config import parse_send_text_bytes
 from .constants import appname, version
 from .tabs import SpecialWindow
-from .utils import read_with_timeout
+from .utils import non_blocking_read, read_with_timeout
 
 
 def cmd(short_desc, desc=None, options_spec=None, no_response=False):
@@ -80,24 +80,76 @@ for that window is used.
     ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
     ' the text will be sent to all matched windows. By default, text is sent to'
     ' only the currently active window.',
-    options_spec=MATCH_WINDOW_OPTION,
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--stdin
+type=bool-set
+Read the text to be sent from |_ stdin|. Note that in this case the text is sent as is,
+not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end reading.
+
+
+--from-file
+Path to a file whose contents you wish to send. Note that in this case the file contents
+are sent as is, not interpreted for escapes.
+''',
     no_response=True
 )
 def cmd_send_text(global_opts, opts, args):
-    text = ' '.join(args)
     limit = 1024
-    if len(text) <= limit:
-        return {'text': ' '.join(args), 'match': opts.match}
+    ret = {'match': opts.match, 'is_binary': False}
 
-    # Overly large escape sequences are ignored by kitty, so chunk up the
-    # data
+    def pipe(src=sys.stdin):
+        ret['is_binary'] = True
+        import select
+        with non_blocking_read() as fd:
+            keep_going = True
+            while keep_going:
+                rd = select.select([fd], [], [])
+                if rd:
+                    data = sys.stdin.buffer.read()
+                    if not data:
+                        break
+                    data = data.decode('utf-8')
+                    if '\x04' in data:
+                        data = data[:data.index('\x04')]
+                        keep_going = False
+                    while data:
+                        ret['text'] = data[:limit]
+                        yield ret
+                        data = data[limit:]
+                else:
+                    break
 
-    def chunks():
-        nonlocal text
+    def chunks(text):
+        ret['is_binary'] = False
         while text:
-            yield {'text': text[:limit], 'match': opts.match}
+            ret['text'] = text[:limit]
+            yield ret
             text = text[limit:]
-    return chunks()
+
+    def file_pipe(path):
+        ret['is_binary'] = True
+        with open(path, encoding='utf-8') as f:
+            while True:
+                data = f.read(limit)
+                if not data:
+                    break
+                ret['text'] = data
+                yield ret
+
+    sources = []
+    if opts.stdin:
+        sources.append(pipe())
+
+    if opts.from_file:
+        sources.append(file_pipe(opts.from_file))
+
+    text = ' '.join(args)
+    sources.append(chunks(text))
+
+    def chain():
+        for src in sources:
+            yield from src
+    return chain()
 
 
 def send_text(boss, window, payload):
@@ -105,9 +157,10 @@ def send_text(boss, window, payload):
     match = payload['match']
     if match:
         windows = tuple(boss.match_windows(match))
+    data = payload['text'].encode('utf-8') if payload['is_binary'] else parse_send_text_bytes(payload['text'])
     for window in windows:
         if window is not None:
-            window.write_to_child(parse_send_text_bytes(payload['text']))
+            window.write_to_child(data)
 
 
 @cmd(

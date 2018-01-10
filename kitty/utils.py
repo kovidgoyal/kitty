@@ -267,18 +267,27 @@ def single_instance(group_id=None):
     return True
 
 
-def read_with_timeout(more_needed, timeout=10, src=sys.stdin):
+@contextmanager
+def non_blocking_read(src=sys.stdin):
     import termios
     import tty
     import fcntl
-    import select
     fd = src.fileno()
-    old = termios.tcgetattr(fd)
+    if src.isatty():
+        old = termios.tcgetattr(fd)
+        tty.setraw(fd)
     oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
-    tty.setraw(fd)
+    yield fd
+    if src.isatty():
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
+
+
+def read_with_timeout(more_needed, timeout=10, src=sys.stdin):
+    import select
     start_time = monotonic()
-    try:
+    with non_blocking_read(src) as fd:
         while timeout > monotonic() - start_time:
             rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
             if rd:
@@ -287,6 +296,5 @@ def read_with_timeout(more_needed, timeout=10, src=sys.stdin):
                     break  # eof
                 if not more_needed(data):
                     break
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
+            else:
+                break
