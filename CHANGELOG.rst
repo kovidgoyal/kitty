@@ -3,6 +3,25 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.7.0 [future]
+---------------------------
+
+- Allow controlling kitty from the shell prompt/scripts. You can
+  open/close/rename windows and tabs and even send input to specific windows.
+  See the README for details.
+
+- Add option to override the default shell
+
+- Sessions: Allow setting titles and working directories for individual windows 
+
+- Fix incorrect reporting of mouse move events when using the SGR protocol
+
+- Make alt+backspace delete the previous word
+
+- Take the mouse wheel multiplier option in to account when generating fake key
+  scroll events
+
+
 version 0.6.1 [2017-12-28]
 ---------------------------
 
