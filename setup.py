@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import time
 
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(base, 'glfw'))
@@ -529,12 +530,44 @@ Categories=System;
     # }}}
 
     if for_bundle:  # OS X bundle gunk {{{
+        import plistlib
+        logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
         os.chdir(ddir)
         os.mkdir('Contents')
         os.chdir('Contents')
+        VERSION = '.'.join(map(str, version))
+        pl = dict(
+            CFBundleDevelopmentRegion='English',
+            CFBundleDisplayName=appname,
+            CFBundleName=appname,
+            CFBundleIdentifier='net.kovidgoyal.' + appname,
+            CFBundleVersion=VERSION,
+            CFBundleShortVersionString=VERSION,
+            CFBundlePackageType='APPL',
+            CFBundleSignature='????',
+            CFBundleExecutable=appname,
+            LSMinimumSystemVersion='10.12.0',
+            LSRequiresNativeExecution=True,
+            NSAppleScriptEnabled=False,
+            NSHumanReadableCopyright=time.strftime(
+                'Copyright %Y, Kovid Goyal'),
+            CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://github.com/kovidgoyal/kitty',
+            CFBundleIconFile=appname + '.icns',
+            NSHighResolutionCapable=True,
+            NSSupportsAutomaticGraphicsSwitching=True,
+            LSApplicationCategoryType='public.app-category.utilities',
+            LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+        )
+        plistlib.writePlist(pl, 'Info.plist')
         os.rename('../share', 'Resources')
         os.rename('../bin', 'MacOS')
         os.rename('../lib', 'Frameworks')
+        if not os.path.exists(logo_dir):
+            raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
+        subprocess.check_call([
+            'iconutil', '-c', 'icns', logo_dir, '-o',
+            os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
+        ])
     # }}}
     # }}}
 
