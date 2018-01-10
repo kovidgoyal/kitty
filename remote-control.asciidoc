@@ -1,0 +1,62 @@
+= Controlling kitty from scripts or the shell
+
+kitty can be controlled from scripts or the shell prompt. You can open new
+windows, send arbitrary text input to any window, name windows and tabs, etc.
+Let's walk through a few examples of controlling kitty.
+
+Start by running kitty as:
+
+    kitty -o allow_remote_control=yes --window-layout tall
+
+In order for control to work, `allow_remote_control` must be enabled in
+kitty.conf. Here we turn it on explicitly at the command line.
+
+Now, in the new kitty window, enter the command:
+
+    kitty @ new-window --title Output --keep-focus cat
+
+This will open a new window, running the ``cat`` program that will appear next
+to the current window.
+
+Let's send some text to this new window:
+
+    kitty @ send-text --match cmdline:cat Hello, World
+
+This will make `Hello, World` show up in the window running the `cat` program.
+The `--match` option is very powerful, it allows selecting windows by their
+titles, the command line of the program running in the window, the working
+directory of the program running in the window, etc.  See `kitty @ send-text
+--help` for details.
+
+More usefully, you can pipe the output of a command running in one window to
+another window, for example:
+
+    ls | kitty @ send-text --match title:Output --stdin
+
+This will show the output of ls in the output window instead of the current
+window. You can use this technique to, for example, show the output of running
+make in your editor in a different window. The possibilities are endless.
+
+You can even have things you type show up in a different window. Run:
+
+    kitty @ send-text --match title:Output --stdin
+
+And type some text, it will show up in the output window, instead of the current
+window. Type `Ctrl+D` when you are ready to stop.
+
+Now, let's open a new tab.
+
+   kitty @ new-window --new-tab --tab-title "My Tab" --keep-focus bash
+
+This will open a new tab running the bash shell with the title "My Tab".
+We can change the title of the tab with:
+
+   kitty @ set-tab-title --match title:My  New Title
+
+Let's change the title of the current tab:
+
+   kitty @ set-tab-title Master Tab
+
+As you can see, it is very easy to control kitty using the
+`kitty @` messaging system. This tutorial touches only the
+surface of what is possible. See `kitty @ --help` for more details.
