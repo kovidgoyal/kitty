@@ -103,12 +103,16 @@ def options_spec():
 Size = namedtuple('Size', 'rows cols width height')
 
 
-def screen_size(refresh=False):
-    if refresh or getattr(screen_size, 'ans', None) is None:
+def screen_size():
+    if screen_size.changed:
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         screen_size.ans = Size(*struct.unpack('HHHH', x))
+        screen_size.changed = False
     return screen_size.ans
+
+
+screen_size.changed = True
 
 
 def write_gr_cmd(cmd, payload=None):
@@ -319,7 +323,7 @@ def main(args=sys.argv):
         ' Directories are scanned recursively for image files.')
     args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
 
-    signal.signal(signal.SIGWINCH, lambda: screen_size(refresh=True))
+    signal.signal(signal.SIGWINCH, lambda: setattr(screen_size, 'changed', True))
     if not sys.stdout.isatty() or not sys.stdin.isatty():
         raise SystemExit(
             'Must be run in a terminal, stdout and/or stdin is currently not a terminal'
