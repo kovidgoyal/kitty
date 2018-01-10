@@ -476,7 +476,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
     run_tool(cmd)
 
 
-def package(args, for_bundle=False):  # {{{
+def package(args, for_bundle=False, sh_launcher=False):  # {{{
     ddir = args.prefix
     libdir = os.path.join(ddir, 'lib', 'kitty')
     if os.path.exists(libdir):
@@ -532,6 +532,7 @@ Categories=System;
     if for_bundle:  # OS X bundle gunk {{{
         import plistlib
         logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
+        exe_path = os.path.abspath(sys.executable)
         os.chdir(ddir)
         os.mkdir('Contents')
         os.chdir('Contents')
@@ -568,6 +569,20 @@ Categories=System;
             'iconutil', '-c', 'icns', logo_dir, '-o',
             os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
         ])
+        if sh_launcher:
+            with open('MacOS/kitty', 'r+') as f:
+                f.seek(0), f.truncate()
+                f.write('''\
+#!EXE_PATH
+import os, sys
+base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+kitty = os.path.join(base, 'Frameworks', 'kitty')
+sys.path.insert(0, kitty)
+with open(os.path.join(kitty, '__main__.py')) as f:
+    code = f.read()
+code = compile(code, f.name, 'exec')
+exec(code, {'__name__': '__main__'})
+'''.replace('EXE_PATH', exe_path, 1))
     # }}}
     # }}}
 
@@ -589,7 +604,7 @@ def option_parser():
         'action',
         nargs='?',
         default='build',
-        choices='build test linux-package osx-bundle clean'.split(),
+        choices='build test linux-package kitty.app osx-bundle clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -658,6 +673,11 @@ def main():
     elif args.action == 'osx-bundle':
         build(args, native_optimizations=False)
         package(args, for_bundle=True)
+    elif args.action == 'kitty.app':
+        args.prefix = 'kitty.app'
+        build(args)
+        package(args, for_bundle=True, sh_launcher=True)
+        print('kitty.app successfully built!')
     elif args.action == 'clean':
         clean()
 

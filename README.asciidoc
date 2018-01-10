@@ -422,33 +422,16 @@ the approach using ligatures.
 
 === How do I build kitty.app on macOS?
 
-You dont need to build kitty.app to run kitty from source. Simply install the dependencies
-listed above using brew/MacPorts or similar and then compile and run with:
-
+Run:
 ```
-make
-python3 .
+logo/make.py
+./setup.py kitty.app
 ```
 
-You can also create a shell script to run kitty:
-
-```
-#!/bin/sh
-exec python3 /path/to/kitty/source/dir
-```
-
-And using something like link:https://mathiasbynens.be/notes/shell-script-mac-apps[app-wrapper-for-shell-script]
-you can create a simple launcher app to run the shell script.
-
-If you only want to make some small changes to a python file, you can do that
-and simply replace the corresponding file inside an existing kitty.app. (Note
-that kitty.app will contain `.pyo` files which are compiled versions of `.py`
-files, delete the `.pyo` file and replace it with a `.py` file).
-
-Finally, note that the released kitty.dmg is built automatically by using the
-`kitty` branch of
+Note that the released kitty.dmg includes all dependencies, unlike the
+`kitty.app` built above and is built automatically by using the `kitty` branch of
 link:https://github.com/kovidgoyal/build-calibre[build-calibre] however, that
-is designed to run on linux and is not for the faint of heart.
+is designed to run on Linux and is not for the faint of heart.
 
 == A tribute
 

@@ -122,8 +122,7 @@ def main():
     if rpath and rpath not in items:
         os.environ['PATH'] += os.pathsep + rpath
 
-    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES',
-                      None) == '1' and getattr(sys, 'frozen', True):
+    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
     if not os.path.isdir(os.getcwd()):
         os.chdir(os.path.expanduser('~'))
