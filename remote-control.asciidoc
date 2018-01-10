@@ -35,7 +35,7 @@ another window, for example:
 
 This will show the output of ls in the output window instead of the current
 window. You can use this technique to, for example, show the output of running
-make in your editor in a different window. The possibilities are endless.
+`make` in your editor in a different window. The possibilities are endless.
 
 You can even have things you type show up in a different window. Run:
 
@@ -56,6 +56,10 @@ We can change the title of the tab with:
 Let's change the title of the current tab:
 
    kitty @ set-tab-title Master Tab
+
+Now lets switch to the newly opened tab.
+
+   kitty @ focus-window --match title:New
 
 You can get a listing of available tabs and windows, by running:
 

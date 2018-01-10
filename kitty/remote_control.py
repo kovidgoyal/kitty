@@ -329,6 +329,27 @@ def new_window(boss, window, payload):
 
 
 @cmd(
+    'Focus the specified window',
+    options_spec=MATCH_WINDOW_OPTION
+)
+def cmd_focus_window(global_opts, opts, args):
+    return {'match': opts.match}
+
+
+def focus_window(boss, window, payload):
+    windows = [window or boss.active_window]
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise ValueError('No matching windows for expression: {}'.format(match))
+    for window in windows:
+        if window:
+            boss.set_active_window(window)
+            break
+
+
+@cmd(
     'Get text from the specified window',
     options_spec=MATCH_WINDOW_OPTION + '''\n
 --extent
