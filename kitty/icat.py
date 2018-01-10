@@ -143,10 +143,12 @@ def fit_image(width, height, pwidth, pheight):
 def calculate_in_cell_x_offset(width, cell_width, align):
     if align == 'left':
         return 0
-    extra_pixels = cell_width - (width % cell_width)
+    extra_pixels = width % cell_width
+    if not extra_pixels:
+        return 0
     if align == 'right':
-        return extra_pixels
-    return extra_pixels // 2
+        return cell_width - extra_pixels
+    return (cell_width - extra_pixels) // 2
 
 
 def set_cursor(cmd, width, height, align):
