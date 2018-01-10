@@ -57,6 +57,17 @@ Let's change the title of the current tab:
 
    kitty @ set-tab-title Master Tab
 
+You can get a listing of available tabs and windows, by running:
+
+   kitty @ ls
+
+This outputs a tree of data in JSON format. The top level of the tree is all
+operating system kitty windows. Each OS window has an id and a list of tabs.
+Each tab has its own id, a title and a list of windows. Each window has an id,
+title, current working directory, process id (PID) and command-line of the
+process running in the window. You can use this information with `--match`
+to control individual windows.
+
 As you can see, it is very easy to control kitty using the
 `kitty @` messaging system. This tutorial touches only the
 surface of what is possible. See `kitty @ --help` for more details.
