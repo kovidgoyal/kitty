@@ -47,15 +47,17 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     Py_Initialize();
     PySys_SetArgvEx(argc - 1, argv + 1, 0);
-    PySys_SetObject("frozen", Py_True);   // dont care if this fails 
+    PySys_SetObject("frozen", Py_True);   // dont care if this fails
     if (ed) { PySys_SetObject("bundle_exe_dir", ed); Py_CLEAR(ed); }
     PyObject *kitty = PyUnicode_FromWideChar(stdlib, -1);
     if (kitty == NULL) { fprintf(stderr, "Failed to allocate python kitty lib object\n"); goto end; }
     PyObject *runpy = PyImport_ImportModule("runpy");
     if (runpy == NULL) { PyErr_Print(); fprintf(stderr, "Unable to import runpy\n"); Py_CLEAR(kitty); goto end; }
-    PyObject *res = PyObject_CallMethod(runpy, "run_path", "O", kitty);
-    Py_CLEAR(runpy); Py_CLEAR(kitty);
-    if (res == NULL) PyErr_Print(); 
+    PyObject *run_name = PyUnicode_FromString("__main__");
+    if (run_name == NULL) { fprintf(stderr, "Failed to allocate run_name\n"); goto end; }
+    PyObject *res = PyObject_CallMethod(runpy, "run_path", "OOO", kitty, Py_None, run_name);
+    Py_CLEAR(runpy); Py_CLEAR(kitty); Py_CLEAR(run_name);
+    if (res == NULL) PyErr_Print();
     else { ret = 0; Py_CLEAR(res); }
 end:
     if (Py_FinalizeEx() < 0) ret = 120;
