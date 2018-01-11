@@ -23,7 +23,7 @@ if os.path.exists(iconset):
     shutil.rmtree(iconset)
 os.mkdir(iconset)
 os.chdir(iconset)
-for sz in (16, 32, 128, 256, 512, 1024):
+for sz in (16, 32, 64, 128, 256, 512, 1024):
     iname = 'icon_{0}x{0}.png'.format(sz)
     iname2x = 'icon_{0}x{0}@2x.png'.format(sz // 2)
     render(iname, sz)
