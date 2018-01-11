@@ -21,6 +21,9 @@ version 0.7.0 [future]
 - Take the mouse wheel multiplier option in to account when generating fake key
   scroll events
 
+- kitty icat: Workaround for bug in ImageMagick that would cause some images
+  to fail to display at certain sizes.
+
 
 version 0.6.1 [2017-12-28]
 ---------------------------
