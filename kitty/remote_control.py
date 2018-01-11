@@ -361,7 +361,7 @@ all the screen+scrollback and selection means currently selected text.
 
 --ansi
 type=bool-set
-By default, only plain text is return. If you specify this flag, the text will
+By default, only plain text is returned. If you specify this flag, the text will
 include the formatting escape codes for colors/bold/italic/etc. Note that when
 getting the current selection, the result is always plain text.
 
