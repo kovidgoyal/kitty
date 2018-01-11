@@ -249,6 +249,17 @@ def convert(path, m, available_width, available_height, scale_up):
         cmd += ['-resize', '{}x{}'.format(width, height)]
     with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False) as outfile:
         run_imagemagick(path, cmd + [outfile.name])
+    # ImageMagick sometimes generated rgba images smaller than the specified
+    # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
+    sz = os.path.getsize(outfile.name)
+    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
+    expected_size = bytes_per_pixel * width * height
+    if sz < expected_size:
+        missing = expected_size - sz
+        if missing % (bytes_per_pixel * width) != 0:
+            raise SystemExit('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
+        height -= missing // (bytes_per_pixel * width)
+
     return outfile.name, width, height
 
 
