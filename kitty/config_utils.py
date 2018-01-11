@@ -7,8 +7,13 @@ import sys
 from collections import namedtuple
 
 from .utils import safe_print
+from .rgb import to_color as as_color
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+
+
+def to_color(x):
+    return as_color(x, validate=True)
 
 
 def positive_int(x):

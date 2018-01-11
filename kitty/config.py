@@ -14,12 +14,11 @@ from collections import namedtuple
 from . import fast_data_types as defines
 from .config_utils import (
     init_config, parse_config_base, positive_float, positive_int, to_bool,
-    unit_float
+    to_color, unit_float
 )
 from .constants import config_dir
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .rgb import to_color
 from .utils import safe_print
 
 MINIMUM_FONT_SIZE = 4
@@ -288,12 +287,12 @@ for name in (
     'foreground background cursor active_border_color inactive_border_color'
     ' selection_foreground selection_background url_color'
 ).split():
-    type_map[name] = lambda x: to_color(x, validate=True)
+    type_map[name] = to_color
 for i in range(16):
-    type_map['color%d' % i] = lambda x: to_color(x, validate=True)
+    type_map['color%d' % i] = to_color
 for a in ('active', 'inactive'):
     for b in ('foreground', 'background'):
-        type_map['%s_tab_%s' % (a, b)] = lambda x: to_color(x, validate=True)
+        type_map['%s_tab_%s' % (a, b)] = to_color
 
 
 def special_handling(key, val, ans):
