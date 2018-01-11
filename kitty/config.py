@@ -12,13 +12,16 @@ import tempfile
 from collections import namedtuple
 
 from . import fast_data_types as defines
+from .config_utils import (
+    init_config, parse_config_base, positive_float, positive_int, to_bool,
+    unit_float
+)
 from .constants import config_dir
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import to_color
 from .utils import safe_print
 
-key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 MINIMUM_FONT_SIZE = 4
 
 
@@ -42,10 +45,6 @@ def to_cursor_shape(x):
                 x, ', '.join(cshapes)
             )
         )
-
-
-def to_bool(x):
-    return x.lower() in 'y yes true'.split()
 
 
 def parse_mods(parts):
@@ -209,18 +208,6 @@ def to_layout_names(raw):
     return parts
 
 
-def positive_int(x):
-    return max(0, int(x))
-
-
-def positive_float(x):
-    return max(0, float(x))
-
-
-def unit_float(x):
-    return max(0, min(float(x), 1))
-
-
 def adjust_line_height(x):
     if x.endswith('%'):
         return float(x[:-1].strip()) / 100.0
@@ -309,50 +296,33 @@ for a in ('active', 'inactive'):
         type_map['%s_tab_%s' % (a, b)] = lambda x: to_color(x, validate=True)
 
 
+def special_handling(key, val, ans):
+    if key == 'map':
+        parse_key(val, ans['keymap'])
+        return True
+    if key == 'symbol_map':
+        ans['symbol_map'].update(parse_symbol_map(val))
+        return True
+    if key == 'send_text':
+        # For legacy compatibility
+        parse_send_text(val, ans['keymap'])
+        return True
+
+
+defaults = None
+default_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
+
+
 def parse_config(lines, check_keys=True):
     ans = {
         'keymap': {},
         'symbol_map': {},
     }
-    if check_keys:
-        all_keys = defaults._asdict()
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        m = key_pat.match(line)
-        if m is not None:
-            key, val = m.groups()
-            if key == 'map':
-                parse_key(val, ans['keymap'])
-                continue
-            if key == 'symbol_map':
-                ans['symbol_map'].update(parse_symbol_map(val))
-                continue
-            if key == 'send_text':
-                # For legacy compatibility
-                parse_send_text(val, ans['keymap'])
-                continue
-            if check_keys:
-                if key not in all_keys:
-                    safe_print(
-                        'Ignoring unknown config key: {}'.format(key),
-                        file=sys.stderr
-                    )
-                    continue
-            tm = type_map.get(key)
-            if tm is not None:
-                val = tm(val)
-            ans[key] = val
+    parse_config_base(lines, defaults, type_map, special_handling, ans, check_keys=check_keys)
     return ans
 
 
-with open(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf'), 'rb'
-) as f:
-    defaults = parse_config(f.read().decode('utf-8').splitlines(), check_keys=False)
-Options = namedtuple('Defaults', ','.join(defaults.keys()))
-defaults = Options(**defaults)
+Options, defaults = init_config(default_config_path, parse_config)
 actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset(
     'combine send_text goto_tab new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.split()
 )
