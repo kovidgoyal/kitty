@@ -431,7 +431,12 @@ the approach using ligatures.
 
 === How do I build kitty.app on macOS?
 
-Run:
+At first, install `optipng` command via:
+```
+brew install optipng
+```
+
+And run:
 ```
 logo/make.py
 ./setup.py kitty.app
