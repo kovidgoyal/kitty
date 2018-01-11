@@ -91,7 +91,11 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_PROFILER
     num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/");
 #else
+#ifdef FOR_LAUNCHER
+    num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/../Frameworks/kitty");
+#else
     num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/../lib/kitty");
+#endif
 #endif
 
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }

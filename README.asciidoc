@@ -437,6 +437,10 @@ logo/make.py
 ./setup.py kitty.app
 ```
 
+This `kitty.app` unlike the released one does not include its own copy of
+python and the other dependencies. So if you ever un-install/upgrade those dependencies
+you might have to rebuild the app.
+
 Note that the released kitty.dmg includes all dependencies, unlike the
 `kitty.app` built above and is built automatically by using the `kitty` branch of
 link:https://github.com/kovidgoyal/build-calibre[build-calibre] however, that

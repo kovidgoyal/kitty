@@ -456,7 +456,7 @@ def build_asan_launcher(args):
     run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
 
 
-def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
+def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=False):
     cflags = '-Wall -Werror -fpie'.split()
     libs = []
     if args.profile:
@@ -467,6 +467,8 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False):
     if for_bundle:
         cflags.append('-DFOR_BUNDLE')
         cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
+    elif sh_launcher:
+        cflags.append('-DFOR_LAUNCHER')
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
     cmd = [env.cc] + cflags + [
@@ -505,7 +507,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    build_linux_launcher(args, launcher_dir, for_bundle)
+    build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher)
     if not is_macos:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
@@ -529,10 +531,9 @@ Categories=System;
             )
     # }}}
 
-    if for_bundle:  # OS X bundle gunk {{{
+    if for_bundle or sh_launcher:  # OS X bundle gunk {{{
         import plistlib
         logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-        exe_path = os.path.abspath(sys.executable)
         os.chdir(ddir)
         os.mkdir('Contents')
         os.chdir('Contents')
@@ -569,22 +570,8 @@ Categories=System;
             'iconutil', '-c', 'icns', logo_dir, '-o',
             os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
         ])
-        if sh_launcher:
-            with open('MacOS/kitty', 'r+') as f:
-                f.seek(0), f.truncate()
-                f.write('''\
-#!EXE_PATH
-import os, sys
-base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-kitty = os.path.join(base, 'Frameworks', 'kitty')
-sys.path.insert(0, kitty)
-with open(os.path.join(kitty, '__main__.py')) as f:
-    code = f.read()
-code = compile(code, f.name, 'exec')
-exec(code, {'__name__': '__main__'})
-'''.replace('EXE_PATH', exe_path, 1))
     # }}}
-    # }}}
+# }}}
 
 
 def clean():
@@ -675,8 +662,10 @@ def main():
         package(args, for_bundle=True)
     elif args.action == 'kitty.app':
         args.prefix = 'kitty.app'
+        if os.path.exists(args.prefix):
+            shutil.rmtree(args.prefix)
         build(args)
-        package(args, for_bundle=True, sh_launcher=True)
+        package(args, for_bundle=False, sh_launcher=True)
         print('kitty.app successfully built!')
     elif args.action == 'clean':
         clean()
