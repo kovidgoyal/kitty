@@ -12,8 +12,9 @@ from .constants import appname, set_boss, wakeup
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, mark_os_window_for_close, set_dpi_from_os_window,
-    show_window, toggle_fullscreen, viewport_for_window
+    layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
+    set_dpi_from_os_window, show_window, toggle_fullscreen,
+    viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut
@@ -415,6 +416,8 @@ class Boss:
             text = w.text_for_selection()
             if text:
                 set_primary_selection(text)
+                if self.opts.copy_on_select:
+                    set_clipboard_string(text)
 
     def goto_tab(self, tab_num):
         tm = self.active_tab_manager

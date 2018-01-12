@@ -14,6 +14,8 @@ version 0.7.0 [future]
 
 - Sessions: Allow setting titles and working directories for individual windows 
 
+- Option to copy to clipboard on mouse select
+
 - Fix incorrect reporting of mouse move events when using the SGR protocol
 
 - Make alt+backspace delete the previous word
