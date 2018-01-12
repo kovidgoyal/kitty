@@ -572,6 +572,7 @@
  *  [window attribute](@ref GLFW_TRANSPARENT_FRAMEBUFFER_attrib).
  */
 #define GLFW_TRANSPARENT_FRAMEBUFFER 0x0002000A
+#define GLFW_HOVERED                0x0002000B
 
 /*! @brief Framebuffer bit depth hint.
  *
@@ -1035,6 +1036,24 @@ typedef void (* GLFWwindowmaximizefun)(GLFWwindow*,int);
  *  @ingroup window
  */
 typedef void (* GLFWframebuffersizefun)(GLFWwindow*,int,int);
+
+/*! @brief The function signature for window content scale callbacks.
+ *
+ *  This is the function signature for window content scale callback
+ *  functions.
+ *
+ *  @param[in] window The window whose content scale changed.
+ *  @param[in] xscale The new x-axis content scale of the window.
+ *  @param[in] yscale The new y-axis content scale of the window.
+ *
+ *  @sa @ref window_scale
+ *  @sa @ref glfwSetWindowContentScaleCallback
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+typedef void (* GLFWwindowcontentscalefun)(GLFWwindow*,float,float);
 
 /*! @brief The function signature for mouse button callbacks.
  *
@@ -1619,6 +1638,10 @@ glfwSetWindowMaximizeCallback_func glfwSetWindowMaximizeCallback_impl;
 typedef GLFWframebuffersizefun (*glfwSetFramebufferSizeCallback_func)(GLFWwindow*, GLFWframebuffersizefun);
 glfwSetFramebufferSizeCallback_func glfwSetFramebufferSizeCallback_impl;
 #define glfwSetFramebufferSizeCallback glfwSetFramebufferSizeCallback_impl
+
+typedef GLFWwindowcontentscalefun (*glfwSetWindowContentScaleCallback_func)(GLFWwindow*, GLFWwindowcontentscalefun);
+glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
+#define glfwSetWindowContentScaleCallback glfwSetWindowContentScaleCallback_impl
 
 typedef void (*glfwPollEvents_func)();
 glfwPollEvents_func glfwPollEvents_impl;

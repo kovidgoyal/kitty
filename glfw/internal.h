@@ -437,6 +437,7 @@ struct _GLFWwindow
         GLFWwindowiconifyfun    iconify;
         GLFWwindowmaximizefun   maximize;
         GLFWframebuffersizefun  fbsize;
+        GLFWwindowcontentscalefun scale;
         GLFWmousebuttonfun      mouseButton;
         GLFWcursorposfun        cursorPos;
         GLFWcursorenterfun      cursorEnter;
@@ -690,6 +691,7 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window);
 int _glfwPlatformWindowIconified(_GLFWwindow* window);
 int _glfwPlatformWindowVisible(_GLFWwindow* window);
 int _glfwPlatformWindowMaximized(_GLFWwindow* window);
+int _glfwPlatformWindowHovered(_GLFWwindow* window);
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window);
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window);
 void _glfwPlatformSetWindowResizable(_GLFWwindow* window, GLFWbool enabled);
@@ -754,6 +756,14 @@ void _glfwInputWindowSize(_GLFWwindow* window, int width, int height);
  *  @ingroup event
  */
 void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height);
+
+/*! @brief Notifies shared code that a window content scale has changed.
+ *  @param[in] window The window that received the event.
+ *  @param[in] xscale The new x-axis content scale of the window.
+ *  @param[in] yscale The new y-axis content scale of the window.
+ *  @ingroup event
+ */
+void _glfwInputWindowContentScale(_GLFWwindow* window, float xscale, float yscale);
 
 /*! @brief Notifies shared code that a window has been iconified or restored.
  *  @param[in] window The window that received the event.
@@ -955,7 +965,8 @@ const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
  *  unusable.
  *  @ingroup utility
  */
-GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig);
+GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
+                                    const _GLFWctxconfig* ctxconfig);
 
 /*! @brief Checks whether the desired context attributes are valid.
  *  @param[in] ctxconfig The context attributes to check.

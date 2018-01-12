@@ -54,6 +54,8 @@ static void pointerHandleEnter(void* data,
     _glfw.wl.pointerSerial = serial;
     _glfw.wl.pointerFocus = window;
 
+    window->wl.hovered = GLFW_TRUE;
+
     _glfwPlatformSetCursor(window, window->wl.currentCursor);
     _glfwInputCursorEnter(window, GLFW_TRUE);
 }
@@ -67,6 +69,8 @@ static void pointerHandleLeave(void* data,
 
     if (!window)
         return;
+
+    window->wl.hovered = GLFW_FALSE;
 
     _glfw.wl.pointerSerial = serial;
     _glfw.wl.pointerFocus = NULL;
@@ -771,15 +775,22 @@ void _glfwPlatformTerminate(void)
     _glfwTerminateJoysticksLinux();
 
 #ifdef HAVE_XKBCOMMON_COMPOSE_H
-    xkb_compose_state_unref(_glfw.wl.xkb.composeState);
+    if (_glfw.wl.xkb.composeState)
+        xkb_compose_state_unref(_glfw.wl.xkb.composeState);
 #endif
 
-    xkb_keymap_unref(_glfw.wl.xkb.keymap);
-    xkb_state_unref(_glfw.wl.xkb.state);
-    xkb_context_unref(_glfw.wl.xkb.context);
+    if (_glfw.wl.xkb.keymap)
+        xkb_keymap_unref(_glfw.wl.xkb.keymap);
+    if (_glfw.wl.xkb.state)
+        xkb_state_unref(_glfw.wl.xkb.state);
+    if (_glfw.wl.xkb.context)
+        xkb_context_unref(_glfw.wl.xkb.context);
 
-    dlclose(_glfw.wl.xkb.handle);
-    _glfw.wl.xkb.handle = NULL;
+    if (_glfw.wl.xkb.handle)
+    {
+        _glfw_dlclose(_glfw.wl.xkb.handle);
+        _glfw.wl.xkb.handle = NULL;
+    }
 
     if (_glfw.wl.cursorTheme)
         wl_cursor_theme_destroy(_glfw.wl.cursorTheme);

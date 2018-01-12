@@ -574,6 +574,16 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         window->ns.fbHeight = fbRect.size.height;
         _glfwInputFramebufferSize(window, fbRect.size.width, fbRect.size.height);
     }
+
+    const float xscale = fbRect.size.width / contentRect.size.width;
+    const float yscale = fbRect.size.height / contentRect.size.height;
+
+    if (xscale != window->ns.xscale || yscale != window->ns.yscale)
+    {
+        window->ns.xscale = xscale;
+        window->ns.yscale = yscale;
+        _glfwInputWindowContentScale(window, xscale, yscale);
+    }
 }
 
 - (void)drawRect:(NSRect)rect
@@ -1476,6 +1486,20 @@ int _glfwPlatformWindowVisible(_GLFWwindow* window)
 int _glfwPlatformWindowMaximized(_GLFWwindow* window)
 {
     return [window->ns.object isZoomed];
+}
+
+int _glfwPlatformWindowHovered(_GLFWwindow* window)
+{
+    const NSPoint point = [NSEvent mouseLocation];
+
+    if ([NSWindow windowNumberAtPoint:point belowWindowWithWindowNumber:0] !=
+        [window->ns.object windowNumber])
+    {
+        return GLFW_FALSE;
+    }
+
+    return NSPointInRect(point,
+        [window->ns.object convertRectToScreen:[window->ns.view bounds]]);
 }
 
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)

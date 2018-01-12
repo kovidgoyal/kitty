@@ -88,9 +88,10 @@ typedef struct _GLFWwindowNS
 
     GLFWbool        maximized;
 
-    // Cached window and framebuffer sizes used to filter out duplicate events
+    // Cached window properties to filter out duplicate events
     int             width, height;
     int             fbWidth, fbHeight;
+    float           xscale, yscale;
 
     // The total sum of the distances the cursor has been warped
     // since the last cursor motion event was processed

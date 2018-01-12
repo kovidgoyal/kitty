@@ -117,6 +117,7 @@ typedef struct _GLFWwindowWayland
     int                         width, height;
     GLFWbool                    visible;
     GLFWbool                    maximized;
+    GLFWbool                    hovered;
     GLFWbool                    transparent;
     struct wl_surface*          surface;
     struct wl_egl_window*       native;

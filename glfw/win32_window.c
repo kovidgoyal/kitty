@@ -996,6 +996,14 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             return 0;
         }
 
+        case WM_DPICHANGED:
+        {
+            const float xscale = HIWORD(wParam) / 96.f;
+            const float yscale = LOWORD(wParam) / 96.f;
+            _glfwInputWindowContentScale(window, xscale, yscale);
+            break;
+        }
+
         case WM_SETCURSOR:
         {
             if (LOWORD(lParam) == HTCLIENT)
@@ -1451,7 +1459,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
-    ShowWindow(window->win32.handle, SW_SHOW);
+    ShowWindow(window->win32.handle, SW_SHOWNA);
 }
 
 void _glfwPlatformHideWindow(_GLFWwindow* window)
@@ -1573,6 +1581,11 @@ int _glfwPlatformWindowVisible(_GLFWwindow* window)
 int _glfwPlatformWindowMaximized(_GLFWwindow* window)
 {
     return IsZoomed(window->win32.handle);
+}
+
+int _glfwPlatformWindowHovered(_GLFWwindow* window)
+{
+    return cursorInClientArea(window);
 }
 
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)

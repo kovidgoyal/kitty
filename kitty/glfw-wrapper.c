@@ -203,6 +203,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetFramebufferSizeCallback_impl) = dlsym(handle, "glfwSetFramebufferSizeCallback");
     if (glfwSetFramebufferSizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetFramebufferSizeCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetWindowContentScaleCallback_impl) = dlsym(handle, "glfwSetWindowContentScaleCallback");
+    if (glfwSetWindowContentScaleCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowContentScaleCallback with error: %s", dlerror());
+
     *(void **) (&glfwPollEvents_impl) = dlsym(handle, "glfwPollEvents");
     if (glfwPollEvents_impl == NULL) fail("Failed to load glfw function glfwPollEvents with error: %s", dlerror());
 

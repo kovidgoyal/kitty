@@ -321,10 +321,11 @@ const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
     return closest;
 }
 
-GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
+GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
+                                    const _GLFWctxconfig* ctxconfig)
 {
     int i;
-    _GLFWwindow* window;
+    _GLFWwindow* previous;
     const char* version;
     const char* prefixes[] =
     {
@@ -334,10 +335,11 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
         NULL
     };
 
-    window = _glfwPlatformGetTls(&_glfw.contextSlot);
-
     window->context.source = ctxconfig->source;
     window->context.client = GLFW_OPENGL_API;
+
+    previous = _glfwPlatformGetTls(&_glfw.contextSlot);;
+    glfwMakeContextCurrent((GLFWwindow*) window);
 
     window->context.GetIntegerv = (PFNGLGETINTEGERVPROC)
         window->context.getProcAddress("glGetIntegerv");
@@ -346,6 +348,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
     if (!window->context.GetIntegerv || !window->context.GetString)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Entry point retrieval is broken");
+        glfwMakeContextCurrent((GLFWwindow*) previous);
         return GLFW_FALSE;
     }
 
@@ -363,6 +366,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
                             "OpenGL ES version string retrieval is broken");
         }
 
+        glfwMakeContextCurrent((GLFWwindow*) previous);
         return GLFW_FALSE;
     }
 
@@ -394,6 +398,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
                             "No version found in OpenGL ES version string");
         }
 
+        glfwMakeContextCurrent((GLFWwindow*) previous);
         return GLFW_FALSE;
     }
 
@@ -423,6 +428,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
                             window->context.major, window->context.minor);
         }
 
+        glfwMakeContextCurrent((GLFWwindow*) previous);
         return GLFW_FALSE;
     }
 
@@ -438,6 +444,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
                             "Entry point retrieval is broken");
+            glfwMakeContextCurrent((GLFWwindow*) previous);
             return GLFW_FALSE;
         }
     }
@@ -544,6 +551,7 @@ GLFWbool _glfwRefreshContextAttribs(const _GLFWctxconfig* ctxconfig)
         window->context.swapBuffers(window);
     }
 
+    glfwMakeContextCurrent((GLFWwindow*) previous);
     return GLFW_TRUE;
 }
 

@@ -2458,6 +2458,28 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
     return maximized;
 }
 
+int _glfwPlatformWindowHovered(_GLFWwindow* window)
+{
+    Window w = _glfw.x11.root;
+    while (w)
+    {
+        Window root;
+        int rootX, rootY, childX, childY;
+        unsigned int mask;
+
+        if (!XQueryPointer(_glfw.x11.display, w,
+                           &root, &w, &rootX, &rootY, &childX, &childY, &mask))
+        {
+            return GLFW_FALSE;
+        }
+
+        if (w == window->x11.handle)
+            return GLFW_TRUE;
+    }
+
+    return GLFW_FALSE;
+}
+
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
 {
     if (!window->x11.transparent)
