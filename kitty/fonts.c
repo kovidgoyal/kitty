@@ -557,6 +557,55 @@ typedef struct {
     char_type current_codepoint;
 } CellData;
 
+typedef struct {
+    unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
+} Group;
+
+typedef struct {
+    uint32_t previous_cluster;
+    bool prev_was_special;
+    CellData current_cell_data;
+    Group *groups;
+    size_t groups_capacity, group_idx, glyph_idx, cell_idx, num_cells, num_glyphs;
+    Cell *first_cell, *last_cell;
+    hb_glyph_info_t *info;
+    hb_glyph_position_t *positions;
+} GroupState;
+
+static GroupState group_state = {0};
+
+static inline unsigned int
+num_codepoints_in_cell(Cell *cell) {
+    unsigned int ans = 1;
+    if (cell->cc) ans += ((cell->cc >> CC_SHIFT) & CC_MASK) ? 2 : 1;
+    return ans;
+}
+
+static inline void
+shape(Cell *first_cell, index_type num_cells, hb_font_t *font) {
+    if (group_state.groups_capacity <= 2 * num_cells) {
+        group_state.groups_capacity = MIN(100, 10 * num_cells);  // avoid unnecessary reallocs
+        group_state.groups = realloc(group_state.groups, sizeof(Group) * group_state.groups_capacity);
+        if (!group_state.groups) fatal("Out of memory");
+    }
+    group_state.previous_cluster = UINT32_MAX;
+    group_state.prev_was_special = false;
+    group_state.current_cell_data.cell = first_cell; group_state.current_cell_data.num_codepoints = num_codepoints_in_cell(first_cell); group_state.current_cell_data.codepoints_consumed = 0; group_state.current_cell_data.current_codepoint = first_cell->ch;
+    memset(group_state.groups, 0, sizeof(Group) * group_state.groups_capacity);
+    group_state.group_idx = 0;
+    group_state.glyph_idx = 0;
+    group_state.cell_idx = 0;
+    group_state.num_cells = num_cells;
+    group_state.first_cell = first_cell;
+    group_state.last_cell = first_cell + (num_cells ? num_cells - 1 : 0);
+    load_hb_buffer(first_cell, num_cells);
+    hb_shape(font, harfbuzz_buffer, NULL, 0);
+    unsigned int info_length, positions_length;
+    group_state.info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
+    group_state.positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
+    if (!group_state.info || !group_state.positions) group_state.num_glyphs = 0;
+    else group_state.num_glyphs = MIN(info_length, positions_length);
+}
 
 static inline bool
 is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
@@ -572,13 +621,6 @@ is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
         s->filled = true;
     }
     return s->is_special;
-}
-
-static inline unsigned int
-num_codepoints_in_cell(Cell *cell) {
-    unsigned int ans = 1;
-    if (cell->cc) ans += ((cell->cc >> CC_SHIFT) & CC_MASK) ? 2 : 1;
-    return ans;
 }
 
 static inline unsigned int
@@ -612,86 +654,103 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
     return 0;
 }
 
-static inline glyph_index
-next_group(Font *font, unsigned int *num_group_cells, unsigned int *num_group_glyphs, Cell *cells, hb_glyph_info_t *info, unsigned int max_num_glyphs, unsigned int max_num_cells, ExtraGlyphs *extra_glyphs) {
-    // See https://github.com/behdad/harfbuzz/issues/615 for a discussion of
-    // how to break text into cells. In addition, we have to deal with
-    // monospace ligature fonts that use dummy glyphs of zero size to implement
-    // their ligatures.
-
-    CellData cell_data;
-    cell_data.cell = cells; cell_data.num_codepoints = num_codepoints_in_cell(cells); cell_data.codepoints_consumed = 0; cell_data.current_codepoint = cells->ch;
-#define LIMIT (MAX_NUM_EXTRA_GLYPHS + 1)
-    glyph_index glyphs_in_group[LIMIT];
-    unsigned int ncells = 0, nglyphs = 0, n;
-    uint32_t previous_cluster = UINT32_MAX, cluster;
-    Cell *last_cell = cells + max_num_cells;
-    unsigned int cell_limit = MIN(max_num_cells, LIMIT + 1), glyph_limit = MIN(LIMIT, max_num_glyphs);
-    bool is_special, prev_was_special = false;
-
-    while(nglyphs < glyph_limit && ncells < cell_limit) {
-        glyph_index glyph_id = info[nglyphs].codepoint;
-        cluster = info[nglyphs].cluster;
-        is_special = is_special_glyph(glyph_id, font, &cell_data);
-        if (prev_was_special && !is_special) break;
-        glyphs_in_group[nglyphs++] = glyph_id;
-        // Soak up a number of codepoints indicated by the difference in cluster numbers.
-        if (cluster > previous_cluster || nglyphs == 1) {
-            n = nglyphs == 1 ? 1 : cluster - previous_cluster;
-            unsigned int before = ncells;
-            while(n-- && ncells < max_num_cells) ncells += check_cell_consumed(&cell_data, last_cell);
-            if (ncells > before && !is_special) break;
-        }
-        previous_cluster = cluster;
-        prev_was_special = is_special;
-    }
-    *num_group_cells = MAX(1, MIN(ncells, cell_limit));
-    *num_group_glyphs = MAX(1, MIN(nglyphs, glyph_limit));
-    memset(extra_glyphs, 0, sizeof(ExtraGlyphs));
-
-    switch(nglyphs) {
-        case 0:
-        case 1:
-            break;
-        default:
-            memcpy(&extra_glyphs->data, glyphs_in_group + 1, sizeof(glyph_index) * MIN(MAX_NUM_EXTRA_GLYPHS, nglyphs - 1));
-            break;
-    }
-#undef LIMIT
-    return glyphs_in_group[0];
-}
-
-static inline unsigned int
-shape(Cell *first_cell, index_type num_cells, hb_font_t *font, hb_glyph_info_t **info, hb_glyph_position_t **positions) {
-    load_hb_buffer(first_cell, num_cells);
-    hb_shape(font, harfbuzz_buffer, NULL, 0);
-    unsigned int info_length, positions_length;
-    *info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
-    *positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
-    if (!info || !positions) return 0;
-    return MIN(info_length, positions_length);
-}
-
 
 static inline void
 shape_run(Cell *first_cell, index_type num_cells, Font *font) {
-    hb_glyph_info_t *info;
-    hb_glyph_position_t *positions;
-    unsigned int num_glyphs = shape(first_cell, num_cells, harfbuzz_font_for_face(font->face), &info, &positions);
+    shape(first_cell, num_cells, harfbuzz_font_for_face(font->face));
 #if 0
         // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
-        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, group_state.num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
         printf("\n%s\n", (char*)canvas);
         clear_canvas();
 #endif
-    unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
-    ExtraGlyphs extra_glyphs;
-    glyph_index first_glyph;
-    while(run_pos < num_glyphs && cell_pos < num_cells) {
-        first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, first_cell + cell_pos, info + run_pos, num_glyphs - run_pos, num_cells - cell_pos, &extra_glyphs);
-        /* printf("Group: num_group_cells: %u num_group_glyphs: %u\n", num_group_cells, num_group_glyphs); */
-        render_group(num_group_cells, num_group_glyphs, first_cell + cell_pos, info + run_pos, positions + run_pos, font, first_glyph, &extra_glyphs);
-        run_pos += num_group_glyphs; cell_pos += num_group_cells;
+    // Now distribute the glyphs into groups of cells
+    uint32_t cluster, next_cluster;
+    bool add_to_current_group;
+#define G(x) (group_state.x)
+#define MAX_GLYPHS_IN_GROUP (MAX_NUM_EXTRA_GLYPHS + 1)
+    while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
+        glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
+        cluster = G(info)[G(glyph_idx)].cluster;
+        bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+        uint32_t num_codepoints_used_by_glyph = 0;
+        bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
+        Group *current_group = G(groups) + G(group_idx);
+        if (is_last_glyph) {
+            num_codepoints_used_by_glyph = UINT32_MAX;
+        } else {
+            next_cluster = G(info)[G(glyph_idx) + 1].cluster;
+            if (next_cluster > cluster) num_codepoints_used_by_glyph = next_cluster - cluster;
+        }
+        if (!current_group->num_glyphs) {
+            add_to_current_group = true;
+        } else {
+            if (is_special) {
+                add_to_current_group = G(prev_was_special);
+            } else {
+                add_to_current_group = !G(prev_was_special);
+            }
+        }
+        if (current_group->num_glyphs >= MAX_GLYPHS_IN_GROUP || current_group->num_cells >= MAX_GLYPHS_IN_GROUP) add_to_current_group = false;
+
+        if (!add_to_current_group) { G(group_idx)++; current_group = G(groups) + G(group_idx); }
+        if (!current_group->num_glyphs++) {
+            current_group->first_glyph_idx = G(glyph_idx);
+            current_group->first_cell_idx = G(cell_idx);
+        }
+        if (is_last_glyph) {
+            // soak up all remaining cells
+            while (G(cell_idx) < G(num_cells)) {
+                while(current_group->num_cells < MAX_GLYPHS_IN_GROUP && G(cell_idx) < G(num_cells)) {
+                    current_group->num_cells++;
+                    G(cell_idx)++;
+                }
+                G(group_idx)++; current_group = G(groups) + G(group_idx);
+                current_group->first_cell_idx = G(cell_idx);
+                current_group->num_glyphs = 1;
+            }
+        } else {
+            unsigned int num_cells_consumed = 0, start_cell_idx = G(cell_idx);
+            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
+                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cell));
+                G(cell_idx) += w;
+                num_cells_consumed += w;
+                num_codepoints_used_by_glyph--;
+            }
+            if (num_cells_consumed) {
+                if (num_cells_consumed + current_group->num_cells > MAX_GLYPHS_IN_GROUP) {
+                    current_group->num_glyphs--;
+                    G(group_idx)++; current_group = G(groups) + G(group_idx);
+                    current_group->first_glyph_idx = G(glyph_idx);
+                    current_group->first_cell_idx = start_cell_idx;
+                    current_group->num_glyphs = 1;
+                }
+                current_group->num_cells += num_cells_consumed;
+                if (!is_special) {  // not a ligature, end the group
+                    G(group_idx)++; current_group = G(groups) + G(group_idx);
+                }
+            }
+        }
+
+        G(prev_was_special) = is_special;
+        G(previous_cluster) = cluster;
+        G(glyph_idx)++;
+    }
+#undef MAX_GLYPHS_IN_GROUP
+}
+
+static inline void
+render_groups(Font *font) {
+    unsigned idx = 0;
+    ExtraGlyphs ed;
+    while (idx <= G(group_idx)) {
+        Group *group = G(groups) + idx;
+        if (!group->num_cells) break;
+        /* printf("1111111 idx: %u num_cells: %u num_glyphs: %u first_glyph_idx: %u first_cell_idx: %u\n", idx, group->num_cells, group->num_glyphs, group->first_glyph_idx, group->first_cell_idx); */
+        glyph_index primary = group->num_glyphs ? G(info)[group->first_glyph_idx].codepoint : 0;
+        for (unsigned i = 1; i < group->num_glyphs; i++) ed.data[i-1] = G(info)[group->first_glyph_idx + i].codepoint;
+        render_group(group->num_cells, group->num_glyphs, G(first_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed);
+        idx++;
     }
 }
 
@@ -711,30 +770,32 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         font = calloc(1, sizeof(Font));
         font->face = face;
     }
-    hb_glyph_info_t *info;
-    hb_glyph_position_t *positions;
-    unsigned int num_glyphs = shape(line->cells, num, harfbuzz_font_for_face(font->face), &info, &positions);
+    shape_run(line->cells, num, font);
 
     PyObject *ans = PyList_New(0);
-    unsigned int run_pos = 0, cell_pos = 0, num_group_glyphs, num_group_cells;
-    ExtraGlyphs extra_glyphs;
+    unsigned int idx = 0;
     glyph_index first_glyph;
-    while(run_pos < num_glyphs && cell_pos < num) {
-        first_glyph = next_group(font, &num_group_cells, &num_group_glyphs, line->cells + cell_pos, info + run_pos, num_glyphs - run_pos, num - cell_pos, &extra_glyphs);
+    while (idx <= G(group_idx)) {
+        Group *group = G(groups) + idx;
+        if (!group->num_cells) break;
+        first_glyph = group->num_glyphs ? G(info)[group->first_glyph_idx].codepoint : 0;
+
         PyObject *eg = PyTuple_New(MAX_NUM_EXTRA_GLYPHS);
-        for (size_t g = 0; g < MAX_NUM_EXTRA_GLYPHS; g++) PyTuple_SET_ITEM(eg, g, Py_BuildValue("H", extra_glyphs.data[g]));
-        PyList_Append(ans, Py_BuildValue("IIIN", num_group_cells, num_group_glyphs, first_glyph, eg));
-        run_pos += num_group_glyphs; cell_pos += num_group_cells;
+        for (size_t g = 0; g < MAX_NUM_EXTRA_GLYPHS; g++) PyTuple_SET_ITEM(eg, g, Py_BuildValue("H", g + 1 < group->num_glyphs ? G(info)[group->first_glyph_idx + g].codepoint : 0));
+        PyList_Append(ans, Py_BuildValue("IIIN", group->num_cells, group->num_glyphs, first_glyph, eg));
+        idx++;
     }
     if (face) { Py_CLEAR(face); free(font); }
     return ans;
 }
+#undef G
 
 static inline void
 render_run(Cell *first_cell, index_type num_cells, ssize_t font_idx) {
     switch(font_idx) {
         default:
             shape_run(first_cell, num_cells, &fonts.fonts[font_idx]);
+            render_groups(&fonts.fonts[font_idx]);
             break;
         case BLANK_FONT:
             while(num_cells--) set_sprite(first_cell++, 0, 0, 0);
@@ -812,6 +873,7 @@ finalize(void) {
     for (size_t i = 0; i < fonts.fonts_count; i++) del_font(fonts.fonts + i);
     free(fonts.symbol_maps); free(fonts.fonts);
     if (harfbuzz_buffer) hb_buffer_destroy(harfbuzz_buffer);
+    free(group_state.groups);
 }
 
 static PyObject*

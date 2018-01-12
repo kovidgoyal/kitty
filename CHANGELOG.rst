@@ -29,6 +29,8 @@ version 0.7.0 [future]
 - kitty icat: Workaround for bug in ImageMagick that would cause some images
   to fail to display at certain sizes.
 
+- Fix rendering of text with ligature fonts that do not use dummy glyphs
+
 
 version 0.6.1 [2017-12-28]
 ---------------------------
