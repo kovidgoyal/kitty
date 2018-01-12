@@ -40,8 +40,11 @@ def main():
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
     func = entry_points.get(first_arg)
     if func is None:
-        from kitty.main import main
-        main()
+        if first_arg.startswith('@'):
+            remote_control(['@', first_arg[1:]] + sys.argv[2:])
+        else:
+            from kitty.main import main
+            main()
     else:
         func(sys.argv[1:])
 
