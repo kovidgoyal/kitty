@@ -143,12 +143,28 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     global_state.callback_os_window = NULL;
 }
 
+static struct {
+    id_type entries[16];
+    int next_entry;
+} focus_history;
+
+static inline id_type
+pop_focus_history() {
+    int index = --focus_history.next_entry;
+    if (index < 0) {
+        focus_history.next_entry = index = 0;
+    }
+
+    id_type result = focus_history.entries[index];
+    focus_history.entries[index] = 0;
+
+    return result;
+}
+
 static inline void
 push_focus_history(OSWindow *w) {
-    if (w->id != global_state.os_window_focus_history[1]) {
-        global_state.os_window_focus_history[0] = global_state.os_window_focus_history[1];
-        global_state.os_window_focus_history[1] = w->id;
-    }
+    focus_history.entries[focus_history.next_entry++] = w->id;
+    focus_history.next_entry %= (sizeof(focus_history.entries) / sizeof(*(focus_history.entries)));
 }
 
 static void
@@ -415,11 +431,17 @@ destroy_os_window(OSWindow *w) {
 #ifdef __APPLE__
     // On macOS when closing a window, any other existing windows belonging to the same application do not
     // automatically get focus, so we do it manually.
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *c = global_state.os_windows + i;
-        if (c->id != w->id && c->handle && c->shown_once && (c->id == global_state.os_window_focus_history[0] || c->id == global_state.os_window_focus_history[1])) {
-            glfwFocusWindow(c->handle);
-            break;
+    bool change_focus = true;
+    while (change_focus) {
+        id_type new_focus_id = pop_focus_history();
+        if (new_focus_id == 0) break;
+        for (size_t i = 0; i < global_state.num_os_windows; i++) {
+            OSWindow *c = global_state.os_windows + i;
+            if (c->id != w->id && c->handle && c->shown_once && (c->id == new_focus_id)) {
+                glfwFocusWindow(c->handle);
+                change_focus = false;
+                break;
+            }
         }
     }
 #endif
