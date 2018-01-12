@@ -23,6 +23,9 @@ version 0.7.0 [future]
 - Take the mouse wheel multiplier option in to account when generating fake key
   scroll events
 
+- macOS: Fix closing top-level window does not transfer focus to other
+  top-level windows.
+
 - kitty icat: Workaround for bug in ImageMagick that would cause some images
   to fail to display at certain sizes.
 

@@ -143,6 +143,14 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset) {
     global_state.callback_os_window = NULL;
 }
 
+static inline void
+push_focus_history(OSWindow *w) {
+    if (w->id != global_state.os_window_focus_history[1]) {
+        global_state.os_window_focus_history[0] = global_state.os_window_focus_history[1];
+        global_state.os_window_focus_history[1] = w->id;
+    }
+}
+
 static void
 window_focus_callback(GLFWwindow *w, int focused) {
     if (!set_callback_window(w)) return;
@@ -150,6 +158,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     if (focused) {
         show_mouse_cursor(w);
         focus_in_event();
+        push_focus_history(global_state.callback_os_window);
     }
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
@@ -380,6 +389,7 @@ show_window(PyObject UNUSED *self, PyObject *args) {
                 bool first_show = !w->shown_once;
                 glfwShowWindow(w->handle);
                 w->shown_once = true;
+                push_focus_history(w);
                 if (first_show) {
                     double before_x = global_state.logical_dpi_x, before_y = global_state.logical_dpi_y;
                     set_dpi_from_os_window(w);
@@ -402,6 +412,17 @@ destroy_os_window(OSWindow *w) {
         if (current_os_window_ctx == w->handle) current_os_window_ctx = NULL;
     }
     w->handle = NULL;
+#ifdef __APPLE__
+    // On macOS when closing a window, any other existing windows belonging to the same application do not
+    // automatically get focus, so we do it manually.
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *c = global_state.os_windows + i;
+        if (c->id != w->id && c->handle && c->shown_once && (c->id == global_state.os_window_focus_history[0] || c->id == global_state.os_window_focus_history[1])) {
+            glfwFocusWindow(c->handle);
+            break;
+        }
+    }
+#endif
 }
 
 // Global functions {{{
