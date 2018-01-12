@@ -21,15 +21,15 @@ def remote_control(args):
 
 
 def namespaced(args):
-    func = namespaced_entry_points[args[0]]
+    func = namespaced_entry_points[args[1]]
     func(args[1:])
 
 
 entry_points = {
+    # These two are here for backwards compat
     'icat': icat,
     'list-fonts': list_fonts,
-    '+icat': icat,
-    '+list-fonts': list_fonts,
+
     '@': remote_control,
     '+': namespaced,
 }
@@ -42,6 +42,8 @@ def main():
     if func is None:
         if first_arg.startswith('@'):
             remote_control(['@', first_arg[1:]] + sys.argv[2:])
+        elif first_arg.startswith('+'):
+            namespaced(['+', first_arg[1:]] + sys.argv[2:])
         else:
             from kitty.main import main
             main()
