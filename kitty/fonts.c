@@ -681,7 +681,19 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         printf("\n%s\n", (char*)canvas);
         clear_canvas();
 #endif
-    // Now distribute the glyphs into groups of cells
+    /* Now distribute the glyphs into groups of cells
+     * Considerations to keep in mind:
+     * Group sizes should be as small as possible for best performance
+     * Combining chars can result in multiple glyphs rendered into a single cell
+     * Emoji and East Asian wide chars can cause a single glyph to be rendered over multiple cells
+     * Ligature fonts, take two common approaches:
+     * 1. ABC becomes EMPTY, EMPTY, WIDE GLYPH this means we have to render N glyphs in N cells (example Fira Code)
+     * 2. ABC becomes WIDE GLYPH this means we have to render one glyph in N cells (example Operator Mono Lig)
+     *
+     * We rely on the cluster numbers from harfbuzz to tell us how many unicode codepoints a glyph corresponds to.
+     * Then we check if the glyph is a ligature glyph (is_special_glyph) and if it is an empty glyph. These three
+     * datapoints give us enough information to satisfy the constraint above, for a wide variety of fonts.
+     */
     uint32_t cluster, next_cluster;
     bool add_to_current_group;
 #define G(x) (group_state.x)
