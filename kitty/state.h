@@ -128,7 +128,6 @@ typedef struct {
     bool is_wayland;
     bool debug_gl;
     bool has_pending_resizes;
-    id_type os_window_focus_history[2];
 } GlobalState;
 
 extern GlobalState global_state;
