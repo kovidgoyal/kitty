@@ -37,11 +37,13 @@ struct SpritePosition {
     ExtraGlyphs extra_glyphs;
 };
 
+#define SPECIAL_FILLED_MASK 1
+#define SPECIAL_VALUE_MASK 2
 
 struct SpecialGlyphCache {
     SpecialGlyphCache *next;
     glyph_index glyph;
-    bool is_special, filled;
+    uint8_t data;
 };
 
 typedef struct {
@@ -155,9 +157,9 @@ static SpecialGlyphCache*
 special_glyph_cache_for(Font *font, glyph_index glyph) {
     SpecialGlyphCache *s = font->special_glyph_cache + (glyph & 0x3ff);
     // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->filled)) return s;  // Cache hit
+    if (LIKELY(s->glyph == glyph && s->data & SPECIAL_FILLED_MASK)) return s;  // Cache hit
     while(true) {
-        if (s->filled) {
+        if (s->data & SPECIAL_FILLED_MASK) {
             if (s->glyph == glyph) return s;  // Cache hit
         } else {
             break;
@@ -212,7 +214,7 @@ clear_sprite_map(Font *font) {
 
 void
 clear_special_glyph_cache(Font *font) {
-#define CLEAR(s) s->filled = false; s->glyph = 0;
+#define CLEAR(s) s->data = 0; s->glyph = 0;
     SpecialGlyphCache *s;
     for (size_t i = 0; i < sizeof(font->special_glyph_cache)/sizeof(font->special_glyph_cache[0]); i++) {
         s = font->special_glyph_cache + i;
@@ -613,14 +615,15 @@ is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
     // different glyph in the font
     SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id);
     if (s == NULL) return false;
-    if (!s->filled) {
-        s->is_special = cell_data->current_codepoint ? (
+    if (!(s->data & SPECIAL_FILLED_MASK)) {
+        bool is_special = cell_data->current_codepoint ? (
             glyph_id != glyph_id_for_codepoint(font->face, cell_data->current_codepoint) ? true : false)
             :
             false;
-        s->filled = true;
+        uint8_t val = is_special ? SPECIAL_VALUE_MASK : 0;
+        s->data |= val | SPECIAL_FILLED_MASK;
     }
-    return s->is_special;
+    return s->data & SPECIAL_VALUE_MASK;
 }
 
 static inline unsigned int
