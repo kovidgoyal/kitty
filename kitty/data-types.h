@@ -25,6 +25,7 @@
 #define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #define xstr(s) str(s)
 #define str(s) #s
+#define arraysz(x) (sizeof(x)/sizeof(x[0]))
 #define fatal(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); exit(EXIT_FAILURE); }
 
 typedef unsigned long long id_type;
