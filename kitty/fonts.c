@@ -701,16 +701,20 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
             current_group->first_glyph_idx = G(glyph_idx);
             current_group->first_cell_idx = G(cell_idx);
         }
+#define MOVE_GLYPH_TO_NEXT_GROUP(start_cell_idx) { \
+    current_group->num_glyphs--; \
+    G(group_idx)++; current_group = G(groups) + G(group_idx); \
+    current_group->first_cell_idx = start_cell_idx; \
+    current_group->num_glyphs = 1; \
+    current_group->first_glyph_idx = G(glyph_idx); \
+}
         if (is_last_glyph) {
             // soak up all remaining cells
-            while (G(cell_idx) < G(num_cells)) {
-                while(current_group->num_cells < MAX_GLYPHS_IN_GROUP && G(cell_idx) < G(num_cells)) {
-                    current_group->num_cells++;
-                    G(cell_idx)++;
-                }
-                G(group_idx)++; current_group = G(groups) + G(group_idx);
-                current_group->first_cell_idx = G(cell_idx);
-                current_group->num_glyphs = 1;
+            if (G(cell_idx) < G(num_cells)) {
+                unsigned int num_left = G(num_cells) - G(cell_idx);
+                if (current_group->num_cells + num_left > MAX_GLYPHS_IN_GROUP) MOVE_GLYPH_TO_NEXT_GROUP(G(cell_idx));
+                current_group->num_cells += num_left;
+                G(cell_idx) += num_left;
             }
         } else {
             unsigned int num_cells_consumed = 0, start_cell_idx = G(cell_idx);
@@ -721,13 +725,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
                 num_codepoints_used_by_glyph--;
             }
             if (num_cells_consumed) {
-                if (num_cells_consumed + current_group->num_cells > MAX_GLYPHS_IN_GROUP) {
-                    current_group->num_glyphs--;
-                    G(group_idx)++; current_group = G(groups) + G(group_idx);
-                    current_group->first_glyph_idx = G(glyph_idx);
-                    current_group->first_cell_idx = start_cell_idx;
-                    current_group->num_glyphs = 1;
-                }
+                if (num_cells_consumed + current_group->num_cells > MAX_GLYPHS_IN_GROUP) MOVE_GLYPH_TO_NEXT_GROUP(start_cell_idx);
                 current_group->num_cells += num_cells_consumed;
                 if (!is_special) {  // not a ligature, end the group
                     G(group_idx)++; current_group = G(groups) + G(group_idx);
@@ -739,6 +737,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         G(previous_cluster) = cluster;
         G(glyph_idx)++;
     }
+#undef MOVE_GLYPH_TO_NEXT_GROUP
 #undef MAX_GLYPHS_IN_GROUP
 }
 
