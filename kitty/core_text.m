@@ -200,6 +200,15 @@ glyph_id_for_codepoint(PyObject *s, char_type ch) {
     return glyphs[0];
 }
 
+bool
+is_glyph_empty(PyObject *s, glyph_index g) {
+    CTFace *self = (CTFace*)s;
+    CGGlyph gg = g;
+    CGRect bounds;
+    CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, &gg, &bounds, 1);
+    return bounds.size.width <= 0;
+}
+
 static inline float
 scaled_point_sz() {
     return ((global_state.logical_dpi_x + global_state.logical_dpi_y) / 144.0) * global_state.font_sz_in_pts;

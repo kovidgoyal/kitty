@@ -13,7 +13,6 @@
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8
 
-typedef uint16_t glyph_index;
 typedef void (*send_sprite_to_gpu_func)(unsigned int, unsigned int, unsigned int, pixel*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
@@ -39,6 +38,8 @@ struct SpritePosition {
 
 #define SPECIAL_FILLED_MASK 1
 #define SPECIAL_VALUE_MASK 2
+#define EMPTY_FILLED_MASK 4
+#define EMPTY_VALUE_MASK 8
 
 struct SpecialGlyphCache {
     SpecialGlyphCache *next;
@@ -153,13 +154,13 @@ sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, ui
     return s;
 }
 
-static SpecialGlyphCache*
-special_glyph_cache_for(Font *font, glyph_index glyph) {
+static inline SpecialGlyphCache*
+special_glyph_cache_for(Font *font, glyph_index glyph, uint8_t mask) {
     SpecialGlyphCache *s = font->special_glyph_cache + (glyph & 0x3ff);
     // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->data & SPECIAL_FILLED_MASK)) return s;  // Cache hit
+    if (LIKELY(s->glyph == glyph && s->data & mask)) return s;  // Cache hit
     while(true) {
-        if (s->data & SPECIAL_FILLED_MASK) {
+        if (s->data & mask) {
             if (s->glyph == glyph) return s;  // Cache hit
         } else {
             break;
@@ -565,7 +566,7 @@ typedef struct {
 
 typedef struct {
     uint32_t previous_cluster;
-    bool prev_was_special;
+    bool prev_was_special, prev_was_empty;
     CellData current_cell_data;
     Group *groups;
     size_t groups_capacity, group_idx, glyph_idx, cell_idx, num_cells, num_glyphs;
@@ -592,6 +593,7 @@ shape(Cell *first_cell, index_type num_cells, hb_font_t *font) {
     }
     group_state.previous_cluster = UINT32_MAX;
     group_state.prev_was_special = false;
+    group_state.prev_was_empty = false;
     group_state.current_cell_data.cell = first_cell; group_state.current_cell_data.num_codepoints = num_codepoints_in_cell(first_cell); group_state.current_cell_data.codepoints_consumed = 0; group_state.current_cell_data.current_codepoint = first_cell->ch;
     memset(group_state.groups, 0, sizeof(Group) * group_state.groups_capacity);
     group_state.group_idx = 0;
@@ -613,7 +615,7 @@ static inline bool
 is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
     // A glyph is special if the codepoint it corresponds to matches a
     // different glyph in the font
-    SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id);
+    SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id, SPECIAL_FILLED_MASK);
     if (s == NULL) return false;
     if (!(s->data & SPECIAL_FILLED_MASK)) {
         bool is_special = cell_data->current_codepoint ? (
@@ -624,6 +626,18 @@ is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
         s->data |= val | SPECIAL_FILLED_MASK;
     }
     return s->data & SPECIAL_VALUE_MASK;
+}
+
+static inline bool
+is_empty_glyph(glyph_index glyph_id, Font *font) {
+    // A glyph is empty if its metrics have a width of zero
+    SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id, EMPTY_FILLED_MASK);
+    if (s == NULL) return false;
+    if (!(s->data & EMPTY_FILLED_MASK)) {
+        uint8_t val = is_glyph_empty(font->face, glyph_id) ? EMPTY_VALUE_MASK : 0;
+        s->data |= val | EMPTY_FILLED_MASK;
+    }
+    return s->data & EMPTY_VALUE_MASK;
 }
 
 static inline unsigned int
@@ -676,6 +690,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
         cluster = G(info)[G(glyph_idx)].cluster;
         bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
+        bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         uint32_t num_codepoints_used_by_glyph = 0;
         bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
         Group *current_group = G(groups) + G(group_idx);
@@ -689,7 +704,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
             add_to_current_group = true;
         } else {
             if (is_special) {
-                add_to_current_group = G(prev_was_special);
+                add_to_current_group = G(prev_was_empty);
             } else {
                 add_to_current_group = !G(prev_was_special);
             }
@@ -734,6 +749,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
         }
 
         G(prev_was_special) = is_special;
+        G(prev_was_empty) = is_empty;
         G(previous_cluster) = cluster;
         G(glyph_idx)++;
     }

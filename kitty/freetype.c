@@ -300,6 +300,17 @@ glyph_id_for_codepoint(PyObject *s, char_type cp) {
     return FT_Get_Char_Index(((Face*)s)->face, cp);
 }
 
+
+bool
+is_glyph_empty(PyObject *s, glyph_index g) {
+    Face *self = (Face*)s;
+    if (!load_glyph(self, g, FT_LOAD_DEFAULT)) { PyErr_Print(); return false; }
+#define M self->face->glyph->metrics
+    /* printf("glyph: %u horiBearingX: %ld horiBearingY: %ld width: %ld height: %ld\n", g, M.horiBearingX, M.horiBearingY, M.width, M.height); */
+    return M.width == 0;
+#undef M
+}
+
 hb_font_t*
 harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
 
