@@ -148,6 +148,7 @@ static struct {
     int next_entry;
 } focus_history;
 
+#ifdef __APPLE__
 static inline id_type
 pop_focus_history() {
     int index = --focus_history.next_entry;
@@ -160,6 +161,7 @@ pop_focus_history() {
 
     return result;
 }
+#endif
 
 static inline void
 push_focus_history(OSWindow *w) {
