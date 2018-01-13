@@ -729,6 +729,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
                 unsigned int num_left = G(num_cells) - G(cell_idx);
                 if (current_group->num_cells + num_left > MAX_GLYPHS_IN_GROUP) MOVE_GLYPH_TO_NEXT_GROUP(G(cell_idx));
                 current_group->num_cells += num_left;
+                if (current_group->num_cells > MAX_GLYPHS_IN_GROUP) current_group->num_cells = MAX_GLYPHS_IN_GROUP;  // leave any trailing cells empty
                 G(cell_idx) += num_left;
             }
         } else {
@@ -740,10 +741,24 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
                 num_codepoints_used_by_glyph--;
             }
             if (num_cells_consumed) {
-                if (num_cells_consumed + current_group->num_cells > MAX_GLYPHS_IN_GROUP) MOVE_GLYPH_TO_NEXT_GROUP(start_cell_idx);
-                current_group->num_cells += num_cells_consumed;
-                if (!is_special) {  // not a ligature, end the group
-                    G(group_idx)++; current_group = G(groups) + G(group_idx);
+                if (num_cells_consumed > MAX_GLYPHS_IN_GROUP) {
+                    // Nasty, a single glyph used more than MAX_GLYPHS_IN_GROUP cells, we cannot render this case correctly
+                    fprintf(stderr, "The glyph: %u needs more than %u cells, cannot render it\n", glyph_id, MAX_GLYPHS_IN_GROUP);
+                    current_group->num_glyphs--;
+                    while (num_cells_consumed) {
+                        G(group_idx)++; current_group = G(groups) + G(group_idx);
+                        current_group->num_glyphs = 1; current_group->first_glyph_idx = G(glyph_idx);
+                        current_group->num_cells = MIN(num_cells_consumed, MAX_GLYPHS_IN_GROUP);
+                        current_group->first_cell_idx = start_cell_idx;
+                        start_cell_idx += current_group->num_cells;
+                        num_cells_consumed -= current_group->num_cells;
+                    }
+                } else {
+                    if (num_cells_consumed + current_group->num_cells > MAX_GLYPHS_IN_GROUP) MOVE_GLYPH_TO_NEXT_GROUP(start_cell_idx);
+                    current_group->num_cells += num_cells_consumed;
+                    if (!is_special) {  // not a ligature, end the group
+                        G(group_idx)++; current_group = G(groups) + G(group_idx);
+                    }
                 }
             }
         }
