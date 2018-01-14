@@ -760,6 +760,14 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x3:
                 switch(key & 0x7f) { default: return NULL;
+                  case 3: // MINUS
+                    return "\x01\x1f";
+                  case 5: // SLASH
+                    return "\x01\x7f";
+                  case 8: // 2
+                    return "\x01\x00";
+                  case 12: // 6
+                    return "\x01\x1e";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -1958,6 +1966,14 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x3:
                 switch(key & 0x7f) { default: return NULL;
+                  case 3: // MINUS
+                    return "\x01\x1f";
+                  case 5: // SLASH
+                    return "\x01\x7f";
+                  case 8: // 2
+                    return "\x01\x00";
+                  case 12: // 6
+                    return "\x01\x1e";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -3164,6 +3180,14 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x3:
                   switch(key & 0x7f) { default: return NULL;
+                    case 3: // MINUS
+                      return "\x01\x1f";
+                    case 5: // SLASH
+                      return "\x01\x7f";
+                    case 8: // 2
+                      return "\x01\x00";
+                    case 12: // 6
+                      return "\x01\x1e";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER
@@ -4362,6 +4386,14 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x3:
                   switch(key & 0x7f) { default: return NULL;
+                    case 3: // MINUS
+                      return "\x01\x1f";
+                    case 5: // SLASH
+                      return "\x01\x7f";
+                    case 8: // 2
+                      return "\x01\x00";
+                    case 12: // 6
+                      return "\x01\x1e";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER
