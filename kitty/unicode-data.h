@@ -5,7 +5,7 @@
 
 static inline bool
 is_combining_char(uint32_t ch) {
-    return uc_combining_class(ch) != UC_CCC_NR;
+    return uc_combining_class(ch) != UC_CCC_NR || uc_is_general_category_withtable(ch, UC_CATEGORY_MASK_Mc | UC_CATEGORY_MASK_Me | UC_CATEGORY_MASK_Mn);
 }
 
 
