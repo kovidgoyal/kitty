@@ -42,9 +42,7 @@ line_text_at(char_type ch, combining_type cc) {
     } else {
         Py_UCS4 buf[3];
         buf[0] = ch; buf[1] = cc & CC_MASK; buf[2] = cc >> 16;
-        Py_UCS4 normalized = normalize(ch, buf[1], buf[2]);
-        if (normalized) ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &normalized, 1);
-        else ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, buf[2] ? 3 : 2);
+        ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, buf[2] ? 3 : 2);
     }
     return ans;
 }

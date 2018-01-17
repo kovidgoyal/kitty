@@ -90,7 +90,6 @@ the following dependencies are installed first.
 
 * python >= 3.5
 * harfbuzz >= 1.5.0
-* libunistring
 * zlib
 * libpng
 * freetype (not needed on macOS)

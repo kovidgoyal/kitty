@@ -130,7 +130,8 @@ def create_header(path):
     p = partial(print, file=f)
     p('// unicode data, built from the unicode standard on:', date.today())
     p('// see gen-wcwidth.py')
-    p('#pragma once')
+    if path.endswith('.h'):
+        p('#pragma once')
     p('#include "data-types.h"\n')
     p('START_ALLOW_CASE_RANGE')
     p()
@@ -160,13 +161,38 @@ def gen_emoji():
         p('\treturn false;\n}')
 
 
+def category_test(name, p, classes, comment, static=False):
+    static = 'static inline ' if static else ''
+    chars = set()
+    for c in classes:
+        chars |= class_maps[c]
+    p(f'{static}bool\n{name}(char_type code) {{')
+    p(f'\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
+    p('\tswitch(code) {')
+    for spec in get_ranges(list(chars)):
+        write_case(spec, p)
+        p(f'\t\t\treturn true;')
+    p('\t} // }}}\n')
+    p('\treturn false;\n}\n')
+
+
+def gen_ucd():
+    with create_header('kitty/unicode-data.c') as p:
+        p('#include "unicode-data.h"')
+        category_test('is_combining_char', p, {c for c in class_maps if c.startswith('M')}, 'M category (marks)')
+        category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters (Cc Cf Cs)')
+        category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
+        category_test('is_CZ_category', p, {c for c in class_maps if c[0] in 'CZ'}, 'C and Z categories')
+        category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
+
+
 def gen_wcwidth():
     seen = set()
 
     def add(p, comment, chars_, ret):
         chars = chars_ - seen
         seen.update(chars)
-        p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{{')
+        p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
         for spec in get_ranges(list(chars)):
             write_case(spec, p)
             p(f'\t\t\treturn {ret};')
@@ -194,5 +220,6 @@ def gen_wcwidth():
 parse_ucd()
 parse_emoji()
 parse_eaw()
+gen_ucd()
 gen_wcwidth()
 gen_emoji()

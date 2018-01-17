@@ -36,6 +36,8 @@ version 0.7.0 [future]
 
 - Fix incorrect handling of some unicode combining marks that are not re-ordered
 
+- Drop the dependency on libunistring
+
 
 version 0.6.1 [2017-12-28]
 ---------------------------
