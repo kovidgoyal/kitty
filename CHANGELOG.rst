@@ -31,6 +31,11 @@ version 0.7.0 [future]
 
 - Fix rendering of text with ligature fonts that do not use dummy glyphs
 
+- Fix a regression that caused copying of the seelction to clipboard to only
+  copy the visible part of the selection
+
+- Fix incorrect handling of some unicode combining marks that are not re-ordered
+
 
 version 0.6.1 [2017-12-28]
 ---------------------------
