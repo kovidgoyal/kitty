@@ -367,3 +367,16 @@ class TestScreen(BaseTest):
         s.cursor.y = 2
         s.erase_characters(2)
         self.ae(s.linebuf.dirty_lines(), [0, 1, 2])
+
+    def test_selection_as_text(self):
+        s = self.create_screen()
+        for i in range(2 * s.lines):
+            if i != 0:
+                s.carriage_return(), s.linefeed()
+            s.draw(str(i) * s.columns)
+        s.start_selection(0, 0, False)
+        s.update_selection(4, 4, True)
+        expected = ('55555', '\n66666', '\n77777', '\n88888', '\n99999')
+        self.ae(s.text_for_selection(), expected)
+        s.scroll(2, True)
+        self.ae(s.text_for_selection(), expected)
