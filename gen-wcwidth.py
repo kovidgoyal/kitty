@@ -34,7 +34,7 @@ def get_data(fname, folder='UCD'):
 
 # Map of class names to set of codepoints in class
 class_maps = {}
-combining_codepoints = set()
+marks = set()
 not_assigned = set(range(0, sys.maxunicode))
 
 
@@ -57,9 +57,8 @@ def parse_ucd():
         for codepoint in codepoints:
             s.add(codepoint)
             not_assigned.discard(codepoint)
-            cc = parts[3]
-            if cc and cc != '0':
-                combining_codepoints.add(codepoint)
+            if category.startswith('M'):
+                marks.add(codepoint)
 
 
 def split_two(line):
@@ -179,7 +178,7 @@ def gen_wcwidth():
 
         non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
         add(p, 'Non-printing characters', non_printing, -1)
-        add(p, 'Combining characters', combining_codepoints, -1)
+        add(p, 'Marks', marks, -1)
         add(p, 'Private use', class_maps['Co'], -3)
         add(p, 'East Asian ambiguous width', ambiguous, -2)
         add(p, 'East Asian double width', doublewidth, 2)
