@@ -134,11 +134,12 @@ typedef struct {
 } Region;
 
 typedef struct {
-    char_type ch;
     color_type fg, bg, decoration_fg;
-    combining_type cc;
     sprite_index sprite_x, sprite_y, sprite_z;
     attrs_type attrs;
+    // The following are only needed on the CPU, not the GPU
+    char_type ch;
+    combining_type cc;
 } Cell;
 
 typedef struct {
