@@ -31,10 +31,12 @@ version 0.7.0 [future]
 
 - Fix rendering of text with ligature fonts that do not use dummy glyphs
 
-- Fix a regression that caused copying of the seelction to clipboard to only
+- Fix a regression that caused copying of the selection to clipboard to only
   copy the visible part of the selection
 
 - Fix incorrect handling of some unicode combining marks that are not re-ordered
+
+- Fix handling on non-BMP combining characters
 
 - Drop the dependency on libunistring
 
