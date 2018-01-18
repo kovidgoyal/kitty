@@ -31,7 +31,7 @@
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
-typedef uint32_t combining_type;
+typedef uint16_t combining_type;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
@@ -56,7 +56,6 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
-#define CC_MASK 0xFFFF
 #define CC_SHIFT 16
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
@@ -139,7 +138,7 @@ typedef struct {
     attrs_type attrs;
     // The following are only needed on the CPU, not the GPU
     char_type ch;
-    combining_type cc;
+    combining_type cc[2];
 } Cell;
 
 typedef struct {

@@ -44,7 +44,6 @@ xlimit_for_line(Line *line) {
     return xlimit;
 }
 
-PyObject* line_text_at(char_type, combining_type);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);

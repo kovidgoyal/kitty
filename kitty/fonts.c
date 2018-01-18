@@ -55,7 +55,7 @@ typedef struct {
 
 static GPUSpriteTracker sprite_tracker = {0};
 static hb_buffer_t *harfbuzz_buffer = NULL;
-static char_type shape_buffer[2048] = {0};
+static char_type shape_buffer[4096] = {0};
 
 
 typedef struct {
@@ -327,10 +327,8 @@ face_has_codepoint(PyObject* face, char_type cp) {
 static inline bool
 has_cell_text(Font *self, Cell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;
-    if (cell->cc) {
-        if (!face_has_codepoint(self->face, cell->cc & CC_MASK)) return false;
-        char_type cc = cell->cc >> 16;
-        if (cc && !face_has_codepoint(self->face, cc)) return false;
+    for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) {
+        if (!face_has_codepoint(self->face, cell->cc[i])) return false;
     }
     return true;
 }
@@ -494,14 +492,12 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
         attrs_type prev_width = 0;
-        for (num = 0; num_cells && num < sizeof(shape_buffer)/sizeof(shape_buffer[0]) - 20; first_cell++, num_cells--) {
+        for (num = 0; num_cells && num < arraysz(shape_buffer) - 20 - arraysz(first_cell->cc); first_cell++, num_cells--) {
             if (prev_width == 2) { prev_width = 0; continue; }
             shape_buffer[num++] = first_cell->ch;
             prev_width = first_cell->attrs & WIDTH_MASK;
-            if (first_cell->cc) {
-                shape_buffer[num++] = first_cell->cc & CC_MASK;
-                combining_type cc2 = first_cell->cc >> 16;
-                if (cc2) shape_buffer[num++] = cc2 & CC_MASK;
+            for (unsigned i = 0; i < arraysz(first_cell->cc) && first_cell->cc[i]; i++) {
+                shape_buffer[num++] = first_cell->cc[i];
             }
         }
         hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
@@ -580,7 +576,7 @@ static GroupState group_state = {0};
 static inline unsigned int
 num_codepoints_in_cell(Cell *cell) {
     unsigned int ans = 1;
-    if (cell->cc) ans += ((cell->cc >> CC_SHIFT) & CC_MASK) ? 2 : 1;
+    for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) ans++;
     return ans;
 }
 
@@ -657,14 +653,8 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
             case 0:
                 cell_data->current_codepoint = cell_data->cell->ch;
                 break;
-            case 1:
-                cell_data->current_codepoint = cell_data->cell->cc & CC_MASK;
-                break;
-            case 2:
-                cell_data->current_codepoint = (cell_data->cell->cc >> CC_SHIFT) & CC_MASK;
-                break;
             default:
-                cell_data->current_codepoint = 0;
+                cell_data->current_codepoint = cell_data->cell->cc[cell_data->codepoints_consumed - 1];
                 break;
         }
     }
@@ -1053,12 +1043,11 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     PyObject *text;
     int bold, italic;
     if (!PyArg_ParseTuple(args, "Upp", &text, &bold, &italic)) return NULL;
-    static Py_UCS4 char_buf[16];
-    if (!PyUnicode_AsUCS4(text, char_buf, sizeof(char_buf)/sizeof(char_buf[0]), 1)) return NULL;
     Cell cell = {0};
+    static Py_UCS4 char_buf[2 + arraysz(cell.cc)];
+    if (!PyUnicode_AsUCS4(text, char_buf, arraysz(char_buf), 1)) return NULL;
     cell.ch = char_buf[0];
-    if (PyUnicode_GetLength(text) > 1) cell.cc |= char_buf[1] & CC_MASK;
-    if (PyUnicode_GetLength(text) > 2) cell.cc |= (char_buf[2] & CC_MASK) << 16;
+    for (unsigned i = 0; i + 1 < PyUnicode_GetLength(text) && i < arraysz(cell.cc); i++) cell.cc[i] = char_buf[i + 1];
     if (bold) cell.attrs |= 1 << BOLD_SHIFT;
     if (italic) cell.attrs |= 1 << ITALIC_SHIFT;
     ssize_t ans = fallback_font(&cell);

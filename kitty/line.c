@@ -35,15 +35,13 @@ line_length(Line *self) {
 }
 
 PyObject*
-line_text_at(char_type ch, combining_type cc) {
+cell_text(Cell *cell) {
     PyObject *ans;
-    if (LIKELY(cc == 0)) {
-        ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, &ch, 1);
-    } else {
-        Py_UCS4 buf[3];
-        buf[0] = ch; buf[1] = cc & CC_MASK; buf[2] = cc >> 16;
-        ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, buf[2] ? 3 : 2);
-    }
+    unsigned num = 1;
+    static Py_UCS4 buf[arraysz(cell->cc) + 1];
+    buf[0] = cell->ch;
+    for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) buf[num++] = cell->cc[i];
+    ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
     return ans;
 }
 
@@ -160,7 +158,7 @@ static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
     if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    return line_text_at(self->cells[xval].ch, self->cells[xval].cc);
+    return cell_text(self->cells + xval);
 }
 
 size_t
@@ -168,13 +166,7 @@ cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) 
     size_t n = 1;
     buf[0] = cell->ch ? cell->ch : zero_char;
     if (include_cc) {
-        char_type cc = cell->cc;
-        Py_UCS4 cc1 = cc & CC_MASK, cc2;
-        if (cc1) {
-            buf[1] = cc1; n++;
-            cc2 = cc >> 16;
-            if (cc2) { buf[2] = cc2; n++; }
-        }
+        for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) buf[n++] = cell->cc[i];
     }
     return n;
 }
@@ -183,13 +175,7 @@ size_t
 cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type zero_char) {
     size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
     if (include_cc) {
-        char_type cc = cell->cc;
-        Py_UCS4 cc1 = cc & CC_MASK, cc2;
-        if (cc1) {
-            n += encode_utf8(cc1, buf + n);
-            cc2 = cc >> 16;
-            if (cc2) { n += encode_utf8(cc2, buf + n); }
-        }
+        for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) n += encode_utf8(cell->cc[i], buf + n);
     }
     buf[n] = 0;
     return n;
@@ -202,7 +188,7 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
     static Py_UCS4 buf[4096];
     if (leading_char) buf[n++] = leading_char;
     char_type previous_width = 0;
-    for(index_type i = start; i < limit && n < sizeof(buf)/sizeof(buf[0]) - 4; i++) {
+    for(index_type i = start; i < limit && n < arraysz(buf) - 2 - arraysz(self->cells->cc); i++) {
         char_type ch = self->cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
@@ -263,12 +249,8 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
         t = prev_cursor; prev_cursor = cursor; cursor = t;
         if (*sgr) WRITE_SGR(sgr);
         WRITE_CH(ch);
-        char_type cc = self->cells[pos].cc;
-        Py_UCS4 cc1 = cc & CC_MASK;
-        if (cc1) {
-            WRITE_CH(cc1);
-            cc1 = cc >> 16;
-            if (cc1) { WRITE_CH(cc1); }
+        for(unsigned c = 0; c < arraysz(self->cells[pos].cc) && self->cells[pos].cc[c]; c++) {
+            WRITE_CH(self->cells[pos].cc[c]);
         }
         previous_width = attrs & WIDTH_MASK;
     }
@@ -317,10 +299,12 @@ width(Line *self, PyObject *val) {
 
 void
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
-    if (!self->cells[x].ch) return;  // dont allow adding combining chars to a null cell
-    combining_type c = self->cells[x].cc;
-    if (c & CC_MASK) self->cells[x].cc = (c & CC_MASK) | ( (ch & CC_MASK) << CC_SHIFT );
-    else self->cells[x].cc = ch & CC_MASK;
+    Cell *cell = self->cells + x;
+    if (!cell->ch) return;  // dont allow adding combining chars to a null cell
+    for (unsigned i = 0; i < arraysz(cell->cc); i++) {
+        if (!cell->cc[i]) { cell->cc[i] = (combining_type)ch; return; }
+    }
+    cell->cc[arraysz(cell->cc) - 1] = (combining_type)ch;
 }
 
 static PyObject*
@@ -370,7 +354,7 @@ set_text(Line* self, PyObject *args) {
         self->cells[i].fg = fg;
         self->cells[i].bg = bg;
         self->cells[i].decoration_fg = dfg;
-        self->cells[i].cc = 0;
+        memset(self->cells[i].cc, 0, sizeof(self->cells[i].cc));
     }
 
     Py_RETURN_NONE;
@@ -402,7 +386,7 @@ line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     attrs_type width = ch ? 1 : 0;
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
-        self->cells[i].ch = ch; self->cells[i].cc = 0; \
+        self->cells[i].ch = ch; memset(self->cells[i].cc, 0, sizeof(self->cells[i].cc)); \
         self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
     }
     if (CHAR_IS_BLANK(ch)) {
@@ -432,7 +416,7 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
             self->cells[i].ch = BLANK_CHAR;
-            self->cells[i].cc = 0;
+            memset(self->cells[i].cc, 0, sizeof(self->cells[i].cc));
             self->cells[i].attrs = attrs;
             clear_sprite_position(self->cells[i]);
         } else {
@@ -507,7 +491,7 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
         self->cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
     }
     self->cells[at].ch = ch;
-    self->cells[at].cc = 0;
+    memset(self->cells[at].cc, 0, sizeof(self->cells[at].cc));
 }
 
 static PyObject*

@@ -180,7 +180,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
 PyObject*
 create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic) {
     CTFace *self = (CTFace*)base_face;
-    char text[128] = {0};
+    char text[256] = {0};
     cell_as_utf8(cell, true, text, ' ');
     CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
     if (str == NULL) return PyErr_NoMemory();
