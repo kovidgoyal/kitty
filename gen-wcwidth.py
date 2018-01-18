@@ -184,6 +184,24 @@ def gen_ucd():
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, {c for c in class_maps if c[0] in 'CZ'}, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
+        mark_map = [0] + list(sorted(marks))
+        p('char_type codepoint_for_mark(combining_type m) {')
+        p(f'\tstatic char_type map[{len(mark_map)}] =', '{', ', '.join(map(str, mark_map)), '}; // {{{ mapping }}}')
+        p('\tif (m < arraysz(map)) return map[m];')
+        p('\treturn 0;')
+        p('}\n')
+        p('combining_type mark_for_codepoint(char_type c) {')
+        p('\tswitch(c) { // {{{')
+        rmap = {c: m for m, c in enumerate(mark_map)}
+        for spec in get_ranges(mark_map):
+            if isinstance(spec, tuple):
+                s = rmap[spec[0]]
+                p(f'\t\tcase {spec[0]} ... {spec[1]}: return {s} + c - {spec[0]};')
+            else:
+                p(f'\t\tcase {spec}: return {rmap[spec]};')
+        p('default: return 0;')
+        p('\t} // }}}')
+        p('}\n')
 
 
 def gen_wcwidth():
