@@ -56,7 +56,6 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define COL_MASK 0xFFFFFFFF
-#define CC_SHIFT 16
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
 #define DECORATION_FG_CODE 58
@@ -138,7 +137,7 @@ typedef struct {
     attrs_type attrs;
     // The following are only needed on the CPU, not the GPU
     char_type ch;
-    combining_type cc[2];
+    combining_type cc_idx[2];
 } Cell;
 
 typedef struct {

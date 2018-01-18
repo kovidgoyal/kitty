@@ -9,6 +9,7 @@
 #include "fonts.h"
 #include "state.h"
 #include "emoji.h"
+#include "unicode-data.h"
 
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8
@@ -327,8 +328,8 @@ face_has_codepoint(PyObject* face, char_type cp) {
 static inline bool
 has_cell_text(Font *self, Cell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;
-    for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) {
-        if (!face_has_codepoint(self->face, cell->cc[i])) return false;
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+        if (!face_has_codepoint(self->face, codepoint_for_mark(cell->cc_idx[i]))) return false;
     }
     return true;
 }
@@ -492,12 +493,12 @@ load_hb_buffer(Cell *first_cell, index_type num_cells) {
     hb_buffer_clear_contents(harfbuzz_buffer);
     while (num_cells) {
         attrs_type prev_width = 0;
-        for (num = 0; num_cells && num < arraysz(shape_buffer) - 20 - arraysz(first_cell->cc); first_cell++, num_cells--) {
+        for (num = 0; num_cells && num < arraysz(shape_buffer) - 20 - arraysz(first_cell->cc_idx); first_cell++, num_cells--) {
             if (prev_width == 2) { prev_width = 0; continue; }
             shape_buffer[num++] = first_cell->ch;
             prev_width = first_cell->attrs & WIDTH_MASK;
-            for (unsigned i = 0; i < arraysz(first_cell->cc) && first_cell->cc[i]; i++) {
-                shape_buffer[num++] = first_cell->cc[i];
+            for (unsigned i = 0; i < arraysz(first_cell->cc_idx) && first_cell->cc_idx[i]; i++) {
+                shape_buffer[num++] = codepoint_for_mark(first_cell->cc_idx[i]);
             }
         }
         hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
@@ -576,7 +577,7 @@ static GroupState group_state = {0};
 static inline unsigned int
 num_codepoints_in_cell(Cell *cell) {
     unsigned int ans = 1;
-    for (unsigned i = 0; i < arraysz(cell->cc) && cell->cc[i]; i++) ans++;
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) ans++;
     return ans;
 }
 
@@ -654,7 +655,7 @@ check_cell_consumed(CellData *cell_data, Cell *last_cell) {
                 cell_data->current_codepoint = cell_data->cell->ch;
                 break;
             default:
-                cell_data->current_codepoint = cell_data->cell->cc[cell_data->codepoints_consumed - 1];
+                cell_data->current_codepoint = codepoint_for_mark(cell_data->cell->cc_idx[cell_data->codepoints_consumed - 1]);
                 break;
         }
     }
@@ -1044,10 +1045,10 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     int bold, italic;
     if (!PyArg_ParseTuple(args, "Upp", &text, &bold, &italic)) return NULL;
     Cell cell = {0};
-    static Py_UCS4 char_buf[2 + arraysz(cell.cc)];
+    static Py_UCS4 char_buf[2 + arraysz(cell.cc_idx)];
     if (!PyUnicode_AsUCS4(text, char_buf, arraysz(char_buf), 1)) return NULL;
     cell.ch = char_buf[0];
-    for (unsigned i = 0; i + 1 < PyUnicode_GetLength(text) && i < arraysz(cell.cc); i++) cell.cc[i] = char_buf[i + 1];
+    for (unsigned i = 0; i + 1 < PyUnicode_GetLength(text) && i < arraysz(cell.cc_idx); i++) cell.cc_idx[i] = mark_for_codepoint(char_buf[i + 1]);
     if (bold) cell.attrs |= 1 << BOLD_SHIFT;
     if (italic) cell.attrs |= 1 << ITALIC_SHIFT;
     ssize_t ans = fallback_font(&cell);

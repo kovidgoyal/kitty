@@ -231,7 +231,7 @@ PyInit_fast_data_types(void) {
 
 #define OOF(n) #n, offsetof(Cell, n)
         if (PyModule_AddObject(m, "CELL", Py_BuildValue("{sI sI sI sI sI sI sI sI sI}",
-                    OOF(ch), OOF(fg), OOF(bg), OOF(decoration_fg), OOF(cc), OOF(sprite_x), OOF(sprite_y), OOF(sprite_z), "size", sizeof(Cell))) != 0) return NULL;
+                    OOF(ch), OOF(fg), OOF(bg), OOF(decoration_fg), OOF(cc_idx), OOF(sprite_x), OOF(sprite_y), OOF(sprite_z), "size", sizeof(Cell))) != 0) return NULL;
 #undef OOF
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
