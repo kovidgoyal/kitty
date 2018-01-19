@@ -10,6 +10,8 @@
 
 #define OPT(name) global_state.opts.name
 
+typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
+
 typedef struct {
     double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, wheel_scroll_multiplier;
     bool enable_audio_bell;
@@ -28,6 +30,7 @@ typedef struct {
     float adjust_line_height_frac;
     float background_opacity;
     float inactive_text_alpha;
+    Edge tab_bar_edge;
 } Options;
 
 typedef struct {

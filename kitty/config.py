@@ -234,6 +234,10 @@ def tab_font_style(x):
     return {'bold-italic': (True, True), 'bold': (True, False), 'italic': (False, True)}.get(x.lower().replace('_', '-'), (False, False))
 
 
+def tab_bar_edge(x):
+    return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
+
+
 def url_style(x):
     return url_style.map.get(x, url_style.map['curly'])
 
@@ -282,6 +286,7 @@ type_map = {
     'url_style': url_style,
     'prefer_color_emoji': to_bool,
     'copy_on_select': to_bool,
+    'tab_bar_edge': tab_bar_edge,
 }
 
 for name in (
