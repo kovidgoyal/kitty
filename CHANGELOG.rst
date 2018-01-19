@@ -10,6 +10,8 @@ version 0.7.0 [future]
   open/close/rename windows and tabs and even send input to specific windows.
   See the README for details.
 
+- Add option to put tab bar at the top instead of the bottom
+
 - Add option to override the default shell
 
 - Sessions: Allow setting titles and working directories for individual windows 
