@@ -524,7 +524,16 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_w
     unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
     double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true, os_window) : rd->dx * mult);
     double bottom = top - rd->dy;
-    if (ans->shape == CURSOR_UNDERLINE) top = bottom + cursor_width(2.0, false, os_window);
+	switch (ans->shape) {
+        case CURSOR_UNDERLINE:
+            top = bottom + cursor_width(2.0, false, os_window);
+            break;
+        case CURSOR_BLOCK:
+            top -= 2.0 / os_window->viewport_height;  // 1px adjustment for width of line
+            break;
+        default:
+            break;
+	}
     ans->left = left; ans->right = right; ans->top = top; ans->bottom = bottom;
 }
 
