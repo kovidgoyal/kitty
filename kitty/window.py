@@ -148,7 +148,7 @@ class Window:
         wakeup()
 
     def update_position(self, window_geometry):
-        vw, vh, ah, cw, ch = viewport_for_window(self.os_window_id)
+        central, tab_bar, vw, vh, cw, ch = viewport_for_window(self.os_window_id)
         self.screen_geometry = sg = calculate_gl_geometry(window_geometry, vw, vh, cw, ch)
         return sg
 

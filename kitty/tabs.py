@@ -244,7 +244,7 @@ class TabBar:  # {{{
         self.num_tabs = 1
         self.cell_width = 1
         self.data_buffer_size = 0
-        self.layout_changed = None
+        self.laid_out_once = False
         self.dirty = True
         self.screen = s = Screen(None, 1, 10)
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
@@ -271,25 +271,29 @@ class TabBar:  # {{{
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
 
-    def layout(self, viewport_width, viewport_height, cell_width, cell_height):
+    def layout(self):
+        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
+        if tab_bar.width < 2:
+            return
         self.cell_width = cell_width
         s = self.screen
+        viewport_width = tab_bar.width
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
-        self.layout_changed = True
+        self.laid_out_once = True
         margin = (viewport_width - ncells * cell_width) // 2
         self.window_geometry = g = WindowGeometry(
-            margin, viewport_height - cell_height, viewport_width - margin, viewport_height, s.columns, s.lines)
+            margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
         if margin > 0:
             self.tab_bar_blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_width, g.bottom))
         else:
             self.tab_bar_blank_rects = ()
-        self.screen_geometry = sg = calculate_gl_geometry(g, viewport_width, viewport_height, cell_width, cell_height)
+        self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
         set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data):
-        if self.layout_changed is None:
+        if not self.laid_out_once:
             return
         s = self.screen
         s.cursor.x = 0
@@ -337,31 +341,35 @@ class TabManager:  # {{{
         self.opts, self.args = opts, args
         self.tabs = []
         self.tab_bar = TabBar(self.os_window_id, opts)
-        self.tab_bar.layout(*self.tab_bar_layout_data)
         self.active_tab_idx = 0
 
         for t in startup_session.tabs:
             self._add_tab(Tab(self, session_tab=t))
         self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
-        if len(self.tabs) > 1:
-            self.tabbar_visibility_changed()
         self.update_tab_bar()
 
     def refresh_sprite_positions(self):
         self.tab_bar.screen.refresh_sprite_positions()
 
     def _add_tab(self, tab):
+        before = len(self.tabs)
         self.tabs.append(tab)
+        if len(self.tabs) > 1 and before < 2:
+            self.tabbar_visibility_changed()
 
     def _remove_tab(self, tab):
+        before = len(self.tabs)
         remove_tab(self.os_window_id, tab.id)
         self.tabs.remove(tab)
+        if len(self.tabs) < 2 and before > 1:
+            self.tabbar_visibility_changed()
 
     def _set_active_tab(self, idx):
         self.active_tab_idx = idx
         set_active_tab(self.os_window_id, idx)
 
     def tabbar_visibility_changed(self):
+        self.tab_bar.layout()
         self.resize(only_tabs=True)
         glfw_post_empty_event()
 
@@ -371,7 +379,7 @@ class TabManager:  # {{{
 
     def resize(self, only_tabs=False):
         if not only_tabs:
-            self.tab_bar.layout(*self.tab_bar_layout_data)
+            self.tab_bar.layout()
             self.update_tab_bar()
         for tab in self.tabs:
             tab.relayout()
@@ -433,27 +441,16 @@ class TabManager:  # {{{
         self.update_tab_bar()
 
     def new_tab(self, special_window=None, cwd_from=None):
-        needs_resize = len(self.tabs) == 1
         idx = len(self.tabs)
         self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
         self.update_tab_bar()
-        if needs_resize:
-            self.tabbar_visibility_changed()
 
     def remove(self, tab):
-        needs_resize = len(self.tabs) == 2
         self._remove_tab(tab)
         self._set_active_tab(max(0, min(self.active_tab_idx, len(self.tabs) - 1)))
         self.update_tab_bar()
         tab.destroy()
-        if needs_resize:
-            self.tabbar_visibility_changed()
-
-    @property
-    def tab_bar_layout_data(self):
-        vw, vh, ah, cw, ch = viewport_for_window(self.os_window_id)
-        return vw, vh, cw, ch
 
     @property
     def tab_bar_data(self):

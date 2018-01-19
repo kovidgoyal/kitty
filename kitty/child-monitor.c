@@ -609,11 +609,11 @@ render(double now) {
             w->viewport_size_dirty = false;
         }
         unsigned int active_window_id = 0;
-        render_os_window(w, now, &active_window_id);
         Tab *active_tab = w->tabs + w->active_tab;
         BorderRects *br = &active_tab->border_rects;
         draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
         if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w, true);
+        render_os_window(w, now, &active_window_id);
         swap_window_buffers(w);
         w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
         br->is_dirty = false;

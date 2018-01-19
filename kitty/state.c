@@ -379,15 +379,38 @@ PYWRAP1(set_tab_bar_render_data) {
     Py_RETURN_NONE;
 }
 
+static PyTypeObject RegionType;
+static PyStructSequence_Field region_fields[] = {
+    {"left", ""}, {"top", ""}, {"right", ""}, {"bottom", ""}, {"width", ""}, {"height", ""}, {NULL, NULL}
+};
+static PyStructSequence_Desc region_desc = {"Region", NULL, region_fields, 6};
+
+static inline PyObject*
+wrap_region(Region *r) {
+    PyObject *ans = PyStructSequence_New(&RegionType);
+    if (ans) {
+        PyStructSequence_SET_ITEM(ans, 0, PyLong_FromUnsignedLong(r->left));
+        PyStructSequence_SET_ITEM(ans, 1, PyLong_FromUnsignedLong(r->top));
+        PyStructSequence_SET_ITEM(ans, 2, PyLong_FromUnsignedLong(r->right));
+        PyStructSequence_SET_ITEM(ans, 3, PyLong_FromUnsignedLong(r->bottom));
+        PyStructSequence_SET_ITEM(ans, 4, PyLong_FromUnsignedLong(r->right - r->left + 1));
+        PyStructSequence_SET_ITEM(ans, 5, PyLong_FromUnsignedLong(r->bottom - r->top + 1));
+    }
+    return ans;
+}
+
 PYWRAP1(viewport_for_window) {
     id_type os_window_id = 0;
+    int vw = 100, vh = 100;
     PA("|K", &os_window_id);
+    Region central = {0}, tab_bar = {0};
     WITH_OS_WINDOW(os_window_id)
-        int available_height = os_window->viewport_height;
-        if (os_window->num_tabs > 1) available_height -= global_state.cell_height;
-        return Py_BuildValue("iiiII", os_window->viewport_width, os_window->viewport_height, available_height, global_state.cell_width, global_state.cell_height);
+        os_window_regions(os_window, &central, &tab_bar);
+        vw = os_window->viewport_width; vh = os_window->viewport_height;
+        goto end;
     END_WITH_OS_WINDOW
-    return Py_BuildValue("iiII", 400, 400, global_state.cell_width, global_state.cell_height);
+end:
+    return Py_BuildValue("NNiiII", wrap_region(&central), wrap_region(&tab_bar), vw, vh, global_state.cell_width, global_state.cell_height);
 }
 
 PYWRAP1(set_dpi_from_os_window) {
@@ -529,6 +552,9 @@ bool
 init_state(PyObject *module) {
     global_state.cell_width = 1; global_state.cell_height = 1;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (PyStructSequence_InitType2(&RegionType, &region_desc) != 0) return false;
+    Py_INCREF((PyObject *) &RegionType);
+    PyModule_AddObject(module, "Region", (PyObject *) &RegionType);
     return true;
 }
 // }}}

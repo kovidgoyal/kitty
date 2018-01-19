@@ -6,13 +6,13 @@ from collections import namedtuple
 from itertools import islice
 
 from .constants import WindowGeometry
-from .fast_data_types import pt_to_px, viewport_for_window
+from .fast_data_types import pt_to_px, viewport_for_window, Region
 
-viewport_width = viewport_height = available_height = 400
+central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
 
 
-def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
+def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
     number_of_cells = length // cell_length
     border_length += padding_length
     space_needed_for_border = number_of_windows * 2 * border_length
@@ -24,7 +24,9 @@ def layout_dimension(length, cell_length, number_of_windows=1, border_length=0, 
         extra = length - number_of_cells * cell_length
     cells_per_window = number_of_cells // number_of_windows
     extra -= space_needed
-    pos = 0 if left_align else (extra // 2)
+    pos = start_at
+    if not left_align:
+        pos += extra // 2
     pos += border_length + margin_length
     inner_length = cells_per_window * cell_length
     window_length = 2 * (border_length + margin_length) + inner_length
@@ -73,30 +75,30 @@ class Layout:
 
     def xlayout(self, num):
         return layout_dimension(
-            viewport_width, cell_width, num, self.border_width,
+            central.left, central.width, cell_width, num, self.border_width,
             margin_length=self.margin_width, padding_length=self.padding_width)
 
     def ylayout(self, num, left_align=True):
         return layout_dimension(
-            available_height, cell_height, num, self.border_width, left_align=left_align,
+            central.top, central.height, cell_height, num, self.border_width, left_align=left_align,
             margin_length=self.margin_width, padding_length=self.padding_width)
 
     def simple_blank_rects(self, first_window, last_window):
-        br, vh = self.blank_rects, available_height
-        left_blank_rect(first_window, br, vh), top_blank_rect(first_window, br, vh), right_blank_rect(last_window, br, vh)
+        br = self.blank_rects
+        left_blank_rect(first_window, br), top_blank_rect(first_window, br), right_blank_rect(last_window, br)
 
     def between_blank_rect(self, left_window, right_window):
-        self.blank_rects.append(Rect(left_window.geometry.right, 0, right_window.geometry.left, available_height))
+        self.blank_rects.append(Rect(left_window.geometry.right, central.top, right_window.geometry.left, central.bottom + 1))
 
     def bottom_blank_rect(self, window):
-        self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, available_height))
+        self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
 
     def set_active_window(self, windows, active_window_idx):
         pass
 
     def __call__(self, windows, active_window_idx):
-        global viewport_width, viewport_height, cell_width, cell_height, available_height
-        viewport_width, viewport_height, available_height, cell_width, cell_height = viewport_for_window(self.os_window_id)
+        global central, cell_width, cell_height
+        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         self.do_layout(windows, active_window_idx)
 
     def do_layout(self, windows, active_window_idx):
@@ -108,35 +110,38 @@ def window_geometry(xstart, xnum, ystart, ynum):
 
 
 def layout_single_window(margin_length, padding_length):
-    xstart, xnum = next(layout_dimension(viewport_width, cell_width, margin_length=margin_length, padding_length=padding_length))
-    ystart, ynum = next(layout_dimension(available_height, cell_height, margin_length=margin_length, padding_length=padding_length))
+    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, margin_length=margin_length, padding_length=padding_length))
+    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, margin_length=margin_length, padding_length=padding_length))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
-def left_blank_rect(w, rects, vh):
-    if w.geometry.left > 0:
-        rects.append(Rect(0, 0, w.geometry.left, vh))
+def left_blank_rect(w, rects):
+    lt = w.geometry.left
+    if lt > central.left:
+        rects.append(Rect(central.left, central.top, lt, central.bottom + 1))
 
 
-def right_blank_rect(w, rects, vh):
-    if w.geometry.right < viewport_width:
-        rects.append(Rect(w.geometry.right, 0, viewport_width, vh))
+def right_blank_rect(w, rects):
+    r = w.geometry.right
+    if r < central.right:
+        rects.append(Rect(r, central.top, central.right + 1, central.bottom + 1))
 
 
-def top_blank_rect(w, rects, vh):
-    if w.geometry.top > 0:
-        rects.append(Rect(0, 0, viewport_width, w.geometry.top))
+def top_blank_rect(w, rects):
+    t = w.geometry.top
+    if t > central.top:
+        rects.append(Rect(central.left, central.top, central.right + 1, t))
 
 
-def bottom_blank_rect(w, rects, vh):
-    if w.geometry.bottom < available_height:
-        rects.append(Rect(0, w.geometry.bottom, viewport_width, vh))
+def bottom_blank_rect(w, rects):
+    b = w.geometry.bottom
+    if b < central.bottom:
+        rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
 
 
 def blank_rects_for_window(w):
     ans = []
-    vh = available_height
-    left_blank_rect(w, ans, vh), top_blank_rect(w, ans, vh), right_blank_rect(w, ans, vh), bottom_blank_rect(w, ans, vh)
+    left_blank_rect(w, ans), top_blank_rect(w, ans), right_blank_rect(w, ans), bottom_blank_rect(w, ans)
     return ans
 
 
