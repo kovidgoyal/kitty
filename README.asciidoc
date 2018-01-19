@@ -430,12 +430,11 @@ the approach using ligatures.
 
 === How do I build kitty.app on macOS?
 
-Install `optipng` and `rsvg-convert` using `brew` or similar (needed for the logo generation step).
+Install `optipng` and `librsvg` using `brew` or similar (needed for the logo generation step).
 
 And run:
 ```
-logo/make.py
-./setup.py kitty.app
+make app
 ```
 
 This `kitty.app` unlike the released one does not include its own copy of

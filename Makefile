@@ -21,3 +21,11 @@ debug:
 # Build with the ASAN and UBSAN sanitizers
 asan:
 	python3 setup.py build $(VVAL) --debug --sanitize
+
+logo/kitty.iconset/icon_256x256.png: logo/kitty.svg logo/make.py
+	logo/make.py
+
+rendered_logo: logo/kitty.iconset/icon_256x256.png
+
+app: rendered_logo
+	python3 setup.py app $(VVAL)
