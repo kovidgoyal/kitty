@@ -160,6 +160,7 @@ void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* add_os_window();
 OSWindow* current_os_window();
+void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height);
 ssize_t create_cell_vao();

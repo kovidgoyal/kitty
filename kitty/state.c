@@ -242,6 +242,21 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
 }
 
 
+void
+os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
+    if (os_window->num_tabs > 1) {
+        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
+        central->bottom = os_window->viewport_height - global_state.cell_height - 1;
+        tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = central->bottom + 1;
+        tab_bar->bottom = os_window->viewport_height - 1;
+    } else {
+        memset(tab_bar, 0, sizeof(Region));
+        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
+        central->bottom = os_window->viewport_height - 1;
+    }
+}
+
+
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
