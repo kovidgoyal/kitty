@@ -286,7 +286,7 @@ class TabBar:  # {{{
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
         if margin > 0:
-            self.blank_rects = (Rect(0, g.top, g.left, g.bottom), Rect(g.right - 1, g.top, viewport_width, g.bottom))
+            self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
         else:
             self.blank_rects = ()
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
