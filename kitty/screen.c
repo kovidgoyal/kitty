@@ -1376,9 +1376,9 @@ screen_open_url(Screen *self) {
     SelectionBoundary start, end;
     selection_limits_(url_range, &start, &end);
     if (is_selection_empty(self, start.x, start.y, end.x, end.y)) return false;
-    PyObject *text;
-    text_for_range(text, start, end, false, false, visual_line_, index_type);
-    if (text) { call_boss(open_url_lines, "(O)", text); Py_CLEAR(text); }
+    PyObject *url;
+    text_for_range(url, start, end, false, false, visual_line_, index_type);
+    if (url) { call_boss(open_url_lines, "(O)", url); Py_CLEAR(url); }
     else PyErr_Print();
     return true;
 }
