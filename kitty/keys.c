@@ -176,7 +176,9 @@ on_key_input(int key, int scancode, int action, int mods) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
 #ifdef __APPLE__
-    if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) return;
+    if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods) && !(
+                key == GLFW_KEY_UP || key == GLFW_KEY_DOWN || key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)  // alt+arrow keys do not generate text on macOS
+       ) return;
 #endif
     if (
             action == GLFW_PRESS ||
