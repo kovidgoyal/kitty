@@ -241,5 +241,60 @@ class Grid(Tall):
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
+class Vertical(Layout):
+
+    name = 'vertical'
+
+    def do_layout(self, windows, active_window_idx):
+        self.blank_rects = []
+        window_count = len(windows)
+        if window_count == 1:
+            wg = layout_single_window(self.margin_width, self.padding_width)
+            windows[0].set_geometry(0, wg)
+            self.blank_rects = blank_rects_for_window(windows[0])
+            return
+
+        xlayout = self.xlayout(1)
+        xstart, xnum = next(xlayout)
+       	ylayout = self.ylayout(window_count)
+
+        for i in range(window_count):
+	        ystart, ynum = next(ylayout)
+	        windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+
+        # left, top and right blank rects
+        self.simple_blank_rects(windows[0], windows[-1])
+        #bottom blank rect
+        self.bottom_blank_rect(windows[-1])
+
+
+class Horizontal(Layout):
+
+    name = 'horizontal'
+
+    def do_layout(self, windows, active_window_idx):
+        self.blank_rects = []
+        window_count = len(windows)
+        if window_count == 1:
+            wg = layout_single_window(self.margin_width, self.padding_width)
+            windows[0].set_geometry(0, wg)
+            self.blank_rects = blank_rects_for_window(windows[0])
+            return
+
+        xlayout = self.xlayout(window_count)
+        ylayout = self.ylayout(1)
+        ystart, ynum = next(ylayout)
+
+        for i in range(window_count):
+	        xstart, xnum = next(xlayout)
+	        windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+	        if i > 0 and i < window_count - 1:
+	        	# between blank rect
+		        self.between_blank_rect(windows[i - 1], windows[i])
+          	#bottom blank rect
+	        self.bottom_blank_rect(windows[i])
+
+        # left, top and right blank rects
+        self.simple_blank_rects(windows[0], windows[-1])
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
