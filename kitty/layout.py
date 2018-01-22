@@ -259,8 +259,8 @@ class Vertical(Layout):
        	ylayout = self.ylayout(window_count)
 
         for i in range(window_count):
-	        ystart, ynum = next(ylayout)
-	        windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+            ystart, ynum = next(ylayout)
+            windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
@@ -286,13 +286,13 @@ class Horizontal(Layout):
         ystart, ynum = next(ylayout)
 
         for i in range(window_count):
-	        xstart, xnum = next(xlayout)
-	        windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
-	        if i > 0 and i < window_count - 1:
-	        	# between blank rect
-		        self.between_blank_rect(windows[i - 1], windows[i])
-          	#bottom blank rect
-	        self.bottom_blank_rect(windows[i])
+            xstart, xnum = next(xlayout)
+            windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+            if i > 0 and i < window_count - 1:
+                # between blank rect
+                self.between_blank_rect(windows[i - 1], windows[i])
+            #bottom blank rect
+            self.bottom_blank_rect(windows[i])
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
