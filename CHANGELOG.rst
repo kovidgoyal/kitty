@@ -14,6 +14,8 @@ version 0.7.0 [future]
 
 - Add option to override the default shell
 
+- Add "Horizontal" and "Vertical" window layouts
+
 - Sessions: Allow setting titles and working directories for individual windows 
 
 - Option to copy to clipboard on mouse select

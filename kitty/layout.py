@@ -241,6 +241,7 @@ class Grid(Tall):
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
+
 class Vertical(Layout):
 
     name = 'vertical'
@@ -256,7 +257,7 @@ class Vertical(Layout):
 
         xlayout = self.xlayout(1)
         xstart, xnum = next(xlayout)
-       	ylayout = self.ylayout(window_count)
+        ylayout = self.ylayout(window_count)
 
         for i in range(window_count):
             ystart, ynum = next(ylayout)
@@ -264,7 +265,7 @@ class Vertical(Layout):
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
-        #bottom blank rect
+        # bottom blank rect
         self.bottom_blank_rect(windows[-1])
 
 
@@ -294,7 +295,8 @@ class Horizontal(Layout):
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
-        #bottom blank rect
-        self.bottom_blank_rect(windows[0])
+        # bottom blank rect
+        self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}

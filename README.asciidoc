@@ -265,8 +265,10 @@ hold down `ctrl+shift` and click on a URL to open it in a browser.
 Currently, there are three layouts available,
 
 * Stack -- Only a single maximized window is shown at a time
-* Tall -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right.
+* Tall -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right
 * Grid -- All windows are shown in a grid
+* Horizontal -- All windows are shown side-by-side
+* Vertical -- All windows are shown one below the other
 
 You can switch between layouts using the {sc_next_layout} key combination.
 
