@@ -291,10 +291,10 @@ class Horizontal(Layout):
             if i > 0 and i < window_count - 1:
                 # between blank rect
                 self.between_blank_rect(windows[i - 1], windows[i])
-            #bottom blank rect
-            self.bottom_blank_rect(windows[i])
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
+        #bottom blank rect
+        self.bottom_blank_rect(windows[0])
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
