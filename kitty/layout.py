@@ -288,7 +288,7 @@ class Horizontal(Layout):
         for i in range(window_count):
             xstart, xnum = next(xlayout)
             windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
-            if i > 0 and i < window_count - 1:
+            if i > 0:
                 # between blank rect
                 self.between_blank_rect(windows[i - 1], windows[i])
 
