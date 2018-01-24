@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.7.0 [future]
+version 0.7.0 [2018-01-24]
 ---------------------------
 
 - Allow controlling kitty from the shell prompt/scripts. You can
