@@ -1298,7 +1298,7 @@ visual_line_(Screen *self, index_type y) {
 static inline Line*
 range_line_(Screen *self, int y) {
     if (y < 0) {
-        historybuf_init_line(self->historybuf, -y, self->historybuf->line);
+        historybuf_init_line(self->historybuf, -(y + 1), self->historybuf->line);
         return self->historybuf->line;
     }
     linebuf_init_line(self->linebuf, y);
