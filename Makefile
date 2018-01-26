@@ -22,6 +22,9 @@ debug:
 asan:
 	python3 setup.py build $(VVAL) --debug --sanitize
 
+profile:
+	python3 setup.py build $(VVAL) --profile
+
 logo/kitty.iconset/icon_256x256.png: logo/kitty.svg logo/make.py
 	logo/make.py
 

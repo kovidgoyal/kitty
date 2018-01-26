@@ -350,8 +350,8 @@ and ``input_delay``. These control the artificial delays introduced into the
 render loop to reduce CPU usage. See the link:kitty/kitty.conf[config file] for details.
 
 You can generate detailed per-function performance data using
-link:https://github.com/gperftools/gperftools[gperftools]. Build kitty with the
-`--profile` flag which will create an executable called `kitty-profile`.  Run
+link:https://github.com/gperftools/gperftools[gperftools]. Build kitty with
+`make profile` which will create an executable called `kitty-profile`.  Run
 that and perform the task you want to analyse, for example, scrolling a large
 file with `less`. After you quit, function call statistics will be printed to
 `stdout` and you can use tools like *kcachegrind* for more detailed analysis.
