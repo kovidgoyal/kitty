@@ -364,15 +364,19 @@ PYWRAP1(set_options) {
     GA(keymap); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
-    PyObject *al = PyObject_GetAttrString(opts, "adjust_line_height");
-    if (PyFloat_Check(al)) {
-        OPT(adjust_line_height_frac) = (float)PyFloat_AsDouble(al);
-        OPT(adjust_line_height_px) = 0;
-    } else {
-        OPT(adjust_line_height_frac) = 0;
-        OPT(adjust_line_height_px) = (int)PyLong_AsLong(al);
-    }
-    Py_DECREF(al);
+#define read_adjust(name) { \
+    PyObject *al = PyObject_GetAttrString(opts, #name); \
+    if (PyFloat_Check(al)) { \
+        OPT(name##_frac) = (float)PyFloat_AsDouble(al); \
+        OPT(name##_px) = 0; \
+    } else { \
+        OPT(name##_frac) = 0; \
+        OPT(name##_px) = (int)PyLong_AsLong(al); \
+    } \
+    Py_DECREF(al); \
+}
+    read_adjust(adjust_line_height);
+    read_adjust(adjust_column_width);
 #undef S
     Py_RETURN_NONE;
 }

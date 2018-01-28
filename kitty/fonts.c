@@ -290,6 +290,8 @@ update_cell_metrics() {
     unsigned int before_cell_height = cell_height;
     if (OPT(adjust_line_height_px) != 0) cell_height += OPT(adjust_line_height_px);
     if (OPT(adjust_line_height_frac) != 0.f) cell_height *= OPT(adjust_line_height_frac);
+    if (OPT(adjust_column_width_px != 0)) cell_width += OPT(adjust_column_width_px);
+    if (OPT(adjust_column_width_frac) != 0.f) cell_height *= OPT(adjust_column_width_frac);
     int line_height_adjustment = cell_height - before_cell_height;
     if (cell_height < 4) { PyErr_SetString(PyExc_ValueError, "line height too small after adjustment"); return NULL; }
     if (cell_height > 1000) { PyErr_SetString(PyExc_ValueError, "line height too large after adjustment"); return NULL; }
