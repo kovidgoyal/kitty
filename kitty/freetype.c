@@ -337,6 +337,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
         if (!column_has_text) { ans->width--; extra--; }
     }
 
+    // Remove any remaining extra columns from the left edge of the bitmap
     ans->start_x = extra;
     ans->width -= extra;
 }
@@ -461,7 +462,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
-    Region src = { .left = bm->start_x, .bottom = bm->rows, .right = bm->width }, dest = { .bottom = cell_height, .right = cell_width };
+    Region src = { .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x }, dest = { .bottom = cell_height, .right = cell_width };
 
     // Calculate column bounds
     float bearing_x = (float)metrics->horiBearingX / 64.f;
