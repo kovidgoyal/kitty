@@ -377,6 +377,7 @@ PYWRAP1(set_options) {
 }
     read_adjust(adjust_line_height);
     read_adjust(adjust_column_width);
+#undef read_adjust
 #undef S
     Py_RETURN_NONE;
 }
