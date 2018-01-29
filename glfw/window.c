@@ -38,6 +38,8 @@
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+// Notifies shared code that a window has lost or received input focus
+//
 void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
 {
     if (window->callbacks.focus)
@@ -64,48 +66,68 @@ void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
     }
 }
 
+// Notifies shared code that a window has moved
+// The position is specified in client-area relative screen coordinates
+//
 void _glfwInputWindowPos(_GLFWwindow* window, int x, int y)
 {
     if (window->callbacks.pos)
         window->callbacks.pos((GLFWwindow*) window, x, y);
 }
 
+// Notifies shared code that a window has been resized
+// The size is specified in screen coordinates
+//
 void _glfwInputWindowSize(_GLFWwindow* window, int width, int height)
 {
     if (window->callbacks.size)
         window->callbacks.size((GLFWwindow*) window, width, height);
 }
 
+// Notifies shared code that a window has been iconified or restored
+//
 void _glfwInputWindowIconify(_GLFWwindow* window, GLFWbool iconified)
 {
     if (window->callbacks.iconify)
         window->callbacks.iconify((GLFWwindow*) window, iconified);
 }
 
+// Notifies shared code that a window has been maximized or restored
+//
 void _glfwInputWindowMaximize(_GLFWwindow* window, GLFWbool maximized)
 {
     if (window->callbacks.maximize)
         window->callbacks.maximize((GLFWwindow*) window, maximized);
 }
 
+// Notifies shared code that a window framebuffer has been resized
+// The size is specified in pixels
+//
 void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height)
 {
     if (window->callbacks.fbsize)
         window->callbacks.fbsize((GLFWwindow*) window, width, height);
 }
 
+// Notifies shared code that a window content scale has changed
+// The scale is specified as the ratio between the current and default DPI
+//
 void _glfwInputWindowContentScale(_GLFWwindow* window, float xscale, float yscale)
 {
     if (window->callbacks.scale)
         window->callbacks.scale((GLFWwindow*) window, xscale, yscale);
 }
 
+// Notifies shared code that the window contents needs updating
+//
 void _glfwInputWindowDamage(_GLFWwindow* window)
 {
     if (window->callbacks.refresh)
         window->callbacks.refresh((GLFWwindow*) window);
 }
 
+// Notifies shared code that the user wishes to close a window
+//
 void _glfwInputWindowCloseRequest(_GLFWwindow* window)
 {
     window->shouldClose = GLFW_TRUE;
@@ -114,6 +136,8 @@ void _glfwInputWindowCloseRequest(_GLFWwindow* window)
         window->callbacks.close((GLFWwindow*) window);
 }
 
+// Notifies shared code that a window has changed its desired monitor
+//
 void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor)
 {
     window->monitor = monitor;

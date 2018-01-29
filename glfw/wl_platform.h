@@ -52,6 +52,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "egl_context.h"
 #include "osmesa_context.h"
 
+#include "wayland-xdg-shell-client-protocol.h"
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
@@ -70,6 +71,34 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 
 #define _GLFW_PLATFORM_CONTEXT_STATE
 #define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE
+
+struct wl_cursor_image {
+    uint32_t width;
+    uint32_t height;
+    uint32_t hotspot_x;
+    uint32_t hotspot_y;
+    uint32_t delay;
+};
+struct wl_cursor {
+    unsigned int image_count;
+    struct wl_cursor_image** images;
+    char* name;
+};
+typedef struct wl_cursor_theme* (* PFN_wl_cursor_theme_load)(const char*, int, struct wl_shm*);
+typedef void (* PFN_wl_cursor_theme_destroy)(struct wl_cursor_theme*);
+typedef struct wl_cursor* (* PFN_wl_cursor_theme_get_cursor)(struct wl_cursor_theme*, const char*);
+typedef struct wl_buffer* (* PFN_wl_cursor_image_get_buffer)(struct wl_cursor_image*);
+#define wl_cursor_theme_load _glfw.wl.cursor.theme_load
+#define wl_cursor_theme_destroy _glfw.wl.cursor.theme_destroy
+#define wl_cursor_theme_get_cursor _glfw.wl.cursor.theme_get_cursor
+#define wl_cursor_image_get_buffer _glfw.wl.cursor.image_get_buffer
+
+typedef struct wl_egl_window* (* PFN_wl_egl_window_create)(struct wl_surface*, int, int);
+typedef void (* PFN_wl_egl_window_destroy)(struct wl_egl_window*);
+typedef void (* PFN_wl_egl_window_resize)(struct wl_egl_window*, int, int, int, int);
+#define wl_egl_window_create _glfw.wl.egl.window_create
+#define wl_egl_window_destroy _glfw.wl.egl.window_destroy
+#define wl_egl_window_resize _glfw.wl.egl.window_resize
 
 typedef struct xkb_context* (* PFN_xkb_context_new)(enum xkb_context_flags);
 typedef void (* PFN_xkb_context_unref)(struct xkb_context*);
@@ -124,6 +153,11 @@ typedef struct _GLFWwindowWayland
     struct wl_shell_surface*    shellSurface;
     struct wl_callback*         callback;
 
+    struct {
+        struct xdg_surface*     surface;
+        struct xdg_toplevel*    toplevel;
+    } xdg;
+
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY;
 
@@ -143,6 +177,9 @@ typedef struct _GLFWwindowWayland
 
     struct zwp_idle_inhibitor_v1*          idleInhibitor;
 
+    // This is a hack to prevent auto-iconification on creation.
+    GLFWbool                    justCreated;
+
 } _GLFWwindowWayland;
 
 // Wayland-specific global data
@@ -157,6 +194,7 @@ typedef struct _GLFWlibraryWayland
     struct wl_seat*             seat;
     struct wl_pointer*          pointer;
     struct wl_keyboard*         keyboard;
+    struct xdg_wm_base*         wmBase;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;
@@ -212,6 +250,23 @@ typedef struct _GLFWlibraryWayland
 
     _GLFWwindow*                pointerFocus;
     _GLFWwindow*                keyboardFocus;
+
+    struct {
+        void*                   handle;
+
+        PFN_wl_cursor_theme_load theme_load;
+        PFN_wl_cursor_theme_destroy theme_destroy;
+        PFN_wl_cursor_theme_get_cursor theme_get_cursor;
+        PFN_wl_cursor_image_get_buffer image_get_buffer;
+    } cursor;
+
+    struct {
+        void*                   handle;
+
+        PFN_wl_egl_window_create window_create;
+        PFN_wl_egl_window_destroy window_destroy;
+        PFN_wl_egl_window_resize window_resize;
+    } egl;
 
 } _GLFWlibraryWayland;
 

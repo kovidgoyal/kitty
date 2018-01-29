@@ -264,7 +264,7 @@ void _glfwPollMonitorsNS(void)
         const CGSize size = CGDisplayScreenSize(displays[i]);
         char* name = getDisplayName(displays[i]);
         if (!name)
-            name = strdup("Unknown");
+            name = _glfw_strdup("Unknown");
 
         monitor = _glfwAllocMonitor(name, size.width, size.height);
         monitor->ns.displayID  = displays[i];

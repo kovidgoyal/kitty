@@ -1056,7 +1056,7 @@ static const char* getSelectionString(Atom selection)
             if (targets[i] == XA_STRING)
                 *selectionString = convertLatin1toUTF8(data);
             else
-                *selectionString = strdup(data);
+                *selectionString = _glfw_strdup(data);
         }
 
         XFree(data);
@@ -2839,7 +2839,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 void _glfwPlatformSetClipboardString(const char* string)
 {
     free(_glfw.x11.clipboardString);
-    _glfw.x11.clipboardString = strdup(string);
+    _glfw.x11.clipboardString = _glfw_strdup(string);
 
     XSetSelectionOwner(_glfw.x11.display,
                        _glfw.x11.CLIPBOARD,
@@ -3031,7 +3031,7 @@ GLFWAPI void glfwSetX11SelectionString(const char* string)
     _GLFW_REQUIRE_INIT();
 
     free(_glfw.x11.primarySelectionString);
-    _glfw.x11.primarySelectionString = strdup(string);
+    _glfw.x11.primarySelectionString = _glfw_strdup(string);
 
     XSetSelectionOwner(_glfw.x11.display,
                        _glfw.x11.PRIMARY,

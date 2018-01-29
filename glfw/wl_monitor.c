@@ -52,7 +52,7 @@ static void geometry(void* data,
     monitor->heightMM = physicalHeight;
 
     snprintf(name, sizeof(name), "%s %s", make, model);
-    monitor->name = strdup(name);
+    monitor->name = _glfw_strdup(name);
 }
 
 static void mode(void* data,

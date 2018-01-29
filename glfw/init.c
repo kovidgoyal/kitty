@@ -35,8 +35,9 @@
 #include <assert.h>
 
 
-// The global variables below comprise all global data in GLFW.
-// Any other global variable is a bug.
+// The global variables below comprise all mutable global data in GLFW
+//
+// Any other global variable is a bug
 
 // Global state shared between compilation units of GLFW
 //
@@ -138,9 +139,24 @@ static void terminate(void)
 
 
 //////////////////////////////////////////////////////////////////////////
+//////                       GLFW internal API                      //////
+//////////////////////////////////////////////////////////////////////////
+
+char* _glfw_strdup(const char* source)
+{
+    const size_t length = strlen(source);
+    char* result = calloc(length + 1, 1);
+    strcpy(result, source);
+    return result;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+// Notifies shared code of an error
+//
 void _glfwInputError(int code, const char* format, ...)
 {
     _GLFWerror* error;

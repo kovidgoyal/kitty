@@ -224,6 +224,8 @@ static GLFWbool parseMapping(_GLFWmapping* mapping, const char* string)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+// Notifies shared code of a physical key event
+//
 void _glfwInputKey(_GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (key >= 0 && key <= GLFW_KEY_LAST)
@@ -252,6 +254,9 @@ void _glfwInputKey(_GLFWwindow* window, int key, int scancode, int action, int m
         window->callbacks.key((GLFWwindow*) window, key, scancode, action, mods);
 }
 
+// Notifies shared code of a Unicode codepoint input event
+// The 'plain' parameter determines whether to emit a regular character event
+//
 void _glfwInputChar(_GLFWwindow* window, unsigned int codepoint, int mods, GLFWbool plain)
 {
     if (codepoint < 32 || (codepoint > 126 && codepoint < 160))
@@ -270,12 +275,16 @@ void _glfwInputChar(_GLFWwindow* window, unsigned int codepoint, int mods, GLFWb
     }
 }
 
+// Notifies shared code of a scroll event
+//
 void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset)
 {
     if (window->callbacks.scroll)
         window->callbacks.scroll((GLFWwindow*) window, xoffset, yoffset);
 }
 
+// Notifies shared code of a mouse button click event
+//
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods)
 {
     if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST)
@@ -293,6 +302,9 @@ void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods)
         window->callbacks.mouseButton((GLFWwindow*) window, button, action, mods);
 }
 
+// Notifies shared code of a cursor motion event
+// The position is specified in client-area relative screen coordinates
+//
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos)
 {
     if (window->virtualCursorPosX == xpos && window->virtualCursorPosY == ypos)
@@ -305,18 +317,24 @@ void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos)
         window->callbacks.cursorPos((GLFWwindow*) window, xpos, ypos);
 }
 
+// Notifies shared code of a cursor enter/leave event
+//
 void _glfwInputCursorEnter(_GLFWwindow* window, GLFWbool entered)
 {
     if (window->callbacks.cursorEnter)
         window->callbacks.cursorEnter((GLFWwindow*) window, entered);
 }
 
+// Notifies shared code of files or directories dropped on a window
+//
 void _glfwInputDrop(_GLFWwindow* window, int count, const char** paths)
 {
     if (window->callbacks.drop)
         window->callbacks.drop((GLFWwindow*) window, count, paths);
 }
 
+// Notifies shared code of a joystick connection or disconnection
+//
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
 {
     const int jid = (int) (js - _glfw.joysticks);
@@ -325,16 +343,22 @@ void _glfwInputJoystick(_GLFWjoystick* js, int event)
         _glfw.callbacks.joystick(jid, event);
 }
 
+// Notifies shared code of the new value of a joystick axis
+//
 void _glfwInputJoystickAxis(_GLFWjoystick* js, int axis, float value)
 {
     js->axes[axis] = value;
 }
 
+// Notifies shared code of the new value of a joystick button
+//
 void _glfwInputJoystickButton(_GLFWjoystick* js, int button, char value)
 {
     js->buttons[button] = value;
 }
 
+// Notifies shared code of the new value of a joystick hat
+//
 void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
 {
     const int base = js->buttonCount + hat * 4;
@@ -352,6 +376,8 @@ void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+// Returns an available joystick object with arrays and name allocated
+//
 _GLFWjoystick* _glfwAllocJoystick(const char* name,
                                   const char* guid,
                                   int axisCount,
@@ -372,7 +398,7 @@ _GLFWjoystick* _glfwAllocJoystick(const char* name,
 
     js = _glfw.joysticks + jid;
     js->present     = GLFW_TRUE;
-    js->name        = strdup(name);
+    js->name        = _glfw_strdup(name);
     js->axes        = calloc(axisCount, sizeof(float));
     js->buttons     = calloc(buttonCount + hatCount * 4, 1);
     js->hats        = calloc(hatCount, 1);
@@ -386,6 +412,8 @@ _GLFWjoystick* _glfwAllocJoystick(const char* name,
     return js;
 }
 
+// Frees arrays and name and flags the joystick object as unused
+//
 void _glfwFreeJoystick(_GLFWjoystick* js)
 {
     free(js->name);

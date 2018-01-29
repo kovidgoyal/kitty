@@ -38,6 +38,12 @@
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+// Checks whether the desired context attributes are valid
+//
+// This function checks things like whether the specified client API version
+// exists and whether all relevant options have supported and non-conflicting
+// values
+//
 GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
 {
     if (ctxconfig->source != GLFW_NATIVE_CONTEXT_API &&
@@ -155,6 +161,8 @@ GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig)
     return GLFW_TRUE;
 }
 
+// Chooses the framebuffer config that best matches the desired one
+//
 const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
                                          const _GLFWfbconfig* alternatives,
                                          unsigned int count)
@@ -321,6 +329,8 @@ const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
     return closest;
 }
 
+// Retrieves the attributes of the current context
+//
 GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
                                     const _GLFWctxconfig* ctxconfig)
 {
@@ -555,6 +565,8 @@ GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
     return GLFW_TRUE;
 }
 
+// Searches an extension string for the specified extension
+//
 GLFWbool _glfwStringInExtensionString(const char* string, const char* extensions)
 {
     const char* start = extensions;

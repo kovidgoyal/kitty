@@ -86,6 +86,8 @@ static GLFWbool refreshVideoModes(_GLFWmonitor* monitor)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+// Notifies shared code of a monitor connection or disconnection
+//
 void _glfwInputMonitor(_GLFWmonitor* monitor, int action, int placement)
 {
     if (action == GLFW_CONNECTED)
@@ -141,6 +143,9 @@ void _glfwInputMonitor(_GLFWmonitor* monitor, int action, int placement)
         _glfwFreeMonitor(monitor);
 }
 
+// Notifies shared code that a full screen window has acquired or released
+// a monitor
+//
 void _glfwInputMonitorWindow(_GLFWmonitor* monitor, _GLFWwindow* window)
 {
     monitor->window = window;
@@ -151,6 +156,8 @@ void _glfwInputMonitorWindow(_GLFWmonitor* monitor, _GLFWwindow* window)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+// Allocates and returns a monitor object with the specified name and dimensions
+//
 _GLFWmonitor* _glfwAllocMonitor(const char* name, int widthMM, int heightMM)
 {
     _GLFWmonitor* monitor = calloc(1, sizeof(_GLFWmonitor));
@@ -158,11 +165,13 @@ _GLFWmonitor* _glfwAllocMonitor(const char* name, int widthMM, int heightMM)
     monitor->heightMM = heightMM;
 
     if (name)
-        monitor->name = strdup(name);
+        monitor->name = _glfw_strdup(name);
 
     return monitor;
 }
 
+// Frees a monitor object and any data associated with it
+//
 void _glfwFreeMonitor(_GLFWmonitor* monitor)
 {
     if (monitor == NULL)
@@ -176,6 +185,8 @@ void _glfwFreeMonitor(_GLFWmonitor* monitor)
     free(monitor);
 }
 
+// Allocates red, green and blue value arrays of the specified size
+//
 void _glfwAllocGammaArrays(GLFWgammaramp* ramp, unsigned int size)
 {
     ramp->red = calloc(size, sizeof(unsigned short));
@@ -184,6 +195,8 @@ void _glfwAllocGammaArrays(GLFWgammaramp* ramp, unsigned int size)
     ramp->size = size;
 }
 
+// Frees the red, green and blue value arrays and clears the struct
+//
 void _glfwFreeGammaArrays(GLFWgammaramp* ramp)
 {
     free(ramp->red);
@@ -193,6 +206,8 @@ void _glfwFreeGammaArrays(GLFWgammaramp* ramp)
     memset(ramp, 0, sizeof(GLFWgammaramp));
 }
 
+// Chooses the video mode most closely matching the desired one
+//
 const GLFWvidmode* _glfwChooseVideoMode(_GLFWmonitor* monitor,
                                         const GLFWvidmode* desired)
 {
@@ -243,11 +258,15 @@ const GLFWvidmode* _glfwChooseVideoMode(_GLFWmonitor* monitor,
     return closest;
 }
 
+// Performs lexical comparison between two @ref GLFWvidmode structures
+//
 int _glfwCompareVideoModes(const GLFWvidmode* fm, const GLFWvidmode* sm)
 {
     return compareVideoModes(fm, sm);
 }
 
+// Splits a color depth into red, green and blue bit depths
+//
 void _glfwSplitBPP(int bpp, int* red, int* green, int* blue)
 {
     int delta;

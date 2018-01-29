@@ -707,7 +707,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         NSUInteger i;
 
         for (i = 0;  i < count;  i++)
-            paths[i] = strdup([[e nextObject] UTF8String]);
+            paths[i] = _glfw_strdup([[e nextObject] UTF8String]);
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
@@ -1813,7 +1813,7 @@ const char* _glfwPlatformGetClipboardString(void)
     }
 
     free(_glfw.ns.clipboardString);
-    _glfw.ns.clipboardString = strdup([object UTF8String]);
+    _glfw.ns.clipboardString = _glfw_strdup([object UTF8String]);
 
     return _glfw.ns.clipboardString;
 }
