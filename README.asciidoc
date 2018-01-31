@@ -262,7 +262,7 @@ hold down `ctrl+shift` and click on a URL to open it in a browser.
 
 == Layouts
 
-Currently, there are three layouts available,
+Currently, there are five layouts available,
 
 * Stack -- Only a single maximized window is shown at a time
 * Tall -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right
