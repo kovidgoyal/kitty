@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.7.1 [future]
+version 0.7.1 [2018-01-31]
 ---------------------------
 
 - Add an option to adjust the width of character cells
