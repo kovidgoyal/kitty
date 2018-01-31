@@ -413,6 +413,7 @@ del extra
 
 
 def generate_terminfo():
+    # Use ./build-terminfo to update definition files
     ans = ['|'.join(names)]
     ans.extend(sorted(bool_capabilities))
     ans.extend('{}#{}'.format(k, numeric_capabilities[k]) for k in sorted(numeric_capabilities))
