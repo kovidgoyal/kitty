@@ -3,6 +3,18 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.7.1 [future]
+---------------------------
+
+- Add an option to adjust the width of character cells
+
+- Fix selecting text with the mouse in the scrollback buffer selecting text
+  from the line above the actually selected line
+
+- Fix some italic fonts having the right edge of characters cut-off,
+  unnecessarily
+
+
 version 0.7.0 [2018-01-24]
 ---------------------------
 
