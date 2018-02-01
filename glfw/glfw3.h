@@ -5468,6 +5468,11 @@ GLFWAPI int glfwGetPhysicalDevicePresentationSupport(VkInstance instance, VkPhys
  *  glfwGetRequiredInstanceExtensions to check what instance extensions are
  *  required.
  *
+ *  The window surface cannot be shared with another API so the window must
+ *  have been created with the [client api hint](@ref GLFW_CLIENT_API_attrib)
+ *  set to `GLFW_NO_API` otherwise it generates a @ref GLFW_INVALID_VALUE error
+ *  and returns `VK_ERROR_NATIVE_WINDOW_IN_USE_KHR`.
+ *
  *  The window surface must be destroyed before the specified Vulkan instance.
  *  It is the responsibility of the caller to destroy the window surface.  GLFW
  *  does not destroy it for you.  Call `vkDestroySurfaceKHR` to destroy the
@@ -5483,7 +5488,7 @@ GLFWAPI int glfwGetPhysicalDevicePresentationSupport(VkInstance instance, VkPhys
  *  [error](@ref error_handling) occurred.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
- *  GLFW_API_UNAVAILABLE and @ref GLFW_PLATFORM_ERROR.
+ *  GLFW_API_UNAVAILABLE, @ref GLFW_PLATFORM_ERROR and @ref GLFW_INVALID_VALUE
  *
  *  @remark If an error occurs before the creation call is made, GLFW returns
  *  the Vulkan error code most appropriate for the error.  Appropriate use of

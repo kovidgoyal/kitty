@@ -1190,7 +1190,7 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state)
     {
         if (js->mapping->buttons[i].type == _GLFW_JOYSTICK_AXIS)
         {
-            if (fabs(js->axes[js->mapping->buttons[i].value]) > 0.5)
+            if (fabsf(js->axes[js->mapping->buttons[i].value]) > 0.5f)
                 state->buttons[i] = GLFW_PRESS;
         }
         else if (js->mapping->buttons[i].type == _GLFW_JOYSTICK_HATBIT)
