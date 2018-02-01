@@ -813,9 +813,13 @@ void
 screen_restore_modes(Screen *self) {
     ScreenModes *m;
     buffer_pop(&self->modes_savepoints, m);
-    bool lnm = self->modes.mLNM, irm = self->modes.mIRM, sc81t = self->modes.eight_bit_controls;
-    self->modes = *m;
-    self->modes.mLNM = lnm; self->modes.mIRM = irm; self->modes.eight_bit_controls = sc81t;
+    if (m == NULL) *m = empty_modes;
+#define S(name) set_mode_from_const(self, name, m->m##name)
+    S(DECTCEM); S(DECSCNM); S(DECSCNM); S(DECOM); S(DECAWM); S(DECCOLM); S(DECARM); S(DECCKM);
+    S(BRACKETED_PASTE); S(FOCUS_TRACKING); S(EXTENDED_KEYBOARD);
+    self->modes.mouse_tracking_mode = m->mouse_tracking_mode;
+    self->modes.mouse_tracking_protocol = m->mouse_tracking_protocol;
+#undef S
 }
 
 void
