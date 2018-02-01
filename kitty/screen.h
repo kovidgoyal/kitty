@@ -30,7 +30,8 @@ typedef struct {
 #define SAVEPOINTS_SZ 256
 
 typedef struct {
-    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
+    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset;
+    unsigned int current_charset;
     bool use_latin1;
     Cursor cursor;
     bool mDECOM, mDECAWM, mDECSCNM;
@@ -56,6 +57,7 @@ typedef struct {
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
     id_type window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
+    unsigned int current_charset;
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
     Selection url_range;

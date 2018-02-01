@@ -42,6 +42,7 @@ init_tabstops(bool *tabstops, index_type count) {
         self->g0_charset = translation_table(0); \
         self->g1_charset = self->g0_charset; \
         self->g_charset = self->g0_charset; \
+        self->current_charset = 0; \
         self->utf8_state = 0; \
         self->utf8_codepoint = 0; \
         self->use_latin1 = false;
@@ -245,25 +246,26 @@ void
 screen_change_charset(Screen *self, uint32_t which) {
     switch(which) {
         case 0:
-            self->g_charset = self->g0_charset; break;
+            self->current_charset = 0;
+            self->g_charset = self->g0_charset;
+            break;
         case 1:
-            self->g_charset = self->g1_charset; break;
+            self->current_charset = 1;
+            self->g_charset = self->g1_charset;
+            break;
     }
 }
 
 void
 screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
-    bool change_g = false;
-    switch(which & 1) {
+    switch(which) {
         case 0:
-            change_g = self->g_charset == self->g0_charset;
             self->g0_charset = translation_table(as);
-            if (change_g) self->g_charset = self->g0_charset;
+            if (self->current_charset == 0) self->g_charset = self->g0_charset;
             break;
         case 1:
-            change_g = self->g_charset == self->g1_charset;
             self->g1_charset = translation_table(as);
-            if (change_g) self->g_charset = self->g1_charset;
+            if (self->current_charset == 1) self->g_charset = self->g1_charset;
             break;
     }
 }
@@ -766,7 +768,7 @@ screen_linefeed(Screen *self) {
     sp->utf8_codepoint = self->utf8_codepoint; \
     sp->g0_charset = self->g0_charset; \
     sp->g1_charset = self->g1_charset; \
-    sp->g_charset = self->g_charset; \
+    sp->current_charset = self->current_charset; \
     sp->use_latin1 = self->use_latin1;
 
 void
@@ -800,6 +802,7 @@ screen_restore_cursor(Screen *self) {
         screen_reset_mode(self, DECSCNM);
     } else {
         COPY_CHARSETS(sp, self);
+        self->g_charset = self->current_charset ? self->g1_charset : self->g0_charset;
         set_mode_from_const(self, DECOM, sp->mDECOM);
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
