@@ -254,7 +254,7 @@ screen_change_charset(Screen *self, uint32_t which) {
 void
 screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     bool change_g = false;
-    switch(which) {
+    switch(which & 1) {
         case 0:
             change_g = self->g_charset == self->g0_charset;
             self->g0_charset = translation_table(as);
@@ -265,7 +265,6 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
             self->g1_charset = translation_table(as);
             if (change_g) self->g_charset = self->g1_charset;
             break;
-        // We dont care about default as this is guaranteed to only be called with correct which by the parser
     }
 }
 
