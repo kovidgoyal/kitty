@@ -748,19 +748,18 @@ screen_linefeed(Screen *self) {
     screen_ensure_bounds(self, false);
 }
 
-static inline Savepoint*
-savepoints_push(SavepointBuffer *self) {
-    Savepoint *ans = self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
-    if (self->count == SAVEPOINTS_SZ) self->start_of_data = (self->start_of_data + 1) % SAVEPOINTS_SZ;
-    else self->count++;
-    return ans;
+#define buffer_push(self, ans) { \
+    ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ); \
+    if ((self)->count == SAVEPOINTS_SZ) (self)->start_of_data = ((self)->start_of_data + 1) % SAVEPOINTS_SZ; \
+    else (self)->count++; \
 }
 
-static inline Savepoint*
-savepoints_pop(SavepointBuffer *self) {
-    if (self->count == 0) return NULL;
-    self->count--;
-    return self->buf + ((self->start_of_data + self->count) % SAVEPOINTS_SZ);
+#define buffer_pop(self, ans) { \
+    if ((self)->count == 0) ans = NULL; \
+    else { \
+        (self)->count--; \
+        ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ); \
+    } \
 }
 
 #define COPY_CHARSETS(self, sp) \
@@ -774,7 +773,8 @@ savepoints_pop(SavepointBuffer *self) {
 void
 screen_save_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
-    Savepoint *sp = savepoints_push(pts);
+    Savepoint *sp;
+    buffer_push(pts, sp);
     cursor_copy_to(self->cursor, &(sp->cursor));
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
@@ -783,9 +783,17 @@ screen_save_cursor(Screen *self) {
 }
 
 void
+screen_save_modes(Screen *self) {
+    ScreenModes *m;
+    buffer_push(&self->modes_savepoints, m);
+    *m = self->modes;
+}
+
+void
 screen_restore_cursor(Screen *self) {
     SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
-    Savepoint *sp = savepoints_pop(pts);
+    Savepoint *sp;
+    buffer_pop(pts, sp);
     if (sp == NULL) {
         screen_cursor_position(self, 1, 1);
         screen_reset_mode(self, DECOM);
@@ -799,6 +807,15 @@ screen_restore_cursor(Screen *self) {
         cursor_copy_to(&(sp->cursor), self->cursor);
         screen_ensure_bounds(self, false);
     }
+}
+
+void
+screen_restore_modes(Screen *self) {
+    ScreenModes *m;
+    buffer_pop(&self->modes_savepoints, m);
+    bool lnm = self->modes.mLNM, irm = self->modes.mIRM, sc81t = self->modes.eight_bit_controls;
+    self->modes = *m;
+    self->modes.mLNM = lnm; self->modes.mIRM = irm; self->modes.eight_bit_controls = sc81t;
 }
 
 void

@@ -201,22 +201,6 @@ typedef struct {
     DynamicColor configured, overridden;
 } ColorProfile;
 
-#define SAVEPOINTS_SZ 256
-
-typedef struct {
-    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
-    bool use_latin1;
-    Cursor cursor;
-    bool mDECOM, mDECAWM, mDECSCNM;
-
-} Savepoint;
-
-
-typedef struct {
-    Savepoint buf[SAVEPOINTS_SZ];
-    index_type start_of_data, count;
-} SavepointBuffer;
-
 
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)

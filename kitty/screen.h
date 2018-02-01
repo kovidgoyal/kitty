@@ -27,6 +27,29 @@ typedef struct {
     bool in_progress;
 } Selection;
 
+#define SAVEPOINTS_SZ 256
+
+typedef struct {
+    uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
+    bool use_latin1;
+    Cursor cursor;
+    bool mDECOM, mDECAWM, mDECSCNM;
+
+} Savepoint;
+
+
+typedef struct {
+    Savepoint buf[SAVEPOINTS_SZ];
+    index_type start_of_data, count;
+} SavepointBuffer;
+
+
+typedef struct {
+    ScreenModes buf[SAVEPOINTS_SZ];
+    index_type start_of_data, count;
+} SavemodesBuffer;
+
+
 typedef struct {
     PyObject_HEAD
 
@@ -39,6 +62,7 @@ typedef struct {
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed, rectangle_select;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
+    SavemodesBuffer modes_savepoints;
     PyObject *callbacks, *test_child;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     GraphicsManager *grman, *main_grman, *alt_grman;
@@ -67,6 +91,8 @@ void parse_worker_dump(Screen *screen, PyObject *dump_callback);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
+void screen_restore_modes(Screen *);
+void screen_save_modes(Screen *);
 void write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);

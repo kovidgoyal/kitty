@@ -370,13 +370,13 @@ screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count
 static inline void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
 static inline void
-save_cursor(Screen *s, unsigned int UNUSED param, bool private) {
-    if (private) fprintf(stderr, "%s %s", ERROR_PREFIX, "CSI s in private mode not supported");
+save_cursor_or_modes(Screen *s, unsigned int UNUSED param, bool private) {
+    if (private) screen_save_modes(s);
     else screen_save_cursor(s);
 }
 static inline void
-restore_cursor(Screen *s, unsigned int UNUSED param, bool private) {
-    if (private) fprintf(stderr, "%s %s", ERROR_PREFIX, "CSI u in private mode not supported");
+restore_cursor_or_modes(Screen *s, unsigned int UNUSED param, bool private) {
+    if (private) screen_restore_modes(s);
     else screen_restore_cursor(s);
 }
 
@@ -690,9 +690,9 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case DSR:
             CALL_CSI_HANDLER1P(report_device_status, 0, '?');
         case SC:
-            CALL_CSI_HANDLER1P(save_cursor, 0, '?');
+            CALL_CSI_HANDLER1P(save_cursor_or_modes, 0, '?');
         case RC:
-            CALL_CSI_HANDLER1P(restore_cursor, 0, '?');
+            CALL_CSI_HANDLER1P(restore_cursor_or_modes, 0, '?');
         case 'r':
             if (!start_modifier && !end_modifier) {
                 // DECSTBM
