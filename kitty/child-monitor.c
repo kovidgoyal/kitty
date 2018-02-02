@@ -692,10 +692,10 @@ process_pending_resizes(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (w->has_pending_resizes) {
-            if (now - w->last_resize_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
+            if (now - w->last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
             else {
                 global_state.has_pending_resizes = true;
-                set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_at);
+                set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_event_at);
             }
         }
     }

@@ -27,10 +27,11 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio);
     window->viewport_size_dirty = true;
     window->has_pending_resizes = false;
+    window->viewport_width = MAX(window->viewport_width, 100);
+    window->viewport_height = MAX(window->viewport_height, 100);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }
-    window->last_resize_at = monotonic();
 }
 
 
@@ -77,13 +78,9 @@ static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width > 100 && height > 100) {
-        double now = monotonic();
         OSWindow *window = global_state.callback_os_window;
-        if (now - window->last_resize_at < RESIZE_DEBOUNCE_TIME) { window->has_pending_resizes = true; global_state.has_pending_resizes = true; }
-        else {
-            update_os_window_viewport(global_state.callback_os_window, is_window_ready_for_callbacks());
-            glfwPostEmptyEvent();
-        }
+        window->has_pending_resizes = true; global_state.has_pending_resizes = true;
+        window->last_resize_event_at = monotonic();
     } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
     global_state.callback_os_window = NULL;
 }

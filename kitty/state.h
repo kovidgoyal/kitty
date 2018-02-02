@@ -107,7 +107,7 @@ typedef struct {
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
-    double last_resize_at;
+    double last_resize_event_at;
     bool has_pending_resizes;
     bool is_semi_transparent;
     bool shown_once;
@@ -141,7 +141,7 @@ extern GlobalState global_state;
     else Py_DECREF(cret_); \
 }
 
-#define RESIZE_DEBOUNCE_TIME 0.2
+#define RESIZE_DEBOUNCE_TIME 0.1
 
 void gl_init();
 void remove_vao(ssize_t vao_idx);
