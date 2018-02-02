@@ -44,6 +44,7 @@ class Layout:
 
     name = None
     needs_window_borders = True
+    only_active_window_visible = False
 
     def __init__(self, os_window_id, opts, border_width, windows):
         self.os_window_id = os_window_id
@@ -94,7 +95,9 @@ class Layout:
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
 
     def set_active_window(self, windows, active_window_idx):
-        pass
+        if self.only_active_window_visible:
+            for i, w in enumerate(windows):
+                w.set_visible_in_layout(i, i == active_window_idx)
 
     def __call__(self, windows, active_window_idx):
         global central, cell_width, cell_height
@@ -149,10 +152,7 @@ class Stack(Layout):
 
     name = 'stack'
     needs_window_borders = False
-
-    def set_active_window(self, windows, active_window_idx):
-        for i, w in enumerate(windows):
-            w.set_visible_in_layout(i, i == active_window_idx)
+    only_active_window_visible = True
 
     def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
