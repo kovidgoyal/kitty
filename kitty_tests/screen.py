@@ -231,11 +231,24 @@ class TestScreen(BaseTest):
         self.ae(str(s.linebuf), '88\n88\n99\n99\n9')
 
     def test_cursor_after_resize(self):
+
+        def draw(text, end_line=True):
+            s.draw(text)
+            if end_line:
+                s.linefeed(), s.carriage_return()
+
         s = self.create_screen()
-        s.draw('123'), s.linefeed(), s.carriage_return(), s.draw('123'), s.linefeed(), s.carriage_return()
+        draw('123'), draw('123')
         y_before = s.cursor.y
         s.resize(s.lines, s.columns-1)
         self.ae(y_before, s.cursor.y)
+
+        s = self.create_screen(cols=5, lines=8)
+        draw('one')
+        draw('two three four five |||', end_line=False)
+        s.resize(s.lines + 2, s.columns + 2)
+        y = s.cursor.y
+        self.assertIn('|', str(s.line(y)))
 
     def test_tab_stops(self):
         # Taken from vttest/main.c
