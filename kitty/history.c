@@ -279,8 +279,9 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
         return;
     }
     other->count = 0; other->start_of_data = 0;
+    index_type x = 0, y = 0;
     if (self->count > 0) {
-        rewrap_inner(self, other, self->count, NULL);
+        rewrap_inner(self, other, self->count, NULL, &x, &y);
         for (index_type i = 0; i < other->count; i++) other->line_attrs[(other->start_of_data + i) % other->ynum] |= TEXT_DIRTY_MASK;
     }
 }

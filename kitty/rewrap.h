@@ -48,12 +48,13 @@ copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_t
 
 
 static void
-rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf) {
+rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf, index_type *track_x, index_type *track_y) {
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
 
     first_dest_line;
     do {
+        bool is_tracked_line = src_y == *track_y;
         init_src_line(src_y);
         src_line_is_continued = is_src_line_continued(src_y);
         src_x_limit = src->xnum;
@@ -62,10 +63,15 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             while(src_x_limit && (src->line->cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
 
         }
+        if (is_tracked_line && *track_x >= src_x_limit) *track_x = MAX(1, src_x_limit) - 1;
         while (src_x < src_x_limit) {
             if (dest_x >= dest->xnum) { next_dest_line(true); dest_x = 0; }
             num = MIN(src->line->xnum - src_x, dest->xnum - dest_x);
             copy_range(src->line, src_x, dest->line, dest_x, num);
+            if (is_tracked_line && src_x <= *track_x && *track_x < src_x + num) {
+                *track_y = dest_y;
+                *track_x = dest_x + (*track_x - src_x);
+            }
             src_x += num; dest_x += num;
         }
         src_y++; src_x = 0;

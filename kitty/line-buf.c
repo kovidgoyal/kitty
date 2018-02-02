@@ -494,7 +494,7 @@ copy_old(LineBuf *self, PyObject *y) {
 #include "rewrap.h"
 
 void
-linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf) {
+linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_before, index_type *num_content_lines_after, HistoryBuf *historybuf, index_type *track_x, index_type *track_y) {
     index_type first, i;
     bool is_empty = true;
 
@@ -523,7 +523,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
         return;
     }
 
-    rewrap_inner(self, other, first + 1, historybuf);
+    rewrap_inner(self, other, first + 1, historybuf, track_x, track_y);
     *num_content_lines_after = other->line->ynum + 1;
     for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i] |= TEXT_DIRTY_MASK;
     *num_content_lines_before = first + 1;
@@ -536,7 +536,8 @@ rewrap(LineBuf *self, PyObject *args) {
     unsigned int nclb, ncla;
 
     if (!PyArg_ParseTuple(args, "O!O!", &LineBuf_Type, &other, &HistoryBuf_Type, &historybuf)) return NULL;
-    linebuf_rewrap(self, other, &nclb, &ncla, historybuf);
+    index_type x = 0, y = 0;
+    linebuf_rewrap(self, other, &nclb, &ncla, historybuf, &x, &y);
 
     return Py_BuildValue("II", nclb, ncla);
 }
