@@ -125,18 +125,30 @@ class Layout:
         self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
-    def remove_window(self, all_windows, window, current_active_window_idx):
+    def remove_window(self, all_windows, window, current_active_window_idx, swapped=False):
         try:
             active_window = all_windows[current_active_window_idx]
         except Exception:
             active_window = window
-        all_windows.remove(window)
+        if not swapped and window.overlay_for is not None:
+            nidx = idx_for_id(window.overlay_for, all_windows)
+            if nidx is not None:
+                idx = all_windows.index(window)
+                all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
+                self.swap_windows_in_os_window(nidx, idx)
+                return self.remove_window(all_windows, window, current_active_window_idx, swapped=True)
+
+        position = all_windows.index(window)
+        del all_windows[position]
         active_window_idx = None
         if window.overlay_for is not None:
             i = idx_for_id(window.overlay_for, all_windows)
             if i is not None:
-                active_window_idx = i
-                all_windows[i].overlay_window_id = None
+                overlaid_window = all_windows[i]
+                overlaid_window.overlay_window_id = None
+                if active_window is window:
+                    active_window = overlaid_window
+                    active_window_idx = idx_for_id(active_window.id, all_windows)
         if active_window_idx is None:
             if active_window is window:
                 active_window_idx = max(0, min(current_active_window_idx, len(all_windows) - 1))

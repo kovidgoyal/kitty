@@ -154,8 +154,8 @@ class Tab:  # {{{
             self.remove_window(self.windows[self.active_window_idx])
 
     def remove_window(self, window):
-        remove_window(self.os_window_id, self.id, window.id)
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
+        remove_window(self.os_window_id, self.id, window.id)
         self.relayout_borders()
         glfw_post_empty_event()
 
