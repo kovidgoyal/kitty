@@ -251,7 +251,6 @@ type_map = {
     'adjust_column_width': adjust_line_height,
     'scrollback_lines': positive_int,
     'scrollback_pager': shlex.split,
-    'scrollback_in_new_tab': to_bool,
     'font_size': to_font_size,
     'font_size_delta': positive_float,
     'focus_follows_mouse': to_bool,

@@ -244,14 +244,13 @@ feature is best illustrated with a link:remote-control.asciidoc[tutorial].
 
 kitty supports scrolling back to view history, just like most terminals. You
 can use either the <<scrolling-shortcuts,keyboard shortcuts>> or the mouse
-scroll wheel to do so.  However, kitty has an extra, neat feature. Sometimes you
-need to explore the scrollback buffer in more detail, maybe search for some
+scroll wheel to do so.  However, kitty has an extra, neat feature. Sometimes
+you need to explore the scrollback buffer in more detail, maybe search for some
 text or refer to it side-by-side while typing in a follow-up command. kitty
 allows you to do this by pressing the {sc_show_scrollback} key-combination,
-which will open the scrollback buffer in a new window, using your favorite
-pager program (which is `less` by default). You can then explore the scrollback
-buffer using whatever program you normally use. Colors and text formatting are
-preserved.
+which will open the scrollback buffer in your favorite pager program (which is
+`less` by default). Colors and text formatting are preserved. You can explore
+the scrollback pager comfortably within the pager.
 
 
 == Miscellaneous features

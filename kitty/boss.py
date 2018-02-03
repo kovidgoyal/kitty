@@ -359,15 +359,12 @@ class Boss:
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
             self.window_id_map.pop(window_id, None)
 
-    def display_scrollback(self, data):
-        if self.opts.scrollback_in_new_tab:
-            self.display_scrollback_in_new_tab(data)
-        else:
-            tab = self.active_tab
-            if tab is not None:
-                tab.new_special_window(
-                    SpecialWindow(
-                        self.opts.scrollback_pager, data, _('History')))
+    def display_scrollback(self, window, data):
+        tab = self.active_tab
+        if tab is not None:
+            tab.new_special_window(
+                SpecialWindow(
+                    self.opts.scrollback_pager, data, _('History'), overlay_for=window.id))
 
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
@@ -506,9 +503,3 @@ class Boss:
         tm = self.active_tab_manager
         if tm is not None:
             tm.move_tab(-1)
-
-    def display_scrollback_in_new_tab(self, data):
-        tm = self.active_tab_manager
-        if tm is not None:
-            tm.new_tab(special_window=SpecialWindow(
-                self.opts.scrollback_pager, data, _('History')))

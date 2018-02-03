@@ -332,7 +332,7 @@ class Window:
     # actions {{{
 
     def show_scrollback(self):
-        get_boss().display_scrollback(self.buffer_as_ansi().encode('utf-8'))
+        get_boss().display_scrollback(self, self.buffer_as_ansi().encode('utf-8'))
 
     def paste(self, text):
         if text and not self.destroyed:
