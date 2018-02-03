@@ -12,8 +12,8 @@ from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, remove_tab, remove_window,
-    set_active_tab, set_active_window, set_tab_bar_render_data, swap_tabs,
-    swap_windows, viewport_for_window, x11_window_id
+    set_active_tab, set_tab_bar_render_data, swap_tabs, viewport_for_window,
+    x11_window_id
 )
 from .layout import Rect, all_layouts
 from .session import resolved_shell
@@ -21,11 +21,11 @@ from .utils import color_as_int
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd')
+SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for')
 
 
-def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None):
-    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd)
+def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None):
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for)
 
 
 class Tab:  # {{{
@@ -47,7 +47,7 @@ class Tab:  # {{{
         if session_tab is None:
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
-            self.current_layout = all_layouts[sl](self.os_window_id, self.opts, self.borders.border_width, self.windows)
+            self.current_layout = self.create_layout_object(sl)
             if special_window is None:
                 self.new_window(cwd_from=cwd_from)
             else:
@@ -55,7 +55,7 @@ class Tab:  # {{{
         else:
             self.cwd = session_tab.cwd or self.args.directory
             l0 = session_tab.layout
-            self.current_layout = all_layouts[l0](self.os_window_id, self.opts, self.borders.border_width, self.windows)
+            self.current_layout = self.create_layout_object(l0)
             self.startup(session_tab)
 
     def startup(self, session_tab):
@@ -102,6 +102,9 @@ class Tab:  # {{{
             self.borders(self.windows, self.active_window, self.current_layout,
                          tm.blank_rects, self.current_layout.needs_window_borders and len(self.windows) > 1)
 
+    def create_layout_object(self, idx):
+        return all_layouts[idx](self.os_window_id, self.id, self.opts, self.borders.border_width)
+
     def next_layout(self):
         if len(self.opts.enabled_layouts) > 1:
             try:
@@ -109,9 +112,7 @@ class Tab:  # {{{
             except Exception:
                 idx = -1
             nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
-            self.current_layout = all_layouts[nl](self.os_window_id, self.opts, self.borders.border_width, self.windows)
-            for i, w in enumerate(self.windows):
-                w.set_visible_in_layout(i, True)
+            self.current_layout = self.create_layout_object(nl)
             self.relayout()
 
     def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None):
@@ -131,13 +132,16 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None):
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None):
         child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd)
         window = Window(self, child, self.opts, self.args, override_title=override_title)
+        if overlay_for is not None:
+            overlaid = next(w for w in self.windows if w.id == overlay_for)
+            window.overlay_for = overlay_for
+            overlaid.overlay_window_id = window.id
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
-        set_active_window(self.os_window_id, self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
         return window
@@ -152,15 +156,12 @@ class Tab:  # {{{
     def remove_window(self, window):
         remove_window(self.os_window_id, self.id, window.id)
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
-        set_active_window(self.os_window_id, self.id, self.active_window_idx)
         self.relayout_borders()
         glfw_post_empty_event()
 
     def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
-            self.current_layout.set_active_window(self.windows, idx)
-            self.active_window_idx = idx
-            set_active_window(self.os_window_id, self.id, self.active_window_idx)
+            self.active_window_idx = self.current_layout.set_active_window(self.windows, idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -173,12 +174,13 @@ class Tab:  # {{{
 
     def nth_window(self, num=0):
         if self.windows:
-            self.set_active_window_idx(min(num, len(self.windows) - 1))
+            self.active_window_idx = self.current_layout.nth_window(self.windows, num)
+            self.relayout_borders()
+            glfw_post_empty_event()
 
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
-            set_active_window(self.os_window_id, self.id, self.active_window_idx)
             self.relayout_borders()
             glfw_post_empty_event()
 
@@ -189,14 +191,9 @@ class Tab:  # {{{
         self._next_window(-1)
 
     def move_window(self, delta=1):
-        if len(self.windows) > 1 and abs(delta) > 0:
-            idx = self.active_window_idx
-            nidx = (idx + len(self.windows) + delta) % len(self.windows)
-            self.windows[nidx], self.windows[idx] = self.windows[idx], self.windows[nidx]
-            swap_windows(self.os_window_id, self.id, nidx, idx)
-            self.active_window_idx = nidx
-            set_active_window(self.os_window_id, self.id, self.active_window_idx)
-            self.relayout()
+        self.active_window_idx = self.current_layout.move_window(self.windows, self.active_window_idx, delta)
+        self.relayout()
+        glfw_post_empty_event()
 
     def move_window_to_top(self):
         self.move_window(-self.active_window_idx)

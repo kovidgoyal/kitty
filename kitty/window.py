@@ -88,6 +88,8 @@ class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
         self.override_title = override_title
+        self.overlay_window_id = None
+        self.overlay_for = None
         self.child_title = appname
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:

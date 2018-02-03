@@ -3,13 +3,22 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
+from functools import partial
 from itertools import islice
 
 from .constants import WindowGeometry
-from .fast_data_types import pt_to_px, viewport_for_window, Region
+from .fast_data_types import (
+    Region, pt_to_px, set_active_window, swap_windows, viewport_for_window
+)
 
 central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
+
+
+def idx_for_id(win_id, windows):
+    for i, w in enumerate(windows):
+        if w.id == win_id:
+            return i
 
 
 def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
@@ -40,14 +49,24 @@ def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_
 Rect = namedtuple('Rect', 'left top right bottom')
 
 
+def process_overlaid_windows(all_windows):
+    id_map = {w.id: w for w in all_windows}
+    overlaid_windows = frozenset(w for w in all_windows if w.overlay_window_id is not None and w.overlay_window_id in id_map)
+    windows = [w for w in all_windows if w not in overlaid_windows]
+    return overlaid_windows, windows
+
+
 class Layout:
 
     name = None
     needs_window_borders = True
     only_active_window_visible = False
 
-    def __init__(self, os_window_id, opts, border_width, windows):
+    def __init__(self, os_window_id, tab_id, opts, border_width):
         self.os_window_id = os_window_id
+        self.tab_id = tab_id
+        self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
+        self.swap_windows_in_os_window = partial(swap_windows, os_window_id, tab_id)
         self.opts = opts
         self.border_width = border_width
         self.margin_width = pt_to_px(opts.window_margin_width)
@@ -56,24 +75,108 @@ class Layout:
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects = ()
 
-    def next_window(self, windows, active_window_idx, delta=1):
-        active_window_idx = (active_window_idx + len(windows) + delta) % len(windows)
-        self.set_active_window(windows, active_window_idx)
+    def nth_window(self, all_windows, num):
+        windows = process_overlaid_windows(all_windows)[1]
+        w = windows[min(num, len(windows) - 1)]
+        active_window_idx = idx_for_id(w.id, all_windows)
+        return self.set_active_window(all_windows, active_window_idx)
+
+    def next_window(self, all_windows, active_window_idx, delta=1):
+        w = all_windows[active_window_idx]
+        windows = process_overlaid_windows(all_windows)[1]
+        idx = idx_for_id(w.id, windows)
+        if idx is None:
+            idx = idx_for_id(w.overlay_window_id, windows)
+        active_window_idx = (idx + len(windows) + delta) % len(windows)
+        active_window_idx = idx_for_id(windows[active_window_idx].id, all_windows)
+        return self.set_active_window(all_windows, active_window_idx)
+
+    def move_window(self, all_windows, active_window_idx, delta=1):
+        w = all_windows[active_window_idx]
+        windows = process_overlaid_windows(all_windows)[1]
+        if len(windows) < 2 or abs(delta) == 0:
+            return active_window_idx
+        idx = idx_for_id(w.id, windows)
+        if idx is None:
+            idx = idx_for_id(w.overlay_window_id, windows)
+        nidx = (idx + len(windows) + delta) % len(windows)
+        nw = windows[nidx]
+        nidx = idx_for_id(nw.id, all_windows)
+        idx = active_window_idx
+        all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
+        self.swap_windows_in_os_window(nidx, idx)
+        return self.set_active_window(all_windows, nidx)
+
+    def add_window(self, all_windows, window, current_active_window_idx):
+        active_window_idx = None
+        if window.overlay_for is not None:
+            i = idx_for_id(window.overlay_for, all_windows)
+            if i is not None:
+                # put the overlay window in the position occupied by the
+                # overlaid window and move the overlaid window to the end
+                self.swap_windows_in_os_window(len(all_windows), i)
+                all_windows.append(all_windows[i])
+                all_windows[i] = window
+                active_window_idx = i
+        if active_window_idx is None:
+            active_window_idx = len(all_windows)
+            all_windows.append(window)
+        self(all_windows, active_window_idx)
+        self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
-    def add_window(self, windows, window, active_window_idx):
-        active_window_idx = len(windows)
-        windows.append(window)
-        self(windows, active_window_idx)
+    def remove_window(self, all_windows, window, current_active_window_idx):
+        all_windows.remove(window)
+        active_window_idx = None
+        if window.overlay_for is not None:
+            i = idx_for_id(window.overlay_for, all_windows)
+            if i is not None:
+                active_window_idx = i
+                all_windows[i].overlay_window_id = None
+        if active_window_idx is None:
+            active_window_idx = max(0, min(current_active_window_idx, len(all_windows) - 1))
+        if all_windows:
+            self(all_windows, active_window_idx)
+        self.set_active_window(all_windows, active_window_idx)
         return active_window_idx
 
-    def remove_window(self, windows, window, active_window_idx):
-        windows.remove(window)
-        active_window_idx = max(0, min(active_window_idx, len(windows) - 1))
-        if windows:
-            self(windows, active_window_idx)
+    def update_visibility(self, all_windows, active_window, overlaid_windows=None):
+        if overlaid_windows is None:
+            overlaid_windows = process_overlaid_windows(all_windows)[0]
+        for i, w in enumerate(all_windows):
+            w.set_visible_in_layout(i, w is active_window or (not self.only_active_window_visible and w not in overlaid_windows))
+
+    def set_active_window(self, all_windows, active_window_idx):
+        if not all_windows:
+            self.set_active_window_in_os_window(0)
+            return 0
+        w = all_windows[active_window_idx]
+        if w.overlay_window_id is not None:
+            i = idx_for_id(w.overlay_window_id, all_windows)
+            if i is not None:
+                active_window_idx = i
+        self.update_visibility(all_windows, all_windows[active_window_idx])
+        self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
+    def __call__(self, all_windows, active_window_idx):
+        global central, cell_width, cell_height
+        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
+
+        active_window = all_windows[active_window_idx]
+        overlaid_windows, windows = process_overlaid_windows(all_windows)
+        if overlaid_windows:
+            windows = [w for w in all_windows if w not in overlaid_windows]
+            active_window_idx = idx_for_id(active_window.id, windows)
+            if active_window_idx is None:
+                active_window_idx = idx_for_id(active_window.overlay_window_id, windows) or 0
+            active_window = windows[active_window_idx]
+        else:
+            windows = all_windows
+        self.update_visibility(all_windows, active_window, overlaid_windows)
+        self.do_layout(windows, active_window_idx)
+
+    # Utils {{{
     def xlayout(self, num):
         return layout_dimension(
             central.left, central.width, cell_width, num, self.border_width,
@@ -93,16 +196,7 @@ class Layout:
 
     def bottom_blank_rect(self, window):
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
-
-    def set_active_window(self, windows, active_window_idx):
-        if self.only_active_window_visible:
-            for i, w in enumerate(windows):
-                w.set_visible_in_layout(i, i == active_window_idx)
-
-    def __call__(self, windows, active_window_idx):
-        global central, cell_width, cell_height
-        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
-        self.do_layout(windows, active_window_idx)
+    # }}}
 
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
@@ -158,7 +252,6 @@ class Stack(Layout):
         self.blank_rects = []
         wg = layout_single_window(self.margin_width, self.padding_width)
         for i, w in enumerate(windows):
-            w.set_visible_in_layout(i, i == active_window_idx)
             w.set_geometry(i, wg)
             if w.is_visible_in_layout:
                 self.blank_rects = blank_rects_for_window(w)
