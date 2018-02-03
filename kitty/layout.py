@@ -126,6 +126,10 @@ class Layout:
         return active_window_idx
 
     def remove_window(self, all_windows, window, current_active_window_idx):
+        try:
+            active_window = all_windows[current_active_window_idx]
+        except Exception:
+            active_window = window
         all_windows.remove(window)
         active_window_idx = None
         if window.overlay_for is not None:
@@ -134,7 +138,10 @@ class Layout:
                 active_window_idx = i
                 all_windows[i].overlay_window_id = None
         if active_window_idx is None:
-            active_window_idx = max(0, min(current_active_window_idx, len(all_windows) - 1))
+            if active_window is window:
+                active_window_idx = max(0, min(current_active_window_idx, len(all_windows) - 1))
+            else:
+                active_window_idx = idx_for_id(active_window.id, all_windows)
         if all_windows:
             self(all_windows, active_window_idx)
         self.set_active_window(all_windows, active_window_idx)
@@ -175,6 +182,7 @@ class Layout:
             windows = all_windows
         self.update_visibility(all_windows, active_window, overlaid_windows)
         self.do_layout(windows, active_window_idx)
+        return idx_for_id(active_window.id, all_windows)
 
     # Utils {{{
     def xlayout(self, num):

@@ -93,7 +93,7 @@ class Tab:  # {{{
 
     def relayout(self):
         if self.windows:
-            self.current_layout(self.windows, self.active_window_idx)
+            self.active_window_idx = self.current_layout(self.windows, self.active_window_idx)
         self.relayout_borders()
 
     def relayout_borders(self):
