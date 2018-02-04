@@ -71,11 +71,6 @@ static inline double monotonic_() {
 double monotonic() { return monotonic_(); }
 
 static PyObject*
-wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
-    return PyLong_FromUnsignedLong(safe_wcwidth(PyLong_AsLong(chr)));
-}
-
-static PyObject*
 redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     char *devnull = NULL;
     if (!PyArg_ParseTuple(args, "s", &devnull)) return NULL;
@@ -140,7 +135,6 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
-    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"install_sigchld_handler", (PyCFunction)install_sigchld_handler, METH_NOARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),

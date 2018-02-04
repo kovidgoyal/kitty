@@ -15,12 +15,11 @@ import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from functools import lru_cache
 from time import monotonic
 
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    GLSL_VERSION, redirect_std_streams, wcwidth as wcwidth_impl, x11_display,
+    GLSL_VERSION, redirect_std_streams, x11_display,
     x11_window_id
 )
 from .rgb import Color, to_color
@@ -43,14 +42,6 @@ def safe_print(*a, **k):
 
 def ceil_int(x):
     return int(math.ceil(x))
-
-
-@lru_cache(maxsize=2**13)
-def wcwidth(c: str) -> int:
-    try:
-        return wcwidth_impl(ord(c))
-    except TypeError:
-        return wcwidth_impl(ord(c[0]))
 
 
 @contextmanager

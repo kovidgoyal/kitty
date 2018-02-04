@@ -5,7 +5,10 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define EXTRA_INIT PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL);
+#define EXTRA_INIT { \
+    PyModule_AddIntMacro(module, SCROLL_LINE); PyModule_AddIntMacro(module, SCROLL_PAGE); PyModule_AddIntMacro(module, SCROLL_FULL); \
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
+}
 
 #include "state.h"
 #include "fonts.h"
@@ -1756,8 +1759,6 @@ static PyMethodDef methods[] = {
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
-    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
-    {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(refresh_sprite_positions, METH_NOARGS)
     MND(tab, METH_NOARGS)
@@ -1829,6 +1830,12 @@ PyTypeObject Screen_Type = {
     .tp_members = members,
     .tp_new = new,
     .tp_getset = getsetters,
+};
+
+static PyMethodDef module_methods[] = {
+    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
+    {NULL}  /* Sentinel */
 };
 
 INIT_TYPE(Screen)

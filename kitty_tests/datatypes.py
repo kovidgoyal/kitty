@@ -4,10 +4,10 @@
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf
+    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf, wcwidth
 )
-from kitty.utils import sanitize_title, wcwidth
 from kitty.rgb import to_color
+from kitty.utils import sanitize_title
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -332,7 +332,9 @@ class TestDataTypes(BaseTest):
         self.assertContinued(lb2, False, True, True, True)
 
     def test_utils(self):
-        self.ae(tuple(map(wcwidth, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
+        def w(x):
+            return wcwidth(ord(x))
+        self.ae(tuple(map(w, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
     def test_color_profile(self):
