@@ -271,18 +271,11 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     }
 }
 
-static int (*wcwidth_impl)(wchar_t) = wcwidth;
-
 unsigned int
 safe_wcwidth(uint32_t ch) {
-    int ans = wcwidth_impl(ch);
+    int ans = wcwidth_std(ch);
     if (ans < 0) ans = 1;
     return MIN(2, ans);
-}
-
-void
-change_wcwidth(bool use_std) {
-    wcwidth_impl = use_std ? wcwidth_std : wcwidth;
 }
 
 
@@ -1729,6 +1722,12 @@ COUNT_WRAP(cursor_down)
 COUNT_WRAP(cursor_down1)
 COUNT_WRAP(cursor_forward)
 
+static PyObject*
+wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
+    return PyLong_FromUnsignedLong(wcwidth_std(PyLong_AsLong(chr)));
+}
+
+
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
@@ -1757,6 +1756,7 @@ static PyMethodDef methods[] = {
     MND(cursor_down, METH_VARARGS)
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
+    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(refresh_sprite_positions, METH_NOARGS)

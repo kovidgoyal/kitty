@@ -2,9 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
-from unittest import skipIf
-
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
     REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf
@@ -334,7 +331,6 @@ class TestDataTypes(BaseTest):
         lb2 = self.line_comparison_rewrap(lb, '123', '  a', 'bcd', 'e')
         self.assertContinued(lb2, False, True, True, True)
 
-    @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_utils(self):
         self.ae(tuple(map(wcwidth, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')

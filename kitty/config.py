@@ -273,7 +273,6 @@ type_map = {
     'remember_window_size': to_bool,
     'initial_window_width': positive_int,
     'initial_window_height': positive_int,
-    'use_system_wcwidth': to_bool,
     'macos_hide_titlebar': to_bool,
     'macos_option_as_alt': to_bool,
     'box_drawing_scale': box_drawing_scale,

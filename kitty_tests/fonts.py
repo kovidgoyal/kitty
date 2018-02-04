@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    change_wcwidth, set_logical_dpi, set_send_sprite_to_gpu,
+    set_logical_dpi, set_send_sprite_to_gpu,
     sprite_map_set_layout, sprite_map_set_limits, test_render_line,
     test_sprite_position_for, wcwidth
 )
@@ -72,21 +72,17 @@ class Rendering(BaseTest):
         self.ae(len(cells), sz)
 
     def test_shaping(self):
-        change_wcwidth(True)
-        try:
 
-            def groups(text, path=None):
-                return [x[:2] for x in shape_string(text, path=path)]
+        def groups(text, path=None):
+            return [x[:2] for x in shape_string(text, path=path)]
 
-            self.ae(groups('abcd'), [(1, 1) for i in range(4)])
-            self.ae(groups('A=>>B!=C', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
-            self.ae(groups('==!=<>==<><><>', path='kitty_tests/FiraCode-Medium.otf'), [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
-            colon_glyph = shape_string('9:30', path='kitty_tests/FiraCode-Medium.otf')[1][2]
-            self.assertNotEqual(colon_glyph, shape_string(':', path='kitty_tests/FiraCode-Medium.otf')[0][2])
-            self.ae(colon_glyph, 998)
-            self.ae(groups('9:30', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (1, 1), (1, 1), (1, 1)])
-            self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
-            self.ae(groups('He\u0347\u0305llo\u0337,', path='kitty_tests/LiberationMono-Regular.ttf'),
-                    [(1, 1), (1, 3), (1, 1), (1, 1), (1, 2), (1, 1)])
-        finally:
-            change_wcwidth(False)
+        self.ae(groups('abcd'), [(1, 1) for i in range(4)])
+        self.ae(groups('A=>>B!=C', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+        self.ae(groups('==!=<>==<><><>', path='kitty_tests/FiraCode-Medium.otf'), [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
+        colon_glyph = shape_string('9:30', path='kitty_tests/FiraCode-Medium.otf')[1][2]
+        self.assertNotEqual(colon_glyph, shape_string(':', path='kitty_tests/FiraCode-Medium.otf')[0][2])
+        self.ae(colon_glyph, 998)
+        self.ae(groups('9:30', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (1, 1), (1, 1), (1, 1)])
+        self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
+        self.ae(groups('He\u0347\u0305llo\u0337,', path='kitty_tests/LiberationMono-Regular.ttf'),
+                [(1, 1), (1, 3), (1, 1), (1, 1), (1, 2), (1, 1)])

@@ -2,10 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 from binascii import hexlify
 from functools import partial
-from unittest import skipIf
 
 from kitty.fast_data_types import CURSOR_BLOCK, parse_bytes, parse_bytes_dump
 
@@ -41,7 +39,6 @@ class TestParser(BaseTest):
             q.append(('draw', current))
         self.ae(tuple(q), cmds)
 
-    @skipIf('ANCIENT_WCWIDTH' in os.environ, 'wcwidth() is too old')
     def test_simple_parsing(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

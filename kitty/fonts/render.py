@@ -10,7 +10,7 @@ from math import ceil, floor, pi, sin, sqrt
 from kitty.config import defaults
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    Screen, change_wcwidth, get_fallback_font, send_prerendered_sprites,
+    Screen, get_fallback_font, send_prerendered_sprites,
     set_font, set_font_size, set_logical_dpi, set_options,
     set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line,
     test_shape
@@ -260,7 +260,6 @@ def test_fallback_font(qtext=None, bold=False, italic=False):
 
 
 def showcase():
-    change_wcwidth(True)
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)

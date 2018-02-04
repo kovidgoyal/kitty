@@ -76,12 +76,6 @@ wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
 }
 
 static PyObject*
-change_wcwidth_wrap(PyObject UNUSED *self, PyObject *use9) {
-    change_wcwidth(PyObject_IsTrue(use9));
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     char *devnull = NULL;
     if (!PyArg_ParseTuple(args, "s", &devnull)) return NULL;
@@ -147,7 +141,6 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
-    {"change_wcwidth", (PyCFunction)change_wcwidth_wrap, METH_O, ""},
     {"install_sigchld_handler", (PyCFunction)install_sigchld_handler, METH_NOARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),

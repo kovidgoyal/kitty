@@ -256,7 +256,6 @@ color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_typ
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
 
 unsigned int safe_wcwidth(uint32_t ch);
-void change_wcwidth(bool use9);
 void set_mouse_cursor(MouseShape);
 void mouse_event(int, int);
 void focus_in_event();

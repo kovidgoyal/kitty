@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2018-01-18
+// unicode data, built from the unicode standard on: 2018-02-04
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -8,8 +8,13 @@ START_ALLOW_CASE_RANGE
 static int
 wcwidth_std(int32_t code) {
 	switch(code) {
-		// Non-printing characters (2264 codepoints) {{{
-		case 0x0 ... 0x1f:
+		// Null (1 codepoints) {{{
+		case 0x0:
+			return 0;
+		// }}}
+
+		// Non-printing characters (2263 codepoints) {{{
+		case 0x1 ... 0x1f:
 			return -1;
 		case 0x7f ... 0x9f:
 			return -1;

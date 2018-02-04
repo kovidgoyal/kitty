@@ -14,7 +14,7 @@ from .cli import create_opts, parse_args
 from .config import initial_window_size, load_cached_values, save_cached_values
 from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file
 from .fast_data_types import (
-    change_wcwidth, create_os_window, glfw_init, glfw_terminate,
+    create_os_window, glfw_init, glfw_terminate,
     install_sigchld_handler, set_default_window_icon, set_options, show_window
 )
 from .fonts.box_drawing import set_scale
@@ -146,7 +146,6 @@ def main():
             single_instance.socket.sendall(data)
             return
     opts = create_opts(args)
-    change_wcwidth(not opts.use_system_wcwidth)
     init_graphics()
     try:
         with setup_profiling(args):
