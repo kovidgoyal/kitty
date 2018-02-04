@@ -369,16 +369,6 @@ static inline void
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
 static inline void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
-static inline void
-save_cursor_or_modes(Screen *s, unsigned int UNUSED param, bool private) {
-    if (private) screen_save_modes(s);
-    else screen_save_cursor(s);
-}
-static inline void
-restore_cursor_or_modes(Screen *s, unsigned int UNUSED param, bool private) {
-    if (private) screen_restore_modes(s);
-    else screen_restore_cursor(s);
-}
 
 static inline const char*
 repr_csi_params(unsigned int *params, unsigned int num_params) {
@@ -689,16 +679,36 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             SET_MODE(screen_reset_mode);
         case DSR:
             CALL_CSI_HANDLER1P(report_device_status, 0, '?');
-        case SC:
-            CALL_CSI_HANDLER1P(save_cursor_or_modes, 0, '?');
-        case RC:
-            CALL_CSI_HANDLER1P(restore_cursor_or_modes, 0, '?');
+        case 's':
+            if (!start_modifier && !end_modifier && !num_params) {
+                REPORT_COMMAND(screen_save_cursor);
+                screen_save_cursor(screen);
+                break;
+            } else if (start_modifier == '?' && !end_modifier && !num_params) {
+                REPORT_COMMAND(screen_save_modes);
+                screen_save_modes(screen);
+                break;
+            }
+            REPORT_ERROR("Unknown CSI s sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
+        case 'u':
+            if (!start_modifier && !end_modifier && !num_params) {
+                REPORT_COMMAND(screen_restore_cursor);
+                screen_restore_cursor(screen);
+                break;
+            }
+            REPORT_ERROR("Unknown CSI u sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
         case 'r':
             if (!start_modifier && !end_modifier) {
                 // DECSTBM
                 CALL_CSI_HANDLER2(screen_set_margins, 0, 0);
+            } else if (start_modifier == '?' && !end_modifier && !num_params) {
+                REPORT_COMMAND(screen_restore_modes);
+                screen_restore_modes(screen);
+                break;
             }
-            REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
             break;
         case 'x':
             if (!start_modifier && end_modifier == '*') {
