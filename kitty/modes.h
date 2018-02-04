@@ -76,8 +76,5 @@
 #define BRACKETED_PASTE_START "200~"
 #define BRACKETED_PASTE_END  "201~"
 
-// Styled underlines
-#define STYLED_UNDERLINES (2016 << 5)
-
 // Extended keyboard protocol
 #define EXTENDED_KEYBOARD (2017 << 5)

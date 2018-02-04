@@ -54,23 +54,6 @@ To reset the underline color (also previously reserved and unused):
 <ESC>[59m
 ```
 
-A client can query if the terminal emulator supports this underline extension using the
-standard link:http://vt100.net/docs/vt510-rm/DECRQM[DECRQM] escape sequence, with the
-mode value `2016`, like this:
-
-Client sends:
-
-```
-<ESC>[?2016$p
-```
-
-If the terminal supports this underline extension, it must respond with
-link:http://vt100.net/docs/vt510-rm/DECRPM[DECRPM]
-
-```
-<ESC>[?2016;3$p
-```
-
 
 == Graphics rendering
 
