@@ -193,7 +193,7 @@ create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool ita
     PyObject *ans = NULL;
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    bool emoji = is_emoji(cell->ch);
+    bool emoji = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch);
     AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji ? "emoji" : "monospace"), "family");
     if (!emoji && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }

@@ -8,6 +8,24 @@ START_ALLOW_CASE_RANGE
 static inline bool
 is_emoji(char_type code) {
 	switch(code) {
+		case 0x23:
+			return true;
+		case 0x2a:
+			return true;
+		case 0x30 ... 0x39:
+			return true;
+		case 0xa9:
+			return true;
+		case 0xae:
+			return true;
+		case 0x203c:
+			return true;
+		case 0x2049:
+			return true;
+		case 0x2122:
+			return true;
+		case 0x2139:
+			return true;
 		case 0x2194 ... 0x2199:
 			return true;
 		case 0x21a9 ... 0x21aa:

@@ -11,9 +11,6 @@ from itertools import groupby
 from operator import itemgetter
 from urllib.request import urlopen
 
-# We ignore the first few emojis as they are widely assumed to be single width
-# in legacy applications
-FIRST_EMOJI = 0x2194
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -79,10 +76,9 @@ emoji_categories = {}
 def parse_emoji():
     for line in get_data('emoji-data.txt', 'emoji'):
         chars, rest = split_two(line)
-        if max(chars) >= FIRST_EMOJI:
-            s = emoji_categories.setdefault(rest, set())
-            s |= chars
-            all_emoji.update(chars)
+        s = emoji_categories.setdefault(rest, set())
+        s.update(chars)
+        all_emoji.update(chars)
 
 
 doublewidth, ambiguous = set(), set()
@@ -225,9 +221,10 @@ def gen_wcwidth():
         add(p, 'Non-printing characters', non_printing, -1)
         add(p, 'Marks', marks, -1)
         add(p, 'Private use', class_maps['Co'], -3)
+        add(p, 'Text Presentation', emoji_categories['Emoji'] - emoji_categories['Emoji_Presentation'], 1)
         add(p, 'East Asian ambiguous width', ambiguous, -2)
         add(p, 'East Asian double width', doublewidth, 2)
-        add(p, 'Emoji', all_emoji, 2)
+        add(p, 'Emoji Presentation', emoji_categories['Emoji_Presentation'], 2)
 
         add(p, 'Not assigned in the unicode character database', not_assigned, -1)
 

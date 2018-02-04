@@ -540,7 +540,7 @@ render_group(unsigned int num_cells, unsigned int num_glyphs, Cell *cells, hb_gl
     }
 
     clear_canvas();
-    bool was_colored = is_emoji(cells->ch);
+    bool was_colored = (cells->attrs & WIDTH_MASK) == 2 && is_emoji(cells->ch);
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, &was_colored);
     if (PyErr_Occurred()) PyErr_Print();
 

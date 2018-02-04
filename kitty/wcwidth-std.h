@@ -596,7 +596,244 @@ wcwidth_std(int32_t code) {
 			return -3;
 		// }}}
 
-		// East Asian ambiguous width (902 codepoints) {{{
+		// Text Presentation (216 codepoints) {{{
+		case 0x23:
+			return 1;
+		case 0x2a:
+			return 1;
+		case 0x30 ... 0x39:
+			return 1;
+		case 0xa9:
+			return 1;
+		case 0xae:
+			return 1;
+		case 0x203c:
+			return 1;
+		case 0x2049:
+			return 1;
+		case 0x2122:
+			return 1;
+		case 0x2139:
+			return 1;
+		case 0x2194 ... 0x2199:
+			return 1;
+		case 0x21a9 ... 0x21aa:
+			return 1;
+		case 0x2328:
+			return 1;
+		case 0x23cf:
+			return 1;
+		case 0x23ed ... 0x23ef:
+			return 1;
+		case 0x23f1 ... 0x23f2:
+			return 1;
+		case 0x23f8 ... 0x23fa:
+			return 1;
+		case 0x24c2:
+			return 1;
+		case 0x25aa ... 0x25ab:
+			return 1;
+		case 0x25b6:
+			return 1;
+		case 0x25c0:
+			return 1;
+		case 0x25fb ... 0x25fc:
+			return 1;
+		case 0x2600 ... 0x2604:
+			return 1;
+		case 0x260e:
+			return 1;
+		case 0x2611:
+			return 1;
+		case 0x2618:
+			return 1;
+		case 0x261d:
+			return 1;
+		case 0x2620:
+			return 1;
+		case 0x2622 ... 0x2623:
+			return 1;
+		case 0x2626:
+			return 1;
+		case 0x262a:
+			return 1;
+		case 0x262e ... 0x262f:
+			return 1;
+		case 0x2638 ... 0x263a:
+			return 1;
+		case 0x2640:
+			return 1;
+		case 0x2642:
+			return 1;
+		case 0x2660:
+			return 1;
+		case 0x2663:
+			return 1;
+		case 0x2665 ... 0x2666:
+			return 1;
+		case 0x2668:
+			return 1;
+		case 0x267b:
+			return 1;
+		case 0x2692:
+			return 1;
+		case 0x2694 ... 0x2697:
+			return 1;
+		case 0x2699:
+			return 1;
+		case 0x269b ... 0x269c:
+			return 1;
+		case 0x26a0:
+			return 1;
+		case 0x26b0 ... 0x26b1:
+			return 1;
+		case 0x26c8:
+			return 1;
+		case 0x26cf:
+			return 1;
+		case 0x26d1:
+			return 1;
+		case 0x26d3:
+			return 1;
+		case 0x26e9:
+			return 1;
+		case 0x26f0 ... 0x26f1:
+			return 1;
+		case 0x26f4:
+			return 1;
+		case 0x26f7 ... 0x26f9:
+			return 1;
+		case 0x2702:
+			return 1;
+		case 0x2708 ... 0x2709:
+			return 1;
+		case 0x270c ... 0x270d:
+			return 1;
+		case 0x270f:
+			return 1;
+		case 0x2712:
+			return 1;
+		case 0x2714:
+			return 1;
+		case 0x2716:
+			return 1;
+		case 0x271d:
+			return 1;
+		case 0x2721:
+			return 1;
+		case 0x2733 ... 0x2734:
+			return 1;
+		case 0x2744:
+			return 1;
+		case 0x2747:
+			return 1;
+		case 0x2763 ... 0x2764:
+			return 1;
+		case 0x27a1:
+			return 1;
+		case 0x2934 ... 0x2935:
+			return 1;
+		case 0x2b05 ... 0x2b07:
+			return 1;
+		case 0x3030:
+			return 1;
+		case 0x303d:
+			return 1;
+		case 0x3297:
+			return 1;
+		case 0x3299:
+			return 1;
+		case 0x1f170 ... 0x1f171:
+			return 1;
+		case 0x1f17e ... 0x1f17f:
+			return 1;
+		case 0x1f202:
+			return 1;
+		case 0x1f237:
+			return 1;
+		case 0x1f321:
+			return 1;
+		case 0x1f324 ... 0x1f32c:
+			return 1;
+		case 0x1f336:
+			return 1;
+		case 0x1f37d:
+			return 1;
+		case 0x1f396 ... 0x1f397:
+			return 1;
+		case 0x1f399 ... 0x1f39b:
+			return 1;
+		case 0x1f39e ... 0x1f39f:
+			return 1;
+		case 0x1f3cb ... 0x1f3ce:
+			return 1;
+		case 0x1f3d4 ... 0x1f3df:
+			return 1;
+		case 0x1f3f3:
+			return 1;
+		case 0x1f3f5:
+			return 1;
+		case 0x1f3f7:
+			return 1;
+		case 0x1f43f:
+			return 1;
+		case 0x1f441:
+			return 1;
+		case 0x1f4fd:
+			return 1;
+		case 0x1f549 ... 0x1f54a:
+			return 1;
+		case 0x1f56f ... 0x1f570:
+			return 1;
+		case 0x1f573 ... 0x1f579:
+			return 1;
+		case 0x1f587:
+			return 1;
+		case 0x1f58a ... 0x1f58d:
+			return 1;
+		case 0x1f590:
+			return 1;
+		case 0x1f5a5:
+			return 1;
+		case 0x1f5a8:
+			return 1;
+		case 0x1f5b1 ... 0x1f5b2:
+			return 1;
+		case 0x1f5bc:
+			return 1;
+		case 0x1f5c2 ... 0x1f5c4:
+			return 1;
+		case 0x1f5d1 ... 0x1f5d3:
+			return 1;
+		case 0x1f5dc ... 0x1f5de:
+			return 1;
+		case 0x1f5e1:
+			return 1;
+		case 0x1f5e3:
+			return 1;
+		case 0x1f5e8:
+			return 1;
+		case 0x1f5ef:
+			return 1;
+		case 0x1f5f3:
+			return 1;
+		case 0x1f5fa:
+			return 1;
+		case 0x1f6cb:
+			return 1;
+		case 0x1f6cd ... 0x1f6cf:
+			return 1;
+		case 0x1f6e0 ... 0x1f6e5:
+			return 1;
+		case 0x1f6e9:
+			return 1;
+		case 0x1f6f0:
+			return 1;
+		case 0x1f6f3:
+			return 1;
+		// }}}
+
+		// East Asian ambiguous width (869 codepoints) {{{
 		case 0xa1:
 			return -2;
 		case 0xa4:
@@ -604,8 +841,6 @@ wcwidth_std(int32_t code) {
 		case 0xa7 ... 0xa8:
 			return -2;
 		case 0xaa:
-			return -2;
-		case 0xae:
 			return -2;
 		case 0xb0 ... 0xb4:
 			return -2;
@@ -757,7 +992,7 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x2116:
 			return -2;
-		case 0x2121 ... 0x2122:
+		case 0x2121:
 			return -2;
 		case 0x2126:
 			return -2;
@@ -773,7 +1008,7 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x2189:
 			return -2;
-		case 0x2190 ... 0x2199:
+		case 0x2190 ... 0x2193:
 			return -2;
 		case 0x21b8 ... 0x21b9:
 			return -2;
@@ -841,7 +1076,9 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x2312:
 			return -2;
-		case 0x2460 ... 0x24e9:
+		case 0x2460 ... 0x24c1:
+			return -2;
+		case 0x24c3 ... 0x24e9:
 			return -2;
 		case 0x24eb ... 0x254b:
 			return -2;
@@ -857,11 +1094,11 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x25b2 ... 0x25b3:
 			return -2;
-		case 0x25b6 ... 0x25b7:
+		case 0x25b7:
 			return -2;
 		case 0x25bc ... 0x25bd:
 			return -2;
-		case 0x25c0 ... 0x25c1:
+		case 0x25c1:
 			return -2;
 		case 0x25c6 ... 0x25c8:
 			return -2;
@@ -877,21 +1114,19 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x2609:
 			return -2;
-		case 0x260e ... 0x260f:
+		case 0x260f:
 			return -2;
 		case 0x261c:
 			return -2;
 		case 0x261e:
 			return -2;
-		case 0x2640:
+		case 0x2661:
 			return -2;
-		case 0x2642:
+		case 0x2664:
 			return -2;
-		case 0x2660 ... 0x2661:
+		case 0x2667:
 			return -2;
-		case 0x2663 ... 0x2665:
-			return -2;
-		case 0x2667 ... 0x266a:
+		case 0x2669 ... 0x266a:
 			return -2;
 		case 0x266c ... 0x266d:
 			return -2;
@@ -901,21 +1136,23 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x26bf:
 			return -2;
-		case 0x26c6 ... 0x26cd:
+		case 0x26c6 ... 0x26c7:
 			return -2;
-		case 0x26cf ... 0x26d3:
+		case 0x26c9 ... 0x26cd:
+			return -2;
+		case 0x26d0:
+			return -2;
+		case 0x26d2:
 			return -2;
 		case 0x26d5 ... 0x26e1:
 			return -2;
 		case 0x26e3:
 			return -2;
-		case 0x26e8 ... 0x26e9:
+		case 0x26e8:
 			return -2;
-		case 0x26eb ... 0x26f1:
+		case 0x26eb ... 0x26ef:
 			return -2;
-		case 0x26f4:
-			return -2;
-		case 0x26f6 ... 0x26f9:
+		case 0x26f6:
 			return -2;
 		case 0x26fb ... 0x26fc:
 			return -2;
@@ -937,7 +1174,9 @@ wcwidth_std(int32_t code) {
 			return -2;
 		case 0x1f130 ... 0x1f169:
 			return -2;
-		case 0x1f170 ... 0x1f18d:
+		case 0x1f172 ... 0x1f17d:
+			return -2;
+		case 0x1f180 ... 0x1f18d:
 			return -2;
 		case 0x1f18f ... 0x1f190:
 			return -2;
@@ -945,7 +1184,7 @@ wcwidth_std(int32_t code) {
 			return -2;
 		// }}}
 
-		// East Asian double width (181730 codepoints) {{{
+		// East Asian double width (181724 codepoints) {{{
 		case 0x1100 ... 0x115f:
 			return 2;
 		case 0x231a ... 0x231b:
@@ -1026,7 +1265,9 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0x3000 ... 0x3029:
 			return 2;
-		case 0x3030 ... 0x303e:
+		case 0x3031 ... 0x303c:
+			return 2;
+		case 0x303e:
 			return 2;
 		case 0x3041 ... 0x3096:
 			return 2;
@@ -1044,7 +1285,11 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0x3220 ... 0x3247:
 			return 2;
-		case 0x3250 ... 0x32fe:
+		case 0x3250 ... 0x3296:
+			return 2;
+		case 0x3298:
+			return 2;
+		case 0x329a ... 0x32fe:
 			return 2;
 		case 0x3300 ... 0x4dbf:
 			return 2;
@@ -1088,9 +1333,11 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0x1f191 ... 0x1f19a:
 			return 2;
-		case 0x1f200 ... 0x1f202:
+		case 0x1f200 ... 0x1f201:
 			return 2;
-		case 0x1f210 ... 0x1f23b:
+		case 0x1f210 ... 0x1f236:
+			return 2;
+		case 0x1f238 ... 0x1f23b:
 			return 2;
 		case 0x1f240 ... 0x1f248:
 			return 2;
@@ -1162,172 +1409,8 @@ wcwidth_std(int32_t code) {
 			return 2;
 		// }}}
 
-		// Emoji (187 codepoints) {{{
-		case 0x21a9 ... 0x21aa:
-			return 2;
-		case 0x2328:
-			return 2;
-		case 0x23cf:
-			return 2;
-		case 0x23ed ... 0x23ef:
-			return 2;
-		case 0x23f1 ... 0x23f2:
-			return 2;
-		case 0x23f8 ... 0x23fa:
-			return 2;
-		case 0x25aa ... 0x25ab:
-			return 2;
-		case 0x25fb ... 0x25fc:
-			return 2;
-		case 0x2600 ... 0x2604:
-			return 2;
-		case 0x2611:
-			return 2;
-		case 0x2618:
-			return 2;
-		case 0x261d:
-			return 2;
-		case 0x2620:
-			return 2;
-		case 0x2622 ... 0x2623:
-			return 2;
-		case 0x2626:
-			return 2;
-		case 0x262a:
-			return 2;
-		case 0x262e ... 0x262f:
-			return 2;
-		case 0x2638 ... 0x263a:
-			return 2;
-		case 0x2666:
-			return 2;
-		case 0x267b:
-			return 2;
-		case 0x2692:
-			return 2;
-		case 0x2694 ... 0x2697:
-			return 2;
-		case 0x2699:
-			return 2;
-		case 0x269b ... 0x269c:
-			return 2;
-		case 0x26a0:
-			return 2;
-		case 0x26b0 ... 0x26b1:
-			return 2;
-		case 0x2702:
-			return 2;
-		case 0x2708 ... 0x2709:
-			return 2;
-		case 0x270c ... 0x270d:
-			return 2;
-		case 0x270f:
-			return 2;
-		case 0x2712:
-			return 2;
-		case 0x2714:
-			return 2;
-		case 0x2716:
-			return 2;
-		case 0x271d:
-			return 2;
-		case 0x2721:
-			return 2;
-		case 0x2733 ... 0x2734:
-			return 2;
-		case 0x2744:
-			return 2;
-		case 0x2747:
-			return 2;
-		case 0x2763 ... 0x2764:
-			return 2;
-		case 0x27a1:
-			return 2;
-		case 0x2934 ... 0x2935:
-			return 2;
-		case 0x2b05 ... 0x2b07:
-			return 2;
+		// Emoji Presentation (26 codepoints) {{{
 		case 0x1f1e6 ... 0x1f1ff:
-			return 2;
-		case 0x1f321:
-			return 2;
-		case 0x1f324 ... 0x1f32c:
-			return 2;
-		case 0x1f336:
-			return 2;
-		case 0x1f37d:
-			return 2;
-		case 0x1f396 ... 0x1f397:
-			return 2;
-		case 0x1f399 ... 0x1f39b:
-			return 2;
-		case 0x1f39e ... 0x1f39f:
-			return 2;
-		case 0x1f3cb ... 0x1f3ce:
-			return 2;
-		case 0x1f3d4 ... 0x1f3df:
-			return 2;
-		case 0x1f3f3:
-			return 2;
-		case 0x1f3f5:
-			return 2;
-		case 0x1f3f7:
-			return 2;
-		case 0x1f43f:
-			return 2;
-		case 0x1f441:
-			return 2;
-		case 0x1f4fd:
-			return 2;
-		case 0x1f549 ... 0x1f54a:
-			return 2;
-		case 0x1f56f ... 0x1f570:
-			return 2;
-		case 0x1f573 ... 0x1f579:
-			return 2;
-		case 0x1f587:
-			return 2;
-		case 0x1f58a ... 0x1f58d:
-			return 2;
-		case 0x1f590:
-			return 2;
-		case 0x1f5a5:
-			return 2;
-		case 0x1f5a8:
-			return 2;
-		case 0x1f5b1 ... 0x1f5b2:
-			return 2;
-		case 0x1f5bc:
-			return 2;
-		case 0x1f5c2 ... 0x1f5c4:
-			return 2;
-		case 0x1f5d1 ... 0x1f5d3:
-			return 2;
-		case 0x1f5dc ... 0x1f5de:
-			return 2;
-		case 0x1f5e1:
-			return 2;
-		case 0x1f5e3:
-			return 2;
-		case 0x1f5e8:
-			return 2;
-		case 0x1f5ef:
-			return 2;
-		case 0x1f5f3:
-			return 2;
-		case 0x1f5fa:
-			return 2;
-		case 0x1f6cb:
-			return 2;
-		case 0x1f6cd ... 0x1f6cf:
-			return 2;
-		case 0x1f6e0 ... 0x1f6e5:
-			return 2;
-		case 0x1f6e9:
-			return 2;
-		case 0x1f6f0:
-			return 2;
-		case 0x1f6f3:
 			return 2;
 		// }}}
 

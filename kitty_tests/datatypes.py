@@ -334,7 +334,7 @@ class TestDataTypes(BaseTest):
     def test_utils(self):
         def w(x):
             return wcwidth(ord(x))
-        self.ae(tuple(map(w, 'a1\0コニチ ')), (1, 1, 0, 2, 2, 2, 1))
+        self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.assertEqual(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
     def test_color_profile(self):
