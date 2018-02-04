@@ -156,15 +156,16 @@ sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, ui
 }
 
 static inline SpecialGlyphCache*
-special_glyph_cache_for(Font *font, glyph_index glyph, uint8_t mask) {
+special_glyph_cache_for(Font *font, glyph_index glyph, uint8_t filled_mask) {
     SpecialGlyphCache *s = font->special_glyph_cache + (glyph & 0x3ff);
     // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->data & mask)) return s;  // Cache hit
+    if (LIKELY(s->glyph == glyph && s->data & filled_mask)) return s;  // Cache hit
     while(true) {
-        if (s->data & mask) {
+        if (s->data & filled_mask) {
             if (s->glyph == glyph) return s;  // Cache hit
         } else {
-            break;
+            if (!s->glyph) break;  // Empty cache slot
+            else if (s->glyph == glyph) return s;  // Cache slot that contains other data than the data indicated by filled_mask
         }
         if (!s->next) {
             s->next = calloc(1, sizeof(SpecialGlyphCache));

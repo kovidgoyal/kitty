@@ -78,6 +78,7 @@ class Rendering(BaseTest):
 
         self.ae(groups('abcd'), [(1, 1) for i in range(4)])
         self.ae(groups('A=>>B!=C', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+        self.ae(groups('F--a--', path='kitty_tests/FiraCode-Medium.otf'), [(1, 1), (2, 2), (1, 1), (2, 2)])
         self.ae(groups('==!=<>==<><><>', path='kitty_tests/FiraCode-Medium.otf'), [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
         colon_glyph = shape_string('9:30', path='kitty_tests/FiraCode-Medium.otf')[1][2]
         self.assertNotEqual(colon_glyph, shape_string(':', path='kitty_tests/FiraCode-Medium.otf')[0][2])
