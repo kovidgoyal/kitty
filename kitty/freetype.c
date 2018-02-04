@@ -357,7 +357,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         size_t extra = bitmap->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
-        } else if (rescale && self->is_scalable && extra > MAX(2, cell_width / 4)) {
+        } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)bitmap->width;
             if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0)) {
