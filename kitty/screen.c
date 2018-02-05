@@ -274,13 +274,6 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     }
 }
 
-unsigned int
-safe_wcwidth(uint32_t ch) {
-    int ans = wcwidth_std(ch);
-    if (ans < 0) ans = 1;
-    return ans;
-}
-
 static inline void
 draw_combining_char(Screen *self, char_type ch) {
     bool has_prev_char = false;
@@ -312,9 +305,12 @@ screen_draw(Screen *self, uint32_t och) {
         draw_combining_char(self, ch);
         return;
     }
-    unsigned int char_width = safe_wcwidth(ch);
-    if (UNLIKELY(char_width < 1)) return;
-    if (UNLIKELY(self->columns - self->cursor->x < char_width)) {
+    int char_width = wcwidth_std(ch);
+    if (UNLIKELY(char_width < 1)) {
+        if (char_width == 0) return;
+        char_width = 1;
+    }
+    if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
             screen_linefeed(self);
@@ -1445,7 +1441,9 @@ screen_wcswidth(Screen UNUSED *self, PyObject *str) {
     unsigned long ans = 0;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        ans += safe_wcwidth(ch);
+        int cw = wcwidth_std(ch);
+        if (cw < 1) cw = 1;
+        ans += cw;
     }
     return PyLong_FromUnsignedLong(ans);
 }

@@ -255,7 +255,6 @@ bool set_iutf8(int, bool);
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
 
-unsigned int safe_wcwidth(uint32_t ch);
 void set_mouse_cursor(MouseShape);
 void mouse_event(int, int);
 void focus_in_event();
