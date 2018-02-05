@@ -281,14 +281,40 @@ safe_wcwidth(uint32_t ch) {
     return MIN(2, ans);
 }
 
+static inline void
+draw_combining_char(Screen *self, char_type ch) {
+    bool has_prev_char = false;
+    index_type xpos, ypos;
+    if (self->cursor->x > 0) {
+        ypos = self->cursor->y;
+        linebuf_init_line(self->linebuf, ypos);
+        xpos = self->cursor->x - 1;
+        has_prev_char = true;
+    } else if (self->cursor->y > 0) {
+        ypos = self->cursor->y - 1;
+        linebuf_init_line(self->linebuf, ypos);
+        xpos = self->columns - 1;
+        has_prev_char = true;
+    }
+    if (has_prev_char) {
+        line_add_combining_char(self->linebuf->line, ch, xpos);
+        self->is_dirty = true;
+        linebuf_mark_line_dirty(self->linebuf, ypos);
+    }
+}
 
 void
 screen_draw(Screen *self, uint32_t och) {
     if (is_ignored_char(och)) return;
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
     bool is_cc = is_combining_char(ch);
-    unsigned int char_width = is_cc ? 0 : safe_wcwidth(ch);
-    if (self->columns - self->cursor->x < char_width) {
+    if (UNLIKELY(is_cc)) {
+        draw_combining_char(self, ch);
+        return;
+    }
+    unsigned int char_width = safe_wcwidth(ch);
+    if (UNLIKELY(char_width < 1)) return;
+    if (UNLIKELY(self->columns - self->cursor->x < char_width)) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
             screen_linefeed(self);
@@ -297,32 +323,19 @@ screen_draw(Screen *self, uint32_t och) {
             self->cursor->x = self->columns - char_width;
         }
     }
-    if (char_width > 0) {
-        linebuf_init_line(self->linebuf, self->cursor->y);
-        if (self->modes.mIRM) {
-            line_right_shift(self->linebuf->line, self->cursor->x, char_width);
-        }
-        line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, false);
-        self->cursor->x++;
-        if (char_width == 2) {
-            line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
-            self->cursor->x++;
-        }
-        self->is_dirty = true;
-        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
-    } else if (is_combining_char(ch)) {
-        if (self->cursor->x > 0) {
-            linebuf_init_line(self->linebuf, self->cursor->y);
-            line_add_combining_char(self->linebuf->line, ch, self->cursor->x - 1);
-            self->is_dirty = true;
-            linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
-        } else if (self->cursor->y > 0) {
-            linebuf_init_line(self->linebuf, self->cursor->y - 1);
-            line_add_combining_char(self->linebuf->line, ch, self->columns - 1);
-            self->is_dirty = true;
-            linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
-        }
+
+    linebuf_init_line(self->linebuf, self->cursor->y);
+    if (self->modes.mIRM) {
+        line_right_shift(self->linebuf->line, self->cursor->x, char_width);
     }
+    line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, false);
+    self->cursor->x++;
+    if (char_width == 2) {
+        line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
+        self->cursor->x++;
+    }
+    self->is_dirty = true;
+    linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
 }
 
 void
