@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2018-02-04
+// unicode data, built from the unicode standard on: 2018-02-05
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -8,8 +8,534 @@ START_ALLOW_CASE_RANGE
 static int
 wcwidth_std(int32_t code) {
 	switch(code) {
-		// Null (1 codepoints) {{{
+		// Marks (2178 codepoints) {{{
 		case 0x0:
+			return 0;
+		case 0x300 ... 0x36f:
+			return 0;
+		case 0x483 ... 0x489:
+			return 0;
+		case 0x591 ... 0x5bd:
+			return 0;
+		case 0x5bf:
+			return 0;
+		case 0x5c1 ... 0x5c2:
+			return 0;
+		case 0x5c4 ... 0x5c5:
+			return 0;
+		case 0x5c7:
+			return 0;
+		case 0x610 ... 0x61a:
+			return 0;
+		case 0x64b ... 0x65f:
+			return 0;
+		case 0x670:
+			return 0;
+		case 0x6d6 ... 0x6dc:
+			return 0;
+		case 0x6df ... 0x6e4:
+			return 0;
+		case 0x6e7 ... 0x6e8:
+			return 0;
+		case 0x6ea ... 0x6ed:
+			return 0;
+		case 0x711:
+			return 0;
+		case 0x730 ... 0x74a:
+			return 0;
+		case 0x7a6 ... 0x7b0:
+			return 0;
+		case 0x7eb ... 0x7f3:
+			return 0;
+		case 0x816 ... 0x819:
+			return 0;
+		case 0x81b ... 0x823:
+			return 0;
+		case 0x825 ... 0x827:
+			return 0;
+		case 0x829 ... 0x82d:
+			return 0;
+		case 0x859 ... 0x85b:
+			return 0;
+		case 0x8d4 ... 0x8e1:
+			return 0;
+		case 0x8e3 ... 0x903:
+			return 0;
+		case 0x93a ... 0x93c:
+			return 0;
+		case 0x93e ... 0x94f:
+			return 0;
+		case 0x951 ... 0x957:
+			return 0;
+		case 0x962 ... 0x963:
+			return 0;
+		case 0x981 ... 0x983:
+			return 0;
+		case 0x9bc:
+			return 0;
+		case 0x9be ... 0x9c4:
+			return 0;
+		case 0x9c7 ... 0x9c8:
+			return 0;
+		case 0x9cb ... 0x9cd:
+			return 0;
+		case 0x9d7:
+			return 0;
+		case 0x9e2 ... 0x9e3:
+			return 0;
+		case 0xa01 ... 0xa03:
+			return 0;
+		case 0xa3c:
+			return 0;
+		case 0xa3e ... 0xa42:
+			return 0;
+		case 0xa47 ... 0xa48:
+			return 0;
+		case 0xa4b ... 0xa4d:
+			return 0;
+		case 0xa51:
+			return 0;
+		case 0xa70 ... 0xa71:
+			return 0;
+		case 0xa75:
+			return 0;
+		case 0xa81 ... 0xa83:
+			return 0;
+		case 0xabc:
+			return 0;
+		case 0xabe ... 0xac5:
+			return 0;
+		case 0xac7 ... 0xac9:
+			return 0;
+		case 0xacb ... 0xacd:
+			return 0;
+		case 0xae2 ... 0xae3:
+			return 0;
+		case 0xafa ... 0xaff:
+			return 0;
+		case 0xb01 ... 0xb03:
+			return 0;
+		case 0xb3c:
+			return 0;
+		case 0xb3e ... 0xb44:
+			return 0;
+		case 0xb47 ... 0xb48:
+			return 0;
+		case 0xb4b ... 0xb4d:
+			return 0;
+		case 0xb56 ... 0xb57:
+			return 0;
+		case 0xb62 ... 0xb63:
+			return 0;
+		case 0xb82:
+			return 0;
+		case 0xbbe ... 0xbc2:
+			return 0;
+		case 0xbc6 ... 0xbc8:
+			return 0;
+		case 0xbca ... 0xbcd:
+			return 0;
+		case 0xbd7:
+			return 0;
+		case 0xc00 ... 0xc03:
+			return 0;
+		case 0xc3e ... 0xc44:
+			return 0;
+		case 0xc46 ... 0xc48:
+			return 0;
+		case 0xc4a ... 0xc4d:
+			return 0;
+		case 0xc55 ... 0xc56:
+			return 0;
+		case 0xc62 ... 0xc63:
+			return 0;
+		case 0xc81 ... 0xc83:
+			return 0;
+		case 0xcbc:
+			return 0;
+		case 0xcbe ... 0xcc4:
+			return 0;
+		case 0xcc6 ... 0xcc8:
+			return 0;
+		case 0xcca ... 0xccd:
+			return 0;
+		case 0xcd5 ... 0xcd6:
+			return 0;
+		case 0xce2 ... 0xce3:
+			return 0;
+		case 0xd00 ... 0xd03:
+			return 0;
+		case 0xd3b ... 0xd3c:
+			return 0;
+		case 0xd3e ... 0xd44:
+			return 0;
+		case 0xd46 ... 0xd48:
+			return 0;
+		case 0xd4a ... 0xd4d:
+			return 0;
+		case 0xd57:
+			return 0;
+		case 0xd62 ... 0xd63:
+			return 0;
+		case 0xd82 ... 0xd83:
+			return 0;
+		case 0xdca:
+			return 0;
+		case 0xdcf ... 0xdd4:
+			return 0;
+		case 0xdd6:
+			return 0;
+		case 0xdd8 ... 0xddf:
+			return 0;
+		case 0xdf2 ... 0xdf3:
+			return 0;
+		case 0xe31:
+			return 0;
+		case 0xe34 ... 0xe3a:
+			return 0;
+		case 0xe47 ... 0xe4e:
+			return 0;
+		case 0xeb1:
+			return 0;
+		case 0xeb4 ... 0xeb9:
+			return 0;
+		case 0xebb ... 0xebc:
+			return 0;
+		case 0xec8 ... 0xecd:
+			return 0;
+		case 0xf18 ... 0xf19:
+			return 0;
+		case 0xf35:
+			return 0;
+		case 0xf37:
+			return 0;
+		case 0xf39:
+			return 0;
+		case 0xf3e ... 0xf3f:
+			return 0;
+		case 0xf71 ... 0xf84:
+			return 0;
+		case 0xf86 ... 0xf87:
+			return 0;
+		case 0xf8d ... 0xf97:
+			return 0;
+		case 0xf99 ... 0xfbc:
+			return 0;
+		case 0xfc6:
+			return 0;
+		case 0x102b ... 0x103e:
+			return 0;
+		case 0x1056 ... 0x1059:
+			return 0;
+		case 0x105e ... 0x1060:
+			return 0;
+		case 0x1062 ... 0x1064:
+			return 0;
+		case 0x1067 ... 0x106d:
+			return 0;
+		case 0x1071 ... 0x1074:
+			return 0;
+		case 0x1082 ... 0x108d:
+			return 0;
+		case 0x108f:
+			return 0;
+		case 0x109a ... 0x109d:
+			return 0;
+		case 0x135d ... 0x135f:
+			return 0;
+		case 0x1712 ... 0x1714:
+			return 0;
+		case 0x1732 ... 0x1734:
+			return 0;
+		case 0x1752 ... 0x1753:
+			return 0;
+		case 0x1772 ... 0x1773:
+			return 0;
+		case 0x17b4 ... 0x17d3:
+			return 0;
+		case 0x17dd:
+			return 0;
+		case 0x180b ... 0x180d:
+			return 0;
+		case 0x1885 ... 0x1886:
+			return 0;
+		case 0x18a9:
+			return 0;
+		case 0x1920 ... 0x192b:
+			return 0;
+		case 0x1930 ... 0x193b:
+			return 0;
+		case 0x1a17 ... 0x1a1b:
+			return 0;
+		case 0x1a55 ... 0x1a5e:
+			return 0;
+		case 0x1a60 ... 0x1a7c:
+			return 0;
+		case 0x1a7f:
+			return 0;
+		case 0x1ab0 ... 0x1abe:
+			return 0;
+		case 0x1b00 ... 0x1b04:
+			return 0;
+		case 0x1b34 ... 0x1b44:
+			return 0;
+		case 0x1b6b ... 0x1b73:
+			return 0;
+		case 0x1b80 ... 0x1b82:
+			return 0;
+		case 0x1ba1 ... 0x1bad:
+			return 0;
+		case 0x1be6 ... 0x1bf3:
+			return 0;
+		case 0x1c24 ... 0x1c37:
+			return 0;
+		case 0x1cd0 ... 0x1cd2:
+			return 0;
+		case 0x1cd4 ... 0x1ce8:
+			return 0;
+		case 0x1ced:
+			return 0;
+		case 0x1cf2 ... 0x1cf4:
+			return 0;
+		case 0x1cf7 ... 0x1cf9:
+			return 0;
+		case 0x1dc0 ... 0x1df9:
+			return 0;
+		case 0x1dfb ... 0x1dff:
+			return 0;
+		case 0x20d0 ... 0x20f0:
+			return 0;
+		case 0x2cef ... 0x2cf1:
+			return 0;
+		case 0x2d7f:
+			return 0;
+		case 0x2de0 ... 0x2dff:
+			return 0;
+		case 0x302a ... 0x302f:
+			return 0;
+		case 0x3099 ... 0x309a:
+			return 0;
+		case 0xa66f ... 0xa672:
+			return 0;
+		case 0xa674 ... 0xa67d:
+			return 0;
+		case 0xa69e ... 0xa69f:
+			return 0;
+		case 0xa6f0 ... 0xa6f1:
+			return 0;
+		case 0xa802:
+			return 0;
+		case 0xa806:
+			return 0;
+		case 0xa80b:
+			return 0;
+		case 0xa823 ... 0xa827:
+			return 0;
+		case 0xa880 ... 0xa881:
+			return 0;
+		case 0xa8b4 ... 0xa8c5:
+			return 0;
+		case 0xa8e0 ... 0xa8f1:
+			return 0;
+		case 0xa926 ... 0xa92d:
+			return 0;
+		case 0xa947 ... 0xa953:
+			return 0;
+		case 0xa980 ... 0xa983:
+			return 0;
+		case 0xa9b3 ... 0xa9c0:
+			return 0;
+		case 0xa9e5:
+			return 0;
+		case 0xaa29 ... 0xaa36:
+			return 0;
+		case 0xaa43:
+			return 0;
+		case 0xaa4c ... 0xaa4d:
+			return 0;
+		case 0xaa7b ... 0xaa7d:
+			return 0;
+		case 0xaab0:
+			return 0;
+		case 0xaab2 ... 0xaab4:
+			return 0;
+		case 0xaab7 ... 0xaab8:
+			return 0;
+		case 0xaabe ... 0xaabf:
+			return 0;
+		case 0xaac1:
+			return 0;
+		case 0xaaeb ... 0xaaef:
+			return 0;
+		case 0xaaf5 ... 0xaaf6:
+			return 0;
+		case 0xabe3 ... 0xabea:
+			return 0;
+		case 0xabec ... 0xabed:
+			return 0;
+		case 0xfb1e:
+			return 0;
+		case 0xfe00 ... 0xfe0f:
+			return 0;
+		case 0xfe20 ... 0xfe2f:
+			return 0;
+		case 0x101fd:
+			return 0;
+		case 0x102e0:
+			return 0;
+		case 0x10376 ... 0x1037a:
+			return 0;
+		case 0x10a01 ... 0x10a03:
+			return 0;
+		case 0x10a05 ... 0x10a06:
+			return 0;
+		case 0x10a0c ... 0x10a0f:
+			return 0;
+		case 0x10a38 ... 0x10a3a:
+			return 0;
+		case 0x10a3f:
+			return 0;
+		case 0x10ae5 ... 0x10ae6:
+			return 0;
+		case 0x11000 ... 0x11002:
+			return 0;
+		case 0x11038 ... 0x11046:
+			return 0;
+		case 0x1107f ... 0x11082:
+			return 0;
+		case 0x110b0 ... 0x110ba:
+			return 0;
+		case 0x11100 ... 0x11102:
+			return 0;
+		case 0x11127 ... 0x11134:
+			return 0;
+		case 0x11173:
+			return 0;
+		case 0x11180 ... 0x11182:
+			return 0;
+		case 0x111b3 ... 0x111c0:
+			return 0;
+		case 0x111ca ... 0x111cc:
+			return 0;
+		case 0x1122c ... 0x11237:
+			return 0;
+		case 0x1123e:
+			return 0;
+		case 0x112df ... 0x112ea:
+			return 0;
+		case 0x11300 ... 0x11303:
+			return 0;
+		case 0x1133c:
+			return 0;
+		case 0x1133e ... 0x11344:
+			return 0;
+		case 0x11347 ... 0x11348:
+			return 0;
+		case 0x1134b ... 0x1134d:
+			return 0;
+		case 0x11357:
+			return 0;
+		case 0x11362 ... 0x11363:
+			return 0;
+		case 0x11366 ... 0x1136c:
+			return 0;
+		case 0x11370 ... 0x11374:
+			return 0;
+		case 0x11435 ... 0x11446:
+			return 0;
+		case 0x114b0 ... 0x114c3:
+			return 0;
+		case 0x115af ... 0x115b5:
+			return 0;
+		case 0x115b8 ... 0x115c0:
+			return 0;
+		case 0x115dc ... 0x115dd:
+			return 0;
+		case 0x11630 ... 0x11640:
+			return 0;
+		case 0x116ab ... 0x116b7:
+			return 0;
+		case 0x1171d ... 0x1172b:
+			return 0;
+		case 0x11a01 ... 0x11a0a:
+			return 0;
+		case 0x11a33 ... 0x11a39:
+			return 0;
+		case 0x11a3b ... 0x11a3e:
+			return 0;
+		case 0x11a47:
+			return 0;
+		case 0x11a51 ... 0x11a5b:
+			return 0;
+		case 0x11a8a ... 0x11a99:
+			return 0;
+		case 0x11c2f ... 0x11c36:
+			return 0;
+		case 0x11c38 ... 0x11c3f:
+			return 0;
+		case 0x11c92 ... 0x11ca7:
+			return 0;
+		case 0x11ca9 ... 0x11cb6:
+			return 0;
+		case 0x11d31 ... 0x11d36:
+			return 0;
+		case 0x11d3a:
+			return 0;
+		case 0x11d3c ... 0x11d3d:
+			return 0;
+		case 0x11d3f ... 0x11d45:
+			return 0;
+		case 0x11d47:
+			return 0;
+		case 0x16af0 ... 0x16af4:
+			return 0;
+		case 0x16b30 ... 0x16b36:
+			return 0;
+		case 0x16f51 ... 0x16f7e:
+			return 0;
+		case 0x16f8f ... 0x16f92:
+			return 0;
+		case 0x1bc9d ... 0x1bc9e:
+			return 0;
+		case 0x1d165 ... 0x1d169:
+			return 0;
+		case 0x1d16d ... 0x1d172:
+			return 0;
+		case 0x1d17b ... 0x1d182:
+			return 0;
+		case 0x1d185 ... 0x1d18b:
+			return 0;
+		case 0x1d1aa ... 0x1d1ad:
+			return 0;
+		case 0x1d242 ... 0x1d244:
+			return 0;
+		case 0x1da00 ... 0x1da36:
+			return 0;
+		case 0x1da3b ... 0x1da6c:
+			return 0;
+		case 0x1da75:
+			return 0;
+		case 0x1da84:
+			return 0;
+		case 0x1da9b ... 0x1da9f:
+			return 0;
+		case 0x1daa1 ... 0x1daaf:
+			return 0;
+		case 0x1e000 ... 0x1e006:
+			return 0;
+		case 0x1e008 ... 0x1e018:
+			return 0;
+		case 0x1e01b ... 0x1e021:
+			return 0;
+		case 0x1e023 ... 0x1e024:
+			return 0;
+		case 0x1e026 ... 0x1e02a:
+			return 0;
+		case 0x1e8d0 ... 0x1e8d6:
+			return 0;
+		case 0x1e944 ... 0x1e94a:
+			return 0;
+		case 0xe0100 ... 0xe01ef:
 			return 0;
 		// }}}
 
@@ -55,535 +581,6 @@ wcwidth_std(int32_t code) {
 		case 0xe0001:
 			return -1;
 		case 0xe0020 ... 0xe007f:
-			return -1;
-		// }}}
-
-		// Marks (2177 codepoints) {{{
-		case 0x300 ... 0x36f:
-			return -1;
-		case 0x483 ... 0x489:
-			return -1;
-		case 0x591 ... 0x5bd:
-			return -1;
-		case 0x5bf:
-			return -1;
-		case 0x5c1 ... 0x5c2:
-			return -1;
-		case 0x5c4 ... 0x5c5:
-			return -1;
-		case 0x5c7:
-			return -1;
-		case 0x610 ... 0x61a:
-			return -1;
-		case 0x64b ... 0x65f:
-			return -1;
-		case 0x670:
-			return -1;
-		case 0x6d6 ... 0x6dc:
-			return -1;
-		case 0x6df ... 0x6e4:
-			return -1;
-		case 0x6e7 ... 0x6e8:
-			return -1;
-		case 0x6ea ... 0x6ed:
-			return -1;
-		case 0x711:
-			return -1;
-		case 0x730 ... 0x74a:
-			return -1;
-		case 0x7a6 ... 0x7b0:
-			return -1;
-		case 0x7eb ... 0x7f3:
-			return -1;
-		case 0x816 ... 0x819:
-			return -1;
-		case 0x81b ... 0x823:
-			return -1;
-		case 0x825 ... 0x827:
-			return -1;
-		case 0x829 ... 0x82d:
-			return -1;
-		case 0x859 ... 0x85b:
-			return -1;
-		case 0x8d4 ... 0x8e1:
-			return -1;
-		case 0x8e3 ... 0x903:
-			return -1;
-		case 0x93a ... 0x93c:
-			return -1;
-		case 0x93e ... 0x94f:
-			return -1;
-		case 0x951 ... 0x957:
-			return -1;
-		case 0x962 ... 0x963:
-			return -1;
-		case 0x981 ... 0x983:
-			return -1;
-		case 0x9bc:
-			return -1;
-		case 0x9be ... 0x9c4:
-			return -1;
-		case 0x9c7 ... 0x9c8:
-			return -1;
-		case 0x9cb ... 0x9cd:
-			return -1;
-		case 0x9d7:
-			return -1;
-		case 0x9e2 ... 0x9e3:
-			return -1;
-		case 0xa01 ... 0xa03:
-			return -1;
-		case 0xa3c:
-			return -1;
-		case 0xa3e ... 0xa42:
-			return -1;
-		case 0xa47 ... 0xa48:
-			return -1;
-		case 0xa4b ... 0xa4d:
-			return -1;
-		case 0xa51:
-			return -1;
-		case 0xa70 ... 0xa71:
-			return -1;
-		case 0xa75:
-			return -1;
-		case 0xa81 ... 0xa83:
-			return -1;
-		case 0xabc:
-			return -1;
-		case 0xabe ... 0xac5:
-			return -1;
-		case 0xac7 ... 0xac9:
-			return -1;
-		case 0xacb ... 0xacd:
-			return -1;
-		case 0xae2 ... 0xae3:
-			return -1;
-		case 0xafa ... 0xaff:
-			return -1;
-		case 0xb01 ... 0xb03:
-			return -1;
-		case 0xb3c:
-			return -1;
-		case 0xb3e ... 0xb44:
-			return -1;
-		case 0xb47 ... 0xb48:
-			return -1;
-		case 0xb4b ... 0xb4d:
-			return -1;
-		case 0xb56 ... 0xb57:
-			return -1;
-		case 0xb62 ... 0xb63:
-			return -1;
-		case 0xb82:
-			return -1;
-		case 0xbbe ... 0xbc2:
-			return -1;
-		case 0xbc6 ... 0xbc8:
-			return -1;
-		case 0xbca ... 0xbcd:
-			return -1;
-		case 0xbd7:
-			return -1;
-		case 0xc00 ... 0xc03:
-			return -1;
-		case 0xc3e ... 0xc44:
-			return -1;
-		case 0xc46 ... 0xc48:
-			return -1;
-		case 0xc4a ... 0xc4d:
-			return -1;
-		case 0xc55 ... 0xc56:
-			return -1;
-		case 0xc62 ... 0xc63:
-			return -1;
-		case 0xc81 ... 0xc83:
-			return -1;
-		case 0xcbc:
-			return -1;
-		case 0xcbe ... 0xcc4:
-			return -1;
-		case 0xcc6 ... 0xcc8:
-			return -1;
-		case 0xcca ... 0xccd:
-			return -1;
-		case 0xcd5 ... 0xcd6:
-			return -1;
-		case 0xce2 ... 0xce3:
-			return -1;
-		case 0xd00 ... 0xd03:
-			return -1;
-		case 0xd3b ... 0xd3c:
-			return -1;
-		case 0xd3e ... 0xd44:
-			return -1;
-		case 0xd46 ... 0xd48:
-			return -1;
-		case 0xd4a ... 0xd4d:
-			return -1;
-		case 0xd57:
-			return -1;
-		case 0xd62 ... 0xd63:
-			return -1;
-		case 0xd82 ... 0xd83:
-			return -1;
-		case 0xdca:
-			return -1;
-		case 0xdcf ... 0xdd4:
-			return -1;
-		case 0xdd6:
-			return -1;
-		case 0xdd8 ... 0xddf:
-			return -1;
-		case 0xdf2 ... 0xdf3:
-			return -1;
-		case 0xe31:
-			return -1;
-		case 0xe34 ... 0xe3a:
-			return -1;
-		case 0xe47 ... 0xe4e:
-			return -1;
-		case 0xeb1:
-			return -1;
-		case 0xeb4 ... 0xeb9:
-			return -1;
-		case 0xebb ... 0xebc:
-			return -1;
-		case 0xec8 ... 0xecd:
-			return -1;
-		case 0xf18 ... 0xf19:
-			return -1;
-		case 0xf35:
-			return -1;
-		case 0xf37:
-			return -1;
-		case 0xf39:
-			return -1;
-		case 0xf3e ... 0xf3f:
-			return -1;
-		case 0xf71 ... 0xf84:
-			return -1;
-		case 0xf86 ... 0xf87:
-			return -1;
-		case 0xf8d ... 0xf97:
-			return -1;
-		case 0xf99 ... 0xfbc:
-			return -1;
-		case 0xfc6:
-			return -1;
-		case 0x102b ... 0x103e:
-			return -1;
-		case 0x1056 ... 0x1059:
-			return -1;
-		case 0x105e ... 0x1060:
-			return -1;
-		case 0x1062 ... 0x1064:
-			return -1;
-		case 0x1067 ... 0x106d:
-			return -1;
-		case 0x1071 ... 0x1074:
-			return -1;
-		case 0x1082 ... 0x108d:
-			return -1;
-		case 0x108f:
-			return -1;
-		case 0x109a ... 0x109d:
-			return -1;
-		case 0x135d ... 0x135f:
-			return -1;
-		case 0x1712 ... 0x1714:
-			return -1;
-		case 0x1732 ... 0x1734:
-			return -1;
-		case 0x1752 ... 0x1753:
-			return -1;
-		case 0x1772 ... 0x1773:
-			return -1;
-		case 0x17b4 ... 0x17d3:
-			return -1;
-		case 0x17dd:
-			return -1;
-		case 0x180b ... 0x180d:
-			return -1;
-		case 0x1885 ... 0x1886:
-			return -1;
-		case 0x18a9:
-			return -1;
-		case 0x1920 ... 0x192b:
-			return -1;
-		case 0x1930 ... 0x193b:
-			return -1;
-		case 0x1a17 ... 0x1a1b:
-			return -1;
-		case 0x1a55 ... 0x1a5e:
-			return -1;
-		case 0x1a60 ... 0x1a7c:
-			return -1;
-		case 0x1a7f:
-			return -1;
-		case 0x1ab0 ... 0x1abe:
-			return -1;
-		case 0x1b00 ... 0x1b04:
-			return -1;
-		case 0x1b34 ... 0x1b44:
-			return -1;
-		case 0x1b6b ... 0x1b73:
-			return -1;
-		case 0x1b80 ... 0x1b82:
-			return -1;
-		case 0x1ba1 ... 0x1bad:
-			return -1;
-		case 0x1be6 ... 0x1bf3:
-			return -1;
-		case 0x1c24 ... 0x1c37:
-			return -1;
-		case 0x1cd0 ... 0x1cd2:
-			return -1;
-		case 0x1cd4 ... 0x1ce8:
-			return -1;
-		case 0x1ced:
-			return -1;
-		case 0x1cf2 ... 0x1cf4:
-			return -1;
-		case 0x1cf7 ... 0x1cf9:
-			return -1;
-		case 0x1dc0 ... 0x1df9:
-			return -1;
-		case 0x1dfb ... 0x1dff:
-			return -1;
-		case 0x20d0 ... 0x20f0:
-			return -1;
-		case 0x2cef ... 0x2cf1:
-			return -1;
-		case 0x2d7f:
-			return -1;
-		case 0x2de0 ... 0x2dff:
-			return -1;
-		case 0x302a ... 0x302f:
-			return -1;
-		case 0x3099 ... 0x309a:
-			return -1;
-		case 0xa66f ... 0xa672:
-			return -1;
-		case 0xa674 ... 0xa67d:
-			return -1;
-		case 0xa69e ... 0xa69f:
-			return -1;
-		case 0xa6f0 ... 0xa6f1:
-			return -1;
-		case 0xa802:
-			return -1;
-		case 0xa806:
-			return -1;
-		case 0xa80b:
-			return -1;
-		case 0xa823 ... 0xa827:
-			return -1;
-		case 0xa880 ... 0xa881:
-			return -1;
-		case 0xa8b4 ... 0xa8c5:
-			return -1;
-		case 0xa8e0 ... 0xa8f1:
-			return -1;
-		case 0xa926 ... 0xa92d:
-			return -1;
-		case 0xa947 ... 0xa953:
-			return -1;
-		case 0xa980 ... 0xa983:
-			return -1;
-		case 0xa9b3 ... 0xa9c0:
-			return -1;
-		case 0xa9e5:
-			return -1;
-		case 0xaa29 ... 0xaa36:
-			return -1;
-		case 0xaa43:
-			return -1;
-		case 0xaa4c ... 0xaa4d:
-			return -1;
-		case 0xaa7b ... 0xaa7d:
-			return -1;
-		case 0xaab0:
-			return -1;
-		case 0xaab2 ... 0xaab4:
-			return -1;
-		case 0xaab7 ... 0xaab8:
-			return -1;
-		case 0xaabe ... 0xaabf:
-			return -1;
-		case 0xaac1:
-			return -1;
-		case 0xaaeb ... 0xaaef:
-			return -1;
-		case 0xaaf5 ... 0xaaf6:
-			return -1;
-		case 0xabe3 ... 0xabea:
-			return -1;
-		case 0xabec ... 0xabed:
-			return -1;
-		case 0xfb1e:
-			return -1;
-		case 0xfe00 ... 0xfe0f:
-			return -1;
-		case 0xfe20 ... 0xfe2f:
-			return -1;
-		case 0x101fd:
-			return -1;
-		case 0x102e0:
-			return -1;
-		case 0x10376 ... 0x1037a:
-			return -1;
-		case 0x10a01 ... 0x10a03:
-			return -1;
-		case 0x10a05 ... 0x10a06:
-			return -1;
-		case 0x10a0c ... 0x10a0f:
-			return -1;
-		case 0x10a38 ... 0x10a3a:
-			return -1;
-		case 0x10a3f:
-			return -1;
-		case 0x10ae5 ... 0x10ae6:
-			return -1;
-		case 0x11000 ... 0x11002:
-			return -1;
-		case 0x11038 ... 0x11046:
-			return -1;
-		case 0x1107f ... 0x11082:
-			return -1;
-		case 0x110b0 ... 0x110ba:
-			return -1;
-		case 0x11100 ... 0x11102:
-			return -1;
-		case 0x11127 ... 0x11134:
-			return -1;
-		case 0x11173:
-			return -1;
-		case 0x11180 ... 0x11182:
-			return -1;
-		case 0x111b3 ... 0x111c0:
-			return -1;
-		case 0x111ca ... 0x111cc:
-			return -1;
-		case 0x1122c ... 0x11237:
-			return -1;
-		case 0x1123e:
-			return -1;
-		case 0x112df ... 0x112ea:
-			return -1;
-		case 0x11300 ... 0x11303:
-			return -1;
-		case 0x1133c:
-			return -1;
-		case 0x1133e ... 0x11344:
-			return -1;
-		case 0x11347 ... 0x11348:
-			return -1;
-		case 0x1134b ... 0x1134d:
-			return -1;
-		case 0x11357:
-			return -1;
-		case 0x11362 ... 0x11363:
-			return -1;
-		case 0x11366 ... 0x1136c:
-			return -1;
-		case 0x11370 ... 0x11374:
-			return -1;
-		case 0x11435 ... 0x11446:
-			return -1;
-		case 0x114b0 ... 0x114c3:
-			return -1;
-		case 0x115af ... 0x115b5:
-			return -1;
-		case 0x115b8 ... 0x115c0:
-			return -1;
-		case 0x115dc ... 0x115dd:
-			return -1;
-		case 0x11630 ... 0x11640:
-			return -1;
-		case 0x116ab ... 0x116b7:
-			return -1;
-		case 0x1171d ... 0x1172b:
-			return -1;
-		case 0x11a01 ... 0x11a0a:
-			return -1;
-		case 0x11a33 ... 0x11a39:
-			return -1;
-		case 0x11a3b ... 0x11a3e:
-			return -1;
-		case 0x11a47:
-			return -1;
-		case 0x11a51 ... 0x11a5b:
-			return -1;
-		case 0x11a8a ... 0x11a99:
-			return -1;
-		case 0x11c2f ... 0x11c36:
-			return -1;
-		case 0x11c38 ... 0x11c3f:
-			return -1;
-		case 0x11c92 ... 0x11ca7:
-			return -1;
-		case 0x11ca9 ... 0x11cb6:
-			return -1;
-		case 0x11d31 ... 0x11d36:
-			return -1;
-		case 0x11d3a:
-			return -1;
-		case 0x11d3c ... 0x11d3d:
-			return -1;
-		case 0x11d3f ... 0x11d45:
-			return -1;
-		case 0x11d47:
-			return -1;
-		case 0x16af0 ... 0x16af4:
-			return -1;
-		case 0x16b30 ... 0x16b36:
-			return -1;
-		case 0x16f51 ... 0x16f7e:
-			return -1;
-		case 0x16f8f ... 0x16f92:
-			return -1;
-		case 0x1bc9d ... 0x1bc9e:
-			return -1;
-		case 0x1d165 ... 0x1d169:
-			return -1;
-		case 0x1d16d ... 0x1d172:
-			return -1;
-		case 0x1d17b ... 0x1d182:
-			return -1;
-		case 0x1d185 ... 0x1d18b:
-			return -1;
-		case 0x1d1aa ... 0x1d1ad:
-			return -1;
-		case 0x1d242 ... 0x1d244:
-			return -1;
-		case 0x1da00 ... 0x1da36:
-			return -1;
-		case 0x1da3b ... 0x1da6c:
-			return -1;
-		case 0x1da75:
-			return -1;
-		case 0x1da84:
-			return -1;
-		case 0x1da9b ... 0x1da9f:
-			return -1;
-		case 0x1daa1 ... 0x1daaf:
-			return -1;
-		case 0x1e000 ... 0x1e006:
-			return -1;
-		case 0x1e008 ... 0x1e018:
-			return -1;
-		case 0x1e01b ... 0x1e021:
-			return -1;
-		case 0x1e023 ... 0x1e024:
-			return -1;
-		case 0x1e026 ... 0x1e02a:
-			return -1;
-		case 0x1e8d0 ... 0x1e8d6:
-			return -1;
-		case 0x1e944 ... 0x1e94a:
-			return -1;
-		case 0xe0100 ... 0xe01ef:
 			return -1;
 		// }}}
 

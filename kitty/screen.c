@@ -278,7 +278,7 @@ unsigned int
 safe_wcwidth(uint32_t ch) {
     int ans = wcwidth_std(ch);
     if (ans < 0) ans = 1;
-    return MIN(2, ans);
+    return ans;
 }
 
 static inline void
@@ -1445,8 +1445,7 @@ screen_wcswidth(Screen UNUSED *self, PyObject *str) {
     unsigned long ans = 0;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        bool is_cc = is_combining_char(ch);
-        ans += is_cc ? 0 : safe_wcwidth(ch);
+        ans += safe_wcwidth(ch);
     }
     return PyLong_FromUnsignedLong(ans);
 }

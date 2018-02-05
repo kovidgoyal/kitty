@@ -217,9 +217,8 @@ def gen_wcwidth():
         p('\tswitch(code) {')
 
         non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
-        add(p, 'Null', {0}, 0)
+        add(p, 'Marks', marks | {0}, 0)
         add(p, 'Non-printing characters', non_printing, -1)
-        add(p, 'Marks', marks, -1)
         add(p, 'Private use', class_maps['Co'], -3)
         add(p, 'Text Presentation', emoji_categories['Emoji'] - emoji_categories['Emoji_Presentation'], 1)
         add(p, 'East Asian ambiguous width', ambiguous, -2)
