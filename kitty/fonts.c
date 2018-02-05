@@ -41,6 +41,7 @@ struct SpritePosition {
 #define SPECIAL_VALUE_MASK 2
 #define EMPTY_FILLED_MASK 4
 #define EMPTY_VALUE_MASK 8
+#define SPECIAL_GLYPH_CACHE_SIZE 1024
 
 struct SpecialGlyphCache {
     SpecialGlyphCache *next;
@@ -63,7 +64,7 @@ typedef struct {
     PyObject *face;
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024];
-    SpecialGlyphCache special_glyph_cache[1024];
+    SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
     bool bold, italic;
 } Font;
 
@@ -128,7 +129,7 @@ extra_glyphs_equal(ExtraGlyphs *a, ExtraGlyphs *b) {
 
 static SpritePosition*
 sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, uint8_t ligature_index, int *error) {
-    glyph_index idx = glyph & 0x3ff;
+    glyph_index idx = glyph & (SPECIAL_GLYPH_CACHE_SIZE - 1);
     SpritePosition *s = font->sprite_map + idx;
     // Optimize for the common case of glyph under 1024 already in the cache
     if (LIKELY(s->glyph == glyph && s->filled && extra_glyphs_equal(&s->extra_glyphs, extra_glyphs) && s->ligature_index == ligature_index)) return s;  // Cache hit
@@ -158,7 +159,7 @@ sprite_position_for(Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, ui
 static inline SpecialGlyphCache*
 special_glyph_cache_for(Font *font, glyph_index glyph, uint8_t filled_mask) {
     SpecialGlyphCache *s = font->special_glyph_cache + (glyph & 0x3ff);
-    // Optimize for the common case of glyph under 1024 already in the cache
+    // Optimize for the common case of glyph under SPECIAL_GLYPH_CACHE_SIZE already in the cache
     if (LIKELY(s->glyph == glyph && s->data & filled_mask)) return s;  // Cache hit
     while(true) {
         if (s->data & filled_mask) {
