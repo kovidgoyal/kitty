@@ -206,6 +206,10 @@ def gen_ucd():
         p('default: return 0;')
         p('\t} // }}}')
         p('}\n')
+        if rmap[0xfe0e] != 1275:
+            raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
+                rmap[0xfe0e], rmap[0xfe0f]
+            ))
 
 
 def gen_wcwidth():

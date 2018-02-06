@@ -316,7 +316,7 @@ draw_combining_char(Screen *self, char_type ch) {
         linebuf_mark_line_dirty(self->linebuf, ypos);
         if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
             Cell *cell = self->linebuf->line->cells + xpos;
-            if ((cell->attrs & WIDTH_MASK) != 2 && cell->cc_idx[0] == mark_for_codepoint(0xfe0f) && is_emoji_presentation_base(cell->ch)) {
+            if ((cell->attrs & WIDTH_MASK) != 2 && cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cell->ch)) {
                 cell->attrs = (cell->attrs & !WIDTH_MASK) | 2;
                 if (xpos == self->columns - 1) move_widened_char(self, cell, xpos, ypos);
                 else self->cursor->x++;

@@ -368,7 +368,7 @@ static inline ssize_t
 fallback_font(Cell *cell) {
     bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
     bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
-    bool emoji_presentation = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch) && cell->cc_idx[0] != mark_for_codepoint(0xfe0e);
+    bool emoji_presentation = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch) && cell->cc_idx[0] != VS15;
 
     // Check if one of the existing fallback fonts has this text
     for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
