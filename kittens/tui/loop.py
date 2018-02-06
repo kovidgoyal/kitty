@@ -6,13 +6,16 @@ import codecs
 import fcntl
 import io
 import os
+import re
 import selectors
 import sys
 import termios
 import tty
 from contextlib import closing, contextmanager
+from functools import partial
 
 from kitty.fast_data_types import parse_input_from_terminal
+from kitty.key_encoding import decode_key_event, enter_key, backspace_key
 
 from .operations import init_state, reset_state
 
@@ -71,6 +74,8 @@ class Loop:
             self.iov_limit = os.sysconf('SC_IOV_MAX') - 1
         except Exception:
             self.iov_limit = 255
+        self.parse_input_from_terminal = partial(parse_input_from_terminal, self.on_text, self.on_dcs, self.on_csi, self.on_osc, self.on_pm, self.on_apc)
+        self.ebs_pat = re.compile('([\177\r])')
 
     def _read_ready(self, handler):
         if not self.read_allowed:
@@ -83,9 +88,19 @@ class Loop:
             data = self.read_buf + data
         self.read_buf = data
         self.handler = handler
-        self.read_buf = parse_input_from_terminal(
-            handler.on_text, self.on_dcs, self.on_csi, self.on_osc, self.on_pm, self.on_apc, self.read_buf)
-        del self.handler
+        try:
+            self.read_buf = self.parse_input_from_terminal(self.read_buf)
+        finally:
+            del self.handler
+
+    def on_text(self, text):
+        for chunk in self.ebs_pat.split(text):
+            if chunk == '\r':
+                self.handler.on_key(enter_key)
+            elif chunk == '\177':
+                self.handler.on_key(backspace_key)
+            else:
+                self.handler.on_text(chunk)
 
     def on_dcs(self, dcs):
         pass
@@ -97,7 +112,13 @@ class Loop:
         pass
 
     def on_apc(self, apc):
-        pass
+        if apc.startswith('K'):
+            try:
+                k = decode_key_event(apc)
+            except Exception:
+                pass
+            else:
+                self.handler.on_key(k)
 
     def _write_ready(self, handler):
         if len(handler.write_buf) > self.iov_limit:

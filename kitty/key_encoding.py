@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
+from collections import namedtuple
 
 from . import fast_data_types as defines
 
@@ -302,3 +303,26 @@ def update_encoding():
         f.seek(0), f.truncate()
         f.write(nraw)
     subprocess.check_call(['yapf', '-i', __file__])
+
+
+PRESS, REPEAT, RELEASE = 'ptr'
+SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
+KeyEvent = namedtuple('KeyEvent', 'type mods key')
+type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
+mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
+key_rmap = {}
+g = globals()
+for key_name, enc in ENCODING.items():
+    key_name = key_name.replace(' ', '_')
+    g[key_name] = key_name
+    key_rmap[enc] = key_name
+del key_name, enc, g
+enter_key = KeyEvent(PRESS, 0, ENCODING['ENTER'])
+backspace_key = KeyEvent(PRESS, 0, ENCODING['BACKSPACE'])
+
+
+def decode_key_event(text):
+    typ = type_map[text[1]]
+    mods = mod_map[text[2]]
+    key = key_rmap[text[3:5]]
+    return KeyEvent(typ, mods, key)
