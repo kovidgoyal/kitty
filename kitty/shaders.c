@@ -252,11 +252,12 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
 
-static inline void
+static inline bool
 cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy) {
     size_t sz;
     CELL_BUFFERS;
     void *address;
+    bool changed = false;
 
     ensure_sprite_map();
 
@@ -265,6 +266,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, sz);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
+        changed = true;
     }
 
     if (screen_is_selection_dirty(screen)) {
@@ -272,6 +274,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;
+        changed = true;
     }
 
     if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
@@ -279,13 +282,9 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
         for (size_t i = 0; i < screen->grman->count; i++, a += 16) memcpy(a, screen->grman->render_data[i].vertices, sizeof(screen->grman->render_data[0].vertices));
         unmap_vao_buffer(gvao_idx, 0); a = NULL;
+        changed = true;
     }
-    bool inverted = screen_invert_colors(screen);
-
-    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted);
-
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
-    bind_vertex_array(vao_idx);
+    return changed;
 }
 
 static void
@@ -412,17 +411,32 @@ set_cell_uniforms(float current_inactive_text_alpha) {
     }
 }
 
-void
-draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window, bool is_active_window) {
+bool
+send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
+    bool changed = false;
     if (os_window->clear_count < 2) {
         os_window->clear_count++;
 #define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
         glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? OPT(background_opacity) : 1.0f);
 #undef C
         glClear(GL_COLOR_BUFFER_BIT);
+        changed = true;
     }
+    if (cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy)) changed = true;
+    return changed;
 
-    cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy);
+}
+
+void
+draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window, bool is_active_window) {
+    CELL_BUFFERS;
+    bool inverted = screen_invert_colors(screen);
+
+    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted);
+
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
+    bind_vertex_array(vao_idx);
+
     float current_inactive_text_alpha = screen->cursor_render_info.is_focused && is_active_window ? 1.0 : OPT(inactive_text_alpha);
     set_cell_uniforms(current_inactive_text_alpha);
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;

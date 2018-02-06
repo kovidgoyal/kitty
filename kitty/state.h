@@ -98,6 +98,7 @@ typedef struct {
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
+    bool focused_at_last_render;
     ScreenRenderData tab_bar_render_data;
     bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
@@ -168,6 +169,7 @@ void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *re
 ssize_t create_cell_vao();
 ssize_t create_graphics_vao();
 ssize_t create_border_vao();
+bool send_cell_data_to_gpu(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *, bool);
 void draw_cursor(CursorRenderInfo *, bool);
 void update_surface_size(int, int, uint32_t);

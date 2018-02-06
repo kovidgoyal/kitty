@@ -564,8 +564,13 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline void
-render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
+static inline bool
+prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
+#define TD os_window->tab_bar_render_data
+    bool needs_render = false;
+    if (TD.screen && os_window->num_tabs > 1) {
+        if (send_cell_data_to_gpu(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
+    }
     if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     for (unsigned int i = 0; i < tab->num_windows; i++) {
@@ -577,6 +582,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
                     if (drag_scroll(w, os_window)) {
                         w->last_drag_scroll_at = now;
                         set_maximum_wait(0.02);
+                        needs_render = true;
                     } else w->last_drag_scroll_at = 0;
                 } else set_maximum_wait(now - w->last_drag_scroll_at);
             }
@@ -586,6 +592,23 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 update_window_title(w, os_window);
             } else WD.screen->cursor_render_info.is_visible = false;
+            if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+            if (WD.screen->start_visual_bell_at != 0) needs_render = true;
+        }
+    }
+    return needs_render;
+}
+
+static inline void
+render_os_window(OSWindow *os_window, double now, unsigned int active_window_id) {
+    Tab *tab = os_window->tabs + os_window->active_tab;
+    BorderRects *br = &tab->border_rects;
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height);
+    if (TD.screen && os_window->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true);
+    for (unsigned int i = 0; i < tab->num_windows; i++) {
+        Window *w = tab->windows + i;
+        if (w->visible && WD.screen) {
+            bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window, is_active_window);
             if (is_active_window && WD.screen->cursor_render_info.is_visible && (!WD.screen->cursor_render_info.is_focused || WD.screen->cursor_render_info.shape != CURSOR_BLOCK)) {
                 draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
@@ -596,7 +619,12 @@ render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id
             }
         }
     }
+    swap_window_buffers(os_window);
+    br->is_dirty = false;
+    os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
+    os_window->focused_at_last_render = os_window->is_focused;
 #undef WD
+#undef TD
 }
 
 static inline void
@@ -606,26 +634,22 @@ render(double now) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
-#define TD w->tab_bar_render_data
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
+        bool needs_render = w->is_focused;
         make_os_window_context_current(w);
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
             update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
             w->viewport_size_dirty = false;
+            needs_render = true;
         }
         unsigned int active_window_id = 0;
-        Tab *active_tab = w->tabs + w->active_tab;
-        BorderRects *br = &active_tab->border_rects;
-        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, w->viewport_width, w->viewport_height);
-        if (TD.screen && w->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, w, true);
-        render_os_window(w, now, &active_window_id);
-        swap_window_buffers(w);
-        w->last_active_tab = w->active_tab; w->last_num_tabs = w->num_tabs; w->last_active_window_id = active_window_id;
-        br->is_dirty = false;
+        if (prepare_to_render_os_window(w, now, &active_window_id)) needs_render = true;
+        if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
+        if (needs_render) render_os_window(w, now, active_window_id);
     }
     last_render_at = now;
 #undef TD
