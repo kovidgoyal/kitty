@@ -178,14 +178,18 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
 }
 
 PyObject*
-create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic) {
+create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation) {
     CTFace *self = (CTFace*)base_face;
-    char text[256] = {0};
-    cell_as_utf8(cell, true, text, ' ');
-    CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
-    if (str == NULL) return PyErr_NoMemory();
-    CTFontRef new_font = find_substitute_face(str, self->ct_font);
-    CFRelease(str);
+    CTFontRef new_font;
+    if (emoji_presentation) new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);
+    else {
+        char text[256] = {0};
+        cell_as_utf8(cell, true, text, ' ');
+        CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
+        if (str == NULL) return PyErr_NoMemory();
+        new_font = find_substitute_face(str, self->ct_font);
+        CFRelease(str);
+    }
     if (new_font == NULL) return NULL;
     return (PyObject*)ct_face(new_font);
 }

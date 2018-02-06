@@ -189,15 +189,14 @@ end:
 }
 
 PyObject*
-create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool italic) {
+create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool italic, bool emoji_presentation) {
     PyObject *ans = NULL;
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    bool emoji = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch);
-    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji ? "emoji" : "monospace"), "family");
-    if (!emoji && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (!emoji && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
-    if (emoji) { AP(FcPatternAddBool, FC_COLOR, OPT(prefer_color_emoji), "color"); }
+    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji_presentation ? "emoji" : "monospace"), "family");
+    if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
     size_t num = cell_as_unicode(cell, true, char_buf, ' ');
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);

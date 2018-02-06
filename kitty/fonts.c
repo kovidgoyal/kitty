@@ -65,7 +65,7 @@ typedef struct {
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024];
     SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
-    bool bold, italic;
+    bool bold, italic, emoji_presentation;
 } Font;
 
 typedef struct {
@@ -250,12 +250,12 @@ desc_to_face(PyObject *desc) {
 
 
 static inline bool
-init_font(Font *f, PyObject *descriptor, bool bold, bool italic, bool is_face) {
+init_font(Font *f, PyObject *descriptor, bool bold, bool italic, bool is_face, bool emoji_presentation) {
     PyObject *face;
     if (is_face) { face = descriptor; Py_INCREF(face); }
     else { face = desc_to_face(descriptor); if (face == NULL) return false; }
     f->face = face;
-    f->bold = bold; f->italic = italic;
+    f->bold = bold; f->italic = italic; f->emoji_presentation = emoji_presentation;
     return true;
 }
 
@@ -340,7 +340,7 @@ has_cell_text(Font *self, Cell *cell) {
 
 
 static inline ssize_t
-load_fallback_font(Cell *cell, bool bold, bool italic) {
+load_fallback_font(Cell *cell, bool bold, bool italic, bool emoji_presentation) {
     if (fonts.fallback_fonts_count > 100) { fprintf(stderr, "Too many fallback fonts\n"); return MISSING_FONT; }
     ssize_t f;
 
@@ -348,7 +348,7 @@ load_fallback_font(Cell *cell, bool bold, bool italic) {
     else f = italic ? fonts.italic_font_idx : fonts.medium_font_idx;
     if (f < 0) f = fonts.medium_font_idx;
 
-    PyObject *face = create_fallback_face(fonts.fonts[f].face, cell, bold, italic);
+    PyObject *face = create_fallback_face(fonts.fonts[f].face, cell, bold, italic, emoji_presentation);
     if (face == NULL) { PyErr_Print(); return MISSING_FONT; }
     if (face == Py_None) { Py_DECREF(face); return MISSING_FONT; }
     set_size_for_face(face, cell_height, true);
@@ -356,7 +356,7 @@ load_fallback_font(Cell *cell, bool bold, bool italic) {
     ensure_space_for(&fonts, fonts, Font, fonts.fonts_count + 1, fonts_capacity, 5, true);
     ssize_t ans = fonts.first_fallback_font_idx + fonts.fallback_fonts_count;
     Font *af = &fonts.fonts[ans];
-    if (!init_font(af, face, bold, italic, true)) fatal("Out of memory");
+    if (!init_font(af, face, bold, italic, true, emoji_presentation)) fatal("Out of memory");
     Py_DECREF(face);
     fonts.fallback_fonts_count++;
     fonts.fonts_count++;
@@ -368,24 +368,17 @@ static inline ssize_t
 fallback_font(Cell *cell) {
     bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
     bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
-
-    // Load the emoji fallback font first as on Linux there are a bunch of
-    // non-color fonts that provide some emoji glyphs.
-    if (fonts.fallback_fonts_count < 1) {
-        Cell c = {0};
-        c.ch = 0x1f648;  // 🙈
-        load_fallback_font(&c, false, false);
-    }
+    bool emoji_presentation = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch) && cell->cc_idx[0] != mark_for_codepoint(0xfe0e);
 
     // Check if one of the existing fallback fonts has this text
     for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
         Font *ff = fonts.fonts +j;
-        if (ff->bold == bold && ff->italic == italic && has_cell_text(ff, cell)) {
+        if (ff->bold == bold && ff->italic == italic && ff->emoji_presentation == emoji_presentation && has_cell_text(ff, cell)) {
             return j;
         }
     }
 
-    return load_fallback_font(cell, bold, italic);
+    return load_fallback_font(cell, bold, italic, emoji_presentation);
 }
 
 static inline ssize_t
@@ -882,7 +875,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     for (size_t i = 0; i < fonts.fonts_count; i++) del_font(fonts.fonts + i);
     ensure_space_for(&fonts, fonts, Font, num_fonts, fonts_capacity, 5, true);
     fonts.fonts_count = 1;
-#define A(attr, bold, italic) { if(attr) { if (!init_font(&fonts.fonts[fonts.fonts_count], attr, bold, italic, false)) return NULL; fonts.attr##_font_idx = fonts.fonts_count++; } else fonts.attr##_font_idx = -1; }
+#define A(attr, bold, italic) { if(attr) { if (!init_font(&fonts.fonts[fonts.fonts_count], attr, bold, italic, false, false)) return NULL; fonts.attr##_font_idx = fonts.fonts_count++; } else fonts.attr##_font_idx = -1; }
     A(medium, false, false);
     A(bold, true, false); A(italic, false, true); A(bi, true, true);
 #undef A
@@ -894,7 +887,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
         PyObject *face;
         int bold, italic;
         if (!PyArg_ParseTuple(PyTuple_GET_ITEM(smf, i), "Opp", &face, &bold, &italic)) return NULL;
-        if (!init_font(fonts.fonts + fonts.fonts_count++, face, bold != 0, italic != 0, false)) return NULL;
+        if (!init_font(fonts.fonts + fonts.fonts_count++, face, bold != 0, italic != 0, false, false)) return NULL;
     }
     for (size_t i = 0; i < fonts.symbol_maps_count; i++) {
         unsigned int left, right, font_idx;

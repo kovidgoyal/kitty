@@ -283,7 +283,6 @@ type_map = {
     'inactive_tab_font_style': tab_font_style,
     'inactive_text_alpha': unit_float,
     'url_style': url_style,
-    'prefer_color_emoji': to_bool,
     'copy_on_select': to_bool,
     'tab_bar_edge': tab_bar_edge,
 }
