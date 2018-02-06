@@ -4,7 +4,8 @@
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf, wcswidth, wcwidth
+    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
+    parse_input_from_terminal, wcswidth, wcwidth
 )
 from kitty.rgb import to_color
 from kitty.utils import sanitize_title
@@ -337,6 +338,25 @@ class TestDataTypes(BaseTest):
         self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
+
+        def tp(*data, leftover='', text='', csi='', apc=''):
+            text_r, csi_r, apc_r, rest = [], [], [], []
+            left = ''
+            for d in data:
+                left = parse_input_from_terminal(left + d, text_r.append, rest.append, csi_r.append, rest.append, rest.append, apc_r.append)
+            self.ae(left, leftover)
+            self.ae(text, ' '.join(text_r))
+            self.ae(csi, ' '.join(csi_r))
+            self.ae(apc, ' '.join(apc_r))
+            self.assertFalse(rest)
+
+        tp('abc', text='abc')
+        tp('a\033[38:5:12:32mb', text='a b', csi='38:5:12:32m')
+        tp('a\033_x,;(\033\\b', text='a b', apc='x,;(')
+        tp('a\033', '[', 'mb', text='a b', csi='m')
+        tp('a\033[', 'mb', text='a b', csi='m')
+        tp('a\033', '_', 'x\033', '\\b', text='a b', apc='x')
+        tp('a\033_', 'x', '\033', '\\', 'b', text='a b', apc='x')
 
     def test_color_profile(self):
         c = ColorProfile()
