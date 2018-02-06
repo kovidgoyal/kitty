@@ -361,7 +361,7 @@ class Boss:
 
     def display_scrollback(self, window, data):
         tab = self.active_tab
-        if tab is not None:
+        if tab is not None and window.overlay_for is None:
             tab.new_special_window(
                 SpecialWindow(
                     self.opts.scrollback_pager, data, _('History'), overlay_for=window.id))
