@@ -61,9 +61,9 @@ def set_font_family(opts=None, override_font_size=None):
     return cell_width, cell_height
 
 
-def resize_fonts(new_sz):
+def resize_fonts(new_sz, on_dpi_change=False):
     s = set_font_family.state
-    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(new_sz)
+    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(new_sz, on_dpi_change)
     set_font_family.state = FontState(
         s.family, new_sz, cell_width, cell_height, baseline,
         underline_position, underline_thickness

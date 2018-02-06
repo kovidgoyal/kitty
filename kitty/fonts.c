@@ -283,7 +283,7 @@ python_send_to_gpu(unsigned int x, unsigned int y, unsigned int z, pixel* buf) {
 
 
 static inline PyObject*
-update_cell_metrics() {
+update_cell_metrics(bool on_dpi_change UNUSED) {
 #define CALL(idx, desired_height, force) { if (idx >= 0) { Font *f = fonts.fonts + idx; if ((f)->face) { if(!set_size_for_face((f)->face, desired_height, force)) return NULL; } clear_sprite_map((f)); }}
     CALL(BOX_FONT, 0, false); CALL(fonts.medium_font_idx, 0, false);
     CALL(fonts.bold_font_idx, 0, false); CALL(fonts.italic_font_idx, 0, false); CALL(fonts.bi_font_idx, 0, false);
@@ -320,8 +320,9 @@ update_cell_metrics() {
 
 static PyObject*
 set_font_size(PyObject UNUSED *m, PyObject *args) {
-    if (!PyArg_ParseTuple(args, "f", &global_state.font_sz_in_pts)) return NULL;
-    return update_cell_metrics();
+    int on_dpi_change = 0;
+    if (!PyArg_ParseTuple(args, "f|p", &global_state.font_sz_in_pts, &on_dpi_change)) return NULL;
+    return update_cell_metrics(on_dpi_change != 0);
 }
 
 static inline bool
@@ -896,7 +897,7 @@ set_font(PyObject UNUSED *m, PyObject *args) {
     }
     fonts.first_fallback_font_idx = fonts.fonts_count;
     fonts.fallback_fonts_count = 0;
-    return update_cell_metrics();
+    return update_cell_metrics(false);
 }
 
 static void

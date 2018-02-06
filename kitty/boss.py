@@ -265,12 +265,12 @@ class Boss:
     def restore_font_size(self):
         self.change_font_size(self.opts.font_size)
 
-    def _change_font_size(self, new_size=None):
+    def _change_font_size(self, new_size=None, on_dpi_change=False):
         if new_size is not None:
             self.current_font_size = new_size
         old_cell_width, old_cell_height = viewport_for_window()[-2:]
         windows = tuple(filter(None, self.window_id_map.values()))
-        resize_fonts(self.current_font_size)
+        resize_fonts(self.current_font_size, on_dpi_change=on_dpi_change)
         layout_sprite_map()
         prerender()
         for window in windows:
