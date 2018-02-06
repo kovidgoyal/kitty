@@ -12,6 +12,8 @@ import termios
 import tty
 from contextlib import closing, contextmanager
 
+from kitty.fast_data_types import parse_input_from_terminal
+
 from .operations import init_state, reset_state
 
 
@@ -80,6 +82,22 @@ class Loop:
         if self.read_buf:
             data = self.read_buf + data
         self.read_buf = data
+        self.handler = handler
+        self.read_buf = parse_input_from_terminal(
+            handler.on_text, self.on_dcs, self.on_csi, self.on_osc, self.on_pm, self.on_apc, self.read_buf)
+        del self.handler
+
+    def on_dcs(self, dcs):
+        pass
+
+    def on_csi(self, csi):
+        pass
+
+    def on_pm(self, pm):
+        pass
+
+    def on_apc(self, apc):
+        pass
 
     def _write_ready(self, handler):
         if len(handler.write_buf) > self.iov_limit:

@@ -343,7 +343,7 @@ class TestDataTypes(BaseTest):
             text_r, csi_r, apc_r, rest = [], [], [], []
             left = ''
             for d in data:
-                left = parse_input_from_terminal(left + d, text_r.append, rest.append, csi_r.append, rest.append, rest.append, apc_r.append)
+                left = parse_input_from_terminal(text_r.append, rest.append, csi_r.append, rest.append, rest.append, apc_r.append, left + d)
             self.ae(left, leftover)
             self.ae(text, ' '.join(text_r))
             self.ae(csi, ' '.join(csi_r))
