@@ -443,6 +443,21 @@ Note that the released kitty.dmg includes all dependencies, unlike the
 link:https://github.com/kovidgoyal/build-calibre[build-calibre] however, that
 is designed to run on Linux and is not for the faint of heart.
 
+
+=== Using a color theme with a background color does not work well in vim?
+
+First make sure you have not changed the TERM environment variable, it should
+be `xterm-kitty`. vim uses *background color erase* even if the terminfo file
+does not contain the `bce` capability. This is a bug in vim. You can work around
+it by adding the following to your vimrc:
+
+....
+let &t_ut=''
+....
+
+See link:https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc#setting-text-styles-colors-in-arbitrary-regions-of-the-screen[here]
+for why kitty does not support background color erase.
+
 == A tribute
 
 While over the decades I am sure many people have contributed to the
