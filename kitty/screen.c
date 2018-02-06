@@ -1462,17 +1462,27 @@ refresh_sprite_positions(Screen *self) {
 }
 
 static PyObject*
-screen_wcswidth(Screen UNUSED *self, PyObject *str) {
+screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     if (PyUnicode_READY(str) != 0) return NULL;
     int kind = PyUnicode_KIND(str);
     void *data = PyUnicode_DATA(str);
     Py_ssize_t len = PyUnicode_GET_LENGTH(str), i;
     unsigned long ans = 0;
+    char_type prev_ch = 0;
+    int prev_width = 0;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        int cw = wcwidth_std(ch);
-        if (cw < 1) cw = 1;
-        ans += cw;
+        if (ch == 0xfe0f) {
+            if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
+                ans += 1;
+                prev_width = 2;
+            } else prev_width = 0;
+        } else {
+            prev_width = wcwidth_std(ch);
+            if (prev_width < 1) prev_width = 1;
+            ans += prev_width;
+        }
+        prev_ch = ch;
     }
     return PyLong_FromUnsignedLong(ans);
 }
