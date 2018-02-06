@@ -275,9 +275,30 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
 }
 
 static inline void
+move_widened_char(Screen *self, Cell* cell, index_type xpos, index_type ypos) {
+    self->cursor->x = xpos; self->cursor->y = ypos;
+    Cell src = *cell, *dest;
+    line_clear_text(self->linebuf->line, xpos, 1, BLANK_CHAR);
+
+    if (self->modes.mDECAWM) {  // overflow goes onto next line
+        screen_carriage_return(self);
+        screen_linefeed(self);
+        self->linebuf->line_attrs[self->cursor->y] |= CONTINUED_MASK;
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        dest = self->linebuf->line->cells;
+        self->cursor->x = MIN(2, self->columns);
+        linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
+    } else {
+        dest = cell - 1;
+        self->cursor->x = self->columns;
+    }
+    *dest = src;
+}
+
+static inline void
 draw_combining_char(Screen *self, char_type ch) {
     bool has_prev_char = false;
-    index_type xpos, ypos;
+    index_type xpos = 0, ypos = 0;
     if (self->cursor->x > 0) {
         ypos = self->cursor->y;
         linebuf_init_line(self->linebuf, ypos);
@@ -293,6 +314,14 @@ draw_combining_char(Screen *self, char_type ch) {
         line_add_combining_char(self->linebuf->line, ch, xpos);
         self->is_dirty = true;
         linebuf_mark_line_dirty(self->linebuf, ypos);
+        if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
+            Cell *cell = self->linebuf->line->cells + xpos;
+            if ((cell->attrs & WIDTH_MASK) != 2 && cell->cc_idx[0] == mark_for_codepoint(0xfe0f) && is_emoji_presentation_base(cell->ch)) {
+                cell->attrs = (cell->attrs & !WIDTH_MASK) | 2;
+                if (xpos == self->columns - 1) move_widened_char(self, cell, xpos, ypos);
+                else self->cursor->x++;
+            }
+        }
     }
 }
 

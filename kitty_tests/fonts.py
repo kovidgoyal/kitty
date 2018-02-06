@@ -6,9 +6,8 @@ from collections import OrderedDict
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    set_logical_dpi, set_send_sprite_to_gpu,
-    sprite_map_set_layout, sprite_map_set_limits, test_render_line,
-    test_sprite_position_for, wcwidth
+    DECAWM, set_logical_dpi, set_send_sprite_to_gpu, sprite_map_set_layout,
+    sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
 from kitty.fonts.render import (
@@ -87,3 +86,29 @@ class Rendering(BaseTest):
         self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
         self.ae(groups('He\u0347\u0305llo\u0337,', path='kitty_tests/LiberationMono-Regular.ttf'),
                 [(1, 1), (1, 3), (1, 1), (1, 1), (1, 2), (1, 1)])
+
+    def test_emoji_presentation(self):
+        s = self.create_screen()
+        s.draw('\u2716\u2716\ufe0f')
+        self.ae((s.cursor.x, s.cursor.y), (3, 0))
+        s.draw('\u2716\u2716')
+        self.ae((s.cursor.x, s.cursor.y), (5, 0))
+        s.draw('\ufe0f')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+        self.ae(str(s.line(0)), '\u2716\u2716\ufe0f\u2716')
+        self.ae(str(s.line(1)), '\u2716\ufe0f')
+        s.draw('\u2716' * 3)
+        self.ae((s.cursor.x, s.cursor.y), (5, 1))
+        self.ae(str(s.line(1)), '\u2716\ufe0f\u2716\u2716\u2716')
+        self.ae((s.cursor.x, s.cursor.y), (5, 1))
+        s.reset_mode(DECAWM)
+        s.draw('\ufe0f')
+        s.set_mode(DECAWM)
+        self.ae((s.cursor.x, s.cursor.y), (5, 1))
+        self.ae(str(s.line(1)), '\u2716\ufe0f\u2716\u2716\ufe0f')
+        s.cursor.y = s.lines - 1
+        s.draw('\u2716' * s.columns)
+        self.ae((s.cursor.x, s.cursor.y), (5, 4))
+        s.draw('\ufe0f')
+        self.ae((s.cursor.x, s.cursor.y), (2, 4))
+        self.ae(str(s.line(s.cursor.y)), '\u2716\ufe0f')

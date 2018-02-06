@@ -71,6 +71,7 @@ def split_two(line):
 
 all_emoji = set()
 emoji_categories = {}
+emoji_presentation_bases = set()
 
 
 def parse_emoji():
@@ -79,6 +80,13 @@ def parse_emoji():
         s = emoji_categories.setdefault(rest, set())
         s.update(chars)
         all_emoji.update(chars)
+    for line in get_data('emoji-variation-sequences.txt', 'emoji'):
+        base, var, *rest = line.split()
+        if base.startswith('#'):
+            continue
+        base = int(base, 16)
+        if var.upper() == 'FE0F':
+            emoji_presentation_bases.add(base)
 
 
 doublewidth, ambiguous = set(), set()
@@ -228,6 +236,15 @@ def gen_wcwidth():
         add(p, 'Not assigned in the unicode character database', not_assigned, -1)
 
         p('\t\tdefault: return 1;')
+        p('\t}')
+        p('\treturn 1;\n}')
+
+        p('static bool\nis_emoji_presentation_base(uint32_t code) {')
+        p('\tswitch(code) {')
+        for spec in get_ranges(list(emoji_presentation_bases)):
+            write_case(spec, p)
+            p('\t\t\treturn true;')
+        p('\t\tdefault: return false;')
         p('\t}')
         p('\treturn 1;\n}')
 
