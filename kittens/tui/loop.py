@@ -19,7 +19,8 @@ from functools import partial
 from kitty.fast_data_types import parse_input_from_terminal
 from kitty.icat import screen_size
 from kitty.key_encoding import (
-    ALT, CTRL, SHIFT, C, D, backspace_key, decode_key_event, enter_key
+    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
+    decode_key_event, enter_key
 )
 
 from .handler import Handler
@@ -61,7 +62,7 @@ def sanitize_term(output_fd):
 
 
 LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
-PRESS, RELEASE, DRAG = 0, 1, 2
+DRAG = REPEAT
 MouseEvent = namedtuple('MouseEvent', 'x y type buttons mods')
 bmap = {0: LEFT, 1: MIDDLE, 2: RIGHT}
 MOTION_INDICATOR = 1 << 5
@@ -208,7 +209,7 @@ class Loop:
             except Exception:
                 pass
             else:
-                if k.mods is CTRL:
+                if k.mods is CTRL and k.type is not RELEASE:
                     if k.key is C:
                         self.handler.on_interrupt()
                         return
