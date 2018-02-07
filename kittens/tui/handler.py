@@ -24,6 +24,12 @@ class Handler:
     def on_mouse(self, mouse_event):
         pass
 
+    def on_interrupt(self):
+        pass
+
+    def on_eot(self):
+        pass
+
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')

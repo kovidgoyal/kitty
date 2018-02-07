@@ -19,7 +19,7 @@ from functools import partial
 from kitty.fast_data_types import parse_input_from_terminal
 from kitty.icat import screen_size
 from kitty.key_encoding import (
-    ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
+    ALT, CTRL, SHIFT, C, D, backspace_key, decode_key_event, enter_key
 )
 
 from .handler import Handler
@@ -108,10 +108,17 @@ class UnhandledException(Handler):
         if key_event is enter_key:
             self.quit_loop(1)
 
+    def on_interrupt(self):
+        self.quit_loop(1)
+
+    def on_eot(self):
+        self.quit_loop(1)
+
 
 class Loop:
 
-    def __init__(self, input_fd=None, output_fd=None, sanitize_bracketed_paste='[\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
+    def __init__(self, input_fd=None, output_fd=None,
+                 sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
         self.input_fd = input_fd or sys.stdin.fileno()
         self.output_fd = output_fd or sys.stdout.fileno()
         self.wakeup_read_fd, self.wakeup_write_fd = os.pipe()
@@ -130,7 +137,7 @@ class Loop:
         except Exception:
             self.iov_limit = 255
         self.parse_input_from_terminal = partial(parse_input_from_terminal, self._on_text, self._on_dcs, self._on_csi, self.on_osc, self._on_pm, self._on_apc)
-        self.ebs_pat = re.compile('([\177\r])')
+        self.ebs_pat = re.compile('([\177\r\x03\x04])')
         self.in_bracketed_paste = False
         self.sanitize_bracketed_paste = bool(sanitize_bracketed_paste)
         if self.sanitize_bracketed_paste:
@@ -157,10 +164,17 @@ class Loop:
             text = self.sanitize_ibp_pat.sub('', text)
 
         for chunk in self.ebs_pat.split(text):
-            if chunk == '\r':
-                self.handler.on_key(enter_key)
-            elif chunk == '\177':
-                self.handler.on_key(backspace_key)
+            if len(chunk) == 1:
+                if chunk == '\r':
+                    self.handler.on_key(enter_key)
+                elif chunk == '\177':
+                    self.handler.on_key(backspace_key)
+                elif chunk == '\x03':
+                    self.handler.on_interrupt()
+                elif chunk == '\x04':
+                    self.handler.on_eot()
+                else:
+                    self.handler.on_text(chunk, self.in_bracketed_paste)
             else:
                 self.handler.on_text(chunk, self.in_bracketed_paste)
 
@@ -194,6 +208,13 @@ class Loop:
             except Exception:
                 pass
             else:
+                if k.mods is CTRL:
+                    if k.key is C:
+                        self.handler.on_interrupt()
+                        return
+                    if k.key is D:
+                        self.handler.on_eot()
+                        return
                 self.handler.on_key(k)
 
     def _write_ready(self, handler):
@@ -226,6 +247,8 @@ class Loop:
             handler.on_resize(screen_size())
         if b't' in data:
             handler.on_term()
+        if b'i' in data:
+            handler.on_interrupt()
 
     def _wakeup_write(self, val):
         while not os.write(self.wakeup_write_fd, val):
@@ -236,6 +259,9 @@ class Loop:
 
     def _on_sigterm(self, signum, frame):
         self._wakeup_write(b't')
+
+    def _on_sigint(self, signum, frame):
+        self._wakeup_write(b'i')
 
     def quit(self, return_code=None):
         self.read_allowed = False
@@ -252,6 +278,7 @@ class Loop:
         with closing(self.sel), sanitize_term(self.output_fd), non_block(self.input_fd), non_block(self.output_fd), raw_terminal(self.input_fd):
             signal.signal(signal.SIGWINCH, self._on_sigwinch)
             signal.signal(signal.SIGTERM, self._on_sigterm)
+            signal.signal(signal.SIGINT, self._on_sigint)
             handler.write_buf = []
             handler.initialize(screen_size(), self.quit, self.wakeup)
             while True:
