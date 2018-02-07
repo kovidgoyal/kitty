@@ -1,6 +1,7 @@
 = Key encoding for extended keyboard protocol
 
 See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]
+ for more information and link:key_encoding.json[for this table in JSON format].
 
 |===
 | Name | Encoded representation (base64)

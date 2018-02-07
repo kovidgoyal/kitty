@@ -42,6 +42,7 @@ raw = subprocess.check_output([
 key_map = json.loads(raw)
 lines = [
     'See link:protocol-extensions.asciidoc#keyboard-handling[Keyboard Handling protocol extension]',
+    ' for more information and link:key_encoding.json[for this table in JSON format].',
     '', '|===', '| Name | Encoded representation (base64)', ''
 ]
 for k in sorted(key_map):
@@ -50,3 +51,5 @@ lines += ['', '|===']
 with open('key_encoding.asciidoc', 'w') as f:
     print('= Key encoding for extended keyboard protocol\n', file=f)
     print('\n'.join(lines), file=f)
+with open('key_encoding.json', 'w') as f:
+    f.write(json.dumps(key_map, indent=2))
