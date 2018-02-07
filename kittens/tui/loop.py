@@ -11,11 +11,14 @@ import selectors
 import sys
 import termios
 import tty
+from collections import namedtuple
 from contextlib import closing, contextmanager
 from functools import partial
 
 from kitty.fast_data_types import parse_input_from_terminal
-from kitty.key_encoding import decode_key_event, enter_key, backspace_key
+from kitty.key_encoding import (
+    ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
+)
 
 from .operations import init_state, reset_state
 
@@ -52,6 +55,39 @@ def sanitize_term(output_fd):
     write_all(output_fd, init_state())
     yield
     write_all(output_fd, reset_state())
+
+
+LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
+PRESS, RELEASE, DRAG = 0, 1, 2
+MouseEvent = namedtuple('MouseEvent', 'x y type buttons mods')
+bmap = {0: LEFT, 1: MIDDLE, 2: RIGHT}
+MOTION_INDICATOR = 1 << 5
+EXTRA_BUTTON_INDICATOR = 1 << 6
+SHIFT_INDICATOR = 1 << 2
+ALT_INDICATOR = 1 << 3
+CTRL_INDICATOR = 1 << 4
+
+
+def decode_sgr_mouse(text):
+    cb, x, y = text.split(';')
+    m, y = y[-1], y[:-1]
+    cb, x, y = map(int, (cb, x, y))
+    typ = RELEASE if m == 'm' else (DRAG if cb & MOTION_INDICATOR else PRESS)
+    buttons = 0
+    cb3 = cb & 3
+    if cb3 != 3:
+        if cb & EXTRA_BUTTON_INDICATOR:
+            buttons |= FIFTH if cb3 & 1 else FOURTH
+        else:
+            buttons |= bmap[cb3]
+    mods = 0
+    if cb & SHIFT_INDICATOR:
+        mods |= SHIFT
+    if cb & ALT_INDICATOR:
+        mods |= ALT
+    if cb & CTRL_INDICATOR:
+        mods |= CTRL
+    return MouseEvent(x, y, typ, buttons, mods)
 
 
 class Loop:
@@ -115,7 +151,14 @@ class Loop:
     def on_csi(self, csi):
         q = csi[-1]
         if q in 'mM':
-            pass
+            if csi.startswith('<'):
+                # SGR mouse event
+                try:
+                    ev = decode_sgr_mouse(csi[1:])
+                except Exception:
+                    pass
+                else:
+                    self.handler.on_mouse(ev)
         elif q == '~':
             if csi == '200~':
                 self.in_bracketed_paste = True

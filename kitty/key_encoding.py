@@ -305,7 +305,7 @@ def update_encoding():
     subprocess.check_call(['yapf', '-i', __file__])
 
 
-PRESS, REPEAT, RELEASE = 'ptr'
+PRESS, REPEAT, RELEASE = 1, 2, 4
 SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
 KeyEvent = namedtuple('KeyEvent', 'type mods key')
 type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
