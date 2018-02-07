@@ -56,7 +56,7 @@ def sanitize_term(output_fd):
 
 class Loop:
 
-    def __init__(self, input_fd=None, output_fd=None):
+    def __init__(self, input_fd=None, output_fd=None, sanitize_bracketed_paste='[\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
         self.input_fd = input_fd or sys.stdin.fileno()
         self.output_fd = output_fd or sys.stdout.fileno()
         self.wakeup_read_fd, self.wakeup_write_fd = os.pipe()
@@ -76,6 +76,10 @@ class Loop:
             self.iov_limit = 255
         self.parse_input_from_terminal = partial(parse_input_from_terminal, self.on_text, self.on_dcs, self.on_csi, self.on_osc, self.on_pm, self.on_apc)
         self.ebs_pat = re.compile('([\177\r])')
+        self.in_bracketed_paste = False
+        self.sanitize_bracketed_paste = bool(sanitize_bracketed_paste)
+        if self.sanitize_bracketed_paste:
+            self.sanitize_ibp_pat = re.compile(sanitize_bracketed_paste)
 
     def _read_ready(self, handler):
         if not self.read_allowed:
@@ -89,24 +93,34 @@ class Loop:
         self.read_buf = data
         self.handler = handler
         try:
-            self.read_buf = self.parse_input_from_terminal(self.read_buf)
+            self.read_buf = self.parse_input_from_terminal(self.read_buf, self.in_bracketed_paste)
         finally:
             del self.handler
 
     def on_text(self, text):
+        if self.in_bracketed_paste and self.sanitize_bracketed_paste:
+            text = self.sanitize_ibp_pat.sub('', text)
+
         for chunk in self.ebs_pat.split(text):
             if chunk == '\r':
                 self.handler.on_key(enter_key)
             elif chunk == '\177':
                 self.handler.on_key(backspace_key)
             else:
-                self.handler.on_text(chunk)
+                self.handler.on_text(chunk, self.in_bracketed_paste)
 
     def on_dcs(self, dcs):
         pass
 
     def on_csi(self, csi):
-        pass
+        q = csi[-1]
+        if q in 'mM':
+            pass
+        elif q == '~':
+            if csi == '200~':
+                self.in_bracketed_paste = True
+            elif csi == '201~':
+                self.in_bracketed_paste = False
 
     def on_pm(self, pm):
         pass

@@ -339,17 +339,28 @@ class TestDataTypes(BaseTest):
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
-        def tp(*data, leftover='', text='', csi='', apc=''):
+        def tp(*data, leftover='', text='', csi='', apc='', ibp=False):
             text_r, csi_r, apc_r, rest = [], [], [], []
             left = ''
+            in_bp = ibp
+
+            def on_csi(x):
+                nonlocal in_bp
+                if x == '200~':
+                    in_bp = True
+                elif x == '201~':
+                    in_bp = False
+                csi_r.append(x)
+
             for d in data:
-                left = parse_input_from_terminal(text_r.append, rest.append, csi_r.append, rest.append, rest.append, apc_r.append, left + d)
+                left = parse_input_from_terminal(text_r.append, rest.append, on_csi, rest.append, rest.append, apc_r.append, left + d, in_bp)
             self.ae(left, leftover)
             self.ae(text, ' '.join(text_r))
             self.ae(csi, ' '.join(csi_r))
             self.ae(apc, ' '.join(apc_r))
             self.assertFalse(rest)
 
+        tp('a\033[200~\033[32mxy\033[201~\033[33ma', text='a \033[32m xy a', csi='200~ 201~ 33m')
         tp('abc', text='abc')
         tp('a\033[38:5:12:32mb', text='a b', csi='38:5:12:32m')
         tp('a\033_x,;(\033\\b', text='a b', apc='x,;(')

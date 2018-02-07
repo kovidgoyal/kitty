@@ -12,14 +12,24 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     enum State { NORMAL, ESC, CSI, ST, ESC_ST };
     enum State state = NORMAL;
     PyObject *uo, *text_callback, *dcs_callback, *csi_callback, *osc_callback, *pm_callback, *apc_callback, *callback;
-    if (!PyArg_ParseTuple(args, "OOOOOOU", &text_callback, &dcs_callback, &csi_callback, &osc_callback, &pm_callback, &apc_callback, &uo)) return NULL;
+    int inbp = 0;
+    if (!PyArg_ParseTuple(args, "OOOOOOUp", &text_callback, &dcs_callback, &csi_callback, &osc_callback, &pm_callback, &apc_callback, &uo, &inbp)) return NULL;
     Py_ssize_t sz = PyUnicode_GET_LENGTH(uo), pos = 0, start = 0, count = 0, consumed = 0;
     callback = text_callback;
     int kind = PyUnicode_KIND(uo);
     void *data = PyUnicode_DATA(uo);
-#define CALL(cb, s, num) {\
-    if (num > 0) PyObject_CallFunction(cb, "N", PyUnicode_Substring(uo, s, s + num));  \
-    consumed = s + num; \
+    bool in_bracketed_paste_mode = inbp != 0;
+#define CALL(cb, s_, num_) {\
+    PyObject *fcb = cb; \
+    Py_ssize_t s = s_, num = num_; \
+    if (in_bracketed_paste_mode && fcb != text_callback) { \
+        fcb = text_callback; num += 2; s -= 2; \
+    } \
+    if (num > 0) { \
+        PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num));  \
+        Py_XDECREF(ret); \
+    } \
+    consumed = s_ + num_; \
     count = 0; \
 }
     START_ALLOW_CASE_RANGE;
@@ -30,6 +40,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 if (ch == 0x1b) {
                     state = ESC;
                     CALL(text_callback, start, count);
+                    start = pos;
                 } else count++;
                 break;
             case ESC:
@@ -55,7 +66,17 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                 switch (ch) {
                     case 'a' ... 'z':
                     case 'A' ... 'Z':
+                    case '@':
+                    case '`':
+                    case '{':
+                    case '|':
+                    case '}':
+                    case '~':
+#define IBP(w)  ch == '~' && PyUnicode_READ(kind, data, start + 1) == '2' && PyUnicode_READ(kind, data, start + 2) == '0' && PyUnicode_READ(kind, data, start + 3) == w
+                        if (IBP('1')) in_bracketed_paste_mode = false;
                         CALL(callback, start + 1, count);
+                        if (IBP('0')) in_bracketed_paste_mode = true;
+#undef IBP
                         state = NORMAL;
                         start = pos + 1;
                         break;
