@@ -2,6 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from kitty.terminfo import string_capabilities
+
 S7C1T = b'\033 F'
 SAVE_CURSOR = b'\0337'
 RESTORE_CURSOR = b'\0338'
@@ -40,6 +42,10 @@ def reset_mode(which):
     return '\033[{}{}l'.format(private, num).encode('ascii')
 
 
+def clear_screen():
+    return string_capabilities['clear'].replace(r'\E', '\033').encode('ascii')
+
+
 def init_state(alternate_screen=True):
     ans = (
         S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode('LNM') +
@@ -53,6 +59,7 @@ def init_state(alternate_screen=True):
     )
     if alternate_screen:
         ans += set_mode('ALTERNATE_SCREEN')
+        ans += clear_screen()
     return ans
 
 

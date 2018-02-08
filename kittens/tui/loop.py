@@ -137,7 +137,7 @@ class Loop:
             self.iov_limit = os.sysconf('SC_IOV_MAX') - 1
         except Exception:
             self.iov_limit = 255
-        self.parse_input_from_terminal = partial(parse_input_from_terminal, self._on_text, self._on_dcs, self._on_csi, self.on_osc, self._on_pm, self._on_apc)
+        self.parse_input_from_terminal = partial(parse_input_from_terminal, self._on_text, self._on_dcs, self._on_csi, self._on_osc, self._on_pm, self._on_apc)
         self.ebs_pat = re.compile('([\177\r\x03\x04])')
         self.in_bracketed_paste = False
         self.sanitize_bracketed_paste = bool(sanitize_bracketed_paste)
@@ -200,6 +200,9 @@ class Loop:
                 self.in_bracketed_paste = False
 
     def _on_pm(self, pm):
+        pass
+
+    def _on_osc(self, osc):
         pass
 
     def _on_apc(self, apc):
@@ -272,6 +275,12 @@ class Loop:
     def wakeup(self):
         self._wakeup_write(b'1')
 
+    def _modify_output_selector(self, waiting_for_write):
+        if waiting_for_write:
+            self.sel.register(self.output_fd, selectors.EVENT_WRITE)
+        else:
+            self.sel.unregister(self.output_fd)
+
     def loop(self, handler):
         select = self.sel.select
         tb = None
@@ -288,10 +297,7 @@ class Loop:
                     break
                 if has_data_to_write != waiting_for_write:
                     waiting_for_write = has_data_to_write
-                    self.sel.modify(
-                        self.output_fd, selectors.EVENT_WRITE
-                        if waiting_for_write else 0, self._write_ready
-                    )
+                    self._modify_output_selector(waiting_for_write)
                 events = select()
                 for key, mask in events:
                     try:
@@ -316,10 +322,7 @@ class Loop:
                 break
             if has_data_to_write != waiting_for_write:
                 waiting_for_write = has_data_to_write
-                self.sel.modify(
-                    self.output_fd, selectors.EVENT_WRITE
-                    if waiting_for_write else 0, self._write_ready
-                )
+                self._modify_output_selector(waiting_for_write)
             events = select()
             for key, mask in events:
                 key.data(handler)
