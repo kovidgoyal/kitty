@@ -543,11 +543,13 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case DECAWM:
             self->modes.mDECAWM = val; break;
         case DECCOLM:
-            // When DECCOLM mode is set, the screen is erased and the cursor
-            // moves to the home position.
             self->modes.mDECCOLM = val;
-            screen_erase_in_display(self, 2, false);
-            screen_cursor_position(self, 1, 1);
+            if (val) {
+                // When DECCOLM mode is set, the screen is erased and the cursor
+                // moves to the home position.
+                screen_erase_in_display(self, 2, false);
+                screen_cursor_position(self, 1, 1);
+            }
             break;
         case CONTROL_CURSOR_BLINK:
             self->cursor->blink = val;
@@ -852,7 +854,7 @@ screen_restore_modes(Screen *self) {
     buffer_pop(&self->modes_savepoints, m);
     if (m == NULL) *m = empty_modes;
 #define S(name) set_mode_from_const(self, name, m->m##name)
-    S(DECTCEM); S(DECSCNM); S(DECSCNM); S(DECOM); S(DECAWM); S(DECCOLM); S(DECARM); S(DECCKM);
+    S(DECTCEM); S(DECSCNM); S(DECSCNM); S(DECOM); S(DECAWM); S(DECARM); S(DECCKM);
     S(BRACKETED_PASTE); S(FOCUS_TRACKING); S(EXTENDED_KEYBOARD);
     self->modes.mouse_tracking_mode = m->mouse_tracking_mode;
     self->modes.mouse_tracking_protocol = m->mouse_tracking_protocol;
