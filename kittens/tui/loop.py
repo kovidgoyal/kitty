@@ -24,7 +24,16 @@ from kitty.key_encoding import (
 )
 
 from .handler import Handler
-from .operations import init_state, reset_state
+from .operations import init_state, reset_state, clear_screen
+
+
+def log(*a, **kw):
+    fd = getattr(log, 'fd', None)
+    if fd is None:
+        fd = log.fd = open('/tmp/kitten-debug', 'w')
+    kw['file'] = fd
+    print(*a, **kw)
+    fd.flush()
 
 
 @contextmanager
@@ -101,6 +110,7 @@ class UnhandledException(Handler):
 
     def initialize(self, screen_size, quit_loop, wakeup):
         Handler.initialize(self, screen_size, quit_loop, wakeup)
+        self.write(clear_screen())
         self.write(self.tb)
         self.write('\n')
         self.write('Press the Enter key to quit')
@@ -132,7 +142,7 @@ class Loop:
         self.return_code = 0
         self.read_allowed = True
         self.read_buf = ''
-        self.decoder = codecs.IncrementalDecoder(errors='ignore')
+        self.decoder = codecs.getincrementaldecoder('utf-8')('ignore')
         try:
             self.iov_limit = os.sysconf('SC_IOV_MAX') - 1
         except Exception:
