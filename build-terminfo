@@ -15,7 +15,7 @@ with open('terminfo/kitty.terminfo', 'w') as f:
     f.write(generate_terminfo())
 
 os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
-subprocess.check_call(['tic', 'terminfo/kitty.terminfo'])
+subprocess.check_call(['tic', '-x', 'terminfo/kitty.terminfo'])
 # On OS X tic puts the compiled database into a different directory
 try:
     os.mkdir('terminfo/78')

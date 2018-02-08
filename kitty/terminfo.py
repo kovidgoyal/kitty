@@ -38,8 +38,14 @@ bool_capabilities = {
     'xenl',
     # has extra status line (window title)
     'hs',
+    # Terminfo extension used by tmux to detect true color support (non-standard)
+    'Tc',
+    # Indicates support for styled and colored underlines (non-standard) as
+    # described at:
+    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    'Su',
 
-    # The following are entries from termite's terminfo that we dont need
+    # The following are entries that we dont use
     # # background color erase
     # 'bce',
 }
@@ -266,8 +272,12 @@ string_capabilities = {
     'ka3': r'',
     'kc1': r'',
     'kc3': r'',
+    # Set RGB foreground color (non-standard used by neovim)
+    'setrgbf': r'\E[38:2:%p1%d:%p2%d:%p3%dm',
+    # Set RGB background color (non-standard used by neovim)
+    'setrgbb': r'\E[48:2:%p1%d:%p2%d:%p3%dm',
 
-    # The following are entries from termite's terminfo that we dont need
+    # The following are entries that we dont use
     # # display status line
     # 'dsl': r'\E]2;\007',
     # # return from status line
@@ -407,7 +417,8 @@ termcap_aliases.update({
 queryable_capabilities = numeric_capabilities.copy()
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
-if extra:
+no_termcap_for = frozenset('Su Tc setrgbf setrgbb'.split())
+if extra - no_termcap_for:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra))
 del extra
 
