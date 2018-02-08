@@ -11,6 +11,7 @@
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
 :sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
+:sc_input_unicode_character: pass:quotes[`ctrl+shift+u`]
 :sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
 :sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
@@ -226,6 +227,7 @@ windows are:
 |Decrease font size   | {sc_decrease_font_size}
 |Restore font size    | {sc_restore_font_size}
 |Toggle fullscreen    | {sc_toggle_fullscreen}
+|Input unicode character | {sc_input_unicode_character}
 |Pass current selection to program | {sc_pass_selection_to_program}
 |===
 

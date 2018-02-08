@@ -87,6 +87,7 @@ def setup_colors(screen, opts):
 class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
+        self.action_on_close = None
         self.override_title = override_title
         self.overlay_window_id = None
         self.overlay_for = None

@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
@@ -196,6 +197,12 @@ class Boss:
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
+        if window.action_on_close:
+            try:
+                window.action_on_close(window)
+            except Exception:
+                import traceback
+                traceback.print_exc()
         os_window_id = window.os_window_id
         window.destroy()
         tm = self.os_window_map.get(os_window_id)
@@ -366,6 +373,29 @@ class Boss:
                 SpecialWindow(
                     self.opts.scrollback_pager, data, _('History'), overlay_for=window.id))
 
+    def input_unicode_character(self):
+        w = self.active_window
+        tab = self.active_tab
+        if w is not None and tab is not None and w.overlay_for is None:
+            overlay_window = tab.new_special_window(
+                SpecialWindow(
+                    ['kitty', '+runpy', 'from kittens.unicode_input.main import main; main()'],
+                    overlay_for=w.id))
+            overlay_window.action_on_close = partial(self.send_unicode_character, w.id)
+
+    def send_unicode_character(self, target_window_id, source_window):
+        w = self.window_id_map.get(target_window_id)
+        if w is not None:
+            output = str(source_window.screen.linebuf.line(0))
+            if output.startswith('OK: '):
+                try:
+                    text = chr(int(output.partition(' ')[2], 16))
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
+                else:
+                    w.paste(text)
+
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
         tab.set_active_window_idx(window_idx)
@@ -491,6 +521,8 @@ class Boss:
 
     def new_window_with_cwd(self, *args):
         w = self.active_window
+        if w is None:
+            return self.new_window(*args)
         cwd_from = w.child.pid if w is not None else None
         self._new_window(args, cwd_from=cwd_from)
 

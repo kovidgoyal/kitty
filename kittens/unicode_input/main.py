@@ -88,5 +88,5 @@ def main(args=sys.argv):
     handler = UnicodeInput()
     loop.loop(handler)
     if handler.current_char and loop.return_code == 0:
-        print(hex(ord(handler.current_char))[2:])
+        print('OK:', hex(ord(handler.current_char))[2:])
     raise SystemExit(loop.return_code)
