@@ -164,6 +164,6 @@ typedef struct _GLFWtimerNS
 void _glfwInitTimerNS(void);
 
 void _glfwPollMonitorsNS(void);
-GLFWbool _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
+void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
 

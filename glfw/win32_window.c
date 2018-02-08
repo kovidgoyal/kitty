@@ -471,30 +471,29 @@ static int translateKey(WPARAM wParam, LPARAM lParam)
     return _glfw.win32.keycodes[HIWORD(lParam) & 0x1FF];
 }
 
+static void fitToMonitor(_GLFWwindow* window)
+{
+    MONITORINFO mi = { sizeof(mi) };
+    GetMonitorInfo(window->monitor->win32.handle, &mi);
+    SetWindowPos(window->win32.handle, HWND_TOPMOST,
+                 mi.rcMonitor.left,
+                 mi.rcMonitor.top,
+                 mi.rcMonitor.right - mi.rcMonitor.left,
+                 mi.rcMonitor.bottom - mi.rcMonitor.top,
+                 SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOCOPYBITS);
+}
+
 // Make the specified window and its video mode active on its monitor
 //
-static GLFWbool acquireMonitor(_GLFWwindow* window)
+static void acquireMonitor(_GLFWwindow* window)
 {
-    GLFWvidmode mode;
-    GLFWbool status;
-    int xpos, ypos;
-
     if (!_glfw.win32.acquiredMonitorCount)
         SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
     if (!window->monitor->window)
         _glfw.win32.acquiredMonitorCount++;
 
-    status = _glfwSetVideoModeWin32(window->monitor, &window->videoMode);
-
-    _glfwPlatformGetVideoMode(window->monitor, &mode);
-    _glfwPlatformGetMonitorPos(window->monitor, &xpos, &ypos);
-
-    SetWindowPos(window->win32.handle, HWND_TOPMOST,
-                 xpos, ypos, mode.width, mode.height,
-                 SWP_NOACTIVATE | SWP_NOCOPYBITS);
-
+    _glfwSetVideoModeWin32(window->monitor, &window->videoMode);
     _glfwInputMonitorWindow(window->monitor, window);
-    return status;
 }
 
 // Remove the window and restore the original video mode
@@ -901,7 +900,10 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                 if (iconified)
                     releaseMonitor(window);
                 else
+                {
                     acquireMonitor(window);
+                    fitToMonitor(window);
+                }
             }
 
             window->win32.iconified = iconified;
@@ -1240,11 +1242,8 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     {
         _glfwPlatformShowWindow(window);
         _glfwPlatformFocusWindow(window);
-        if (!acquireMonitor(window))
-            return GLFW_FALSE;
-
-        if (wndconfig->centerCursor)
-            centerCursor(window);
+        acquireMonitor(window);
+        fitToMonitor(window);
     }
 
     return GLFW_TRUE;
@@ -1360,7 +1359,10 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
     if (window->monitor)
     {
         if (window->monitor->window == window)
+        {
             acquireMonitor(window);
+            fitToMonitor(window);
+        }
     }
     else
     {
@@ -1495,7 +1497,10 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
         if (monitor)
         {
             if (monitor->window == window)
+            {
                 acquireMonitor(window);
+                fitToMonitor(window);
+            }
         }
         else
         {
@@ -1518,20 +1523,27 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
     if (monitor)
     {
+        MONITORINFO mi = { sizeof(mi) };
+        UINT flags = SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOCOPYBITS;
+
         if (window->decorated)
         {
             DWORD style = GetWindowLongW(window->win32.handle, GWL_STYLE);
-            UINT flags = SWP_FRAMECHANGED | SWP_SHOWWINDOW |
-                         SWP_NOACTIVATE | SWP_NOCOPYBITS |
-                         SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE;
-
             style &= ~WS_OVERLAPPEDWINDOW;
             style |= getWindowStyle(window);
             SetWindowLongW(window->win32.handle, GWL_STYLE, style);
-            SetWindowPos(window->win32.handle, HWND_TOPMOST, 0, 0, 0, 0, flags);
+            flags |= SWP_FRAMECHANGED;
         }
 
         acquireMonitor(window);
+
+        GetMonitorInfo(window->monitor->win32.handle, &mi);
+        SetWindowPos(window->win32.handle, HWND_TOPMOST,
+                     mi.rcMonitor.left,
+                     mi.rcMonitor.top,
+                     mi.rcMonitor.right - mi.rcMonitor.left,
+                     mi.rcMonitor.bottom - mi.rcMonitor.top,
+                     flags);
     }
     else
     {

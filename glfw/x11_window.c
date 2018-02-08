@@ -1076,10 +1076,8 @@ static const char* getSelectionString(Atom selection)
 
 // Make the specified window and its video mode active on its monitor
 //
-static GLFWbool acquireMonitor(_GLFWwindow* window)
+static void acquireMonitor(_GLFWwindow* window)
 {
-    GLFWbool status;
-
     if (_glfw.x11.saver.count == 0)
     {
         // Remember old screen saver settings
@@ -1097,7 +1095,7 @@ static GLFWbool acquireMonitor(_GLFWwindow* window)
     if (!window->monitor->window)
         _glfw.x11.saver.count++;
 
-    status = _glfwSetVideoModeX11(window->monitor, &window->videoMode);
+    _glfwSetVideoModeX11(window->monitor, &window->videoMode);
 
     if (window->x11.overrideRedirect)
     {
@@ -1113,7 +1111,6 @@ static GLFWbool acquireMonitor(_GLFWwindow* window)
     }
 
     _glfwInputMonitorWindow(window->monitor, window);
-    return status;
 }
 
 // Remove the window and restore the original video mode
@@ -1977,11 +1974,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
     {
         _glfwPlatformShowWindow(window);
         updateWindowMode(window);
-        if (!acquireMonitor(window))
-            return GLFW_FALSE;
-
-        if (wndconfig->centerCursor)
-            centerCursor(window);
+        acquireMonitor(window);
     }
 
     XFlush(_glfw.x11.display);

@@ -1458,7 +1458,8 @@ typedef void (* GLFWdropfun)(GLFWwindow*,int,const char**);
  *  This is the function signature for monitor configuration callback functions.
  *
  *  @param[in] monitor The monitor that was connected or disconnected.
- *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.
+ *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Remaining
+ *  values reserved for future use.
  *
  *  @sa @ref monitor_event
  *  @sa @ref glfwSetMonitorCallback
@@ -1475,7 +1476,8 @@ typedef void (* GLFWmonitorfun)(GLFWmonitor*,int);
  *  functions.
  *
  *  @param[in] jid The joystick that was connected or disconnected.
- *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.
+ *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Remaining
+ *  values reserved for future use.
  *
  *  @sa @ref joystick_event
  *  @sa @ref glfwSetJoystickCallback

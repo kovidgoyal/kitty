@@ -182,16 +182,6 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     wndconfig.title   = title;
     ctxconfig.share   = (_GLFWwindow*) share;
 
-    if (ctxconfig.share)
-    {
-        if (ctxconfig.client == GLFW_NO_API ||
-            ctxconfig.share->context.client == GLFW_NO_API)
-        {
-            _glfwInputError(GLFW_NO_WINDOW_CONTEXT, NULL);
-            return NULL;
-        }
-    }
-
     if (!_glfwIsValidContextConfig(&ctxconfig))
         return NULL;
 
@@ -236,7 +226,16 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
         }
     }
 
-    if (!window->monitor)
+    if (window->monitor)
+    {
+        if (wndconfig.centerCursor)
+        {
+            int width, height;
+            _glfwPlatformGetWindowSize(window, &width, &height);
+            _glfwPlatformSetCursorPos(window, width / 2.0, height / 2.0);
+        }
+    }
+    else
     {
         if (wndconfig.visible)
         {
