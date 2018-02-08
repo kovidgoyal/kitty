@@ -27,7 +27,8 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     } \
     if (num > 0) { \
         PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num));  \
-        Py_XDECREF(ret); \
+        if (ret == NULL) return NULL; \
+        Py_DECREF(ret); \
     } \
     consumed = s_ + num_; \
     count = 0; \

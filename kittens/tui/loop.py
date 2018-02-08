@@ -111,8 +111,8 @@ class UnhandledException(Handler):
     def initialize(self, screen_size, quit_loop, wakeup):
         Handler.initialize(self, screen_size, quit_loop, wakeup)
         self.write(clear_screen())
-        self.write(self.tb)
-        self.write('\n')
+        self.write(self.tb.replace('\n', '\r\n'))
+        self.write('\r\n')
         self.write('Press the Enter key to quit')
 
     def on_key(self, key_event):
@@ -167,6 +167,9 @@ class Loop:
         self.handler = handler
         try:
             self.read_buf = self.parse_input_from_terminal(self.read_buf, self.in_bracketed_paste)
+        except Exception:
+            self.read_buf = ''
+            raise
         finally:
             del self.handler
 
@@ -287,7 +290,7 @@ class Loop:
 
     def _modify_output_selector(self, waiting_for_write):
         if waiting_for_write:
-            self.sel.register(self.output_fd, selectors.EVENT_WRITE)
+            self.sel.register(self.output_fd, selectors.EVENT_WRITE, self._write_ready)
         else:
             self.sel.unregister(self.output_fd)
 
@@ -301,7 +304,8 @@ class Loop:
             signal.signal(signal.SIGINT, self._on_sigint)
             handler.write_buf = []
             handler.initialize(screen_size(), self.quit, self.wakeup)
-            while True:
+            keep_going = True
+            while keep_going:
                 has_data_to_write = bool(handler.write_buf)
                 if not has_data_to_write and not self.read_allowed:
                     break
@@ -316,6 +320,7 @@ class Loop:
                         import traceback
                         tb = traceback.format_exc()
                         self.return_code = 1
+                        keep_going = False
                         break
             if tb is not None:
                 self._report_error_loop(tb)
