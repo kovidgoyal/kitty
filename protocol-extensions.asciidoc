@@ -54,6 +54,8 @@ To reset the underline color (also previously reserved and unused):
 <ESC>[59m
 ```
 
+To detect support for this feature in a terminal emulator, query the terminfo database
+for the `Su` boolean capability.
 
 == Graphics rendering
 
