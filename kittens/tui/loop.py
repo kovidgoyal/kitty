@@ -303,8 +303,14 @@ class Loop:
             signal.signal(signal.SIGTERM, self._on_sigterm)
             signal.signal(signal.SIGINT, self._on_sigint)
             handler.write_buf = []
-            handler.initialize(screen_size(), self.quit, self.wakeup)
             keep_going = True
+            try:
+                handler.initialize(screen_size(), self.quit, self.wakeup)
+            except Exception:
+                import traceback
+                tb = traceback.format_exc()
+                self.return_code = 1
+                keep_going = False
             while keep_going:
                 has_data_to_write = bool(handler.write_buf)
                 if not has_data_to_write and not self.read_allowed:

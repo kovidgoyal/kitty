@@ -46,6 +46,28 @@ def clear_screen():
     return string_capabilities['clear'].replace(r'\E', '\033').encode('ascii')
 
 
+def set_window_title(value):
+    return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\').encode('utf-8')
+
+
+def set_line_wrapping(yes_or_no):
+    return (set_mode if yes_or_no else reset_mode)('DECAWM')
+
+
+STANDARD_COLORS = {name: i for i, name in enumerate(
+    'black red green yellow blue magenta cyan gray'.split())}
+
+
+def colored(text, color, intense=False):
+    if isinstance(color, str):
+        e = (90 if intense else 30) + STANDARD_COLORS[color]
+    elif isinstance(color, int):
+        e = '38:5:{}'.format(max(0, min(color, 255)))
+    else:
+        e = '38:2:{}:{}:{}'.format(*color)
+    return '\033[{}m{}\033[39m'.format(e, text)
+
+
 def init_state(alternate_screen=True):
     ans = (
         S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode('LNM') +

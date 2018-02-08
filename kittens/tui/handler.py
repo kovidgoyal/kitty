@@ -34,3 +34,7 @@ class Handler:
         if isinstance(data, str):
             data = data.encode('utf-8')
         self.write_buf.append(data)
+
+    def print(self, *args, sep=' ', end='\r\n'):
+        data = sep.join(map(str, args)) + end
+        self.write(data)
