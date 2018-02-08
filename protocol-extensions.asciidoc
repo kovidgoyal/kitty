@@ -110,7 +110,8 @@ The new mode works as follows:
     handle basic text entry, so if a _full mode_ using program crashes and does
     not reset, the user can still issue a `reset` command in the shell to restore
     normal key handling. Note that this includes pressing the `Shift` modifier
-    and printable keys.
+    and printable keys. Note that this means there are no repeat and release
+    events for these keys.
 
   * For non printable keys and key combinations including one or more modifiers,
     an escape sequence encoding the key event is sent. For details on the

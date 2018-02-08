@@ -139,8 +139,10 @@ send_key_to_child(Window *w, int key, int mods, int action) {
     Screen *screen = w->render_data.screen;
     const char *data = key_to_bytes(key, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
     if (data) {
-        if (screen->modes.mEXTENDED_KEYBOARD) write_escape_code_to_child(screen, APC, data + 1);
-        else {
+        if (screen->modes.mEXTENDED_KEYBOARD) {
+            if (*data == 1) schedule_write_to_child(w->id, (data + 1), 1);
+            else write_escape_code_to_child(screen, APC, data + 1);
+        } else {
             if (*data > 2 && data[1] == 0x1b && data[2] == '[') { // CSI code
                 write_escape_code_to_child(screen, CSI, data + 3);
             } else schedule_write_to_child(w->id, (data + 1), *data);

@@ -128,13 +128,17 @@ action_map = {
 def extended_key_event(key, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
         # Shifted printable key should be handled by on_text_input()
-        mods == defines.GLFW_MOD_SHIFT and 32 <= key <= 126
+        mods <= defines.GLFW_MOD_SHIFT and 32 <= key <= 126
     ):
         return b''
     if mods == 0 and key in (
         defines.GLFW_KEY_BACKSPACE, defines.GLFW_KEY_ENTER
     ):
+        if action == defines.GLFW_RELEASE:
+            return b''
         return smkx_key_map[key]
+    if key in (defines.GLFW_KEY_LEFT_SHIFT, defines.GLFW_KEY_RIGHT_SHIFT):
+        return b''
     name = KEY_MAP.get(key)
     if name is None:
         return b''
