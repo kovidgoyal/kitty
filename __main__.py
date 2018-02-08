@@ -20,6 +20,16 @@ def remote_control(args):
     main(args)
 
 
+def runpy(args):
+    exec(' '.join(args[1:]))
+
+
+def launch(args):
+    import runpy
+    sys.argv = args[1:]
+    runpy.run_path(args[1], run_name='__main__')
+
+
 def namespaced(args):
     func = namespaced_entry_points[args[1]]
     func(args[1:])
@@ -29,6 +39,8 @@ entry_points = {
     # These two are here for backwards compat
     'icat': icat,
     'list-fonts': list_fonts,
+    'runpy': runpy,
+    'launch': launch,
 
     '@': remote_control,
     '+': namespaced,
