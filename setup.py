@@ -409,6 +409,22 @@ def compile_glfw(incremental, compilation_database, all_keys):
         compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, all_keys, sources, all_headers)
 
 
+def kittens_env():
+    kenv = env.copy()
+    cflags = kenv.cflags
+    cflags.append('-pthread')
+    cflags.append('-Ikitty')
+    pylib = get_python_flags(cflags)
+    kenv.ldpaths += pylib
+    return kenv
+
+
+def compile_kittens(incremental, compilation_database, all_keys):
+    sources = ['kittens/unicode_input/unicode_names.c']
+    all_headers = ['kittens/unicode_input/names.h', 'kitty/data-types.h']
+    compile_c_extension(kittens_env(), 'kittens/unicode_input/unicode_names', incremental, compilation_database, all_keys, sources, all_headers)
+
+
 def build(args, native_optimizations=True):
     global env
     try:
@@ -426,6 +442,7 @@ def build(args, native_optimizations=True):
             kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, all_keys, *find_c_files()
         )
         compile_glfw(args.incremental, compilation_database, all_keys)
+        compile_kittens(args.incremental, compilation_database, all_keys)
         for key in set(compilation_database) - all_keys:
             del compilation_database[key]
     finally:

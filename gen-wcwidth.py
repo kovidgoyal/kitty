@@ -4,9 +4,11 @@
 
 import os
 import sys
+from collections import defaultdict
 from contextlib import contextmanager
 from datetime import date
 from functools import partial
+from html.entities import html5
 from itertools import groupby
 from operator import itemgetter
 from urllib.request import urlopen
@@ -31,15 +33,32 @@ def get_data(fname, folder='UCD'):
 
 # Map of class names to set of codepoints in class
 class_maps = {}
+name_map = {}
+word_search_map = defaultdict(set)
 marks = set()
 not_assigned = set(range(0, sys.maxunicode))
 
 
 def parse_ucd():
+
+    def add_word(w, c):
+        if c <= 32 or c == 127 or 128 <= c <= 159:
+            return
+        word_search_map[w.lower()].add(c)
+
     first = None
+    for word, c in html5.items():
+        if len(c) == 1:
+            add_word(word.rstrip(';'), ord(c))
+    word_search_map['nnbsp'].add(0x202f)
     for line in get_data('ucd/UnicodeData.txt'):
         parts = [x.strip() for x in line.split(';')]
         codepoint = int(parts[0], 16)
+        name = parts[1]
+        if name:
+            name_map[codepoint] = name
+            for word in name.lower().split():
+                add_word(word, codepoint)
         category = parts[2]
         s = class_maps.setdefault(category, set())
         desc = parts[1]
@@ -129,19 +148,21 @@ def write_case(spec, p):
 
 
 @contextmanager
-def create_header(path):
+def create_header(path, include_data_types=True):
     f = open(path, 'w')
     p = partial(print, file=f)
     p('// unicode data, built from the unicode standard on:', date.today())
     p('// see gen-wcwidth.py')
     if path.endswith('.h'):
         p('#pragma once')
-    p('#include "data-types.h"\n')
-    p('START_ALLOW_CASE_RANGE')
+    if include_data_types:
+        p('#include "data-types.h"\n')
+        p('START_ALLOW_CASE_RANGE')
     p()
     yield p
     p()
-    p('END_ALLOW_CASE_RANGE')
+    if include_data_types:
+        p('END_ALLOW_CASE_RANGE')
     f.close()
 
 
@@ -180,6 +201,20 @@ def category_test(name, p, classes, comment, static=False):
     p('\treturn false;\n}\n')
 
 
+def codepoint_to_mark_map(p, mark_map):
+    p('\tswitch(c) { // {{{')
+    rmap = {c: m for m, c in enumerate(mark_map)}
+    for spec in get_ranges(mark_map):
+        if isinstance(spec, tuple):
+            s = rmap[spec[0]]
+            p(f'\t\tcase {spec[0]} ... {spec[1]}: return {s} + c - {spec[0]};')
+        else:
+            p(f'\t\tcase {spec}: return {rmap[spec]};')
+    p('default: return 0;')
+    p('\t} // }}}')
+    return rmap
+
+
 def gen_ucd():
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
@@ -195,21 +230,56 @@ def gen_ucd():
         p('\treturn 0;')
         p('}\n')
         p('combining_type mark_for_codepoint(char_type c) {')
-        p('\tswitch(c) { // {{{')
-        rmap = {c: m for m, c in enumerate(mark_map)}
-        for spec in get_ranges(mark_map):
-            if isinstance(spec, tuple):
-                s = rmap[spec[0]]
-                p(f'\t\tcase {spec[0]} ... {spec[1]}: return {s} + c - {spec[0]};')
-            else:
-                p(f'\t\tcase {spec}: return {rmap[spec]};')
-        p('default: return 0;')
-        p('\t} // }}}')
+        rmap = codepoint_to_mark_map(p, mark_map)
         p('}\n')
         if rmap[0xfe0e] != 1275:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
+
+
+def gen_names():
+    words = tuple(sorted(word_search_map))
+
+    with create_header('kittens/unicode_input/names.h') as p:
+        cp_map = list(sorted(name_map))
+        p(f'static const char* name_map[{len(cp_map)}] = {{' ' // {{{')
+        for cp in cp_map:
+            w = name_map[cp].replace('"', '\\"')
+            p(f'\t"{w}",')
+        p("}; // }}}\n")
+
+        p(f'static const char* idx_to_word[{len(words)}] = ' '{ // {{{')
+        for s in words:
+            s = s.replace('"', '\\"')
+            p(f'\t"{s}",')
+        p("}; // }}}\n")
+
+        first_letters = {ord(w[0]) for w in words if ord(w[0]) < 256}
+        wmap = {w: i for i, w in enumerate(words)}
+        p(f'static const unsigned short* words_for_first_letter[256] = ' '{ // {{{')
+        for fl in range(0, 256):
+            if fl in first_letters:
+                winds = [str(wmap[w]) for w in words if w.startswith(chr(fl))]
+                p(f'\t(const unsigned short[{len(winds) + 1}]){{{len(winds)}, ', ', '.join(winds), '},')
+            else:
+                p('NULL,')
+        p("}; // }}}\n")
+
+        p(f'static const char_type* codepoints_for_word_idx[{len(words)}] = ' '{ // {{{')
+        for s in words:
+            cps = word_search_map[s]
+            a = ', '.join(map(str, cps))
+            p(f'\t(const char_type[{len(cps) + 1}]){{{len(cps)}, ', a, '},')
+        p("}; // }}}\n")
+
+        p('static char_type mark_for_codepoint(char_type c) {')
+        codepoint_to_mark_map(p, cp_map)
+        p('}\n')
+        p('static inline const char* name_for_codepoint(char_type cp) {')
+        p('\tchar_type m = mark_for_codepoint(cp); if (m == 0) return NULL;')
+        p('\treturn name_map[m];')
+        p('}\n')
 
 
 def gen_wcwidth():
@@ -259,3 +329,4 @@ parse_eaw()
 gen_ucd()
 gen_wcwidth()
 gen_emoji()
+gen_names()

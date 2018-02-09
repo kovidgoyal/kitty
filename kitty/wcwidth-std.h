@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2018-02-06
+// unicode data, built from the unicode standard on: 2018-02-09
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -593,7 +593,7 @@ wcwidth_std(int32_t code) {
 			return -3;
 		// }}}
 
-		// Text Presentation (216 codepoints) {{{
+		// Text Presentation (218 codepoints) {{{
 		case 0x23:
 			return 1;
 		case 0x2a:
@@ -662,7 +662,7 @@ wcwidth_std(int32_t code) {
 			return 1;
 		case 0x2642:
 			return 1;
-		case 0x2660:
+		case 0x265f ... 0x2660:
 			return 1;
 		case 0x2663:
 			return 1;
@@ -671,6 +671,8 @@ wcwidth_std(int32_t code) {
 		case 0x2668:
 			return 1;
 		case 0x267b:
+			return 1;
+		case 0x267e:
 			return 1;
 		case 0x2692:
 			return 1;
@@ -1406,12 +1408,32 @@ wcwidth_std(int32_t code) {
 			return 2;
 		// }}}
 
-		// Emoji Presentation (26 codepoints) {{{
+		// Emoji Presentation (92 codepoints) {{{
 		case 0x1f1e6 ... 0x1f1ff:
+			return 2;
+		case 0x1f6f9:
+			return 2;
+		case 0x1f94d ... 0x1f94f:
+			return 2;
+		case 0x1f96c ... 0x1f970:
+			return 2;
+		case 0x1f973 ... 0x1f976:
+			return 2;
+		case 0x1f97a:
+			return 2;
+		case 0x1f97c ... 0x1f97f:
+			return 2;
+		case 0x1f998 ... 0x1f9a2:
+			return 2;
+		case 0x1f9b0 ... 0x1f9b9:
+			return 2;
+		case 0x1f9c1 ... 0x1f9c2:
+			return 2;
+		case 0x1f9e7 ... 0x1f9ff:
 			return 2;
 		// }}}
 
-		// Not assigned in the unicode character database (767560 codepoints) {{{
+		// Not assigned in the unicode character database (767494 codepoints) {{{
 		case 0x378 ... 0x379:
 			return -1;
 		case 0x380 ... 0x383:
@@ -2650,7 +2672,7 @@ wcwidth_std(int32_t code) {
 			return -1;
 		case 0x1f6ed ... 0x1f6ef:
 			return -1;
-		case 0x1f6f9 ... 0x1f6ff:
+		case 0x1f6fa ... 0x1f6ff:
 			return -1;
 		case 0x1f774 ... 0x1f77f:
 			return -1;
@@ -2670,15 +2692,19 @@ wcwidth_std(int32_t code) {
 			return -1;
 		case 0x1f93f:
 			return -1;
-		case 0x1f94d ... 0x1f94f:
+		case 0x1f971 ... 0x1f972:
 			return -1;
-		case 0x1f96c ... 0x1f97f:
+		case 0x1f977 ... 0x1f979:
 			return -1;
-		case 0x1f998 ... 0x1f9bf:
+		case 0x1f97b:
 			return -1;
-		case 0x1f9c1 ... 0x1f9cf:
+		case 0x1f9a3 ... 0x1f9af:
 			return -1;
-		case 0x1f9e7 ... 0x1ffff:
+		case 0x1f9ba ... 0x1f9bf:
+			return -1;
+		case 0x1f9c3 ... 0x1f9cf:
+			return -1;
+		case 0x1fa00 ... 0x1ffff:
 			return -1;
 		case 0x2fffe ... 0x2ffff:
 			return -1;
@@ -2779,7 +2805,7 @@ is_emoji_presentation_base(uint32_t code) {
 			return true;
 		case 0x2648 ... 0x2653:
 			return true;
-		case 0x2660:
+		case 0x265f ... 0x2660:
 			return true;
 		case 0x2663:
 			return true;
@@ -2789,7 +2815,7 @@ is_emoji_presentation_base(uint32_t code) {
 			return true;
 		case 0x267b:
 			return true;
-		case 0x267f:
+		case 0x267e ... 0x267f:
 			return true;
 		case 0x2692 ... 0x2697:
 			return true;

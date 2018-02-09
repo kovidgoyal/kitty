@@ -3,9 +3,10 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from gettext import gettext as _
 
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import backspace_key, enter_key, ESCAPE
+from kitty.key_encoding import ESCAPE, backspace_key, enter_key
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -45,12 +46,12 @@ class UnicodeInput(Handler):
     def initialize(self, *args):
         Handler.initialize(self, *args)
         self.write(set_line_wrapping(False))
-        self.write(set_window_title('Unicode input'))
+        self.write(set_window_title(_('Unicode input')))
         self.draw_screen()
 
     def draw_screen(self):
         self.write(clear_screen())
-        self.print('Enter the hex code for the unicode character')
+        self.print(_('Enter the hex code for the unicode character'))
         self.write(self.prompt)
         self.write(self.current_input)
 
