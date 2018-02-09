@@ -290,9 +290,15 @@ class Loop:
 
     def _modify_output_selector(self, waiting_for_write):
         if waiting_for_write:
-            self.sel.register(self.output_fd, selectors.EVENT_WRITE, self._write_ready)
+            try:
+                self.sel.register(self.output_fd, selectors.EVENT_WRITE, self._write_ready)
+            except KeyError:
+                pass
         else:
-            self.sel.unregister(self.output_fd)
+            try:
+                self.sel.unregister(self.output_fd)
+            except KeyError:
+                pass
 
     def loop(self, handler):
         select = self.sel.select
