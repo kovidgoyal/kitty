@@ -485,7 +485,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
     for x in (libdir, os.path.join(ddir, 'share')):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
-        subprocess.check_call(['tic', '-o' + odir, 'terminfo/kitty.terminfo'])
+        subprocess.check_call(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'])
     shutil.copy2('__main__.py', libdir)
     shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
 

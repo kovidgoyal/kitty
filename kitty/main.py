@@ -118,7 +118,7 @@ def main():
             if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
                 break
         else:
-            rpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'launcher')
+            rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
     if rpath and rpath not in items:
         os.environ['PATH'] += os.pathsep + rpath
 
