@@ -497,6 +497,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
         ]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
+    shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
     import compileall
     compileall.compile_dir(ddir, quiet=1, workers=4)
     for root, dirs, files in os.walk(ddir):
