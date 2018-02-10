@@ -2,6 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from contextlib import contextmanager
+
 from kitty.terminfo import string_capabilities
 
 S7C1T = b'\033 F'
@@ -56,16 +58,48 @@ def set_line_wrapping(yes_or_no):
 
 STANDARD_COLORS = {name: i for i, name in enumerate(
     'black red green yellow blue magenta cyan gray'.split())}
+UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
+    'straight double curly'.split())}
+
+
+def _color(color, intense=False, base=30):
+    if isinstance(color, str):
+        e = str((base + 60 if intense else base) + STANDARD_COLORS[color])
+    elif isinstance(color, int):
+        e = '{}:5:{}'.format(base + 8, max(0, min(color, 255)))
+    else:
+        e = '{}:2:{}:{}:{}'.format(base + 8, *color)
+    return e
 
 
 def colored(text, color, intense=False):
-    if isinstance(color, str):
-        e = (90 if intense else 30) + STANDARD_COLORS[color]
-    elif isinstance(color, int):
-        e = '38:5:{}'.format(max(0, min(color, 255)))
-    else:
-        e = '38:2:{}:{}:{}'.format(*color)
+    e = _color(color, intense)
     return '\033[{}m{}\033[39m'.format(e, text)
+
+
+def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=False, bold=False, underline=None, underline_color=None):
+    start, end = [], []
+    if fg is not None:
+        start.append(_color(fg, fg_intense))
+        end.append('39')
+    if bg is not None:
+        start.append(_color(bg, bg_intense, 40))
+        end.append('49')
+    if underline_color is not None:
+        if isinstance(underline_color, str):
+            underline_color = STANDARD_COLORS[underline_color]
+        start.append(_color(underline_color, base=50))
+        end.append('59')
+    if underline is not None:
+        start.append('4:{}'.format(UNDERLINE_STYLES[underline]))
+        end.append('4:0')
+    if italic:
+        start.append('3'), end.append('23')
+    if bold:
+        start.append('1'), end.append('21')
+    if not start:
+        return text
+    return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
 
 
 def init_state(alternate_screen=True):
@@ -92,3 +126,10 @@ def reset_state(normal_screen=True):
     ans += RESTORE_PRIVATE_MODE_VALUES
     ans += RESTORE_CURSOR
     return ans
+
+
+@contextmanager
+def cursor(write):
+    write(SAVE_CURSOR)
+    yield
+    write(RESTORE_CURSOR)
