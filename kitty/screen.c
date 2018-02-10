@@ -1472,16 +1472,30 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     unsigned long ans = 0;
     char_type prev_ch = 0;
     int prev_width = 0;
+    bool in_sgr = false;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
+        if (in_sgr) {
+            if (ch == 'm') in_sgr = false;
+            continue;
+        }
+        if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') { in_sgr = true; continue; }
         if (ch == 0xfe0f) {
             if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
                 ans += 1;
                 prev_width = 2;
             } else prev_width = 0;
         } else {
-            prev_width = wcwidth_std(ch);
-            if (prev_width < 1) prev_width = 1;
+            int w = wcwidth_std(ch);
+            switch(w) {
+                case -1:
+                case 0:
+                    prev_width = 0; break;
+                case 2:
+                    prev_width = 2; break;
+                default:
+                    prev_width = 1; break;
+            }
             ans += prev_width;
         }
         prev_ch = ch;

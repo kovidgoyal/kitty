@@ -337,6 +337,7 @@ class TestDataTypes(BaseTest):
             return wcwidth(ord(x))
         self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
+        self.ae(wcswidth('\033a\033[2mb'), 2)
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
 
         def tp(*data, leftover='', text='', csi='', apc='', ibp=False):
