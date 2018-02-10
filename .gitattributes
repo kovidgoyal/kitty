@@ -10,3 +10,4 @@ kitty/khrplatform.h linguist-generated=true
 kitty/glfw-wrapper.* linguist-generated=true
 glfw/*.c linguist-vendored=true
 glfw/*.h linguist-vendored=true
+kittens/unicode_input/names.h linguist-generated=true
