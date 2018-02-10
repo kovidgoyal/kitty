@@ -75,3 +75,8 @@ to control individual windows.
 As you can see, it is very easy to control kitty using the
 `kitty @` messaging system. This tutorial touches only the
 surface of what is possible. See `kitty @ --help` for more details.
+
+Note that `kitty @` messaging works only when run inside a kitty window,
+not anywhere. But, within a kitty window it even works over SSH. If you want
+a command to open new windows in existing kitty instances, from outside of kitty,
+use `kitty --single-instance`. See `kitty --help` for details.
