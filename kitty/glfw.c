@@ -86,6 +86,13 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
 }
 
 static void
+refresh_callback(GLFWwindow *w) {
+    if (!set_callback_window(w)) return;
+    global_state.callback_os_window->is_damaged = true;
+    global_state.callback_os_window = NULL;
+}
+
+static void
 char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
@@ -363,6 +370,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
+    glfwSetWindowRefreshCallback(glfw_window, refresh_callback);
     glfwSetCharModsCallback(glfw_window, char_mods_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);

@@ -623,6 +623,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id)
     br->is_dirty = false;
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
+    os_window->is_damaged = false;
 #undef WD
 #undef TD
 }
@@ -638,7 +639,7 @@ render(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
-        bool needs_render = w->is_focused;
+        bool needs_render = w->is_focused || w->is_damaged;
         make_os_window_context_current(w);
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
