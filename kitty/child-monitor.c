@@ -746,7 +746,7 @@ main_loop(ChildMonitor *self) {
             OSWindow *os_window = global_state.os_windows + w - 1;
             if (should_os_window_close(os_window)) {
                 destroy_os_window(os_window);
-                call_boss(on_os_window_closed, "Kii", os_window->id, os_window->viewport_width, os_window->viewport_width);
+                call_boss(on_os_window_closed, "Kii", os_window->id, os_window->viewport_width, os_window->viewport_height);
                 for (size_t t=0; t < os_window->num_tabs; t++) {
                     Tab *tab = os_window->tabs + t;
                     for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
