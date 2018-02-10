@@ -36,6 +36,28 @@ del _get_config_dir
 defconf = os.path.join(config_dir, 'kitty.conf')
 
 
+def _get_cache_dir():
+    if 'KITTY_CACHE_DIRECTORY' in os.environ:
+        candidate = os.path.abspath(os.environ['KITTY_CACHE_DIRECTORY'])
+    elif is_macos:
+        candidate = os.path.join(os.path.expanduser('~/Library/Caches'), appname)
+    else:
+        candidate = os.environ.get('XDG_CACHE_HOME', '~/.cache')
+        candidate = os.path.join(os.path.expanduser(candidate), appname)
+    try:
+        os.makedirs(candidate)
+    except FileExistsError:
+        pass
+    return candidate
+
+
+def cache_dir():
+    ans = getattr(cache_dir, 'ans', None)
+    if ans is None:
+        ans = cache_dir.ans = _get_cache_dir()
+    return ans
+
+
 def get_boss():
     return get_boss.boss
 

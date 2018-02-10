@@ -10,13 +10,14 @@ import shlex
 import sys
 import tempfile
 from collections import namedtuple
+from contextlib import contextmanager
 
 from . import fast_data_types as defines
 from .config_utils import (
     init_config, parse_config_base, positive_float, positive_int, to_bool,
     to_color, unit_float
 )
-from .constants import config_dir
+from .constants import cache_dir
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .utils import safe_print
@@ -92,7 +93,10 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
-shlex_actions = {'pass_selection_to_program', 'new_window', 'new_tab', 'new_os_window', 'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd'}
+shlex_actions = {
+    'pass_selection_to_program', 'new_window', 'new_tab', 'new_os_window',
+    'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd'
+}
 
 
 def parse_key_action(action):
@@ -108,7 +112,7 @@ def parse_key_action(action):
     elif func == 'send_text':
         args = rest.split(' ', 1)
     elif func == 'goto_tab':
-        args = (max(0, int(rest)),)
+        args = (max(0, int(rest)), )
     elif func in shlex_actions:
         args = shlex.split(rest)
     return KeyAction(func, args)
@@ -172,7 +176,8 @@ def parse_symbol_map(val):
 
 
 def parse_send_text_bytes(text):
-    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''").encode('utf-8')
+    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''"
+                            ).encode('utf-8')
 
 
 def parse_send_text(val, keymap):
@@ -231,7 +236,11 @@ def tab_separator(x):
 
 
 def tab_font_style(x):
-    return {'bold-italic': (True, True), 'bold': (True, False), 'italic': (False, True)}.get(x.lower().replace('_', '-'), (False, False))
+    return {
+        'bold-italic': (True, True),
+        'bold': (True, False),
+        'italic': (False, True)
+    }.get(x.lower().replace('_', '-'), (False, False))
 
 
 def tab_bar_edge(x):
@@ -242,8 +251,9 @@ def url_style(x):
     return url_style.map.get(x, url_style.map['curly'])
 
 
-url_style.map = dict(((v, i) for i, v in enumerate('none single double curly'.split())))
-
+url_style.map = dict(
+    ((v, i) for i, v in enumerate('none single double curly'.split()))
+)
 
 type_map = {
     'allow_remote_control': to_bool,
@@ -313,7 +323,9 @@ def special_handling(key, val, ans):
 
 
 defaults = None
-default_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty.conf')
+default_config_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'kitty.conf'
+)
 
 
 def parse_config(lines, check_keys=True):
@@ -321,13 +333,21 @@ def parse_config(lines, check_keys=True):
         'keymap': {},
         'symbol_map': {},
     }
-    parse_config_base(lines, defaults, type_map, special_handling, ans, check_keys=check_keys)
+    parse_config_base(
+        lines,
+        defaults,
+        type_map,
+        special_handling,
+        ans,
+        check_keys=check_keys
+    )
     return ans
 
 
 Options, defaults = init_config(default_config_path, parse_config)
 actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset(
-    'combine send_text goto_tab new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.split()
+    'combine send_text goto_tab new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
+    split()
 )
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
@@ -393,37 +413,12 @@ def build_ansi_color_table(opts: Options = defaults):
     return list(map(col, range(16)))
 
 
-cached_values = {}
-cached_path = os.path.join(config_dir, 'cached.json')
-
-
-def load_cached_values():
-    cached_values.clear()
-    try:
-        with open(cached_path, 'rb') as f:
-            cached_values.update(json.loads(f.read().decode('utf-8')))
-    except FileNotFoundError:
-        pass
-    except Exception as err:
-        safe_print(
-            'Failed to load cached values with error: {}'.format(err),
-            file=sys.stderr
-        )
-
-
-def save_cached_values():
-    fd, p = tempfile.mkstemp(
-        dir=os.path.dirname(cached_path), suffix='cached.json.tmp'
-    )
+def atomic_save(data, path):
+    fd, p = tempfile.mkstemp(dir=os.path.dirname(path), suffix='.tmp')
     try:
         with os.fdopen(fd, 'wb') as f:
-            f.write(json.dumps(cached_values).encode('utf-8'))
-        os.rename(p, cached_path)
-    except Exception as err:
-        safe_print(
-            'Failed to save cached values with error: {}'.format(err),
-            file=sys.stderr
-        )
+            f.write(data)
+        os.rename(p, path)
     finally:
         try:
             os.remove(p)
@@ -431,13 +426,40 @@ def save_cached_values():
             pass
         except Exception as err:
             safe_print(
-                'Failed to delete temp file for saved cached values with error: {}'.
-                format(err),
+                'Failed to delete temp file {} for atomic save with error: {}'.
+                format(p, err),
                 file=sys.stderr
             )
 
 
-def initial_window_size(opts):
+@contextmanager
+def cached_values_for(name):
+    cached_path = os.path.join(cache_dir(), name + '.json')
+    cached_values = {}
+    try:
+        with open(cached_path, 'rb') as f:
+            cached_values.update(json.loads(f.read().decode('utf-8')))
+    except FileNotFoundError:
+        pass
+    except Exception as err:
+        safe_print(
+            'Failed to load cached in {} values with error: {}'.format(name, err),
+            file=sys.stderr
+        )
+
+    yield cached_values
+
+    try:
+        data = json.dumps(cached_values).encode('utf-8')
+        atomic_save(data, cached_path)
+    except Exception as err:
+        safe_print(
+            'Failed to save cached values with error: {}'.format(err),
+            file=sys.stderr
+        )
+
+
+def initial_window_size(opts, cached_values):
     w, h = opts.initial_window_width, opts.initial_window_height
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']

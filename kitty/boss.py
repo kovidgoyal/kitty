@@ -8,7 +8,7 @@ from gettext import gettext as _
 from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
-from .config import MINIMUM_FONT_SIZE, cached_values, initial_window_size
+from .config import MINIMUM_FONT_SIZE, initial_window_size
 from .constants import appname, set_boss, wakeup
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
@@ -62,8 +62,9 @@ class DumpCommands:  # {{{
 
 class Boss:
 
-    def __init__(self, os_window_id, opts, args):
+    def __init__(self, os_window_id, opts, args, cached_values):
         self.window_id_map = WeakValueDictionary()
+        self.cached_values = cached_values
         self.os_window_map = {}
         self.cursor_blinking = True
         self.shutting_down = False
@@ -85,7 +86,7 @@ class Boss:
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, startup_id=None):
         dpi_changed = False
         if os_window_id is None:
-            w, h = initial_window_size(self.opts) if size is None else size
+            w, h = initial_window_size(self.opts, self.cached_values) if size is None else size
             cls = wclass or self.args.cls or appname
             os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls)
             if startup_id:
@@ -359,7 +360,7 @@ class Boss:
                 w.paste('\n'.join(paths))
 
     def on_os_window_closed(self, os_window_id, viewport_width, viewport_height):
-        cached_values['window-size'] = viewport_width, viewport_height
+        self.cached_values['window-size'] = viewport_width, viewport_height
         tm = self.os_window_map.pop(os_window_id, None)
         if tm is not None:
             tm.destroy()

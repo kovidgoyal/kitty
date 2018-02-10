@@ -11,11 +11,11 @@ from contextlib import contextmanager
 from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, parse_args
-from .config import initial_window_size, load_cached_values, save_cached_values
+from .config import cached_values_for, initial_window_size
 from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file
 from .fast_data_types import (
-    create_os_window, glfw_init, glfw_terminate,
-    install_sigchld_handler, set_default_window_icon, set_options, show_window
+    create_os_window, glfw_init, glfw_terminate, install_sigchld_handler,
+    set_default_window_icon, set_options, show_window
 )
 from .fonts.box_drawing import set_scale
 from .utils import (
@@ -40,22 +40,21 @@ def init_graphics():
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl)
-    load_cached_values()
-    w, h = initial_window_size(opts)
-    window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
-    startup_ctx = init_startup_notification(window_id)
-    show_window(window_id)
-    if not is_wayland and not is_macos:  # no window icons on wayland
-        with open(logo_data_file, 'rb') as f:
-            set_default_window_icon(f.read(), 256, 256)
-    boss = Boss(window_id, opts, args)
-    boss.start()
-    end_startup_notification(startup_ctx)
-    try:
-        boss.child_monitor.main_loop()
-    finally:
-        boss.destroy()
-    save_cached_values()
+    with cached_values_for('main') as cached_values:
+        w, h = initial_window_size(opts, cached_values)
+        window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
+        startup_ctx = init_startup_notification(window_id)
+        show_window(window_id)
+        if not is_wayland and not is_macos:  # no window icons on wayland
+            with open(logo_data_file, 'rb') as f:
+                set_default_window_icon(f.read(), 256, 256)
+        boss = Boss(window_id, opts, args, cached_values)
+        boss.start()
+        end_startup_notification(startup_ctx)
+        try:
+            boss.child_monitor.main_loop()
+        finally:
+            boss.destroy()
 
 
 def ensure_osx_locale():
