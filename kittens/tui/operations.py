@@ -6,11 +6,11 @@ from contextlib import contextmanager
 
 from kitty.terminfo import string_capabilities
 
-S7C1T = b'\033 F'
-SAVE_CURSOR = b'\0337'
-RESTORE_CURSOR = b'\0338'
-SAVE_PRIVATE_MODE_VALUES = b'\033[?s'
-RESTORE_PRIVATE_MODE_VALUES = b'\033[?r'
+S7C1T = '\033 F'
+SAVE_CURSOR = '\0337'
+RESTORE_CURSOR = '\0338'
+SAVE_PRIVATE_MODE_VALUES = '\033[?s'
+RESTORE_PRIVATE_MODE_VALUES = '\033[?r'
 
 MODES = dict(
     LNM=(20, ''),
@@ -36,20 +36,20 @@ MODES = dict(
 
 def set_mode(which, private=True):
     num, private = MODES[which]
-    return '\033[{}{}h'.format(private, num).encode('ascii')
+    return '\033[{}{}h'.format(private, num)
 
 
 def reset_mode(which):
     num, private = MODES[which]
-    return '\033[{}{}l'.format(private, num).encode('ascii')
+    return '\033[{}{}l'.format(private, num)
 
 
 def clear_screen():
-    return string_capabilities['clear'].replace(r'\E', '\033').encode('ascii')
+    return string_capabilities['clear'].replace(r'\E', '\033')
 
 
 def set_window_title(value):
-    return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\').encode('utf-8')
+    return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\')
 
 
 def set_line_wrapping(yes_or_no):
@@ -77,7 +77,7 @@ def colored(text, color, intense=False):
     return '\033[{}m{}\033[39m'.format(e, text)
 
 
-def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=False, bold=False, underline=None, underline_color=None):
+def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None):
     start, end = [], []
     if fg is not None:
         start.append(_color(fg, fg_intense))
@@ -93,10 +93,15 @@ def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=Fa
     if underline is not None:
         start.append('4:{}'.format(UNDERLINE_STYLES[underline]))
         end.append('4:0')
-    if italic:
-        start.append('3'), end.append('23')
-    if bold:
-        start.append('1'), end.append('21')
+    if italic is not None:
+        s, e = (start, end) if italic else (end, start)
+        s.append('3'), e.append('23')
+    if bold is not None:
+        s, e = (start, end) if bold else (end, start)
+        s.append('1'), e.append('22')
+    if reverse is not None:
+        s, e = (start, end) if reverse else (end, start)
+        s.append('7'), e.append('27')
     if not start:
         return text
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
@@ -111,7 +116,8 @@ def init_state(alternate_screen=True):
         reset_mode('MOUSE_MOTION_TRACKING') + reset_mode('MOUSE_MOVE_TRACKING')
         + reset_mode('FOCUS_TRACKING') + reset_mode('MOUSE_UTF8_MODE') +
         reset_mode('MOUSE_SGR_MODE') + reset_mode('MOUSE_UTF8_MODE') +
-        set_mode('BRACKETED_PASTE') + set_mode('EXTENDED_KEYBOARD')
+        set_mode('BRACKETED_PASTE') + set_mode('EXTENDED_KEYBOARD') +
+        '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
         ans += set_mode('ALTERNATE_SCREEN')
@@ -120,7 +126,7 @@ def init_state(alternate_screen=True):
 
 
 def reset_state(normal_screen=True):
-    ans = b''
+    ans = ''
     if normal_screen:
         ans += reset_mode('ALTERNATE_SCREEN')
     ans += RESTORE_PRIVATE_MODE_VALUES

@@ -56,6 +56,8 @@ def raw_terminal(fd):
 
 
 def write_all(fd, data):
+    if isinstance(data, str):
+        data = data.encode('utf-8')
     while data:
         n = os.write(fd, data)
         if not n:
@@ -258,7 +260,7 @@ class Loop:
             del handler.write_buf[:consumed]
 
     def _wakeup_ready(self, handler):
-        data = os.read(self.wakeup_read_fd)
+        data = os.read(self.wakeup_read_fd, 1024)
         if b'r' in data:
             screen_size.changed = True
             handler.on_resize(screen_size())
