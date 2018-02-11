@@ -111,17 +111,25 @@ class UnicodeInput(Handler):
     def draw_screen(self):
         self.write(clear_screen())
         self.draw_title_bar()
+        y = 1
+
+        def writeln(text=''):
+            nonlocal y
+            self.print(text)
+            y += 1
+
         if self.mode is HEX:
-            self.print(_('Enter the hex code for the character'))
+            writeln(_('Enter the hex code for the character'))
         else:
-            self.print(_('Enter words from the name of the character'))
+            writeln(_('Enter words from the name of the character'))
         self.write(self.prompt)
         self.write(self.current_input)
         with cursor(self.write):
-            self.print()
+            writeln()
             if self.choice_line:
-                self.print(self.choice_line)
-                self.print()
+                writeln(self.choice_line)
+            if self.mode is HEX:
+                writeln(styled('Use r followed by the index for the recent entries below', fg=FAINT))
 
     def refresh(self):
         self.update_prompt()
