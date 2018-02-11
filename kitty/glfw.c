@@ -298,10 +298,10 @@ set_dpi_from_os_window(OSWindow *w) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
-    int width, height, swap_interval = 0, x = -1, y = -1;
+    int width, height, x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iisss|Oiii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &swap_interval, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "iisss|Oiii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
     bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
@@ -346,7 +346,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
-    glfwSwapInterval(swap_interval);  // a value of 1 makes mouse selection laggy
+    glfwSwapInterval(1);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
         set_dpi_from_os_window(NULL);
         gl_init();
