@@ -176,7 +176,7 @@ class Boss:
                 args.args = rest
                 opts = create_opts(args)
                 session = create_session(opts, args)
-                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts), startup_id=startup_id)
+                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
             else:
                 safe_print('Unknown message received from peer, ignoring')
 
