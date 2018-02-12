@@ -71,6 +71,7 @@ def parse_mods(parts):
 named_keys = {
     "'": 'APOSTROPHE',
     ',': 'COMMA',
+    '+': 'PLUS',
     '-': 'MINUS',
     '.': 'PERIOD',
     '/': 'SLASH',
