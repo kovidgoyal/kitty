@@ -62,7 +62,7 @@ UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
     'straight double curly'.split())}
 
 
-def _color(color, intense=False, base=30):
+def color_code(color, intense=False, base=30):
     if isinstance(color, str):
         e = str((base + 60 if intense else base) + STANDARD_COLORS[color])
     elif isinstance(color, int):
@@ -72,23 +72,27 @@ def _color(color, intense=False, base=30):
     return e
 
 
-def colored(text, color, intense=False):
-    e = _color(color, intense)
-    return '\033[{}m{}\033[39m'.format(e, text)
+def sgr(*parts):
+    return '\033[{}m'.format(';'.join(parts))
+
+
+def colored(text, color, intense=False, reset_to=None, reset_to_intense=False):
+    e = color_code(color, intense)
+    return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
 
 
 def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None):
     start, end = [], []
     if fg is not None:
-        start.append(_color(fg, fg_intense))
+        start.append(color_code(fg, fg_intense))
         end.append('39')
     if bg is not None:
-        start.append(_color(bg, bg_intense, 40))
+        start.append(color_code(bg, bg_intense, 40))
         end.append('49')
     if underline_color is not None:
         if isinstance(underline_color, str):
             underline_color = STANDARD_COLORS[underline_color]
-        start.append(_color(underline_color, base=50))
+        start.append(color_code(underline_color, base=50))
         end.append('59')
     if underline is not None:
         start.append('4:{}'.format(UNDERLINE_STYLES[underline]))

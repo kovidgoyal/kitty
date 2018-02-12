@@ -27,7 +27,7 @@ codepoints_for_word(const char *word, size_t len) {
     for (unsigned short i = 1; i <= words[0]; i++) {
         unsigned short word_idx = words[i];
         const char *w = idx_to_word[word_idx];
-        if(strncmp(word, w, len) == 0) {
+        if (strncmp(word, w, len) == 0 && strlen(w) == len) {
             const char_type* codepoints = codepoints_for_word_idx[word_idx];
             for (char_type i = 1; i <= codepoints[0]; i++) {
                 PyObject *t = PyLong_FromUnsignedLong(codepoints[i]); if (t == NULL) { Py_DECREF(ans); return NULL; }
