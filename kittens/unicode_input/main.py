@@ -274,6 +274,10 @@ def main(args=sys.argv):
         loop.loop(handler)
         if handler.current_char and loop.return_code == 0:
             print('OK:', hex(ord(handler.current_char))[2:])
+            try:
+                handler.recent.remove(ord(handler.current_char))
+            except Exception:
+                pass
             recent = [ord(handler.current_char)] + handler.recent
             cached_values['recent'] = recent[:len(DEFAULT_SET)]
     raise SystemExit(loop.return_code)
