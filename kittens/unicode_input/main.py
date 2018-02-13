@@ -27,6 +27,7 @@ from ..tui.operations import (
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
 favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
+INDEX_CHAR = '.'
 
 
 def codepoint_ok(code):
@@ -275,7 +276,7 @@ class UnicodeInput(Handler):
         self.current_char = None
         if self.mode is HEX:
             try:
-                if self.current_input.startswith('r') and len(self.current_input) > 1:
+                if self.current_input.startswith(INDEX_CHAR) and len(self.current_input) > 1:
                     self.current_char = chr(self.table.codepoint_at_hint(self.current_input[1:]))
                 else:
                     code = int(self.current_input, 16)
@@ -289,7 +290,7 @@ class UnicodeInput(Handler):
         else:
             try:
                 if self.current_input:
-                    self.current_char = chr(self.table.codepoint_at_hint(self.current_input))
+                    self.current_char = chr(self.table.codepoint_at_hint(self.current_input.lstrip(INDEX_CHAR)))
             except Exception:
                 pass
         if self.current_char is not None:
@@ -357,7 +358,7 @@ class UnicodeInput(Handler):
             writeln()
             writeln(self.choice_line)
             if self.mode is HEX:
-                writeln(styled(_('Type {} followed by the index for the recent entries below').format('r'), fg=FAINT))
+                writeln(styled(_('Type {} followed by the index for the recent entries below').format(INDEX_CHAR), fg=FAINT))
             elif self.mode is NAME:
                 writeln(styled(_('Use Tab or the arrow keys to choose a character from below'), fg=FAINT))
             elif self.mode is FAVORITES:
