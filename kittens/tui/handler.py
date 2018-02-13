@@ -38,3 +38,6 @@ class Handler:
     def print(self, *args, sep=' ', end='\r\n'):
         data = sep.join(map(str, args)) + end
         self.write(data)
+
+    def suspend(self):
+        return self._term_manager.suspend()

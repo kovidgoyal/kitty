@@ -2,15 +2,19 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import shlex
 import string
+import subprocess
 import sys
 from functools import lru_cache
 from gettext import gettext as _
 
 from kitty.config import cached_values_for
+from kitty.constants import config_dir
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
-    DOWN, ESCAPE, F1, F2, F3, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
+    DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
     backspace_key, enter_key
 )
 
@@ -21,7 +25,12 @@ from ..tui.operations import (
     set_window_title, sgr, styled
 )
 
-HEX, NAME, EMOTICONS = 'HEX', 'NAME', 'EMOTICONS'
+HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
+favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
+
+
+def codepoint_ok(code):
+    return not (code <= 32 or code == 127 or 128 <= code <= 159 or 0xd800 <= code <= 0xdbff or 0xDC00 <= code <= 0xDFFF)
 
 
 @lru_cache(maxsize=256)
@@ -54,6 +63,48 @@ def codepoints_matching_search(text):
             codepoints = {c for c in codepoints if word in name(c).lower()}
         if codepoints:
             ans = list(sorted(codepoints))
+    return ans
+
+
+def parse_favorites(raw):
+    for line in raw.splitlines():
+        line = line.strip()
+        if line.startswith('#') or not line:
+            continue
+        idx = line.find('#')
+        if idx > -1:
+            line = line[:idx]
+        code_text = line.partition(' ')[0]
+        try:
+            code = int(code_text, 16)
+        except Exception:
+            pass
+        else:
+            if codepoint_ok(code):
+                yield code
+
+
+def serialize_favorites(favorites):
+    ans = '''\
+# Favorite characters for unicode input
+# Enter the hex code for each favorite character on a new line. Blank lines are
+# ignored and anything after a # is considered a comment.
+
+'''.splitlines()
+    for cp in favorites:
+        ans.append('{:x} # {} {}'.format(cp, chr(cp), name(cp)))
+    return '\n'.join(ans)
+
+
+def load_favorites(refresh=False):
+    ans = getattr(load_favorites, 'ans', None)
+    if ans is None or refresh:
+        try:
+            with open(favorites_path, 'rb') as f:
+                raw = f.read().decode('utf-8')
+            ans = load_favorites.ans = list(parse_favorites(raw)) or list(DEFAULT_SET)
+        except FileNotFoundError:
+            ans = load_favorites.ans = list(DEFAULT_SET)
     return ans
 
 
@@ -208,6 +259,9 @@ class UnicodeInput(Handler):
         elif self.mode is EMOTICONS:
             q = self.mode, None
             codepoints = list(EMOTICONS_SET)
+        elif self.mode is FAVORITES:
+            codepoints = load_favorites()
+            q = self.mode, tuple(codepoints)
         elif self.mode is NAME:
             q = self.mode, self.current_input
             if q != self.last_updated_code_point_at:
@@ -240,7 +294,7 @@ class UnicodeInput(Handler):
                 pass
         if self.current_char is not None:
             code = ord(self.current_char)
-            if code <= 32 or code == 127 or 128 <= code <= 159 or 0xd800 <= code <= 0xdbff or 0xDC00 <= code <= 0xDFFF:
+            if not codepoint_ok(code):
                 self.current_char = None
 
     def update_prompt(self):
@@ -266,6 +320,7 @@ class UnicodeInput(Handler):
                 (_('Code'), 'F1', HEX),
                 (_('Name'), 'F2', NAME),
                 (_('Emoji'), 'F3', EMOTICONS),
+                (_('Favorites'), 'F4', FAVORITES),
         ]:
             entry = ' {} ({}) '.format(name, key)
             if mode is self.mode:
@@ -302,6 +357,8 @@ class UnicodeInput(Handler):
                 writeln(styled(_('Type {} followed by the index for the recent entries below').format('r'), fg=FAINT))
             elif self.mode is NAME:
                 writeln(styled(_('Use Tab or the arrow keys to choose a character from below'), fg=FAINT))
+            elif self.mode is FAVORITES:
+                writeln(styled(_('Press F12 to edit the list of favorites'), fg=FAINT))
             self.table_at = y
             self.write(self.table.layout(self.screen_size.rows - self.table_at, self.screen_size.cols))
 
@@ -319,7 +376,7 @@ class UnicodeInput(Handler):
             self.refresh()
         elif key_event is enter_key:
             self.quit_loop(0)
-        elif key_event.type is RELEASE:
+        elif key_event.type is RELEASE and not key_event.mods:
             if key_event.key is ESCAPE:
                 self.quit_loop(1)
             elif key_event.key is F1:
@@ -328,6 +385,10 @@ class UnicodeInput(Handler):
                 self.switch_mode(NAME)
             elif key_event.key is F3:
                 self.switch_mode(EMOTICONS)
+            elif key_event.key is F4:
+                self.switch_mode(FAVORITES)
+            elif key_event.key is F12 and self.mode is FAVORITES:
+                self.edit_favorites()
         elif self.mode is NAME:
             if key_event.key is TAB:
                 if key_event.mods == SHIFT:
@@ -342,6 +403,17 @@ class UnicodeInput(Handler):
                 self.table.move_current(rows=-1), self.refresh()
             elif key_event.key is DOWN and not key_event.mods:
                 self.table.move_current(rows=1), self.refresh()
+
+    def edit_favorites(self):
+        if not os.path.exists(favorites_path):
+            with open(favorites_path, 'wb') as f:
+                f.write(serialize_favorites(load_favorites()).encode('utf-8'))
+        editor = shlex.split(os.environ.get('EDITOR', 'vim'))
+        with self.suspend():
+            p = subprocess.Popen(editor + [favorites_path])
+            if p.wait() == 0:
+                load_favorites(refresh=True)
+        self.refresh()
 
     def switch_mode(self, mode):
         if mode is not self.mode:

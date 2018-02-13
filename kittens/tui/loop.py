@@ -36,25 +36,6 @@ def log(*a, **kw):
     fd.flush()
 
 
-@contextmanager
-def non_block(fd):
-    oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
-    yield
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
-
-
-@contextmanager
-def raw_terminal(fd):
-    isatty = os.isatty(fd)
-    if isatty:
-        old = termios.tcgetattr(fd)
-        tty.setraw(fd)
-    yield
-    if isatty:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-
-
 def write_all(fd, data):
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -65,11 +46,40 @@ def write_all(fd, data):
         data = data[n:]
 
 
-@contextmanager
-def sanitize_term(output_fd):
-    write_all(output_fd, init_state())
-    yield
-    write_all(output_fd, reset_state())
+class TermManager:
+
+    def __init__(self, input_fd, output_fd):
+        self.input_fd = input_fd
+        self.output_fd = output_fd
+        self.original_fl = fcntl.fcntl(self.input_fd, fcntl.F_GETFL)
+        self.isatty = os.isatty(self.input_fd)
+        if self.isatty:
+            self.original_termios = termios.tcgetattr(self.input_fd)
+
+    def set_state_for_loop(self):
+        write_all(self.output_fd, init_state())
+        fcntl.fcntl(self.input_fd, fcntl.F_SETFL, self.original_fl | os.O_NONBLOCK)
+        if self.isatty:
+            tty.setraw(self.input_fd)
+
+    def reset_state_to_original(self):
+        if self.isatty:
+            termios.tcsetattr(self.input_fd, termios.TCSADRAIN, self.original_termios)
+        fcntl.fcntl(self.input_fd, fcntl.F_SETFL, self.original_fl)
+        write_all(self.output_fd, reset_state())
+
+    @contextmanager
+    def suspend(self):
+        self.reset_state_to_original()
+        yield self
+        self.set_state_for_loop()
+
+    def __enter__(self):
+        self.set_state_for_loop()
+        return self
+
+    def __exit__(self, *a):
+        self.reset_state_to_original()
 
 
 LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
@@ -306,11 +316,12 @@ class Loop:
         select = self.sel.select
         tb = None
         waiting_for_write = True
-        with closing(self.sel), sanitize_term(self.output_fd), non_block(self.input_fd), non_block(self.output_fd), raw_terminal(self.input_fd):
+        with closing(self.sel), TermManager(self.input_fd, self.output_fd) as term_manager:
             signal.signal(signal.SIGWINCH, self._on_sigwinch)
             signal.signal(signal.SIGTERM, self._on_sigterm)
             signal.signal(signal.SIGINT, self._on_sigint)
             handler.write_buf = []
+            handler._term_manager = term_manager
             keep_going = True
             try:
                 handler.initialize(screen_size(), self.quit, self.wakeup)
@@ -337,13 +348,14 @@ class Loop:
                         keep_going = False
                         break
             if tb is not None:
-                self._report_error_loop(tb)
+                self._report_error_loop(tb, term_manager)
 
-    def _report_error_loop(self, tb):
+    def _report_error_loop(self, tb, term_manager):
         select = self.sel.select
         waiting_for_write = False
         handler = UnhandledException(tb)
         handler.write_buf = []
+        handler._term_manager = term_manager
         handler.initialize(screen_size(), self.quit, self.wakeup)
         while True:
             has_data_to_write = bool(handler.write_buf)
