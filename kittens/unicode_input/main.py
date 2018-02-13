@@ -10,8 +10,8 @@ from gettext import gettext as _
 from kitty.config import cached_values_for
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
-    DOWN, ESCAPE, F1, F2, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP, backspace_key,
-    enter_key
+    DOWN, ESCAPE, F1, F2, F3, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
+    backspace_key, enter_key
 )
 
 from ..tui.handler import Handler
@@ -21,7 +21,7 @@ from ..tui.operations import (
     set_window_title, sgr, styled
 )
 
-HEX, NAME = 'HEX', 'NAME'
+HEX, NAME, EMOTICONS = 'HEX', 'NAME', 'EMOTICONS'
 
 
 @lru_cache(maxsize=256)
@@ -205,6 +205,9 @@ class UnicodeInput(Handler):
         if self.mode is HEX:
             q = self.mode, None
             codepoints = self.recent
+        elif self.mode is EMOTICONS:
+            q = self.mode, None
+            codepoints = list(EMOTICONS_SET)
         elif self.mode is NAME:
             q = self.mode, self.current_input
             if q != self.last_updated_code_point_at:
@@ -225,10 +228,16 @@ class UnicodeInput(Handler):
                     self.current_char = chr(code)
             except Exception:
                 pass
-        else:
+        elif self.mode is NAME:
             cc = self.table.current_codepoint
             if cc:
                 self.current_char = chr(cc)
+        else:
+            try:
+                if self.current_input:
+                    self.current_char = chr(self.table.codepoint_at_hint(self.current_input))
+            except Exception:
+                pass
         if self.current_char is not None:
             code = ord(self.current_char)
             if code <= 32 or code == 127 or 128 <= code <= 159 or 0xd800 <= code <= 0xdbff or 0xDC00 <= code <= 0xDFFF:
@@ -256,6 +265,7 @@ class UnicodeInput(Handler):
         for name, key, mode in [
                 (_('Code'), 'F1', HEX),
                 (_('Name'), 'F2', NAME),
+                (_('Emoji'), 'F3', EMOTICONS),
         ]:
             entry = ' {} ({}) '.format(name, key)
             if mode is self.mode:
@@ -316,6 +326,8 @@ class UnicodeInput(Handler):
                 self.switch_mode(HEX)
             elif key_event.key is F2:
                 self.switch_mode(NAME)
+            elif key_event.key is F3:
+                self.switch_mode(EMOTICONS)
         elif self.mode is NAME:
             if key_event.key is TAB:
                 if key_event.mods == SHIFT:
