@@ -49,8 +49,7 @@ def name(cp):
 
 
 @lru_cache(maxsize=256)
-def codepoints_matching_search(text):
-    parts = text.lower().split()
+def codepoints_matching_search(parts):
     ans = []
     if parts and parts[0]:
         codepoints = points_for_word(parts[0])
@@ -238,6 +237,14 @@ class Table:
             self.layout_dirty = True
 
 
+def is_index(w):
+    try:
+        int(w.lstrip(INDEX_CHAR), 16)
+        return True
+    except Exception:
+        return False
+
+
 class UnicodeInput(Handler):
 
     def __init__(self, cached_values):
@@ -266,7 +273,17 @@ class UnicodeInput(Handler):
         elif self.mode is NAME:
             q = self.mode, self.current_input
             if q != self.last_updated_code_point_at:
-                codepoints = codepoints_matching_search(self.current_input)
+                words = self.current_input.split()
+                words = [w for w in words if w != INDEX_CHAR]
+                index_words = [i for i, w in enumerate(words) if i > 0 and is_index(w)]
+                if index_words:
+                    index_word = words[index_words[0]]
+                    words = words[:index_words[0]]
+                codepoints = codepoints_matching_search(tuple(words))
+                if index_words:
+                    index_word = int(index_word.lstrip(INDEX_CHAR), 16)
+                    if index_word < len(codepoints):
+                        codepoints = [codepoints[index_word]]
         if q != self.last_updated_code_point_at:
             self.last_updated_code_point_at = q
             self.table.set_codepoints(codepoints, self.mode)
