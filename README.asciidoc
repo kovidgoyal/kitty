@@ -348,6 +348,15 @@ glyph in video RAM so that font rendering is not a bottleneck.  Interaction
 with child programs takes place in a separate thread from rendering, to improve
 smoothness.
 
+kitty goes to great lengths to reduce latency. In order to minimize latency,
+kitty dynamically decides whether to sync updates to the monitor refresh rate
+or not. When doing latency sensitive activities such as typing or selecting
+with the mouse, kitty does not sync to the monitor refresh rate, as that limits
+latency to a minimum of `17ms` for common monitors. However, when
+scrolling or making other large scale changes to the screen, kitty syncs to the
+monitor refresh rate, to avoid
+link:https://en.wikipedia.org/wiki/Screen_tearing[screen tearing].
+
 There are two parameters you can tune to adjust the performance. ``repaint_delay``
 and ``input_delay``. These control the artificial delays introduced into the
 render loop to reduce CPU usage. See the link:kitty/kitty.conf[config file] for details.

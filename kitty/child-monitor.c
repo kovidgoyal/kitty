@@ -604,6 +604,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id)
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height);
+    bool needs_vsync = false;
     if (TD.screen && os_window->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
@@ -617,9 +618,11 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id)
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
             }
+            if (!needs_vsync && (WD.screen->render_activity.large_change || WD.screen->render_activity.chars_written > 100)) needs_vsync = true;
+            WD.screen->render_activity.large_change = false; WD.screen->render_activity.chars_written = 0;
         }
     }
-    swap_window_buffers(os_window);
+    swap_window_buffers(os_window, needs_vsync);
     br->is_dirty = false;
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;

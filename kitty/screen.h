@@ -52,6 +52,12 @@ typedef struct {
 
 
 typedef struct {
+    bool large_change;
+    unsigned int chars_written;
+} RenderActivitity;
+
+
+typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
@@ -84,6 +90,7 @@ typedef struct {
     pthread_mutex_t read_buf_lock, write_buf_lock;
 
     CursorRenderInfo cursor_render_info;
+    RenderActivitity render_activity;
 
 } Screen;
 

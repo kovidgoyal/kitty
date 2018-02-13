@@ -626,7 +626,11 @@ hide_mouse(OSWindow *w) {
 }
 
 void
-swap_window_buffers(OSWindow *w) {
+swap_window_buffers(OSWindow *w, bool needs_vsync) {
+    if (needs_vsync != w->vsync_enabled) {
+        glfwSwapInterval(needs_vsync ? 1 : 0);
+        w->vsync_enabled = needs_vsync;
+    }
     glfwSwapBuffers(w->handle);
 }
 
@@ -739,7 +743,7 @@ os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (w->id == os_window_id) {
-            swap_window_buffers(w); Py_RETURN_NONE;
+            swap_window_buffers(w, false); Py_RETURN_NONE;
         }
     }
     PyErr_SetString(PyExc_ValueError, "no such OSWindow");
