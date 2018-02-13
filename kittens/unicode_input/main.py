@@ -139,7 +139,7 @@ class Table:
         self.codepoints = []
         self.current_idx = 0
         self.text = ''
-        self.num_cols = self.num_rows = 0
+        self.num_cols = 0
         self.mode = HEX
 
     @property
@@ -189,7 +189,7 @@ class Table:
 
             def cell(i, idx, c, desc):
                 yield colored(idx, 'green') + ' '
-                yield colored(c, 'gray', True) + ' '
+                yield colored(c, 'gray', True)
                 w = wcswidth(c)
                 if w < 2:
                     yield ' ' * (2 - w)
@@ -197,7 +197,7 @@ class Table:
         num = len(self.codepoints)
         if num < 1:
             self.text = ''
-            self.num_cols = self.num_rows = 0
+            self.num_cols = 0
             return self.text
         idx_size = len(encode_hint(num - 1))
 
@@ -205,7 +205,7 @@ class Table:
         if self.mode is NAME:
             sizes = [idx_size + 2 + len(p[2]) + 2 for p in parts]
         else:
-            sizes = [idx_size + 3 for p in parts]
+            sizes = [idx_size + 3]
         longest = max(sizes) if sizes else 0
         col_width = longest + 2
         col_width = min(col_width, 40)
@@ -213,7 +213,7 @@ class Table:
         num_cols = self.num_cols = cols // col_width
         buf = []
         a = buf.append
-        rows_left = self.num_rows = rows
+        rows_left = rows
 
         for i, (idx, c, desc) in enumerate(parts):
             if i > 0 and i % num_cols == 0:
@@ -308,10 +308,13 @@ class UnicodeInput(Handler):
                 colored(c, 'green'), hex(ord(c))[2:], styled(name(c) or '', italic=True, fg=FAINT))
         self.prompt = self.prompt_template.format(colored(c, color))
 
-    def initialize(self, *args):
-        Handler.initialize(self, *args)
+    def init_terminal_state(self):
         self.write(set_line_wrapping(False))
         self.write(set_window_title(_('Unicode input')))
+
+    def initialize(self, *args):
+        Handler.initialize(self, *args)
+        self.init_terminal_state()
         self.draw_screen()
 
     def draw_title_bar(self):
@@ -413,6 +416,7 @@ class UnicodeInput(Handler):
             p = subprocess.Popen(editor + [favorites_path])
             if p.wait() == 0:
                 load_favorites(refresh=True)
+        self.init_terminal_state()
         self.refresh()
 
     def switch_mode(self, mode):
