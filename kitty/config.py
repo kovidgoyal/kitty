@@ -111,6 +111,8 @@ def parse_key_action(action):
         args = tuple(map(parse_key_action, filter(None, parts)))
     elif func == 'send_text':
         args = rest.split(' ', 1)
+    elif func == 'run_simple_kitten':
+        args = rest.split(' ', 2)
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
     elif func in shlex_actions:

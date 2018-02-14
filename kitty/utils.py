@@ -111,6 +111,14 @@ def base64_encode(
     return ans
 
 
+def command_for_open(program='default'):
+    if program == 'default':
+        cmd = ['open'] if is_macos else ['xdg-open']
+    else:
+        cmd = shlex.split(program)
+    return cmd
+
+
 def open_cmd(cmd, arg=None):
     if arg is not None:
         cmd = list(cmd)
@@ -119,11 +127,7 @@ def open_cmd(cmd, arg=None):
 
 
 def open_url(url, program='default'):
-    if program == 'default':
-        cmd = ['open'] if is_macos else ['xdg-open']
-    else:
-        cmd = shlex.split(program)
-    return open_cmd(cmd, url)
+    return open_cmd(command_for_open(program), url)
 
 
 def detach(fork=True, setsid=True, redirect=True):

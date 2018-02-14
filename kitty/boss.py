@@ -397,6 +397,29 @@ class Boss:
                 else:
                     w.paste(text)
 
+    def run_simple_kitten(self, type_of_input, kitten, *args):
+        import shlex
+        w = self.active_window
+        tab = self.active_tab
+        if w is not None and tab is not None and w.overlay_for is None:
+            cmdline = args[0] if args else ''
+            args = shlex.split(cmdline) if cmdline else []
+            if '--program' not in cmdline:
+                args.extend(('--program', self.opts.open_url_with))
+            if type_of_input in ('text', 'history'):
+                data = (w.buffer_as_text(add_history=type_of_input == 'history') + '\x1c').encode('utf-8')
+            elif type_of_input in ('ansi', 'ansi-history'):
+                data = (w.buffer_as_ansi(add_history=type_of_input == 'ansi-history') + '\x1c').encode('utf-8')
+            elif type_of_input == 'none':
+                data = None
+            else:
+                raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
+            tab.new_special_window(
+                SpecialWindow(
+                    ['kitty', '+runpy', 'from kittens.{}.main import main; main()'.format(kitten)] + args,
+                    stdin=data,
+                    overlay_for=w.id))
+
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
         tab.set_active_window_idx(window_idx)

@@ -4,6 +4,7 @@
 
 import re
 import string
+import subprocess
 import sys
 from collections import namedtuple
 from functools import lru_cache, partial
@@ -11,7 +12,7 @@ from gettext import gettext as _
 
 from kitty.cli import parse_args
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
-from kitty.utils import open_url, read_with_timeout
+from kitty.utils import command_for_open, read_with_timeout
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -187,7 +188,8 @@ def mark(finditer, line, index_map):
 
 def run(args, source_file=None):
     if source_file is None:
-        text = read_from_stdin()
+        text = sys.stdin.buffer.read().decode('utf-8')
+        sys.stdin = open('/dev/tty')
     else:
         with open(source_file, 'r') as f:
             text = f.read()
@@ -209,12 +211,18 @@ def run(args, source_file=None):
     handler = URLHints(lines, index_map)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        open_url(handler.chosen, program=args.program or 'default')
+        cmd = command_for_open(args.program)
+        ret = subprocess.Popen(cmd + [handler.chosen]).wait()
+        if ret != 0:
+            print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
+            input('Press Enter to quit')
+            loop.return_code = ret
     raise SystemExit(loop.return_code)
 
 
 OPTIONS = partial('''\
 --program
+default=default
 What program to use to open matched URLs. Defaults
 to the default URL open program for the operating system.
 

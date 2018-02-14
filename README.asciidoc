@@ -30,6 +30,7 @@
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
 :sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
+:sc_run_simple_kitten_text_url_hints: pass:quotes[`ctrl+shift+e`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -228,6 +229,7 @@ windows are:
 |Restore font size    | {sc_restore_font_size}
 |Toggle fullscreen    | {sc_toggle_fullscreen}
 |Input unicode character | {sc_input_unicode_character}
+|Click URL using the keyboard | {sc_run_simple_kitten_text_url_hints}
 |Pass current selection to program | {sc_pass_selection_to_program}
 |===
 

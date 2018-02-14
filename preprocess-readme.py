@@ -15,7 +15,8 @@ defns = defaultdict(list)
 
 for line in open('kitty/kitty.conf'):
     if line.startswith('map '):
-        _, sc, name = line.split(maxsplit=3)
+        _, sc, name = line.split(maxsplit=2)
+        name = name.rstrip().replace(' ', '_')
         defns[name].append('`' + sc + '`')
 
 defns = [
