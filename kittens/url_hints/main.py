@@ -206,6 +206,9 @@ def run(args, source_file=None):
     for line in text.splitlines():
         marked = mark(finditer, line, index_map)
         lines.append(marked)
+    if not index_map:
+        input(_('No URLs found, press Enter to abort.'))
+        return
 
     loop = Loop()
     handler = URLHints(lines, index_map)
