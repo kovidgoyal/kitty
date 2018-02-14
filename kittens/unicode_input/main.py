@@ -21,13 +21,20 @@ from kitty.key_encoding import (
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import (
-    clear_screen, color_code, colored, cursor, set_line_wrapping,
+    clear_screen, color_code, colored, cursor, faint, set_line_wrapping,
     set_window_title, sgr, styled
 )
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
 favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
 INDEX_CHAR = '.'
+DEFAULT_SET = tuple(map(
+    ord,
+    '‘’“”‹›«»‚„' '😀😛😇😈😉😍😎😮👍👎' '—–§¶†‡©®™' '→⇒•·°±−×÷¼½½¾'
+    '…µ¢£€¿¡¨´¸ˆ˜' 'ÀÁÂÃÄÅÆÇÈÉÊË' 'ÌÍÎÏÐÑÒÓÔÕÖØ' 'ŒŠÙÚÛÜÝŸÞßàá' 'âãäåæçèéêëìí'
+    'îïðñòóôõöøœš' 'ùúûüýÿþªºαΩ∞'
+))
+EMOTICONS_SET = tuple(range(0x1f600, 0x1f64f + 1))
 
 
 def codepoint_ok(code):
@@ -108,16 +115,6 @@ def load_favorites(refresh=False):
     return ans
 
 
-FAINT = 242
-DEFAULT_SET = tuple(map(
-    ord,
-    '‘’“”‹›«»‚„' '😀😛😇😈😉😍😎😮👍👎' '—–§¶†‡©®™' '→⇒•·°±−×÷¼½½¾'
-    '…µ¢£€¿¡¨´¸ˆ˜' 'ÀÁÂÃÄÅÆÇÈÉÊË' 'ÌÍÎÏÐÑÒÓÔÕÖØ' 'ŒŠÙÚÛÜÝŸÞßàá' 'âãäåæçèéêëìí'
-    'îïðñòóôõöøœš' 'ùúûüýÿþªºαΩ∞'
-))
-EMOTICONS_SET = tuple(range(0x1f600, 0x1f64f + 1))
-
-
 def encode_hint(num, digits=string.digits + string.ascii_lowercase):
     res = ''
     d = len(digits)
@@ -177,7 +174,7 @@ class Table:
                     yield ' ' * (2 - w)
                 if len(desc) > space_for_desc:
                     desc = desc[:space_for_desc - 1] + '…'
-                yield colored(desc, FAINT)
+                yield faint(desc)
                 extra = space_for_desc - len(desc)
                 if extra > 0:
                     yield ' ' * extra
@@ -323,7 +320,7 @@ class UnicodeInput(Handler):
         else:
             c, color = self.current_char, 'green'
             self.choice_line = _('Chosen:') + ' {} U+{} {}'.format(
-                colored(c, 'green'), hex(ord(c))[2:], styled(name(c) or '', italic=True, fg=FAINT))
+                colored(c, 'green'), hex(ord(c))[2:], faint(styled(name(c) or '', italic=True)))
         self.prompt = self.prompt_template.format(colored(c, color))
 
     def init_terminal_state(self):
@@ -375,11 +372,11 @@ class UnicodeInput(Handler):
             writeln()
             writeln(self.choice_line)
             if self.mode is HEX:
-                writeln(styled(_('Type {} followed by the index for the recent entries below').format(INDEX_CHAR), fg=FAINT))
+                writeln(faint(_('Type {} followed by the index for the recent entries below').format(INDEX_CHAR)))
             elif self.mode is NAME:
-                writeln(styled(_('Use Tab or the arrow keys to choose a character from below'), fg=FAINT))
+                writeln(faint(_('Use Tab or the arrow keys to choose a character from below')))
             elif self.mode is FAVORITES:
-                writeln(styled(_('Press F12 to edit the list of favorites'), fg=FAINT))
+                writeln(faint(_('Press F12 to edit the list of favorites')))
             self.table_at = y
             self.write(self.table.layout(self.screen_size.rows - self.table_at, self.screen_size.cols))
 

@@ -14,12 +14,11 @@ from kitty.utils import read_with_timeout
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import clear_screen, colored, set_window_title, styled
+from ..tui.operations import clear_screen, faint, set_window_title, styled
 
 Mark = namedtuple('Mark', 'index start end text')
 URL_PREFIXES = 'http https file ftp'.split()
 HINT_ALPHABET = string.digits + string.ascii_lowercase
-FAINT = 242
 
 
 @lru_cache(maxsize=2048)
@@ -38,9 +37,6 @@ def decode_hint(x):
 
 def render(lines, current_input):
     ans = []
-
-    def faint(text):
-        return colored(text, FAINT)
 
     def mark(m):
         hint = encode_hint(m.index)

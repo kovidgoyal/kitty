@@ -81,6 +81,10 @@ def colored(text, color, intense=False, reset_to=None, reset_to_intense=False):
     return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
 
 
+def faint(text):
+    return colored(text, 'black', True)
+
+
 def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None):
     start, end = [], []
     if fg is not None:
