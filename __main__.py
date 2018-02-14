@@ -21,7 +21,8 @@ def remote_control(args):
 
 
 def runpy(args):
-    exec(' '.join(args[1:]))
+    sys.argv = ['kitty'] + args[2:]
+    exec(args[1])
 
 
 def launch(args):

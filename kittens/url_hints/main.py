@@ -185,20 +185,20 @@ def mark(finditer, line, index_map):
     return line, marks
 
 
-def run(source_file=None, regex=None, program=None):
+def run(args, source_file=None):
     if source_file is None:
         text = read_from_stdin()
     else:
         with open(source_file, 'r') as f:
             text = f.read()
-    if regex is None:
+    if args.regex is None:
         from .url_regex import url_delimiters
         url_pat = '(?:{})://[^{}]{{3,}}'.format(
-            '|'.join(URL_PREFIXES), url_delimiters
+            '|'.join(args.url_prefixes.split(',')), url_delimiters
         )
         finditer = partial(find_urls, re.compile(url_pat))
     else:
-        finditer = partial(regex_finditer, re.compile(regex))
+        finditer = partial(regex_finditer, re.compile(args.regex))
     lines = []
     index_map = {}
     for line in text.splitlines():
@@ -209,11 +209,11 @@ def run(source_file=None, regex=None, program=None):
     handler = URLHints(lines, index_map)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        open_url(handler.chosen, program=program or 'default')
+        open_url(handler.chosen, program=args.program or 'default')
     raise SystemExit(loop.return_code)
 
 
-OPTIONS = '''\
+OPTIONS = partial('''\
 --program
 What program to use to open matched URLs. Defaults
 to the default URL open program for the operating system.
@@ -222,14 +222,21 @@ to the default URL open program for the operating system.
 --regex
 Instead of searching for URLs search for the specified regular
 expression instead.
-'''
+
+
+--url-prefixes
+default={0}
+Comma separeted list of recognized URL prefixes. Defaults to:
+{0}
+'''.format, ','.join(sorted(URL_PREFIXES)))
 
 
 def main(args=sys.argv):
     msg = 'Highlight URLs inside the specified text'
-    args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
-    run((items or [None])[0], args.regex, args.program)
-
-
-if __name__ == '__main__':
-    main()
+    try:
+        args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
+    except SystemExit as e:
+        print(e.args[0], file=sys.stderr)
+        input('Press enter to quit...')
+        return 1
+    run(args, (items or [None])[0])
