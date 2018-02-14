@@ -215,13 +215,33 @@ def codepoint_to_mark_map(p, mark_map):
     return rmap
 
 
+def classes_to_regex(classes):
+    chars = set()
+    for c in classes:
+        chars |= class_maps[c]
+
+    def as_string(codepoint):
+        if codepoint < 256:
+            return r'\x{:02x}'.format(codepoint)
+        if codepoint <= 0xffff:
+            return r'\u{:04x}'.format(codepoint)
+        return r'\U{:08x}'.format(codepoint)
+
+    for spec in get_ranges(list(chars)):
+        if isinstance(spec, tuple):
+            yield '{}-{}'.format(*map(as_string, (spec[0], spec[1])))
+        else:
+            yield as_string(spec)
+
+
 def gen_ucd():
+    cz = {c for c in class_maps if c[0] in 'CZ'}
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
         category_test('is_combining_char', p, {c for c in class_maps if c.startswith('M')}, 'M category (marks)')
         category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters (Cc Cf Cs)')
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
-        category_test('is_CZ_category', p, {c for c in class_maps if c[0] in 'CZ'}, 'C and Z categories')
+        category_test('is_CZ_category', p, cz, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
         mark_map = [0] + list(sorted(marks))
         p('char_type codepoint_for_mark(combining_type m) {')
@@ -236,6 +256,8 @@ def gen_ucd():
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
+    with open('kittens/url_hints/url_regex.py', 'w') as f:
+        f.write("url_delimiters = '{}'  # noqa".format(''.join(classes_to_regex(cz))))
 
 
 def gen_names():
