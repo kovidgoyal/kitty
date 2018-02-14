@@ -1454,37 +1454,7 @@ screen_open_url(Screen *self) {
 
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    PyObject *callback, *ret = NULL, *t = NULL;
-    Py_UCS4 *buf = NULL;
-    int as_ansi = 0;
-    if (!PyArg_ParseTuple(args, "O|p", &callback, &as_ansi)) return NULL;
-    PyObject *nl = PyUnicode_FromString("\n");
-    if (nl == NULL) goto end;
-    if (as_ansi) {
-        buf = malloc(sizeof(Py_UCS4) * self->columns * 100);
-        if (buf == NULL) { PyErr_NoMemory(); goto end; }
-    }
-    for (index_type y = 0; y < self->lines; y++) {
-        Line *line = visual_line_(self, y);
-        if (!line->continued && y > 0) {
-            ret = PyObject_CallFunctionObjArgs(callback, nl, NULL);
-            if (ret == NULL) goto end;
-            Py_CLEAR(ret);
-        }
-        if (as_ansi) {
-            index_type num = line_as_ansi(line, buf, self->columns * 100 - 2);
-            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-        } else {
-            t = PyObject_Str((PyObject*)line);
-        }
-        if (t == NULL) goto end;
-        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-        Py_DECREF(t); if (ret == NULL) goto end; Py_DECREF(ret);
-    }
-end:
-    Py_CLEAR(nl); free(buf);
-    if (PyErr_Occurred()) return NULL;
-    Py_RETURN_NONE;
+    as_text_generic(args, self, visual_line_, self->lines, self->columns, callback, as_ansi);
 }
 
 static PyObject*

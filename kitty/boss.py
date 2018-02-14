@@ -406,10 +406,8 @@ class Boss:
             args = shlex.split(cmdline) if cmdline else []
             if '--program' not in cmdline:
                 args.extend(('--program', self.opts.open_url_with))
-            if type_of_input in ('text', 'history'):
-                data = (w.buffer_as_text if type_of_input == 'history' else w.as_text)().encode('utf-8')
-            elif type_of_input in ('ansi', 'ansi-history'):
-                data = (w.buffer_as_ansi() if type_of_input == 'ansi-history' else w.as_text(as_ansi=True)).encode('utf-8')
+            if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
+                data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
             elif type_of_input == 'none':
                 data = None
             else:
@@ -494,9 +492,13 @@ class Boss:
             if arg == '@selection':
                 return w.text_for_selection()
             if arg == '@ansi':
-                return w.buffer_as_ansi()
+                return w.as_text(as_ansi=True, add_history=True)
             if arg == '@text':
-                return w.buffer_as_text()
+                return w.as_text(add_history=True)
+            if arg == '@screen':
+                return w.as_text()
+            if arg == '@ansi_screen':
+                return w.as_text(as_ansi=True)
 
         if args[0].startswith('@'):
             stdin = data_for_at(args[0]) or None

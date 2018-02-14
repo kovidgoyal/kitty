@@ -44,6 +44,7 @@ xlimit_for_line(Line *line) {
     return xlimit;
 }
 
+
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);
@@ -79,3 +80,39 @@ void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
+
+
+#define as_text_generic(args, container, get_line, lines, columns, callback, as_ansi) { \
+    PyObject *callback; \
+    int as_ansi = 0; \
+    if (!PyArg_ParseTuple(args, "O|p", &callback, &as_ansi)) return NULL; \
+    PyObject *ret = NULL, *t = NULL; \
+    Py_UCS4 *buf = NULL; \
+    PyObject *nl = PyUnicode_FromString("\n"); \
+    if (nl == NULL) goto end; \
+    if (as_ansi) { \
+        buf = malloc(sizeof(Py_UCS4) * columns * 100); \
+        if (buf == NULL) { PyErr_NoMemory(); goto end; } \
+    } \
+    for (index_type y = 0; y < lines; y++) { \
+        Line *line = get_line(container, y); \
+        if (!line->continued && y > 0) { \
+            ret = PyObject_CallFunctionObjArgs(callback, nl, NULL); \
+            if (ret == NULL) goto end; \
+            Py_CLEAR(ret); \
+        } \
+        if (as_ansi) { \
+            index_type num = line_as_ansi(line, buf, columns * 100 - 2); \
+            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num); \
+        } else { \
+            t = PyObject_Str((PyObject*)line); \
+        } \
+        if (t == NULL) goto end; \
+        ret = PyObject_CallFunctionObjArgs(callback, t, NULL); \
+        Py_DECREF(t); if (ret == NULL) goto end; Py_DECREF(ret); \
+    } \
+end: \
+    Py_CLEAR(nl); free(buf); \
+    if (PyErr_Occurred()) return NULL; \
+    Py_RETURN_NONE; \
+}

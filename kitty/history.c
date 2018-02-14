@@ -202,6 +202,18 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
+static inline Line*
+get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, y, l); return l; }
+
+static PyObject*
+as_text(HistoryBuf *self, PyObject *args) {
+    Line l = {.xnum=self->xnum};
+#define gl(self, y) get_line(self, y, &l);
+    as_text_generic(args, self, gl, self->count, self->xnum, callback, as_ansi);
+#undef gl
+}
+
+
 static PyObject*
 dirty_lines(HistoryBuf *self) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
@@ -223,6 +235,7 @@ static PyMethodDef methods[] = {
     METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
     METHOD(as_ansi, METH_O)
+    METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)
     METHOD(rewrap, METH_VARARGS)

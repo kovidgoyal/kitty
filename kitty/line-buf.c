@@ -406,6 +406,18 @@ as_ansi(LineBuf *self, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
+static inline Line*
+get_line(LineBuf *self, index_type y) {
+    linebuf_init_line(self, y);
+    return self->line;
+}
+
+static PyObject*
+as_text(LineBuf *self, PyObject *args) {
+    as_text_generic(args, self, get_line, self->ynum, self->xnum, callback, as_ansi);
+}
+
+
 static PyObject*
 __str__(LineBuf *self) {
     PyObject *lines = PyTuple_New(self->ynum);
@@ -440,6 +452,7 @@ static PyMethodDef methods[] = {
     METHOD(rewrap, METH_VARARGS)
     METHOD(clear, METH_NOARGS)
     METHOD(as_ansi, METH_O)
+    METHODB(as_text, METH_VARARGS),
     METHOD(set_attribute, METH_VARARGS)
     METHOD(set_continued, METH_VARARGS)
     METHOD(dirty_lines, METH_NOARGS)

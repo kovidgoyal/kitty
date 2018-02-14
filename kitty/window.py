@@ -315,30 +315,19 @@ class Window:
             self.screen.reset_callbacks()
         self.screen = None
 
-    def buffer_as_ansi(self, add_history=True):
-        data = []
-        if add_history:
-            self.screen.historybuf.as_ansi(data.append)
-        self.screen.linebuf.as_ansi(data.append)
-        return ''.join(data)
-
-    def buffer_as_text(self, add_history=True):
-        ans = str(self.screen.linebuf).rstrip('\n')
-        if add_history:
-            h = str(self.screen.historybuf)
-            if h.strip():
-                ans = h + '\n' + ans
-        return ans
-
-    def as_text(self, as_ansi=False):
+    def as_text(self, as_ansi=False, add_history=False):
         lines = []
         self.screen.as_text(lines.append, as_ansi)
+        if add_history:
+            h = []
+            self.screen.historybuf.as_text(h.append, as_ansi)
+            lines = h + lines
         return ''.join(lines)
 
     # actions {{{
 
     def show_scrollback(self):
-        get_boss().display_scrollback(self, self.buffer_as_ansi().encode('utf-8'))
+        get_boss().display_scrollback(self, self.as_text(as_ansi=True, add_history=True).encode('utf-8'))
 
     def paste(self, text):
         if text and not self.destroyed:
