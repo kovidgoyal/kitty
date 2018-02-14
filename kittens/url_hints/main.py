@@ -9,12 +9,15 @@ from collections import namedtuple
 from functools import lru_cache, partial
 from gettext import gettext as _
 
+from kitty.cli import parse_args
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
-from kitty.utils import read_with_timeout
+from kitty.utils import open_url, read_with_timeout
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import clear_screen, faint, set_window_title, styled
+from ..tui.operations import (
+    clear_screen, faint, set_cursor_visible, set_window_title, styled
+)
 
 Mark = namedtuple('Mark', 'index start end text')
 URL_PREFIXES = 'http https file ftp'.split()
@@ -48,9 +51,7 @@ def render(lines, current_input):
         return styled(
             hint,
             fg='black',
-            fg_intense=True,
             bg='green',
-            bg_intense=True,
             bold=True
         ) + styled(
             text, fg='gray', fg_intense=True, bold=True
@@ -61,13 +62,13 @@ def render(lines, current_input):
             ans.append(faint(line))
             continue
         buf = []
-        if marks[0].start:
-            buf.append(faint(line[:marks[0].start]))
 
         for i, m in enumerate(marks):
+            if i == 0 and m.start:
+                buf.append(faint(line[:m.start]))
+            buf.append(mark(m))
             if m is not marks[-1]:
                 buf.append(faint(line[m.end:marks[i + 1].start]))
-            buf.append(mark(m))
 
         rest = line[marks[-1].end:]
         if rest:
@@ -86,6 +87,7 @@ class URLHints(Handler):
         self.chosen = None
 
     def init_terminal_state(self):
+        self.write(set_cursor_visible(False))
         self.write(set_window_title(_('Choose URL')))
 
     def initialize(self, *args):
@@ -137,6 +139,7 @@ class URLHints(Handler):
         if self.current_text is None:
             self.current_text = render(self.lines, self.current_input)
         self.write(clear_screen())
+        self.write(self.current_text)
 
 
 def read_from_stdin():
@@ -156,17 +159,19 @@ def read_from_stdin():
 
 def regex_finditer(pat, line):
     for m in pat.finditer(line):
-        yield m.start(), m.end()
+        s, e = m.span()
+        if e - s > 2:
+            yield s, e
 
 
 def find_urls(pat, line):
     for m in pat.finditer(line):
-        s, e = m.start(), m.end()
-        url = line[s:e]
+        s, e = m.span()
         if s > 4 and line[s - 5:s] == 'link:':  # asciidoc URLs
+            url = line[s:e]
             idx = url.rfind('[')
             if idx > -1:
-                e = idx
+                e -= len(url) - idx
         yield s, e
 
 
@@ -180,20 +185,20 @@ def mark(finditer, line, index_map):
     return line, marks
 
 
-def run(source_file=None, regex=None, opener=None):
+def run(source_file=None, regex=None, program=None):
     if source_file is None:
         text = read_from_stdin()
     else:
         with open(source_file, 'r') as f:
             text = f.read()
     if regex is None:
-        finditer = partial(regex_finditer, re.compile(regex))
-    else:
         from .url_regex import url_delimiters
-        url_pat = '(?:{})://[^{}]{3,}'.format(
+        url_pat = '(?:{})://[^{}]{{3,}}'.format(
             '|'.join(URL_PREFIXES), url_delimiters
         )
-        finditer = partial(find_urls, url_pat)
+        finditer = partial(find_urls, re.compile(url_pat))
+    else:
+        finditer = partial(regex_finditer, re.compile(regex))
     lines = []
     index_map = {}
     for line in text.splitlines():
@@ -203,11 +208,27 @@ def run(source_file=None, regex=None, opener=None):
     loop = Loop()
     handler = URLHints(lines, index_map)
     loop.loop(handler)
+    if handler.chosen and loop.return_code == 0:
+        open_url(handler.chosen, program=program or 'default')
     raise SystemExit(loop.return_code)
 
 
+OPTIONS = '''\
+--program
+What program to use to open matched URLs. Defaults
+to the default URL open program for the operating system.
+
+
+--regex
+Instead of searching for URLs search for the specified regular
+expression instead.
+'''
+
+
 def main(args=sys.argv):
-    pass
+    msg = 'Highlight URLs inside the specified text'
+    args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
+    run((items or [None])[0], args.regex, args.program)
 
 
 if __name__ == '__main__':

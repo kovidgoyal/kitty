@@ -56,6 +56,10 @@ def set_line_wrapping(yes_or_no):
     return (set_mode if yes_or_no else reset_mode)('DECAWM')
 
 
+def set_cursor_visible(yes_or_no):
+    return (set_mode if yes_or_no else reset_mode)('DECTCEM')
+
+
 STANDARD_COLORS = {name: i for i, name in enumerate(
     'black red green yellow blue magenta cyan gray'.split())}
 UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
