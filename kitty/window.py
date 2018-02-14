@@ -330,6 +330,11 @@ class Window:
                 ans = h + '\n' + ans
         return ans
 
+    def as_text(self, as_ansi=False):
+        lines = []
+        self.screen.as_text(lines.append, as_ansi)
+        return ''.join(lines)
+
     # actions {{{
 
     def show_scrollback(self):

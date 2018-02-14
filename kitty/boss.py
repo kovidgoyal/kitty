@@ -407,9 +407,9 @@ class Boss:
             if '--program' not in cmdline:
                 args.extend(('--program', self.opts.open_url_with))
             if type_of_input in ('text', 'history'):
-                data = (w.buffer_as_text(add_history=type_of_input == 'history') + '\x1c').encode('utf-8')
+                data = ((w.buffer_as_text if type_of_input == 'history' else w.as_text)() + '\x1c').encode('utf-8')
             elif type_of_input in ('ansi', 'ansi-history'):
-                data = (w.buffer_as_ansi(add_history=type_of_input == 'ansi-history') + '\x1c').encode('utf-8')
+                data = ((w.buffer_as_ansi() if type_of_input == 'ansi-history' else w.as_text(as_ansi=True)) + '\x1c').encode('utf-8')
             elif type_of_input == 'none':
                 data = None
             else:

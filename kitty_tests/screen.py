@@ -388,3 +388,17 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(), expected)
         s.scroll(2, True)
         self.ae(s.text_for_selection(), expected)
+
+    def test_serialize(self):
+        s = self.create_screen()
+        s.draw('ab' * s.columns)
+        s.carriage_return(), s.linefeed()
+        s.draw('c')
+
+        def as_text(as_ansi=False):
+            d = []
+            s.as_text(d.append, as_ansi)
+            return ''.join(d)
+
+        self.ae(as_text(), 'ababababab\nc\n\n')
+        self.ae(as_text(True), '\x1b[0mababa\x1b[0mbabab\n\x1b[0mc\n\n')
