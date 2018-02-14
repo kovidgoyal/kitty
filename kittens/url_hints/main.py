@@ -12,7 +12,7 @@ from gettext import gettext as _
 
 from kitty.cli import parse_args
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
-from kitty.utils import command_for_open, read_with_timeout
+from kitty.utils import command_for_open
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -141,21 +141,6 @@ class URLHints(Handler):
             self.current_text = render(self.lines, self.current_input)
         self.write(clear_screen())
         self.write(self.current_text)
-
-
-def read_from_stdin():
-    buf = []
-
-    def more_needed(data):
-        idx = data.find(b'\x1c')
-        if idx == -1:
-            buf.append(data)
-            return True
-        buf.append(data[:idx])
-        return False
-
-    read_with_timeout(more_needed)
-    return b''.join(buf).decode('utf-8')
 
 
 def regex_finditer(pat, line):
