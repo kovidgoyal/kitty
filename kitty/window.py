@@ -318,7 +318,7 @@ class Window:
     def as_text(self, as_ansi=False, add_history=False):
         lines = []
         self.screen.as_text(lines.append, as_ansi)
-        if add_history:
+        if add_history and not self.screen.is_using_alternate_linebuf():
             h = []
             self.screen.historybuf.as_text(h.append, as_ansi)
             lines = h + lines

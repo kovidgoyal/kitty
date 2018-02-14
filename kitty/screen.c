@@ -1577,6 +1577,12 @@ reset_dirty(Screen *self) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+is_using_alternate_linebuf(Screen *self) {
+    if (self->linebuf == self->alt_linebuf) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
@@ -1813,6 +1819,7 @@ static PyMethodDef methods[] = {
     MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)
     MND(reset_dirty, METH_NOARGS)
+    MND(is_using_alternate_linebuf, METH_NOARGS)
     MND(is_main_linebuf, METH_NOARGS)
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
