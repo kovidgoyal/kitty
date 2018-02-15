@@ -448,16 +448,27 @@ PYWRAP1(mark_os_window_for_close) {
     Py_RETURN_FALSE;
 }
 
+static inline bool
+fix_window_idx(Tab *tab, id_type window_id, unsigned int *window_idx) {
+    for (id_type fix = 0; fix < tab->num_windows; fix++) {
+        if (tab->windows[fix].id == window_id) { *window_idx = fix; return true; }
+    }
+    return false;
+}
+
 PYWRAP1(set_window_render_data) {
 #define A(name) &(d.name)
 #define B(name) &(g.name)
-    id_type os_window_id, tab_id;
+    id_type os_window_id, tab_id, window_id;
     unsigned int window_idx;
     ScreenRenderData d = {0};
     WindowGeometry g = {0};
-    PA("KKIffffOIIII", &os_window_id, &tab_id, &window_idx, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
+    PA("KKKIffffOIIII", &os_window_id, &tab_id, &window_id, &window_idx, A(xstart), A(ystart), A(dx), A(dy), A(screen), B(left), B(top), B(right), B(bottom));
 
     WITH_TAB(os_window_id, tab_id);
+        if (tab->windows[window_idx].id != window_id) {
+            if (!fix_window_idx(tab, window_id, &window_idx)) Py_RETURN_NONE;
+        }
         Py_CLEAR(tab->windows[window_idx].render_data.screen);
         d.vao_idx = tab->windows[window_idx].render_data.vao_idx;
         d.gvao_idx = tab->windows[window_idx].render_data.gvao_idx;
@@ -471,12 +482,15 @@ PYWRAP1(set_window_render_data) {
 }
 
 PYWRAP1(update_window_visibility) {
-    id_type os_window_id;
-    unsigned int window_idx, tab_id;
+    id_type os_window_id, tab_id, window_id;
+    unsigned int window_idx;
     int visible;
-    PA("KIIp", &os_window_id, &tab_id, &window_idx, &visible);
+    PA("KKKIp", &os_window_id, &tab_id, &window_id, &window_idx, &visible);
     WITH_TAB(os_window_id, tab_id);
-    tab->windows[window_idx].visible = visible & 1;
+        if (tab->windows[window_idx].id != window_id) {
+            if (!fix_window_idx(tab, window_id, &window_idx)) Py_RETURN_NONE;
+        }
+        tab->windows[window_idx].visible = visible & 1;
     END_WITH_TAB;
     Py_RETURN_NONE;
 }

@@ -112,7 +112,8 @@ class Window:
         return self.override_title or self.child_title
 
     def __repr__(self):
-        return 'Window(title={}, id={})'.format(self.title, self.id)
+        return 'Window(title={}, id={}, overlay_for={}, overlay_window_id={})'.format(
+                self.title, self.id, self.overlay_for, self.overlay_window_id)
 
     def as_dict(self):
         return dict(
@@ -142,7 +143,7 @@ class Window:
         val = bool(val)
         if val is not self.is_visible_in_layout:
             self.is_visible_in_layout = val
-            update_window_visibility(self.os_window_id, self.tab_id, window_idx, val)
+            update_window_visibility(self.os_window_id, self.tab_id, self.id, window_idx, val)
             if val:
                 self.refresh()
 
@@ -170,7 +171,7 @@ class Window:
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, window_idx, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, self.id, window_idx, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
 
     def contains(self, x, y):
         g = self.geometry
