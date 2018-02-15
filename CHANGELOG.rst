@@ -3,6 +3,46 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+
+version 0.8.0 [future]
+-----------------------------
+
+- A framework for kittens, that is, small terminal programs designed to run
+  inside kitty and extend its capabilities. Examples include unicode input and
+  selecting URLs with the keyboard.
+
+- Input arbitrary unicode characters by pressing Ctrl+Shift+u. You can choose
+  characters by name, by hex code, by recently used, etc. There is even and
+  editable Favorites list.
+
+- Open URLs using only the keyboard. kitty has a new "hints mode". Press
+  Ctrl+Shift+e and all detected URLs on the screen are highlighted with a key
+  to press to open them. The facility is customizable so you can change
+  what is detected as a URL and which program is used to open it.
+
+- Only consider Emoji characters with default Emoji presentation to be two
+  cells wide. This matches the standard. Also add support for the Unicode Emoji
+  variation presentation selector.
+
+- Prevent video tearing during high speed scrolling by syncing draws
+  to the monitor's refresh rate (only works if supported by the graphics
+  drivers).
+
+- Add some non standard terminfo capabilities used by neovim and tmux.
+
+- Fix large drop in performance when using multiple top-level windows on macOS
+
+- Fix save/restore of window sizes not working correctly.
+
+- Remove option to use system wcwidth(). Now always use a wcwidth() based on
+  the Unicode standard. Only sane way.
+
+- Fix a regression that caused a few ligature glyphs to not render correctly in
+  rare circumstances.
+
+- Browsing the scrollback buffer now happens in an overlay window instead of a
+  new window/tab.
+
 version 0.7.1 [2018-01-31]
 ---------------------------
 
