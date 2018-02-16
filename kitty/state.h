@@ -20,7 +20,7 @@ typedef struct {
     unsigned int rectangle_select_modifiers;
     unsigned int url_style;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
-    color_type url_color, background;
+    color_type url_color, background, active_border_color, inactive_border_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt, macos_hide_titlebar;
@@ -164,7 +164,7 @@ OSWindow* add_os_window();
 OSWindow* current_os_window();
 void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
-void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height);
+void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int);
 ssize_t create_cell_vao();
 ssize_t create_graphics_vao();
 ssize_t create_border_vao();

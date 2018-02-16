@@ -566,7 +566,7 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
 }
 
 static inline bool
-prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id) {
+prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = false;
     if (TD.screen && os_window->num_tabs > 1) {
@@ -574,10 +574,12 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
     }
     if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
+    *active_window_bg = OPT(background);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
+            *num_visible_windows += 1;
             if (w->last_drag_scroll_at > 0) {
                 if (now - w->last_drag_scroll_at >= 0.02) {
                     if (drag_scroll(w, os_window)) {
@@ -593,6 +595,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible) needs_render = true;
                 update_window_title(w, os_window);
+                *active_window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
             } else WD.screen->cursor_render_info.is_visible = false;
             if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
@@ -602,10 +605,10 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
 }
 
 static inline void
-render_os_window(OSWindow *os_window, double now, unsigned int active_window_id) {
+render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows) {
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height);
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows);
     if (TD.screen && os_window->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
@@ -650,10 +653,11 @@ render(double now) {
             w->viewport_size_dirty = false;
             needs_render = true;
         }
-        unsigned int active_window_id = 0;
-        if (prepare_to_render_os_window(w, now, &active_window_id)) needs_render = true;
+        unsigned int active_window_id = 0, num_visible_windows = 0;
+        color_type active_window_bg = 0;
+        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows)) needs_render = true;
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
-        if (needs_render) render_os_window(w, now, active_window_id);
+        if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows);
     }
     last_render_at = now;
 #undef TD

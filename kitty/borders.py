@@ -9,7 +9,7 @@ from .fast_data_types import (
     BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
     pt_to_px
 )
-from .utils import color_as_int, load_shaders
+from .utils import load_shaders
 
 
 def vertical_edge(os_window_id, tab_id, color, width, top, bottom, left):
@@ -44,9 +44,6 @@ class Borders:
         self.tab_id = tab_id
         self.border_width = pt_to_px(opts.window_border_width)
         self.padding_width = pt_to_px(opts.window_padding_width)
-        self.background = color_as_int(opts.background)
-        self.active_border = color_as_int(opts.active_border_color)
-        self.inactive_border = color_as_int(opts.inactive_border_color)
 
     def __call__(
         self,
@@ -56,9 +53,9 @@ class Borders:
         extra_blank_rects,
         draw_window_borders=True
     ):
-        add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, 0)
+        add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, 1)
         for br in chain(current_layout.blank_rects, extra_blank_rects):
-            add_borders_rect(self.os_window_id, self.tab_id, *br, self.background)
+            add_borders_rect(self.os_window_id, self.tab_id, *br, 1)
         bw, pw = self.border_width, self.padding_width
         fw = bw + pw
 
@@ -67,7 +64,7 @@ class Borders:
                 g = w.geometry
                 if bw > 0 and draw_window_borders:
                     # Draw the border rectangles
-                    color = self.active_border if w is active_window else self.inactive_border
+                    color = 2 if w is active_window else 4
                     border(
                         self.os_window_id, self.tab_id,
                         color, bw, g.left - fw, g.top - fw, g.right + fw,
@@ -75,9 +72,8 @@ class Borders:
                     )
                 if pw > 0:
                     # Draw the background rectangles over the padding region
-                    color = self.background
                     border(
                         self.os_window_id, self.tab_id,
-                        color, pw, g.left - pw, g.top - pw, g.right + pw,
+                        1, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw
                     )

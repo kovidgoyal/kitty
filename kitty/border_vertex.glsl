@@ -1,5 +1,8 @@
 #version GLSL_VERSION
 uniform uvec2 viewport;
+uniform vec3 default_bg;
+uniform vec3 active_border_color;
+uniform vec3 inactive_border_color;
 in uvec4 rect;  // left, top, right, bottom
 in uint rect_color;
 out vec3 color;
@@ -24,12 +27,9 @@ vec2 to_opengl(uint x, uint y) {
     );
 }
 
-float to_color(uint c) {
-    return float(c & uint(0xff)) / 255.0;
-}
-
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(to_opengl(rect[pos.x], rect[pos.y]), 0, 1);
-    color = vec3(to_color(rect_color >> 16), to_color(rect_color >> 8), to_color(rect_color));
+    int rc = int(rect_color);
+    color = float(1 & rc) * default_bg + float((2 & rc) >> 1) * active_border_color + float((4 & rc) >> 2) * inactive_border_color;
 }

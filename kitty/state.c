@@ -347,6 +347,8 @@ PYWRAP1(set_options) {
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
     S(background, color_as_int);
+    S(active_border_color, color_as_int);
+    S(inactive_border_color, color_as_int);
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
     S(sync_to_monitor, PyObject_IsTrue);

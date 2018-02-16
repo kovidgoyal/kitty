@@ -489,7 +489,7 @@ draw_cursor(CursorRenderInfo *cursor, bool is_focused) {
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -500,6 +500,9 @@ init_borders_program() {
 #define SET_LOC(which) (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
         if SET_LOC(viewport);
         else if SET_LOC(background_opacity);
+        else if SET_LOC(default_bg);
+        else if SET_LOC(active_border_color);
+        else if SET_LOC(inactive_border_color);
         else { fatal("Unknown uniform in borders program: %s", p->uniforms[i].name); return; }
     }
     if (left) { fatal("Left over uniforms in borders program"); return; }
@@ -520,7 +523,7 @@ create_border_vao() {
 }
 
 void
-draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height) {
+draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows) {
     if (num_border_rects) {
         if (rect_data_is_dirty) {
             size_t sz = sizeof(GLuint) * 5 * num_border_rects;
@@ -530,11 +533,17 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         }
         bind_program(BORDERS_PROGRAM);
         static bool constants_set = false;
+#define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
         if (!constants_set) {
             constants_set = true;
             glUniform1f(border_uniform_locations[BORDER_background_opacity], OPT(background_opacity));
+            glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
+            glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         }
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
+        color_type default_bg = num_visible_windows > 1 ? OPT(background) : active_window_bg;
+        glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
+#undef CV3
         bind_vertex_array(vao_idx);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_vertex_array();
