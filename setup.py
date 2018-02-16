@@ -662,7 +662,8 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'build':
         build(args)
-        build_asan_launcher(args)
+        if args.sanitize:
+            build_asan_launcher(args)
         if args.profile:
             build_linux_launcher(args)
             print('kitty profile executable is', 'kitty-profile')
