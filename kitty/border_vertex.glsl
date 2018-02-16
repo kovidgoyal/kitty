@@ -12,6 +12,7 @@ const int LEFT = 0;
 const int TOP = 1;
 const int RIGHT = 2;
 const int BOTTOM = 3;
+const uint FF = uint(0xff);
 
 const uvec2 pos_map[] = uvec2[4](
     uvec2(RIGHT, TOP),
@@ -27,9 +28,14 @@ vec2 to_opengl(uint x, uint y) {
     );
 }
 
+float to_color(uint c) {
+    return float(c & FF) / 255.0;
+}
+
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(to_opengl(rect[pos.x], rect[pos.y]), 0, 1);
     int rc = int(rect_color);
-    color = float(1 & rc) * default_bg + float((2 & rc) >> 1) * active_border_color + float((4 & rc) >> 2) * inactive_border_color;
+    vec3 window_bg = vec3(to_color(rect_color >> 24), to_color(rect_color >> 16), to_color(rect_color >> 8));
+    color = float(1 & rc) * default_bg + float((2 & rc) >> 1) * active_border_color + float((4 & rc) >> 2) * inactive_border_color + float((8 & rc) >> 3) * window_bg;
 }

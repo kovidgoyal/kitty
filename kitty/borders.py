@@ -72,8 +72,9 @@ class Borders:
                     )
                 if pw > 0:
                     # Draw the background rectangles over the padding region
+                    color = w.screen.color_profile.default_bg
                     border(
                         self.os_window_id, self.tab_id,
-                        1, pw, g.left - pw, g.top - pw, g.right + pw,
+                        (color << 8) | 8, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw
                     )
