@@ -570,13 +570,15 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
     bool needs_render = false;
     if (TD.screen && os_window->num_tabs > 1) {
         if (send_cell_data_to_gpu(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
-    }
+    } 
     if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
+	int num_visible = 0;
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
+			num_visible++;
             if (w->last_drag_scroll_at > 0) {
                 if (now - w->last_drag_scroll_at >= 0.02) {
                     if (drag_scroll(w, os_window)) {
@@ -591,11 +593,29 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
                 *active_window_id = w->id;
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 update_window_title(w, os_window);
-            } else WD.screen->cursor_render_info.is_visible = false;
-            if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
+            } else WD.screen->cursor_render_info.is_visible = false; 
+			if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
+			
         }
     }
+	if(num_visible == 1){
+		//update all borders to background color if there is only one visible window
+        Window *w = tab->windows + tab->active_window;
+		#define P WD.screen->color_profile
+		color_type border_color = colorprofile_to_color(P, P->overridden.default_bg, P->configured.default_bg);
+		#undef P
+		
+		for(unsigned int b = 0 ; b<tab->border_rects.num_border_rects; b++){
+			BorderRect* border_rect = tab->border_rects.rect_buf+b;
+			if(border_rect->color != border_color){
+				border_rect->color = border_color;
+				tab->border_rects.is_dirty = true;
+				needs_render = true;
+			}
+		}
+	}
+
     return needs_render;
 }
 
