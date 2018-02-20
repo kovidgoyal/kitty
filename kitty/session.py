@@ -59,6 +59,8 @@ class Session:
 
     def set_enabled_layouts(self, raw):
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
+        if self.tabs[-1].layout not in self.tabs[-1].enabled_layouts:
+            self.tabs[-1].layout = self.tabs[-1].enabled_layouts[0]
 
     def set_cwd(self, val):
         self.tabs[-1].cwd = val

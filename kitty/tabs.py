@@ -107,12 +107,12 @@ class Tab:  # {{{
         return all_layouts[idx](self.os_window_id, self.id, self.opts, self.borders.border_width)
 
     def next_layout(self):
-        if len(self.opts.enabled_layouts) > 1:
+        if len(self.enabled_layouts) > 1:
             try:
-                idx = self.opts.enabled_layouts.index(self.current_layout.name)
+                idx = self.enabled_layouts.index(self.current_layout.name)
             except Exception:
                 idx = -1
-            nl = self.opts.enabled_layouts[(idx + 1) % len(self.opts.enabled_layouts)]
+            nl = self.enabled_layouts[(idx + 1) % len(self.enabled_layouts)]
             self.current_layout = self.create_layout_object(nl)
             self.relayout()
 
