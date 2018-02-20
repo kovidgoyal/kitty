@@ -35,12 +35,21 @@ toc::[]
 
 In order to know what size of images to display and how to position them, the client must be able to get the
 window size in pixels and the number of cells per row and column. This can be done by using the `TIOCGWINSZ` ioctl.
-Some C code to demonstrate its use
+Some code to demonstrate its use
 
+In C:
 ```C
 struct ttysize ts;
 ioctl(0, TIOCGWINSZ, &ts);
 printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
+```
+
+In Python:
+```py
+import struct, fcntl, termios
+s = struct.pack('HHHH', 0, 0, 0, 0)
+x = struct.unpack('HHHH', fcntl.ioctl(1, termios.TIOCGWINSZ, s))
+print(f'number of columns: {x[0]}, number of rows: {x[1]}, screen width: {x[2]}, screen height: {x[3]}')
 ```
 
 Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
