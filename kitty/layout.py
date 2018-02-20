@@ -296,6 +296,8 @@ class Tall(Layout):
         ylayout = self.ylayout(len(windows) - 1)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
+            # right bottom blank rect
+            self.bottom_blank_rect(windows[i + 1])
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
@@ -303,8 +305,6 @@ class Tall(Layout):
         self.between_blank_rect(windows[0], windows[1])
         # left bottom blank rect
         self.bottom_blank_rect(windows[0])
-        # right bottom blank rect
-        self.bottom_blank_rect(windows[-1])
 
 
 class Grid(Tall):
@@ -375,11 +375,11 @@ class Vertical(Layout):
         for i in range(window_count):
             ystart, ynum = next(ylayout)
             windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+            # bottom blank rect
+            self.bottom_blank_rect(windows[i])
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
-        # bottom blank rect
-        self.bottom_blank_rect(windows[-1])
 
 
 class Horizontal(Layout):
