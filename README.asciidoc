@@ -127,6 +127,7 @@ python3 .
 
 * NixOS / nixpkgs: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix
 
+* Gentoo: https://packages.gentoo.org/packages/x11-terms/kitty
 
 === macOS packages
 
