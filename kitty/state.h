@@ -30,6 +30,7 @@ typedef struct {
     float background_opacity;
     float inactive_text_alpha;
     Edge tab_bar_edge;
+    bool sync_to_monitor;
 } Options;
 
 typedef struct {
@@ -55,7 +56,7 @@ typedef struct {
 
 typedef struct {
     id_type id;
-    bool visible;
+    bool visible, cursor_visible_at_last_render;
     PyObject *title;
     ScreenRenderData render_data;
     unsigned int mouse_cell_x, mouse_cell_y;
@@ -108,10 +109,7 @@ typedef struct {
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
     double last_resize_event_at;
-    bool has_pending_resizes;
-    bool is_semi_transparent;
-    bool shown_once;
-    bool is_damaged;
+    bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;
 } OSWindow;

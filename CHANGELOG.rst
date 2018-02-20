@@ -25,8 +25,8 @@ version 0.8.0 [future]
   variation presentation selector.
 
 - Prevent video tearing during high speed scrolling by syncing draws
-  to the monitor's refresh rate (only works if supported by the graphics
-  drivers).
+  to the monitor's refresh rate. There is a new configuration option to
+  control this ``sync_to_monitor``.
 
 - Add some non standard terminfo capabilities used by neovim and tmux.
 

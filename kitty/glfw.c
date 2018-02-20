@@ -346,7 +346,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
-    glfwSwapInterval(0);  // a value of 1 makes mouse selection laggy
+    glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
         set_dpi_from_os_window(NULL);
         gl_init();

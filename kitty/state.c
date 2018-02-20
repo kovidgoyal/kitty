@@ -349,6 +349,7 @@ PYWRAP1(set_options) {
     S(background, color_as_int);
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
+    S(sync_to_monitor, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
 

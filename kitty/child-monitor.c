@@ -591,6 +591,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
             if (is_active_window) {
                 *active_window_id = w->id;
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
+                if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible) needs_render = true;
                 update_window_title(w, os_window);
             } else WD.screen->cursor_render_info.is_visible = false;
             if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
@@ -618,6 +619,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id)
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
             }
+            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible;
         }
     }
     swap_window_buffers(os_window);
@@ -640,7 +642,7 @@ render(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
-        bool needs_render = w->is_focused || w->is_damaged;
+        bool needs_render = w->is_damaged;
         make_os_window_context_current(w);
         if (w->viewport_size_dirty) {
             w->clear_count = 0;

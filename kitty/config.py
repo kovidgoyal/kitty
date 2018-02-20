@@ -271,6 +271,7 @@ type_map = {
     'rectangle_select_modifiers': to_modifiers,
     'repaint_delay': positive_int,
     'input_delay': positive_int,
+    'sync_to_monitor': to_bool,
     'window_border_width': positive_float,
     'window_margin_width': positive_float,
     'window_padding_width': positive_float,
