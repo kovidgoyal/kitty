@@ -560,6 +560,7 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
     if (vao_idx == -1) vao_idx = create_cell_vao();
     if (gvao_idx == -1) gvao_idx = create_graphics_vao();
     if (!PyArg_ParseTuple(args, "O!ffff", &Screen_Type, &screen, &xstart, &ystart, &dx, &dy)) return NULL;
+    send_cell_data_to_gpu(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window());
     draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window(), true);
     Py_RETURN_NONE;
 }
