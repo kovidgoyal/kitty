@@ -593,7 +593,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
             if (is_active_window) {
                 *active_window_id = w->id;
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
-                if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible) needs_render = true;
+                if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible || w->last_cursor_x != WD.screen->cursor_render_info.x || w->last_cursor_y != WD.screen->cursor_render_info.y) needs_render = true;
                 update_window_title(w, os_window);
                 *active_window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
             } else WD.screen->cursor_render_info.is_visible = false;
@@ -622,7 +622,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
             }
-            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible;
+            w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y;
         }
     }
     swap_window_buffers(os_window);

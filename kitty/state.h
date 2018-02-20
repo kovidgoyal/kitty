@@ -57,6 +57,7 @@ typedef struct {
 typedef struct {
     id_type id;
     bool visible, cursor_visible_at_last_render;
+    unsigned int last_cursor_x, last_cursor_y;
     PyObject *title;
     ScreenRenderData render_data;
     unsigned int mouse_cell_x, mouse_cell_y;
