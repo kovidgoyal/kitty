@@ -57,7 +57,7 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 load and buttery smooth scrolling. Uses threaded rendering to minimize input
 latency.
 
-* Supports all modern terminal features: graphics (images), unicode,
+* Supports all modern terminal features: link:graphics-protocol.asciidoc[graphics (images)], unicode,
 true-color, OpenType ligatures, mouse protocol, focus tracking, bracketed paste and so on.
 
 * Supports tiling multiple terminal windows side by side in different
