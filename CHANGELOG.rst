@@ -28,6 +28,10 @@ version 0.8.0 [future]
   to the monitor's refresh rate. There is a new configuration option to
   control this ``sync_to_monitor``.
 
+- When displaying only a single window, use the default background color of the
+  window (which can be changed via escape codes) as the color for the margin
+  and padding of the window.
+
 - Add some non standard terminfo capabilities used by neovim and tmux.
 
 - Fix large drop in performance when using multiple top-level windows on macOS
