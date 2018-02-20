@@ -228,7 +228,7 @@ class Window:
         pass  # TODO: Implement this
 
     def change_colors(self, changes):
-        dirtied = False
+        dirtied = default_bg_changed = False
 
         def item(raw):
             if raw is None:
@@ -242,8 +242,12 @@ class Window:
                 continue
             dirtied = True
             setattr(self.screen.color_profile, which.name, val)
+            if which.name == 'default_bg':
+                default_bg_changed = True
         if dirtied:
             self.screen.mark_as_dirty()
+        if default_bg_changed:
+            get_boss().default_bg_changed_for(self.id)
 
     def report_color(self, code, r, g, b):
         r |= r << 8

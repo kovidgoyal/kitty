@@ -426,6 +426,11 @@ class TabManager:  # {{{
         if t is not None:
             return t.active_window
 
+    def tab_for_id(self, tab_id):
+        for t in self.tabs:
+            if t.id == tab_id:
+                return t
+
     def move_tab(self, delta=1):
         if len(self.tabs) > 1:
             idx = self.active_tab_idx

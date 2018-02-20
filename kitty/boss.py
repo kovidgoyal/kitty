@@ -320,6 +320,15 @@ class Boss:
         self.current_key_press_info = key, scancode, action, mods
         return self.dispatch_action(key_action)
 
+    def default_bg_changed_for(self, window_id):
+        w = self.window_id_map.get(window_id)
+        if w is not None:
+            tm = self.os_window_map.get(w.os_window_id)
+            if tm is not None:
+                t = tm.tab_for_id(w.tab_id)
+                if t is not None:
+                    t.relayout_borders()
+
     def dispatch_action(self, key_action):
         if key_action is not None:
             f = getattr(self, key_action.func, None)
