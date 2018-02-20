@@ -46,10 +46,10 @@ printf("number of columns: %i, number of rows: %i, screen width: %i, screen heig
 
 In Python:
 ```py
-import struct, fcntl, termios
-s = struct.pack('HHHH', 0, 0, 0, 0)
-x = struct.unpack('HHHH', fcntl.ioctl(1, termios.TIOCGWINSZ, s))
-print(f'number of columns: {x[0]}, number of rows: {x[1]}, screen width: {x[2]}, screen height: {x[3]}')
+import array, fcntl, termios
+buf = array.array('H', [0, 0, 0, 0])
+fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+print('number of columns: {}, number of rows: {}, screen width: {}, screen height: {}'.format(*buf))
 ```
 
 Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
