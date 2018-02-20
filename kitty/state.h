@@ -114,7 +114,6 @@ typedef struct {
     bool is_damaged;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;
-    bool vsync_enabled;
 } OSWindow;
 
 
@@ -157,7 +156,7 @@ bool should_os_window_be_rendered(OSWindow* w);
 void set_dpi_from_os_window(OSWindow *w);
 void wakeup_main_loop();
 void event_loop_wait(double timeout);
-void swap_window_buffers(OSWindow *w, bool);
+void swap_window_buffers(OSWindow *w);
 void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
 void destroy_os_window(OSWindow *w);

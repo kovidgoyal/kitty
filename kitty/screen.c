@@ -123,7 +123,6 @@ screen_reset(Screen *self) {
     init_tabstops(self->alt_tabstops, self->columns);
     cursor_reset(self->cursor);
     self->is_dirty = true;
-    self->render_activity.large_change = true;
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
@@ -203,7 +202,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         self->cursor->y = num_content_lines;
         if (self->cursor->y >= self->lines) { self->cursor->y = self->lines - 1; screen_index(self); }
     }
-    self->render_activity.large_change = true;
     return true;
 }
 
@@ -356,7 +354,6 @@ screen_draw(Screen *self, uint32_t och) {
         line_right_shift(self->linebuf->line, self->cursor->x, char_width);
     }
     line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, false);
-    self->render_activity.chars_written += 1;
     self->cursor->x++;
     if (char_width == 2) {
         line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
@@ -491,7 +488,6 @@ screen_toggle_screen_buffer(Screen *self) {
     }
     screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
-    self->render_activity.large_change = true;
 }
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
@@ -728,8 +724,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         self->history_line_added_count++; \
     } \
     linebuf_clear_line(self->linebuf, bottom); \
-    self->is_dirty = true; \
-    self->render_activity.large_change = true;
+    self->is_dirty = true;
 
 void
 screen_index(Screen *self) {
@@ -754,8 +749,7 @@ screen_scroll(Screen *self, unsigned int count) {
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top); \
     INDEX_GRAPHICS(1) \
-    self->is_dirty = true; \
-    self->render_activity.large_change = true;
+    self->is_dirty = true;
 
 void
 screen_reverse_index(Screen *self) {
@@ -980,7 +974,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             linebuf_mark_line_dirty(self->linebuf, i);
         }
         self->is_dirty = true;
-        self->render_activity.large_change = true;
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
@@ -990,7 +983,6 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
         if (self->scrolled_by != 0) {
             self->scrolled_by = 0;
             self->scroll_changed = true;
-            self->render_activity.large_change = true;
         }
     }
 }
@@ -1002,7 +994,6 @@ screen_insert_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
-        self->render_activity.large_change = true;
         screen_carriage_return(self);
     }
 }
@@ -1014,7 +1005,6 @@ screen_delete_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
-        self->render_activity.large_change = true;
         screen_carriage_return(self);
     }
 }
@@ -1712,7 +1702,6 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
     if (new_scroll != self->scrolled_by) {
         self->scrolled_by = new_scroll;
         self->scroll_changed = true;
-        self->render_activity.large_change = true;
         return true;
     }
     return false;
