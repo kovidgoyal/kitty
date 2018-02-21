@@ -24,6 +24,9 @@ typedef struct {
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt, macos_hide_titlebar;
+    bool macos_titlebar_custom_color;
+    color_type macos_titlebar_background;
+    bool macos_titlebar_light_foreground;
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
     int x11_bell_volume;

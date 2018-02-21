@@ -140,6 +140,25 @@ cocoa_update_title(PyObject *pytitle) {
     [title release];
 }
 
+void
+cocoa_set_title_bar_colors(void *w, color_type bg, bool light_fg) {
+    NSWindow *window = (NSWindow *)w;
+
+    NSColor *background =
+        [NSColor colorWithSRGBRed:((bg >> 16) & 0xFF) / 255.0
+                            green:((bg >> 8) & 0xFF) / 255.0
+                             blue:(bg & 0xFF) / 255.0
+                            alpha:1.0];
+    [window setTitlebarAppearsTransparent:YES];
+    [window setBackgroundColor:background];
+
+    if (light_fg) {
+        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+    } else {
+        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+    }
+}
+
 bool
 cocoa_make_window_resizable(void *w) {
     NSWindow *window = (NSWindow*)w;

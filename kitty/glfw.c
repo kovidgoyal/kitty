@@ -8,6 +8,7 @@
 #include <structmember.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
+extern void cocoa_set_title_bar_colors(void *w, color_type bg, bool light_fg);
 extern void cocoa_create_global_menu(void);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -382,6 +383,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (OPT(macos_hide_titlebar)) {
         if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
         else fprintf(stderr, "Failed to load glfwGetCocoaWindow\n");
+    }
+    if (OPT(macos_titlebar_custom_color) && !OPT(macos_hide_titlebar)) {
+        cocoa_set_title_bar_colors(glfwGetCocoaWindow(glfw_window), OPT(macos_titlebar_background), OPT(macos_titlebar_light_foreground));
     }
 #endif
     double now = monotonic();
