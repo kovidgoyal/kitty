@@ -288,8 +288,6 @@ type_map = {
     'initial_window_height': positive_int,
     'macos_hide_titlebar': to_bool,
     'macos_option_as_alt': to_bool,
-    'macos_titlebar_custom_color': to_bool,
-    'macos_titlebar_light_foreground': to_bool,
     'box_drawing_scale': box_drawing_scale,
     'x11_bell_volume': int,
     'background_opacity': unit_float,
@@ -304,7 +302,7 @@ type_map = {
 
 for name in (
     'foreground background cursor active_border_color inactive_border_color'
-    ' selection_foreground selection_background url_color macos_titlebar_background'
+    ' selection_foreground selection_background url_color'
 ).split():
     type_map[name] = to_color
 for i in range(16):

@@ -354,9 +354,6 @@ PYWRAP1(set_options) {
     S(sync_to_monitor, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
-    S(macos_titlebar_background, color_as_int);
-    S(macos_titlebar_light_foreground, PyObject_IsTrue);
-    S(macos_titlebar_custom_color, PyObject_IsTrue);
 
     PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
     if (chars == NULL) return NULL;
