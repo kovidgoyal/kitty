@@ -195,9 +195,42 @@ macos_change_titlebar_color(PyObject *self UNUSED, PyObject *val) {
         titlebar_color = OPT(background);
     } else {
         if (!PyTuple_Check(val)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return NULL; }
+        change_titlebar_color = true;
         titlebar_color = color_as_int(val);
     }
     Py_RETURN_NONE;
+}
+
+void
+cocoa_set_titlebar_color(void *w)
+{
+    if (!change_titlebar_color) return;
+
+    NSWindow *window = (NSWindow *)w;
+
+    double red = ((titlebar_color >> 16) & 0xFF) / 255.0;
+    double green = ((titlebar_color >> 8) & 0xFF) / 255.0;
+    double blue = (titlebar_color & 0xFF) / 255.0;
+
+    NSColor *background =
+        [NSColor colorWithSRGBRed:red
+                            green:green
+                             blue:blue
+                            alpha:1.0];
+    [window setTitlebarAppearsTransparent:YES];
+    [window setBackgroundColor:background];
+
+    double max = (red > green) ? red : green;
+    if (blue > max) max = blue;
+    double min = (red < green) ? red : green;
+    if (blue < min) min = blue;
+
+    double lightness = (max + min) / 2;
+    if (lightness < 0.5) {
+        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+    } else {
+        [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+    }
 }
 
 static PyMethodDef module_methods[] = {

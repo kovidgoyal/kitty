@@ -9,6 +9,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
+void cocoa_set_titlebar_color(void *w);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -383,6 +384,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
         else fprintf(stderr, "Failed to load glfwGetCocoaWindow\n");
     }
+    cocoa_set_titlebar_color(glfwGetCocoaWindow(glfw_window));
 #endif
     double now = monotonic();
     w->is_focused = true;
