@@ -9,7 +9,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
-void cocoa_set_titlebar_color(void *w);
+extern void cocoa_set_titlebar_color(void *w);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
