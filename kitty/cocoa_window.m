@@ -220,13 +220,9 @@ cocoa_set_titlebar_color(void *w)
     [window setTitlebarAppearsTransparent:YES];
     [window setBackgroundColor:background];
 
-    double max = (red > green) ? red : green;
-    if (blue > max) max = blue;
-    double min = (red < green) ? red : green;
-    if (blue < min) min = blue;
+    double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 
-    double lightness = (max + min) / 2;
-    if (lightness < 0.5) {
+    if (luma < 0.5) {
         [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
     } else {
         [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
