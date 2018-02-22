@@ -259,7 +259,6 @@ def generate_key_table():
     w('#include <stdint.h>')
     w('#include <stdbool.h>')
     w('#include <limits.h>')
-    w('static bool needs_special_handling[%d] = {0};' % (128 * 16))
     number_of_keys = defines.GLFW_KEY_LAST + 1
     w('// map glfw key numbers to 7-bit numbers for compact data storage')
     w('static const uint8_t key_map[%d] = {' % number_of_keys)

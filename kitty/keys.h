@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <limits.h>
-static bool needs_special_handling[2048] = {0};
 // map glfw key numbers to 7-bit numbers for compact data storage
 static const uint8_t key_map[349] = {
 UINT8_MAX,
