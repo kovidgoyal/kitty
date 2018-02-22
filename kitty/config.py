@@ -220,6 +220,15 @@ def adjust_line_height(x):
     return int(x)
 
 
+def macos_titlebar_color(x):
+    x = x.strip('"')
+    if x == 'system':
+        return
+    if x == 'background':
+        return True
+    return to_color(x)
+
+
 def box_drawing_scale(x):
     ans = tuple(float(x.strip()) for x in x.split(','))
     if len(ans) != 4:
@@ -288,6 +297,7 @@ type_map = {
     'initial_window_height': positive_int,
     'macos_hide_titlebar': to_bool,
     'macos_option_as_alt': to_bool,
+    'macos_titlebar_color': macos_titlebar_color,
     'box_drawing_scale': box_drawing_scale,
     'x11_bell_volume': int,
     'background_opacity': unit_float,

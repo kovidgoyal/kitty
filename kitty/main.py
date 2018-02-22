@@ -40,6 +40,9 @@ def init_graphics():
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl)
+    if is_macos:
+        from .fast_data_types import macos_change_titlebar_color
+        macos_change_titlebar_color(opts.macos_titlebar_color)
     with cached_values_for('main') as cached_values:
         w, h = initial_window_size(opts, cached_values)
         window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)

@@ -2,13 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import array
 import codecs
 import fcntl
 import mimetypes
 import os
 import re
 import signal
-import struct
 import subprocess
 import sys
 import termios
@@ -18,8 +18,8 @@ from collections import namedtuple
 from math import ceil, floor
 from tempfile import NamedTemporaryFile
 
-from kitty.constants import appname
 from kitty.cli import parse_args
+from kitty.constants import appname
 from kitty.utils import read_with_timeout
 
 try:
@@ -105,9 +105,9 @@ Size = namedtuple('Size', 'rows cols width height')
 
 def screen_size():
     if screen_size.changed:
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        screen_size.ans = Size(*struct.unpack('HHHH', x))
+        buf = array.array('H', [0, 0, 0, 0])
+        fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+        screen_size.ans = Size(*buf)
         screen_size.changed = False
     return screen_size.ans
 

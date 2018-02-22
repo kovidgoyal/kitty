@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <limits.h>
-static bool needs_special_handling[2048] = {0};
 // map glfw key numbers to 7-bit numbers for compact data storage
 static const uint8_t key_map[349] = {
 UINT8_MAX,
@@ -928,7 +927,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x02\x1b\x09";
                   case 53: // BACKSPACE
-                    return "\x01\x17";
+                    return "\x02\x1b\x7f";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                   case 55: // DELETE
@@ -1079,7 +1078,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x03\x1b\x5b\x5a";
                   case 53: // BACKSPACE
-                    return "\x01\x17";
+                    return "\x02\x1b\x7f";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                   case 55: // DELETE
@@ -2134,7 +2133,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x02\x1b\x09";
                   case 53: // BACKSPACE
-                    return "\x01\x17";
+                    return "\x02\x1b\x7f";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                   case 55: // DELETE
@@ -2285,7 +2284,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 52: // TAB
                     return "\x03\x1b\x5b\x5a";
                   case 53: // BACKSPACE
-                    return "\x01\x17";
+                    return "\x02\x1b\x7f";
                   case 54: // INSERT
                     return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                   case 55: // DELETE
@@ -3348,7 +3347,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x02\x1b\x09";
                     case 53: // BACKSPACE
-                      return "\x01\x17";
+                      return "\x02\x1b\x7f";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                     case 55: // DELETE
@@ -3499,7 +3498,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x03\x1b\x5b\x5a";
                     case 53: // BACKSPACE
-                      return "\x01\x17";
+                      return "\x02\x1b\x7f";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                     case 55: // DELETE
@@ -4554,7 +4553,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x02\x1b\x09";
                     case 53: // BACKSPACE
-                      return "\x01\x17";
+                      return "\x02\x1b\x7f";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x33\x7e";
                     case 55: // DELETE
@@ -4705,7 +4704,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 52: // TAB
                       return "\x03\x1b\x5b\x5a";
                     case 53: // BACKSPACE
-                      return "\x01\x17";
+                      return "\x02\x1b\x7f";
                     case 54: // INSERT
                       return "\x06\x1b\x5b\x32\x3b\x34\x7e";
                     case 55: // DELETE

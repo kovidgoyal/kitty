@@ -11,6 +11,8 @@
 #include "glfw-wrapper.h"
 #include "control-codes.h"
 
+static bool needs_special_handling[128 * 16] = {0};
+
 const char*
 key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
     if ((action & 3) == 3) return NULL;
