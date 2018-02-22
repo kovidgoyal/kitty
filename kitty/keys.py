@@ -30,8 +30,7 @@ alt_codes = {
     defines.GLFW_KEY_TAB: b'\033\t',
     defines.GLFW_KEY_ENTER: b'\033\r',
     defines.GLFW_KEY_ESCAPE: b'\033\033',
-    # alt+bs matches iTerm and gnome-terminal
-    defines.GLFW_KEY_BACKSPACE: b'\x17'
+    defines.GLFW_KEY_BACKSPACE: b'\033\177'
 }
 shift_alt_codes = alt_codes.copy()
 shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
