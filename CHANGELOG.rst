@@ -20,6 +20,8 @@ version 0.8.0 [future]
   to press to open them. The facility is customizable so you can change
   what is detected as a URL and which program is used to open it.
 
+- Add an option to change the titlebar color of kitty windows on macOS
+
 - Only consider Emoji characters with default Emoji presentation to be two
   cells wide. This matches the standard. Also add support for the Unicode Emoji
   variation presentation selector.
