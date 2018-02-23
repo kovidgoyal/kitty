@@ -53,19 +53,19 @@ image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, li
 
 == Major Features
 
-* Uses OpenGL for rendering, offloads rendering to the GPU for lower system
-load and buttery smooth scrolling. Uses threaded rendering to minimize input
+* Uses OpenGL for rendering, offloads rendering to the GPU for link:#performance[lower system
+load] and buttery smooth scrolling. Uses threaded rendering to minimize input
 latency.
 
 * Supports all modern terminal features: link:graphics-protocol.asciidoc[graphics (images)], unicode,
 true-color, OpenType ligatures, mouse protocol, focus tracking, bracketed paste and so on.
 
 * Supports tiling multiple terminal windows side by side in different
-layouts without needing to use an extra program like tmux
+link:#layouts[layouts] without needing to use an extra program like tmux
 
-* Can be controlled from scripts or the shell prompt, even over SSH.
+* Can be link:remote-control.asciidoc[controlled from scripts or the shell prompt], even over SSH.
 
-* Supports startup sessions which allow you to specify the window/tab layout,
+* Supports link:#startup-sessions[startup sessions] which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
 
 * Cross-platform support: kitty currently works on Linux and macOS, but because
@@ -478,25 +478,6 @@ ssh myserver tic -x -o \~/.terminfo /tmp/kitty.terminfo
 
 Really, the correct solution for this is to convince the OpenSSH maintainers to have ssh do this
 automatically when connecting to a server.
-
-== A tribute
-
-While over the decades I am sure many people have contributed to the
-development of the terminal emulator space, there is one individual in
-particular I would like to thank. link:http://invisible-island.net[Thomas E.
-Dickey], the creator of xterm.  xterm is the most comprehensive and
-feature-rich terminal emulator I have had the pleasure of using. As I worked on
-kitty, I ran headlong into more and more gnarly corners of terminal behavior.
-On all those occasions, either the excellent documentation at
-link:http://invisible-island.net/xterm/ctlseqs/ctlseqs.html[xterm-ctlseqs] or
-investigating the behavior and code of xterm or vttest were invaluable tools to
-aid my understanding.
-
-My achievements, if any, in developing kitty would not have been possible without
-his prior work and the generous sharing of knowledge accumulated over decades.
-
-Thank you.
-
 
 == Resources on terminal behavior
 
