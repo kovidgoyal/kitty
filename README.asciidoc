@@ -260,7 +260,7 @@ which will open the scrollback buffer in your favorite pager program (which is
 the scrollback pager comfortably within the pager.
 
 
-== Input unicode
+== Unicode input
 
 You can input unicode characters by name, hex code, recently used and even an editable favorites list.
 Press {sc_input_unicode_character} to start the unicode input widget, shown below.
