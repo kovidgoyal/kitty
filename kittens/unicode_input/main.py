@@ -361,9 +361,9 @@ class UnicodeInput(Handler):
             y += 1
 
         if self.mode is NAME:
-            writeln(_('Enter the hex code for the character'))
-        elif self.mode is HEX:
             writeln(_('Enter words from the name of the character'))
+        elif self.mode is HEX:
+            writeln(_('Enter the hex code for the character'))
         else:
             writeln(_('Enter the index for the character you want from the list below'))
         self.write(self.prompt)
