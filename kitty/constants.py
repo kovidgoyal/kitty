@@ -10,7 +10,7 @@ from collections import namedtuple
 from .fast_data_types import set_boss as set_c_boss
 
 appname = 'kitty'
-version = (0, 7, 1)
+version = (0, 8, 0)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
