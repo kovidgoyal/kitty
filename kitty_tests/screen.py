@@ -245,6 +245,12 @@ class TestScreen(BaseTest):
         y = s.cursor.y
         self.assertIn('|', str(s.line(y)))
 
+        s = self.create_screen()
+        draw('a')
+        x_before = s.cursor.x
+        s.resize(s.lines - 1, s.columns)
+        self.ae(x_before, s.cursor.x)
+
     def test_tab_stops(self):
         # Taken from vttest/main.c
         s = self.create_screen(cols=80, lines=2)

@@ -70,7 +70,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             copy_range(src->line, src_x, dest->line, dest_x, num);
             if (is_tracked_line && src_x <= *track_x && *track_x < src_x + num) {
                 *track_y = dest_y;
-                *track_x = dest_x + (*track_x - src_x);
+                *track_x = dest_x + (*track_x - src_x + 1);
             }
             src_x += num; dest_x += num;
         }
