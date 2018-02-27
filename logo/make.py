@@ -10,10 +10,17 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 src = os.path.abspath('kitty.svg')
 
 
+def run(*args):
+    try:
+        subprocess.check_call(args)
+    except EnvironmentError:
+        raise SystemExit('You are missing the {} program needed to generate the kitty logo'.format(args[0]))
+
+
 def render(output, sz=256):
     print('Rendering at {0}x{0}...'.format(sz))
-    subprocess.check_call(['rsvg-convert', '-w', str(sz), '-h', str(sz), '-o', output, src])
-    subprocess.check_call(['optipng', '-quiet', '-o7', '-strip', 'all', output])
+    run('rsvg-convert', '-w', str(sz), '-h', str(sz), '-o', output, src)
+    run('optipng', '-quiet', '-o7', '-strip', 'all', output)
 
 
 render('kitty.png')
