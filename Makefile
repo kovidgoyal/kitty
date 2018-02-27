@@ -31,4 +31,4 @@ logo/kitty.iconset/icon_256x256.png: logo/kitty.svg logo/make.py
 rendered_logo: logo/kitty.iconset/icon_256x256.png
 
 app: rendered_logo
-	python3 setup.py app $(VVAL)
+	python3 setup.py kitty.app $(VVAL)
