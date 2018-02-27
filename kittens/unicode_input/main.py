@@ -207,7 +207,7 @@ class Table:
         col_width = longest + 2
         col_width = min(col_width, 40)
         space_for_desc = col_width - 2 - idx_size - 4
-        num_cols = self.num_cols = cols // col_width
+        num_cols = self.num_cols = max(cols // col_width, 1)
         buf = []
         a = buf.append
         rows_left = rows
