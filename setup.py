@@ -521,6 +521,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
         for f in files:
             path = os.path.join(root, f)
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
+    shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
     build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher)
