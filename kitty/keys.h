@@ -1126,6 +1126,58 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x6:
                 switch(key & 0x7f) { default: return NULL;
+                  case 18: // A
+                    return "\x02\x1b\x01";
+                  case 19: // B
+                    return "\x02\x1b\x02";
+                  case 20: // C
+                    return "\x02\x1b\x03";
+                  case 21: // D
+                    return "\x02\x1b\x04";
+                  case 22: // E
+                    return "\x02\x1b\x05";
+                  case 23: // F
+                    return "\x02\x1b\x06";
+                  case 24: // G
+                    return "\x02\x1b\x07";
+                  case 25: // H
+                    return "\x02\x1b\x08";
+                  case 26: // I
+                    return "\x02\x1b\x09";
+                  case 27: // J
+                    return "\x02\x1b\x0a";
+                  case 28: // K
+                    return "\x02\x1b\x0b";
+                  case 29: // L
+                    return "\x02\x1b\x0c";
+                  case 30: // M
+                    return "\x02\x1b\x0d";
+                  case 31: // N
+                    return "\x02\x1b\x0e";
+                  case 32: // O
+                    return "\x02\x1b\x0f";
+                  case 33: // P
+                    return "\x02\x1b\x10";
+                  case 34: // Q
+                    return "\x02\x1b\x11";
+                  case 35: // R
+                    return "\x02\x1b\x12";
+                  case 36: // S
+                    return "\x02\x1b\x13";
+                  case 37: // T
+                    return "\x02\x1b\x14";
+                  case 38: // U
+                    return "\x02\x1b\x15";
+                  case 39: // V
+                    return "\x02\x1b\x16";
+                  case 40: // W
+                    return "\x02\x1b\x17";
+                  case 41: // X
+                    return "\x02\x1b\x18";
+                  case 42: // Y
+                    return "\x02\x1b\x19";
+                  case 43: // Z
+                    return "\x02\x1b\x1a";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -2332,6 +2384,58 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x6:
                 switch(key & 0x7f) { default: return NULL;
+                  case 18: // A
+                    return "\x02\x1b\x01";
+                  case 19: // B
+                    return "\x02\x1b\x02";
+                  case 20: // C
+                    return "\x02\x1b\x03";
+                  case 21: // D
+                    return "\x02\x1b\x04";
+                  case 22: // E
+                    return "\x02\x1b\x05";
+                  case 23: // F
+                    return "\x02\x1b\x06";
+                  case 24: // G
+                    return "\x02\x1b\x07";
+                  case 25: // H
+                    return "\x02\x1b\x08";
+                  case 26: // I
+                    return "\x02\x1b\x09";
+                  case 27: // J
+                    return "\x02\x1b\x0a";
+                  case 28: // K
+                    return "\x02\x1b\x0b";
+                  case 29: // L
+                    return "\x02\x1b\x0c";
+                  case 30: // M
+                    return "\x02\x1b\x0d";
+                  case 31: // N
+                    return "\x02\x1b\x0e";
+                  case 32: // O
+                    return "\x02\x1b\x0f";
+                  case 33: // P
+                    return "\x02\x1b\x10";
+                  case 34: // Q
+                    return "\x02\x1b\x11";
+                  case 35: // R
+                    return "\x02\x1b\x12";
+                  case 36: // S
+                    return "\x02\x1b\x13";
+                  case 37: // T
+                    return "\x02\x1b\x14";
+                  case 38: // U
+                    return "\x02\x1b\x15";
+                  case 39: // V
+                    return "\x02\x1b\x16";
+                  case 40: // W
+                    return "\x02\x1b\x17";
+                  case 41: // X
+                    return "\x02\x1b\x18";
+                  case 42: // Y
+                    return "\x02\x1b\x19";
+                  case 43: // Z
+                    return "\x02\x1b\x1a";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -3546,6 +3650,58 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x6:
                   switch(key & 0x7f) { default: return NULL;
+                    case 18: // A
+                      return "\x02\x1b\x01";
+                    case 19: // B
+                      return "\x02\x1b\x02";
+                    case 20: // C
+                      return "\x02\x1b\x03";
+                    case 21: // D
+                      return "\x02\x1b\x04";
+                    case 22: // E
+                      return "\x02\x1b\x05";
+                    case 23: // F
+                      return "\x02\x1b\x06";
+                    case 24: // G
+                      return "\x02\x1b\x07";
+                    case 25: // H
+                      return "\x02\x1b\x08";
+                    case 26: // I
+                      return "\x02\x1b\x09";
+                    case 27: // J
+                      return "\x02\x1b\x0a";
+                    case 28: // K
+                      return "\x02\x1b\x0b";
+                    case 29: // L
+                      return "\x02\x1b\x0c";
+                    case 30: // M
+                      return "\x02\x1b\x0d";
+                    case 31: // N
+                      return "\x02\x1b\x0e";
+                    case 32: // O
+                      return "\x02\x1b\x0f";
+                    case 33: // P
+                      return "\x02\x1b\x10";
+                    case 34: // Q
+                      return "\x02\x1b\x11";
+                    case 35: // R
+                      return "\x02\x1b\x12";
+                    case 36: // S
+                      return "\x02\x1b\x13";
+                    case 37: // T
+                      return "\x02\x1b\x14";
+                    case 38: // U
+                      return "\x02\x1b\x15";
+                    case 39: // V
+                      return "\x02\x1b\x16";
+                    case 40: // W
+                      return "\x02\x1b\x17";
+                    case 41: // X
+                      return "\x02\x1b\x18";
+                    case 42: // Y
+                      return "\x02\x1b\x19";
+                    case 43: // Z
+                      return "\x02\x1b\x1a";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER
@@ -4752,6 +4908,58 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x6:
                   switch(key & 0x7f) { default: return NULL;
+                    case 18: // A
+                      return "\x02\x1b\x01";
+                    case 19: // B
+                      return "\x02\x1b\x02";
+                    case 20: // C
+                      return "\x02\x1b\x03";
+                    case 21: // D
+                      return "\x02\x1b\x04";
+                    case 22: // E
+                      return "\x02\x1b\x05";
+                    case 23: // F
+                      return "\x02\x1b\x06";
+                    case 24: // G
+                      return "\x02\x1b\x07";
+                    case 25: // H
+                      return "\x02\x1b\x08";
+                    case 26: // I
+                      return "\x02\x1b\x09";
+                    case 27: // J
+                      return "\x02\x1b\x0a";
+                    case 28: // K
+                      return "\x02\x1b\x0b";
+                    case 29: // L
+                      return "\x02\x1b\x0c";
+                    case 30: // M
+                      return "\x02\x1b\x0d";
+                    case 31: // N
+                      return "\x02\x1b\x0e";
+                    case 32: // O
+                      return "\x02\x1b\x0f";
+                    case 33: // P
+                      return "\x02\x1b\x10";
+                    case 34: // Q
+                      return "\x02\x1b\x11";
+                    case 35: // R
+                      return "\x02\x1b\x12";
+                    case 36: // S
+                      return "\x02\x1b\x13";
+                    case 37: // T
+                      return "\x02\x1b\x14";
+                    case 38: // U
+                      return "\x02\x1b\x15";
+                    case 39: // V
+                      return "\x02\x1b\x16";
+                    case 40: // W
+                      return "\x02\x1b\x17";
+                    case 41: // X
+                      return "\x02\x1b\x18";
+                    case 42: // Y
+                      return "\x02\x1b\x19";
+                    case 43: // Z
+                      return "\x02\x1b\x1a";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER

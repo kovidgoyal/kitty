@@ -36,6 +36,7 @@ shift_alt_codes = alt_codes.copy()
 shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
 alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 ctrl_shift_mod = defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_CONTROL
+ctrl_alt_mod = defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL
 
 for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -204,6 +205,7 @@ ASCII_C0_SHIFTED = {
     'SLASH': b'\x7f',
 }
 CTRL_SHIFT_KEYS = {getattr(defines, 'GLFW_KEY_' + k): v for k, v in ASCII_C0_SHIFTED.items()}
+CTRL_ALT_KEYS = {getattr(defines, 'GLFW_KEY_' + k) for k in string.ascii_uppercase}
 
 
 def key_to_bytes(key, smkx, extended, mods, action):
@@ -222,6 +224,8 @@ def key_to_bytes(key, smkx, extended, mods, action):
             m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
             data.append(0o33)
             data.extend(m[key])
+    elif mods == ctrl_alt_mod and key in CTRL_ALT_KEYS:
+        data.append(0x1b), data.extend(control_codes[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
