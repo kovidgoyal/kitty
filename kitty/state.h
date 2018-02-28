@@ -130,7 +130,7 @@ typedef struct {
     OSWindow *callback_os_window;
     bool close_all_windows;
     bool is_wayland;
-    bool debug_gl;
+    bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
 } GlobalState;
 

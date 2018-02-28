@@ -339,6 +339,19 @@ has_cell_text(Font *self, Cell *cell) {
     return true;
 }
 
+static inline void
+output_cell_fallback_data(Cell *cell, bool bold, bool italic, bool emoji_presentation, PyObject *face, bool new_face) {
+    printf("U+%x ", cell->ch);
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+        printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
+    }
+    if (bold) printf("bold ");
+    if (italic) printf("italic ");
+    if (emoji_presentation) printf("emoji_presentation ");
+    PyObject_Print(face, stdout, 0);
+    if (new_face) printf(" (new face)");
+    printf("\n");
+}
 
 static inline ssize_t
 load_fallback_font(Cell *cell, bool bold, bool italic, bool emoji_presentation) {
@@ -352,6 +365,7 @@ load_fallback_font(Cell *cell, bool bold, bool italic, bool emoji_presentation) 
     PyObject *face = create_fallback_face(fonts.fonts[f].face, cell, bold, italic, emoji_presentation);
     if (face == NULL) { PyErr_Print(); return MISSING_FONT; }
     if (face == Py_None) { Py_DECREF(face); return MISSING_FONT; }
+    if (global_state.debug_font_fallback) output_cell_fallback_data(cell, bold, italic, emoji_presentation, face, true);
     set_size_for_face(face, cell_height, true);
 
     ensure_space_for(&fonts, fonts, Font, fonts.fonts_count + 1, fonts_capacity, 5, true);
@@ -364,7 +378,6 @@ load_fallback_font(Cell *cell, bool bold, bool italic, bool emoji_presentation) 
     return ans;
 }
 
-
 static inline ssize_t
 fallback_font(Cell *cell) {
     bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
@@ -375,6 +388,7 @@ fallback_font(Cell *cell) {
     for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
         Font *ff = fonts.fonts +j;
         if (ff->bold == bold && ff->italic == italic && ff->emoji_presentation == emoji_presentation && has_cell_text(ff, cell)) {
+            if (global_state.debug_font_fallback) output_cell_fallback_data(cell, bold, italic, emoji_presentation, ff->face, false);
             return j;
         }
     }

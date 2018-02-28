@@ -39,7 +39,7 @@ def init_graphics():
 
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
-    set_options(opts, is_wayland, args.debug_gl)
+    set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
     if is_macos:
         from .fast_data_types import macos_change_titlebar_color
         macos_change_titlebar_color(opts.macos_titlebar_color)

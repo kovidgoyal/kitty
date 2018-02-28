@@ -323,10 +323,11 @@ PYWRAP1(handle_for_window_id) {
 
 PYWRAP1(set_options) {
     PyObject *ret, *opts;
-    int is_wayland = 0, debug_gl = 0;
-    PA("O|pp", &opts, &is_wayland, &debug_gl);
+    int is_wayland = 0, debug_gl = 0, debug_font_fallback = 0;
+    PA("O|ppp", &opts, &is_wayland, &debug_gl, &debug_font_fallback);
     global_state.is_wayland = is_wayland ? true : false;
     global_state.debug_gl = debug_gl ? true : false;
+    global_state.debug_font_fallback = debug_font_fallback ? true : false;
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
     S(visual_bell_duration, PyFloat_AsDouble);
