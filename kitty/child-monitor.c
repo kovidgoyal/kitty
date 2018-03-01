@@ -25,6 +25,7 @@ static void (*parse_func)(Screen*, PyObject*);
 typedef struct {
     char *data;
     size_t sz;
+    int fd;
 } Message;
 
 typedef struct {
@@ -185,6 +186,7 @@ wakeup_io_loop(bool in_signal_handler) {
 
 static void* io_loop(void *data);
 static void* talk_loop(void *data);
+static void send_response(int fd, const char *msg, size_t msg_sz);
 
 static PyObject *
 start(ChildMonitor *self) {
@@ -323,7 +325,7 @@ parse_input(ChildMonitor *self) {
         if (msg) {
             for (size_t i = 0; i < self->messages_count; i++) {
                 Message *m = self->messages + i;
-                PyTuple_SET_ITEM(msg, i, PyBytes_FromStringAndSize(m->data, m->sz));
+                PyTuple_SET_ITEM(msg, i, Py_BuildValue("y#i", m->data, (int)m->sz, m->fd));
                 free(m->data); m->data = NULL; m->sz = 0;
             }
             self->messages_count = 0;
@@ -341,7 +343,13 @@ parse_input(ChildMonitor *self) {
     }
     children_mutex(unlock);
     if (msg) {
-        call_boss(peer_messages_received, "(O)", msg);
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(msg); i++) {
+            PyObject *resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "O", PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0));
+            int peer_fd = (int)PyLong_AsLong(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 1));
+            if (resp && PyBytes_Check(resp)) send_response(peer_fd, PyBytes_AS_STRING(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0)), PyBytes_GET_SIZE(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0)));
+            else { send_response(peer_fd, NULL, 0); if (!resp) PyErr_Print(); }
+            Py_CLEAR(resp);
+        }
         Py_CLEAR(msg);
     }
 
@@ -955,7 +963,7 @@ io_loop(void *data) {
 
 // {{{ Talk thread functions
 
-static inline void
+static inline bool
 handle_peer(ChildMonitor *self, int s) {
     size_t bufsz = 0;
     char *buf = NULL;
@@ -964,9 +972,9 @@ handle_peer(ChildMonitor *self, int s) {
     while(true) {
         if (buf_used >= bufsz) {
             bufsz = MAX(1024, bufsz) * 2;
-            if (bufsz > 1024 * 1024) return;
+            if (bufsz > 16 * 1024 * 1024) return false;
             buf = realloc(buf, bufsz);
-            if (buf == NULL) return;
+            if (buf == NULL) return false;
         }
         ssize_t n = recv(s, buf + buf_used, bufsz - buf_used, 0);
         if (n == 0) break;
@@ -981,15 +989,17 @@ handle_peer(ChildMonitor *self, int s) {
         children_mutex(lock);
         ensure_space_for(self, messages, Message, self->messages_count + 1, messages_capacity, 16, true);
         Message *m = self->messages + self->messages_count++;
-        m->data = buf; m->sz = buf_used;
+        m->data = buf; m->sz = buf_used; m->fd = s;
         children_mutex(unlock);
         wakeup_main_loop();
+        return true;
     } else free(buf);
+    return false;
 }
 
 static void*
 talk_loop(void *data) {
-    // The I/O thread loop
+    // The talk thread loop
 
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyTalkMon");
@@ -1001,12 +1011,19 @@ talk_loop(void *data) {
             if (!self->shutting_down) perror("accept() on talk socket failed!");
             break;
         }
-        handle_peer(self, peer);
-        shutdown(peer, SHUT_RDWR);
-        close(peer);
+        if (handle_peer(self, peer)) shutdown(peer, SHUT_RD);
+        else { shutdown(peer, SHUT_RDWR); close(peer); }
     }
     return 0;
 }
+
+static void
+send_response(int fd, const char *msg, size_t msg_sz) {
+    if (msg == NULL) { shutdown(fd, SHUT_WR); close(fd); return; }
+    (void)msg_sz; // TODO: Implement this
+    shutdown(fd, SHUT_WR); close(fd);
+}
+
 // }}}
 
 // Boilerplate {{{

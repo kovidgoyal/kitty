@@ -166,19 +166,18 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def peer_messages_received(self, messages):
+    def peer_message_received(self, msg):
         import json
-        for msg in messages:
-            msg = json.loads(msg.decode('utf-8'))
-            if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
-                startup_id = msg.get('startup_id')
-                args, rest = parse_args(msg['args'][1:])
-                args.args = rest
-                opts = create_opts(args)
-                session = create_session(opts, args)
-                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
-            else:
-                safe_print('Unknown message received from peer, ignoring')
+        msg = json.loads(msg.decode('utf-8'))
+        if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+            startup_id = msg.get('startup_id')
+            args, rest = parse_args(msg['args'][1:])
+            args.args = rest
+            opts = create_opts(args)
+            session = create_session(opts, args)
+            self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
+        else:
+            safe_print('Unknown message received from peer, ignoring')
 
     def handle_remote_cmd(self, cmd, window=None):
         response = None
