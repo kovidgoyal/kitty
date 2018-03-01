@@ -279,14 +279,14 @@ def non_blocking_read(src=sys.stdin):
     fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
 
 
-def read_with_timeout(more_needed, timeout=10, src=sys.stdin):
+def read_with_timeout(more_needed, timeout=10, src=sys.stdin.buffer):
     import select
     start_time = monotonic()
     with non_blocking_read(src) as fd:
         while timeout > monotonic() - start_time:
             rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
             if rd:
-                data = sys.stdin.buffer.read()
+                data = src.read()
                 if not data:
                     break  # eof
                 if not more_needed(data):

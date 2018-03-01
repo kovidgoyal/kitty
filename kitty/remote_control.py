@@ -415,17 +415,12 @@ global_options_spec = partial('''\
 '''.format, appname=appname)
 
 
-def read_from_stdin(send, no_response):
+def do_io(send, no_response):
     send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
-    out = sys.stdout if sys.stdout.isatty() else sys.stderr
-    if not out.isatty():
-        raise SystemExit('Neither stdout nor stderr is a terminal')
-    out.buffer.write(b'\x1bP' + send + b'\x1b\\')
-    out.flush()
+    with open('/dev/tty', 'wb') as out:
+        out.write(b'\x1bP' + send + b'\x1b\\')
     if no_response:
         return {'ok': True}
-    if not sys.stdin.isatty():
-        raise SystemExit('stdin is not a terminal')
 
     received = b''
     dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
@@ -437,7 +432,8 @@ def read_from_stdin(send, no_response):
         match = dcs.search(received)
         return match is None
 
-    read_with_timeout(more_needed)
+    with open('/dev/tty', 'rb') as src:
+        read_with_timeout(more_needed, src=src)
     if match is None:
         raise SystemExit('Failed to receive response from ' + appname)
     response = json.loads(match.group(1).decode('ascii'))
@@ -474,11 +470,11 @@ def main(args):
     if func.no_response and isinstance(payload, types.GeneratorType):
         for item in payload:
             send['payload'] = item
-            read_from_stdin(send, func.no_response)
+            do_io(send, func.no_response)
         return
     if payload is not None:
         send['payload'] = payload
-    response = read_from_stdin(send, func.no_response)
+    response = do_io(send, func.no_response)
     if not response.get('ok'):
         if response.get('tb'):
             print(response['tb'], file=sys.stderr)
