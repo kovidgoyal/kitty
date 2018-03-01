@@ -2,7 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import atexit
 import re
+import socket
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
@@ -24,13 +26,37 @@ from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
     end_startup_notification, get_primary_selection, init_startup_notification,
-    open_url, safe_print, set_primary_selection, single_instance
+    open_url, remove_socket_file, safe_print, set_primary_selection,
+    single_instance
 )
 
 
 def initialize_renderer():
     layout_sprite_map()
     prerender()
+
+
+def listen_on(spec):
+    protocol, rest = spec.split(':', 1)
+    socket_path = None
+    if protocol == 'unix':
+        family = socket.AF_UNIX
+        address = rest
+        if address.startswith('@') and len(address) > 1:
+            address = '\0' + address[1:]
+        else:
+            socket_path = address
+    elif protocol in ('tcp', 'tcp6'):
+        family = socket.AF_INET if protocol == 'tcp' else socket.AF_INET6
+        host, port = rest.rsplit(':', 1)
+        address = host, int(port)
+    else:
+        raise ValueError('Unknown protocol in --listen-on value: {}'.format(spec))
+    s = socket.socket(family)
+    atexit.register(remove_socket_file, s, socket_path)
+    s.bind(address)
+    s.listen()
+    return s.fileno()
 
 
 class DumpCommands:  # {{{
@@ -70,10 +96,13 @@ class Boss:
         self.shutting_down = False
         talk_fd = getattr(single_instance, 'socket', None)
         talk_fd = -1 if talk_fd is None else talk_fd.fileno()
+        listen_fd = -1
+        if opts.allow_remote_control and args.listen_on:
+            listen_fd = listen_on(args.listen_on)
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
-            talk_fd
+            talk_fd, listen_fd
         )
         set_boss(self)
         self.current_font_size = opts.font_size

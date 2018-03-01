@@ -84,6 +84,15 @@ with the same |_ --instance-group| will result in new windows being created
 in the first |_ {appname}| instance within that group
 
 
+--listen-on
+Tell kitty to listen on the specified UNIX socket or TCP port for control
+messages. For example, --listen-on=unix:/tmp/mykitty or
+--listen-on=tcp:localhost:12345. On Linux systems, you can also use abstract
+UNIX sockets, not associated with a file, like this: --listen-on=unix:@mykitty.
+Note that this option will be ignored, unless you set allow_remote_control to yes
+in kitty.conf
+
+
 # Debugging options
 
 --version -v

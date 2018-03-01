@@ -36,7 +36,7 @@ typedef struct {
     bool shutting_down;
     pthread_t io_thread, talk_thread;
 
-    int talk_fd;
+    int talk_fd, listen_fd;
     Message *messages;
     size_t messages_capacity, messages_count;
 } ChildMonitor;
@@ -120,11 +120,11 @@ static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
     PyObject *dump_callback, *death_notify;
-    int talk_fd = -1;
+    int talk_fd = -1, listen_fd = -1;
     int ret;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "OO|i", &death_notify, &dump_callback, &talk_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "OO|ii", &death_notify, &dump_callback, &talk_fd, &listen_fd)) return NULL;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -138,6 +138,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (siginterrupt(SIGTERM, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     self->talk_fd = talk_fd;
+    self->listen_fd = listen_fd;
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
     if (dump_callback != Py_None) {
@@ -191,7 +192,7 @@ static void send_response(int fd, const char *msg, size_t msg_sz);
 static PyObject *
 start(ChildMonitor *self) {
 #define start_doc "start() -> Start the I/O thread"
-    if (self->talk_fd > -1) {
+    if (self->talk_fd > -1 || self->listen_fd > -1) {
         if (pthread_create(&self->talk_thread, NULL, talk_loop, self) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     }
     int ret = pthread_create(&self->io_thread, NULL, io_loop, self);
