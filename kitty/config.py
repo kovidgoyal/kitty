@@ -403,7 +403,7 @@ def load_config(*paths, overrides=None) -> Options:
         if not path:
             continue
         try:
-            f = open(path)
+            f = open(path, encoding='utf-8')
         except FileNotFoundError:
             continue
         with f:
