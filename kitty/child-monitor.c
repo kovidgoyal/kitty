@@ -290,10 +290,10 @@ shutdown_monitor(ChildMonitor *self) {
     wakeup_talk_loop(false);
     wakeup_io_loop(false);
     int ret = pthread_join(self->io_thread, NULL);
-    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    if (ret != 0) return PyErr_Format(PyExc_OSError, "Failed to join() I/O thread with error: %s", strerror(ret));
     if (talk_thread_started) {
         ret = pthread_join(self->talk_thread, NULL);
-        if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+        if (ret != 0) return PyErr_Format(PyExc_OSError, "Failed to join() talk thread with error: %s", strerror(ret));
     }
     talk_thread_started = false;
     Py_RETURN_NONE;
