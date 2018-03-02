@@ -191,6 +191,7 @@ wakeup_io_loop(bool in_signal_handler) {
 static void* io_loop(void *data);
 static void* talk_loop(void *data);
 static void send_response(int fd, const char *msg, size_t msg_sz);
+static void wakeup_talk_loop(bool);
 
 static PyObject *
 start(ChildMonitor *self) {
@@ -292,6 +293,8 @@ shutdown_monitor(ChildMonitor *self) {
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
     self->shutting_down = true;
+    wakeup_talk_loop(false);
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -1071,6 +1074,19 @@ prune_finished_reads() {
             else talk_data.reads[i] = empty_prd;
             talk_data.num_reads--;
         }
+    }
+}
+
+static void
+wakeup_talk_loop(bool in_signal_handler) {
+    if (talk_data.wakeup_fds[1] <= 0) return;
+    while(true) {
+        ssize_t ret = write(talk_data.wakeup_fds[1], "w", 1);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            if (!in_signal_handler) perror("Failed to write to talk wakeup fd with error");
+        }
+        break;
     }
 }
 
