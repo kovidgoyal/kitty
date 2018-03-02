@@ -11,7 +11,7 @@ from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
 from .config import MINIMUM_FONT_SIZE, initial_window_size
-from .constants import appname, set_boss, wakeup
+from .constants import appname, set_boss
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -473,8 +473,6 @@ class Boss:
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
-        wakeup()
-        self.child_monitor.join()
         del self.child_monitor
         for tm in self.os_window_map.values():
             tm.destroy()

@@ -192,24 +192,18 @@ static void* io_loop(void *data);
 static void* talk_loop(void *data);
 static void send_response(int fd, const char *msg, size_t msg_sz);
 static void wakeup_talk_loop(bool);
+static bool talk_thread_started = false;
 
 static PyObject *
 start(ChildMonitor *self) {
 #define start_doc "start() -> Start the I/O thread"
     if (self->talk_fd > -1 || self->listen_fd > -1) {
         if (pthread_create(&self->talk_thread, NULL, talk_loop, self) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+        talk_thread_started = true;
     }
     int ret = pthread_create(&self->io_thread, NULL, io_loop, self);
     if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
 
-    Py_RETURN_NONE;
-}
-
-static PyObject *
-join(ChildMonitor *self) {
-#define join_doc "join() -> Wait for the I/O thread to finish"
-    int ret = pthread_join(self->io_thread, NULL);
-    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
     Py_RETURN_NONE;
 }
 
@@ -295,6 +289,13 @@ shutdown_monitor(ChildMonitor *self) {
     self->shutting_down = true;
     wakeup_talk_loop(false);
     wakeup_io_loop(false);
+    int ret = pthread_join(self->io_thread, NULL);
+    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    if (talk_thread_started) {
+        ret = pthread_join(self->talk_thread, NULL);
+        if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    }
+    talk_thread_started = false;
     Py_RETURN_NONE;
 }
 
@@ -1068,6 +1069,7 @@ prune_finished_reads() {
         if (rd->finished) {
             remove_poll_fd(rd->fd);
             if (rd->close_socket) { nuke_socket(rd->fd); }
+            else shutdown(rd->fd, SHUT_RD);
             free(rd->data);
             ssize_t num_to_right = talk_data.num_reads - 1 - i;
             if (num_to_right > 0) memmove(talk_data.reads + i, talk_data.reads + i + 1, num_to_right * sizeof(PeerReadData));
@@ -1140,7 +1142,6 @@ static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
     METHOD(needs_write, METH_VARARGS)
     METHOD(start, METH_NOARGS)
-    METHOD(join, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
     METHOD(shutdown_monitor, METH_NOARGS)
     METHOD(main_loop, METH_NOARGS)
