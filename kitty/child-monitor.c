@@ -1049,6 +1049,7 @@ read_from_peer(ChildMonitor *self, int s) {
 
 static inline void
 remove_poll_fd(int fd) {
+    peer_mutex(lock);
     size_t count = talk_data.num_talk_fds + talk_data.num_listen_fds;
     for (size_t i = talk_data.num_listen_fds; i < count; i++) {
         struct pollfd *pfd = talk_data.fds + i;
@@ -1059,6 +1060,7 @@ remove_poll_fd(int fd) {
             break;
         }
     }
+    peer_mutex(unlock);
 }
 
 static inline void
