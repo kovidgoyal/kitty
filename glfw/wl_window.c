@@ -35,6 +35,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/timerfd.h>
 #include <poll.h>
 
 
@@ -57,6 +58,16 @@ static void handleConfigure(void* data,
 
     if (!window->monitor)
     {
+        if (_glfw.wl.viewporter && window->decorated)
+        {
+            width -= _GLFW_DECORATION_HORIZONTAL;
+            height -= _GLFW_DECORATION_VERTICAL;
+        }
+        if (width < 1)
+            width = 1;
+        if (height < 1)
+            height = 1;
+
         if (window->numer != GLFW_DONT_CARE && window->denom != GLFW_DONT_CARE)
         {
             aspectRatio = (float)width / (float)height;
@@ -94,9 +105,265 @@ static const struct wl_shell_surface_listener shellSurfaceListener = {
     handlePopupDone
 };
 
+static int
+createTmpfileCloexec(char* tmpname)
+{
+    int fd;
+
+    fd = mkostemp(tmpname, O_CLOEXEC);
+    if (fd >= 0)
+        unlink(tmpname);
+
+    return fd;
+}
+
+/*
+ * Create a new, unique, anonymous file of the given size, and
+ * return the file descriptor for it. The file descriptor is set
+ * CLOEXEC. The file is immediately suitable for mmap()'ing
+ * the given size at offset zero.
+ *
+ * The file should not have a permanent backing store like a disk,
+ * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
+ *
+ * The file name is deleted from the file system.
+ *
+ * The file is suitable for buffer sharing between processes by
+ * transmitting the file descriptor over Unix sockets using the
+ * SCM_RIGHTS methods.
+ *
+ * posix_fallocate() is used to guarantee that disk space is available
+ * for the file at the given size. If disk space is insufficent, errno
+ * is set to ENOSPC. If posix_fallocate() is not supported, program may
+ * receive SIGBUS on accessing mmap()'ed file contents instead.
+ */
+static int
+createAnonymousFile(off_t size)
+{
+    static const char template[] = "/glfw-shared-XXXXXX";
+    const char* path;
+    char* name;
+    int fd;
+    int ret;
+
+    path = getenv("XDG_RUNTIME_DIR");
+    if (!path)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+
+    name = calloc(strlen(path) + sizeof(template), 1);
+    strcpy(name, path);
+    strcat(name, template);
+
+    fd = createTmpfileCloexec(name);
+
+    free(name);
+
+    if (fd < 0)
+        return -1;
+    ret = posix_fallocate(fd, 0, size);
+    if (ret != 0)
+    {
+        close(fd);
+        errno = ret;
+        return -1;
+    }
+    return fd;
+}
+
+static struct wl_buffer* createShmBuffer(const GLFWimage* image)
+{
+    struct wl_shm_pool* pool;
+    struct wl_buffer* buffer;
+    int stride = image->width * 4;
+    int length = image->width * image->height * 4;
+    void* data;
+    int fd, i;
+
+    fd = createAnonymousFile(length);
+    if (fd < 0)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Creating a buffer file for %d B failed: %m",
+                        length);
+        return GLFW_FALSE;
+    }
+
+    data = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (data == MAP_FAILED)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: mmap failed: %m");
+        close(fd);
+        return GLFW_FALSE;
+    }
+
+    pool = wl_shm_create_pool(_glfw.wl.shm, fd, length);
+
+    close(fd);
+    unsigned char* source = (unsigned char*) image->pixels;
+    unsigned char* target = data;
+    for (i = 0;  i < image->width * image->height;  i++, source += 4)
+    {
+        unsigned int alpha = source[3];
+
+        *target++ = (unsigned char) ((source[2] * alpha) / 255);
+        *target++ = (unsigned char) ((source[1] * alpha) / 255);
+        *target++ = (unsigned char) ((source[0] * alpha) / 255);
+        *target++ = (unsigned char) alpha;
+    }
+
+    buffer =
+        wl_shm_pool_create_buffer(pool, 0,
+                                  image->width,
+                                  image->height,
+                                  stride, WL_SHM_FORMAT_ARGB8888);
+    munmap(data, length);
+    wl_shm_pool_destroy(pool);
+
+    return buffer;
+}
+
+static void createDecoration(_GLFWdecorationWayland* decoration,
+                             struct wl_surface* parent,
+                             struct wl_buffer* buffer, GLFWbool opaque,
+                             int x, int y,
+                             int width, int height)
+{
+    struct wl_region* region;
+
+    decoration->surface = wl_compositor_create_surface(_glfw.wl.compositor);
+    decoration->subsurface =
+        wl_subcompositor_get_subsurface(_glfw.wl.subcompositor,
+                                        decoration->surface, parent);
+    wl_subsurface_set_position(decoration->subsurface, x, y);
+    decoration->viewport = wp_viewporter_get_viewport(_glfw.wl.viewporter,
+                                                      decoration->surface);
+    wp_viewport_set_destination(decoration->viewport, width, height);
+    wl_surface_attach(decoration->surface, buffer, 0, 0);
+
+    if (opaque)
+    {
+        region = wl_compositor_create_region(_glfw.wl.compositor);
+        wl_region_add(region, 0, 0, width, height);
+        wl_surface_set_opaque_region(decoration->surface, region);
+        wl_surface_commit(decoration->surface);
+        wl_region_destroy(region);
+    }
+    else
+        wl_surface_commit(decoration->surface);
+}
+
+static void createDecorations(_GLFWwindow* window)
+{
+    unsigned char data[] = { 224, 224, 224, 255 };
+    const GLFWimage image = { 1, 1, data };
+    GLFWbool opaque = (data[3] == 255);
+
+    if (!_glfw.wl.viewporter)
+        return;
+
+    if (!window->wl.decorations.buffer)
+        window->wl.decorations.buffer = createShmBuffer(&image);
+
+    createDecoration(&window->wl.decorations.top, window->wl.surface,
+                     window->wl.decorations.buffer, opaque,
+                     0, -_GLFW_DECORATION_TOP,
+                     window->wl.width, _GLFW_DECORATION_TOP);
+    createDecoration(&window->wl.decorations.left, window->wl.surface,
+                     window->wl.decorations.buffer, opaque,
+                     -_GLFW_DECORATION_WIDTH, -_GLFW_DECORATION_TOP,
+                     _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    createDecoration(&window->wl.decorations.right, window->wl.surface,
+                     window->wl.decorations.buffer, opaque,
+                     window->wl.width, -_GLFW_DECORATION_TOP,
+                     _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    createDecoration(&window->wl.decorations.bottom, window->wl.surface,
+                     window->wl.decorations.buffer, opaque,
+                     -_GLFW_DECORATION_WIDTH, window->wl.height,
+                     window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
+}
+
+static void destroyDecoration(_GLFWdecorationWayland* decoration)
+{
+    if (decoration->surface)
+        wl_surface_destroy(decoration->surface);
+    if (decoration->subsurface)
+        wl_subsurface_destroy(decoration->subsurface);
+    if (decoration->viewport)
+        wp_viewport_destroy(decoration->viewport);
+    decoration->surface = NULL;
+    decoration->subsurface = NULL;
+    decoration->viewport = NULL;
+}
+
+static void destroyDecorations(_GLFWwindow* window)
+{
+    destroyDecoration(&window->wl.decorations.top);
+    destroyDecoration(&window->wl.decorations.left);
+    destroyDecoration(&window->wl.decorations.right);
+    destroyDecoration(&window->wl.decorations.bottom);
+}
+
+// Makes the surface considered as XRGB instead of ARGB.
+static void setOpaqueRegion(_GLFWwindow* window)
+{
+    struct wl_region* region;
+
+    region = wl_compositor_create_region(_glfw.wl.compositor);
+    if (!region)
+        return;
+
+    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
+    wl_surface_set_opaque_region(window->wl.surface, region);
+    wl_surface_commit(window->wl.surface);
+    wl_region_destroy(region);
+}
+
+
+static void resizeWindow(_GLFWwindow* window)
+{
+    int scale = window->wl.scale;
+    int scaledWidth = window->wl.width * scale;
+    int scaledHeight = window->wl.height * scale;
+    wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
+    if (!window->wl.transparent)
+        setOpaqueRegion(window);
+    _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
+    _glfwInputWindowContentScale(window, scale, scale);
+
+    if (!window->wl.decorations.top.surface)
+        return;
+
+    // Top decoration.
+    wp_viewport_set_destination(window->wl.decorations.top.viewport,
+                                window->wl.width, _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.top.surface);
+
+    // Left decoration.
+    wp_viewport_set_destination(window->wl.decorations.left.viewport,
+                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.left.surface);
+
+    // Right decoration.
+    wl_subsurface_set_position(window->wl.decorations.right.subsurface,
+                               window->wl.width, -_GLFW_DECORATION_TOP);
+    wp_viewport_set_destination(window->wl.decorations.right.viewport,
+                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.right.surface);
+
+    // Bottom decoration.
+    wl_subsurface_set_position(window->wl.decorations.bottom.subsurface,
+                               -_GLFW_DECORATION_WIDTH, window->wl.height);
+    wp_viewport_set_destination(window->wl.decorations.bottom.viewport,
+                                window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
+    wl_surface_commit(window->wl.decorations.bottom.surface);
+}
+
 static void checkScaleChange(_GLFWwindow* window)
 {
-    int scaledWidth, scaledHeight;
     int scale = 1;
     int i;
     int monitorScale;
@@ -117,12 +384,8 @@ static void checkScaleChange(_GLFWwindow* window)
     if (scale != window->wl.scale)
     {
         window->wl.scale = scale;
-        scaledWidth = window->wl.width * scale;
-        scaledHeight = window->wl.height * scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
-        wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
-        _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
-        _glfwInputWindowContentScale(window, scale, scale);
+        resizeWindow(window);
     }
 }
 
@@ -172,21 +435,6 @@ static const struct wl_surface_listener surfaceListener = {
     handleLeave
 };
 
-// Makes the surface considered as XRGB instead of ARGB.
-static void setOpaqueRegion(_GLFWwindow* window)
-{
-    struct wl_region* region;
-
-    region = wl_compositor_create_region(_glfw.wl.compositor);
-    if (!region)
-        return;
-
-    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
-    wl_surface_set_opaque_region(window->wl.surface, region);
-    wl_surface_commit(window->wl.surface);
-    wl_region_destroy(region);
-}
-
 static void setIdleInhibitor(_GLFWwindow* window, GLFWbool enable)
 {
     if (enable && !window->wl.idleInhibitor && _glfw.wl.idleInhibitManager)
@@ -231,7 +479,30 @@ static GLFWbool createSurface(_GLFWwindow* window,
     if (!window->wl.transparent)
         setOpaqueRegion(window);
 
+    if (window->decorated && !window->monitor)
+        createDecorations(window);
+
     return GLFW_TRUE;
+}
+
+static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, int refreshRate)
+{
+    if (window->wl.xdg.toplevel)
+    {
+        xdg_toplevel_set_fullscreen(
+            window->wl.xdg.toplevel,
+            monitor->wl.output);
+    }
+    else if (window->wl.shellSurface)
+    {
+        wl_shell_surface_set_fullscreen(
+            window->wl.shellSurface,
+            WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT,
+            refreshRate * 1000, // Convert Hz to mHz.
+            monitor->wl.output);
+    }
+    setIdleInhibitor(window, GLFW_TRUE);
+    destroyDecorations(window);
 }
 
 static GLFWbool createShellSurface(_GLFWwindow* window)
@@ -261,12 +532,7 @@ static GLFWbool createShellSurface(_GLFWwindow* window)
 
     if (window->monitor)
     {
-        wl_shell_surface_set_fullscreen(
-            window->wl.shellSurface,
-            WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT,
-            0,
-            window->monitor->wl.output);
-        setIdleInhibitor(window, GLFW_TRUE);
+        setFullscreen(window, window->monitor, 0);
     }
     else if (window->wl.maximized)
     {
@@ -424,25 +690,16 @@ static GLFWbool createXdgSurface(_GLFWwindow* window)
     return GLFW_TRUE;
 }
 
-static int
-createTmpfileCloexec(char* tmpname)
-{
-    int fd;
-
-    fd = mkostemp(tmpname, O_CLOEXEC);
-    if (fd >= 0)
-        unlink(tmpname);
-
-    return fd;
-}
-
 static void
 handleEvents(int timeout)
 {
     struct wl_display* display = _glfw.wl.display;
     struct pollfd fds[] = {
         { wl_display_get_fd(display), POLLIN },
+        { _glfw.wl.timerfd, POLLIN },
     };
+    ssize_t read_ret;
+    uint64_t repeats, i;
 
     while (wl_display_prepare_read(display) != 0)
         wl_display_dispatch_pending(display);
@@ -462,71 +719,34 @@ handleEvents(int timeout)
         return;
     }
 
-    if (poll(fds, 1, timeout) > 0)
+    if (poll(fds, 2, timeout) > 0)
     {
-        wl_display_read_events(display);
-        wl_display_dispatch_pending(display);
+        if (fds[0].revents & POLLIN)
+        {
+            wl_display_read_events(display);
+            wl_display_dispatch_pending(display);
+        }
+        else
+        {
+            wl_display_cancel_read(display);
+        }
+
+        if (fds[1].revents & POLLIN)
+        {
+            read_ret = read(_glfw.wl.timerfd, &repeats, sizeof(repeats));
+            if (read_ret != 8)
+                return;
+
+            for (i = 0; i < repeats; ++i)
+                _glfwInputKey(_glfw.wl.keyboardFocus, _glfw.wl.keyboardLastKey,
+                              _glfw.wl.keyboardLastScancode, GLFW_REPEAT,
+                              _glfw.wl.xkb.modifiers);
+        }
     }
     else
     {
         wl_display_cancel_read(display);
     }
-}
-
-/*
- * Create a new, unique, anonymous file of the given size, and
- * return the file descriptor for it. The file descriptor is set
- * CLOEXEC. The file is immediately suitable for mmap()'ing
- * the given size at offset zero.
- *
- * The file should not have a permanent backing store like a disk,
- * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
- *
- * The file name is deleted from the file system.
- *
- * The file is suitable for buffer sharing between processes by
- * transmitting the file descriptor over Unix sockets using the
- * SCM_RIGHTS methods.
- *
- * posix_fallocate() is used to guarantee that disk space is available
- * for the file at the given size. If disk space is insufficent, errno
- * is set to ENOSPC. If posix_fallocate() is not supported, program may
- * receive SIGBUS on accessing mmap()'ed file contents instead.
- */
-int
-createAnonymousFile(off_t size)
-{
-    static const char template[] = "/glfw-shared-XXXXXX";
-    const char* path;
-    char* name;
-    int fd;
-    int ret;
-
-    path = getenv("XDG_RUNTIME_DIR");
-    if (!path)
-    {
-        errno = ENOENT;
-        return -1;
-    }
-
-    name = calloc(strlen(path) + sizeof(template), 1);
-    strcpy(name, path);
-    strcat(name, template);
-
-    fd = createTmpfileCloexec(name);
-
-    free(name);
-
-    if (fd < 0)
-        return -1;
-    ret = posix_fallocate(fd, 0, size);
-    if (ret != 0)
-    {
-        close(fd);
-        errno = ret;
-        return -1;
-    }
-    return fd;
 }
 
 // Translates a GLFW standard cursor to a theme cursor name
@@ -639,6 +859,10 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->context.destroy)
         window->context.destroy(window);
 
+    destroyDecorations(window);
+    if (window->wl.decorations.buffer)
+        wl_buffer_destroy(window->wl.decorations.buffer);
+
     if (window->wl.native)
         wl_egl_window_destroy(window->wl.native);
 
@@ -703,14 +927,9 @@ void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
-    int scaledWidth = width * window->wl.scale;
-    int scaledHeight = height * window->wl.scale;
     window->wl.width = width;
     window->wl.height = height;
-    wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
-    if (!window->wl.transparent)
-        setOpaqueRegion(window);
-    _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
+    resizeWindow(window);
 }
 
 void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
@@ -754,8 +973,17 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* left, int* top,
                                      int* right, int* bottom)
 {
-    // TODO: will need a proper implementation once decorations are
-    // implemented, but for now just leave everything as 0.
+    if (window->decorated && !window->monitor)
+    {
+        if (top)
+            *top = _GLFW_DECORATION_TOP;
+        if (left)
+            *left = _GLFW_DECORATION_WIDTH;
+        if (right)
+            *right = _GLFW_DECORATION_WIDTH;
+        if (bottom)
+            *bottom = _GLFW_DECORATION_WIDTH;
+    }
 }
 
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
@@ -871,35 +1099,20 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
                                    int width, int height,
                                    int refreshRate)
 {
-    if (window->wl.xdg.toplevel)
+    if (monitor)
     {
-        if (monitor)
-        {
-            xdg_toplevel_set_fullscreen(
-                window->wl.xdg.toplevel,
-                monitor->wl.output);
-        }
-        else
-        {
+        setFullscreen(window, monitor, refreshRate);
+    }
+    else
+    {
+        if (window->wl.xdg.toplevel)
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-        }
-    }
-    else if (window->wl.shellSurface)
-    {
-        if (monitor)
-        {
-            wl_shell_surface_set_fullscreen(
-                window->wl.shellSurface,
-                WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT,
-                refreshRate * 1000, // Convert Hz to mHz.
-                monitor->wl.output);
-        }
-        else
-        {
+        else if (window->wl.shellSurface)
             wl_shell_surface_set_toplevel(window->wl.shellSurface);
-        }
+        setIdleInhibitor(window, GLFW_FALSE);
+        if (window->decorated)
+            createDecorations(window);
     }
-    setIdleInhibitor(window, monitor ? GLFW_TRUE : GLFW_FALSE);
     _glfwInputWindowMonitor(window, monitor);
 }
 
@@ -944,9 +1157,13 @@ void _glfwPlatformSetWindowResizable(_GLFWwindow* window, GLFWbool enabled)
 
 void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, GLFWbool enabled)
 {
-    // TODO
-    _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Window attribute setting not implemented yet");
+    if (!window->monitor)
+    {
+        if (enabled)
+            createDecorations(window);
+        else
+            destroyDecorations(window);
+    }
 }
 
 void _glfwPlatformSetWindowFloating(_GLFWwindow* window, GLFWbool enabled)
@@ -1026,53 +1243,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
                               int xhot, int yhot)
 {
-    struct wl_shm_pool* pool;
-    int stride = image->width * 4;
-    int length = image->width * image->height * 4;
-    void* data;
-    int fd, i;
-
-    fd = createAnonymousFile(length);
-    if (fd < 0)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Creating a buffer file for %d B failed: %m",
-                        length);
-        return GLFW_FALSE;
-    }
-
-    data = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (data == MAP_FAILED)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cursor mmap failed: %m");
-        close(fd);
-        return GLFW_FALSE;
-    }
-
-    pool = wl_shm_create_pool(_glfw.wl.shm, fd, length);
-
-    close(fd);
-    unsigned char* source = (unsigned char*) image->pixels;
-    unsigned char* target = data;
-    for (i = 0;  i < image->width * image->height;  i++, source += 4)
-    {
-        unsigned int alpha = source[3];
-
-        *target++ = (unsigned char) ((source[2] * alpha) / 255);
-        *target++ = (unsigned char) ((source[1] * alpha) / 255);
-        *target++ = (unsigned char) ((source[0] * alpha) / 255);
-        *target++ = (unsigned char) alpha;
-    }
-
-    cursor->wl.buffer =
-        wl_shm_pool_create_buffer(pool, 0,
-                                  image->width,
-                                  image->height,
-                                  stride, WL_SHM_FORMAT_ARGB8888);
-    munmap(data, length);
-    wl_shm_pool_destroy(pool);
-
+    cursor->wl.buffer = createShmBuffer(image);
     cursor->wl.width = image->width;
     cursor->wl.height = image->height;
     cursor->wl.xhot = xhot;

@@ -456,7 +456,9 @@ struct _GLFWcursor
 struct _GLFWmapelement
 {
     uint8_t         type;
-    uint8_t         value;
+    uint8_t         index;
+    int8_t          axisScale;
+    int8_t          axisOffset;
 };
 
 // Gamepad mapping structure
@@ -605,6 +607,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor);
 const char* _glfwPlatformGetScancodeName(int scancode);
 int _glfwPlatformGetKeyScancode(int key);
 
+void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor);
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos);
 void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
                                          float* xscale, float* yscale);

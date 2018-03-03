@@ -334,6 +334,10 @@ void _glfwGetMonitorContentScaleWin32(HMONITOR handle, float* xscale, float* ysc
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
+{
+}
+
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
     DEVMODEW dm;

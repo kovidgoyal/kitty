@@ -1534,6 +1534,9 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
 
 void _glfwPlatformPollEvents(void)
 {
+    if (!initializeAppKit())
+        return;
+
     for (;;)
     {
         NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny

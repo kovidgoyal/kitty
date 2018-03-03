@@ -53,6 +53,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "osmesa_context.h"
 
 #include "wayland-xdg-shell-client-protocol.h"
+#include "wayland-viewporter-client-protocol.h"
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
@@ -105,6 +106,7 @@ typedef void (* PFN_xkb_context_unref)(struct xkb_context*);
 typedef struct xkb_keymap* (* PFN_xkb_keymap_new_from_string)(struct xkb_context*, const char*, enum xkb_keymap_format, enum xkb_keymap_compile_flags);
 typedef void (* PFN_xkb_keymap_unref)(struct xkb_keymap*);
 typedef xkb_mod_index_t (* PFN_xkb_keymap_mod_get_index)(struct xkb_keymap*, const char*);
+typedef int (* PFN_xkb_keymap_key_repeats)(struct xkb_keymap*, xkb_keycode_t);
 typedef struct xkb_state* (* PFN_xkb_state_new)(struct xkb_keymap*);
 typedef void (* PFN_xkb_state_unref)(struct xkb_state*);
 typedef int (* PFN_xkb_state_key_get_syms)(struct xkb_state*, xkb_keycode_t, const xkb_keysym_t**);
@@ -115,6 +117,7 @@ typedef xkb_mod_mask_t (* PFN_xkb_state_serialize_mods)(struct xkb_state*, enum 
 #define xkb_keymap_new_from_string _glfw.wl.xkb.keymap_new_from_string
 #define xkb_keymap_unref _glfw.wl.xkb.keymap_unref
 #define xkb_keymap_mod_get_index _glfw.wl.xkb.keymap_mod_get_index
+#define xkb_keymap_key_repeats _glfw.wl.xkb.keymap_key_repeats
 #define xkb_state_new _glfw.wl.xkb.state_new
 #define xkb_state_unref _glfw.wl.xkb.state_unref
 #define xkb_state_key_get_syms _glfw.wl.xkb.state_key_get_syms
@@ -138,6 +141,28 @@ typedef xkb_keysym_t (* PFN_xkb_compose_state_get_one_sym)(struct xkb_compose_st
 #define xkb_compose_state_get_one_sym _glfw.wl.xkb.compose_state_get_one_sym
 #endif
 
+#define _GLFW_DECORATION_WIDTH 4
+#define _GLFW_DECORATION_TOP 24
+#define _GLFW_DECORATION_VERTICAL (_GLFW_DECORATION_TOP + _GLFW_DECORATION_WIDTH)
+#define _GLFW_DECORATION_HORIZONTAL (2 * _GLFW_DECORATION_WIDTH)
+
+typedef enum _GLFWdecorationSideWayland
+{
+    mainWindow,
+    topDecoration,
+    leftDecoration,
+    rightDecoration,
+    bottomDecoration,
+
+} _GLFWdecorationSideWayland;
+
+typedef struct _GLFWdecorationWayland
+{
+    struct wl_surface*          surface;
+    struct wl_subsurface*       subsurface;
+    struct wp_viewport*         viewport;
+
+} _GLFWdecorationWayland;
 
 // Wayland-specific per-window data
 //
@@ -180,6 +205,12 @@ typedef struct _GLFWwindowWayland
     // This is a hack to prevent auto-iconification on creation.
     GLFWbool                    justCreated;
 
+    struct {
+        struct wl_buffer*                  buffer;
+        _GLFWdecorationWayland             top, left, right, bottom;
+        int                                focus;
+    } decorations;
+
 } _GLFWwindowWayland;
 
 // Wayland-specific global data
@@ -189,22 +220,30 @@ typedef struct _GLFWlibraryWayland
     struct wl_display*          display;
     struct wl_registry*         registry;
     struct wl_compositor*       compositor;
+    struct wl_subcompositor*    subcompositor;
     struct wl_shell*            shell;
     struct wl_shm*              shm;
     struct wl_seat*             seat;
     struct wl_pointer*          pointer;
     struct wl_keyboard*         keyboard;
     struct xdg_wm_base*         wmBase;
+    struct wp_viewporter*       viewporter;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;
 
     int                         compositorVersion;
+    int                         seatVersion;
 
     struct wl_cursor_theme*     cursorTheme;
     struct wl_surface*          cursorSurface;
     uint32_t                    pointerSerial;
 
+    int32_t                     keyboardRepeatRate;
+    int32_t                     keyboardRepeatDelay;
+    int                         keyboardLastKey;
+    int                         keyboardLastScancode;
+    int                         timerfd;
     short int                   keycodes[256];
     short int                   scancodes[GLFW_KEY_LAST + 1];
 
@@ -231,6 +270,7 @@ typedef struct _GLFWlibraryWayland
         PFN_xkb_keymap_new_from_string keymap_new_from_string;
         PFN_xkb_keymap_unref keymap_unref;
         PFN_xkb_keymap_mod_get_index keymap_mod_get_index;
+        PFN_xkb_keymap_key_repeats keymap_key_repeats;
         PFN_xkb_state_new state_new;
         PFN_xkb_state_unref state_unref;
         PFN_xkb_state_key_get_syms state_key_get_syms;
@@ -275,6 +315,7 @@ typedef struct _GLFWlibraryWayland
 typedef struct _GLFWmonitorWayland
 {
     struct wl_output*           output;
+    int                         name;
     int                         currentMode;
 
     int                         x;

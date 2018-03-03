@@ -2453,10 +2453,11 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value);
  *  GLFW_X11_CLASS_NAME and @ref GLFW_X11_INSTANCE_NAME window hints to override
  *  this.
  *
- *  @remark @wayland The window frame is currently unimplemented, as if
- *  [GLFW_DECORATED](@ref GLFW_DECORATED_hint) was always set to `GLFW_FALSE`.
- *  A compositor can still emit close, resize or maximize events, using for
- *  example a keybind mechanism.
+ *  @remark @wayland The window frame is currently very simple, only allowing
+ *  window resize or move.  A compositor can still emit close, maximize or
+ *  fullscreen events, using for example a keybind mechanism.  Additionally,
+ *  the wp_viewporter protocol is required for this feature, otherwise the
+ *  window will not be decorated.
  *
  *  @remark @wayland A full screen window will not attempt to change the mode,
  *  no matter what the requested size or refresh rate.
@@ -2897,10 +2898,6 @@ GLFWAPI void glfwGetFramebufferSize(GLFWwindow* window, int* width, int* height)
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
- *
- *  @remark @wayland The window frame is currently unimplemented, as if
- *  [GLFW_DECORATED](@ref GLFW_DECORATED_hint) was always set to `GLFW_FALSE`,
- *  so the returned values will always be zero.
  *
  *  @thread_safety This function must only be called from the main thread.
  *

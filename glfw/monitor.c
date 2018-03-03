@@ -177,6 +177,8 @@ void _glfwFreeMonitor(_GLFWmonitor* monitor)
     if (monitor == NULL)
         return;
 
+    _glfwPlatformFreeMonitor(monitor);
+
     _glfwFreeGammaArrays(&monitor->originalRamp);
     _glfwFreeGammaArrays(&monitor->currentRamp);
 
