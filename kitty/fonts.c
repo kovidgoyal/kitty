@@ -331,10 +331,17 @@ face_has_codepoint(PyObject* face, char_type cp) {
 }
 
 static inline bool
+has_emoji_presentation(Cell *cell) {
+    return (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch) && cell->cc_idx[0] != VS15;
+}
+
+static inline bool
 has_cell_text(Font *self, Cell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        if (!face_has_codepoint(self->face, codepoint_for_mark(cell->cc_idx[i]))) return false;
+        combining_type cc_idx = cell->cc_idx[i];
+        if (cc_idx == VS15 || cc_idx == VS16) continue;
+        if (!face_has_codepoint(self->face, codepoint_for_mark(cc_idx))) return false;
     }
     return true;
 }
@@ -382,7 +389,7 @@ static inline ssize_t
 fallback_font(Cell *cell) {
     bool bold = (cell->attrs >> BOLD_SHIFT) & 1;
     bool italic = (cell->attrs >> ITALIC_SHIFT) & 1;
-    bool emoji_presentation = (cell->attrs & WIDTH_MASK) == 2 && is_emoji(cell->ch) && cell->cc_idx[0] != VS15;
+    bool emoji_presentation = has_emoji_presentation(cell);
 
     // Check if one of the existing fallback fonts has this text
     for (size_t i = 0, j = fonts.first_fallback_font_idx; i < fonts.fallback_fonts_count; i++, j++)  {
@@ -432,7 +439,7 @@ START_ALLOW_CASE_RANGE
                     ans = fonts.bi_font_idx; break;
             }
             if (ans < 0) ans = fonts.medium_font_idx;
-            if (has_cell_text(fonts.fonts + ans, cell)) return ans;
+            if (!has_emoji_presentation(cell) && has_cell_text(fonts.fonts + ans, cell)) return ans;
             return fallback_font(cell);
     }
 END_ALLOW_CASE_RANGE
