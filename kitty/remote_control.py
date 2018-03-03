@@ -4,6 +4,7 @@
 
 import json
 import re
+import socket
 import sys
 import types
 from functools import partial
@@ -12,7 +13,7 @@ from .cli import emph, parse_args
 from .config import parse_send_text_bytes
 from .constants import appname, version
 from .tabs import SpecialWindow
-from .utils import non_blocking_read, read_with_timeout
+from .utils import non_blocking_read, parse_address_spec, read_with_timeout
 
 
 def cmd(short_desc, desc=None, options_spec=None, no_response=False):
@@ -411,14 +412,28 @@ def handle_cmd(boss, window, cmd):
 
 
 global_options_spec = partial('''\
-
+--to
+An address for the kitty instance to control. Corresponds to the address
+given to the kitty instance via the --listen-on option. If not specified,
+messages are sent to the controlling terminal for this process, i.e. they
+will only work if this process is run within an existing kitty window.
 '''.format, appname=appname)
 
 
-def do_io(send, no_response):
+def do_io(to, send, no_response):
     send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
-    with open('/dev/tty', 'wb') as out:
-        out.write(b'\x1bP' + send + b'\x1b\\')
+    send = b'\x1bP' + send + b'\x1b\\'
+    if to:
+        family, address = parse_address_spec(to)[:2]
+        s = socket.socket(family)
+        s.connect(address)
+        out = s.makefile('wb')
+    else:
+        out = open('/dev/tty', 'wb')
+    with out:
+        out.write(send)
+    if to:
+        s.shutdown(socket.SHUT_WR)
     if no_response:
         return {'ok': True}
 
@@ -432,7 +447,11 @@ def do_io(send, no_response):
         match = dcs.search(received)
         return match is None
 
-    with open('/dev/tty', 'rb') as src:
+    if to:
+        src = s.makefile('rb')
+    else:
+        src = open('/dev/tty', 'rb')
+    with src:
         read_with_timeout(more_needed, src=src)
     if match is None:
         raise SystemExit('Failed to receive response from ' + appname)
@@ -470,11 +489,11 @@ def main(args):
     if func.no_response and isinstance(payload, types.GeneratorType):
         for item in payload:
             send['payload'] = item
-            do_io(send, func.no_response)
+            do_io(global_opts.to, send, func.no_response)
         return
     if payload is not None:
         send['payload'] = payload
-    response = do_io(send, func.no_response)
+    response = do_io(global_opts.to, send, func.no_response)
     if not response.get('ok'):
         if response.get('tb'):
             print(response['tb'], file=sys.stderr)

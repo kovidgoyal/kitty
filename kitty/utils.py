@@ -262,6 +262,25 @@ def single_instance(group_id=None):
     return True
 
 
+def parse_address_spec(spec):
+    protocol, rest = spec.split(':', 1)
+    socket_path = None
+    if protocol == 'unix':
+        family = socket.AF_UNIX
+        address = rest
+        if address.startswith('@') and len(address) > 1:
+            address = '\0' + address[1:]
+        else:
+            socket_path = address
+    elif protocol in ('tcp', 'tcp6'):
+        family = socket.AF_INET if protocol == 'tcp' else socket.AF_INET6
+        host, port = rest.rsplit(':', 1)
+        address = host, int(port)
+    else:
+        raise ValueError('Unknown protocol in --listen-on value: {}'.format(spec))
+    return family, address, socket_path
+
+
 @contextmanager
 def non_blocking_read(src=sys.stdin):
     import termios

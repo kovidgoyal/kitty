@@ -354,7 +354,7 @@ parse_input(ChildMonitor *self) {
         for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(msg); i++) {
             PyObject *resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "O", PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0));
             int peer_fd = (int)PyLong_AsLong(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 1));
-            if (resp && PyBytes_Check(resp)) send_response(peer_fd, PyBytes_AS_STRING(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0)), PyBytes_GET_SIZE(PyTuple_GET_ITEM(PyTuple_GET_ITEM(msg, i), 0)));
+            if (resp && PyBytes_Check(resp)) send_response(peer_fd, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
             else { send_response(peer_fd, NULL, 0); if (!resp) PyErr_Print(); }
             Py_CLEAR(resp);
         }
@@ -1143,7 +1143,7 @@ wakeup_talk_loop(bool in_signal_handler) {
 static inline void
 move_queued_writes() {
     while (talk_data.num_queued_writes) {
-        PeerWriteData *src = talk_data.queued_writes + talk_data.num_queued_writes--;
+        PeerWriteData *src = talk_data.queued_writes + --talk_data.num_queued_writes;
         size_t fd_idx = talk_data.num_listen_fds + talk_data.num_talk_fds;
         if (fd_idx < arraysz(talk_data.fds) && talk_data.num_writes < arraysz(talk_data.writes)) {
             talk_data.fds[fd_idx].fd = src->fd; talk_data.fds[fd_idx].events = POLLOUT;

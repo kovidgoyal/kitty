@@ -26,8 +26,8 @@ from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
     end_startup_notification, get_primary_selection, init_startup_notification,
-    open_url, remove_socket_file, safe_print, set_primary_selection,
-    single_instance
+    open_url, parse_address_spec, remove_socket_file, safe_print,
+    set_primary_selection, single_instance
 )
 
 
@@ -37,21 +37,7 @@ def initialize_renderer():
 
 
 def listen_on(spec):
-    protocol, rest = spec.split(':', 1)
-    socket_path = None
-    if protocol == 'unix':
-        family = socket.AF_UNIX
-        address = rest
-        if address.startswith('@') and len(address) > 1:
-            address = '\0' + address[1:]
-        else:
-            socket_path = address
-    elif protocol in ('tcp', 'tcp6'):
-        family = socket.AF_INET if protocol == 'tcp' else socket.AF_INET6
-        host, port = rest.rsplit(':', 1)
-        address = host, int(port)
-    else:
-        raise ValueError('Unknown protocol in --listen-on value: {}'.format(spec))
+    family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
     atexit.register(remove_socket_file, s, socket_path)
     s.bind(address)
@@ -195,20 +181,7 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def peer_message_received(self, msg):
-        import json
-        msg = json.loads(msg.decode('utf-8'))
-        if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
-            startup_id = msg.get('startup_id')
-            args, rest = parse_args(msg['args'][1:])
-            args.args = rest
-            opts = create_opts(args)
-            session = create_session(opts, args)
-            self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
-        else:
-            safe_print('Unknown message received from peer, ignoring')
-
-    def handle_remote_cmd(self, cmd, window=None):
+    def _handle_remote_command(self, cmd, window=None):
         response = None
         if self.opts.allow_remote_control:
             try:
@@ -218,6 +191,32 @@ class Boss:
                 response = {'ok': False, 'error': str(err), 'tb': traceback.format_exc()}
         else:
             response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control yes to your kitty.conf'}
+        return response
+
+    def peer_message_received(self, msg):
+        import json
+        msg = msg.decode('utf-8')
+        cmd_prefix = '\x1bP@kitty-cmd'
+        if msg.startswith(cmd_prefix):
+            cmd = msg[len(cmd_prefix):-2]
+            response = self._handle_remote_command(cmd)
+            if response is not None:
+                response = (cmd_prefix + json.dumps(response) + '\x1b\\').encode('utf-8')
+            return response
+        else:
+            msg = json.loads(msg)
+            if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+                startup_id = msg.get('startup_id')
+                args, rest = parse_args(msg['args'][1:])
+                args.args = rest
+                opts = create_opts(args)
+                session = create_session(opts, args)
+                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
+            else:
+                safe_print('Unknown message received from peer, ignoring')
+
+    def handle_remote_cmd(self, cmd, window=None):
+        response = self._handle_remote_command(cmd, window)
         if response is not None:
             if window is not None:
                 window.send_cmd_response(response)
