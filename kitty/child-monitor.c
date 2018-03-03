@@ -19,6 +19,10 @@
 extern PyTypeObject Screen_Type;
 
 #define EXTRA_FDS 2
+#ifndef MSG_NOSIGNAL
+// Apple does not implement MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 static void (*parse_func)(Screen*, PyObject*);
 
