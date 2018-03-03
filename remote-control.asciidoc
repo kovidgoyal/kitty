@@ -76,7 +76,20 @@ As you can see, it is very easy to control kitty using the
 `kitty @` messaging system. This tutorial touches only the
 surface of what is possible. See `kitty @ --help` for more details.
 
-Note that `kitty @` messaging works only when run inside a kitty window,
-not anywhere. But, within a kitty window it even works over SSH. If you want
-a command to open new windows in existing kitty instances, from outside of kitty,
-use `kitty --single-instance`. See `kitty --help` for details.
+Note that in the example's above, `kitty @` messaging works only when run inside a kitty window,
+not anywhere. But, within a kitty window it even works over SSH. If you want to control
+kitty from programs/scripts not running inside a kitty window, you have to implement a couple of
+extra steps. First start kitty as:
+
+    kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty
+
+The `--listen-on` option tells kitty to listen for control messages at the
+specified path. See `kitty --help` for details. Now you can control this
+instance of kitty using the `--to` command line argument to `kitty @`. For example:
+
+    kitty @ --to unix:/tmp/mykitty ls
+
+
+Note that is all you want to do is run a single kitty "daemon" and have subsequent
+kitty invocations appear as new top-level windows, you can use the simpler `--single-instance`
+option, see `kitty --help` for that.
