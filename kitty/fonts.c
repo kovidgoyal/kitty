@@ -815,7 +815,10 @@ render_groups(Font *font) {
         /* printf("Group: idx: %u num_cells: %u num_glyphs: %u first_glyph_idx: %u first_cell_idx: %u total_num_glyphs: %zu\n", */
         /*         idx, group->num_cells, group->num_glyphs, group->first_glyph_idx, group->first_cell_idx, group_state.num_glyphs); */
         glyph_index primary = group->num_glyphs ? G(info)[group->first_glyph_idx].codepoint : 0;
-        for (unsigned i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) ed.data[i-1] = G(info)[group->first_glyph_idx + i].codepoint;
+        unsigned int i;
+        int last = -1;
+        for (i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) { last = i - 1; ed.data[last] = G(info)[group->first_glyph_idx + i].codepoint; }
+        if ((size_t)(last + 1) < arraysz(ed.data)) ed.data[last + 1] = 0;
         render_group(group->num_cells, group->num_glyphs, G(first_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed);
         idx++;
     }
