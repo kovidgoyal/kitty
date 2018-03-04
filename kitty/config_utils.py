@@ -3,10 +3,9 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-import sys
 from collections import namedtuple
 
-from .utils import safe_print
+from .utils import log_error
 from .rgb import to_color as as_color
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
@@ -48,10 +47,7 @@ def parse_config_base(
                 continue
             if check_keys:
                 if key not in all_keys:
-                    safe_print(
-                        'Ignoring unknown config key: {}'.format(key),
-                        file=sys.stderr
-                    )
+                    log_error('Ignoring unknown config key: {}'.format(key))
                     continue
             tm = type_map.get(key)
             if tm is not None:

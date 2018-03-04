@@ -3,10 +3,9 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-import sys
 
 from kitty.fast_data_types import coretext_all_fonts
-from kitty.utils import safe_print
+from kitty.utils import log_error
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -63,10 +62,7 @@ def find_best_match(family, bold=False, italic=False):
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:
-        safe_print(
-            'The font {} was not found, falling back to Menlo'.format(family),
-            file=sys.stderr
-        )
+        log_error('The font {} was not found, falling back to Menlo'.format(family))
         family = 'Menlo'
     return {
         'monospace': True,

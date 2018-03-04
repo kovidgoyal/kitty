@@ -20,7 +20,7 @@ from .config_utils import (
 from .constants import cache_dir
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .utils import safe_print
+from .utils import log_error
 
 MINIMUM_FONT_SIZE = 4
 
@@ -57,12 +57,8 @@ def parse_mods(parts):
         try:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
-            safe_print(
-                'Shortcut: {} has an unknown modifier, ignoring'.format(
-                    parts.join('+')
-                ),
-                file=sys.stderr
-            )
+            log_error('Shortcut: {} has unknown modifier, ignoring'.format(
+                parts.join('+')))
             return
 
     return mods
@@ -127,18 +123,14 @@ def parse_key(val, keymap):
         return
     mods, key = parse_shortcut(sc)
     if key is None:
-        safe_print(
-            'Shortcut: {} has an unknown key, ignoring'.format(val),
-            file=sys.stderr
-        )
+        log_error('Shortcut: {} has unknown key, ignoring'.format(
+            val))
         return
     try:
         paction = parse_key_action(action)
     except Exception:
-        safe_print(
-            'Invalid shortcut action: {}. Ignoring.'.format(action),
-            file=sys.stderr
-        )
+        log_error('Invalid shortcut action: {}. Ignoring.'.format(
+            action))
     else:
         if paction is not None:
             keymap[(mods, key)] = paction
@@ -149,9 +141,8 @@ def parse_symbol_map(val):
     symbol_map = {}
 
     def abort():
-        safe_print(
-            'Symbol map: {} is invalid, ignoring'.format(val), file=sys.stderr
-        )
+        log_error('Symbol map: {} is invalid, ignoring'.format(
+            val))
         return {}
 
     if len(parts) < 2:
@@ -186,10 +177,8 @@ def parse_send_text(val, keymap):
     parts = val.split(' ')
 
     def abort(msg):
-        safe_print(
-            'Send text: {} is invalid ({}), ignoring'.format(val, msg),
-            file=sys.stderr
-        )
+        log_error('Send text: {} is invalid ({}), ignoring'.format(
+            val, msg))
         return {}
 
     if len(parts) < 3:
@@ -438,11 +427,8 @@ def atomic_save(data, path):
         except FileNotFoundError:
             pass
         except Exception as err:
-            safe_print(
-                'Failed to delete temp file {} for atomic save with error: {}'.
-                format(p, err),
-                file=sys.stderr
-            )
+            log_error('Failed to delete temp file {} for atomic save with error: {}'.format(
+                p, err))
 
 
 @contextmanager
@@ -455,10 +441,8 @@ def cached_values_for(name):
     except FileNotFoundError:
         pass
     except Exception as err:
-        safe_print(
-            'Failed to load cached in {} values with error: {}'.format(name, err),
-            file=sys.stderr
-        )
+        log_error('Failed to load cached in {} values with error: {}'.format(
+            name, err))
 
     yield cached_values
 
@@ -466,10 +450,8 @@ def cached_values_for(name):
         data = json.dumps(cached_values).encode('utf-8')
         atomic_save(data, cached_path)
     except Exception as err:
-        safe_print(
-            'Failed to save cached values with error: {}'.format(err),
-            file=sys.stderr
-        )
+        log_error('Failed to save cached values with error: {}'.format(
+            err))
 
 
 def initial_window_size(opts, cached_values):
@@ -479,5 +461,5 @@ def initial_window_size(opts, cached_values):
         try:
             w, h = map(int, ws)
         except Exception:
-            safe_print('Invalid cached window size, ignoring', file=sys.stderr)
+            log_error('Invalid cached window size, ignoring')
     return w, h

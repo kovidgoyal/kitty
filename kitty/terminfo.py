@@ -3,15 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-import sys
 from binascii import hexlify, unhexlify
-
-
-def safe_print(*a, **k):
-    try:
-        print(*a, **k)
-    except Exception:
-        pass
 
 
 names = 'xterm-kitty', 'KovIdTTY'
@@ -460,7 +452,8 @@ def get_capabilities(query_string):
                         qname = termcap_aliases[name]
                         val = queryable_capabilities[qname]
                     except Exception as e:
-                        safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name, file=sys.stderr)
+                        from .utils import log_error
+                        log_error(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
                 if qname in string_capabilities and '%' not in val:
                     val = key_as_bytes(qname).decode('ascii')
