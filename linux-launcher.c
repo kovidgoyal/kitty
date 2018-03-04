@@ -14,6 +14,7 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
+#include <asl.h>
 #else
 #include <limits.h>
 #endif
@@ -22,6 +23,20 @@
 
 #define MIN(x, y) ((x) < (y)) ? (x) : (y)
 #define MAX_ARGC 1024
+
+#ifdef __APPLE__
+static inline void
+redirect_to_asl() {
+    if (getenv("KITTY_LAUNCHED_BY_LAUNCH_SERVICES") != NULL) {
+        // ASL was deprecated by Apple in 10.12, but there is no replacement that
+        // I can find for asl_log_descriptor, so continue to use it.
+_Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"")
+        asl_log_descriptor(NULL, NULL, ASL_LEVEL_INFO, STDOUT_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
+        asl_log_descriptor(NULL, NULL, ASL_LEVEL_NOTICE, STDERR_FILENO, ASL_LOG_DESCRIPTOR_WRITE);
+_Pragma("clang diagnostic pop")
+    }
+}
+#endif
 
 #ifdef FOR_BUNDLE
 static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
@@ -34,6 +49,7 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     Py_IsolatedFlag = 1;
     Py_SetProgramName(L"kitty");
 
+    redirect_to_asl();
     int ret = 1;
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
@@ -77,6 +93,7 @@ int main(int argc, char *argv[]) {
 #ifdef __APPLE__
     uint32_t size = PATH_MAX;
     char apple[PATH_MAX+1] = {0};
+    redirect_to_asl();
     if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return 1; }
     if (realpath(apple, exe) == NULL) { fprintf(stderr, "realpath() failed on the executable's path\n"); return 1; }
 #else
