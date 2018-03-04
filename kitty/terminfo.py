@@ -3,7 +3,8 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from binascii import unhexlify, hexlify
+import sys
+from binascii import hexlify, unhexlify
 
 
 def safe_print(*a, **k):
@@ -459,7 +460,7 @@ def get_capabilities(query_string):
                         qname = termcap_aliases[name]
                         val = queryable_capabilities[qname]
                     except Exception as e:
-                        safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name)
+                        safe_print(ERROR_PREFIX, 'Unknown terminfo property:', name, file=sys.stderr)
                         raise
                 if qname in string_capabilities and '%' not in val:
                     val = key_as_bytes(qname).decode('ascii')

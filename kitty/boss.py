@@ -5,6 +5,7 @@
 import atexit
 import re
 import socket
+import sys
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
@@ -213,7 +214,7 @@ class Boss:
                 session = create_session(opts, args)
                 self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
             else:
-                safe_print('Unknown message received from peer, ignoring')
+                safe_print('Unknown message received from peer, ignoring', file=sys.stderr)
 
     def handle_remote_cmd(self, cmd, window=None):
         response = self._handle_remote_command(cmd, window)
