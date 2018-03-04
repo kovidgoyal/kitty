@@ -82,7 +82,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         OSWindow *window = global_state.callback_os_window;
         window->has_pending_resizes = true; global_state.has_pending_resizes = true;
         window->last_resize_event_at = monotonic();
-    } else fprintf(stderr, "Ignoring resize request for tiny size: %dx%d\n", width, height);
+    } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
 }
 
@@ -340,7 +340,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) {
-        fprintf(stderr, "Failed to create a window at size: %dx%d, using a standard size instead.\n", width, height);
+        log_error("Failed to create a window at size: %dx%d, using a standard size instead.", width, height);
         glfw_window = glfwCreateWindow(640, 400, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
@@ -382,7 +382,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     if (OPT(macos_hide_titlebar)) {
         if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
-        else fprintf(stderr, "Failed to load glfwGetCocoaWindow\n");
+        else log_error("Failed to load glfwGetCocoaWindow");
     }
     cocoa_set_titlebar_color(glfwGetCocoaWindow(glfw_window));
 #endif
@@ -394,7 +394,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (want_semi_transparent && !w->is_semi_transparent) {
         static bool warned = false;
         if (!warned) {
-            fprintf(stderr, "Failed to enable transparency. This happens when your desktop environment does not support compositing.\n");
+            log_error("Failed to enable transparency. This happens when your desktop environment does not support compositing.");
             warned = true;
         }
     }
@@ -459,7 +459,7 @@ destroy_os_window(OSWindow *w) {
 // Global functions {{{
 static void
 error_callback(int error, const char* description) {
-    fprintf(stderr, "[glfw error %d]: %s\n", error, description);
+    log_error("[glfw error %d]: %s", error, description);
 }
 
 
@@ -679,7 +679,7 @@ static PyObject*
 x11_display(PyObject UNUSED *self) {
     if (glfwGetX11Display) {
         return PyLong_FromVoidPtr(glfwGetX11Display());
-    } else fprintf(stderr, "Failed to load glfwGetX11Display\n");
+    } else log_error("Failed to load glfwGetX11Display");
     Py_RETURN_NONE;
 }
 
@@ -701,7 +701,7 @@ static PyObject*
 get_primary_selection(PyObject UNUSED *self) {
     if (glfwGetX11SelectionString) {
         return Py_BuildValue("y", glfwGetX11SelectionString());
-    } else fprintf(stderr, "Failed to load glfwGetX11SelectionString\n");
+    } else log_error("Failed to load glfwGetX11SelectionString");
     Py_RETURN_NONE;
 }
 
@@ -710,7 +710,7 @@ set_primary_selection(PyObject UNUSED *self, PyObject *args) {
     char *text;
     if (!PyArg_ParseTuple(args, "s", &text)) return NULL;
     if (glfwSetX11SelectionString) glfwSetX11SelectionString(text);
-    else fprintf(stderr, "Failed to load glfwSetX11SelectionString\n");
+    else log_error("Failed to load glfwSetX11SelectionString");
     Py_RETURN_NONE;
 }
 

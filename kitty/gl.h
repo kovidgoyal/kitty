@@ -117,7 +117,7 @@ compile_shader(GLenum shader_type, const char *source) {
     if (ret != GL_TRUE) {
         GLsizei len;
         glGetShaderInfoLog(shader_id, sizeof(glbuf), &len, glbuf);
-        fprintf(stderr, "Failed to compile GLSL shader!\n%s", glbuf);
+        log_error("Failed to compile GLSL shader!\n%s", glbuf);
         glDeleteShader(shader_id);
         PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
         return 0;

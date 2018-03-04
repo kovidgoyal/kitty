@@ -30,7 +30,7 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
         // ARB_copy_image not available, do a slow roundtrip copy
         if (!copy_image_warned) {
             copy_image_warned = true;
-            fprintf(stderr, "WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation.\n");
+            log_error("WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation");
         }
         size_t sz = width * height * num_levels;
         pixel *src = malloc(sz * sizeof(pixel));
@@ -573,7 +573,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (ret != GL_TRUE) {
         GLsizei len;
         glGetProgramInfoLog(programs[which].id, sizeof(glbuf), &len, glbuf);
-        fprintf(stderr, "Failed to compile GLSL shader!\n%s", glbuf);
+        log_error("Failed to compile GLSL shader!\n%s", glbuf);
         PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
         goto end;
     }

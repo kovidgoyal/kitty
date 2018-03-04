@@ -561,7 +561,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         default:
             private = mode >= 1 << 5;
             if (private) mode >>= 5;
-            fprintf(stderr, "%s %s %u %s\n", ERROR_PREFIX, "Unsupported screen mode: ", mode, private ? "(private)" : "");
+            log_error("%s %s %u %s", ERROR_PREFIX, "Unsupported screen mode: ", mode, private ? "(private)" : "");
     }
 #undef SIMPLE_MODE
 #undef MOUSE_MODE
@@ -648,7 +648,7 @@ screen_clear_tab_stop(Screen *self, unsigned int how) {
             for (unsigned int i = 0; i < self->columns; i++) self->tabstops[i] = false;
             break;
         default:
-            fprintf(stderr, "%s %s %u\n", ERROR_PREFIX, "Unsupported clear tab stop mode: ", how);
+            log_error("%s %s %u", ERROR_PREFIX, "Unsupported clear tab stop mode: ", how);
             break;
     }
 }

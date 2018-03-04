@@ -362,7 +362,7 @@ output_cell_fallback_data(Cell *cell, bool bold, bool italic, bool emoji_present
 
 static inline ssize_t
 load_fallback_font(Cell *cell, bool bold, bool italic, bool emoji_presentation) {
-    if (fonts.fallback_fonts_count > 100) { fprintf(stderr, "Too many fallback fonts\n"); return MISSING_FONT; }
+    if (fonts.fallback_fonts_count > 100) { log_error("Too many fallback fonts"); return MISSING_FONT; }
     ssize_t f;
 
     if (bold) f = fonts.italic_font_idx > 0 ? fonts.bi_font_idx : fonts.bold_font_idx;
@@ -765,7 +765,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
             if (num_cells_consumed) {
                 if (num_cells_consumed > MAX_GLYPHS_IN_GROUP) {
                     // Nasty, a single glyph used more than MAX_GLYPHS_IN_GROUP cells, we cannot render this case correctly
-                    fprintf(stderr, "The glyph: %u needs more than %u cells, cannot render it\n", glyph_id, MAX_GLYPHS_IN_GROUP);
+                    log_error("The glyph: %u needs more than %u cells, cannot render it", glyph_id, MAX_GLYPHS_IN_GROUP);
                     current_group->num_glyphs--;
                     while (num_cells_consumed) {
                         G(group_idx)++; current_group = G(groups) + G(group_idx);

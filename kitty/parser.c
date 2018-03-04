@@ -123,7 +123,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 
 #define DUMP_UNUSED UNUSED
 
-#define REPORT_ERROR(...) fprintf(stderr, "%s ", ERROR_PREFIX); fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n");
+#define REPORT_ERROR(...) log_error(ERROR_PREFIX " " __VA_ARGS__);
 
 #define REPORT_COMMAND(...)
 #define REPORT_VA_COMMAND(...)

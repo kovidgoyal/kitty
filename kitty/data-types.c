@@ -174,6 +174,7 @@ extern bool init_graphics(PyObject *module);
 extern bool init_shaders(PyObject *module);
 extern bool init_mouse(PyObject *module);
 extern bool init_kittens(PyObject *module);
+extern bool init_logging(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
@@ -193,6 +194,7 @@ PyInit_fast_data_types(void) {
 #endif
 
     if (m != NULL) {
+        if (!init_logging(m)) return NULL;
         if (!init_LineBuf(m)) return NULL;
         if (!init_HistoryBuf(m)) return NULL;
         if (!init_Line(m)) return NULL;

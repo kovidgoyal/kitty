@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
-import datetime
 import errno
 import fcntl
 import math
@@ -20,7 +19,8 @@ from time import monotonic
 
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    GLSL_VERSION, redirect_std_streams, x11_display, x11_window_id
+    GLSL_VERSION, log_error_string, redirect_std_streams, x11_display,
+    x11_window_id
 )
 from .rgb import Color, to_color
 
@@ -43,8 +43,7 @@ def safe_print(*a, **k):
 def log_error(*a, **k):
     try:
         msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '\n')
-        msg = datetime.datetime.now().strftime('[%j %H:%M:%S.%f] ') + msg
-        sys.stderr.write(msg)
+        log_error_string(msg.replace('\0', ''))
     except Exception:
         pass
 

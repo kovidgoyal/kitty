@@ -251,7 +251,7 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
             size_t space_left = screen->write_buf_sz - screen->write_buf_used;
             if (space_left < sz) {
                 if (screen->write_buf_used + sz > 100 * 1024 * 1024) {
-                    fprintf(stderr, "Too much data being sent to child with id: %lu, ignoring it\n", id);
+                    log_error("Too much data being sent to child with id: %lu, ignoring it", id);
                     screen_mutex(unlock, write);
                     break;
                 }
@@ -411,7 +411,7 @@ pty_resize(int fd, struct winsize *dim) {
         if (ioctl(fd, TIOCSWINSZ, dim) == -1) {
             if (errno == EINTR) continue;
             if (errno != EBADF && errno != ENOTTY) {
-                fprintf(stderr, "Failed to resize tty associated with fd: %d with error: %s", fd, strerror(errno));
+                log_error("Failed to resize tty associated with fd: %d with error: %s", fd, strerror(errno));
                 return false;
             }
         }
@@ -439,7 +439,7 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     if (fd == -1) FIND(add_queue, add_queue_count);
     if (fd != -1) {
         if (!pty_resize(fd, &dim)) PyErr_SetFromErrno(PyExc_OSError);
-    } else fprintf(stderr, "Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %zu)\n", window_id, self->count, add_queue_count);
+    } else log_error("Failed to send resize signal to child with id: %lu (children count: %u) (add queue: %zu)", window_id, self->count, add_queue_count);
     children_mutex(unlock);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
@@ -689,7 +689,7 @@ thread_write(void *x) {
     set_thread_name("KittyWriteStdin");
     FILE *f = fdopen(data->fd, "w");
     if (fwrite(data->buf, 1, data->sz, f) != data->sz) {
-        fprintf(stderr, "Failed to write all data\n");
+        log_error("Failed to write all data");
     }
     fclose(f);
     free_twd(data);
@@ -948,7 +948,7 @@ io_loop(void *data) {
                     children_mutex(lock);
                     children[i].needs_removal = true;
                     children_mutex(unlock);
-                    fprintf(stderr, "The child %lu had its fd unexpectedly closed\n", children[i].id);
+                    log_error("The child %lu had its fd unexpectedly closed", children[i].id);
                 }
             }
 #ifdef DEBUG_POLL_EVENTS
@@ -1029,7 +1029,7 @@ read_from_peer(ChildMonitor *self, int s) {
     bool read_finished = false;
     for (size_t i = 0; i < talk_data.num_reads; i++) {
         PeerReadData *rd = talk_data.reads + i;
-#define failed(msg) { read_finished = true; fprintf(stderr, "%s\n", msg); rd->finished = true; rd->close_socket = true; break; }
+#define failed(msg) { read_finished = true; log_error("%s", msg); rd->finished = true; rd->close_socket = true; break; }
         if (rd->fd == s) {
             if (rd->used >= rd->capacity) {
                 if (rd->capacity >= 1024 * 1024) failed("Ignoring too large message from peer");
@@ -1064,7 +1064,7 @@ write_to_peer(int fd) {
     bool write_finished = false;
     for (size_t i = 0; i < talk_data.num_writes; i++) {
         PeerWriteData *wd = talk_data.writes + i;
-#define failed(msg) { write_finished = true; fprintf(stderr, "%s\n", msg); wd->finished = true; break; }
+#define failed(msg) { write_finished = true; log_error("%s", msg); wd->finished = true; break; }
         if (wd->fd == fd) {
             ssize_t n = send(fd, wd->data + wd->pos, wd->sz - wd->pos, MSG_NOSIGNAL);
             if (n == 0) { failed("send() to peer failed to send any data"); }
@@ -1154,7 +1154,7 @@ move_queued_writes() {
             talk_data.writes[talk_data.num_writes++] = *src;
             talk_data.num_talk_fds++;
         } else {
-            fprintf(stderr, "Cannot send response to peer, too many peers\n");
+            log_error("Cannot send response to peer, too many peers");
             free(src->data); nuke_socket(src->fd);
         }
         *src = empty_pwd;
@@ -1215,7 +1215,7 @@ add_peer_writer(int fd, const char* msg, size_t msg_sz) {
             talk_data.queued_writes[talk_data.num_queued_writes++].fd = fd;
             ok = true;
         }
-    } else fprintf(stderr, "Cannot send response to peer, too many peers\n");
+    } else log_error("Cannot send response to peer, too many peers");
     peer_mutex(unlock);
     return ok;
 }

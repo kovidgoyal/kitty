@@ -21,7 +21,7 @@ PyTypeObject GraphicsManager_Type;
 
 #define STORAGE_LIMIT (320 * (1024 * 1024))
 
-#define REPORT_ERROR(...) { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); }
+#define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
 
 
 static bool send_to_gpu = true;
