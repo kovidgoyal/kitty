@@ -795,6 +795,17 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
 }
 
 static inline void
+merge_groups_for_pua_space_ligature() {
+    if (G(group_idx) == 1) {
+        Group *g = G(groups), *g1 = G(groups) + 1;
+        g->num_cells += g1->num_cells;
+        g->num_glyphs += g1->num_glyphs;
+        g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1);
+        G(group_idx) = 0;
+    }
+}
+
+static inline void
 render_groups(Font *font) {
     unsigned idx = 0;
     ExtraGlyphs ed;
@@ -847,10 +858,11 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 #undef G
 
 static inline void
-render_run(Cell *first_cell, index_type num_cells, ssize_t font_idx) {
+render_run(Cell *first_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature) {
     switch(font_idx) {
         default:
             shape_run(first_cell, num_cells, &fonts.fonts[font_idx]);
+            if (pua_space_ligature) merge_groups_for_pua_space_ligature();
             render_groups(&fonts.fonts[font_idx]);
             break;
         case BLANK_FONT:
@@ -865,9 +877,14 @@ render_run(Cell *first_cell, index_type num_cells, ssize_t font_idx) {
     }
 }
 
+static inline bool
+is_private_use(char_type ch) {
+    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
+}
+
 void
 render_line(Line *line) {
-#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font_idx);
+#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) render_run(line->cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false);
     ssize_t run_font_idx = NO_FONT;
     index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
@@ -875,6 +892,16 @@ render_line(Line *line) {
         if (prev_width == 2) { prev_width = 0; continue; }
         Cell *cell = line->cells + i;
         ssize_t cell_font_idx = font_for_cell(cell);
+        if (is_private_use(cell->ch) && i + 1 < line->xnum && (line->cells[i+1].ch == ' ' || line->cells[i+1].ch == 0) && cell_font_idx != BOX_FONT && cell_font_idx != MISSING_FONT) {
+            // We have a private use char followed by a space char, render it as a two cell ligature.
+            RENDER;
+            render_run(line->cells + i, 2, cell_font_idx, true);
+            run_font_idx = NO_FONT;
+            first_cell_in_run = i + 2;
+            prev_width = line->cells[i+1].attrs & WIDTH_MASK;
+            i++;
+            continue;
+        }
         prev_width = cell->attrs & WIDTH_MASK;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
         if (run_font_idx == cell_font_idx) continue;
