@@ -53,15 +53,6 @@ def ceil_int(x):
     return int(math.ceil(x))
 
 
-@contextmanager
-def timeit(name, do_timing=False):
-    if do_timing:
-        st = monotonic()
-    yield
-    if do_timing:
-        safe_print('Time for {}: {}'.format(name, monotonic() - st))
-
-
 def sanitize_title(x):
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19\x80-\x9f]', '', x))
 
