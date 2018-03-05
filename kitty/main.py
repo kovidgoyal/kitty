@@ -19,7 +19,7 @@ from .fast_data_types import (
 )
 from .fonts.box_drawing import set_scale
 from .utils import (
-    detach, end_startup_notification, init_startup_notification,
+    detach, end_startup_notification, init_startup_notification, log_error,
     single_instance
 )
 from .window import load_shader_programs
@@ -93,7 +93,7 @@ def setup_profiling(args):
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def main():
+def _main():
     try:
         sys.setswitchinterval(1000.0)  # we have only a single python thread
     except AttributeError:
@@ -157,3 +157,13 @@ def main():
             signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     finally:
         glfw_terminate()
+
+
+def main():
+    try:
+        _main()
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        log_error(tb)
+        raise SystemExit(1)
