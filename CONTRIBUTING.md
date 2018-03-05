@@ -1,3 +1,15 @@
+### Reporting bugs
+
+Please first search existing bug reports (especially closed ones) for a report
+that matches your issue. 
+
+When reporting a bug, provide full details of your environment, that means, at
+a minimum, kitty version, OS and OS version, kitty config (ideally a minimal
+config to reproduce the issue with).
+
+
+### Contributing code
+
 Install [the dependencies](https://github.com/kovidgoyal/kitty#dependencies)
 using your favorite package manager. Build and run kitty [from
 source](https://github.com/kovidgoyal/kitty#install-and-run-from-source).
