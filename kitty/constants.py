@@ -77,7 +77,10 @@ logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:
-    print('Failed to read login shell from /etc/passwd for current user, falling back to /bin/sh', file=sys.stderr)
+    try:
+        print('Failed to read login shell via getpwuid() for current user, falling back to /bin/sh', file=sys.stderr)
+    except Exception:
+        pass
     shell_path = '/bin/sh'
 
 
