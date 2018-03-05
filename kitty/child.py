@@ -7,7 +7,7 @@ import os
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import terminfo_dir, is_macos
+from .constants import is_macos, shell_path, terminfo_dir
 
 
 def cwd_of_process(pid):
@@ -70,7 +70,13 @@ class Child:
         if os.path.isdir(terminfo_dir):
             env['TERMINFO'] = terminfo_dir
         env = tuple('{}={}'.format(k, v) for k, v in env.items())
-        pid = fast_data_types.spawn(self.cwd, tuple(self.argv), env, master, slave, stdin_read_fd, stdin_write_fd)
+        argv = list(self.argv)
+        exe = argv[0]
+        if is_macos and exe == shell_path:
+            # Some macOS machines need the shell to have argv[0] prefixed by
+            # hyphen, see https://github.com/kovidgoyal/kitty/issues/247
+            argv[0] = ('-' + exe.split('/')[-1])
+        pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd)
         os.close(slave)
         self.pid = pid
         self.child_fd = master

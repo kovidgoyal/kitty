@@ -42,8 +42,8 @@ static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
     PyObject *argv_p, *env_p;
     int master, slave, stdin_read_fd, stdin_write_fd;
-    char* cwd;
-    if (!PyArg_ParseTuple(args, "sO!O!iiii", &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd)) return NULL;
+    char *cwd, *exe;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiii", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
@@ -76,7 +76,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             close(tfd);
 
             environ = env;
-            execvp(argv[0], argv);
+            execvp(exe, argv);
             // Report the failure and exec a shell instead, so that we are not left
             // with a forked but not exec'ed process
             write_to_stderr("Failed to launch child: ");
