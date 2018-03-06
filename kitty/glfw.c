@@ -296,6 +296,7 @@ set_dpi_from_os_window(OSWindow *w) {
     global_state.logical_dpi_y = yscale * factor;
 }
 
+static bool is_first_window = true;
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
@@ -303,7 +304,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL;
     if (!PyArg_ParseTuple(args, "iisss|Oiii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
-    bool is_first_window = standard_cursor == NULL;
 
     if (is_first_window) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -357,6 +357,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
         cocoa_create_global_menu();
 #endif
+        is_first_window = false;
     }
 
     OSWindow *w = add_os_window();
