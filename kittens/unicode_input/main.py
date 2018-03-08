@@ -454,7 +454,7 @@ class UnicodeInput(Handler):
         self.refresh()
 
 
-def main(args=sys.argv):
+def run_loop(args):
     loop = Loop()
     with cached_values_for('unicode-input') as cached_values:
         handler = UnicodeInput(cached_values)
@@ -467,4 +467,13 @@ def main(args=sys.argv):
                 pass
             recent = [ord(handler.current_char)] + handler.recent
             cached_values['recent'] = recent[:len(DEFAULT_SET)]
-    raise SystemExit(loop.return_code)
+    return loop.return_code
+
+
+def main(args=sys.argv):
+    try:
+        raise SystemExit(run_loop(args))
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input(_('Press Enter to quit.'))
