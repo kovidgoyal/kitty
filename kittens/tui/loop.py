@@ -16,7 +16,7 @@ from collections import namedtuple
 from contextlib import closing, contextmanager
 from functools import partial
 
-from kitty.fast_data_types import parse_input_from_terminal
+from kitty.fast_data_types import parse_input_from_terminal, safe_pipe
 from kitty.icat import screen_size
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
@@ -144,8 +144,10 @@ class Loop:
                  sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
         self.input_fd = sys.stdin.fileno() if input_fd is None else input_fd
         self.output_fd = sys.stdout.fileno() if output_fd is None else output_fd
-        self.wakeup_read_fd, self.wakeup_write_fd = os.pipe()
-        self.sel = s = selectors.DefaultSelector()
+        self.wakeup_read_fd, self.wakeup_write_fd = safe_pipe()
+        # For some reason on macOS the DefaultSelector fails when input_fd is
+        # open('/dev/tty')
+        self.sel = s = selectors.PollSelector()
         s.register(self.input_fd, selectors.EVENT_READ, self._read_ready)
         s.register(
             self.wakeup_read_fd, selectors.EVENT_READ, self._wakeup_ready
@@ -169,7 +171,10 @@ class Loop:
     def _read_ready(self, handler):
         if not self.read_allowed:
             return
-        data = os.read(self.input_fd, io.DEFAULT_BUFFER_SIZE)
+        try:
+            data = os.read(self.input_fd, io.DEFAULT_BUFFER_SIZE)
+        except BlockingIOError:
+            return
         if not data:
             raise EOFError('The input stream is closed')
         data = self.decoder.decode(data)

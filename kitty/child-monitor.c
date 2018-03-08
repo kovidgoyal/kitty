@@ -1255,8 +1255,16 @@ PyTypeObject ChildMonitor_Type = {
     .tp_new = new,
 };
 
+static PyObject*
+safe_pipe(PyObject *self UNUSED) {
+    int fds[2] = {0};
+    if (!self_pipe(fds)) return PyErr_SetFromErrno(PyExc_OSError);
+    return Py_BuildValue("ii", fds[0], fds[1]);
+}
+
 static PyMethodDef module_methods[] = {
     METHOD(simple_render_screen, METH_VARARGS)
+    METHODB(safe_pipe, METH_NOARGS),
     {NULL}  /* Sentinel */
 };
 
