@@ -171,6 +171,20 @@ def mark(finditer, line, index_map):
     return line, marks
 
 
+def run_loop(args, lines, index_map):
+    loop = Loop()
+    handler = URLHints(lines, index_map)
+    loop.loop(handler)
+    if handler.chosen and loop.return_code == 0:
+        cmd = command_for_open(args.program)
+        ret = subprocess.Popen(cmd + [handler.chosen]).wait()
+        if ret != 0:
+            print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
+            input('Press Enter to quit')
+            loop.return_code = ret
+    raise SystemExit(loop.return_code)
+
+
 def run(args, source_file=None):
     if source_file is None:
         text = sys.stdin.buffer.read().decode('utf-8')
@@ -195,17 +209,12 @@ def run(args, source_file=None):
         input(_('No URLs found, press Enter to abort.'))
         return
 
-    loop = Loop()
-    handler = URLHints(lines, index_map)
-    loop.loop(handler)
-    if handler.chosen and loop.return_code == 0:
-        cmd = command_for_open(args.program)
-        ret = subprocess.Popen(cmd + [handler.chosen]).wait()
-        if ret != 0:
-            print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
-            input('Press Enter to quit')
-            loop.return_code = ret
-    raise SystemExit(loop.return_code)
+    try:
+        run_loop(args, lines, index_map)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input(_('Press Enter to quit'))
 
 
 OPTIONS = partial('''\
