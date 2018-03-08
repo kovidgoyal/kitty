@@ -142,8 +142,8 @@ class Loop:
 
     def __init__(self, input_fd=None, output_fd=None,
                  sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
-        self.input_fd = input_fd or sys.stdin.fileno()
-        self.output_fd = output_fd or sys.stdout.fileno()
+        self.input_fd = sys.stdin.fileno() if input_fd is None else input_fd
+        self.output_fd = sys.stdout.fileno() if output_fd is None else output_fd
         self.wakeup_read_fd, self.wakeup_write_fd = os.pipe()
         self.sel = s = selectors.DefaultSelector()
         s.register(self.input_fd, selectors.EVENT_READ, self._read_ready)
