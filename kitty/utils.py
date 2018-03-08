@@ -280,6 +280,12 @@ def parse_address_spec(spec):
     return family, address, socket_path
 
 
+def make_fd_non_blocking(fd):
+    oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
+    return oldfl
+
+
 @contextmanager
 def non_blocking_read(src=sys.stdin):
     import termios
@@ -289,8 +295,7 @@ def non_blocking_read(src=sys.stdin):
     if src.isatty():
         old = termios.tcgetattr(fd)
         tty.setraw(fd)
-    oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
+    oldfl = make_fd_non_blocking(fd)
     yield fd
     if src.isatty():
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
