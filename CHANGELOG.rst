@@ -3,6 +3,37 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.8.1 [2018-03-09]
+-----------------------------
+
+- Extend kitty's remote control feature to work over both UNIX and TCP sockets,
+  so now you can control kitty from across the internet, if you want to.
+
+- Render private use unicode characters that are followed by a space as a two
+  character ligature. This fixes rendering for applications that misuse
+  private-use characters to display square symbols.
+
+- Fix Unicode emoji presentation variant selector causing new a fallback font
+  instance to be created
+
+- Fix a rare error that prevented the Unicode input kitten from working
+  sometimes
+
+- Allow using Ctrl+Alt+letter in legacy keyboard modes by outputting them as Ctrl+letter and Alt+letter.
+  This matches other terminals' behavior.
+
+- Fix cursor position off-by-one on horizontal axis when resizing the terminal
+
+- Wayland: Fix auto-repeat of keys not working
+
+- Wayland: Add support for window decorations provided by the Wayland shell
+
+- macOS: Fix URL hints not working 
+
+- macOS: Fix shell not starting in login mode on some computers
+
+- macOS: Output errors into console.app when running as a bundle
+
 
 version 0.8.0 [2018-02-24]
 -----------------------------
