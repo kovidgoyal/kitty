@@ -414,7 +414,9 @@ class Boss:
 
     def edit_config_file(self, *a):
         confpath = prepare_config_file_for_editing()
-        cmd = editor + [confpath]
+        # On macOS vim fails to handle SIGWINCH if it occurs early, so add a
+        # small delay.
+        cmd = ['kitty', '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + editor + [confpath]
         self.new_os_window(*cmd)
 
     def input_unicode_character(self):
