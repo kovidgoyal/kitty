@@ -485,5 +485,5 @@ def prepare_config_file_for_editing():
         except FileExistsError:
             pass
         with open(defconf, 'w') as f:
-            f.write(commented_out_default_config)
+            f.write(commented_out_default_config())
     return defconf
