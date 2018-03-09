@@ -10,8 +10,10 @@ from gettext import gettext as _
 from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
-from .config import MINIMUM_FONT_SIZE, initial_window_size
-from .constants import appname, set_boss
+from .config import (
+    MINIMUM_FONT_SIZE, initial_window_size, prepare_config_file_for_editing
+)
+from .constants import appname, editor, set_boss
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -409,6 +411,11 @@ class Boss:
             tab.new_special_window(
                 SpecialWindow(
                     self.opts.scrollback_pager, data, _('History'), overlay_for=window.id))
+
+    def edit_config_file(self, *a):
+        confpath = prepare_config_file_for_editing()
+        cmd = editor + [confpath]
+        self.new_os_window(*cmd)
 
     def input_unicode_character(self):
         w = self.active_window

@@ -59,11 +59,35 @@ find_app_name(void) {
     return @"kitty";
 }
 
+@interface GlobalMenuTarget : NSObject
++ (GlobalMenuTarget *) shared_instance;
+@end
+
+@implementation GlobalMenuTarget
+
+- (void) show_preferences              : (id)sender {
+    (void)sender;
+    call_boss(edit_config_file, NULL);
+}
+
++ (GlobalMenuTarget *) shared_instance
+{
+    static GlobalMenuTarget *sharedGlobalMenuTarget = nil;
+    @synchronized(self)
+    {
+        if (!sharedGlobalMenuTarget)
+            sharedGlobalMenuTarget = [[GlobalMenuTarget alloc] init];
+        return sharedGlobalMenuTarget;
+    }
+}
+
+@end
 
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
     NSMenu* bar = [[NSMenu alloc] init];
+    GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
     [NSApp setMainMenu:bar];
 
     NSMenuItem* appMenuItem =
@@ -75,6 +99,9 @@ cocoa_create_global_menu(void) {
                        action:@selector(orderFrontStandardAboutPanel:)
                        keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","];
+    [preferences_menu_item setTarget:global_menu_target];
+    [appMenu addItem:preferences_menu_item];
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
                 keyEquivalent:@"h"];
@@ -124,7 +151,7 @@ cocoa_create_global_menu(void) {
      setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
-
+    [preferences_menu_item release];
 
     [bar release];
 }

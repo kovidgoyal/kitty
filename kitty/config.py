@@ -478,13 +478,12 @@ def commented_out_default_config():
 
 
 def prepare_config_file_for_editing():
-    if os.path.exists(defconf):
-        return
-    d = os.path.dirname(defconf)
-    try:
-        os.makedirs(d)
-    except FileExistsError:
-        pass
-    with open(defconf, 'w') as f:
-        f.write(commented_out_default_config)
+    if not os.path.exists(defconf):
+        d = os.path.dirname(defconf)
+        try:
+            os.makedirs(d)
+        except FileExistsError:
+            pass
+        with open(defconf, 'w') as f:
+            f.write(commented_out_default_config)
     return defconf

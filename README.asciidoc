@@ -39,6 +39,7 @@
 :sc_scroll_page_up: pass:quotes[`ctrl+shift+page_up`]
 :sc_second_window: pass:quotes[`ctrl+shift+2`]
 :sc_seventh_window: pass:quotes[`ctrl+shift+7`]
+:sc_show_preferences: pass:quotes[`ctrl+shift+f2`]
 :sc_show_scrollback: pass:quotes[`ctrl+shift+h`]
 :sc_sixth_window: pass:quotes[`ctrl+shift+6`]
 :sc_tenth_window: pass:quotes[`ctrl+shift+0`]
@@ -234,6 +235,7 @@ windows are:
 |Input unicode character | {sc_input_unicode_character}
 |Click URL using the keyboard | {sc_run_simple_kitten_text_url_hints}
 |Pass current selection to program | {sc_pass_selection_to_program}
+|Edit kitty config file| {sc_edit_config_file}
 |===
 
 

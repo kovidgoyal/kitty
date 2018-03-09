@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import shlex
 import string
 import subprocess
 import sys
@@ -11,7 +10,7 @@ from functools import lru_cache
 from gettext import gettext as _
 
 from kitty.config import cached_values_for
-from kitty.constants import config_dir
+from kitty.constants import config_dir, editor
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
     DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
@@ -426,7 +425,6 @@ class UnicodeInput(Handler):
         if not os.path.exists(favorites_path):
             with open(favorites_path, 'wb') as f:
                 f.write(serialize_favorites(load_favorites()).encode('utf-8'))
-        editor = shlex.split(os.environ.get('EDITOR', 'vim'))
         with self.suspend():
             p = subprocess.Popen(editor + [favorites_path])
             if p.wait() == 0:

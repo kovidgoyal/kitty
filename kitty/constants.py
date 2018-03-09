@@ -4,6 +4,7 @@
 
 import os
 import pwd
+import shlex
 import sys
 from collections import namedtuple
 
@@ -15,6 +16,7 @@ str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
+editor = shlex.split(os.environ.get('EDITOR', 'vim'))
 
 
 ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
