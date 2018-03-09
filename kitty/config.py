@@ -17,7 +17,7 @@ from .config_utils import (
     init_config, parse_config_base, positive_float, positive_int, to_bool,
     to_color, unit_float
 )
-from .constants import cache_dir
+from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .utils import log_error
@@ -463,3 +463,28 @@ def initial_window_size(opts, cached_values):
         except Exception:
             log_error('Invalid cached window size, ignoring')
     return w, h
+
+
+def commented_out_default_config():
+    with open(default_config_path, encoding='utf-8', errors='ignore') as f:
+        config = f.read()
+    lines = []
+    for line in config.splitlines():
+        if line.strip() and not line.startswith('#'):
+            line = '# ' + line
+        lines.append(line)
+    config = '\n'.join(lines)
+    return config
+
+
+def prepare_config_file_for_editing():
+    if os.path.exists(defconf):
+        return
+    d = os.path.dirname(defconf)
+    try:
+        os.makedirs(d)
+    except FileExistsError:
+        pass
+    with open(defconf, 'w') as f:
+        f.write(commented_out_default_config)
+    return defconf
