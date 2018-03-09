@@ -466,7 +466,7 @@ def initial_window_size(opts, cached_values):
 
 
 def commented_out_default_config():
-    with open(default_config_path, encoding='utf-8', errors='ignore') as f:
+    with open(default_config_path, encoding='utf-8', errors='replace') as f:
         config = f.read()
     lines = []
     for line in config.splitlines():

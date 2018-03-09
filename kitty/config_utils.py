@@ -56,7 +56,7 @@ def parse_config_base(
 
 
 def init_config(defaults_path, parse_config):
-    with open(defaults_path, encoding='utf-8') as f:
+    with open(defaults_path, encoding='utf-8', errors='replace') as f:
         defaults = parse_config(f.read().splitlines(), check_keys=False)
     Options = namedtuple('Defaults', ','.join(defaults.keys()))
     defaults = Options(**defaults)
