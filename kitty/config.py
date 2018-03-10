@@ -111,6 +111,8 @@ def parse_key_action(action):
         args = rest.split(' ', 2)
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
+    elif func == 'goto_layout':
+        args = [rest]
     elif func in shlex_actions:
         args = shlex.split(rest)
     return KeyAction(func, args)
@@ -348,7 +350,7 @@ def parse_config(lines, check_keys=True):
 
 Options, defaults = init_config(default_config_path, parse_config)
 actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset(
-    'combine send_text goto_tab new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
+    'combine send_text goto_tab goto_layout new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()
 )
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})

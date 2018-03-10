@@ -17,7 +17,7 @@ from .fast_data_types import (
 )
 from .layout import Rect, all_layouts
 from .session import resolved_shell
-from .utils import color_as_int
+from .utils import color_as_int, log_error
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
@@ -115,6 +115,14 @@ class Tab:  # {{{
             nl = self.enabled_layouts[(idx + 1) % len(self.enabled_layouts)]
             self.current_layout = self.create_layout_object(nl)
             self.relayout()
+
+    def goto_layout(self, layout_name):
+        layout_name = layout_name.lower()
+        if layout_name not in self.enabled_layouts:
+            log_error('Unknown or disabled layout: {}'.format(layout_name))
+            return
+        self.current_layout = self.create_layout_object(layout_name)
+        self.relayout()
 
     def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None):
         if cmd is None:
