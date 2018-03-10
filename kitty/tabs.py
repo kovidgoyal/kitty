@@ -38,7 +38,7 @@ class Tab:  # {{{
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
         self.name = getattr(session_tab, 'name', '')
-        self.enabled_layouts = list(getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts)
+        self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
         self.windows = deque()
         self.active_window_idx = 0
