@@ -302,7 +302,9 @@ Currently, there are five layouts available,
 * Horizontal -- All windows are shown side-by-side
 * Vertical -- All windows are shown one below the other
 
-You can switch between layouts using the {sc_next_layout} key combination.
+You can switch between layouts using the {sc_next_layout} key combination. You can
+also create shortcuts to select particular layouts, and choose which layouts
+you want to enable/disable, see kitty.conf for examples.
 
 Writing a new layout only requires about fifty lines of code, so if there is
 some layout you want, take a look at link:kitty/layout.py[layout.py] and submit
