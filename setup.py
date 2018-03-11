@@ -486,10 +486,12 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
         cflags.append('-DFOR_LAUNCHER')
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
+    cflags += shlex.split(os.environ.get('CFLAGS', ''))
+    ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     cmd = [env.cc] + cflags + [
         'linux-launcher.c', '-o',
         os.path.join(launcher_dir, exe)
-    ] + libs + pylib
+    ] + ldflags + libs + pylib
     run_tool(cmd)
 
 
