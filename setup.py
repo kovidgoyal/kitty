@@ -485,6 +485,8 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
         cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     elif sh_launcher:
         cflags.append('-DFOR_LAUNCHER')
+    if args.libdir:
+        cflags.append('-DKITTY_LIB_DIR="{}"'.format(args.libdir))
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
@@ -497,12 +499,18 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
 
 
 def package(args, for_bundle=False, sh_launcher=False):  # {{{
+    print("PACKAGE %s" % args.libdir)
     ddir = args.prefix
-    libdir = os.path.join(ddir, 'lib', 'kitty')
+    if args.libdir:
+        libdir = os.path.join(ddir, args.libdir.lstrip('/'))
+    else:
+        libdir = os.path.join(ddir, 'lib', 'kitty')
+    datadir = os.path.join(ddir, args.datadir.lstrip('/'))
+    bindir = os.path.join(ddir, args.bindir.lstrip('/'))
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
     os.makedirs(os.path.join(libdir, 'logo'))
-    for x in (libdir, os.path.join(ddir, 'share')):
+    for x in (libdir, datadir):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
         subprocess.check_call(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'])
@@ -525,14 +533,14 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
             path = os.path.join(root, f)
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
-    launcher_dir = os.path.join(ddir, 'bin')
+    launcher_dir = bindir
     safe_makedirs(launcher_dir)
     build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher)
     if not is_macos:  # {{{ linux desktop gunk
-        icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
+        icdir = os.path.join(datadir, 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
         shutil.copy2('logo/kitty.png', icdir)
-        deskdir = os.path.join(ddir, 'share', 'applications')
+        deskdir = os.path.join(datadir, 'applications')
         safe_makedirs(deskdir)
         with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
             f.write(
@@ -662,6 +670,21 @@ def option_parser():
         '--prefix',
         default='./linux-package',
         help='Where to create the linux package'
+    )
+    p.add_argument(
+        '--libdir',
+        default=None,
+        help='In a linux distribution, internal libraries path'
+    )
+    p.add_argument(
+        '--bindir',
+        default="bin",
+        help='In a linux distribution, executable binaries path'
+    )
+    p.add_argument(
+        '--datadir',
+        default="share",
+        help='In a linux distribution, data path'
     )
     p.add_argument(
         '--full',
