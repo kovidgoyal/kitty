@@ -12,7 +12,11 @@ test:
 	python3 setup.py $(VVAL) test
 
 clean:
-	python3 setup.py $(VVAL) clean
+	rm -f -r build
+	rm -f compile_commands.json
+	rm -f kitty/*.so kittens/unicode_input/*.so
+	rm -f glfw/*-protocol.h glfw/*-protocol.c
+	find -type d -name __pycache__ -exec rm -r '{}' +
 
 # A debug build
 debug:
