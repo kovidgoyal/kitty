@@ -17,7 +17,6 @@
 #include <stddef.h>
 #include <termios.h>
 #include <signal.h>
-#include <sys/wait.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -88,31 +87,6 @@ pyset_iutf8(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static void
-handle_sigchld(int UNUSED signum, siginfo_t *sinfo, void UNUSED *unused) {
-    if (sinfo->si_code != CLD_EXITED) return;
-    int sav_errno = errno, status;
-    while(true) {
-        if (waitpid(sinfo->si_pid, &status, WNOHANG) == -1) {
-            if (errno != EINTR) break;
-        } else break;
-    }
-    // wakeup I/O loop as without this on macOS sometimes poll() does not detect the fd close, so
-    // kitty does not detect child death.
-    wakeup_io_loop(true);
-    errno = sav_errno;
-}
-
-static PyObject*
-install_sigchld_handler(PYNOARG) {
-    struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = handle_sigchld;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) return PyErr_SetFromErrno(PyExc_OSError);
-    Py_RETURN_NONE;
-}
-
 #ifdef WITH_PROFILER
 static PyObject*
 start_profiler(PyObject UNUSED *self, PyObject *args) {
@@ -135,7 +109,6 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
-    {"install_sigchld_handler", (PyCFunction)install_sigchld_handler, METH_NOARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
 #endif

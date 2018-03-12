@@ -71,7 +71,7 @@ static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock;
-static bool signal_received = false;
+static bool kill_signal_received = false;
 static ChildMonitor *the_monitor = NULL;
 static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
@@ -139,10 +139,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
     if (!self_pipe(signal_fds)) return PyErr_SetFromErrno(PyExc_OSError);
     struct sigaction act = {.sa_handler=handle_signal};
-    if (sigaction(SIGINT, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
-    if (sigaction(SIGTERM, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError);
-    if (siginterrupt(SIGINT, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
-    if (siginterrupt(SIGTERM, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+#define SA(which) { if (sigaction(which, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError); if (siginterrupt(which, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);}
+    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
+#undef SA
     self = (ChildMonitor *)type->tp_alloc(type, 0);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
@@ -291,6 +290,7 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 #define shutdown_monitor_doc "shutdown_monitor() -> Shutdown the monitor loop."
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
+    signal(SIGCHLD, SIG_DFL);
     self->shutting_down = true;
     wakeup_talk_loop(false);
     wakeup_io_loop(false);
@@ -345,7 +345,7 @@ parse_input(ChildMonitor *self) {
         } else fatal("Out of memory");
     }
 
-    if (UNLIKELY(signal_received)) {
+    if (UNLIKELY(kill_signal_received)) {
         global_state.close_all_windows = true;
     } else {
         count = self->count;
@@ -875,6 +875,58 @@ drain_fd(int fd) {
 }
 
 static inline void
+read_signals(int fd, bool *kill_signal, bool *child_died) {
+    static char buf[256];
+    while(true) {
+        ssize_t len = read(fd, buf, sizeof(buf));
+        if (len < 0) {
+            if (errno == EINTR) continue;
+            if (errno != EIO) perror("Call to read() from read_signals() failed");
+            break;
+        }
+        for (ssize_t i = 0; i < len; i++) {
+            switch(buf[i]) {
+                case SIGCHLD:
+                    *child_died = true; break;
+                case SIGINT:
+                case SIGTERM:
+                    *kill_signal = true; break;
+                default:
+                    break;
+            }
+        }
+        break;
+    }
+}
+
+static inline void
+mark_child_for_removal(ChildMonitor *self, pid_t pid) {
+    children_mutex(lock);
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].pid == pid) {
+            children[i].needs_removal = true;
+            break;
+        }
+    }
+    children_mutex(unlock);
+}
+
+static inline void
+reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
+    int status;
+    pid_t pid;
+    (void)self;
+    while(true) {
+        pid = waitpid(-1, &status, WNOHANG);
+        if (pid == -1) {
+            if (errno != EINTR) break;
+        } else if (pid > 0) {
+            if (enable_close_on_child_death) mark_child_for_removal(self, pid);
+        } else break;
+    }
+}
+
+static inline void
 write_to_child(int fd, Screen *screen) {
     size_t written = 0;
     ssize_t ret = 0;
@@ -925,10 +977,10 @@ io_loop(void *data) {
             if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
             if (fds[1].revents && POLLIN) {
                 data_received = true;
-                drain_fd(fds[1].fd);
-                children_mutex(lock);
-                signal_received = true;
-                children_mutex(unlock);
+                bool kill_signal = false, child_died = false;
+                read_signals(fds[1].fd, &kill_signal, &child_died);
+                if (kill_signal) { children_mutex(lock); kill_signal_received = true; children_mutex(unlock); }
+                if (child_died) reap_children(self, false);
             }
             for (i = 0; i < self->count; i++) {
                 if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
