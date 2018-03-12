@@ -624,7 +624,7 @@ def clean():
             ext = f.rpartition('.')[-1]
             if ext in ('so', 'dylib', 'pyc', 'pyo'):
                 os.unlink(os.path.join(root, f))
-    for x in glob.glob('glfw/*-protocol.[ch]'):
+    for x in glob.glob('glfw/wayland-*-protocol.[ch]'):
         os.unlink(x)
 
 
