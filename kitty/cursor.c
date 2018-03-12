@@ -253,7 +253,7 @@ cursor_as_sgr(Cursor *self, Cursor *prev) {
 }
 
 static PyObject *
-reset_display_attrs(Cursor *self) {
+reset_display_attrs(Cursor *self, PyObject *a UNUSED) {
 #define reset_display_attrs_doc "Reset all display attributes to unset"
     cursor_reset_display_attrs(self);
     Py_RETURN_NONE;
@@ -272,7 +272,7 @@ void cursor_copy_to(Cursor *src, Cursor *dest) {
 }
 
 static PyObject*
-copy(Cursor *self);
+copy(Cursor *self, PyObject*);
 #define copy_doc "Create a clone of this cursor"
 
 // Boilerplate {{{
@@ -342,7 +342,7 @@ cursor_copy(Cursor *self) {
 }
 
 static PyObject*
-copy(Cursor *self) {
+copy(Cursor *self, PyObject *a UNUSED) {
     return (PyObject*)cursor_copy(self);
 }
 

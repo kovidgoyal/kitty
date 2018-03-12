@@ -104,7 +104,7 @@ handle_sigchld(int UNUSED signum, siginfo_t *sinfo, void UNUSED *unused) {
 }
 
 static PyObject*
-install_sigchld_handler(PyObject UNUSED *self) {
+install_sigchld_handler(PYNOARG) {
     struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = handle_sigchld;

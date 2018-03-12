@@ -215,7 +215,7 @@ as_text(HistoryBuf *self, PyObject *args) {
 
 
 static PyObject*
-dirty_lines(HistoryBuf *self) {
+dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->ynum; i++) {

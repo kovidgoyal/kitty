@@ -1066,7 +1066,7 @@ concat_cells(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-current_fonts(PyObject UNUSED *self) {
+current_fonts(PYNOARG) {
     PyObject *ans = PyDict_New();
     if (!ans) return NULL;
 #define SET(key, val) {if (PyDict_SetItemString(ans, #key, fonts.fonts[val].face) != 0) { goto error; }}

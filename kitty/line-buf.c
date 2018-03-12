@@ -46,7 +46,7 @@ linebuf_mark_line_clean(LineBuf *self, index_type y) {
 }
 
 static PyObject*
-clear(LineBuf *self) {
+clear(LineBuf *self, PyObject *a UNUSED) {
 #define clear_doc "Clear all lines in this LineBuf"
     linebuf_clear(self, BLANK_CHAR);
     Py_RETURN_NONE;
@@ -167,7 +167,7 @@ set_continued(LineBuf *self, PyObject *args) {
 }
 
 static PyObject*
-dirty_lines(LineBuf *self) {
+dirty_lines(LineBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->ynum; i++) {

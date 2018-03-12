@@ -219,7 +219,7 @@ screen_change_scrollback_size(Screen *self, unsigned int size) {
 }
 
 static PyObject*
-reset_callbacks(Screen *self) {
+reset_callbacks(Screen *self, PyObject *a UNUSED) {
     Py_CLEAR(self->callbacks);
     self->callbacks = Py_None;
     Py_INCREF(self->callbacks);
@@ -1444,8 +1444,8 @@ screen_open_url(Screen *self) {
 // }}}
 
 // Python interface {{{
-#define WRAP0(name) static PyObject* name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
-#define WRAP0x(name) static PyObject* xxx_##name(Screen *self) { screen_##name(self); Py_RETURN_NONE; }
+#define WRAP0(name) static PyObject* name(Screen *self, PyObject *a UNUSED) { screen_##name(self); Py_RETURN_NONE; }
+#define WRAP0x(name) static PyObject* xxx_##name(Screen *self, PyObject *a UNUSED) { screen_##name(self); Py_RETURN_NONE; }
 #define WRAP1(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v); Py_RETURN_NONE; }
 #define WRAP1B(name, defval) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; int b=false; if(!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL; screen_##name(self, v, b); Py_RETURN_NONE; }
 #define WRAP1E(name, defval, ...) static PyObject* name(Screen *self, PyObject *args) { unsigned int v=defval; if(!PyArg_ParseTuple(args, "|I", &v)) return NULL; screen_##name(self, v, __VA_ARGS__); Py_RETURN_NONE; }
@@ -1458,7 +1458,7 @@ as_text(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-refresh_sprite_positions(Screen *self) {
+refresh_sprite_positions(Screen *self, PyObject *a UNUSED) {
     self->is_dirty = true;
     for (index_type i = 0; i < self->lines; i++) {
         linebuf_mark_line_dirty(self->main_linebuf, i);
@@ -1572,13 +1572,13 @@ set_mode(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-reset_dirty(Screen *self) {
+reset_dirty(Screen *self, PyObject *a UNUSED) {
     screen_reset_dirty(self);
     Py_RETURN_NONE;
 }
 
 static PyObject*
-is_using_alternate_linebuf(Screen *self) {
+is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
     if (self->linebuf == self->alt_linebuf) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
@@ -1631,7 +1631,7 @@ change_scrollback_size(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-text_for_selection(Screen *self) {
+text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
     PyObject *ans = NULL;
@@ -1747,26 +1747,26 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
 }
 
 static PyObject*
-mark_as_dirty(Screen *self) {
+mark_as_dirty(Screen *self, PyObject *a UNUSED) {
     self->is_dirty = true;
     Py_RETURN_NONE;
 }
 
 static PyObject*
-current_char_width(Screen *self) {
+current_char_width(Screen *self, PyObject *a UNUSED) {
 #define current_char_width_doc "The width of the character under the cursor"
     return PyLong_FromUnsignedLong(screen_current_char_width(self));
 }
 
 static PyObject*
-is_main_linebuf(Screen *self) {
+is_main_linebuf(Screen *self, PyObject *a UNUSED) {
     PyObject *ans = (self->linebuf == self->main_linebuf) ? Py_True : Py_False;
     Py_INCREF(ans);
     return ans;
 }
 
 static PyObject*
-toggle_alt_screen(Screen *self) {
+toggle_alt_screen(Screen *self, PyObject *a UNUSED) {
     screen_toggle_screen_buffer(self);
     Py_RETURN_NONE;
 }

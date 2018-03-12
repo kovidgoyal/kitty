@@ -18,6 +18,7 @@
 #define OPENGL_REQUIRED_VERSION_MAJOR 3
 #define OPENGL_REQUIRED_VERSION_MINOR 3
 #define UNUSED __attribute__ ((unused))
+#define PYNOARG PyObject *__a1 UNUSED, PyObject *__a2 UNUSED
 #define EXPORTED __attribute__ ((visibility ("default")))
 #define LIKELY(x)    __builtin_expect (!!(x), 1)
 #define UNLIKELY(x)  __builtin_expect (!!(x), 0)
@@ -208,7 +209,7 @@ typedef struct {
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;
 
-#define left_shift_line(line, at, num) \
+#define left_shift_line(line, at, num) { \
     for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
         COPY_CELL(line, __i__ + (num), line, __i__) \
     } \
@@ -216,7 +217,8 @@ typedef struct {
         (line)->cells[(at)].ch = BLANK_CHAR; \
         (line)->cells[(at)].attrs = BLANK_CHAR ? 1 : 0; \
         clear_sprite_position((line)->cells[(at)]); \
-    }
+    }\
+}
 
 #define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
     if ((base)->capacity < num) { \

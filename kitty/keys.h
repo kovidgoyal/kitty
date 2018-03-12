@@ -1747,6 +1747,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x0d";
                 } // end switch(key)
           }  // end switch(mods)
+          break;
 
         case 2: // REPEAT
           switch (mods & 0xf) {
@@ -3005,8 +3006,10 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x0d";
                 } // end switch(key)
           }  // end switch(mods)
+          break;
 
       }  // end switch(action) in mode NORMAL
+      break;
 
 
       case APPLICATION:
@@ -4271,6 +4274,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x0d";
                   } // end switch(key)
             }  // end switch(mods)
+            break;
 
           case 2: // REPEAT
             switch (mods & 0xf) {
@@ -5529,8 +5533,10 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x0d";
                   } // end switch(key)
             }  // end switch(mods)
+            break;
 
         }  // end switch(action) in mode APPLICATION
+        break;
 
 
         case EXTENDED:
@@ -9134,6 +9140,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x05\x4b\x72\x50\x42\x68";
                     } // end switch(key)
               }  // end switch(mods)
+              break;
 
             case 1: // PRESS
               switch (mods & 0xf) {
@@ -12738,6 +12745,7 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x05\x4b\x70\x50\x42\x68";
                     } // end switch(key)
               }  // end switch(mods)
+              break;
 
             case 2: // REPEAT
               switch (mods & 0xf) {
@@ -16342,8 +16350,10 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x05\x4b\x74\x50\x42\x68";
                     } // end switch(key)
               }  // end switch(mods)
+              break;
 
           }  // end switch(action) in mode EXTENDED
+          break;
 
 
       }

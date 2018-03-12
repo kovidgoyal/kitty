@@ -336,13 +336,15 @@ def generate_key_table():
                         ind('return NULL;')
                     i -= 2
                 i -= 1
-                ind('}  // end switch(mods)\n')
+                ind('}  // end switch(mods)')
+                ind('break;\n')
                 i -= 1
             else:
                 ind('return NULL;\n')
                 i -= 1
             i -= 1
-        ind('}}  // end switch(action) in mode {}\n\n'.format(mode))
+        ind('}}  // end switch(action) in mode {}'.format(mode))
+        ind('break;\n\n')
         i -= 1
     i -= 1
     ind('}')

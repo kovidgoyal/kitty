@@ -509,7 +509,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 
 static inline const char*
 create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid) {
-    static char rbuf[sizeof(add_response)/sizeof(add_response[0])];
+    static char rbuf[sizeof(add_response)/sizeof(add_response[0]) + 64];
     if (iid) {
         if (!has_add_respose) {
             if (!data_loaded) return NULL;

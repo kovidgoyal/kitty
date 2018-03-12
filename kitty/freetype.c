@@ -532,7 +532,8 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
 }
 
 static PyObject*
-display_name(Face *self) {
+display_name(PyObject *s, PyObject *a UNUSED) {
+    Face *self = (Face*)s;
     const char *psname = FT_Get_Postscript_Name(self->face);
     if (psname) return Py_BuildValue("s", psname);
     Py_INCREF(self->path);
@@ -540,8 +541,8 @@ display_name(Face *self) {
 }
 
 static PyObject*
-extra_data(Face *self) {
-    return PyLong_FromVoidPtr(self->extra_data);
+extra_data(PyObject *self, PyObject *a UNUSED) {
+    return PyLong_FromVoidPtr(((Face*)self)->extra_data);
 }
 
 // Boilerplate {{{

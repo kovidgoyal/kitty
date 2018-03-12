@@ -263,7 +263,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 }
 
 static PyObject*
-as_ansi(Line* self) {
+as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     static Py_UCS4 t[5120] = {0};
     index_type num = line_as_ansi(self, t, 5120);
@@ -272,7 +272,7 @@ as_ansi(Line* self) {
 }
 
 static PyObject*
-is_continued(Line* self) {
+is_continued(Line* self, PyObject *a UNUSED) {
 #define is_continued_doc "Return the line's continued flag"
     PyObject *ans = self->continued ? Py_True : Py_False;
     Py_INCREF(ans);

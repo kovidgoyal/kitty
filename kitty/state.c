@@ -268,9 +268,8 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 
 
 // Python API {{{
-#define PYWRAP0(name) static PyObject* py##name(PyObject UNUSED *self)
+#define PYWRAP0(name) static PyObject* py##name(PYNOARG)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
-#define PYWRAP2(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args, PyObject *kw)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 #define ONE_UINT(name) PYWRAP1(name) { name((unsigned int)PyLong_AsUnsignedLong(args)); Py_RETURN_NONE; }
 #define TWO_UINT(name) PYWRAP1(name) { unsigned int a, b; PA("II", &a, &b); name(a, b); Py_RETURN_NONE; }

@@ -199,8 +199,9 @@ static void wakeup_talk_loop(bool);
 static bool talk_thread_started = false;
 
 static PyObject *
-start(ChildMonitor *self) {
+start(PyObject *s, PyObject *a UNUSED) {
 #define start_doc "start() -> Start the I/O thread"
+    ChildMonitor *self = (ChildMonitor*)s;
     if (self->talk_fd > -1 || self->listen_fd > -1) {
         if (pthread_create(&self->talk_thread, NULL, talk_loop, self) != 0) return PyErr_SetFromErrno(PyExc_OSError);
         talk_thread_started = true;
@@ -213,7 +214,7 @@ start(ChildMonitor *self) {
 
 
 static PyObject *
-wakeup(ChildMonitor UNUSED *self) {
+wakeup(PYNOARG) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
     wakeup_io_loop(false);
     Py_RETURN_NONE;
@@ -286,7 +287,7 @@ needs_write(ChildMonitor UNUSED *self, PyObject *args) {
 }
 
 static PyObject *
-shutdown_monitor(ChildMonitor *self) {
+shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 #define shutdown_monitor_doc "shutdown_monitor() -> Shutdown the monitor loop."
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
@@ -734,7 +735,7 @@ process_pending_resizes(double now) {
 }
 
 static PyObject*
-main_loop(ChildMonitor *self) {
+main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
     bool has_open_windows = true;
 
@@ -1256,7 +1257,7 @@ PyTypeObject ChildMonitor_Type = {
 };
 
 static PyObject*
-safe_pipe(PyObject *self UNUSED) {
+safe_pipe(PYNOARG) {
     int fds[2] = {0};
     if (!self_pipe(fds)) return PyErr_SetFromErrno(PyExc_OSError);
     return Py_BuildValue("ii", fds[0], fds[1]);

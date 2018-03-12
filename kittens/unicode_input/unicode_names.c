@@ -8,7 +8,7 @@
 #include "names.h"
 
 static PyObject*
-all_words(PyObject *self UNUSED) {
+all_words(PYNOARG) {
     PyObject *ans = PyTuple_New(arraysz(idx_to_word));
     if (!ans) return NULL;
     for (size_t i = 0; i < arraysz(idx_to_word); i++) {

@@ -133,7 +133,7 @@ as_color(ColorProfile *self, PyObject *val) {
 }
 
 static PyObject*
-reset_color_table(ColorProfile *self) {
+reset_color_table(ColorProfile *self, PyObject *a UNUSED) {
 #define reset_color_table_doc "Reset all customized colors back to defaults"
     memcpy(self->color_table, self->orig_color_table, sizeof(FG_BG_256));
     self->dirty = true;
@@ -179,7 +179,7 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
 }
 
 static PyObject*
-color_table_address(ColorProfile *self) {
+color_table_address(ColorProfile *self, PyObject *a UNUSED) {
 #define color_table_address_doc "Pointer address to start of color table"
     return PyLong_FromVoidPtr((void*)self->color_table);
 }

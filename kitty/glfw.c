@@ -481,7 +481,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 }
 
 PyObject*
-glfw_terminate(PyObject UNUSED *self) {
+glfw_terminate(PYNOARG) {
     glfwTerminate();
     Py_RETURN_NONE;
 }
@@ -499,13 +499,13 @@ glfw_wait_events(PyObject UNUSED *self, PyObject *args) {
 }
 
 PyObject*
-glfw_post_empty_event(PyObject UNUSED *self) {
+glfw_post_empty_event(PYNOARG) {
     glfwPostEmptyEvent();
     Py_RETURN_NONE;
 }
 
 PyObject*
-glfw_poll_events(PyObject UNUSED *self) {
+glfw_poll_events(PYNOARG) {
     glfwPollEvents();
     Py_RETURN_NONE;
 }
@@ -523,7 +523,7 @@ get_physical_dpi(GLFWmonitor *m) {
 }
 
 PyObject*
-glfw_get_physical_dpi(PyObject UNUSED *self) {
+glfw_get_physical_dpi(PYNOARG) {
     GLFWmonitor *m = glfwGetPrimaryMonitor();
     if (m == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor"); return NULL; }
     return get_physical_dpi(m);
@@ -548,14 +548,14 @@ glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
 // }}}
 
 static PyObject*
-get_clipboard_string(PyObject UNUSED *self) {
+get_clipboard_string(PYNOARG) {
     OSWindow *w = current_os_window();
     if (w) return Py_BuildValue("s", glfwGetClipboardString(w->handle));
     return Py_BuildValue("s", "");
 }
 
 static PyObject*
-get_content_scale_for_window(PyObject UNUSED *self) {
+get_content_scale_for_window(PYNOARG) {
     OSWindow *w = global_state.callback_os_window ? global_state.callback_os_window : global_state.os_windows;
     float xscale, yscale;
     glfwGetWindowContentScale(w->handle, &xscale, &yscale);
@@ -572,7 +572,7 @@ set_clipboard_string(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-toggle_fullscreen(PyObject UNUSED *self) {
+toggle_fullscreen(PYNOARG) {
     GLFWmonitor *monitor;
     OSWindow *w = current_os_window();
     if (!w) Py_RETURN_NONE;
@@ -662,14 +662,14 @@ should_os_window_close(OSWindow* w) {
 }
 
 static PyObject*
-primary_monitor_size(PyObject UNUSED *self) {
+primary_monitor_size(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
     return Py_BuildValue("ii", mode->width, mode->height);
 }
 
 static PyObject*
-primary_monitor_content_scale(PyObject UNUSED *self) {
+primary_monitor_content_scale(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     float xscale, yscale;
     glfwGetMonitorContentScale(monitor, &xscale, &yscale);
@@ -677,7 +677,7 @@ primary_monitor_content_scale(PyObject UNUSED *self) {
 }
 
 static PyObject*
-x11_display(PyObject UNUSED *self) {
+x11_display(PYNOARG) {
     if (glfwGetX11Display) {
         return PyLong_FromVoidPtr(glfwGetX11Display());
     } else log_error("Failed to load glfwGetX11Display");
@@ -699,7 +699,7 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
 }
 
 static PyObject*
-get_primary_selection(PyObject UNUSED *self) {
+get_primary_selection(PYNOARG) {
     if (glfwGetX11SelectionString) {
         return Py_BuildValue("y", glfwGetX11SelectionString());
     } else log_error("Failed to load glfwGetX11SelectionString");
