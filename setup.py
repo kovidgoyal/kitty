@@ -485,6 +485,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
         cflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     elif sh_launcher:
         cflags.append('-DFOR_LAUNCHER')
+    cflags.append('-DLIB_DIR_NAME="{}"'.format(args.libdir_name.strip('/')))
     pylib = get_python_flags(cflags)
     exe = 'kitty-profile' if args.profile else 'kitty'
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
@@ -498,7 +499,9 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
 
 def package(args, for_bundle=False, sh_launcher=False):  # {{{
     ddir = args.prefix
-    libdir = os.path.join(ddir, 'lib', 'kitty')
+    if for_bundle or sh_launcher:
+        args.libdir_name = 'lib'
+    libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
     os.makedirs(os.path.join(libdir, 'logo'))
@@ -675,6 +678,11 @@ def option_parser():
         default=False,
         action='store_true',
         help='Use the -pg compile flag to add profiling information'
+    )
+    p.add_argument(
+        '--libdir-name',
+        default='lib',
+        help='The name of the directory inside --prefix in which to store compiled files'
     )
     return p
 

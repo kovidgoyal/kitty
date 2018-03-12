@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
 #ifdef FOR_LAUNCHER
     num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/../Frameworks/kitty");
 #else
-    num = snprintf(lib, PATH_MAX, "%s%s", exe_dir, "/../lib/kitty");
+    num = snprintf(lib, PATH_MAX, "%s%s%s%s", exe_dir, "/../", LIB_DIR_NAME, "/kitty");
 #endif
 #endif
 
