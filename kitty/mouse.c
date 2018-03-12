@@ -22,6 +22,8 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define MOTION_INDICATOR  (1 << 5)
 #define EXTRA_BUTTON_INDICATOR (1 << 6)
 
+int last_multi_clicks = 0;
+
 static inline unsigned int
 button_map(int button) {
     switch(button) {
@@ -148,6 +150,20 @@ drag_scroll(Window *w, OSWindow *frame) {
 }
 
 static inline void
+extend_selection(Window *w) {
+    Screen *screen = w->render_data.screen;
+    index_type start, end;
+    bool found_selection = false;
+    found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
+    if (last_multi_clicks >= 2 && found_selection) {
+        screen_update_selection(screen, end, w->mouse_cell_y, true);
+    } else {
+        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+    }
+    call_boss(set_primary_selection, NULL);
+}
+
+static inline void
 extend_url(Screen *screen, Line *line, index_type *x, index_type *y) {
     unsigned int count = 0;
     while(count++ < 10) {
@@ -246,9 +262,11 @@ HANDLER(add_click) {
     q->length++;
     // Now dispatch the multi-click if any
     if (q->length > 2 && N(1).at - N(3).at <= 2 * OPT(click_interval)) {
+        last_multi_clicks = 3;
         multi_click(w, 3);
         q->length = 0;
     } else if (q->length > 1 && N(1).at - N(2).at <= OPT(click_interval)) {
+        last_multi_clicks = 2;
         multi_click(w, 2);
     }
 #undef N
@@ -278,6 +296,7 @@ HANDLER(handle_button_event) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 update_drag(true, w, is_release, modifiers);
+                last_multi_clicks = 0;
                 if (is_release) {
                     if (modifiers == (int)OPT(open_url_modifiers)) {
                         open_url(w);
@@ -288,6 +307,9 @@ HANDLER(handle_button_event) {
                 break;
             case GLFW_MOUSE_BUTTON_MIDDLE:
                 if (is_release && !modifiers) { call_boss(paste_from_selection, NULL); return; }
+                break;
+            case GLFW_MOUSE_BUTTON_RIGHT:
+                if (is_release) { extend_selection(w); }
                 break;
         }
     } else {
