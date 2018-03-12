@@ -682,7 +682,7 @@ def option_parser():
     p.add_argument(
         '--libdir-name',
         default='lib',
-        help='The name of the directory inside --prefix in which to store compiled files'
+        help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
     )
     return p
 
