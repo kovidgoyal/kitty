@@ -616,7 +616,7 @@ def clean():
                 else:
                     os.unlink(x)
 
-    shutil.rmtree('build', 'compile_commands.json')
+    safe_remove('build', 'compile_commands.json')
     for root, dirs, files in os.walk('.'):
         remove_dirs = {d for d in dirs if d == '__pycache__'}
         [(shutil.rmtree(os.path.join(root, d)), dirs.remove(d)) for d in remove_dirs]
