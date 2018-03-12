@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import glob
 import importlib
 import json
 import os
@@ -594,14 +595,37 @@ Categories=System;
 
 
 def clean():
-    for f in subprocess.check_output(
-        'git ls-files --others --ignored --exclude-from=.gitignore'.split()
-    ).decode('utf-8').splitlines():
-        if f.startswith('logo/kitty.iconset') or f.startswith('dev/'):
-            continue
-        os.unlink(f)
-        if os.sep in f and not os.listdir(os.path.dirname(f)):
-            os.rmdir(os.path.dirname(f))
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    if os.path.exists('.git'):
+        for f in subprocess.check_output(
+            'git ls-files --others --ignored --exclude-from=.gitignore'.split()
+        ).decode('utf-8').splitlines():
+            if f.startswith('logo/kitty.iconset') or f.startswith('dev/'):
+                continue
+            os.unlink(f)
+            if os.sep in f and not os.listdir(os.path.dirname(f)):
+                os.rmdir(os.path.dirname(f))
+        return
+    # Not a git checkout, clean manually
+
+    def safe_remove(*entries):
+        for x in entries:
+            if os.path.exists(x):
+                if os.path.isdir(x):
+                    shutil.rmtree(x)
+                else:
+                    os.unlink(x)
+
+    shutil.rmtree('build', 'compile_commands.json')
+    for root, dirs, files in os.walk('.'):
+        remove_dirs = {d for d in dirs if d == '__pycache__'}
+        [(shutil.rmtree(os.path.join(root, d)), dirs.remove(d)) for d in remove_dirs]
+        for f in files:
+            ext = f.rpartition('.')[-1]
+            if ext in ('so', 'dylib', 'pyc', 'pyo'):
+                os.unlink(os.path.join(root, f))
+    for x in glob.glob('glfw/*-protocol.[ch]'):
+        os.unlink(x)
 
 
 def option_parser():
