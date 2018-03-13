@@ -31,6 +31,7 @@ typedef struct {
     float inactive_text_alpha;
     Edge tab_bar_edge;
     bool sync_to_monitor;
+    bool close_on_child_death;
 } Options;
 
 typedef struct {

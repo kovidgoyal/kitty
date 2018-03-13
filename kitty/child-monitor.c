@@ -980,7 +980,7 @@ io_loop(void *data) {
                 bool kill_signal = false, child_died = false;
                 read_signals(fds[1].fd, &kill_signal, &child_died);
                 if (kill_signal) { children_mutex(lock); kill_signal_received = true; children_mutex(unlock); }
-                if (child_died) reap_children(self, false);
+                if (child_died) reap_children(self, OPT(close_on_child_death));
             }
             for (i = 0; i < self->count; i++) {
                 if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
