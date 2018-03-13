@@ -30,6 +30,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->has_pending_resizes = false;
     window->viewport_width = MAX(window->viewport_width, 100);
     window->viewport_height = MAX(window->viewport_height, 100);
+    window->window_width = MAX(w, 100);
+    window->window_height = MAX(h, 100);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }

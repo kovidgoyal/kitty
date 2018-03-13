@@ -97,7 +97,7 @@ typedef struct {
     void *handle;
     id_type id;
     OSWindowGeometry before_fullscreen;
-    int viewport_width, viewport_height;
+    int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
