@@ -243,10 +243,11 @@ windows are:
 
 You can control kitty from the command line/scripts by sending it messages.
 You can tell kitty to open/close/rename tabs and windows. You can even send
-arbitrary input/text to any specified window. Messages can be sent using
-`kitty @`. Note that you must set `allow_remote_control yes` in your
-kitty.conf to use this feature.  It even works over SSH connections.  This
-feature is best illustrated with a link:remote-control.asciidoc[tutorial].
+arbitrary input/text to any specified window. Messages can be sent using `kitty
+@`. Note that you must set `allow_remote_control yes` in your
+link:kitty/kitty.conf[kitty.conf] to use this feature.  It even works over SSH
+connections.  This feature is best illustrated with a
+link:remote-control.asciidoc[tutorial].
 
 
 == The scrollback buffer
@@ -304,7 +305,7 @@ Currently, there are five layouts available,
 
 You can switch between layouts using the {sc_next_layout} key combination. You can
 also create shortcuts to select particular layouts, and choose which layouts
-you want to enable/disable, see kitty.conf for examples.
+you want to enable/disable, see link:kitty/kitty.conf[kitty.conf] for examples.
 
 Writing a new layout only requires about fifty lines of code, so if there is
 some layout you want, take a look at link:kitty/layout.py[layout.py] and submit
@@ -313,13 +314,13 @@ a pull request!
 
 == Configuration
 
-kitty is highly customizable, everything from keyboard shortcuts, to
-painting frames-per-second. See the heavily commented
-link:kitty/kitty.conf[default config file]. By default kitty looks for a
-config file in the OS config directory (usually
-`~/.config/kitty/kitty.conf` on Linux and
+kitty is highly customizable, everything from keyboard shortcuts, to painting
+frames-per-second. See the heavily commented link:kitty/kitty.conf[default
+config file]. By default kitty looks for a config file in the OS config
+directory (usually `~/.config/kitty/kitty.conf` on Linux and
 `~/Library/Preferences/kitty/kitty.conf` on macOS) but you can pass a specific
-path via the `--config` option.
+path via the `--config` option or use the `KITTY_CONFIG_DIRECTORY` environment
+variable.
 
 == Startup Sessions
 
