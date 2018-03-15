@@ -1397,6 +1397,13 @@ apply_selection(Screen *self, uint8_t *data, SelectionBoundary *start, Selection
 
 }
 
+bool
+screen_has_selection(Screen *self) {
+    SelectionBoundary start, end;
+    selection_limits_(selection, &start, &end);
+    return !is_selection_empty(self, start.x, start.y, end.x, end.y);
+}
+
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);

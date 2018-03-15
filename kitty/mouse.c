@@ -22,7 +22,7 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define MOTION_INDICATOR  (1 << 5)
 #define EXTRA_BUTTON_INDICATOR (1 << 6)
 
-int last_multi_clicks = 0;
+static int last_multi_clicks = 0;
 
 static inline unsigned int
 button_map(int button) {
@@ -153,14 +153,12 @@ static inline void
 extend_selection(Window *w) {
     Screen *screen = w->render_data.screen;
     index_type start, end;
-    bool found_selection = false;
-    found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
-    if (last_multi_clicks >= 2 && found_selection) {
-        screen_update_selection(screen, end, w->mouse_cell_y, true);
-    } else {
-        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+    if (screen_has_selection(screen)) {
+        bool found_selectable_word = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
+        if (last_multi_clicks >= 2 && found_selectable_word) screen_update_selection(screen, end, w->mouse_cell_y, true);
+        else screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+        call_boss(set_primary_selection, NULL);
     }
-    call_boss(set_primary_selection, NULL);
 }
 
 static inline void

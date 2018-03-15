@@ -150,6 +150,7 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);
 bool screen_is_selection_dirty(Screen *self);
+bool screen_has_selection(Screen*);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, size_t sz);
 bool screen_is_cursor_visible(Screen *self);
