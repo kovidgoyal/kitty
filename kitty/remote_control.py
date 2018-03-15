@@ -107,7 +107,8 @@ not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end
 Path to a file whose contents you wish to send. Note that in this case the file contents
 are sent as is, not interpreted for escapes.
 ''',
-    no_response=True
+    no_response=True,
+    argspec='[TEXT TO SEND]'
 )
 def cmd_send_text(global_opts, opts, args):
     limit = 1024
@@ -185,7 +186,8 @@ def send_text(boss, window, payload):
     ' the title will be set for all matched windows. By default, only the window'
     ' in which the command is run is affected. If you do not specify a title, the'
     ' last title set by the child process running in the window will be used.',
-    options_spec=MATCH_WINDOW_OPTION
+    options_spec=MATCH_WINDOW_OPTION,
+    argspec='TITLE ...'
 )
 def cmd_set_window_title(global_opts, opts, args):
     return {'title': ' '.join(args), 'match': opts.match}
@@ -209,7 +211,8 @@ def set_window_title(boss, window, payload):
     ' the title will be set for all matched tabs. By default, only the tab'
     ' in which the command is run is affected. If you do not specify a title, the'
     ' title of the currently active window in the tab is used.',
-    options_spec=MATCH_TAB_OPTION
+    options_spec=MATCH_TAB_OPTION,
+    argspec='TITLE ...'
 )
 def cmd_set_tab_title(global_opts, opts, args):
     return {'title': ' '.join(args), 'match': opts.match}
@@ -234,7 +237,8 @@ def set_tab_title(boss, window, payload):
 --self
 type=bool-set
 If specified close the window this command is run in, rather than the active window.
-'''
+''',
+    argspec=''
 )
 def cmd_close_window(global_opts, opts, args):
     return {'match': opts.match, 'self': opts.self}
@@ -259,7 +263,8 @@ def close_window(boss, window, payload):
 --self
 type=bool-set
 If specified close the tab this command is run in, rather than the active tab.
-'''
+''',
+    argspec=''
 )
 def cmd_close_tab(global_opts, opts, args):
     return {'match': opts.match, 'self': opts.self}
@@ -309,7 +314,8 @@ Open a new tab
 
 --tab-title
 When using --new-tab set the title of the tab.
-'''
+''',
+    argspec='[CMD ...]'
 )
 def cmd_new_window(global_opts, opts, args):
     return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
@@ -346,7 +352,8 @@ def new_window(boss, window, payload):
 
 @cmd(
     'Focus the specified window',
-    options_spec=MATCH_WINDOW_OPTION
+    options_spec=MATCH_WINDOW_OPTION,
+    argspec='',
 )
 def cmd_focus_window(global_opts, opts, args):
     return {'match': opts.match}
@@ -385,7 +392,8 @@ getting the current selection, the result is always plain text.
 --self
 type=bool-set
 If specified get text from the window this command is run in, rather than the active window.
-'''
+''',
+    argspec=''
 )
 def cmd_get_text(global_opts, opts, args):
     return {'match': opts.match, 'extent': opts.extent, 'ansi': opts.ansi, 'self': opts.self}
