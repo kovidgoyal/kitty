@@ -518,6 +518,7 @@ Apple does not want you to use command line options with GUI applications. To
 workaround that limitation, kitty will read command line options from the file
 `~/Library/Preferences/kitty/macos-launch-services-cmdline` when it is launched
 from the GUI, i.e. by clicking the kitty application icon or using `open -a kitty`.
+Note that this file is *only read* when running via the GUI.
 
 You can, of course, also run kitty from a terminal with command line options, using:
 `/Applications/kitty.app/Contents/MacOS/kitty`.
