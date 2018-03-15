@@ -286,8 +286,9 @@ def print_help_for_seq(seq, usage, message, appname):
                 lines.append('')
         a((' ' * leading_indent) + j.join(lines))
 
-    usage = usage or '[program-to-run ...]'
-    a('{}: {} [options] {}'.format(title('Usage'), bold(yellow(appname)), usage))
+    usage = '[program-to-run ...]' if usage is None else usage
+    optstring = '[options] ' if seq else ''
+    a('{}: {} {}{}'.format(title('Usage'), bold(yellow(appname)), optstring, usage))
     a('')
     message = message or (
         'Run the |G {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
