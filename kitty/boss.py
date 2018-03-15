@@ -190,7 +190,9 @@ class Boss:
                 response = handle_cmd(self, window, cmd)
             except Exception as err:
                 import traceback
-                response = {'ok': False, 'error': str(err), 'tb': traceback.format_exc()}
+                response = {'ok': False, 'error': str(err)}
+                if not getattr(err, 'hide_traceback', False):
+                    response['tb'] = traceback.format_exc()
         else:
             response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control yes to your kitty.conf'}
         return response

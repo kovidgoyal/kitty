@@ -16,6 +16,14 @@ from .tabs import SpecialWindow
 from .utils import non_blocking_read, parse_address_spec, read_with_timeout
 
 
+class MatchError(ValueError):
+
+    hide_traceback = True
+
+    def __init__(self, expression, target='windows'):
+        ValueError.__init__(self, 'No matching {} for expression: {}'.format(target, expression))
+
+
 def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...'):
 
     def w(func):
@@ -209,7 +217,7 @@ def set_window_title(boss, window, payload):
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match)
     for window in windows:
         if window:
             window.set_title(payload['title'])
@@ -235,7 +243,7 @@ def set_tab_title(boss, window, payload):
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match, 'tabs')
     else:
         tabs = [boss.tab_for_window(window) if window else boss.active_tab]
     for tab in tabs:
@@ -263,7 +271,7 @@ def close_window(boss, window, payload):
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match)
     else:
         windows = [window if window and payload['self'] else boss.active_window]
     for window in windows:
@@ -291,7 +299,7 @@ def close_tab(boss, window, payload):
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match, 'tabs')
     else:
         tabs = [boss.tab_for_window(window) if window and payload['self'] else boss.active_tab]
     for tab in tabs:
@@ -358,7 +366,7 @@ def new_window(boss, window, payload):
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match, 'tabs')
     else:
         tabs = [boss.active_tab]
     tab = tabs[0]
@@ -385,7 +393,7 @@ def focus_window(boss, window, payload):
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match)
     for window in windows:
         if window:
             boss.set_active_window(window)
@@ -426,7 +434,7 @@ def get_text(boss, window, payload):
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
-            raise ValueError('No matching windows for expression: {}'.format(match))
+            raise MatchError(match)
     else:
         windows = [window if window and payload['self'] else boss.active_window]
     window = windows[0]
