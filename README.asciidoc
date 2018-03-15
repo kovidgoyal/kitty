@@ -289,8 +289,9 @@ image::hints_mode.png?raw=true[URL hints mode]
 
 == Miscellaneous features
 
-You can double click to select a word and triple click to select a line. You can also
-hold down `ctrl+shift` and click on a URL to open it in a browser.
+* You can also hold down `ctrl+shift` and click on a URL to open it in a browser.
+* You can double click to select a word and triple click to select a line.
+* You can right click to extend a previous selection
 
 
 == Layouts
