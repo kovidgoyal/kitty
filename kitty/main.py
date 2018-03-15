@@ -11,7 +11,7 @@ from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size
-from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file
+from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file, config_dir
 from .fast_data_types import (
     create_os_window, glfw_init, glfw_terminate, set_default_window_icon,
     set_options, show_window
@@ -92,6 +92,20 @@ def setup_profiling(args):
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
+def macos_cmdline():
+    try:
+        with open(os.path.join(config_dir, 'macos-launch-services-cmdline')) as f:
+            raw = f.read()
+    except FileNotFoundError:
+        return []
+    import shlex
+    raw = raw.strip()
+    ans = shlex.split(raw)
+    if ans and ans[0] == 'kitty':
+        del ans[0]
+    return ans
+
+
 def _main():
     try:
         sys.setswitchinterval(1000.0)  # we have only a single python thread
@@ -123,11 +137,13 @@ def _main():
     if rpath and rpath not in items:
         os.environ['PATH'] += os.pathsep + rpath
 
-    if os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
+    args = sys.argv[1:]
+    if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
+        args = macos_cmdline()
     if not os.path.isdir(os.getcwd()):
         os.chdir(os.path.expanduser('~'))
-    args, rest = parse_args()
+    args, rest = parse_args(args=args)
     args.args = rest
     if getattr(args, 'detach', False):
         detach()

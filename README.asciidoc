@@ -511,6 +511,20 @@ Really, the correct solution for this is to convince the OpenSSH maintainers to
 have ssh do this automatically when connecting to a server, so that all
 terminals work transparently.
 
+
+=== How do I specify command line options for kitty on macOS?
+
+Apple does not want you to use command line options with GUI applications. To
+workaround that limitation, kitty will read command line options from the file
+`~/Library/Preferences/kitty/macos-launch-services-cmdline` when it is launched
+from the GUI, i.e. by clicking the kitty application icon or using `open -a kitty`.
+
+You can, of course, also run kitty from a terminal with command line options, using:
+`/Applications/kitty.app/Contents/MacOS/kitty`.
+
+And within kitty itself, you can always run kitty using just `kitty` as it
+cleverly adds itself to the PATH.
+
 == Resources on terminal behavior
 
 http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
