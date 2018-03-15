@@ -36,39 +36,6 @@ def parse_subcommand_cli(func, args):
     return opts, items
 
 
-@cmd(
-    'List all tabs/windows',
-    'List all windows. The list is returned as JSON tree. The top-level is a list of'
-    ' operating system {appname} windows. Each OS window has an |_ id| and a list'
-    ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
-    ' Each window has an |_ id|, |_ title|, |_ current working directory|, |_ process id (PID)| and'
-    ' |_ command-line| of the process running in the window.\n\n'
-    'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname),
-    argspec=''
-)
-def cmd_ls(global_opts, opts, args):
-    pass
-
-
-def ls(boss, window):
-    data = list(boss.list_os_windows())
-    data = json.dumps(data, indent=2, sort_keys=True)
-    return data
-
-
-@cmd(
-    'Set the font size in all windows',
-    'Sets the font size to the specified size, in pts.',
-    argspec='FONT_SIZE'
-)
-def cmd_set_font_size(global_opts, opts, args):
-    return {'size': float(args[0])}
-
-
-def set_font_size(boss, window, payload):
-    boss.set_font_size(payload['size'])
-
-
 MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form:
@@ -89,6 +56,44 @@ for that window is used.
 '''
 
 
+# ls {{{
+@cmd(
+    'List all tabs/windows',
+    'List all windows. The list is returned as JSON tree. The top-level is a list of'
+    ' operating system {appname} windows. Each OS window has an |_ id| and a list'
+    ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
+    ' Each window has an |_ id|, |_ title|, |_ current working directory|, |_ process id (PID)| and'
+    ' |_ command-line| of the process running in the window.\n\n'
+    'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname),
+    argspec=''
+)
+def cmd_ls(global_opts, opts, args):
+    pass
+
+
+def ls(boss, window):
+    data = list(boss.list_os_windows())
+    data = json.dumps(data, indent=2, sort_keys=True)
+    return data
+# }}}
+
+
+# set_font_size {{{
+@cmd(
+    'Set the font size in all windows',
+    'Sets the font size to the specified size, in pts.',
+    argspec='FONT_SIZE'
+)
+def cmd_set_font_size(global_opts, opts, args):
+    return {'size': float(args[0])}
+
+
+def set_font_size(boss, window, payload):
+    boss.set_font_size(payload['size'])
+# }}}
+
+
+# send_text {{{
 @cmd(
     'Send arbitrary text to specified windows',
     'Send arbitrary text to specified windows. The text follows Python'
@@ -178,8 +183,10 @@ def send_text(boss, window, payload):
     for window in windows:
         if window is not None:
             window.write_to_child(data)
+# }}}
 
 
+# set_window_title {{{
 @cmd(
     'Set the window title',
     'Set the title for the specified window(s). If you use the |_ --match| option'
@@ -203,8 +210,10 @@ def set_window_title(boss, window, payload):
     for window in windows:
         if window:
             window.set_title(payload['title'])
+# }}}
 
 
+# set_tab_title {{{
 @cmd(
     'Set the tab title',
     'Set the title for the specified tab(s). If you use the |_ --match| option'
@@ -229,8 +238,10 @@ def set_tab_title(boss, window, payload):
     for tab in tabs:
         if tab:
             tab.set_title(payload['title'])
+# }}}
 
 
+# close_window {{{
 @cmd(
     'Close the specified window(s)',
     options_spec=MATCH_WINDOW_OPTION + '''\n
@@ -255,8 +266,10 @@ def close_window(boss, window, payload):
     for window in windows:
         if window:
             boss.close_window(window)
+# }}}
 
 
+# close_tab {{{
 @cmd(
     'Close the specified tab(s)',
     options_spec=MATCH_TAB_OPTION + '''\n
@@ -282,8 +295,10 @@ def close_tab(boss, window, payload):
         if window:
             if tab:
                 boss.close_tab(tab)
+# }}}
 
 
+# new_window {{{
 @cmd(
     'Open new window',
     'Open a new window in the specified tab. If you use the |_ --match| option'
@@ -348,8 +363,10 @@ def new_window(boss, window, payload):
     if payload['keep_focus'] and old_window:
         boss.set_active_window(old_window)
     return str(w.id)
+# }}}
 
 
+# focus_window {{{
 @cmd(
     'Focus the specified window',
     options_spec=MATCH_WINDOW_OPTION,
@@ -370,8 +387,10 @@ def focus_window(boss, window, payload):
         if window:
             boss.set_active_window(window)
             break
+# }}}
 
 
+# get_text {{{
 @cmd(
     'Get text from the specified window',
     options_spec=MATCH_WINDOW_OPTION + '''\n
@@ -413,6 +432,7 @@ def get_text(boss, window, payload):
     else:
         ans = window.as_text(as_ansi=bool(payload['ansi']), add_history=True)
     return ans
+# }}}
 
 
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
