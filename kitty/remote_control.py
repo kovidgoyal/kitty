@@ -85,7 +85,10 @@ def ls(boss, window):
     argspec='FONT_SIZE'
 )
 def cmd_set_font_size(global_opts, opts, args):
-    return {'size': float(args[0])}
+    try:
+        return {'size': float(args[0])}
+    except IndexError:
+        raise SystemExit('No font size specified')
 
 
 def set_font_size(boss, window, payload):
