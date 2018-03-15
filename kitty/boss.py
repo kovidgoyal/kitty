@@ -124,7 +124,10 @@ class Boss:
             }
 
     def match_windows(self, match):
-        field, exp = match.split(':', 1)
+        try:
+            field, exp = match.split(':', 1)
+        except ValueError:
+            return
         pat = re.compile(exp)
         for tm in self.os_window_map.values():
             for tab in tm:
@@ -140,7 +143,10 @@ class Boss:
                         return tab
 
     def match_tabs(self, match):
-        field, exp = match.split(':', 1)
+        try:
+            field, exp = match.split(':', 1)
+        except ValueError:
+            return
         pat = re.compile(exp)
         tms = tuple(self.os_window_map.values())
         found = False
@@ -515,6 +521,11 @@ class Boss:
         tm = self.active_tab_manager
         if tm is not None:
             tm.goto_tab(tab_num - 1)
+
+    def set_active_tab(self, tab):
+        tm = self.active_tab_manager
+        if tm is not None:
+            tm.set_active_tab(tab)
 
     def next_tab(self):
         tm = self.active_tab_manager

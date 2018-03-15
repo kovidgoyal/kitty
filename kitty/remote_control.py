@@ -401,6 +401,27 @@ def focus_window(boss, window, payload):
 # }}}
 
 
+# focus_tab {{{
+@cmd(
+    'Focus the specified tab',
+    'The active window in the specified tab will be focused.',
+    options_spec=MATCH_TAB_OPTION,
+    argspec='',
+)
+def cmd_focus_tab(global_opts, opts, args):
+    return {'match': opts.match}
+
+
+def focus_tab(boss, window, payload):
+    match = payload['match']
+    tabs = tuple(boss.match_tabs(match))
+    if not tabs:
+        raise MatchError(match, 'tabs')
+    tab = tabs[0]
+    boss.set_active_tab(tab)
+# }}}
+
+
 # get_text {{{
 @cmd(
     'Get text from the specified window',

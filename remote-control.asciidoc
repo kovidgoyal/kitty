@@ -57,9 +57,14 @@ Let's change the title of the current tab:
 
    kitty @ set-tab-title Master Tab
 
-Now lets switch to the newly opened tab.
+Now lets switch to the newly opened tab:
 
-   kitty @ focus-window --match title:New
+   kitty @ focus-tab --match title:New
+
+Similarly, to focus the previously opened output window (which will also switch
+back to the old tab, automatically):
+
+   kitty @ focus-window --match title:Output
 
 You can get a listing of available tabs and windows, by running:
 
