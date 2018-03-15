@@ -16,10 +16,11 @@ from .tabs import SpecialWindow
 from .utils import non_blocking_read, parse_address_spec, read_with_timeout
 
 
-def cmd(short_desc, desc=None, options_spec=None, no_response=False):
+def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...'):
 
     def w(func):
         func.short_desc = short_desc
+        func.argspec = argspec
         func.desc = desc or short_desc
         func.name = func.__name__[4:].replace('_', '-')
         func.options_spec = options_spec
@@ -31,7 +32,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False):
 
 
 def parse_subcommand_cli(func, args):
-    opts, items = parse_args(args[1:], (func.options_spec or '\n').format, '...', func.desc, '{} @ {}'.format(appname, func.name))
+    opts, items = parse_args(args[1:], (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name))
     return opts, items
 
 
@@ -42,7 +43,8 @@ def parse_subcommand_cli(func, args):
     ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
     ' Each window has an |_ id|, |_ title|, |_ current working directory|, |_ process id (PID)| and'
     ' |_ command-line| of the process running in the window.\n\n'
-    'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname)
+    'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname),
+    argspec=''
 )
 def cmd_ls(global_opts, opts, args):
     pass
@@ -52,6 +54,19 @@ def ls(boss, window):
     data = list(boss.list_os_windows())
     data = json.dumps(data, indent=2, sort_keys=True)
     return data
+
+
+@cmd(
+    'Set the font size in all windows',
+    'Sets the font size to the specified size, in pts.',
+    argspec='FONT_SIZE'
+)
+def cmd_set_font_size(global_opts, opts, args):
+    return {'size': float(args[0])}
+
+
+def set_font_size(boss, window, payload):
+    boss.set_font_size(payload['size'])
 
 
 MATCH_WINDOW_OPTION = '''\

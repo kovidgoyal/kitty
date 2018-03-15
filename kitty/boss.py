@@ -288,19 +288,16 @@ class Boss:
                 tm.resize()
 
     def increase_font_size(self):
-        self.change_font_size(
+        self.set_font_size(
             min(
                 self.opts.font_size * 5, self.current_font_size +
                 self.opts.font_size_delta))
 
     def decrease_font_size(self):
-        self.change_font_size(
-            max(
-                MINIMUM_FONT_SIZE, self.current_font_size -
-                self.opts.font_size_delta))
+        self.set_font_size(self.current_font_size - self.opts.font_size_delta)
 
     def restore_font_size(self):
-        self.change_font_size(self.opts.font_size)
+        self.set_font_size(self.opts.font_size)
 
     def _change_font_size(self, new_size=None, on_dpi_change=False):
         if new_size is not None:
@@ -318,7 +315,8 @@ class Boss:
             tm.refresh_sprite_positions()
         glfw_post_empty_event()
 
-    def change_font_size(self, new_size):
+    def set_font_size(self, new_size):
+        new_size = max(MINIMUM_FONT_SIZE, new_size)
         if new_size == self.current_font_size:
             return
         self._change_font_size(new_size)
