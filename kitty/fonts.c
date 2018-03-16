@@ -1097,7 +1097,7 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     static Py_UCS4 char_buf[2 + arraysz(cell.cc_idx)];
     if (!PyUnicode_AsUCS4(text, char_buf, arraysz(char_buf), 1)) return NULL;
     cell.ch = char_buf[0];
-    for (unsigned i = 0; i + 1 < PyUnicode_GetLength(text) && i < arraysz(cell.cc_idx); i++) cell.cc_idx[i] = mark_for_codepoint(char_buf[i + 1]);
+    for (unsigned i = 0; i + 1 < (unsigned) PyUnicode_GetLength(text) && i < arraysz(cell.cc_idx); i++) cell.cc_idx[i] = mark_for_codepoint(char_buf[i + 1]);
     if (bold) cell.attrs |= 1 << BOLD_SHIFT;
     if (italic) cell.attrs |= 1 << ITALIC_SHIFT;
     ssize_t ans = fallback_font(&cell);
