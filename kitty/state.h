@@ -102,7 +102,7 @@ typedef struct {
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
-    bool focused_at_last_render;
+    bool focused_at_last_render, needs_render;
     ScreenRenderData tab_bar_render_data;
     bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;

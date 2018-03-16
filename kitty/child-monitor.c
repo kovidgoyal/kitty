@@ -569,7 +569,8 @@ simple_render_screen(PyObject UNUSED *self, PyObject *args) {
 static inline bool
 prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows) {
 #define TD os_window->tab_bar_render_data
-    bool needs_render = false;
+    bool needs_render = os_window->needs_render;
+    os_window->needs_render = false;
     if (TD.screen && os_window->num_tabs > 1) {
         if (send_cell_data_to_gpu(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
     }

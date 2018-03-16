@@ -201,6 +201,7 @@ static inline void
 set_active_tab(id_type os_window_id, unsigned int idx) {
     WITH_OS_WINDOW(os_window_id)
         os_window->active_tab = idx;
+        os_window->needs_render = true;
     END_WITH_OS_WINDOW
 }
 
@@ -208,6 +209,7 @@ static inline void
 set_active_window(id_type os_window_id, id_type tab_id, unsigned int idx) {
     WITH_TAB(os_window_id, tab_id)
         tab->active_window = idx;
+        osw->needs_render = true;
     END_WITH_TAB;
 }
 
