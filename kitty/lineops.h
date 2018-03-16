@@ -57,10 +57,10 @@ unsigned int line_length(Line *self);
 size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type);
 size_t cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type);
 PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
+PyObject* line_as_unicode(Line *);
 
 void linebuf_init_line(LineBuf *, index_type);
 void linebuf_clear(LineBuf *, char_type ch);
-void linebuf_init_line(LineBuf *, index_type);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
 void linebuf_clear_line(LineBuf *self, index_type y);
@@ -105,7 +105,7 @@ void historybuf_clear(HistoryBuf *self);
             index_type num = line_as_ansi(line, buf, columns * 100 - 2); \
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num); \
         } else { \
-            t = PyObject_Str((PyObject*)line); \
+            t = line_as_unicode(line); \
         } \
         if (t == NULL) goto end; \
         ret = PyObject_CallFunctionObjArgs(callback, t, NULL); \

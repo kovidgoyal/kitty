@@ -199,8 +199,8 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
 
-static PyObject *
-as_unicode(Line* self) {
+PyObject *
+line_as_unicode(Line* self) {
     return unicode_in_range(self, 0, xlimit_for_line(self), true, 0);
 }
 
@@ -281,7 +281,7 @@ is_continued(Line* self, PyObject *a UNUSED) {
 
 static PyObject*
 __repr__(Line* self) {
-    PyObject *s = as_unicode(self);
+    PyObject *s = line_as_unicode(self);
     if (s == NULL) return NULL;
     PyObject *ans = PyObject_Repr(s);
     Py_CLEAR(s);
@@ -570,7 +570,7 @@ PyTypeObject Line_Type = {
     .tp_basicsize = sizeof(Line),
     .tp_dealloc = (destructor)dealloc,
     .tp_repr = (reprfunc)__repr__,
-    .tp_str = (reprfunc)as_unicode,
+    .tp_str = (reprfunc)line_as_unicode,
     .tp_as_sequence = &sequence_methods,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_richcompare = richcmp,
