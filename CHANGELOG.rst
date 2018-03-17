@@ -3,6 +3,29 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.8.2 [future]
+-----------------------------
+
+- Allow extending existing selections by right clicking
+
+- Add a configurable keyboard shortcut and remote command to set the font size to a specific value
+
+- Add an option to have kitty close the window when the main processes running in it exits, even if there are still background processes writing to that terminal
+
+- Add configurable keyboard shortcuts to switch to a specific layout
+
+- Add a keyboard shortcut to edit the kitty config file easily 
+
+- macOS: Fix restoring of window size not correct on Retina screens
+
+- macOS: Add a facility to specify command line arguments when running kitty from the GUI 
+
+- Add a focus-tab remote command
+
+- Fix screen not being refreshed immediately after moving a window.
+
+- Fix a crash when getting the contents of the scrollback buffer as text
+
 version 0.8.1 [2018-03-09]
 -----------------------------
 
