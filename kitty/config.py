@@ -50,7 +50,7 @@ def to_cursor_shape(x):
 def parse_mods(parts):
 
     def map_mod(m):
-        return {'CTRL': 'CONTROL', 'CMD': 'SUPER', 'OPTION': 'ALT'}.get(m, m)
+        return {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER', '⌥': 'ALT', 'OPTION': 'ALT'}.get(m, m)
 
     mods = 0
     for m in parts:
