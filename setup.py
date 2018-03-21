@@ -549,7 +549,7 @@ Comment=A modern, hackable, featureful, OpenGL based terminal emulator
 TryExec=kitty
 Exec=kitty
 Icon=kitty
-Categories=System;
+Categories=System;TerminalEmulator;
 '''
             )
     # }}}
