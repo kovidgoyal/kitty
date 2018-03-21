@@ -102,7 +102,7 @@ the following dependencies are installed first.
 * ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
-* For building on Linux in addition to the above dependencies you might also need to install the `-dev` packages for `xcursor`, `xrandr`, `xinerama`, `libgl1-mesa` and `xkbcommon-x11`, if they are not already installed by your distro.
+* For building on Linux in addition to the above dependencies you might also need to install the `-dev` packages for `xcursor`, `xrandr`, `xinerama`, `libgl1-mesa` and `xkbcommon-x11`, if they are not already installed by your distro. You also need `tic` to compile the terminfo files, it is usually found in the development package of `ncurses`.
 
 === Install and run from source
 
