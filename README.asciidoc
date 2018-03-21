@@ -438,6 +438,8 @@ installs the terminfo file and `kitty` that installs the main program.
 This allows users to install the terminfo file on servers into which they ssh,
 without needing to install all of kitty.
 
+You also need `tic` to compile the terminfo files, it is usually found in the development package of `ncurses`
+
 This applies to creating packages for kitty for macOS package managers such as
 brew or MacPorts as well.
 
