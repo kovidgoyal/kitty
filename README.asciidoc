@@ -132,6 +132,8 @@ python3 .
 
 * Gentoo: https://packages.gentoo.org/packages/x11-terms/kitty
 
+* openSUSE: https://build.opensuse.org/package/show/X11:terminals/kitty
+
 === macOS packages
 
 kitty is available as a macOS `dmg` file for easy installation from the
