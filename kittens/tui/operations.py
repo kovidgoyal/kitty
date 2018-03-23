@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import sys
 from contextlib import contextmanager
 
 from kitty.terminfo import string_capabilities
@@ -151,3 +152,11 @@ def cursor(write):
     write(SAVE_CURSOR)
     yield
     write(RESTORE_CURSOR)
+
+
+@contextmanager
+def alternate_screen(f=None):
+    f = f or sys.stdout
+    print(set_mode('ALTERNATE_SCREEN'), end='', file=f)
+    yield
+    print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)

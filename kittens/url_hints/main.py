@@ -231,7 +231,7 @@ expression instead.
 
 --url-prefixes
 default={0}
-Comma separeted list of recognized URL prefixes. Defaults to:
+Comma separated list of recognized URL prefixes. Defaults to:
 {0}
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
