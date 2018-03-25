@@ -11,7 +11,6 @@ from .config import load_config
 from .constants import appname, defconf, is_macos, str_version
 from .layout import all_layouts
 
-is_macos
 OPTIONS = '''
 --class
 dest=cls
@@ -32,9 +31,21 @@ only use this if you are running a program that does not set titles.
 
 --config
 type=list
-default={config_path}
 Specify a path to the configuration file(s) to use.
-Can be specified multiple times to read multiple configuration files in sequence, which are merged.
+Can be specified multiple times to read multiple configuration files in
+sequence, which are merged.  Use the special value NONE to not load a config
+file.
+
+If this option is not specified, config files are searched for in the order:
+"$XDG_CONFIG_HOME/kitty/kitty.conf", "~/.config/kitty/kitty.conf", {macos_confpath}
+"$XDG_CONFIG_DIRS/kitty/kitty.conf". The first one that exists is used as the
+config file.
+
+If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
+directory is always used and the above searching does not happen.
+
+If "/etc/xdg/kitty/kitty.conf" exists it is used as a base config file onto
+which any user config files are merged.
 
 
 --override -o
@@ -201,10 +212,10 @@ def parse_option_spec(spec=OPTIONS):
                     current_cmd['choices'] = {x.strip() for x in current_cmd['choices'].split(',')}
         elif state is HELP:
             if line:
-                current_cmd['help'] += ' ' + line
+                current_cmd['help'] += ' ' + line.lstrip()
             else:
                 if prev_line:
-                    current_cmd['help'] += '\n'
+                    current_cmd['help'] += '\n\n\t'
                 else:
                     state = NORMAL
                     (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
@@ -453,7 +464,7 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
-            appname=appname, config_path=defconf,
+            appname=appname, macos_confpath='~/Library/Preferences/kitty/kitty.conf' if is_macos else '',
             window_layout_choices=', '.join(all_layouts)
         )
     return options_spec.ans
@@ -466,8 +477,22 @@ def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=
     return parse_cmdline(oc, disabled, args=args)
 
 
+SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
+
+
+def resolve_config(config_files_on_cmd_line):
+    if config_files_on_cmd_line:
+        if 'NONE' not in config_files_on_cmd_line:
+            yield SYSTEM_CONF
+            for cf in config_files_on_cmd_line:
+                yield cf
+    else:
+        yield SYSTEM_CONF
+        yield defconf
+
+
 def create_opts(args):
-    config = args.config or (defconf, )
+    config = resolve_config(args.config)
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
     return opts

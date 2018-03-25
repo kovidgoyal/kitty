@@ -27,7 +27,22 @@ def _get_config_dir():
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))
 
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or ('~/Library/Preferences' if is_macos else '~/.config')))
+    locations = []
+    if 'XDG_CONFIG_HOME' in os.environ:
+        locations.append(os.path.abspath(os.path.expanduser(os.environ['XDG_CONFIG_HOME'])))
+    locations.append(os.path.expanduser('~/.config'))
+    if is_macos:
+        locations.append(os.path.expanduser('~/Library/Preferences'))
+    if 'XDG_CONFIG_DIRS' in os.environ:
+        for loc in os.environ['XDG_CONFIG_DIRS'].split(os.pathsep):
+            locations.append(os.path.abspath(os.path.expanduser(os.environ['XDG_CONFIG_HOME'])))
+    for loc in locations:
+        if loc:
+            q = os.path.join(loc, appname)
+            if os.access(q, os.W_OK) and os.path.exists(os.path.join(q, 'kitty.conf')):
+                return q
+
+    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
     ans = os.path.join(candidate, appname)
     os.makedirs(ans, exist_ok=True)
     return ans
@@ -46,10 +61,7 @@ def _get_cache_dir():
     else:
         candidate = os.environ.get('XDG_CACHE_HOME', '~/.cache')
         candidate = os.path.join(os.path.expanduser(candidate), appname)
-    try:
-        os.makedirs(candidate)
-    except FileExistsError:
-        pass
+    os.makedirs(candidate, exist_ok=True)
     return candidate
 
 

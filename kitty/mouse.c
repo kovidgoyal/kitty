@@ -16,6 +16,7 @@
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 
+// Encoding of mouse events {{{
 #define SHIFT_INDICATOR  (1 << 2)
 #define ALT_INDICATOR (1 << 3)
 #define CONTROL_INDICATOR (1 << 4)
@@ -90,6 +91,8 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     return encode_mouse_event_impl(x, y, screen->modes.mouse_tracking_protocol, button, action, mods);
 
 }
+
+// }}}
 
 static inline bool
 contains_mouse(Window *w) {
