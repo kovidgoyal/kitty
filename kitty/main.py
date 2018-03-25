@@ -145,6 +145,9 @@ def _main():
         os.chdir(os.path.expanduser('~'))
     args, rest = parse_args(args=args)
     args.args = rest
+    if args.debug_config:
+        create_opts(args, debug_config=True)
+        return
     if getattr(args, 'detach', False):
         detach()
     if args.cmd:

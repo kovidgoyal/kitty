@@ -2,13 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
 import subprocess
 import sys
 from collections import deque
 
-from .config import load_config
-from .constants import appname, defconf, is_macos, str_version
+from .config import compare_opts, load_config
+from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .layout import all_layouts
 
 OPTIONS = '''
@@ -133,6 +134,11 @@ Debug OpenGL commands. This will cause all OpenGL calls to check for errors inst
 --debug-font-fallback
 type=bool-set
 Print out information about the selection of fallback fonts for characters not present in the main font.
+
+
+--debug-config
+type=bool-set
+Print out information about the system and kitty configuration.
 '''
 
 
@@ -491,8 +497,22 @@ def resolve_config(config_files_on_cmd_line):
         yield defconf
 
 
-def create_opts(args):
-    config = resolve_config(args.config)
+def create_opts(args, debug_config=False):
+    config = tuple(resolve_config(args.config))
+    if debug_config:
+        print(appname, version)
+        print(' '.join(os.uname()))
+        if not is_macos:
+            print('Running under:', 'Wayland' if is_wayland else 'X11')
+        if os.path.exists('/etc/issue'):
+            print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip())
+        if os.path.exists('/etc/lsb-release'):
+            print(open('/etc/lsb-release', encoding='utf-8', errors='replace').read().strip())
+        config = tuple(x for x in config if os.path.exists(x))
+        if config:
+            print('Config files:', ', '.join(config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
+    if debug_config:
+        compare_opts(opts)
     return opts
