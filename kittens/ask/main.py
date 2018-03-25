@@ -6,7 +6,6 @@ import json
 import os
 import readline
 import sys
-from gettext import gettext as _
 
 from kitty.cli import parse_args
 from kitty.constants import cache_dir
@@ -87,7 +86,7 @@ def real_main(args):
     try:
         args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask')
     except SystemExit as e:
-        print(e.args[0], file=sys.stderr)
+        print(e.args[0])
         input('Press enter to quit...')
         raise SystemExit(1)
 
@@ -95,11 +94,9 @@ def real_main(args):
 
     with alternate_screen(), HistoryCompleter(args.name):
         if args.message:
-            print(styled(args.message), bold=True)
+            print(styled(args.message, bold=True))
 
-        prompt = ': '
-        if args.type == 'line':
-            prompt = _('Enter line: ')
+        prompt = '> '
         try:
             ans = input(prompt)
         except (KeyboardInterrupt, EOFError):
@@ -110,8 +107,8 @@ def real_main(args):
 def main(args=sys.argv):
     try:
         real_main(args)
-    except Exception:
+    except Exception as e:
         import traceback
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stdout)
         input('Press enter to quit...')
         raise SystemExit(1)

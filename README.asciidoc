@@ -39,6 +39,7 @@
 :sc_scroll_page_down: pass:quotes[`ctrl+shift+page_down`]
 :sc_scroll_page_up: pass:quotes[`ctrl+shift+page_up`]
 :sc_second_window: pass:quotes[`ctrl+shift+2`]
+:sc_set_tab_title: pass:quotes[`ctrl+shift+alt+t`]
 :sc_seventh_window: pass:quotes[`ctrl+shift+7`]
 :sc_show_scrollback: pass:quotes[`ctrl+shift+h`]
 :sc_sixth_window: pass:quotes[`ctrl+shift+6`]
@@ -202,6 +203,7 @@ windows are:
 |Next layout | {sc_next_layout}
 |Move tab forward | {sc_move_tab_forward}
 |Move tab backward | {sc_move_tab_backward}
+|Set tab title | {sc_set_tab_title}
 
 |===
 

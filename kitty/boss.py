@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
+import json
 import re
 import socket
 from functools import partial
@@ -204,7 +205,6 @@ class Boss:
         return response
 
     def peer_message_received(self, msg):
-        import json
         msg = msg.decode('utf-8')
         cmd_prefix = '\x1bP@kitty-cmd'
         if msg.startswith(cmd_prefix):
@@ -435,10 +435,17 @@ class Boss:
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.send_unicode_character, w.id)
 
+    def get_output(self, source_window, num_lines=1):
+        output = ''
+        s = source_window.screen
+        for i in range(min(num_lines, s.lines)):
+            output += str(s.linebuf.line(i))
+        return output
+
     def send_unicode_character(self, target_window_id, source_window):
         w = self.window_id_map.get(target_window_id)
         if w is not None:
-            output = str(source_window.screen.linebuf.line(0))
+            output = self.get_output(source_window)
             if output.startswith('OK: '):
                 try:
                     text = chr(int(output.partition(' ')[2], 16))
@@ -447,6 +454,28 @@ class Boss:
                     traceback.print_exc()
                 else:
                     w.paste(text)
+
+    def set_tab_title(self):
+        w = self.active_window
+        tab = self.active_tab
+        if w is not None and tab is not None and w.overlay_for is None:
+            args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.')]
+            overlay_window = tab.new_special_window(
+                SpecialWindow(
+                    ['kitty', '+runpy', 'from kittens.ask.main import main; main()'] + args,
+                    overlay_for=w.id))
+            overlay_window.action_on_close = partial(self.do_set_tab_title, tab.id)
+
+    def do_set_tab_title(self, tab_id, source_window):
+        output = self.get_output(source_window)
+        if output.startswith('OK: '):
+            title = json.loads(output.partition(' ')[2].strip())
+            tm = self.active_tab_manager
+            if tm is not None and title:
+                for tab in tm.tabs:
+                    if tab.id == tab_id:
+                        tab.set_title(title)
+                        break
 
     def run_simple_kitten(self, type_of_input, kitten, *args):
         import shlex
