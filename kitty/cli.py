@@ -549,7 +549,9 @@ def create_opts(args, debug_config=False):
     if debug_config:
         print(version())
         print(' '.join(os.uname()))
-        if not is_macos:
+        if is_macos:
+            print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
+        else:
             print('Running under:', green('Wayland' if is_wayland else 'X11'))
         if os.path.exists('/etc/issue'):
             print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip())
