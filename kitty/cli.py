@@ -8,7 +8,7 @@ import subprocess
 import sys
 from collections import deque
 
-from .config import compare_opts, load_config
+from .config import defaults, load_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .layout import all_layouts
 
@@ -497,20 +497,67 @@ def resolve_config(config_files_on_cmd_line):
         yield defconf
 
 
+def print_shortcut(key, action):
+    if not getattr(print_shortcut, 'maps', None):
+        from kitty.keys import defines
+        v = vars(defines)
+        mmap = {m.split('_')[-1].lower(): x for m, x in v.items() if m.startswith('GLFW_MOD_')}
+        kmap = {k.split('_')[-1].lower(): x for k, x in v.items() if k.startswith('GLFW_KEY_')}
+        krmap = {v: k for k, v in kmap.items()}
+        print_shortcut.maps = mmap, krmap
+    mmap, krmap = print_shortcut.maps
+    names = []
+    mods, key = key
+    for name, val in mmap.items():
+        if mods & val:
+            names.append(name)
+    if key:
+        names.append(krmap[key])
+    print('\t', '+'.join(names), action)
+
+
+def compare_keymaps(final, initial):
+    added = set(final) - set(initial)
+    removed = set(initial) - set(final)
+    changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
+    if added:
+        print(title('Added shortcuts:'))
+        for k in added:
+            print_shortcut(k, final[k])
+    if removed:
+        print(title('Removed shortcuts:'))
+        for k in removed:
+            print_shortcut(k, initial[k])
+    if changed:
+        print(title('Changed shortcuts:'))
+        for k in changed:
+            print_shortcut(k, final[k])
+
+
+def compare_opts(opts):
+    print('\nConfig options different from defaults:')
+    for f in sorted(defaults._fields):
+        if getattr(opts, f) != getattr(defaults, f):
+            if f == 'keymap':
+                compare_keymaps(opts.keymap, defaults.keymap)
+            else:
+                print(title('{:20s}'.format(f)), getattr(opts, f))
+
+
 def create_opts(args, debug_config=False):
     config = tuple(resolve_config(args.config))
     if debug_config:
-        print(appname, version)
+        print(version())
         print(' '.join(os.uname()))
         if not is_macos:
-            print('Running under:', 'Wayland' if is_wayland else 'X11')
+            print('Running under:', green('Wayland' if is_wayland else 'X11'))
         if os.path.exists('/etc/issue'):
             print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip())
         if os.path.exists('/etc/lsb-release'):
             print(open('/etc/lsb-release', encoding='utf-8', errors='replace').read().strip())
         config = tuple(x for x in config if os.path.exists(x))
         if config:
-            print('Config files:', ', '.join(config))
+            print(green('Loaded config files:'), ', '.join(config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
     if debug_config:
