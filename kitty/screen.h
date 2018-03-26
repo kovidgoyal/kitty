@@ -24,7 +24,7 @@ typedef struct {
 
 typedef struct {
     unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
-    bool in_progress;
+    bool in_progress, rectangle_select;
 } Selection;
 
 #define SAVEPOINTS_SZ 256
@@ -61,7 +61,7 @@ typedef struct {
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
     Selection url_range;
-    bool use_latin1, selection_updated_once, is_dirty, scroll_changed, rectangle_select;
+    bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     SavemodesBuffer modes_savepoints;

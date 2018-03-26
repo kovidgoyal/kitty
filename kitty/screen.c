@@ -1410,7 +1410,7 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     self->last_selection_scrolled_by = self->scrolled_by;
     self->selection_updated_once = true;
     selection_limits_(selection, &self->last_rendered_selection_start, &self->last_rendered_selection_end);
-    apply_selection(self, address, &self->last_rendered_selection_start, &self->last_rendered_selection_end, 1, self->rectangle_select);
+    apply_selection(self, address, &self->last_rendered_selection_start, &self->last_rendered_selection_end, 1, self->selection.rectangle_select);
     selection_limits_(url_range, &self->last_rendered_url_start, &self->last_rendered_url_end);
     apply_selection(self, address, &self->last_rendered_url_start, &self->last_rendered_url_end, 2, false);
 }
@@ -1643,7 +1643,7 @@ text_for_selection(Screen *self, PyObject *a UNUSED) {
     full_selection_limits_(selection, &start, &end);
     PyObject *ans = NULL;
     if (start.y == end.y && start.x == end.x) ans = PyTuple_New(0);
-    else text_for_range(ans, start, end, self->rectangle_select, true, range_line_, int);
+    else text_for_range(ans, start, end, self->selection.rectangle_select, true, range_line_, int);
     return ans;
 }
 
@@ -1734,9 +1734,9 @@ screen_is_selection_dirty(Screen *self) {
 
 void
 screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_select) {
-    self->rectangle_select = rectangle_select;
 #define A(attr, val) self->selection.attr = val;
-    A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by); A(in_progress, true);
+    A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
+    A(in_progress, true); A(rectangle_select, rectangle_select);
 #undef A
 }
 
