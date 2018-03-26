@@ -23,7 +23,6 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define MOTION_INDICATOR  (1 << 5)
 #define EXTRA_BUTTON_INDICATOR (1 << 6)
 
-static int last_multi_clicks = 0;
 
 static inline unsigned int
 button_map(int button) {
@@ -121,10 +120,9 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     Screen *screen = w->render_data.screen;
     if (from_button) {
         if (is_release) screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
-        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (int)OPT(rectangle_select_modifiers));
+        else screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (int)OPT(rectangle_select_modifiers), EXTEND_CELL);
     } else if (screen->selection.in_progress) {
         screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
-        call_boss(set_primary_selection, NULL);
     }
 }
 
@@ -155,12 +153,8 @@ drag_scroll(Window *w, OSWindow *frame) {
 static inline void
 extend_selection(Window *w) {
     Screen *screen = w->render_data.screen;
-    index_type start, end;
     if (screen_has_selection(screen)) {
-        bool found_selectable_word = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
-        if (last_multi_clicks >= 2 && found_selectable_word) screen_update_selection(screen, end, w->mouse_cell_y, true);
-        else screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
-        call_boss(set_primary_selection, NULL);
+        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
     }
 }
 
@@ -237,20 +231,22 @@ multi_click(Window *w, unsigned int count) {
     Screen *screen = w->render_data.screen;
     index_type start, end;
     bool found_selection = false;
+    SelectionExtendMode mode = EXTEND_CELL;
     switch(count) {
         case 2:
             found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
+            mode = EXTEND_WORD;
             break;
         case 3:
             found_selection = screen_selection_range_for_line(screen, w->mouse_cell_y, &start, &end);
+            mode = EXTEND_LINE;
             break;
         default:
             break;
     }
     if (found_selection) {
-        screen_start_selection(screen, start, w->mouse_cell_y, false);
-        screen_update_selection(screen, end, w->mouse_cell_y, true);
-        call_boss(set_primary_selection, NULL);
+        screen_start_selection(screen, start, w->mouse_cell_y, false, mode);
+        screen_update_selection(screen, end, w->mouse_cell_y, false);
     }
 }
 
@@ -263,11 +259,9 @@ HANDLER(add_click) {
     q->length++;
     // Now dispatch the multi-click if any
     if (q->length > 2 && N(1).at - N(3).at <= 2 * OPT(click_interval)) {
-        last_multi_clicks = 3;
         multi_click(w, 3);
         q->length = 0;
     } else if (q->length > 1 && N(1).at - N(2).at <= OPT(click_interval)) {
-        last_multi_clicks = 2;
         multi_click(w, 2);
     }
 #undef N
@@ -297,14 +291,9 @@ HANDLER(handle_button_event) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 update_drag(true, w, is_release, modifiers);
-                last_multi_clicks = 0;
                 if (is_release) {
-                    if (modifiers == (int)OPT(open_url_modifiers)) {
-                        open_url(w);
-                    } else {
-                        if (is_release) add_click(w, button, modifiers, window_idx);
-                    }
-                }
+                    if (modifiers == (int)OPT(open_url_modifiers)) open_url(w);
+                } else add_click(w, button, modifiers, window_idx);
                 break;
             case GLFW_MOUSE_BUTTON_MIDDLE:
                 if (is_release && !modifiers) { call_boss(paste_from_selection, NULL); return; }

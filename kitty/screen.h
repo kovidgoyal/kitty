@@ -22,9 +22,12 @@ typedef struct {
     unsigned int x, y;
 } SelectionBoundary;
 
+typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
+
 typedef struct {
     unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
     bool in_progress, rectangle_select;
+    SelectionExtendMode extend_mode;
 } Selection;
 
 #define SAVEPOINTS_SZ 256
@@ -156,7 +159,7 @@ void screen_update_cell_data(Screen *self, void *address, size_t sz);
 bool screen_is_cursor_visible(Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_type *start, index_type *end);
-void screen_start_selection(Screen *self, index_type x, index_type y, bool);
+void screen_start_selection(Screen *self, index_type x, index_type y, bool, SelectionExtendMode);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool ended);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);

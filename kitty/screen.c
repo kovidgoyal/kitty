@@ -1626,8 +1626,16 @@ WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP2(rescale_images, 1, 1)
-WRAP2B(start_selection)
 WRAP2B(update_selection)
+
+static PyObject*
+start_selection(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    int rectangle_select = 0, extend_mode = EXTEND_CELL;
+    if (!PyArg_ParseTuple(args, "II|pp", &x, &y, &rectangle_select, &extend_mode)) return NULL;
+    screen_start_selection(self, x, y, rectangle_select, extend_mode);
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 change_scrollback_size(Screen *self, PyObject *args) {
@@ -1733,10 +1741,10 @@ screen_is_selection_dirty(Screen *self) {
 }
 
 void
-screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_select) {
+screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_select, SelectionExtendMode extend_mode) {
 #define A(attr, val) self->selection.attr = val;
     A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(in_progress, true); A(rectangle_select, rectangle_select);
+    A(in_progress, true); A(rectangle_select, rectangle_select); A(extend_mode, extend_mode);
 #undef A
 }
 
@@ -1751,6 +1759,20 @@ void
 screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
     if (ended) self->selection.in_progress = false;
+    index_type start, end;
+    bool found = false;
+    switch(self->selection.extend_mode) {
+        case EXTEND_WORD:
+            found = screen_selection_range_for_word(self, x, y, &start, &end);
+            break;
+        case EXTEND_LINE:
+            found = screen_selection_range_for_line(self, y, &start, &end);
+            break;
+        case EXTEND_CELL:
+            break;
+    }
+    if (found) self->selection.end_x = end;
+    call_boss(set_primary_selection, NULL);
 }
 
 static PyObject*
