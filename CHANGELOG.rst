@@ -3,6 +3,29 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.8.3 [future]
+-----------------------------
+
+- Fix a regression that broke the visual bell and invert screen colors escape
+  code
+
+- Allow double-click and triple-click + drag to extend selections word at a
+  time or line at a time
+
+- Add a keyboard shortcut to set the tab title
+
+- Fix setting window title to empty via OSC escape code not working correctly
+
+- Linux: Fix cell width calculation incorrect for some fonts (cell widths are
+  now calculated by actually rendering bitmaps, which is slower but more
+  accurate)
+
+- Allow specifying a system wide kitty config file, for all users
+
+- Add a --debug-config command line flag to output data about the system and
+  kitty configuration.
+
+
 version 0.8.2 [2018-03-17]
 -----------------------------
 
