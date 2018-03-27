@@ -340,7 +340,6 @@ PYWRAP1(set_options) {
     S(inactive_text_alpha, PyFloat_AsDouble);
     S(cursor_shape, PyLong_AsLong);
     S(url_style, PyLong_AsUnsignedLong);
-    S(x11_bell_volume, PyLong_AsLong);
     S(tab_bar_edge, PyLong_AsLong);
     S(mouse_hide_wait, PyFloat_AsDouble);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);

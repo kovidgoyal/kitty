@@ -25,6 +25,8 @@ version 0.8.3 [future]
 - Add a --debug-config command line flag to output data about the system and
   kitty configuration.
 
+- Fix audible bell not working under Wayland
+
 
 version 0.8.2 [2018-03-17]
 -----------------------------

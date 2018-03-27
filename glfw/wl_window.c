@@ -1079,11 +1079,15 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
                     "Wayland: Window attention request not implemented yet");
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
-    // TODO
-    _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Window bell request not implemented yet");
+    // TODO: Use an actual Wayland API to implement this when one becomes available
+    int fd = open("/dev/tty", O_WRONLY | O_CLOEXEC);
+    if (fd > -1) {
+        int ret = write(fd, "\x07", 1) == 1 ? GLFW_TRUE : GLFW_FALSE;
+        close(fd);
+        return ret;
+    }
     return GLFW_FALSE;
 }
 
@@ -1547,4 +1551,3 @@ GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return window->wl.surface;
 }
-

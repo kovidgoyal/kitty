@@ -653,7 +653,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window);
 void _glfwPlatformShowWindow(_GLFWwindow* window);
 void _glfwPlatformHideWindow(_GLFWwindow* window);
 void _glfwPlatformRequestWindowAttention(_GLFWwindow* window);
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t);
+int _glfwPlatformWindowBell(_GLFWwindow* window);
 void _glfwPlatformFocusWindow(_GLFWwindow* window);
 void _glfwPlatformSetWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor,
                                    int xpos, int ypos, int width, int height,
@@ -769,4 +769,3 @@ void _glfwTerminateVulkan(void);
 const char* _glfwGetVulkanResultString(VkResult result);
 
 char* _glfw_strdup(const char* source);
-

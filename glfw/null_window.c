@@ -205,7 +205,7 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 {
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
     return GLFW_FALSE;
 }
@@ -323,4 +323,3 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     // This seems like the most appropriate error to return here
     return VK_ERROR_INITIALIZATION_FAILED;
 }
-

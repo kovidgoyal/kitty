@@ -604,7 +604,7 @@ ring_audio_bell(OSWindow *w) {
     if (now - last_bell_at <= 0.1) return;
     last_bell_at = now;
     if (w->handle) {
-        glfwWindowBell(w->handle, OPT(x11_bell_volume));
+        glfwWindowBell(w->handle);
     }
 }
 

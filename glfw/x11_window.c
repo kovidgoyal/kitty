@@ -2340,9 +2340,9 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
                   0, 1, 0);
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
-    return XkbBell(_glfw.x11.display, window->x11.handle, (int)param, (Atom)0) ? GLFW_TRUE : GLFW_FALSE;
+    return XkbBell(_glfw.x11.display, window->x11.handle, 100, (Atom)0) ? GLFW_TRUE : GLFW_FALSE;
 }
 
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
@@ -3044,4 +3044,3 @@ GLFWAPI const char* glfwGetX11SelectionString(void)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return getSelectionString(_glfw.x11.PRIMARY);
 }
-

@@ -1361,7 +1361,7 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
     [NSApp requestUserAttention:NSInformationalRequest];
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
     NSBeep();
     return GLFW_TRUE;
@@ -1906,4 +1906,3 @@ GLFWAPI id glfwGetCocoaWindow(GLFWwindow* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     return window->ns.object;
 }
-

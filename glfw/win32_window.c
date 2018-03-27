@@ -1474,9 +1474,9 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
     FlashWindow(window->win32.handle, TRUE);
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window, int64_t param)
+int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
-    return MessageBeep(0xFFFFFFFF & param) ? GLFW_TRUE : GLFW_FALSE;
+    return MessageBeep(0xFFFFFFFF) ? GLFW_TRUE : GLFW_FALSE;
 }
 
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
@@ -2014,4 +2014,3 @@ GLFWAPI HWND glfwGetWin32Window(GLFWwindow* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return window->win32.handle;
 }
-
