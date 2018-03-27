@@ -214,9 +214,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style;
-
-        GLint color1, color2;
+        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
 
         GLuint xnum, ynum, cursor_x, cursor_y, cursor_w;
     };
@@ -241,7 +239,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     unsigned int x, y, z;
     sprite_tracker_current_layout(&x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
-    rd->color1 = inverted & 1; rd->color2 = 1 - (inverted & 1);
+    rd->inverted = inverted ? 1 : 0;
     rd->background_opacity = OPT(background_opacity);
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)

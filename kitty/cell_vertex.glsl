@@ -6,9 +6,7 @@
 layout(std140) uniform CellRenderData {
     float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style;
-
-    int color1, color2;
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
 
     uint xnum, ynum, cursor_x, cursor_y, cursor_w;
 
@@ -21,7 +19,7 @@ layout(location=1) in uvec4 sprite_coords;
 layout(location=2) in uint is_selected;
 
 
-
+const int fg_index_map[] = int[3](0, 1, 0);
 const uvec2 cell_pos_map[] = uvec2[4](
     uvec2(1, 0),  // right, top
     uvec2(1, 1),  // right, bottom
@@ -135,10 +133,10 @@ void main() {
 
     // set cell color indices {{{
     uvec2 default_colors = uvec2(default_fg, default_bg);
-    ivec2 color_indices = ivec2(color1, color2);
     uint text_attrs = sprite_coords[3];
-    int fg_index = color_indices[(text_attrs >> 6) & REVERSE_MASK];
-    int bg_index = color_indices[1 - fg_index];
+    uint is_inverted = ((text_attrs >> 6) & REVERSE_MASK) + inverted;
+    int fg_index = fg_index_map[is_inverted];
+    int bg_index = 1 - fg_index;
     float cursor = is_cursor(c, r);
     vec3 bg = to_color(colors[bg_index], default_colors[bg_index]);
     // }}}

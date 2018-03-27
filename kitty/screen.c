@@ -1066,7 +1066,7 @@ bool
 screen_invert_colors(Screen *self) {
     bool inverted = false;
     if (self->start_visual_bell_at > 0) {
-        if (monotonic() - self->start_visual_bell_at <= global_state.opts.visual_bell_duration) inverted = true;
+        if (monotonic() - self->start_visual_bell_at <= OPT(visual_bell_duration)) inverted = true;
         else self->start_visual_bell_at = 0;
     }
     if (self->modes.mDECSCNM) inverted = inverted ? false : true;
@@ -1076,6 +1076,7 @@ screen_invert_colors(Screen *self) {
 void
 screen_bell(Screen *self) {
     request_window_attention(self->window_id, OPT(enable_audio_bell));
+    if (OPT(visual_bell_duration) > 0.0f) self->start_visual_bell_at = monotonic();
 }
 
 void
