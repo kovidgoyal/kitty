@@ -310,7 +310,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     }
     if (i > 0) {
         code = utoi(screen->parser_buf, i);
-        if (i < limit - 1 && screen->parser_buf[i] == ';') i++;
+        if (i < limit && screen->parser_buf[i] == ';') i++;
     }
     PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i);
     if (string != NULL) {
