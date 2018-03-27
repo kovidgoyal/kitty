@@ -1772,7 +1772,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
             break;
     }
     if (found) self->selection.end_x = end;
-    call_boss(set_primary_selection, NULL);
+    if (global_state.boss) call_boss(set_primary_selection, NULL);
 }
 
 static PyObject*
