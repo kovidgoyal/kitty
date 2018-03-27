@@ -279,7 +279,7 @@ calc_cell_width(Face *self) {
     for (char_type i = 32; i < 128; i++) {
         int glyph_index = FT_Get_Char_Index(self->face, i);
         // We actually render the bitmap and get its width even though this is very slow, because
-        // there are fonts for which the horizontal advance is incorrect, see https://github.com/kovidgoyal/kitty/issues/352#issuecomment-376262576
+        // there are fonts for which the horizontal advance is incorrect, see https://github.com/kovidgoyal/kitty/issues/352
         if (load_glyph(self, glyph_index, FT_LOAD_RENDER)) {
             unsigned int horizontal_advance = (unsigned int)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f);
             ans = MAX(ans, self->face->glyph->bitmap.width);
