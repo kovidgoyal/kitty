@@ -4901,7 +4901,7 @@ GLFWAPI const char* glfwGetGamepadName(int jid);
  *
  *  Not all devices have all the buttons or axes provided by @ref
  *  GLFWgamepadstate.  Unavailable buttons and axes will always report
- *  `GLFW_RELEASE` and 1.0 respectively.
+ *  `GLFW_RELEASE` and 0.0 respectively.
  *
  *  @param[in] jid The [joystick](@ref joysticks) to query.
  *  @param[out] state The gamepad input state of the joystick.

@@ -582,6 +582,9 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         window->ns.xscale = xscale;
         window->ns.yscale = yscale;
         _glfwInputWindowContentScale(window, xscale, yscale);
+
+        if (window->ns.layer)
+            [window->ns.layer setContentsScale:[window->ns.object backingScaleFactor]];
     }
 }
 
@@ -1871,6 +1874,7 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
         return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 
+    [window->ns.layer setContentsScale:[window->ns.object backingScaleFactor]];
     [window->ns.view setWantsLayer:YES];
 
     memset(&sci, 0, sizeof(sci));
