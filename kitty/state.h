@@ -137,7 +137,7 @@ typedef struct {
 
 extern GlobalState global_state;
 
-#define call_boss(name, ...) { \
+#define call_boss(name, ...) if (global_state.boss) { \
     PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
     if (cret_ == NULL) { PyErr_Print(); } \
     else Py_DECREF(cret_); \
