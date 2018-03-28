@@ -22,20 +22,6 @@ def wayland_protocol_file_name(base, ext='c'):
     return 'wayland-{}-client-protocol.{}'.format(base, ext)
 
 
-def find_epoll_shim():
-    cflags, ldflags, libs = [], [], []
-    for candidate in '/usr/local/include/libepoll-shim /usr/include/libepoll-shim /usr/local/include /usr/include'.split():
-        if os.path.exists(os.path.join(candidate, 'sys/timerfd.h')):
-            cflags.append('-I' + candidate)
-            break
-    for candidate in '/usr/local/lib /usr/lib'.split():
-        if os.path.exists(os.path.join(candidate, 'libepoll-shim.so')):
-            ldflags.append('-L' + candidate)
-            libs.append('-lepoll-shim')
-            break
-    return cflags, ldflags, libs
-
-
 def init_env(env, pkg_config, at_least_version, module='x11'):
     ans = env.copy()
     ans.cflags = [
@@ -77,12 +63,6 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         for p in ans.wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
             ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
-        if is_bsd:
-            epoll_cflags, epoll_libdirs, epoll_libs = find_epoll_shim()
-            if not epoll_cflags + epoll_libdirs:
-                raise Exception('Failed to find the epoll-shim package, needed to build the GLFW Wayland backend')
-            ans.cflags.extend(epoll_cflags)
-            ans.ldpaths.extend(epoll_libdirs + epoll_libs)
         for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))

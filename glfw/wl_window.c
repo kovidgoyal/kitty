@@ -35,7 +35,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/timerfd.h>
 #include <poll.h>
 
 
@@ -691,15 +690,34 @@ static GLFWbool createXdgSurface(_GLFWwindow* window)
 }
 
 static void
+dispatchPendingKeyRepeats() {
+    if (_glfw.wl.keyRepeatInfo.nextRepeatAt <= 0 || _glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return;
+    double now = glfwGetTime();
+    while (_glfw.wl.keyRepeatInfo.nextRepeatAt <= now) {
+        const int mods = _glfw.wl.xkb.modifiers;
+        _glfwInputKey(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.glfwKeyCode, _glfw.wl.keyRepeatInfo.scancode, GLFW_REPEAT, mods);
+        if (_glfw.wl.keyRepeatInfo.codepoint > -1) _glfwInputChar(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.codepoint, mods, _glfw.wl.keyRepeatInfo.plain);
+        now = glfwGetTime();
+        _glfw.wl.keyRepeatInfo.nextRepeatAt = now + (1.0 / _glfw.wl.keyboardRepeatRate);
+        _glfw.wl.keyRepeatInfo.isFirstRepeat = GLFW_FALSE;
+    }
+}
+
+static int
+adjustTimeoutForKeyRepeat(int timeout) {
+    if (_glfw.wl.keyRepeatInfo.nextRepeatAt <= 0 || _glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return timeout;
+    double now = glfwGetTime();
+    if (timeout < 0 || now + timeout / 1000. > _glfw.wl.keyRepeatInfo.nextRepeatAt) {
+        timeout = _glfw.wl.keyRepeatInfo.nextRepeatAt <= now ? 0 : ( (_glfw.wl.keyRepeatInfo.nextRepeatAt - now) * 1000 + 1 );
+    }
+    return timeout;
+}
+
+static void
 handleEvents(int timeout)
 {
     struct wl_display* display = _glfw.wl.display;
-    struct pollfd fds[] = {
-        { wl_display_get_fd(display), POLLIN },
-        { _glfw.wl.timerfd, POLLIN },
-    };
-    ssize_t read_ret;
-    uint64_t repeats, i;
+    struct pollfd pfd = { wl_display_get_fd(display), POLLIN };
 
     while (wl_display_prepare_read(display) != 0)
         wl_display_dispatch_pending(display);
@@ -719,9 +737,12 @@ handleEvents(int timeout)
         return;
     }
 
-    if (poll(fds, 2, timeout) > 0)
+    dispatchPendingKeyRepeats();
+    timeout = adjustTimeoutForKeyRepeat(timeout);
+
+    if (poll(&pfd, 1, timeout) > 0)
     {
-        if (fds[0].revents & POLLIN)
+        if (pfd.revents & POLLIN)
         {
             wl_display_read_events(display);
             wl_display_dispatch_pending(display);
@@ -731,22 +752,12 @@ handleEvents(int timeout)
             wl_display_cancel_read(display);
         }
 
-        if (fds[1].revents & POLLIN)
-        {
-            read_ret = read(_glfw.wl.timerfd, &repeats, sizeof(repeats));
-            if (read_ret != 8)
-                return;
-
-            for (i = 0; i < repeats; ++i)
-                _glfwInputKey(_glfw.wl.keyboardFocus, _glfw.wl.keyboardLastKey,
-                              _glfw.wl.keyboardLastScancode, GLFW_REPEAT,
-                              _glfw.wl.xkb.modifiers);
-        }
     }
     else
     {
         wl_display_cancel_read(display);
     }
+    dispatchPendingKeyRepeats();
 }
 
 // Translates a GLFW standard cursor to a theme cursor name
@@ -1240,7 +1251,7 @@ const char* _glfwPlatformGetScancodeName(int scancode)
 
 int _glfwPlatformGetKeyScancode(int key)
 {
-    return _glfw.wl.scancodes[key];
+    return _glfw.wl.xkb.scancodes[key];
 }
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,

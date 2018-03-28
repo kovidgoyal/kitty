@@ -57,6 +57,7 @@
       "wl_platform.h", 
       "posix_time.h", 
       "posix_thread.h", 
+      "xkb_glfw.h", 
       "xkb_unicode.h", 
       "egl_context.h", 
       "osmesa_context.h", 
