@@ -484,7 +484,6 @@ static void keyboardHandleKey(void* data,
         {
             _glfw.wl.keyRepeatInfo.glfwKeyCode = keyCode;
             _glfw.wl.keyRepeatInfo.scancode = key;
-            _glfw.wl.keyRepeatInfo.isFirstRepeat = GLFW_TRUE;
             _glfw.wl.keyRepeatInfo.nextRepeatAt = glfwGetTime() + (double)(_glfw.wl.keyboardRepeatDelay) / 1000.0;
             _glfw.wl.keyRepeatInfo.keyboardFocus = window;
         }

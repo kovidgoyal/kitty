@@ -693,13 +693,12 @@ static void
 dispatchPendingKeyRepeats() {
     if (_glfw.wl.keyRepeatInfo.nextRepeatAt <= 0 || _glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return;
     double now = glfwGetTime();
+    const int mods = _glfw.wl.xkb.modifiers;
     while (_glfw.wl.keyRepeatInfo.nextRepeatAt <= now) {
-        const int mods = _glfw.wl.xkb.modifiers;
         _glfwInputKey(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.glfwKeyCode, _glfw.wl.keyRepeatInfo.scancode, GLFW_REPEAT, mods);
         if (_glfw.wl.keyRepeatInfo.codepoint > -1) _glfwInputChar(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.codepoint, mods, _glfw.wl.keyRepeatInfo.plain);
+        _glfw.wl.keyRepeatInfo.nextRepeatAt += 1.0 / _glfw.wl.keyboardRepeatRate;
         now = glfwGetTime();
-        _glfw.wl.keyRepeatInfo.nextRepeatAt = now + (1.0 / _glfw.wl.keyboardRepeatRate);
-        _glfw.wl.keyRepeatInfo.isFirstRepeat = GLFW_FALSE;
     }
 }
 

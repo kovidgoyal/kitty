@@ -208,7 +208,6 @@ typedef struct _GLFWlibraryWayland
         int                     plain;
         int                     glfwKeyCode;
         int                     scancode;
-        GLFWbool                isFirstRepeat;
         double                  nextRepeatAt;
         _GLFWwindow*            keyboardFocus;
     } keyRepeatInfo;
