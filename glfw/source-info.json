@@ -55,12 +55,12 @@
   "wayland": {
     "headers": [
       "wl_platform.h", 
-      "linux_joystick.h", 
       "posix_time.h", 
       "posix_thread.h", 
       "xkb_unicode.h", 
       "egl_context.h", 
-      "osmesa_context.h"
+      "osmesa_context.h", 
+      "linux_joystick.h"
     ], 
     "protocols": [
       "stable/xdg-shell/xdg-shell.xml", 
@@ -73,12 +73,12 @@
       "wl_init.c", 
       "wl_monitor.c", 
       "wl_window.c", 
-      "linux_joystick.c", 
       "posix_time.c", 
       "posix_thread.c", 
       "xkb_unicode.c", 
       "egl_context.c", 
-      "osmesa_context.c"
+      "osmesa_context.c", 
+      "linux_joystick.c"
     ]
   }, 
   "wayland_protocols": [

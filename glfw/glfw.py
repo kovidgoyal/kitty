@@ -10,12 +10,30 @@ import sys
 
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
+is_freebsd = 'freebsd' in _plat
+is_netbsd = 'netbsd' in _plat
+is_dragonflybsd = 'dragonfly' in _plat
+is_bsd = is_freebsd or is_netbsd or is_dragonflybsd
 base = os.path.dirname(os.path.abspath(__file__))
 
 
 def wayland_protocol_file_name(base, ext='c'):
     base = os.path.basename(base).rpartition('.')[0]
     return 'wayland-{}-client-protocol.{}'.format(base, ext)
+
+
+def find_epoll_shim():
+    cflags, ldflags, libs = [], [], []
+    for candidate in '/usr/local/include/libepoll-shim /usr/include/libepoll-shim /usr/local/include /usr/include'.split():
+        if os.path.exists(os.path.join(candidate, 'sys/timerfd.h')):
+            cflags.append('-I' + candidate)
+            break
+    for candidate in '/usr/local/lib /usr/lib'.split():
+        if os.path.exists(os.path.join(candidate, 'libepoll-shim.so')):
+            ldflags.append('-L' + candidate)
+            libs.append('-lepoll-shim')
+            break
+    return cflags, ldflags, libs
 
 
 def init_env(env, pkg_config, at_least_version, module='x11'):
@@ -59,6 +77,12 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         for p in ans.wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
             ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
+        if is_bsd:
+            epoll_cflags, epoll_libdirs, epoll_libs = find_epoll_shim()
+            if not epoll_cflags + epoll_libdirs:
+                raise Exception('Failed to find the epoll-shim package, needed to build the GLFW Wayland backend')
+            ans.cflags.extend(epoll_cflags)
+            ans.ldpaths.extend(epoll_libdirs + epoll_libs)
         for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
@@ -100,13 +124,14 @@ def collect_source_information():
         'common': dict(extract_sources('common')),
         'wayland_protocols': wayland_protocols,
     }
+    joystick = 'null' if is_bsd else 'linux'
     for group in 'cocoa win32 x11 wayland osmesa'.split():
         m = re.search('_GLFW_' + group.upper(), raw)
         ans[group] = dict(extract_sources('glfw', m.start()))
-        if group == 'x11':
-            ans[group]['headers'].append('linux_joystick.h')
-            ans[group]['sources'].append('linux_joystick.c')
-        elif group == 'wayland':
+        if group in ('x11', 'wayland'):
+            ans[group]['headers'].append('{}_joystick.h'.format(joystick))
+            ans[group]['sources'].append('{}_joystick.c'.format(joystick))
+        if group == 'wayland':
             ans[group]['protocols'] = p = []
             for m in re.finditer(r'WAYLAND_PROTOCOLS_PKGDATADIR\}/(.+?)"?$', raw, flags=re.M):
                 p.append(m.group(1))
