@@ -76,8 +76,8 @@ typedef struct {
     struct xkb_keymap*      keymap;
     struct xkb_state*       state;
     struct xkb_compose_state* composeState;
-    short int                   keycodes[256];
-    short int                   scancodes[GLFW_KEY_LAST + 1];
+    short int               keycodes[256];
+    short int               scancodes[GLFW_KEY_LAST + 1];
 
     xkb_mod_mask_t          controlMask;
     xkb_mod_mask_t          altMask;
@@ -165,7 +165,7 @@ typedef struct {
     if (!GLFW_XKB_GLOBAL_NAME.context) \
     { \
         _glfwInputError(GLFW_PLATFORM_ERROR, \
-                        "Failed to initialize xkb context"); \
+                        "Failed to initialize XKB context"); \
         return GLFW_FALSE; \
     } \
     int scancode; \
@@ -354,7 +354,7 @@ typedef struct {
 }
 
 
-#define xkb_glfw_update_modifiers(depressed, latched, locked) {\
+#define xkb_glfw_update_modifiers(depressed, latched, locked, group) {\
     xkb_mod_mask_t mask; \
     unsigned int modifiers = 0; \
     if (!GLFW_XKB_GLOBAL_NAME.keymap) return; \
