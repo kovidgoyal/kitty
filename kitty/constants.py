@@ -35,7 +35,7 @@ def _get_config_dir():
         locations.append(os.path.expanduser('~/Library/Preferences'))
     if 'XDG_CONFIG_DIRS' in os.environ:
         for loc in os.environ['XDG_CONFIG_DIRS'].split(os.pathsep):
-            locations.append(os.path.abspath(os.path.expanduser(os.environ['XDG_CONFIG_HOME'])))
+            locations.append(os.path.abspath(os.path.expanduser(loc)))
     for loc in locations:
         if loc:
             q = os.path.join(loc, appname)
