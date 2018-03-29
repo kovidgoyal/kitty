@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.8.3 [future]
+version 0.8.3 [2018-03-29]
 -----------------------------
 
 - Fix a regression that broke the visual bell and invert screen colors escape
@@ -25,7 +25,7 @@ version 0.8.3 [future]
 - Add a --debug-config command line flag to output data about the system and
   kitty configuration.
 
-- Fix audible bell not working under Wayland
+- Wayland: Fix auto-repeat of keys not working
 
 
 version 0.8.2 [2018-03-17]
