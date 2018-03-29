@@ -58,7 +58,6 @@
       "posix_time.h", 
       "posix_thread.h", 
       "xkb_glfw.h", 
-      "xkb_unicode.h", 
       "egl_context.h", 
       "osmesa_context.h", 
       "linux_joystick.h"
@@ -76,7 +75,7 @@
       "wl_window.c", 
       "posix_time.c", 
       "posix_thread.c", 
-      "xkb_unicode.c", 
+      "xkb_glfw.c", 
       "egl_context.c", 
       "osmesa_context.c", 
       "linux_joystick.c"
@@ -109,7 +108,7 @@
   "x11": {
     "headers": [
       "x11_platform.h", 
-      "xkb_unicode.h", 
+      "xkb_glfw.h", 
       "posix_time.h", 
       "posix_thread.h", 
       "glx_context.h", 
@@ -121,7 +120,7 @@
       "x11_init.c", 
       "x11_monitor.c", 
       "x11_window.c", 
-      "xkb_unicode.c", 
+      "xkb_glfw.c", 
       "posix_time.c", 
       "posix_thread.c", 
       "glx_context.c", 

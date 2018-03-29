@@ -254,14 +254,8 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetCursor_impl) = dlsym(handle, "glfwSetCursor");
     if (glfwSetCursor_impl == NULL) fail("Failed to load glfw function glfwSetCursor with error: %s", dlerror());
 
-    *(void **) (&glfwSetKeyCallback_impl) = dlsym(handle, "glfwSetKeyCallback");
-    if (glfwSetKeyCallback_impl == NULL) fail("Failed to load glfw function glfwSetKeyCallback with error: %s", dlerror());
-
-    *(void **) (&glfwSetCharCallback_impl) = dlsym(handle, "glfwSetCharCallback");
-    if (glfwSetCharCallback_impl == NULL) fail("Failed to load glfw function glfwSetCharCallback with error: %s", dlerror());
-
-    *(void **) (&glfwSetCharModsCallback_impl) = dlsym(handle, "glfwSetCharModsCallback");
-    if (glfwSetCharModsCallback_impl == NULL) fail("Failed to load glfw function glfwSetCharModsCallback with error: %s", dlerror());
+    *(void **) (&glfwSetKeyboardCallback_impl) = dlsym(handle, "glfwSetKeyboardCallback");
+    if (glfwSetKeyboardCallback_impl == NULL) fail("Failed to load glfw function glfwSetKeyboardCallback with error: %s", dlerror());
 
     *(void **) (&glfwSetMouseButtonCallback_impl) = dlsym(handle, "glfwSetMouseButtonCallback");
     if (glfwSetMouseButtonCallback_impl == NULL) fail("Failed to load glfw function glfwSetMouseButtonCallback with error: %s", dlerror());

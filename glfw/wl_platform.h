@@ -48,9 +48,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #else
 #include "null_joystick.h"
 #endif
-#define GLFW_XKB_GLOBAL_NAME _glfw.wl.xkb
 #include "xkb_glfw.h"
-#include "xkb_unicode.h"
 #include "egl_context.h"
 #include "osmesa_context.h"
 
@@ -204,10 +202,7 @@ typedef struct _GLFWlibraryWayland
     int32_t                     keyboardRepeatRate;
     int32_t                     keyboardRepeatDelay;
     struct {
-        long                    codepoint;
-        int                     plain;
-        int                     glfwKeyCode;
-        int                     scancode;
+        uint32_t                key;
         double                  nextRepeatAt;
         _GLFWwindow*            keyboardFocus;
     } keyRepeatInfo;

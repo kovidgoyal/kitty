@@ -54,7 +54,7 @@ void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
             if (window->keys[key] == GLFW_PRESS)
             {
                 const int scancode = _glfwPlatformGetKeyScancode(key);
-                _glfwInputKey(window, key, scancode, GLFW_RELEASE, 0);
+                _glfwInputKeyboard(window, key, scancode, GLFW_RELEASE, 0, "", 0);
             }
         }
 

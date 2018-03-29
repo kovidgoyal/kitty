@@ -693,10 +693,8 @@ static void
 dispatchPendingKeyRepeats() {
     if (_glfw.wl.keyRepeatInfo.nextRepeatAt <= 0 || _glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return;
     double now = glfwGetTime();
-    const int mods = _glfw.wl.xkb.modifiers;
     while (_glfw.wl.keyRepeatInfo.nextRepeatAt <= now) {
-        _glfwInputKey(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.glfwKeyCode, _glfw.wl.keyRepeatInfo.scancode, GLFW_REPEAT, mods);
-        if (_glfw.wl.keyRepeatInfo.codepoint > -1) _glfwInputChar(_glfw.wl.keyRepeatInfo.keyboardFocus, _glfw.wl.keyRepeatInfo.codepoint, mods, _glfw.wl.keyRepeatInfo.plain);
+        glfw_xkb_handle_key_event(_glfw.wl.keyRepeatInfo.keyboardFocus, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
         _glfw.wl.keyRepeatInfo.nextRepeatAt += 1.0 / _glfw.wl.keyboardRepeatRate;
         now = glfwGetTime();
     }
@@ -1244,13 +1242,12 @@ void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode)
 
 const char* _glfwPlatformGetScancodeName(int scancode)
 {
-    // TODO
-    return NULL;
+    return glfw_xkb_keysym_name(scancode);
 }
 
 int _glfwPlatformGetKeyScancode(int key)
 {
-    return _glfw.wl.xkb.scancodes[key];
+    return glfw_xkb_sym_for_key(key);
 }
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,

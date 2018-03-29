@@ -47,6 +47,8 @@
 // The XInput extension provides raw mouse motion input
 #include <X11/extensions/XInput2.h>
 
+#include "xkb_glfw.h"
+
 typedef XRRCrtcGamma* (* PFN_XRRAllocGamma)(int);
 typedef void (* PFN_XRRFreeCrtcInfo)(XRRCrtcInfo*);
 typedef void (* PFN_XRRFreeGamma)(XRRCrtcGamma*);
@@ -96,8 +98,6 @@ typedef XineramaScreenInfo* (* PFN_XineramaQueryScreens)(Display*,int*);
 #define XineramaQueryExtension _glfw.x11.xinerama.QueryExtension
 #define XineramaQueryScreens _glfw.x11.xinerama.QueryScreens
 
-typedef XID xcb_window_t;
-typedef XID xcb_visualid_t;
 typedef struct xcb_connection_t xcb_connection_t;
 typedef xcb_connection_t* (* PFN_XGetXCBConnection)(Display*);
 #define XGetXCBConnection _glfw.x11.x11xcb.GetXCBConnection
@@ -151,7 +151,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR)(Vk
 
 #include "posix_thread.h"
 #include "posix_time.h"
-#include "xkb_unicode.h"
 #include "glx_context.h"
 #include "egl_context.h"
 #include "osmesa_context.h"
@@ -180,7 +179,6 @@ typedef struct _GLFWwindowX11
 {
     Colormap        colormap;
     Window          handle;
-    XIC             ic;
 
     GLFWbool        overrideRedirect;
     GLFWbool        iconified;
@@ -219,20 +217,12 @@ typedef struct _GLFWlibraryX11
     Cursor          hiddenCursorHandle;
     // Context for mapping window XIDs to _GLFWwindow pointers
     XContext        context;
-    // XIM input method
-    XIM             im;
     // Most recent error code received by X error handler
     int             errorCode;
     // Primary selection string (while the primary selection is owned)
     char*           primarySelectionString;
     // Clipboard string (while the selection is owned)
     char*           clipboardString;
-    // Key name string
-    char            keyName[5];
-    // X11 keycode to GLFW key LUT
-    short int       keycodes[256];
-    // GLFW key to X11 keycode LUT
-    short int       scancodes[GLFW_KEY_LAST + 1];
     // Where to place the cursor when re-enabled
     double          restoreCursorPosX, restoreCursorPosY;
     // The window whose disabled cursor mode is active
@@ -318,15 +308,7 @@ typedef struct _GLFWlibraryX11
         PFN_XRRUpdateConfiguration UpdateConfiguration;
     } randr;
 
-    struct {
-        GLFWbool    available;
-        GLFWbool    detectable;
-        int         majorOpcode;
-        int         eventBase;
-        int         errorBase;
-        int         major;
-        int         minor;
-    } xkb;
+    _GLFWXKBData xkb;
 
     struct {
         int         count;
@@ -441,4 +423,3 @@ void _glfwReleaseErrorHandlerX11(void);
 void _glfwInputErrorX11(int error, const char* message);
 
 void _glfwPushSelectionToManagerX11(void);
-
