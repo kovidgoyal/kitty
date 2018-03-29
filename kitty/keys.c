@@ -76,66 +76,6 @@ is_modifier_key(int key) {
     }
 }
 
-static inline int
-get_localized_key(int key, int scancode) {
-    const char *name = glfwGetKeyName(key, scancode);
-    if (name == NULL || name[1] != 0) return key;
-    switch(name[0]) {
-#define K(ch, name) case ch: return GLFW_KEY_##name
-        // key names {{{
-        K('A', A); K('a', A);
-        K('B', B); K('b', B);
-        K('C', C); K('c', C);
-        K('D', D); K('d', D);
-        K('E', E); K('e', E);
-        K('F', F); K('f', F);
-        K('G', G); K('g', G);
-        K('H', H); K('h', H);
-        K('I', I); K('i', I);
-        K('J', J); K('j', J);
-        K('K', K); K('k', K);
-        K('L', L); K('l', L);
-        K('M', M); K('m', M);
-        K('N', N); K('n', N);
-        K('O', O); K('o', O);
-        K('P', P); K('p', P);
-        K('Q', Q); K('q', Q);
-        K('R', R); K('r', R);
-        K('S', S); K('s', S);
-        K('T', T); K('t', T);
-        K('U', U); K('u', U);
-        K('V', V); K('v', V);
-        K('W', W); K('w', W);
-        K('X', X); K('x', X);
-        K('Y', Y); K('y', Y);
-        K('Z', Z); K('z', Z);
-        K('0', 0);
-        K('1', 1);
-        K('2', 2);
-        K('3', 3);
-        K('5', 5);
-        K('6', 6);
-        K('7', 7);
-        K('8', 8);
-        K('9', 9);
-        K('\'', APOSTROPHE);
-        K(',', COMMA);
-        K('.', PERIOD);
-        K('/', SLASH);
-        K('-', MINUS);
-        K(';', SEMICOLON);
-        K('=', EQUAL);
-        K('[', LEFT_BRACKET);
-        K(']', RIGHT_BRACKET);
-        K('`', GRAVE_ACCENT);
-        K('\\', BACKSLASH);
-        // }}}
-#undef K
-        default:
-            return key;
-    }
-}
-
 static inline void
 send_key_to_child(Window *w, int key, int mods, int action) {
     Screen *screen = w->render_data.screen;
@@ -153,14 +93,16 @@ send_key_to_child(Window *w, int key, int mods, int action) {
 }
 
 void
-on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
+on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
     if (!w) return;
-    (void)state; (void)text;
     Screen *screen = w->render_data.screen;
-    int lkey = get_localized_key(key, scancode);
+    bool has_text = text && (text[0] > 31 && text[0] != 127);
+#ifdef __APPLE__
+    if (has_text && IS_ALT_MODS(mods) && OPT(macos_option_as_alt)) has_text = false;
+#endif
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        uint16_t qkey = key_map[lkey];
+        uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
         bool special = false;
         if (qkey != UINT8_MAX) {
             qkey = SPECIAL_INDEX(qkey);
@@ -168,7 +110,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
         }
         /* printf("key: %s mods: %d special: %d\n", key_name(lkey), mods, special); */
         if (special) {
-            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", lkey, scancode, action, mods);
+            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", key, scancode, action, mods);
             if (ret == NULL) { PyErr_Print(); }
             else {
                 bool consumed = ret == Py_True;
@@ -177,20 +119,17 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             }
         }
     }
+    if (action == GLFW_REPEAT && !screen->modes.mDECARM) return;
     if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
-#ifdef __APPLE__
-    if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods) && !(
-                key == GLFW_KEY_UP || key == GLFW_KEY_DOWN || key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)  // alt+arrow keys do not generate text on macOS
-       ) return;
-#endif
-    if (
-            action == GLFW_PRESS ||
-            (action == GLFW_REPEAT && screen->modes.mDECARM) ||
-            screen->modes.mEXTENDED_KEYBOARD
-       ) {
-        send_key_to_child(w, lkey, mods, action);
+    bool ok_to_send = action == GLFW_PRESS || action == GLFW_REPEAT || screen->modes.mEXTENDED_KEYBOARD;
+    if (ok_to_send) {
+        if (has_text) {
+            schedule_write_to_child(w->id, text, strlen(text));
+        } else {
+            send_key_to_child(w, key, mods, action);
+        }
     }
 }
 

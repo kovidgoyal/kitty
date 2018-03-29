@@ -101,8 +101,8 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const c
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (key >= 0 && key <= GLFW_KEY_LAST) {
         global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
-        if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
     }
+    if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
     global_state.callback_os_window = NULL;
 }
 
