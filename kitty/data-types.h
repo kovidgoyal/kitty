@@ -266,5 +266,5 @@ void scroll_event(double, double);
 void fake_scroll(int, bool);
 void set_special_key_combo(int glfw_key, int mods);
 void on_text_input(unsigned int codepoint, int mods);
-void on_key_input(int key, int scancode, int action, int mods);
+void on_key_input(int key, int scancode, int action, int mods, const char*, int);
 void request_window_attention(id_type, bool);

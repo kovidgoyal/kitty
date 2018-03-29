@@ -96,20 +96,12 @@ refresh_callback(GLFWwindow *w) {
 }
 
 static void
-char_mods_callback(GLFWwindow *w, unsigned int codepoint, int mods) {
-    if (!set_callback_window(w)) return;
-    global_state.callback_os_window->cursor_blink_zero_time = monotonic();
-    if (is_window_ready_for_callbacks()) on_text_input(codepoint, mods);
-    global_state.callback_os_window = NULL;
-}
-
-static void
-key_callback(GLFWwindow *w, int key, int scancode, int action, int mods) {
+key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const char* text, int state) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (key >= 0 && key <= GLFW_KEY_LAST) {
         global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
-        if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods);
+        if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
     }
     global_state.callback_os_window = NULL;
 }
@@ -375,11 +367,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     update_os_window_viewport(w, false);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     glfwSetWindowRefreshCallback(glfw_window, refresh_callback);
-    glfwSetCharModsCallback(glfw_window, char_mods_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetCursorPosCallback(glfw_window, cursor_pos_callback);
-    glfwSetKeyCallback(glfw_window, key_callback);
+    glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetWindowFocusCallback(glfw_window, window_focus_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
 #ifdef __APPLE__

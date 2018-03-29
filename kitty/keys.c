@@ -153,9 +153,10 @@ send_key_to_child(Window *w, int key, int mods, int action) {
 }
 
 void
-on_key_input(int key, int scancode, int action, int mods) {
+on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
     Window *w = active_window();
     if (!w) return;
+    (void)state; (void)text;
     Screen *screen = w->render_data.screen;
     int lkey = get_localized_key(key, scancode);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
