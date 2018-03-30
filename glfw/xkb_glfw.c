@@ -376,7 +376,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & xkb->modifiers) == 0) xkb_state_key_get_utf8(xkb->state, code_for_sym, text, sizeof(text));
             text_type = "text";
         }
-        if (text[0] <= 31 || text[0] == 127) text[0] = 0;  // dont send text for ascii control codes
+        if ((1 <= text[0] && text[0] <= 31) || text[0] == 127) text[0] = 0;  // dont send text for ascii control codes
         if (text[0]) { debug("%s: %s ", text_type, text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);

@@ -183,10 +183,112 @@ static int translateFlags(NSUInteger flags)
     return mods;
 }
 
+#define debug_key(...) if (_glfw.ns.debug_keyboard) NSLog(__VA_ARGS__)
+
+static inline const char*
+format_mods(int mods) {
+    static char buf[128];
+    char *p = buf, *s;
+#define pr(x) p += snprintf(p, sizeof(buf) - (p - buf) - 1, x)
+    pr("mods: ");
+    s = p;
+    if (mods & GLFW_MOD_CONTROL) pr("ctrl+");
+    if (mods & GLFW_MOD_ALT) pr("alt+");
+    if (mods & GLFW_MOD_SHIFT) pr("shift+");
+    if (mods & GLFW_MOD_SUPER) pr("super+");
+    if (mods & GLFW_MOD_CAPS_LOCK) pr("capslock+");
+    if (mods & GLFW_MOD_NUM_LOCK) pr("numlock+");
+    if (p == s) pr("none");
+    else p--;
+    pr(" ");
+#undef pr
+    return buf;
+}
+
+static inline const char*
+format_text(const char *src) {
+    static char buf[256];
+    char *p = buf;
+    if (!src[0]) return "<none>";
+    while (*src) {
+        p += snprintf(p, sizeof(buf) - (p - buf), "%x ", (unsigned char)*(src++));
+    }
+    if (p != buf) *(--p) = 0;
+    return buf;
+}
+
+static const char*
+safe_name_for_scancode(unsigned int scancode) {
+    const char *ans = _glfwPlatformGetScancodeName(scancode);
+    if (!ans) return "<noname>";
+    if ((1 <= ans[0] && ans[0] <= 31) || ans[0] == 127) ans = "<cc>";
+    return ans;
+}
+
+
 // Translates a macOS keycode to a GLFW keycode
 //
-static int translateKey(unsigned int key)
+static int translateKey(unsigned int key, GLFWbool apply_keymap)
 {
+    if (apply_keymap) {
+        // Look for the effective key name after applying any keyboard layouts/mappings
+        const char *name = _glfwPlatformGetScancodeName(key);
+        if (name && name[1] == 0) {
+            // Single letter key name
+            switch(name[0]) {
+#define K(ch, name) case ch: return GLFW_KEY_##name
+                K('A', A); K('a', A);
+                K('B', B); K('b', B);
+                K('C', C); K('c', C);
+                K('D', D); K('d', D);
+                K('E', E); K('e', E);
+                K('F', F); K('f', F);
+                K('G', G); K('g', G);
+                K('H', H); K('h', H);
+                K('I', I); K('i', I);
+                K('J', J); K('j', J);
+                K('K', K); K('k', K);
+                K('L', L); K('l', L);
+                K('M', M); K('m', M);
+                K('N', N); K('n', N);
+                K('O', O); K('o', O);
+                K('P', P); K('p', P);
+                K('Q', Q); K('q', Q);
+                K('R', R); K('r', R);
+                K('S', S); K('s', S);
+                K('T', T); K('t', T);
+                K('U', U); K('u', U);
+                K('V', V); K('v', V);
+                K('W', W); K('w', W);
+                K('X', X); K('x', X);
+                K('Y', Y); K('y', Y);
+                K('Z', Z); K('z', Z);
+                K('0', 0);
+                K('1', 1);
+                K('2', 2);
+                K('3', 3);
+                K('5', 5);
+                K('6', 6);
+                K('7', 7);
+                K('8', 8);
+                K('9', 9);
+                K('\'', APOSTROPHE);
+                K(',', COMMA);
+                K('.', PERIOD);
+                K('/', SLASH);
+                K('-', MINUS);
+                K('=', EQUAL);
+                K(';', SEMICOLON);
+                K('[', LEFT_BRACKET);
+                K(']', RIGHT_BRACKET);
+                K('`', GRAVE_ACCENT);
+                K('\\', BACKSLASH);
+#undef K
+                default:
+                    break;
+            }
+        }
+    }
     if (key >= sizeof(_glfw.ns.keycodes) / sizeof(_glfw.ns.keycodes[0]))
         return GLFW_KEY_UNKNOWN;
 
@@ -619,12 +721,17 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 - (void)keyDown:(NSEvent *)event
 {
-    const int key = translateKey([event keyCode]);
+    const unsigned int scancode = [event keyCode];
+    const int key = translateKey(scancode, GLFW_TRUE);
     const int mods = translateFlags([event modifierFlags]);
-
-    _glfwInputKey(window, key, [event keyCode], GLFW_PRESS, mods);
-
+    _glfw.ns.text[0] = 0;
+    // this will call insertText with the text for this event, if any
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+    if ((1 <= _glfw.ns.text[0] && _glfw.ns.text[0] <= 31) || (unsigned)_glfw.ns.text[0] == 127) _glfw.ns.text[0] = 0;  // dont send text for ascii control codes
+    debug_key(@"scancode: 0x%x (%s) mods: %stext: %s glfw_key: %s\n",
+            scancode, safe_name_for_scancode(scancode), format_mods(mods),
+            format_text(_glfw.ns.text), _glfwGetKeyName(key));
+    _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
 }
 
 - (void)flagsChanged:(NSEvent *)event
@@ -632,7 +739,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     int action;
     const unsigned int modifierFlags =
         [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-    const int key = translateKey([event keyCode]);
+    const int key = translateKey([event keyCode], GLFW_FALSE);
     const int mods = translateFlags(modifierFlags);
     const NSUInteger keyFlag = translateKeyToModifierFlag(key);
 
@@ -646,14 +753,14 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     else
         action = GLFW_RELEASE;
 
-    _glfwInputKey(window, key, [event keyCode], action, mods);
+    _glfwInputKeyboard(window, key, [event keyCode], action, mods, "", 0);
 }
 
 - (void)keyUp:(NSEvent *)event
 {
-    const int key = translateKey([event keyCode]);
+    const int key = translateKey([event keyCode], GLFW_TRUE);
     const int mods = translateFlags([event modifierFlags]);
-    _glfwInputKey(window, key, [event keyCode], GLFW_RELEASE, mods);
+    _glfwInputKeyboard(window, key, [event keyCode], GLFW_RELEASE, mods, "", 0);
 }
 
 - (void)scrollWheel:(NSEvent *)event
@@ -788,25 +895,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange
 {
     NSString* characters;
-    NSEvent* event = [NSApp currentEvent];
-    const int mods = translateFlags([event modifierFlags]);
-    const int plain = !(mods & GLFW_MOD_SUPER);
-
     if ([string isKindOfClass:[NSAttributedString class]])
         characters = [string string];
     else
         characters = (NSString*) string;
-
-    NSUInteger i, length = [characters length];
-
-    for (i = 0;  i < length;  i++)
-    {
-        const unichar codepoint = [characters characterAtIndex:i];
-        if ((codepoint & 0xff00) == 0xf700)
-            continue;
-
-        _glfwInputChar(window, codepoint, mods, plain);
-    }
+    snprintf(_glfw.ns.text, sizeof(_glfw.ns.text), "%s", [characters UTF8String]);
+    _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
 }
 
 - (void)doCommandBySelector:(SEL)selector

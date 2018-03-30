@@ -114,6 +114,8 @@ typedef struct _GLFWlibraryNS
     id                  listener;
 
     char                keyName[64];
+    char                text[256];
+    GLFWbool            debug_keyboard;
     short int           keycodes[256];
     short int           scancodes[GLFW_KEY_LAST + 1];
     char*               clipboardString;
@@ -166,4 +168,3 @@ void _glfwInitTimerNS(void);
 void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
-
