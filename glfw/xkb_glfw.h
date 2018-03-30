@@ -39,13 +39,21 @@ typedef struct {
     struct xkb_state*       clean_state;
     struct xkb_compose_state* composeState;
 
+    xkb_mod_index_t         controlIdx;
+    xkb_mod_index_t         altIdx;
+    xkb_mod_index_t         shiftIdx;
+    xkb_mod_index_t         superIdx;
+    xkb_mod_index_t         capsLockIdx;
+    xkb_mod_index_t         numLockIdx;
     xkb_mod_mask_t          controlMask;
     xkb_mod_mask_t          altMask;
     xkb_mod_mask_t          shiftMask;
     xkb_mod_mask_t          superMask;
     xkb_mod_mask_t          capsLockMask;
     xkb_mod_mask_t          numLockMask;
+    xkb_mod_mask_t          activeUnknownModifiers;
     unsigned int            modifiers;
+    xkb_mod_index_t         unknownModifiers[256];
 
 #ifdef _GLFW_X11
     int32_t                 keyboard_device_id;

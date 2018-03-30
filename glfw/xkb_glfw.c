@@ -258,30 +258,44 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
         xkb->clean_state = clean_state;
     }
     if (xkb->keymap) {
-        xkb->controlMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Control");
-        xkb->altMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Mod1");
-        xkb->shiftMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Shift");
-        xkb->superMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Mod4");
-        xkb->capsLockMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Lock");
-        xkb->numLockMask = 1 << xkb_keymap_mod_get_index(xkb->keymap, "Mod2");
+#define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
+        S(control, XKB_MOD_NAME_CTRL);
+        S(alt, XKB_MOD_NAME_ALT);
+        S(shift, XKB_MOD_NAME_SHIFT);
+        S(super, XKB_MOD_NAME_LOGO);
+        S(capsLock, XKB_MOD_NAME_CAPS);
+        S(numLock, XKB_MOD_NAME_NUM);
+        size_t capacity = sizeof(xkb->unknownModifiers)/sizeof(xkb->unknownModifiers[0]), j = 0;
+        for (xkb_mod_index_t i = 0; i < capacity; i++) xkb->unknownModifiers[i] = XKB_MOD_INVALID;
+        for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap) && j < capacity - 1; i++) {
+            if (i != xkb->controlIdx && i != xkb->altIdx && i != xkb->shiftIdx && i != xkb->superIdx && i != xkb->capsLockIdx && i != xkb->numLockIdx) xkb->unknownModifiers[j++] = i;
+        }
+#undef S
     }
     return GLFW_TRUE;
 }
 
+static inline xkb_mod_mask_t
+active_unknown_modifiers(_GLFWXKBData *xkb) {
+    size_t i = 0;
+    xkb_mod_mask_t ans = 0;
+    while (xkb->unknownModifiers[i] != XKB_MOD_INVALID) {
+        if (xkb_state_mod_index_is_active(xkb->state, xkb->unknownModifiers[i], XKB_STATE_MODS_EFFECTIVE)) ans |= (1 << xkb->unknownModifiers[i]);
+        i++;
+    }
+    return ans;
+}
+
+
 void
 glfw_xkb_update_modifiers(_GLFWXKBData *xkb, unsigned int depressed, unsigned int latched, unsigned int locked, unsigned int group) {
-    xkb_mod_mask_t mask;
-    unsigned int modifiers = 0;
     if (!xkb->keymap) return;
+    xkb->modifiers = 0;
     xkb_state_update_mask(xkb->state, depressed, latched, locked, 0, 0, group);
-    mask = xkb_state_serialize_mods(xkb->state, XKB_STATE_MODS_DEPRESSED | XKB_STATE_LAYOUT_DEPRESSED | XKB_STATE_MODS_LATCHED | XKB_STATE_LAYOUT_LATCHED);
-    if (mask & xkb->controlMask) modifiers |= GLFW_MOD_CONTROL;
-    if (mask & xkb->altMask) modifiers |= GLFW_MOD_ALT;
-    if (mask & xkb->shiftMask) modifiers |= GLFW_MOD_SHIFT;
-    if (mask & xkb->superMask) modifiers |= GLFW_MOD_SUPER;
-    if (mask & xkb->capsLockMask) modifiers |= GLFW_MOD_CAPS_LOCK;
-    if (mask & xkb->numLockMask) modifiers |= GLFW_MOD_NUM_LOCK;
-    xkb->modifiers = modifiers;
+#define S(attr, name) if (xkb_state_mod_index_is_active(xkb->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE)) xkb->modifiers |= GLFW_MOD_##name
+    S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
+#undef S
+    xkb->activeUnknownModifiers = active_unknown_modifiers(xkb);
 }
 
 GLFWbool
@@ -326,7 +340,7 @@ static inline const char*
 format_mods(unsigned int mods) {
     static char buf[128];
     char *p = buf, *s;
-#define pr(x) p += snprintf(p, sizeof(buf) - (p - buf) - 1, x)
+#define pr(x) p += snprintf(p, sizeof(buf) - (p - buf) - 1, "%s", x)
     pr("mods: ");
     s = p;
     if (mods & GLFW_MOD_CONTROL) pr("ctrl+");
@@ -335,6 +349,24 @@ format_mods(unsigned int mods) {
     if (mods & GLFW_MOD_SUPER) pr("super+");
     if (mods & GLFW_MOD_CAPS_LOCK) pr("capslock+");
     if (mods & GLFW_MOD_NUM_LOCK) pr("numlock+");
+    if (p == s) pr("none");
+    else p--;
+    pr(" ");
+#undef pr
+    return buf;
+}
+
+static inline const char*
+format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
+    static char buf[512];
+    char *p = buf, *s;
+#define pr(x) p += snprintf(p, sizeof(buf) - (p - buf) - 1, "%s", x)
+    pr(name); pr(": ");
+    s = p;
+    for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap); i++) {
+        xkb_mod_mask_t m = 1 << i;
+        if (m & mods) { pr(xkb_keymap_mod_get_name(xkb->keymap, i)); pr("+"); }
+    }
     if (p == s) pr("none");
     else p--;
     pr(" ");
@@ -371,7 +403,14 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         }
         debug("composed_sym: %s ", glfw_xkb_keysym_name(glfw_sym));
         if (glfw_sym == syms[0]) { // composed sym is the same as non-composed sym
-            glfw_sym = clean_syms[0];
+            // Only use the clean_sym if the mods other than the mods we report
+            // are active (for example if ISO_Shift_Level_* mods are pressed
+            // they are not reported by GLFW so the key should be the shifted
+            // key). See https://github.com/kovidgoyal/kitty/issues/171#issuecomment-377557053
+            xkb_mod_mask_t consumed_unknown_mods = xkb_state_key_get_consumed_mods(xkb->state, code_for_sym) & xkb->activeUnknownModifiers;
+            if (xkb->activeUnknownModifiers) debug("%s", format_xkb_mods(xkb, "active_unknown_mods", xkb->activeUnknownModifiers));
+            if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
+            else glfw_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
             if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & xkb->modifiers) == 0) xkb_state_key_get_utf8(xkb->state, code_for_sym, text, sizeof(text));
             text_type = "text";
