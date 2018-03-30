@@ -20,8 +20,6 @@ matrix:
                 - libxcursor-dev
                 - libunistring-dev
                 - libxcb-xkb-dev
-                - libxkbcommon-dev
-                - libxkbcommon-x11-dev
                 - libpng-dev
                 - python3-pil
 
@@ -44,8 +42,6 @@ matrix:
                 - libxcursor-dev
                 - libunistring-dev
                 - libxcb-xkb-dev
-                - libxkbcommon-dev
-                - libxkbcommon-x11-dev
                 - libpng-dev
                 - python3-pil
 
@@ -68,8 +64,6 @@ matrix:
                 - libxcursor-dev
                 - libunistring-dev
                 - libxcb-xkb-dev
-                - libxkbcommon-dev
-                - libxkbcommon-x11-dev
                 - libpng-dev
                 - python3-pil
                 - clang
@@ -102,6 +96,12 @@ install: |
         fi
     else
         pushd /tmp
+        wget http://xkbcommon.org/download/libxkbcommon-0.6.1.tar.xz
+        tar xf libxkbcommon-0.6.1.tar.xz
+        cd libxkbcommon-0.6.1
+        ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static
+        make -j2
+        make install
         wget https://github.com/behdad/harfbuzz/releases/download/1.6.3/harfbuzz-1.6.3.tar.bz2
         tar xf harfbuzz-1.6.3.tar.bz2
         cd harfbuzz-1.6.3
