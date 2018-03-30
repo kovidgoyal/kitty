@@ -92,12 +92,17 @@ send_key_to_child(Window *w, int key, int mods, int action) {
     }
 }
 
+static inline bool
+is_ascii_control_char(char c) {
+    return (0 <= c && c <= 31) || c == 127;
+}
+
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
     if (!w) return;
     Screen *screen = w->render_data.screen;
-    bool has_text = text && (text[0] > 31 && text[0] != 127);
+    bool has_text = text && !is_ascii_control_char(text[0]);
 #ifdef __APPLE__
     if (has_text && IS_ALT_MODS(mods) && OPT(macos_option_as_alt)) has_text = false;
 #endif
