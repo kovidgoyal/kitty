@@ -278,12 +278,8 @@ calc_cell_width(Face *self) {
     unsigned int ans = 0;
     for (char_type i = 32; i < 128; i++) {
         int glyph_index = FT_Get_Char_Index(self->face, i);
-        // We actually render the bitmap and get its width even though this is very slow, because
-        // there are fonts for which the horizontal advance is incorrect, see https://github.com/kovidgoyal/kitty/issues/352
-        if (load_glyph(self, glyph_index, FT_LOAD_RENDER)) {
-            unsigned int horizontal_advance = (unsigned int)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f);
-            ans = MAX(ans, self->face->glyph->bitmap.width);
-            ans = MAX(ans, horizontal_advance);
+        if (load_glyph(self, glyph_index, FT_LOAD_DEFAULT)) {
+            ans = MAX(ans, (unsigned int)ceilf((float)self->face->glyph->metrics.horiAdvance / 64.f));
         }
     }
     return ans;
@@ -328,7 +324,6 @@ typedef struct {
     unsigned int factor, right_edge;
 } ProcessedBitmap;
 
-
 static inline void
 trim_borders(ProcessedBitmap *ans, size_t extra) {
     bool column_has_text = false;
@@ -358,9 +353,13 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > max_width) {
-        size_t extra = bitmap->width - max_width;
+        size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
             trim_borders(ans, extra);
+        } else if (extra == 2 && num_cells == 1) {
+            // there exist fonts that have bitmaps just a couple of pixels
+            // wider than their advances, rather than rescale, which looks
+            // bad, we just crop the bitmap on the right. See https://github.com/kovidgoyal/kitty/issues/352
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)bitmap->width;
