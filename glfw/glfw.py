@@ -46,6 +46,9 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
     ans.sources = sinfo['common']['sources'] + sinfo[module]['sources']
     ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
 
+    if module in ('x11', 'wayland'):
+        at_least_version('xkbcommon', 0, 5)
+
     if module == 'x11':
         for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
