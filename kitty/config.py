@@ -120,16 +120,36 @@ def parse_key_action(action):
     return KeyAction(func, args)
 
 
-def parse_key(val, keymap):
+all_key_actions = set()
+sequence_sep = '>'
+
+
+def parse_key(val, keymap, sequence_map):
     sc, action = val.partition(' ')[::2]
-    sc, action = sc.strip(), action.strip()
+    sc, action = sc.strip().strip(sequence_sep), action.strip()
     if not sc or not action:
         return
-    mods, key = parse_shortcut(sc)
-    if key is None:
-        log_error('Shortcut: {} has unknown key, ignoring'.format(
-            val))
-        return
+    is_sequence = sequence_sep in sc
+    if is_sequence:
+        trigger = None
+        rest = []
+        for part in sc.split(sequence_sep):
+            mods, key = parse_shortcut(part)
+            if key is None:
+                log_error('Shortcut: {} has unknown key, ignoring'.format(
+                    sc))
+                return
+            if trigger is None:
+                trigger = mods, key
+            else:
+                rest.append((mods, key))
+        rest = tuple(rest)
+    else:
+        mods, key = parse_shortcut(sc)
+        if key is None:
+            log_error('Shortcut: {} has unknown key, ignoring'.format(
+                sc))
+            return
     try:
         paction = parse_key_action(action)
     except Exception:
@@ -137,7 +157,12 @@ def parse_key(val, keymap):
             action))
     else:
         if paction is not None:
-            keymap[(mods, key)] = paction
+            all_key_actions.add(paction.func)
+            if is_sequence:
+                s = sequence_map.setdefault(trigger, {})
+                s[rest] = paction
+            else:
+                keymap[(mods, key)] = paction
 
 
 def parse_symbol_map(val):
@@ -177,7 +202,7 @@ def parse_send_text_bytes(text):
                             ).encode('utf-8')
 
 
-def parse_send_text(val, keymap):
+def parse_send_text(val, keymap, sequence_map):
     parts = val.split(' ')
 
     def abort(msg):
@@ -190,7 +215,7 @@ def parse_send_text(val, keymap):
     mode, sc = parts[:2]
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
-    return parse_key(key_str, keymap)
+    return parse_key(key_str, keymap, sequence_map)
 
 
 def to_modifiers(val):
@@ -317,14 +342,14 @@ for a in ('active', 'inactive'):
 
 def special_handling(key, val, ans):
     if key == 'map':
-        parse_key(val, ans['keymap'])
+        parse_key(val, ans['keymap'], ans['sequence_map'])
         return True
     if key == 'symbol_map':
         ans['symbol_map'].update(parse_symbol_map(val))
         return True
     if key == 'send_text':
         # For legacy compatibility
-        parse_send_text(val, ans['keymap'])
+        parse_send_text(val, ans['keymap'], ans['sequence_map'])
         return True
 
 
@@ -337,6 +362,7 @@ default_config_path = os.path.join(
 def parse_config(lines, check_keys=True):
     ans = {
         'keymap': {},
+        'sequence_map': {},
         'symbol_map': {},
     }
     parse_config_base(
@@ -351,7 +377,7 @@ def parse_config(lines, check_keys=True):
 
 
 Options, defaults = init_config(default_config_path, parse_config)
-actions = frozenset(a.func for a in defaults.keymap.values()) | frozenset(
+actions = frozenset(all_key_actions) | frozenset(
     'combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()
 )
@@ -370,6 +396,20 @@ def merge_keymaps(defaults, newvals):
     return ans
 
 
+def merge_sequence_maps(defaults, newvals):
+    ans = {t: r.copy() for t, r in defaults.items()}
+    for trigger, rest_map in newvals.items():
+        s = ans.setdefault(trigger, {})
+        for k, v in rest_map.items():
+            f = v.func
+            if f in no_op_actions:
+                s.pop(k, None)
+                continue
+            if f in actions:
+                s[k] = v
+    return {k: v for k, v in ans.items() if v}
+
+
 def merge_dicts(defaults, newvals):
     ans = defaults.copy()
     ans.update(newvals)
@@ -383,6 +423,8 @@ def merge_configs(defaults, vals):
             newvals = vals.get(k, {})
             if k == 'keymap':
                 ans['keymap'] = merge_keymaps(v, newvals)
+            elif k == 'sequence_map':
+                ans['sequence_map'] = merge_sequence_maps(v, newvals)
             else:
                 ans[k] = merge_dicts(v, newvals)
         else:

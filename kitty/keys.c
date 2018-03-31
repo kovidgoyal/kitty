@@ -101,6 +101,10 @@ void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
     if (!w) return;
+    if (global_state.in_sequence_mode) {
+        if (action != GLFW_RELEASE) call_boss(process_sequence, "iiii", key, scancode, action, mods);
+        return;
+    }
     Screen *screen = w->render_data.screen;
     bool has_text = text && !is_ascii_control_char(text[0]);
 #ifdef __APPLE__

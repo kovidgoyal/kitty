@@ -284,6 +284,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 #define KKI(name) PYWRAP1(name) { id_type a, b; unsigned int c; PA("KKI", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define KKII(name) PYWRAP1(name) { id_type a, b; unsigned int c, d; PA("KKII", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
 #define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
+#define BOOL_SET(name) PYWRAP1(set_##name) { global_state.name = PyObject_IsTrue(args); Py_RETURN_NONE; }
 
 static inline color_type
 color_as_int(PyObject *color) {
@@ -367,6 +368,8 @@ PYWRAP1(set_options) {
 
     GA(keymap); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    GA(sequence_map); set_special_keys(ret);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
 #define read_adjust(name) { \
     PyObject *al = PyObject_GetAttrString(opts, #name); \
@@ -385,6 +388,8 @@ PYWRAP1(set_options) {
 #undef S
     Py_RETURN_NONE;
 }
+
+BOOL_SET(in_sequence_mode)
 
 PYWRAP1(set_tab_bar_render_data) {
     ScreenRenderData d = {0};
@@ -555,6 +560,7 @@ KK5I(add_borders_rect)
 static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
     MW(set_options, METH_VARARGS),
+    MW(set_in_sequence_mode, METH_O),
     MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
     MW(pt_to_px, METH_O),

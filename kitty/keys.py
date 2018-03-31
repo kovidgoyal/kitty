@@ -251,6 +251,10 @@ def get_shortcut(keymap, mods, key, scancode):
     return keymap.get((mods & 0b1111, key))
 
 
+def shortcut_matches(s, mods, key, scancode):
+    return s[0] & 0b1111 == mods & 0b1111 and s[1] == key
+
+
 def generate_key_table():
     # To run this, use: python3 . -c "from kitty.keys import *; generate_key_table()"
     import os

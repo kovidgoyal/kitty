@@ -19,11 +19,11 @@ from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
     layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
-    set_dpi_from_os_window, show_window, toggle_fullscreen,
-    viewport_for_window
+    set_dpi_from_os_window, set_in_sequence_mode, show_window,
+    toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
-from .keys import get_shortcut
+from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
 from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
@@ -79,6 +79,7 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values):
         self.window_id_map = WeakValueDictionary()
+        self.pending_sequences = None
         self.cached_values = cached_values
         self.os_window_map = {}
         self.cursor_blinking = True
@@ -352,8 +353,37 @@ class Boss:
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
         key_action = get_shortcut(self.opts.keymap, mods, key, scancode)
-        self.current_key_press_info = key, scancode, action, mods
-        return self.dispatch_action(key_action)
+        if key_action is None:
+            sequences = get_shortcut(self.opts.sequence_map, mods, key, scancode)
+            if sequences:
+                self.pending_sequences = sequences
+                set_in_sequence_mode(True)
+                return True
+        else:
+            self.current_key_press_info = key, scancode, action, mods
+            return self.dispatch_action(key_action)
+
+    def process_sequence(self, key, scancode, action, mods):
+        if not self.pending_sequences:
+            set_in_sequence_mode(False)
+
+        remaining = {}
+        matched_action = None
+        for seq, key_action in self.pending_sequences.items():
+            if shortcut_matches(seq[0], mods, key, scancode):
+                seq = seq[1:]
+                if seq:
+                    remaining[seq] = key_action
+                else:
+                    matched_action = key_action
+
+        if remaining:
+            self.pending_sequences = remaining
+        else:
+            self.pending_sequences = None
+            set_in_sequence_mode(False)
+            if matched_action is not None:
+                self.dispatch_action(matched_action)
 
     def default_bg_changed_for(self, window_id):
         w = self.window_id_map.get(window_id)

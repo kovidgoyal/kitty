@@ -132,6 +132,7 @@ typedef struct {
     bool is_wayland;
     bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
+    bool in_sequence_mode;
 } GlobalState;
 
 extern GlobalState global_state;
