@@ -3,6 +3,16 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.8.4 [2018-03-31]
+-----------------------------
+
+- Fix presence of XDG_CONFIG_DIRS and absence of XDG_CONFIG_HOME preventing
+  kitty from starting
+
+- Revert change in last release to cell width calculation. Instead just clip
+  the right edges of characters that overflow the cell by at most two pixels
+
+
 version 0.8.3 [2018-03-29]
 -----------------------------
 
