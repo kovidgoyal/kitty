@@ -76,7 +76,7 @@ GLFWbool glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb);
 void glfw_xkb_release(_GLFWXKBData *xkb);
 GLFWbool glfw_xkb_create_context(_GLFWXKBData *xkb);
 GLFWbool glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str);
-void glfw_xkb_update_modifiers(_GLFWXKBData *xkb, unsigned int depressed, unsigned int latched, unsigned int locked, unsigned int group);
+void glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_layout_index_t base_group, xkb_layout_index_t latched_group, xkb_layout_index_t locked_group);
 GLFWbool glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode);
 const char* glfw_xkb_keysym_name(xkb_keysym_t sym);
 xkb_keysym_t glfw_xkb_sym_for_key(int key);

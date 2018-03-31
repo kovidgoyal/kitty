@@ -1166,7 +1166,10 @@ static void processEvent(XEvent *event)
             case XkbStateNotify:
             {
                 XkbStateNotifyEvent *state_event = (XkbStateNotifyEvent*)kb_event;
-                glfw_xkb_update_modifiers(&_glfw.x11.xkb, state_event->base_mods, state_event->latched_mods, state_event->locked_mods, state_event->group);
+                glfw_xkb_update_modifiers(
+                        &_glfw.x11.xkb, state_event->base_mods, state_event->latched_mods,
+                        state_event->locked_mods, state_event->base_group, state_event->latched_group, state_event->locked_group
+                );
                 return;
             }
         }

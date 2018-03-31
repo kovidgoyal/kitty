@@ -288,10 +288,10 @@ active_unknown_modifiers(_GLFWXKBData *xkb) {
 
 
 void
-glfw_xkb_update_modifiers(_GLFWXKBData *xkb, unsigned int depressed, unsigned int latched, unsigned int locked, unsigned int group) {
+glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_layout_index_t base_group, xkb_layout_index_t latched_group, xkb_layout_index_t locked_group) {
     if (!xkb->keymap) return;
     xkb->modifiers = 0;
-    xkb_state_update_mask(xkb->state, depressed, latched, locked, 0, 0, group);
+    xkb_state_update_mask(xkb->state, depressed, latched, locked, base_group, latched_group, locked_group);
 #define S(attr, name) if (xkb_state_mod_index_is_active(xkb->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE)) xkb->modifiers |= GLFW_MOD_##name
     S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
 #undef S
@@ -403,8 +403,8 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         }
         debug("composed_sym: %s ", glfw_xkb_keysym_name(glfw_sym));
         if (glfw_sym == syms[0]) { // composed sym is the same as non-composed sym
-            // Only use the clean_sym if the mods other than the mods we report
-            // are active (for example if ISO_Shift_Level_* mods are pressed
+            // Only use the clean_sym if no mods other than the mods we report
+            // are active (for example if ISO_Shift_Level_* mods are active
             // they are not reported by GLFW so the key should be the shifted
             // key). See https://github.com/kovidgoyal/kitty/issues/171#issuecomment-377557053
             xkb_mod_mask_t consumed_unknown_mods = xkb_state_key_get_consumed_mods(xkb->state, code_for_sym) & xkb->activeUnknownModifiers;

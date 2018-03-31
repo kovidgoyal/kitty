@@ -434,7 +434,7 @@ static void keyboardHandleModifiers(void* data,
                                     uint32_t modsLocked,
                                     uint32_t group)
 {
-    glfw_xkb_update_modifiers(&_glfw.wl.xkb, modsDepressed, modsLatched, modsLocked, group);
+    glfw_xkb_update_modifiers(&_glfw.wl.xkb, modsDepressed, modsLatched, modsLocked, 0, 0, group);
 }
 
 static void keyboardHandleRepeatInfo(void* data,
