@@ -34,7 +34,7 @@ for sz in (16, 32, 64, 128, 256, 512, 1024):
     iname = 'icon_{0}x{0}.png'.format(sz)
     iname2x = 'icon_{0}x{0}@2x.png'.format(sz // 2)
     render(iname, sz)
-    if sz > 16:
+    if sz > 16 and sz != 128:
         shutil.copy2(iname, iname2x)
-    if sz > 512:
+    if sz in (64, 1024):
         os.remove(iname)
