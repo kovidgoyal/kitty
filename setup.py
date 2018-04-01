@@ -183,8 +183,7 @@ def init_env(
         sysconfig.get_config_var('CCSHARED')
     )
     if os.path.exists('.git'):
-        head = open('.git/HEAD', 'r').read().split(':', 1)[-1].strip()
-        rev = open('.git/' + head).read().split(':', 1)[-1].strip()
+        rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
         cflags.append('-DKITTY_VCS_REV="{}"'.format(rev))
     ldflags = os.environ.get(
         'OVERRIDE_LDFLAGS',
