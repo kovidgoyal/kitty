@@ -245,8 +245,12 @@ def prettify(text):
     return text
 
 
-def version():
-    return '{} {} created by {}'.format(italic(appname), green(str_version), title('Kovid Goyal'))
+def version(add_rev=False):
+    rev = ''
+    from . import fast_data_types
+    if add_rev and hasattr(fast_data_types, 'KITTY_VCS_REV'):
+        rev = ' ({})'.format(fast_data_types.KITTY_VCS_REV[:10])
+    return '{} {}{} created by {}'.format(italic(appname), green(str_version), rev, title('Kovid Goyal'))
 
 
 def wrap(text, limit=80):
@@ -547,7 +551,7 @@ def compare_opts(opts):
 def create_opts(args, debug_config=False):
     config = tuple(resolve_config(args.config))
     if debug_config:
-        print(version())
+        print(version(add_rev=True))
         print(' '.join(os.uname()))
         if is_macos:
             print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())

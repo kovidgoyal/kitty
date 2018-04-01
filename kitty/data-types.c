@@ -203,6 +203,9 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
         PyModule_AddStringMacro(m, ERROR_PREFIX);
+#ifdef KITTY_VCS_REV
+        PyModule_AddStringMacro(m, KITTY_VCS_REV);
+#endif
         PyModule_AddIntMacro(m, CURSOR_BLOCK);
         PyModule_AddIntMacro(m, CURSOR_BEAM);
         PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
