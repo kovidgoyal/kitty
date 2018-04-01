@@ -471,6 +471,8 @@ class Boss:
     def get_output(self, source_window, num_lines=1):
         output = ''
         s = source_window.screen
+        if num_lines is None:
+            num_lines = s.lines
         for i in range(min(num_lines, s.lines)):
             output += str(s.linebuf.line(i))
         return output
@@ -517,19 +519,27 @@ class Boss:
         if w is not None and tab is not None and w.overlay_for is None:
             cmdline = args[0] if args else ''
             args = shlex.split(cmdline) if cmdline else []
-            if '--program' not in cmdline:
-                args.extend(('--program', self.opts.open_url_with))
+            if kitten == 'url_hints':
+                args[0:0] = ['--in-kitty', '--program', self.opts.open_url_with]
             if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
                 data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
             elif type_of_input == 'none':
                 data = None
             else:
                 raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
-            tab.new_special_window(
+            overlay_window = tab.new_special_window(
                 SpecialWindow(
                     ['kitty', '+runpy', 'from kittens.{}.main import main; main()'.format(kitten)] + args,
                     stdin=data,
                     overlay_for=w.id))
+            if kitten == 'url_hints':
+                overlay_window.action_on_close = self.open_hinted_url
+
+    def open_hinted_url(self, source_window):
+        output = self.get_output(source_window, num_lines=None)
+        if output.startswith('OK: '):
+            cmd = json.loads(output.partition(' ')[2].strip())
+            open_url(cmd['url'], cmd['program'])
 
     def switch_focus_to(self, window_idx):
         tab = self.active_tab

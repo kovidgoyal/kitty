@@ -176,12 +176,16 @@ def run_loop(args, lines, index_map):
     handler = URLHints(lines, index_map)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        cmd = command_for_open(args.program)
-        ret = subprocess.Popen(cmd + [handler.chosen]).wait()
-        if ret != 0:
-            print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
-            input('Press Enter to quit')
-            loop.return_code = ret
+        if args.in_kitty:
+            import json
+            print('OK:', json.dumps({'url': handler.chosen, 'program': args.program, 'action': 'open_with'}))
+        else:
+            cmd = command_for_open(args.program)
+            ret = subprocess.Popen(cmd + [handler.chosen]).wait()
+            if ret != 0:
+                print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
+                input('Press Enter to quit')
+                loop.return_code = ret
     raise SystemExit(loop.return_code)
 
 
@@ -233,6 +237,12 @@ expression instead.
 default={0}
 Comma separated list of recognized URL prefixes. Defaults to:
 {0}
+
+
+--in-kitty
+type=bool-set
+Output the URL instead of opening it. Intended for use from within
+kitty.
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
 
