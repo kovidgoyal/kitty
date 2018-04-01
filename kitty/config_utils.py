@@ -90,7 +90,12 @@ def create_options_class(keys):
     def _asdict(self):
         return {k: getattr(self, k) for k in self._fields}
 
-    ans = type('Options', (), {'__slots__': slots, '__init__': __init__, '_asdict': _asdict})
+    def _replace(self, **kw):
+        ans = self._asdict()
+        ans.update(kw)
+        return self.__class__(ans)
+
+    ans = type('Options', (), {'__slots__': slots, '__init__': __init__, '_asdict': _asdict, '_replace': _replace})
     ans._fields = keys
     return ans
 
