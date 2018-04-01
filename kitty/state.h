@@ -28,6 +28,7 @@ typedef struct {
     float adjust_line_height_frac, adjust_column_width_frac;
     float background_opacity;
     float inactive_text_alpha;
+    float window_padding_width;
     Edge tab_bar_edge;
     bool sync_to_monitor;
     bool close_on_child_death;
