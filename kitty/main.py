@@ -165,7 +165,9 @@ def _main():
         is_first = single_instance(args.instance_group)
         if not is_first:
             import json
-            data = {'cmd': 'new_instance', 'args': tuple(sys.argv), 'startup_id': os.environ.get('DESKTOP_STARTUP_ID')}
+            data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
+                    'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
+                    'cwd': os.getcwd()}
             data = json.dumps(data, ensure_ascii=False).encode('utf-8')
             single_instance.socket.sendall(data)
             return

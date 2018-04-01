@@ -105,7 +105,7 @@ def parse_session(raw, opts):
     return ans
 
 
-def create_session(opts, args=None, special_window=None, cwd_from=None):
+def create_session(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False):
     if args and args.session:
         with open(args.session) as f:
             return parse_session(f.read(), opts)
@@ -122,6 +122,8 @@ def create_session(opts, args=None, special_window=None, cwd_from=None):
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
         k = {'cwd_from': cwd_from}
+        if respect_cwd:
+            k['cwd'] = args.directory
         if getattr(args, 'title', None):
             k['override_title'] = args.title
         special_window = SpecialWindow(cmd, **k)

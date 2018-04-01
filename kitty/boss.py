@@ -4,6 +4,7 @@
 
 import atexit
 import json
+import os
 import re
 import socket
 from functools import partial
@@ -221,7 +222,9 @@ class Boss:
                 args, rest = parse_args(msg['args'][1:])
                 args.args = rest
                 opts = create_opts(args)
-                session = create_session(opts, args)
+                if not os.path.isabs(args.directory):
+                    args.directory = os.path.join(msg['cwd'], args.directory)
+                session = create_session(opts, args, respect_cwd=True)
                 self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
             else:
                 log_error('Unknown message received from peer, ignoring')
