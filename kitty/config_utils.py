@@ -4,7 +4,6 @@
 
 import os
 import re
-from collections import namedtuple
 
 from .rgb import to_color as as_color
 from .utils import log_error
@@ -80,9 +79,25 @@ def parse_config_base(
     _parse(lines, type_map, special_handling, ans, all_keys)
 
 
+def create_options_class(keys):
+    keys = tuple(sorted(keys))
+    slots = keys + ('_fields',)
+
+    def __init__(self, kw):
+        for k, v in kw.items():
+            setattr(self, k, v)
+
+    def _asdict(self):
+        return {k: getattr(self, k) for k in self._fields}
+
+    ans = type('Options', (), {'__slots__': slots, '__init__': __init__, '_asdict': _asdict})
+    ans._fields = keys
+    return ans
+
+
 def init_config(defaults_path, parse_config):
     with open(defaults_path, encoding='utf-8', errors='replace') as f:
         defaults = parse_config(f, check_keys=False)
-    Options = namedtuple('Defaults', ','.join(defaults.keys()))
-    defaults = Options(**defaults)
+    Options = create_options_class(defaults.keys())
+    defaults = Options(defaults)
     return Options, defaults

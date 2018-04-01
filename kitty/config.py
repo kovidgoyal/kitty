@@ -20,6 +20,7 @@ from .config_utils import (
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
+from .rgb import color_from_int
 from .utils import log_error
 
 MINIMUM_FONT_SIZE = 4
@@ -333,8 +334,8 @@ for name in (
     ' selection_foreground selection_background url_color'
 ).split():
     type_map[name] = to_color
-for i in range(16):
-    type_map['color%d' % i] = to_color
+for i in range(256):
+    type_map['color{}'.format(i)] = to_color
 for a in ('active', 'inactive'):
     for b in ('foreground', 'background'):
         type_map['%s_tab_%s' % (a, b)] = to_color
@@ -376,7 +377,17 @@ def parse_config(lines, check_keys=True):
     return ans
 
 
-Options, defaults = init_config(default_config_path, parse_config)
+def parse_defaults(lines, check_keys=False):
+    ans = parse_config(lines, check_keys)
+    dfctl = defines.default_color_table()
+
+    for i in range(16, 256):
+        k = 'color{}'.format(i)
+        ans.setdefault(k, color_from_int(dfctl[i]))
+    return ans
+
+
+Options, defaults = init_config(default_config_path, parse_defaults)
 actions = frozenset(all_key_actions) | frozenset(
     'combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()
@@ -447,7 +458,7 @@ def load_config(*paths, overrides=None) -> Options:
     if overrides is not None:
         vals = parse_config(overrides)
         ans = merge_configs(ans, vals)
-    return Options(**ans)
+    return Options(ans)
 
 
 def build_ansi_color_table(opts: Options = defaults):
@@ -458,7 +469,7 @@ def build_ansi_color_table(opts: Options = defaults):
     def col(i):
         return as_int(getattr(opts, 'color{}'.format(i)))
 
-    return list(map(col, range(16)))
+    return list(map(col, range(256)))
 
 
 def atomic_save(data, path):

@@ -27,6 +27,10 @@ def parse_rgb(spec):
         return Color(*map(parse_single_color, colors))
 
 
+def color_from_int(x):
+    return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+
 def to_color(raw, validate=False):
     # See man XParseColor
     x = raw.strip().lower()

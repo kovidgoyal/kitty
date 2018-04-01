@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #include "data-types.h"
 #include <structmember.h>
 
@@ -29,23 +30,29 @@ static uint32_t FG_BG_256[256] = {
     0xffffff,  // 15
 };
 
-PyObject* create_256_color_table() {
-    // colors 16..232: the 6x6x6 color cube
-    const uint8_t valuerange[6] = {0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
-    uint8_t i, j=16;
-    for(i = 0; i < 217; i++, j++) {
-        uint8_t r = valuerange[(i / 36) % 6], g = valuerange[(i / 6) % 6], b = valuerange[i % 6];
-        FG_BG_256[j] = (r << 16) | (g << 8) | b;
+static inline void
+init_FG_BG_table() {
+    if (UNLIKELY(FG_BG_256[255] == 0)) {
+        // colors 16..232: the 6x6x6 color cube
+        const uint8_t valuerange[6] = {0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
+        uint8_t i, j=16;
+        for(i = 0; i < 217; i++, j++) {
+            uint8_t r = valuerange[(i / 36) % 6], g = valuerange[(i / 6) % 6], b = valuerange[i % 6];
+            FG_BG_256[j] = (r << 16) | (g << 8) | b;
+        }
+        // colors 233..255: grayscale
+        for(i = 1; i < 24; i++, j++) {
+            uint8_t v = 8 + i * 10;
+            FG_BG_256[j] = (v << 16) | (v << 8) | v;
+        }
     }
-    // colors 233..255: grayscale
-    for(i = 1; i < 24; i++, j++) {
-        uint8_t v = 8 + i * 10;
-        FG_BG_256[j] = (v << 16) | (v << 8) | v;
-    }
+}
 
-    PyObject *ans = PyTuple_New(255);
+PyObject* create_256_color_table() {
+    init_FG_BG_table();
+    PyObject *ans = PyTuple_New(arraysz(FG_BG_256));
     if (ans == NULL) return PyErr_NoMemory();
-    for (i=0; i < 255; i++) {
+    for (size_t i=0; i < arraysz(FG_BG_256); i++) {
         PyObject *temp = PyLong_FromUnsignedLong(FG_BG_256[i]);
         if (temp == NULL) { Py_CLEAR(ans); return NULL; }
         PyTuple_SET_ITEM(ans, i, temp);
@@ -59,7 +66,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 
     self = (ColorProfile *)type->tp_alloc(type, 0);
     if (self != NULL) {
-        if (FG_BG_256[255] == 0) create_256_color_table();
+        init_FG_BG_table();
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
         self->dirty = true;
@@ -80,12 +87,10 @@ alloc_color_profile() {
 
 static PyObject*
 update_ansi_color_table(ColorProfile *self, PyObject *val) {
-#define update_ansi_color_table_doc "Update the 16 basic colors"
-    index_type i;
-
+#define update_ansi_color_table_doc "Update the 256 basic colors"
     if (!PyList_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a list"); return NULL; }
-    if (PyList_GET_SIZE(val) != 16) { PyErr_SetString(PyExc_TypeError, "color table must have 16 items"); return NULL; }
-    for (i = 0; i < 16; i++) {
+    if (PyList_GET_SIZE(val) != arraysz(FG_BG_256)) { PyErr_SetString(PyExc_TypeError, "color table must have 256 items"); return NULL; }
+    for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
         self->color_table[i] = PyLong_AsUnsignedLong(PyList_GET_ITEM(val, i));
         self->orig_color_table[i] = self->color_table[i];
     }
@@ -184,6 +189,10 @@ color_table_address(ColorProfile *self, PyObject *a UNUSED) {
     return PyLong_FromVoidPtr((void*)self->color_table);
 }
 
+static PyObject*
+default_color_table(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return create_256_color_table();
+}
 
 // Boilerplate {{{
 
@@ -235,6 +244,12 @@ PyTypeObject ColorProfile_Type = {
     .tp_getset = getsetters,
     .tp_new = new,
 };
+
+static PyMethodDef module_methods[] = {
+    METHODB(default_color_table, METH_NOARGS),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
 
 INIT_TYPE(ColorProfile)
 // }}}
