@@ -485,26 +485,34 @@ cause colors to be changed in all windows.
 type=bool-set
 Also change the configured colors (i.e. the colors kitty will use for new
 windows or after a reset).
+
+
+--reset
+type=bool-set
+Restore all colors to the values they has at kitty startup. Note that if you specify
+this option, any color arguments are ignored and --configured and --all are implied.
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t'),
     argspec='COLOR_OR_FILE ...'
 )
 def cmd_set_colors(global_opts, opts, args):
     from .rgb import color_as_int, Color
     colors = {}
-    for spec in args:
-        if '=' in spec:
-            colors.update(parse_config((spec.replace('=', ' '),)))
-        else:
-            with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
-                colors.update(parse_config(f))
-    colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
+    if not opts.reset:
+        for spec in args:
+            if '=' in spec:
+                colors.update(parse_config((spec.replace('=', ' '),)))
+            else:
+                with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
+                    colors.update(parse_config(f))
+        colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
     return {
             'title': ' '.join(args), 'match_window': opts.match, 'match_tab': opts.match_tab,
-            'all': opts.all, 'configured': opts.configured, 'colors': colors
+            'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset, 'colors': colors, 'reset': opts.reset
     }
 
 
 def set_colors(boss, window, payload):
+    from .rgb import color_as_int
     if payload['all']:
         windows = tuple(boss.all_windows)
     else:
@@ -519,6 +527,8 @@ def set_colors(boss, window, payload):
                 raise MatchError(payload['match_tab'], 'tabs')
             for tab in tabs:
                 windows += tuple(tab)
+    if payload['reset']:
+        payload['colors'] = {k: color_as_int(v) for k, v in boss.startup_colors.items()}
     profiles = tuple(w.screen.color_profile for w in windows)
     from .fast_data_types import patch_color_profiles
     patch_color_profiles(payload['colors'], profiles, payload['configured'])

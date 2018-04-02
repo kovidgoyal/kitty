@@ -26,6 +26,7 @@ from .fast_data_types import (
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
+from .rgb import Color, color_from_int
 from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
@@ -80,6 +81,7 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values):
         self.window_id_map = WeakValueDictionary()
+        self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.pending_sequences = None
         self.cached_values = cached_values
         self.os_window_map = {}
@@ -698,7 +700,6 @@ class Boss:
             tm.move_tab(-1)
 
     def patch_colors(self, spec, configured=False):
-        from .rgb import color_from_int
         if configured:
             for k, v in spec.items():
                 if hasattr(self.opts, k):

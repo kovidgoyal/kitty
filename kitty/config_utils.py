@@ -87,6 +87,20 @@ def create_options_class(keys):
         for k, v in kw.items():
             setattr(self, k, v)
 
+    def __iter__(self):
+        return iter(keys)
+
+    def __len__(self):
+        return len(keys)
+
+    def __getitem__(self, i):
+        if isinstance(i, int):
+            i = keys[i]
+        try:
+            return getattr(self, i)
+        except AttributeError:
+            raise KeyError('No option named: {}'.format(i))
+
     def _asdict(self):
         return {k: getattr(self, k) for k in self._fields}
 
@@ -95,7 +109,10 @@ def create_options_class(keys):
         ans.update(kw)
         return self.__class__(ans)
 
-    ans = type('Options', (), {'__slots__': slots, '__init__': __init__, '_asdict': _asdict, '_replace': _replace})
+    ans = type('Options', (), {
+        '__slots__': slots, '__init__': __init__, '_asdict': _asdict, '_replace': _replace, '__iter__': __iter__,
+        '__len__': __len__, '__getitem__': __getitem__
+    })
     ans._fields = keys
     return ans
 
