@@ -31,6 +31,10 @@ def color_from_int(x):
     return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
 
 
+def color_as_int(x):
+    return x.red << 16 | x.green << 8 | x.blue
+
+
 def to_color(raw, validate=False):
     # See man XParseColor
     x = raw.strip().lower()

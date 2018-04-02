@@ -522,6 +522,14 @@ have ssh do this automatically when connecting to a server, so that all
 terminals work transparently.
 
 
+=== How do I change the colors in a running kitty instance?
+
+You can either use the
+link:http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands[OSC
+terminal escape codes] to set colors or you can enable link:remote-control.asciidoc[remote control]
+for kitty and use `kitty @ set-colors --help`.
+
+
 === How do I specify command line options for kitty on macOS?
 
 Apple does not want you to use command line options with GUI applications. To

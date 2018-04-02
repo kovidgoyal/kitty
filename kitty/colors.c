@@ -98,6 +98,43 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
+    PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured;
+    if (!PyArg_ParseTuple(args, "O!O!p", &PyDict_Type, &spec, &PyTuple_Type, &profiles, &change_configured)) return NULL;
+    char key[32] = {0};
+    for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
+        snprintf(key, sizeof(key) - 1, "color%zu", i);
+        v = PyDict_GetItemString(spec, key);
+        if (v) {
+            color_type color = PyLong_AsUnsignedLong(v);
+            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
+                self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i);
+                self->color_table[i] = color;
+                if (change_configured) self->orig_color_table[i] = color;
+                self->dirty = true;
+            }
+        }
+    }
+#define S(config_name, profile_name) { \
+    v = PyDict_GetItemString(spec, #config_name); \
+    if (v) { \
+        color_type color = PyLong_AsUnsignedLong(v); \
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) { \
+            self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i); \
+            self->overridden.profile_name = (color << 8) | 2; \
+            if (change_configured) self->configured.profile_name = color; \
+            self->dirty = true; \
+        } \
+    } \
+}
+        S(foreground, default_fg); S(background, default_bg); S(cursor, cursor_color);
+        S(selection_foreground, highlight_fg); S(selection_background, highlight_bg);
+#undef S
+
+    Py_RETURN_NONE;
+}
+
 color_type
 colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
     color_type t = entry & 0xFF, r;
@@ -247,6 +284,7 @@ PyTypeObject ColorProfile_Type = {
 
 static PyMethodDef module_methods[] = {
     METHODB(default_color_table, METH_NOARGS),
+    METHODB(patch_color_profiles, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -247,6 +247,7 @@ class TabBar:  # {{{
 
     def __init__(self, os_window_id, opts):
         self.os_window_id = os_window_id
+        self.opts = opts
         self.num_tabs = 1
         self.cell_width = 1
         self.data_buffer_size = 0
@@ -276,6 +277,16 @@ class TabBar:  # {{{
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
+
+    def patch_colors(self, spec):
+        if 'active_tab_foreground' in spec:
+            self.active_fg = (spec['active_tab_foreground'] << 8) | 2
+        if 'active_tab_background' in spec:
+            self.active_bg = (spec['active_tab_background'] << 8) | 2
+        self.screen.color_profile.set_configured_colors(
+                spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground)),
+                spec.get('inactive_tab_background', color_as_int(self.opts.inactive_tab_background))
+        )
 
     def layout(self):
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)

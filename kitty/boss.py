@@ -126,24 +126,35 @@ class Boss:
                 'tabs': list(tm.list_tabs()),
             }
 
+    @property
+    def all_tab_managers(self):
+        yield from self.os_window_map.values()
+
+    @property
+    def all_tabs(self):
+        for tm in self.all_tab_managers:
+            yield from tm
+
+    @property
+    def all_windows(self):
+        for tab in self.all_tabs:
+            yield from tab
+
     def match_windows(self, match):
         try:
             field, exp = match.split(':', 1)
         except ValueError:
             return
         pat = re.compile(exp)
-        for tm in self.os_window_map.values():
-            for tab in tm:
-                for window in tab:
-                    if window.matches(field, pat):
-                        yield window
+        for window in self.all_windows:
+            if window.matches(field, pat):
+                yield window
 
     def tab_for_window(self, window):
-        for tm in self.os_window_map.values():
-            for tab in tm:
-                for w in tab:
-                    if w.id == window.id:
-                        return tab
+        for tab in self.all_tabs:
+            for w in tab:
+                if w.id == window.id:
+                    return tab
 
     def match_tabs(self, match):
         try:
@@ -151,14 +162,12 @@ class Boss:
         except ValueError:
             return
         pat = re.compile(exp)
-        tms = tuple(self.os_window_map.values())
         found = False
         if field in ('title', 'id'):
-            for tm in tms:
-                for tab in tm:
-                    if tab.matches(field, pat):
-                        yield tab
-                        found = True
+            for tab in self.all_tabs:
+                if tab.matches(field, pat):
+                    yield tab
+                    found = True
         if not found:
             tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
             for tab in tabs:
@@ -687,3 +696,12 @@ class Boss:
         tm = self.active_tab_manager
         if tm is not None:
             tm.move_tab(-1)
+
+    def patch_colors(self, spec, configured=False):
+        from .rgb import color_from_int
+        if configured:
+            for k, v in spec.items():
+                if hasattr(self.opts, k):
+                    setattr(self.opts, k, color_from_int(v))
+        for tm in self.all_tab_managers:
+            tm.tab_bar.patch_colors(spec)

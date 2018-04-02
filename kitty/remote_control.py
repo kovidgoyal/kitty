@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import re
 import socket
 import sys
@@ -10,7 +11,7 @@ import types
 from functools import partial
 
 from .cli import emph, parse_args
-from .config import parse_send_text_bytes
+from .config import parse_config, parse_send_text_bytes
 from .constants import appname, version
 from .tabs import SpecialWindow
 from .utils import non_blocking_read, parse_address_spec, read_with_timeout
@@ -464,6 +465,69 @@ def get_text(boss, window, payload):
     else:
         ans = window.as_text(as_ansi=bool(payload['ansi']), add_history=True)
     return ans
+# }}}
+
+
+# set_colors {{{
+@cmd(
+    'Set terminal colors',
+    'Set the terminal colors for the specified windows/tabs (defaults to active window). You can either specify the path to a conf file'
+    ' (in the same format as kitty.conf) to read the colors from or you can specify individual colors,'
+    ' for example: kitty @ set-colors foreground=red background=white',
+    options_spec='''\
+--all -a
+type=bool-set
+By default, colors are only changed for the currently active window. This option will
+cause colors to be changed in all windows.
+
+
+--configured -c
+type=bool-set
+Also change the configured colors (i.e. the colors kitty will use for new
+windows or after a reset).
+''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t'),
+    argspec='COLOR_OR_FILE ...'
+)
+def cmd_set_colors(global_opts, opts, args):
+    from .rgb import color_as_int, Color
+    colors = {}
+    for spec in args:
+        if '=' in spec:
+            colors.update(parse_config((spec.replace('=', ' '),)))
+        else:
+            with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
+                colors.update(parse_config(f))
+    colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
+    return {
+            'title': ' '.join(args), 'match_window': opts.match, 'match_tab': opts.match_tab,
+            'all': opts.all, 'configured': opts.configured, 'colors': colors
+    }
+
+
+def set_colors(boss, window, payload):
+    if payload['all']:
+        windows = tuple(boss.all_windows)
+    else:
+        windows = (window or boss.active_window,)
+        if payload['match_window']:
+            windows = tuple(boss.match_windows(payload['match_window']))
+            if not windows:
+                raise MatchError(payload['match_window'])
+        if payload['match_tab']:
+            tabs = tuple(boss.match_tabs(payload['match_tab']))
+            if not tabs:
+                raise MatchError(payload['match_tab'], 'tabs')
+            for tab in tabs:
+                windows += tuple(tab)
+    profiles = tuple(w.screen.color_profile for w in windows)
+    from .fast_data_types import patch_color_profiles
+    patch_color_profiles(payload['colors'], profiles, payload['configured'])
+    boss.patch_colors(payload['colors'], payload['configured'])
+    default_bg_changed = 'background' in payload['colors']
+    for w in windows:
+        if default_bg_changed:
+            boss.default_bg_changed_for(w.id)
+        w.refresh()
 # }}}
 
 
