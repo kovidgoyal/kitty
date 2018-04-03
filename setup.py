@@ -370,7 +370,7 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        run_tool([kenv.cc] + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
+        run_tool([kenv.cc] + kenv.cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
 
 
 def find_c_files():
