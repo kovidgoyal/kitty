@@ -339,10 +339,11 @@ def parallel_run(todo, desc='Compiling {} ...'):
 
 def safe_remove(items, *removals):
     for x in removals:
-        try:
-            items.remove(x)
-        except ValueError:
-            pass
+        while True:
+            try:
+                items.remove(x)
+            except ValueError:
+                break
 
 
 def compile_c_extension(kenv, module, incremental, compilation_database, all_keys, sources, headers):
