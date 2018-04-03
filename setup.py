@@ -337,15 +337,6 @@ def parallel_run(todo, desc='Compiling {} ...'):
         run_tool(failed[1])
 
 
-def safe_remove(items, *removals):
-    for x in removals:
-        while True:
-            try:
-                items.remove(x)
-            except ValueError:
-                break
-
-
 def compile_c_extension(kenv, module, incremental, compilation_database, all_keys, sources, headers):
     prefix = os.path.basename(module)
     objects = [
@@ -379,11 +370,11 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        linker_cflags = list(kenv.cflags)
         # Old versions of clang dont like -pthread being passed to the linker
         # Dont treat linker warnings as errors (linker generates spurious
         # warnings on some old systems)
-        safe_remove(linker_cflags, '-pthread', '-Werror', '-pedantic-errors')
+        unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
+        linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))
         run_tool([kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
 
 
