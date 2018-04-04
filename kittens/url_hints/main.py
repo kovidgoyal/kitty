@@ -158,6 +158,8 @@ def find_urls(pat, line):
             idx = url.rfind('[')
             if idx > -1:
                 e -= len(url) - idx
+        while line[e - 1] in '.,?!' and e > 1:  # remove trailing punctuation
+            e -= 1
         yield s, e
 
 
@@ -213,12 +215,7 @@ def run(args, source_file=None):
         input(_('No URLs found, press Enter to abort.'))
         return
 
-    try:
-        run_loop(args, lines, index_map)
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        input(_('Press Enter to quit'))
+    run_loop(args, lines, index_map)
 
 
 OPTIONS = partial('''\
@@ -252,6 +249,11 @@ def main(args=sys.argv):
         args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
     except SystemExit as e:
         print(e.args[0], file=sys.stderr)
-        input('Press enter to quit...')
+        input(_('Press Enter to quit'))
         return 1
-    run(args, (items or [None])[0])
+    try:
+        run(args, (items or [None])[0])
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input(_('Press Enter to quit'))
