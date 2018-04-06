@@ -13,6 +13,7 @@
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
 :sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
 :sc_input_unicode_character: pass:quotes[`ctrl+shift+u`]
+:sc_kitty_shell_window: pass:quotes[`ctrl+shift+escape`]
 :sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
 :sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
 :sc_move_window_backward: pass:quotes[`ctrl+shift+b`]
@@ -239,7 +240,8 @@ windows are:
 |Input unicode character | {sc_input_unicode_character}
 |Click URL using the keyboard | {sc_run_simple_kitten_text_url_hints}
 |Pass current selection to program | {sc_pass_selection_to_program}
-|Edit kitty config file| {sc_edit_config_file}
+|Edit kitty config file | {sc_edit_config_file}
+|Open a kitty shell | {sc_kitty_shell}
 |===
 
 

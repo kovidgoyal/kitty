@@ -467,6 +467,7 @@ class TabManager:  # {{{
         self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
         self.update_tab_bar()
+        return self.tabs[idx]
 
     def remove(self, tab):
         self._remove_tab(tab)

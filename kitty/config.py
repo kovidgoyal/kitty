@@ -112,7 +112,7 @@ def parse_key_action(action):
         args = rest.split(' ', 2)
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
-    elif func == 'goto_layout':
+    elif func == 'goto_layout' or func == 'kitty_shell':
         args = [rest]
     elif func == 'set_font_size':
         args = (float(rest),)

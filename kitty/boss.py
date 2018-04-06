@@ -120,6 +120,7 @@ class Boss:
         self.os_window_map[os_window_id] = tm
         if dpi_changed:
             self.on_dpi_change(os_window_id)
+        return os_window_id
 
     def list_os_windows(self):
         for os_window_id, tm in self.os_window_map.items():
@@ -189,7 +190,7 @@ class Boss:
     def _new_os_window(self, args, cwd_from=None):
         sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)
-        self.add_os_window(startup_session)
+        return self.add_os_window(startup_session)
 
     def new_os_window(self, *args):
         self._new_os_window(args)
@@ -205,7 +206,7 @@ class Boss:
 
     def _handle_remote_command(self, cmd, window=None):
         response = None
-        if self.opts.allow_remote_control:
+        if self.opts.allow_remote_control or getattr(window, 'allow_remote_control', False):
             try:
                 response = handle_cmd(self, window, cmd)
             except Exception as err:
@@ -552,6 +553,25 @@ class Boss:
             cmd = json.loads(output.partition(' ')[2].strip())
             open_url(cmd['url'], cmd['program'])
 
+    def kitty_shell(self, window_type):
+        cmd = ['kitty', '@']
+        if window_type == 'tab':
+            window = self._new_tab(cmd).active_window
+        elif window_type == 'os_window':
+            os_window_id = self._new_os_window(cmd)
+            window = self.os_window_map[os_window_id].active_window
+        elif window_type == 'overlay':
+            w = self.active_window
+            tab = self.active_tab
+            if w is not None and tab is not None and w.overlay_for is None:
+                window = tab.new_special_window(SpecialWindow(cmd, overlay_for=w.id))
+            else:
+                window = None
+        else:
+            window = self._new_window(cmd)
+        if window is not None:
+            window.allow_remote_control = True
+
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
         tab.set_active_window_idx(window_idx)
@@ -661,7 +681,7 @@ class Boss:
                 special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         tm = self.active_tab_manager
         if tm is not None:
-            tm.new_tab(special_window=special_window, cwd_from=cwd_from)
+            return tm.new_tab(special_window=special_window, cwd_from=cwd_from)
 
     def new_tab(self, *args):
         self._new_tab(args)
@@ -675,9 +695,9 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             if args:
-                tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from))
+                return tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from))
             else:
-                tab.new_window(cwd_from=cwd_from)
+                return tab.new_window(cwd_from=cwd_from)
 
     def new_window(self, *args):
         self._new_window(args)

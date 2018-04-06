@@ -143,6 +143,8 @@ def run_cmd(global_opts, cmd, func, opts, items):
 def real_main(global_opts):
     readline.read_init_file()
     print_help_for_seq.allow_pager = False
+    print('Welcome to the kitty shell!')
+    print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))
 
     while True:
         try:
