@@ -1141,7 +1141,7 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,double,double);
  *  So, for example, if on a US-ASCII keyboard the user presses Shift+= GLFW
  *  will report the text "+" and the key as GLFW_KEY_EQUAL. The reported key takes into
  *  account any current keyboard maps defined in the OS. So with a dvorak mapping, pressing
- *  the "q" key will generate text "d" and GLFW_KEY_D.
+ *  the "s" key will generate text "o" and GLFW_KEY_O.
  *
  *  @param[in] window The window that received the event.
  *  @param[in] key The [keyboard key](@ref keys) that was pressed or released.

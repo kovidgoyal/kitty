@@ -216,16 +216,18 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     struct xkb_compose_table* compose_table = NULL;
     struct xkb_compose_state* compose_state = NULL;
     (void)(map_str);  // not needed on X11
+    GLFWbool ok = GLFW_FALSE;
 
     xkb_glfw_load_keymap(keymap, map_str);
     if (!keymap) _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to compile XKB keymap");
     else {
         xkb_glfw_load_state(keymap, state);
         clean_state = xkb_state_new(keymap);
-        if (!state || ! clean_state) {
+        if (!state || !clean_state) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB state");
             xkb_keymap_unref(keymap); keymap = NULL;
         } else {
+            ok = GLFW_TRUE;
             /* Look up the preferred locale, falling back to "C" as default. */
             locale = getenv("LC_ALL");
             if (!locale) locale = getenv("LC_CTYPE");
@@ -234,20 +236,16 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
             compose_table = xkb_compose_table_new_from_locale(xkb->context, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
             if (!compose_table) {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose table");
-                xkb_keymap_unref(keymap); keymap = NULL;
-                xkb_state_unref(state); state = NULL;
             } else {
                 compose_state = xkb_compose_state_new(compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
                 xkb_compose_table_unref(compose_table); compose_table = NULL;
                 if (!compose_state) {
                     _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose state");
-                    xkb_keymap_unref(keymap); keymap = NULL;
-                    xkb_state_unref(state); state = NULL;
                 }
             }
         }
     }
-    if (keymap && state && clean_state && compose_state) {
+    if (keymap && state && clean_state) {
         if (xkb->composeState) xkb_compose_state_unref(xkb->composeState);
         xkb->composeState = compose_state;
         if (xkb->keymap) xkb_keymap_unref(xkb->keymap);
@@ -272,7 +270,7 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
         }
 #undef S
     }
-    return GLFW_TRUE;
+    return ok;
 }
 
 static inline xkb_mod_mask_t
@@ -311,7 +309,7 @@ static char text[256];
 
 static inline xkb_keysym_t
 compose_symbol(_GLFWXKBData *xkb, xkb_keysym_t sym) {
-    if (sym == XKB_KEY_NoSymbol) return sym;
+    if (sym == XKB_KEY_NoSymbol || !xkb->composeState) return sym;
     if (xkb_compose_state_feed(xkb->composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
     switch (xkb_compose_state_get_status(xkb->composeState)) {
         case XKB_COMPOSE_COMPOSED:
