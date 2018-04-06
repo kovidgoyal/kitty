@@ -98,3 +98,13 @@ instance of kitty using the `--to` command line argument to `kitty @`. For examp
 Note that is all you want to do is run a single kitty "daemon" and have subsequent
 kitty invocations appear as new top-level windows, you can use the simpler `--single-instance`
 option, see `kitty --help` for that.
+
+== The builtin kitty shell
+
+You can explore the kitty command language more easily using the builtin kitty
+shell. Run `kitty @` with no arguments and you will be dropped into the kitty
+shell with completion for kitty command names and options.
+
+You can even open the kitty shell inside a running kitty using a simple
+keyboard shortcut (`ctrl+shift+escape` by default). This has the added
+advantage that you dont need to use `allow_remote_control` to make it work.
