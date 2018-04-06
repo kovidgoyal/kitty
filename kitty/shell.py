@@ -8,12 +8,46 @@ import shlex
 import sys
 import traceback
 import types
+from functools import lru_cache
 
-from .cli import emph, green, italic, print_help_for_seq, title
+from .cli import (
+    emph, green, italic, parse_option_spec, print_help_for_seq, title
+)
 from .cmds import cmap, display_subcommand_help, parse_subcommand_cli
 from .constants import cache_dir, version
 
 all_commands = tuple(sorted(cmap))
+match_commands = tuple(sorted(all_commands + ('exit', 'help', 'quit')))
+
+
+def cmd_names_matching(prefix):
+    for cmd in match_commands:
+        if not prefix or cmd.startswith(prefix):
+            yield cmd + ' '
+
+
+@lru_cache()
+def options_for_cmd(cmd):
+    alias_map = {}
+    try:
+        func = cmap[cmd]
+    except KeyError:
+        return (), alias_map
+    seq, disabled = parse_option_spec(func.options_spec)
+    ans = []
+    for opt in seq:
+        if isinstance(opt, str):
+            continue
+        for alias in opt['aliases']:
+            ans.append(alias)
+            alias_map[alias] = opt
+    return tuple(sorted(ans)), alias_map
+
+
+def options_matching(prefix, aliases, alias_map):
+    for alias in aliases:
+        if (not prefix or alias.startswith(prefix)) and alias.startswith('--'):
+            yield alias + ' '
 
 
 class Completer:
@@ -28,14 +62,23 @@ class Completer:
         self.history_path = os.path.join(ddir, 'shell.history')
 
     def complete(self, text, state):
-        response = None
-        return response
+        if state == 0:
+            line = readline.get_line_buffer()
+            cmdline = shlex.split(line)
+            if len(cmdline) < 2 and not line.endswith(' '):
+                self.matches = list(cmd_names_matching(text))
+            else:
+                self.matches = list(options_matching(text, *options_for_cmd(cmdline[0])))
+        if state < len(self.matches):
+            return self.matches[state]
 
     def __enter__(self):
         if os.path.exists(self.history_path):
             readline.read_history_file(self.history_path)
         readline.set_completer(self.complete)
         readline.parse_and_bind('tab: complete')
+        delims = readline.get_completer_delims()
+        readline.set_completer_delims(delims.replace('-', ''))
         return self
 
     def __exit__(self, *a):
@@ -107,6 +150,7 @@ def real_main(global_opts):
         except EOFError:
             break
         except KeyboardInterrupt:
+            print()
             continue
         if not cmdline:
             continue
@@ -142,6 +186,7 @@ def real_main(global_opts):
                 print_err(e)
                 continue
             except KeyboardInterrupt:
+                print()
                 continue
             except Exception:
                 print_err('Unhandled error:')
@@ -151,7 +196,8 @@ def real_main(global_opts):
 
 def main(global_opts):
     try:
-        real_main(global_opts)
+        with Completer():
+            real_main(global_opts)
     except Exception:
         traceback.print_exc()
         input('Press enter to quit...')
