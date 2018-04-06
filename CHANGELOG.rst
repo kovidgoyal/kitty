@@ -13,7 +13,7 @@ version 0.9.0 [future]
   support XCompose and dead keys and also react to keyboard remapping/layout
   change without needing a restart.
 
-- Add support for multiple-key shortcuts
+- Add support for multiple-key-sequence shortcuts
 
 - A new remote control command "set-colors" to change the current and/or
   configured colors.
