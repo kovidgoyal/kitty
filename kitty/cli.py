@@ -288,6 +288,7 @@ def wrap(text, limit=80):
 
 def print_help_for_seq(seq, usage, message, appname):
     from kitty.icat import screen_size
+    screen_size.changed = True
     try:
         linesz = min(screen_size().cols, 76)
     except EnvironmentError:
@@ -337,12 +338,15 @@ def print_help_for_seq(seq, usage, message, appname):
             a('')
 
     text = '\n'.join(blocks) + '\n\n' + version()
-    if sys.stdout.isatty():
+    if print_help_for_seq.allow_pager and sys.stdout.isatty():
         p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
         p.communicate(text.encode('utf-8'))
         raise SystemExit(p.wait())
     else:
         print(text)
+
+
+print_help_for_seq.allow_pager = True
 
 
 def defval_for_opt(opt):

@@ -93,7 +93,9 @@ def main(args):
     global_opts, items = parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))
 
     if not items:
-        raise SystemExit('You must specify a command')
+        from kitty.shell import main
+        main(global_opts)
+        return
     cmd = items[0]
     try:
         func = cmap[cmd]

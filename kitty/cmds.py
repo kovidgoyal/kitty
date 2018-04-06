@@ -538,3 +538,10 @@ cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 def parse_subcommand_cli(func, args):
     opts, items = parse_args(args[1:], (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name))
     return opts, items
+
+
+def display_subcommand_help(func):
+    try:
+        parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name)
+    except SystemExit:
+        pass
