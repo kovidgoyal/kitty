@@ -43,7 +43,7 @@ def codepoint_ok(code):
 @lru_cache(maxsize=256)
 def points_for_word(w):
     from .unicode_names import codepoints_for_word
-    return codepoints_for_word(w)
+    return codepoints_for_word(w.lower())
 
 
 @lru_cache(maxsize=4096)
@@ -223,6 +223,8 @@ class Table:
         return self.text
 
     def move_current(self, rows=0, cols=0):
+        if len(self.codepoints) == 0:
+            return
         if cols:
             self.current_idx = (self.current_idx + len(self.codepoints) + cols) % len(self.codepoints)
             self.layout_dirty = True
