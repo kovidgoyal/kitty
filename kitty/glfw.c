@@ -223,7 +223,11 @@ static GLFWimage logo = {0};
 static PyObject*
 set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
     Py_ssize_t sz;
-    if(!PyArg_ParseTuple(args, "s#ii", &(logo.pixels), &sz, &(logo.width), &(logo.height))) return NULL;
+    const char *logo_data;
+    if(!PyArg_ParseTuple(args, "s#ii", &(logo_data), &sz, &(logo.width), &(logo.height))) return NULL;
+    sz = (MAX(logo.width * logo.height, sz));
+    logo.pixels = malloc(sz);
+    if (logo.pixels) memcpy(logo.pixels, logo_data, sz);
     Py_RETURN_NONE;
 }
 
@@ -771,10 +775,19 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+void cleanup_glfw(void) {
+    if (logo.pixels) free(logo.pixels);
+    logo.pixels = NULL;
+}
+
 // constants {{{
 bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
+    if (Py_AtExit(cleanup_glfw) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the glfw exit handler");
+        return false;
+    }
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
