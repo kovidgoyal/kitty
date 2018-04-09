@@ -522,6 +522,7 @@ Really, the correct solution for this is to convince the OpenSSH maintainers to
 have ssh do this automatically when connecting to a server, so that all
 terminals work transparently.
 
+Sometimes it is not feasible to manually install kitty terminfo on every remote, e.g. if you have hundreds of servers at work. In that case, you can create the following shell alias: `alias ssh='TERM=xterm-256color \ssh'`. Beware, this changes the TERM environment variable and can break many terminal programs, make sure you understand the consequences of this action.
 
 === How do I change the colors in a running kitty instance?
 
