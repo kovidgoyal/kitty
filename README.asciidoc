@@ -515,9 +515,7 @@ Either install kitty on the server, or simply copy over the terminfo files,
 using:
 
 ....
-ssh myserver mkdir -p \~/.terminfo
-infocmp xterm-kitty | ssh myserver "cat > /tmp/kitty.terminfo"
-ssh myserver tic -x -o \~/.terminfo /tmp/kitty.terminfo
+infocmp xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 ....
 
 Really, the correct solution for this is to convince the OpenSSH maintainers to
