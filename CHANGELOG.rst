@@ -18,6 +18,9 @@ version 0.9.0 [future]
 - A new remote control command "set-colors" to change the current and/or
   configured colors.
 
+- When double-clicking to select a word, select wrods that continue onto the
+  next/prev line as well.
+
 - Add an "include" directive for the config files to read multiple config files
 
 - Improve mouse selection for windows with padding. Moving the mouse into the

@@ -158,7 +158,7 @@ bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, size_t sz);
 bool screen_is_cursor_visible(Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
-bool screen_selection_range_for_word(Screen *self, index_type x, index_type y, index_type *start, index_type *end);
+bool screen_selection_range_for_word(Screen *self, index_type x, index_type *, index_type *, index_type *start, index_type *end);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, SelectionExtendMode);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool ended);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);

@@ -260,9 +260,10 @@ multi_click(Window *w, unsigned int count) {
     index_type start, end;
     bool found_selection = false;
     SelectionExtendMode mode = EXTEND_CELL;
+    unsigned int y1 = w->mouse_cell_y, y2 = w->mouse_cell_y;
     switch(count) {
         case 2:
-            found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, w->mouse_cell_y, &start, &end);
+            found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, &y1, &y2, &start, &end);
             mode = EXTEND_WORD;
             break;
         case 3:
@@ -273,8 +274,8 @@ multi_click(Window *w, unsigned int count) {
             break;
     }
     if (found_selection) {
-        screen_start_selection(screen, start, w->mouse_cell_y, false, mode);
-        screen_update_selection(screen, end, w->mouse_cell_y, false);
+        screen_start_selection(screen, start, y1, false, mode);
+        screen_update_selection(screen, end, y2, false);
     }
 }
 
