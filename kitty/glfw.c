@@ -74,7 +74,7 @@ is_window_ready_for_callbacks() {
 
 static inline void
 show_mouse_cursor(GLFWwindow *w) {
-    if (glfwGetInputMode(w, GLFW_CURSOR) != GLFW_CURSOR_NORMAL) { glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL); }
+    glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
 static void
@@ -620,9 +620,7 @@ set_os_window_title(OSWindow *w, const char *title) {
 
 void
 hide_mouse(OSWindow *w) {
-    if (glfwGetInputMode(w->handle, GLFW_CURSOR) != GLFW_CURSOR_HIDDEN) {
-        glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    }
+    glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
 void
