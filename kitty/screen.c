@@ -1776,14 +1776,13 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     if (ended) self->selection.in_progress = false;
     index_type start, end;
     bool found = false;
+    bool extending_leftwards = self->selection.end_y < self->selection.start_y || (self->selection.end_y == self->selection.start_y && self->selection.end_x < self->selection.start_x);
     switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
             index_type y1 = y, y2;
             found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end);
             if (found) {
-#define SMALLER(x1, y1, x2, y2) (y1 < y2 || (y1 == y2 && x1 < x2))
-                if (SMALLER(self->selection.end_x, self->selection.end_y, self->selection.start_x, self->selection.start_y)) {
-                    // extend leftwards
+                if (extending_leftwards) {
                     self->selection.end_x = start; self->selection.end_y = y1;
                     y1 = self->selection.start_y;
                     found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
@@ -1791,7 +1790,6 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
                         self->selection.start_x = end; self->selection.start_y = y2;
                     }
                 } else {
-                    // extend rightwards
                     self->selection.end_x = end; self->selection.end_y = y2;
                     y1 = self->selection.start_y;
                     found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
@@ -1800,13 +1798,21 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
                     }
 
                 }
-#undef SMALLER
             }
             break;
         }
         case EXTEND_LINE:
-            found = screen_selection_range_for_line(self, y, &start, &end);
-            if (found) self->selection.end_x = end;
+            if (extending_leftwards) {
+                found = screen_selection_range_for_line(self, self->selection.end_y, &start, &end);
+                if (found) { self->selection.end_x = start; }
+                found = screen_selection_range_for_line(self, self->selection.start_y, &start, &end);
+                if (found) { self->selection.start_x = end; }
+            } else {
+                found = screen_selection_range_for_line(self, self->selection.start_y, &start, &end);
+                if (found) { self->selection.start_x = start; }
+                found = screen_selection_range_for_line(self, self->selection.end_y, &start, &end);
+                if (found) { self->selection.end_x = end; }
+            }
             break;
         case EXTEND_CELL:
             break;
