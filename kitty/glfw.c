@@ -334,7 +334,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Too many windows");
         return NULL;
     }
-    bool want_semi_transparent = (1.0 - OPT(background_opacity) > 0.1) ? true : false;
+    bool want_semi_transparent = (1.0 - OPT(background_opacity) >= 0.01) ? true : false;
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     if (glfw_window == NULL) {
