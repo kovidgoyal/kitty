@@ -479,11 +479,11 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args, type_of_input='none'):
+    def _run_kitten(self, kitten, args=(), type_of_input='none'):
         w = self.active_window
         tab = self.active_tab
         if w is not None and tab is not None and w.overlay_for is None:
-            orig_args = args[:]
+            orig_args, args = list(args), list(args)
             args[0:0] = [config_dir, kitten]
             if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
                 data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
