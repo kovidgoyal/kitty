@@ -470,9 +470,6 @@ class Boss:
         cmd = ['kitty', '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + editor + [confpath]
         self.new_os_window(*cmd)
 
-    def input_unicode_character(self):
-        self.run_kitten('none', 'unicode_input')
-
     def get_output(self, source_window, num_lines=1):
         output = ''
         s = source_window.screen
@@ -482,35 +479,10 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def set_tab_title(self):
+    def _run_kitten(self, kitten, args, type_of_input='none'):
         w = self.active_window
         tab = self.active_tab
         if w is not None and tab is not None and w.overlay_for is None:
-            args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.')]
-            overlay_window = tab.new_special_window(
-                SpecialWindow(
-                    ['kitty', '+runpy', 'from kittens.ask.main import main; main()'] + args,
-                    overlay_for=w.id))
-            overlay_window.action_on_close = partial(self.do_set_tab_title, tab.id)
-
-    def do_set_tab_title(self, tab_id, source_window):
-        output = self.get_output(source_window)
-        if output.startswith('OK: '):
-            title = json.loads(output.partition(' ')[2].strip())
-            tm = self.active_tab_manager
-            if tm is not None and title:
-                for tab in tm.tabs:
-                    if tab.id == tab_id:
-                        tab.set_title(title)
-                        break
-
-    def run_kitten(self, type_of_input, kitten, *args):
-        import shlex
-        w = self.active_window
-        tab = self.active_tab
-        if w is not None and tab is not None and w.overlay_for is None:
-            cmdline = args[0] if args else ''
-            args = shlex.split(cmdline) if cmdline else []
             orig_args = args[:]
             args[0:0] = [config_dir, kitten]
             if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
@@ -528,11 +500,35 @@ class Boss:
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
 
+    def run_kitten(self, type_of_input, kitten, *args):
+        import shlex
+        cmdline = args[0] if args else ''
+        args = shlex.split(cmdline) if cmdline else []
+        self._run_kitten(kitten, args, type_of_input)
+
     def on_kitten_finish(self, target_window_id, end_kitten, source_window):
         output = self.get_output(source_window, num_lines=None)
         if output.startswith('OK: '):
             data = json.loads(output.partition(' ')[2].strip())
             end_kitten(data, target_window_id, self)
+
+    def input_unicode_character(self):
+        self._run_kitten('unicode_input')
+
+    def set_tab_title(self):
+        tab = self.active_tab
+        if tab:
+            args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.'), 'do_set_tab_title', str(tab.id)]
+            self._run_kitten('ask', args)
+
+    def do_set_tab_title(self, title, tab_id):
+        tm = self.active_tab_manager
+        if tm is not None and title:
+            tab_id = int(tab_id)
+            for tab in tm.tabs:
+                if tab.id == tab_id:
+                    tab.set_title(title)
+                    break
 
     def kitty_shell(self, window_type):
         cmd = ['kitty', '@']
