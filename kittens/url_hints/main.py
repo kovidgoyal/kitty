@@ -212,6 +212,8 @@ OPTIONS = partial('''\
 default=default
 What program to use to open matched URLs. Defaults
 to the default URL open program for the operating system.
+Use a value of - to paste the URL into the terminal window
+instead.
 
 
 --regex
@@ -239,4 +241,9 @@ def main(args):
 
 def handle_result(args, data, target_window_id, boss):
     program = data['program']
-    boss.open_url(data['url'], None if program == 'default' else program)
+    if program == '-':
+        w = boss.window_id_map.get(target_window_id)
+        if w is not None:
+            w.paste(data['url'])
+    else:
+        boss.open_url(data['url'], None if program == 'default' else program)
