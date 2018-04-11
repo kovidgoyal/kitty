@@ -46,6 +46,8 @@ def launch(args):
     if result is not None:
         import json
         print('OK:', json.dumps(result))
+    sys.stderr.flush()
+    sys.stdout.flush()
 
 
 def main():
