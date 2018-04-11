@@ -108,7 +108,9 @@ def parse_key_action(action):
         args = tuple(map(parse_key_action, filter(None, parts)))
     elif func == 'send_text':
         args = rest.split(' ', 1)
-    elif func == 'run_simple_kitten':
+    elif func in ('run_kitten', 'run_simple_kitten'):
+        if func == 'run_simple_kitten':
+            func = 'run_kitten'
         args = rest.split(' ', 2)
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
@@ -389,7 +391,7 @@ def parse_defaults(lines, check_keys=False):
 
 Options, defaults = init_config(default_config_path, parse_defaults)
 actions = frozenset(all_key_actions) | frozenset(
-    'combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
+    'run_simple_kitten combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()
 )
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})

@@ -5,7 +5,6 @@
 import os
 import string
 import subprocess
-import sys
 from functools import lru_cache
 from gettext import gettext as _
 
@@ -454,26 +453,24 @@ class UnicodeInput(Handler):
         self.refresh()
 
 
-def run_loop(args):
+def main(args):
     loop = Loop()
     with cached_values_for('unicode-input') as cached_values:
         handler = UnicodeInput(cached_values)
         loop.loop(handler)
         if handler.current_char and loop.return_code == 0:
-            print('OK:', hex(ord(handler.current_char))[2:])
             try:
                 handler.recent.remove(ord(handler.current_char))
             except Exception:
                 pass
             recent = [ord(handler.current_char)] + handler.recent
             cached_values['recent'] = recent[:len(DEFAULT_SET)]
-    return loop.return_code
+            return handler.current_char
+    if loop.return_code != 0:
+        raise SystemExit(loop.return_code)
 
 
-def main(args=sys.argv):
-    try:
-        raise SystemExit(run_loop(args))
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        input(_('Press Enter to quit.'))
+def handle_result(args, current_char, target_window_id, boss):
+    w = boss.window_id_map.get(target_window_id)
+    if w is not None:
+        w.paste(current_char)

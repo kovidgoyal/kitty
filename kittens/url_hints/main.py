@@ -4,7 +4,6 @@
 
 import re
 import string
-import subprocess
 import sys
 from collections import namedtuple
 from functools import lru_cache, partial
@@ -12,7 +11,6 @@ from gettext import gettext as _
 
 from kitty.cli import parse_args
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
-from kitty.utils import command_for_open
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -178,16 +176,7 @@ def run_loop(args, lines, index_map):
     handler = URLHints(lines, index_map)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        if args.in_kitty:
-            import json
-            print('OK:', json.dumps({'url': handler.chosen, 'program': args.program, 'action': 'open_with'}))
-        else:
-            cmd = command_for_open(args.program)
-            ret = subprocess.Popen(cmd + [handler.chosen]).wait()
-            if ret != 0:
-                print('URL handler "{}" failed with return code: {}'.format(' '.join(cmd), ret), file=sys.stderr)
-                input('Press Enter to quit')
-                loop.return_code = ret
+        return {'url': handler.chosen, 'program': args.program}
     raise SystemExit(loop.return_code)
 
 
@@ -215,7 +204,7 @@ def run(args, source_file=None):
         input(_('No URLs found, press Enter to abort.'))
         return
 
-    run_loop(args, lines, index_map)
+    return run_loop(args, lines, index_map)
 
 
 OPTIONS = partial('''\
@@ -234,16 +223,10 @@ expression instead.
 default={0}
 Comma separated list of recognized URL prefixes. Defaults to:
 {0}
-
-
---in-kitty
-type=bool-set
-Output the URL instead of opening it. Intended for use from within
-kitty.
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
 
-def main(args=sys.argv):
+def main(args):
     msg = 'Highlight URLs inside the specified text'
     try:
         args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
@@ -251,9 +234,9 @@ def main(args=sys.argv):
         print(e.args[0], file=sys.stderr)
         input(_('Press Enter to quit'))
         return 1
-    try:
-        run(args, (items or [None])[0])
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        input(_('Press Enter to quit'))
+    return run(args, (items or [None])[0])
+
+
+def handle_result(args, data, target_window_id, boss):
+    program = data['program']
+    boss.open_url(data['url'], None if program == 'default' else program)

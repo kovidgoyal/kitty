@@ -15,7 +15,7 @@ from .cli import create_opts, parse_args
 from .config import (
     MINIMUM_FONT_SIZE, initial_window_size, prepare_config_file_for_editing
 )
-from .constants import appname, editor, set_boss
+from .constants import appname, editor, set_boss, config_dir
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -471,14 +471,7 @@ class Boss:
         self.new_os_window(*cmd)
 
     def input_unicode_character(self):
-        w = self.active_window
-        tab = self.active_tab
-        if w is not None and tab is not None and w.overlay_for is None:
-            overlay_window = tab.new_special_window(
-                SpecialWindow(
-                    ['kitty', '+runpy', 'from kittens.unicode_input.main import main; main()'],
-                    overlay_for=w.id))
-            overlay_window.action_on_close = partial(self.send_unicode_character, w.id)
+        self.run_kitten('none', 'unicode_input')
 
     def get_output(self, source_window, num_lines=1):
         output = ''
@@ -488,19 +481,6 @@ class Boss:
         for i in range(min(num_lines, s.lines)):
             output += str(s.linebuf.line(i))
         return output
-
-    def send_unicode_character(self, target_window_id, source_window):
-        w = self.window_id_map.get(target_window_id)
-        if w is not None:
-            output = self.get_output(source_window)
-            if output.startswith('OK: '):
-                try:
-                    text = chr(int(output.partition(' ')[2], 16))
-                except Exception:
-                    import traceback
-                    traceback.print_exc()
-                else:
-                    w.paste(text)
 
     def set_tab_title(self):
         w = self.active_window
@@ -524,34 +504,35 @@ class Boss:
                         tab.set_title(title)
                         break
 
-    def run_simple_kitten(self, type_of_input, kitten, *args):
+    def run_kitten(self, type_of_input, kitten, *args):
         import shlex
         w = self.active_window
         tab = self.active_tab
         if w is not None and tab is not None and w.overlay_for is None:
             cmdline = args[0] if args else ''
             args = shlex.split(cmdline) if cmdline else []
-            if kitten == 'url_hints':
-                args[0:0] = ['--in-kitty', '--program', self.opts.open_url_with]
+            orig_args = args[:]
+            args[0:0] = [config_dir, kitten]
             if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
                 data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
             elif type_of_input == 'none':
                 data = None
             else:
                 raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
+            from kittens.runner import create_kitten_handler
+            end_kitten = create_kitten_handler(kitten, orig_args)
             overlay_window = tab.new_special_window(
                 SpecialWindow(
-                    ['kitty', '+runpy', 'from kittens.{}.main import main; main()'.format(kitten)] + args,
+                    ['kitty', '+runpy', 'from kittens.runner import main; main()'] + args,
                     stdin=data,
                     overlay_for=w.id))
-            if kitten == 'url_hints':
-                overlay_window.action_on_close = self.open_hinted_url
+            overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
 
-    def open_hinted_url(self, source_window):
+    def on_kitten_finish(self, target_window_id, end_kitten, source_window):
         output = self.get_output(source_window, num_lines=None)
         if output.startswith('OK: '):
-            cmd = json.loads(output.partition(' ')[2].strip())
-            open_url(cmd['url'], cmd['program'])
+            data = json.loads(output.partition(' ')[2].strip())
+            end_kitten(data, target_window_id, self)
 
     def kitty_shell(self, window_type):
         cmd = ['kitty', '@']
@@ -580,12 +561,12 @@ class Boss:
             old_focus.focus_changed(False)
         tab.active_window.focus_changed(True)
 
-    def open_url(self, url):
+    def open_url(self, url, program=None):
         if url:
-            open_url(url, self.opts.open_url_with)
+            open_url(url, program or self.opts.open_url_with)
 
-    def open_url_lines(self, lines):
-        self.open_url(''.join(lines))
+    def open_url_lines(self, lines, program=None):
+        self.open_url(''.join(lines), program)
 
     def destroy(self):
         self.shutting_down = True
