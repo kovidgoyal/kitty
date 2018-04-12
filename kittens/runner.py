@@ -8,6 +8,12 @@ import os
 import sys
 from functools import partial
 
+aliases = {'url_hints': 'hints'}
+
+
+def resolved_kitten(k):
+    return aliases.get(k, k)
+
 
 def import_kitten_main_module(config_dir, kitten):
     if kitten.endswith('.py'):
@@ -24,18 +30,21 @@ def import_kitten_main_module(config_dir, kitten):
         exec(code, g)
         return {'start': g['main'], 'end': g['handle_result']}
     else:
+        kitten = resolved_kitten(kitten)
         m = importlib.import_module('kittens.{}.main'.format(kitten))
         return {'start': m.main, 'end': m.handle_result}
 
 
 def create_kitten_handler(kitten, orig_args):
     from kitty.constants import config_dir
+    kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
     return partial(m['end'], [kitten] + orig_args)
 
 
 def launch(args):
     config_dir, kitten = args[:2]
+    kitten = resolved_kitten(kitten)
     del args[:2]
     args = [kitten] + args
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
@@ -48,6 +57,12 @@ def launch(args):
         print('OK:', json.dumps(result))
     sys.stderr.flush()
     sys.stdout.flush()
+
+
+def run_kitten(kitten):
+    import runpy
+    kitten = resolved_kitten(kitten)
+    runpy.run_module('kittens.{}.main'.format(kitten), run_name='__main__')
 
 
 def main():

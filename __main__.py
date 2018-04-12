@@ -32,10 +32,10 @@ def launch(args):
 
 
 def run_kitten(args):
-    import runpy
     kitten = args[1]
     sys.argv = args[1:]
-    runpy.run_module('kittens.{}.main'.format(kitten), run_name='__main__')
+    from kittens.runner import run_kitten
+    run_kitten(kitten)
 
 
 def namespaced(args):
