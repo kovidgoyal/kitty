@@ -143,7 +143,7 @@ class URLHints(Handler):
 
 def regex_finditer(pat, line):
     for m in pat.finditer(line):
-        s, e = m.span()
+        s, e = m.span(pat.groups)
         if e - s > 2:
             yield s, e
 
@@ -220,7 +220,9 @@ instead.
 
 --regex
 Instead of searching for URLs search for the specified regular
-expression instead.
+expression instead. If you specify a group in the regular expression
+only the group will be matched. This allow you to match text ignoring a
+prefix/suffix, as needed.
 
 
 --url-prefixes
@@ -249,3 +251,10 @@ def handle_result(args, data, target_window_id, boss):
             w.paste(data['url'])
     else:
         boss.open_url(data['url'], None if program == 'default' else program)
+
+
+if __name__ == '__main__':
+    # Run with kitty +kitten url_hints
+    ans = main(sys.argv)
+    if ans:
+        print(ans)
