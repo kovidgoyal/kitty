@@ -32,9 +32,10 @@ only use this if you are running a program that does not set titles.
 
 --config
 type=list
-Specify a path to the configuration file(s) to use.
-Can be specified multiple times to read multiple configuration files in
-sequence, which are merged.  Use the special value NONE to not load a config
+Specify a path to the configuration file(s) to use. All configuration files are
+merged onto the builtin kitty.conf, overriding the builtin values. This option
+can be specified multiple times to read multiple configuration files in
+sequence, which are merged. Use the special value NONE to not load a config
 file.
 
 If this option is not specified, config files are searched for in the order:
@@ -45,8 +46,9 @@ config file.
 If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
 directory is always used and the above searching does not happen.
 
-If "/etc/xdg/kitty/kitty.conf" exists it is used as a base config file onto
-which any user config files are merged.
+If "/etc/xdg/kitty/kitty.conf" exists it is merged before (i.e. with lower
+priority) than any user config files are merged. It can be used to specify
+system-wide defaults for all users.
 
 
 --override -o
