@@ -47,8 +47,8 @@ If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
 directory is always used and the above searching does not happen.
 
 If "/etc/xdg/kitty/kitty.conf" exists it is merged before (i.e. with lower
-priority) than any user config files are merged. It can be used to specify
-system-wide defaults for all users.
+priority) than any user config files. It can be used to specify system-wide
+defaults for all users.
 
 
 --override -o
@@ -480,7 +480,7 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
-            appname=appname, macos_confpath='~/Library/Preferences/kitty/kitty.conf' if is_macos else '',
+            appname=appname, macos_confpath='~/Library/Preferences/kitty/kitty.conf, ' if is_macos else '',
             window_layout_choices=', '.join(all_layouts)
         )
     return options_spec.ans
