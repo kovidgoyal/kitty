@@ -180,13 +180,7 @@ def run_loop(args, lines, index_map):
     raise SystemExit(loop.return_code)
 
 
-def run(args, source_file=None):
-    if source_file is None:
-        text = sys.stdin.buffer.read().decode('utf-8')
-        sys.stdin = open('/dev/tty')
-    else:
-        with open(source_file, 'r') as f:
-            text = f.read()
+def run(args, text):
     if args.regex is None:
         from .url_regex import url_delimiters
         url_pat = '(?:{})://[^{}]{{3,}}'.format(
@@ -233,14 +227,26 @@ Comma separated list of recognized URL prefixes. Defaults to:
 
 
 def main(args):
-    msg = 'Highlight URLs inside the specified text'
-    try:
-        args, items = parse_args(args[1:], OPTIONS, '[path to file or omit to use stdin]', msg, 'url_hints')
-    except SystemExit as e:
-        print(e.args[0], file=sys.stderr)
+    msg = 'Select text from the screen using the keyboard'
+    text = None
+    if sys.stdin.isatty():
+        print('You must pass the text to be hinted on STDIN', file=sys.stderr)
         input(_('Press Enter to quit'))
-        return 1
-    return run(args, (items or [None])[0])
+        return
+    text = sys.stdin.buffer.read().decode('utf-8')
+    sys.stdin = open('/dev/tty')
+    try:
+        args, items = parse_args(args[1:], OPTIONS, '', msg, 'url_hints')
+    except SystemExit as e:
+        if e.code != 0:
+            print(e.args[0], file=sys.stderr)
+            input(_('Press Enter to quit'))
+        return
+    if items:
+        print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
+        input(_('Press Enter to quit'))
+        return
+    return run(args, text)
 
 
 def handle_result(args, data, target_window_id, boss):
