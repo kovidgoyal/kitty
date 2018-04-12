@@ -493,10 +493,12 @@ class Boss:
                 raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
             from kittens.runner import create_kitten_handler
             end_kitten = create_kitten_handler(kitten, orig_args)
+            copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with')}
             overlay_window = tab.new_special_window(
                 SpecialWindow(
                     ['kitty', '+runpy', 'from kittens.runner import main; main()'] + args,
                     stdin=data,
+                    env={'KITTY_COMMON_OPTS': json.dumps(copts)},
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
 

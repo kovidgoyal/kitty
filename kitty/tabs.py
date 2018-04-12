@@ -21,11 +21,11 @@ from .utils import color_as_int, log_error
 from .window import Window, calculate_gl_geometry
 
 TabbarData = namedtuple('TabbarData', 'title is_active is_last')
-SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for')
+SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for env')
 
 
-def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None):
-    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for)
+def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None):
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env)
 
 
 class Tab:  # {{{
@@ -124,25 +124,27 @@ class Tab:  # {{{
         self.current_layout = self.create_layout_object(layout_name)
         self.relayout()
 
-    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None):
+    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None, env=None):
         if cmd is None:
             if use_shell:
                 cmd = resolved_shell(self.opts)
             else:
                 cmd = self.args.args or resolved_shell(self.opts)
-        env = {}
+        fenv = {}
+        if env:
+            fenv.update(env)
         if not is_macos and not is_wayland:
             try:
-                env['WINDOWID'] = str(x11_window_id(self.os_window_id))
+                fenv['WINDOWID'] = str(x11_window_id(self.os_window_id))
             except Exception:
                 import traceback
                 traceback.print_exc()
-        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, env, cwd_from)
+        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, fenv, cwd_from)
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None):
-        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd)
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None):
+        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env)
         window = Window(self, child, self.opts, self.args, override_title=override_title)
         if overlay_for is not None:
             overlaid = next(w for w in self.windows if w.id == overlay_for)
