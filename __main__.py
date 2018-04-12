@@ -31,6 +31,13 @@ def launch(args):
     runpy.run_path(args[1], run_name='__main__')
 
 
+def run_kitten(args):
+    import runpy
+    kitten = args[1]
+    sys.argv = args[1:]
+    runpy.run_module('kittens.{}.main'.format(kitten), run_name='__main__')
+
+
 def namespaced(args):
     func = namespaced_entry_points[args[1]]
     func(args[1:])
@@ -42,6 +49,7 @@ entry_points = {
     'list-fonts': list_fonts,
     'runpy': runpy,
     'launch': launch,
+    'kitten': run_kitten,
 
     '@': remote_control,
     '+': namespaced,
