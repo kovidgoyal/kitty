@@ -397,30 +397,30 @@ actions = frozenset(all_key_actions) | frozenset(
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
-def merge_keymaps(defaults, newvals):
-    ans = defaults.copy()
-    for k, v in newvals.items():
+def merge_keys(ans, defaults, newvals):
+    ans['keymap'] = defaults['keymap'].copy()
+    ans['sequence_map'] = {t: r.copy() for t, r in defaults['sequence_map'].items()}
+    # Merge the keymap
+    for k, v in newvals['keymap'].items():
+        ans['sequence_map'].pop(k, None)
         f = v.func
         if f in no_op_actions:
-            ans.pop(k, None)
-            continue
-        if f in actions:
-            ans[k] = v
-    return ans
-
-
-def merge_sequence_maps(defaults, newvals):
-    ans = {t: r.copy() for t, r in defaults.items()}
-    for trigger, rest_map in newvals.items():
-        s = ans.setdefault(trigger, {})
+            ans['keymap'].pop(k, None)
+        elif f in actions:
+            ans['keymap'][k] = v
+    # Merge the sequence map
+    for trigger, rest_map in newvals['sequence_map'].items():
+        ans['keymap'].pop(trigger, None)
+        if trigger in newvals['keymap']:
+            log_error('The shortcut for {} has conflicting definitions'.format(newvals['keymap'][trigger].func))
+        s = ans['sequence_map'].setdefault(trigger, {})
         for k, v in rest_map.items():
             f = v.func
             if f in no_op_actions:
                 s.pop(k, None)
-                continue
-            if f in actions:
+            elif f in actions:
                 s[k] = v
-    return {k: v for k, v in ans.items() if v}
+    ans['sequence_map'] = {k: v for k, v in ans['sequence_map'].items() if v}
 
 
 def merge_dicts(defaults, newvals):
@@ -433,15 +433,16 @@ def merge_configs(defaults, vals):
     ans = {}
     for k, v in defaults.items():
         if isinstance(v, dict):
-            newvals = vals.get(k, {})
-            if k == 'keymap':
-                ans['keymap'] = merge_keymaps(v, newvals)
-            elif k == 'sequence_map':
-                ans['sequence_map'] = merge_sequence_maps(v, newvals)
-            else:
+            if k not in ('keymap', 'sequence_map'):
+                newvals = vals.get(k, {})
                 ans[k] = merge_dicts(v, newvals)
         else:
             ans[k] = vals.get(k, v)
+    merge_keys(
+            ans,
+            {'keymap': defaults.get('keymap', {}), 'sequence_map': defaults.get('sequence_map', {})},
+            {'keymap': vals.get('keymap', {}), 'sequence_map': vals.get('sequence_map', {})}
+    )
     return ans
 
 
