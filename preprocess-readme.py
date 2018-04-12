@@ -16,8 +16,8 @@ defns = defaultdict(list)
 for line in open('kitty/kitty.conf'):
     if line.startswith('map '):
         _, sc, name = line.split(maxsplit=2)
-        name = name.rstrip().replace(' ', '_')
-        defns[name].append('`' + sc + '`')
+        name = name.rstrip().replace(' ', '_').replace('-', '_')
+        defns[name].append('`' + sc.replace('>', ' → ') + '`')
 
 defns = [
     ':sc_{}: pass:quotes[{}]'.format(name, ' or '.join(defns[name]))

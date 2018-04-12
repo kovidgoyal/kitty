@@ -190,6 +190,10 @@ def run(args, text):
             '|'.join(args.url_prefixes.split(',')), url_delimiters
         )
         finditer = partial(find_urls, re.compile(url_pat))
+    elif args.type == 'path':
+        finditer = partial(regex_finditer, re.compile(r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'))
+    elif args.type == 'line':
+        finditer = partial(regex_finditer, re.compile(r'(?m)^\s*(.+)\s*$'))
     else:
         finditer = partial(regex_finditer, re.compile(args.regex))
     lines = []
@@ -216,7 +220,7 @@ terminal window instead. A value of @ will copy the match to the clipboard.
 
 --type
 default=url
-choices=url,regex
+choices=url,regex,path,line
 The type of text to search for.
 
 

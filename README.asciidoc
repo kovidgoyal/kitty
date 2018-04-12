@@ -32,7 +32,10 @@
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
 :sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
-:sc_run_simple_kitten_text_url_hints: pass:quotes[`ctrl+shift+e`]
+:sc_run_kitten_text_hints: pass:quotes[`ctrl+shift+e`]
+:sc_run_kitten_text_hints___type_line___program__: pass:quotes[`ctrl+shift+p → l`]
+:sc_run_kitten_text_hints___type_path: pass:quotes[`ctrl+shift+p → shift+f`]
+:sc_run_kitten_text_hints___type_path___program__: pass:quotes[`ctrl+shift+p → f`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -69,7 +72,7 @@ link:#layouts[layouts] without needing to use an extra program like tmux
 * Can be link:remote-control.asciidoc[controlled from scripts or the shell prompt], even over SSH.
 
 * Has a framework for _kittens_, small terminal programs that can be used to extend kitty's functionality.
-For example, they are used for link:#unicode-input[Unicode input] and link:#url-hints[URL hints].
+For example, they are used for link:#unicode-input[Unicode input] and link:#url-hints[Hints].
 
 * Supports link:#startup-sessions[startup sessions] which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
@@ -286,12 +289,22 @@ keys/tab to select the character from the displayed matches. You can also type
 a leading period and the index for the match if you dont like to use arrow
 keys.
 
-== URL hints
+== Hints
 
-kitty has a _hints mode_ to click URLs visible on the screen by using only the keyboard.
-Press {sc_run_simple_kitten_text_url_hints} to activate hints mode, as shown below.
+kitty has a _hints mode_ to select and act on arbitrary text snippets currently
+visible on the screen.  For example, you can press {sc_run_kitten_text_hints}
+to choose any URL visible on the screen and then open it using your system
+browser.
 
 image::hints_mode.png?raw=true[URL hints mode]
+
+Similarly, you can press {sc_run_kitten_text_hints___type_path___program__} to
+select anything that looks like a path or filename and then insert it into the
+terminal, very useful for picking files from the output of a git or ls command and
+adding them to the command line for the next command.
+
+The hints kitten is very powerful to see more detailed help on its various
+options and modes of operation, use: `kitty +kitten hints --help`.
 
 == Miscellaneous features
 
