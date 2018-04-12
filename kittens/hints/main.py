@@ -10,6 +10,7 @@ from functools import lru_cache, partial
 from gettext import gettext as _
 
 from kitty.cli import parse_args
+from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
 
 from ..tui.handler import Handler
@@ -208,8 +209,8 @@ OPTIONS = partial('''\
 default=default
 What program to use to open matched text. Defaults
 to the default open program for the operating system.
-Use a value of - to paste the URL into the terminal window
-instead.
+Use a value of - to paste the match into the terminal window
+instead. A value of @ will copy the match to the clipboard.
 
 
 --regex
@@ -257,6 +258,8 @@ def handle_result(args, data, target_window_id, boss):
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
             w.paste(data['url'])
+    elif program == '@':
+        set_clipboard_string(data['url'])
     else:
         boss.open_url(data['url'], None if program == 'default' else program)
 
