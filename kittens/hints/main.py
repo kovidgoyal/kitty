@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
 import string
 import sys
@@ -144,10 +145,10 @@ class Hints(Handler):
         self.write(self.current_text)
 
 
-def regex_finditer(pat, line):
+def regex_finditer(pat, minimum_match_length, line):
     for m in pat.finditer(line):
         s, e = m.span(pat.groups)
-        if e - s > 2:
+        if e - s >= minimum_match_length:
             yield s, e
 
 
@@ -183,6 +184,10 @@ def run_loop(args, lines, index_map):
     raise SystemExit(loop.return_code)
 
 
+def escape(chars):
+    return chars.replace('\\', '\\\\').replace('-', r'\-').replace(']', r'\]')
+
+
 def run(args, text):
     if args.type == 'url':
         from .url_regex import url_delimiters
@@ -191,11 +196,18 @@ def run(args, text):
         )
         finditer = partial(find_urls, re.compile(url_pat))
     elif args.type == 'path':
-        finditer = partial(regex_finditer, re.compile(r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'))
+        finditer = partial(regex_finditer, re.compile(r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'), args.minimum_match_length)
     elif args.type == 'line':
-        finditer = partial(regex_finditer, re.compile(r'(?m)^\s*(.+)\s*$'))
+        finditer = partial(regex_finditer, re.compile(r'(?m)^\s*(.+)\s*$'), args.minimum_match_length)
+    elif args.type == 'word':
+        chars = args.word_characters
+        if chars is None:
+            import json
+            chars = json.loads(os.environ['KITTY_COMMON_OPTS'])['select_by_word_characters']
+        pat = re.compile('(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length))
+        finditer = partial(regex_finditer, pat, args.minimum_match_length)
     else:
-        finditer = partial(regex_finditer, re.compile(args.regex))
+        finditer = partial(regex_finditer, re.compile(args.regex), args.minimum_match_length)
     lines = []
     index_map = {}
     for line in text.splitlines():
@@ -220,7 +232,7 @@ terminal window instead. A value of @ will copy the match to the clipboard.
 
 --type
 default=url
-choices=url,regex,path,line
+choices=url,regex,path,line,word
 The type of text to search for.
 
 
@@ -234,6 +246,18 @@ ignoring a prefix/suffix, as needed. The default expression matches lines.
 --url-prefixes
 default={0}
 Comma separated list of recognized URL prefixes.
+
+
+--word-characters
+Characters to consider as part of a word. In addition, all chacraters marked as
+alpha-numeric in the unicode database will be considered as word characters.
+Defaults to the select_by_word_characters setting from kitty.conf.
+
+
+--minimum-match-length
+default=3
+type=int
+The minimum number of characters to consider a match.
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
 

@@ -9,6 +9,11 @@ version 0.9.0 [future]
 - A new kitty command shell to allow controlling kitty via commands. Press
   ctrl+shift+escape to run the shell.
 
+- The hints kitten has become much more powerful. Now in addition to URLs you
+  can use it to select word, paths, filenames, lines, etc. from the screen.
+  These can be inserted into the terminal, copied to clipboard or sent to
+  external programs.
+
 - Linux: Switch to libxkbcommon for keyboard handling. It allows kitty to
   support XCompose and dead keys and also react to keyboard remapping/layout
   change without needing a restart.
