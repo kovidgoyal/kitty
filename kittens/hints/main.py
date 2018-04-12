@@ -78,17 +78,19 @@ def render(lines, current_input):
     return '\r\n'.join(ans)
 
 
-class URLHints(Handler):
+class Hints(Handler):
 
-    def __init__(self, lines, index_map):
+    def __init__(self, lines, index_map, args):
         self.lines, self.index_map = tuple(lines), index_map
         self.current_input = ''
         self.current_text = None
+        self.args = args
+        self.window_title = _('Choose URL') if args.type == 'url' else _('Choose text')
         self.chosen = None
 
     def init_terminal_state(self):
         self.write(set_cursor_visible(False))
-        self.write(set_window_title(_('Choose URL')))
+        self.write(set_window_title(self.window_title))
 
     def initialize(self, *args):
         Handler.initialize(self, *args)
@@ -174,15 +176,15 @@ def mark(finditer, line, index_map):
 
 def run_loop(args, lines, index_map):
     loop = Loop()
-    handler = URLHints(lines, index_map)
+    handler = Hints(lines, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        return {'url': handler.chosen, 'program': args.program}
+        return {'match': handler.chosen, 'program': args.program}
     raise SystemExit(loop.return_code)
 
 
 def run(args, text):
-    if args.regex is None:
+    if args.type == 'url':
         from .url_regex import url_delimiters
         url_pat = '(?:{})://[^{}]{{3,}}'.format(
             '|'.join(args.url_prefixes.split(',')), url_delimiters
@@ -197,33 +199,37 @@ def run(args, text):
         lines.append(marked)
     if not index_map:
         input(_('No {} found, press Enter to abort.').format(
-            'URLs' if args.regex is None else 'matches'
+            'URLs' if args.type == 'url' else 'matches'
             ))
         return
 
     return run_loop(args, lines, index_map)
 
 
-OPTIONS = partial('''\
+OPTIONS = partial(r'''
 --program
 default=default
-What program to use to open matched text. Defaults
-to the default open program for the operating system.
-Use a value of - to paste the match into the terminal window
-instead. A value of @ will copy the match to the clipboard.
+What program to use to open matched text. Defaults to the default open program
+for the operating system.  Use a value of - to paste the match into the
+terminal window instead. A value of @ will copy the match to the clipboard.
+
+
+--type
+default=url
+choices=url,regex
+The type of text to search for.
 
 
 --regex
-Instead of searching for URLs search for the specified regular
-expression instead. If you specify a group in the regular expression
-only the group will be matched. This allow you to match text ignoring a
-prefix/suffix, as needed.
+default=(?m)^\s*(.+)\s*$
+The regular expression to use when --type=regex.  If you specify a group in the
+regular expression only the group will be matched. This allow you to match text
+ignoring a prefix/suffix, as needed. The default expression matches lines.
 
 
 --url-prefixes
 default={0}
-Comma separated list of recognized URL prefixes. Defaults to:
-{0}
+Comma separated list of recognized URL prefixes.
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
 
@@ -257,11 +263,11 @@ def handle_result(args, data, target_window_id, boss):
     if program == '-':
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
-            w.paste(data['url'])
+            w.paste(data['match'])
     elif program == '@':
-        set_clipboard_string(data['url'])
+        set_clipboard_string(data['match'])
     else:
-        boss.open_url(data['url'], None if program == 'default' else program)
+        boss.open_url(data['match'], None if program == 'default' else program)
 
 
 if __name__ == '__main__':
