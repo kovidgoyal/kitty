@@ -470,7 +470,7 @@ init_cursor_program() {
 #define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].location
         SET_LOC(color);
         else SET_LOC(pos);
-        else { fatal("Unknown uniform in cursor program"); }
+        else { fatal("Unknown uniform in cursor program: %s", p->uniforms[i].name); }
     }
     if (left) { fatal("Left over uniforms in cursor program"); }
 #undef SET_LOC
