@@ -37,6 +37,10 @@ version 0.9.0 [future]
   hints kitten. Fixes launching on some systems where xdg-open doesn't like
   being run from a kitten.
 
+- Allow using rectangle select mode by pressing shift in addition to the
+  rectangle select modifiers even when the terminal program has grabbed the
+  mouse.
+
 
 version 0.8.4 [2018-03-31]
 -----------------------------
