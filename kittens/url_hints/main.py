@@ -201,7 +201,9 @@ def run(args, source_file=None):
         marked = mark(finditer, line, index_map)
         lines.append(marked)
     if not index_map:
-        input(_('No URLs found, press Enter to abort.'))
+        input(_('No {} found, press Enter to abort.').format(
+            'URLs' if args.regex is None else 'matches'
+            ))
         return
 
     return run_loop(args, lines, index_map)
