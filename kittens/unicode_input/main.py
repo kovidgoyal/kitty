@@ -474,3 +474,13 @@ def handle_result(args, current_char, target_window_id, boss):
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
         w.paste(current_char)
+
+
+if __name__ == '__main__':
+    import sys
+    if '-h' in sys.argv or '--help' in sys.argv:
+        print('Choose a unicode character to input into the terminal')
+        raise SystemExit(0)
+    ans = main(sys.argv)
+    if ans:
+        print(ans)

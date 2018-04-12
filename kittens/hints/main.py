@@ -206,8 +206,8 @@ def run(args, text):
 OPTIONS = partial('''\
 --program
 default=default
-What program to use to open matched URLs. Defaults
-to the default URL open program for the operating system.
+What program to use to open matched text. Defaults
+to the default open program for the operating system.
 Use a value of - to paste the URL into the terminal window
 instead.
 
@@ -227,16 +227,18 @@ Comma separated list of recognized URL prefixes. Defaults to:
 
 
 def main(args):
-    msg = 'Select text from the screen using the keyboard'
-    text = None
+    msg = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
+    text = ''
     if sys.stdin.isatty():
-        print('You must pass the text to be hinted on STDIN', file=sys.stderr)
-        input(_('Press Enter to quit'))
-        return
-    text = sys.stdin.buffer.read().decode('utf-8')
-    sys.stdin = open('/dev/tty')
+        if '--help' not in args and '-h' not in args:
+            print('You must pass the text to be hinted on STDIN', file=sys.stderr)
+            input(_('Press Enter to quit'))
+            return
+    else:
+        text = sys.stdin.buffer.read().decode('utf-8')
+        sys.stdin = open('/dev/tty')
     try:
-        args, items = parse_args(args[1:], OPTIONS, '', msg, 'url_hints')
+        args, items = parse_args(args[1:], OPTIONS, '', msg, 'hints')
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0], file=sys.stderr)
@@ -260,7 +262,7 @@ def handle_result(args, data, target_window_id, boss):
 
 
 if __name__ == '__main__':
-    # Run with kitty +kitten url_hints
+    # Run with kitty +kitten hints
     ans = main(sys.argv)
     if ans:
         print(ans)

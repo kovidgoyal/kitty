@@ -91,9 +91,10 @@ def main(args):
     try:
         args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask')
     except SystemExit as e:
-        print(e.args[0])
-        input('Press enter to quit...')
-        raise SystemExit(1)
+        if e.code != 0:
+            print(e.args[0])
+            input('Press enter to quit...')
+        raise SystemExit(e.code)
 
     readline.read_init_file()
     ans = {'items': items}
@@ -114,3 +115,10 @@ def handle_result(args, data, target_window_id, boss):
     if 'response' in data:
         func, *args = data['items']
         getattr(boss, func)(data['response'], *args)
+
+
+if __name__ == '__main__':
+    import sys
+    ans = main(sys.argv)
+    if ans:
+        print(ans)
