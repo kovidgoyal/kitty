@@ -631,7 +631,7 @@ swap_window_buffers(OSWindow *w) {
 void
 event_loop_wait(double timeout) {
     if (timeout < 0) glfwWaitEvents();
-    else if (timeout > 0) glfwWaitEventsTimeout(timeout);
+    else if (timeout >= 0) glfwWaitEventsTimeout(timeout);
 }
 
 void
