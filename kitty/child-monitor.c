@@ -735,6 +735,30 @@ process_pending_resizes(double now) {
     }
 }
 
+static inline void
+close_all_windows() {
+    for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
+    global_state.close_all_windows = false;
+}
+
+static inline bool
+process_pending_closes(ChildMonitor *self) {
+    bool has_open_windows = false;
+    for (size_t w = global_state.num_os_windows; w > 0; w--) {
+        OSWindow *os_window = global_state.os_windows + w - 1;
+        if (should_os_window_close(os_window)) {
+            destroy_os_window(os_window);
+            call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
+            for (size_t t=0; t < os_window->num_tabs; t++) {
+                Tab *tab = os_window->tabs + t;
+                for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
+            }
+            remove_os_window(os_window->id);
+        } else has_open_windows = true;
+    }
+    return has_open_windows;
+}
+
 static PyObject*
 main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
@@ -746,23 +770,8 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         render(now);
         wait_for_events();
         parse_input(self);
-        if (global_state.close_all_windows) {
-            for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
-            global_state.close_all_windows = false;
-        }
-        has_open_windows = false;
-        for (size_t w = global_state.num_os_windows; w > 0; w--) {
-            OSWindow *os_window = global_state.os_windows + w - 1;
-            if (should_os_window_close(os_window)) {
-                destroy_os_window(os_window);
-                call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
-                for (size_t t=0; t < os_window->num_tabs; t++) {
-                    Tab *tab = os_window->tabs + t;
-                    for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
-                }
-                remove_os_window(os_window->id);
-            } else has_open_windows = true;
-        }
+        if (global_state.close_all_windows) close_all_windows();
+        has_open_windows = process_pending_closes(self);
     }
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
