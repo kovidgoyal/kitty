@@ -172,13 +172,13 @@ def find_urls(pat, line):
         yield s, e
 
 
-def mark(finditer, line, index_map):
+def mark(finditer, line, all_marks):
     marks = []
     for s, e in finditer(line):
-        idx = len(index_map)
+        idx = len(all_marks)
         text = line[s:e]
         marks.append(Mark(idx, s, e, text))
-        index_map[idx] = marks[-1]
+        all_marks.append(marks[-1])
     return line, marks
 
 
@@ -216,15 +216,20 @@ def run(args, text):
     else:
         finditer = partial(regex_finditer, re.compile(args.regex), args.minimum_match_length)
     lines = []
-    index_map = {}
+    all_marks = []
     for line in text.splitlines():
-        marked = mark(finditer, line, index_map)
+        marked = mark(finditer, line, all_marks)
         lines.append(marked)
-    if not index_map:
+    if not all_marks:
         input(_('No {} found, press Enter to abort.').format(
             'URLs' if args.type == 'url' else 'matches'
             ))
         return
+
+    largest_index = all_marks[-1].index
+    for m in all_marks:
+        m.index = largest_index - m.index
+    index_map = {m.index: m for m in all_marks}
 
     return run_loop(args, lines, index_map)
 
