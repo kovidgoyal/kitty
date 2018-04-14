@@ -6,7 +6,6 @@ import os
 import re
 import string
 import sys
-from collections import namedtuple
 from functools import lru_cache, partial
 from gettext import gettext as _
 
@@ -20,9 +19,17 @@ from ..tui.operations import (
     clear_screen, faint, set_cursor_visible, set_window_title, styled
 )
 
-Mark = namedtuple('Mark', 'index start end text')
 URL_PREFIXES = 'http https file ftp'.split()
 HINT_ALPHABET = string.digits + string.ascii_lowercase
+
+
+class Mark(object):
+
+    __slots__ = ('index', 'start', 'end', 'text')
+
+    def __init__(self, index, start, end, text):
+        self.index, self.start, self.end = index, start, end
+        self.text = text
 
 
 @lru_cache(maxsize=2048)
@@ -106,7 +113,7 @@ class Hints(Handler):
                 changed = True
         if changed:
             matches = [
-                t for idx, t in self.index_map.items()
+                m.text for idx, m in self.index_map.items()
                 if encode_hint(idx).startswith(self.current_input)
             ]
             if len(matches) == 1:
@@ -123,7 +130,7 @@ class Hints(Handler):
             self.draw_screen()
         elif key_event is enter_key and self.current_input:
             idx = decode_hint(self.current_input)
-            self.chosen = self.index_map[idx]
+            self.chosen = self.index_map[idx].text
             self.quit_loop(0)
         elif key_event.key is ESCAPE:
             self.quit_loop(1)
@@ -171,7 +178,7 @@ def mark(finditer, line, index_map):
         idx = len(index_map)
         text = line[s:e]
         marks.append(Mark(idx, s, e, text))
-        index_map[idx] = text
+        index_map[idx] = marks[-1]
     return line, marks
 
 
