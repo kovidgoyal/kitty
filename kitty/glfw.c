@@ -16,6 +16,7 @@ extern void cocoa_set_titlebar_color(void *w);
 #endif
 
 static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
+static bool event_loop_blocking_with_no_timeout = false;
 
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
@@ -77,6 +78,17 @@ show_mouse_cursor(GLFWwindow *w) {
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
+// On Cocoa, glfwWaitEvents() can block indefinitely because of the way Cocoa
+// works. See https://github.com/glfw/glfw/issues/1251. I have noticed this
+// happening in particular with window resize events, when waiting with no
+// timeout. See https://github.com/kovidgoyal/kitty/issues/458
+// So we use an unlovely hack to workaround that case
+#ifdef __APPLE__
+#define unjam_event_loop() { if (event_loop_blocking_with_no_timeout) wakeup_main_loop(); }
+#else
+#define unjam_event_loop()
+#endif
+
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
@@ -84,6 +96,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         OSWindow *window = global_state.callback_os_window;
         window->has_pending_resizes = true; global_state.has_pending_resizes = true;
         window->last_resize_event_at = monotonic();
+        unjam_event_loop();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
 }
@@ -484,18 +497,6 @@ glfw_terminate(PYNOARG) {
 }
 
 PyObject*
-glfw_wait_events(PyObject UNUSED *self, PyObject *args) {
-    double time = -1;
-    if (PyTuple_GET_SIZE(args) > 0) {
-        time = PyFloat_AsDouble(PyTuple_GET_ITEM(args, 0));
-        if (PyErr_Occurred()) PyErr_Clear();
-    }
-    if (time < 0) glfwWaitEvents();
-    else glfwWaitEventsTimeout(time);
-    Py_RETURN_NONE;
-}
-
-PyObject*
 glfw_post_empty_event(PYNOARG) {
     glfwPostEmptyEvent();
     Py_RETURN_NONE;
@@ -630,7 +631,7 @@ swap_window_buffers(OSWindow *w) {
 
 void
 event_loop_wait(double timeout) {
-    if (timeout < 0) glfwWaitEvents();
+    if (timeout < 0) { event_loop_blocking_with_no_timeout = true; glfwWaitEvents(); event_loop_blocking_with_no_timeout = false; }
     else glfwWaitEventsTimeout(timeout);
 }
 
@@ -764,7 +765,6 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_poll_events, METH_NOARGS),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
-    {"glfw_wait_events", (PyCFunction)glfw_wait_events, METH_VARARGS, ""},
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
