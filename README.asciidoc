@@ -33,9 +33,10 @@
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
 :sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
 :sc_run_kitten_text_hints: pass:quotes[`ctrl+shift+e`]
-:sc_run_kitten_text_hints___type_line___program__: pass:quotes[`ctrl+shift+p → l`]
-:sc_run_kitten_text_hints___type_path: pass:quotes[`ctrl+shift+p → shift+f`]
-:sc_run_kitten_text_hints___type_path___program__: pass:quotes[`ctrl+shift+p → f`]
+:sc_run_kitten_text_hints_type_line_program: pass:quotes[`ctrl+shift+p → l`]
+:sc_run_kitten_text_hints_type_path: pass:quotes[`ctrl+shift+p → shift+f`]
+:sc_run_kitten_text_hints_type_path_program: pass:quotes[`ctrl+shift+p → f`]
+:sc_run_kitten_text_hints_type_word_program: pass:quotes[`ctrl+shift+p → w`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -298,7 +299,7 @@ browser.
 
 image::hints_mode.png?raw=true[URL hints mode]
 
-Similarly, you can press {sc_run_kitten_text_hints___type_path___program__} to
+Similarly, you can press {sc_run_kitten_text_hints_type_path_program} to
 select anything that looks like a path or filename and then insert it into the
 terminal, very useful for picking files from the output of a git or ls command and
 adding them to the command line for the next command.
