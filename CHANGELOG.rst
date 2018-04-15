@@ -3,11 +3,11 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.9.0 [future]
-------------------------
+version 0.9.0 [2018-04-15]
+------------------------------
 
 - A new kitty command shell to allow controlling kitty via commands. Press
-  ctrl+shift+escape to run the shell.
+  `ctrl+shift+escape` to run the shell.
 
 - The hints kitten has become much more powerful. Now in addition to URLs you
   can use it to select word, paths, filenames, lines, etc. from the screen.
@@ -20,21 +20,21 @@ version 0.9.0 [future]
 
 - Add support for multiple-key-sequence shortcuts
 
-- A new remote control command "set-colors" to change the current and/or
+- A new remote control command `set-colors` to change the current and/or
   configured colors.
 
 - When double-clicking to select a word, select words that continue onto the
   next/prev line as well.
 
-- Add an "include" directive for the config files to read multiple config files
+- Add an `include` directive for the config files to read multiple config files
 
 - Improve mouse selection for windows with padding. Moving the mouse into the
   padding area now acts as if the mouse is over the nearest cell.
 
 - Allow setting all 256 terminal colors in the config file
 
-- Fix using kitty --single-instance to open a new window in a running kitty
-  instance, not respecting the --directory flag
+- Fix using `kitty --single-instance` to open a new window in a running kitty
+  instance, not respecting the `--directory` flag
 
 - URL hints: Exclude trailing punctuation from URLs
 
