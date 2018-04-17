@@ -35,6 +35,8 @@ To set the underline style:
 <ESC>[4:1m  # this is a straight underline
 <ESC>[4:2m  # this is a double underline
 <ESC>[4:3m  # this is a curly underline
+<ESC>[4:4m  # this is a dotted underline (not implemented in kitty)
+<ESC>[4:5m  # this is a dashed underline (not implemented in kitty)
 <ESC>[4m    # this is a straight underline (for backwards compat)
 <ESC>[24m   # this is no underline (for backwards compat)
 ```
