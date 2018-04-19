@@ -897,6 +897,12 @@ render_line(Line *line) {
         ssize_t cell_font_idx = font_for_cell(cell);
         if (is_private_use(cell->ch) && i + 1 < line->xnum && (line->cells[i+1].ch == ' ' || line->cells[i+1].ch == 0) && cell_font_idx != BOX_FONT && cell_font_idx != MISSING_FONT) {
             // We have a private use char followed by a space char, render it as a two cell ligature.
+            Cell *space_cell = line->cells + i+1;
+            // Ensure the space cell uses the foreground colors from the PUA cell
+            // This is needed because there are stupid applications like
+            // powerline that use PUA+space with different foreground colors
+            // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
+            space_cell->fg = cell->fg; space_cell->decoration_fg = cell->decoration_fg;
             RENDER;
             render_run(line->cells + i, 2, cell_font_idx, true);
             run_font_idx = NO_FONT;
