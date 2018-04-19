@@ -283,6 +283,8 @@ class Loop:
             handler.on_term()
         if b'i' in data:
             handler.on_interrupt()
+        if b'1' in data:
+            handler.on_wakeup()
 
     def _wakeup_write(self, val):
         while not os.write(self.wakeup_write_fd, val):

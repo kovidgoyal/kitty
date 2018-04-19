@@ -30,6 +30,9 @@ class Handler:
     def on_eot(self):
         pass
 
+    def on_wakeup(self):
+        pass
+
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')

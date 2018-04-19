@@ -4,20 +4,38 @@
 
 import os
 import sys
+import traceback
 from functools import partial
+from gettext import gettext as _
+from threading import Thread
 
 from kitty.cli import parse_args
+from kitty.key_encoding import ESCAPE
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import set_line_wrapping, set_window_title
+from ..tui.operations import clear_screen, set_line_wrapping, set_window_title
 from .collect import create_collection
+
+INITIALIZING, READY, RENDERED = range(3)
 
 
 class DiffHandler(Handler):
 
-    def __init__(self, collection):
-        self.collection = collection
+    def __init__(self, left, right):
+        self.state = INITIALIZING
+        self.left, self.right = left, right
+        self.report_traceback_on_exit = None
+
+    def create_collection(self):
+        try:
+            self.collection = create_collection(self.left, self.right)
+        except Exception:
+            self.report_traceback_on_exit = traceback.format_exc()
+            self.quit_loop(1)
+        else:
+            self.state = READY
+        self.wakeup()
 
     def init_terminal_state(self):
         self.write(set_line_wrapping(False))
@@ -26,6 +44,35 @@ class DiffHandler(Handler):
     def initialize(self, *args):
         Handler.initialize(self, *args)
         self.init_terminal_state()
+        self.draw_screen()
+        t = Thread(target=self.create_collection, name='CreatingCollection')
+        t.daemon = True
+        t.start()
+
+    def draw_screen(self):
+        if self.state is INITIALIZING:
+            self.write(clear_screen())
+            self.write(_('Calculating diff, please wait...'))
+            return
+        if self.state is READY:
+            self.write(clear_screen())
+            self.state = RENDERED
+            return
+
+    def on_key(self, key_event):
+        if self.state is INITIALIZING:
+            if key_event.key is ESCAPE:
+                self.quit_loop(0)
+            return
+
+    def on_wakeup(self):
+        self.draw_screen()
+
+    def on_interrupt(self):
+        self.quit_loop(1)
+
+    def on_eot(self):
+        self.quit_loop(1)
 
 
 OPTIONS = partial('''\
@@ -40,12 +87,13 @@ def main(args):
     left, right = items
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
-    collection = create_collection(left, right)
 
     loop = Loop()
-    handler = DiffHandler(collection)
+    handler = DiffHandler(left, right)
     loop.loop(handler)
     if loop.return_code != 0:
+        if handler.report_traceback_on_exit:
+            print(handler.report_traceback_on_exit, file=sys.stderr)
         raise SystemExit(loop.return_code)
 
 

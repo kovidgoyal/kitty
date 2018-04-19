@@ -107,8 +107,7 @@ class Differ:
         key = file1, file2
         self.jobs.append(key)
 
-    def __call__(self):
-        context = 3
+    def __call__(self, context=3):
         ans = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             jobs = {executor.submit(run_diff, key[0], key[1], context): key for key in self.jobs}
