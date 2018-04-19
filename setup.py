@@ -173,9 +173,7 @@ def init_env(
             ('' if debug else 'N'),
         )
     )
-    cppflags = shlex.split(cppflags) + shlex.split(
-        sysconfig.get_config_var('CPPFLAGS')
-    )
+    cppflags = shlex.split(cppflags)
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c99'
@@ -359,13 +357,13 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
 
     for original_src, dest in zip(sources, objects):
         src = original_src
-        cppflgs = kenv.cppflags[:]
+        cppflags = kenv.cppflags[:]
         is_special = src in SPECIAL_SOURCES
         if is_special:
             src, defines = SPECIAL_SOURCES[src]
-            cppflgs.extend(map(define, defines))
+            cppflags.extend(map(define, defines))
 
-        cmd = [kenv.cc, '-MMD'] + kenv.cflags + cppflgs
+        cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         key = original_src, os.path.basename(dest)
         all_keys.add(key)
         cmd_changed = compilation_database.get(key, [])[:-4] != cmd
