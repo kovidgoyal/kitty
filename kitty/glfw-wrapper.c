@@ -357,6 +357,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetCocoaMonitor_impl) = dlsym(handle, "glfwGetCocoaMonitor");
 
+    *(void **) (&glfwSetCocoaTextInputFilter_impl) = dlsym(handle, "glfwSetCocoaTextInputFilter");
+
     *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
 
     *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");

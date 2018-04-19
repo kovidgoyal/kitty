@@ -43,22 +43,6 @@ active_window() {
     return NULL;
 }
 
-void
-on_text_input(unsigned int codepoint, int mods) {
-    Window *w = active_window();
-    static char buf[16];
-    unsigned int sz = 0;
-
-    if (w != NULL) {
-        bool is_text = mods <= GLFW_MOD_SHIFT;
-        if (is_text) sz = encode_utf8(codepoint, buf);
-#ifdef __APPLE__
-        if (!OPT(macos_option_as_alt) && IS_ALT_MODS(mods)) sz = encode_utf8(codepoint, buf);
-#endif
-        if (sz) schedule_write_to_child(w->id, buf, sz);
-    }
-}
-
 static inline bool
 is_modifier_key(int key) {
     switch(key) {
@@ -107,9 +91,6 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     }
     Screen *screen = w->render_data.screen;
     bool has_text = text && !is_ascii_control_char(text[0]);
-#ifdef __APPLE__
-    if (has_text && IS_ALT_MODS(mods) && OPT(macos_option_as_alt)) has_text = false;
-#endif
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
         bool special = false;

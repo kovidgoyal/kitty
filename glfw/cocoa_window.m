@@ -725,10 +725,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     const int key = translateKey(scancode, GLFW_TRUE);
     const int mods = translateFlags([event modifierFlags]);
     _glfw.ns.text[0] = 0;
-    // this will call insertText with the text for this event, if any
-    [self interpretKeyEvents:[NSArray arrayWithObject:event]];
-    if ((1 <= _glfw.ns.text[0] && _glfw.ns.text[0] <= 31) || (unsigned)_glfw.ns.text[0] == 127) _glfw.ns.text[0] = 0;  // dont send text for ascii control codes
-    debug_key(@"scancode: 0x%x (%s) mods: %stext: %s glfw_key: %s\n",
+    if (!window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode) != 1) {
+        // this will call insertText with the text for this event, if any
+        [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+        if ((1 <= _glfw.ns.text[0] && _glfw.ns.text[0] <= 31) || (unsigned)_glfw.ns.text[0] == 127) _glfw.ns.text[0] = 0;  // dont send text for ascii control codes
+    }
+    debug_key(@"scancode: 0x%x (%s)%stext: %s glfw_key: %s\n",
             scancode, safe_name_for_scancode(scancode), format_mods(mods),
             format_text(_glfw.ns.text), _glfwGetKeyName(key));
     _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
@@ -1999,4 +2001,12 @@ GLFWAPI id glfwGetCocoaWindow(GLFWwindow* handle)
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     return window->ns.object;
+}
+
+GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *handle, GLFWcocoatextinputfilterfun callback) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    _GLFW_REQUIRE_INIT_OR_RETURN(nil);
+    GLFWcocoatextinputfilterfun previous = window->ns.textInputFilterCallback;
+    window->ns.textInputFilterCallback = callback;
+    return previous;
 }

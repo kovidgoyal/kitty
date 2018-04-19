@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
 
 
 /*! @name GLFW version macros
@@ -1824,6 +1825,10 @@ glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
 typedef uint32_t (*glfwGetCocoaMonitor_func)(GLFWmonitor*);
 glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
 #define glfwGetCocoaMonitor glfwGetCocoaMonitor_impl
+
+typedef GLFWcocoatextinputfilterfun (*glfwSetCocoaTextInputFilter_func)(GLFWwindow*, GLFWcocoatextinputfilterfun);
+glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
+#define glfwSetCocoaTextInputFilter glfwSetCocoaTextInputFilter_impl
 
 typedef void* (*glfwGetX11Display_func)();
 glfwGetX11Display_func glfwGetX11Display_impl;

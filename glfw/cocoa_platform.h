@@ -37,6 +37,7 @@ typedef void* id;
 #endif
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,int);
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {
@@ -98,6 +99,8 @@ typedef struct _GLFWwindowNS
     // This is kept to counteract Cocoa doing the same internally
     double          cursorWarpDeltaX, cursorWarpDeltaY;
 
+    // The text input filter callback
+    GLFWcocoatextinputfilterfun textInputFilterCallback;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

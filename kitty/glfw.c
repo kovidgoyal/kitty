@@ -309,6 +309,13 @@ set_dpi_from_os_window(OSWindow *w) {
 
 static bool is_first_window = true;
 
+#ifdef __APPLE__
+static int
+filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
+    return ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) ? 1 : 0;
+}
+#endif
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height, x = -1, y = -1;
@@ -367,6 +374,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
+        if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
 #endif
         is_first_window = false;
     }

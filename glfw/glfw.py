@@ -196,6 +196,7 @@ def generate_wrappers(glfw_header, glfw_native_header):
     for line in '''\
     void* glfwGetCocoaWindow(GLFWwindow* window)
     uint32_t glfwGetCocoaMonitor(GLFWmonitor* monitor)
+    GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow* window, GLFWcocoatextinputfilterfun callback)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)
     void glfwSetX11SelectionString(const char* string)
@@ -212,6 +213,7 @@ def generate_wrappers(glfw_header, glfw_native_header):
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
 {}
 
 {}
