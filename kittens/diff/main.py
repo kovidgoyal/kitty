@@ -7,7 +7,6 @@ import sys
 import traceback
 from functools import partial
 from gettext import gettext as _
-from threading import Thread
 
 from kitty.cli import parse_args
 from kitty.key_encoding import ESCAPE
@@ -28,14 +27,7 @@ class DiffHandler(Handler):
         self.report_traceback_on_exit = None
 
     def create_collection(self):
-        try:
-            self.collection = create_collection(self.left, self.right)
-        except Exception:
-            self.report_traceback_on_exit = traceback.format_exc()
-            self.quit_loop(1)
-        else:
-            self.state = READY
-        self.wakeup()
+        self.start_job('diff', create_collection, self.left, self.right)
 
     def init_terminal_state(self):
         self.write(set_line_wrapping(False))
@@ -45,9 +37,7 @@ class DiffHandler(Handler):
         Handler.initialize(self, *args)
         self.init_terminal_state()
         self.draw_screen()
-        t = Thread(target=self.create_collection, name='CreatingCollection')
-        t.daemon = True
-        t.start()
+        self.create_collection()
 
     def draw_screen(self):
         if self.state is INITIALIZING:
@@ -65,8 +55,14 @@ class DiffHandler(Handler):
                 self.quit_loop(0)
             return
 
-    def on_wakeup(self):
-        self.draw_screen()
+    def on_job_done(self, job_id, job_result):
+        if 'tb' in job_result:
+            self.report_traceback_on_exit = traceback.format_exc()
+            self.quit_loop(1)
+        if job_id == 'diff':
+            self.collection = job_result['result']
+            self.state = READY
+            self.write(clear_screen())
 
     def on_interrupt(self):
         self.quit_loop(1)
