@@ -193,10 +193,6 @@ PyInit_fast_data_types(void) {
 #endif
         if (!init_fonts(m)) return NULL;
 
-#define OOF(n) #n, offsetof(Cell, n)
-        if (PyModule_AddObject(m, "CELL", Py_BuildValue("{sI sI sI sI sI sH sH sH sI}",
-                    OOF(ch), OOF(fg), OOF(bg), OOF(decoration_fg), OOF(cc_idx), OOF(sprite_x), OOF(sprite_y), OOF(sprite_z), "size", sizeof(Cell))) != 0) return NULL;
-#undef OOF
         PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
