@@ -208,6 +208,9 @@ static GLFWbool updateUnicodeDataNS(void)
         _glfw.ns.unicodeData = nil;
     }
 
+    for (_GLFWwindow *window = _glfw.windowListHead;  window;  window = window->next)
+        window->ns.deadKeyState = 0;
+
     _glfw.ns.inputSource = TISCopyCurrentKeyboardLayoutInputSource();
     if (!_glfw.ns.inputSource)
     {

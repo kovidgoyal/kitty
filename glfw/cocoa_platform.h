@@ -101,6 +101,8 @@ typedef struct _GLFWwindowNS
 
     // The text input filter callback
     GLFWcocoatextinputfilterfun textInputFilterCallback;
+    // Dead key state
+    UInt32 deadKeyState;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data
