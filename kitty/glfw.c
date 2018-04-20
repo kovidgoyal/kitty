@@ -321,7 +321,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height, x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iisss|Oiii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "iisss|Oii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
 
     if (is_first_window) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
