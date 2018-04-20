@@ -4,7 +4,6 @@
 
 import os
 import sys
-import traceback
 from functools import partial
 from gettext import gettext as _
 
@@ -57,8 +56,9 @@ class DiffHandler(Handler):
 
     def on_job_done(self, job_id, job_result):
         if 'tb' in job_result:
-            self.report_traceback_on_exit = traceback.format_exc()
+            self.report_traceback_on_exit = job_result['tb']
             self.quit_loop(1)
+            return
         if job_id == 'diff':
             self.collection = job_result['result']
             self.state = READY
