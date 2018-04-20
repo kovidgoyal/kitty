@@ -96,7 +96,7 @@ install: |
         fi
     else
         pushd /tmp
-        wget http://xkbcommon.org/download/libxkbcommon-0.6.1.tar.xz
+        wget --no-check-certificate http://xkbcommon.org/download/libxkbcommon-0.6.1.tar.xz
         tar xf libxkbcommon-0.6.1.tar.xz
         cd libxkbcommon-0.6.1
         ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static
