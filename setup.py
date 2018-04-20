@@ -148,6 +148,13 @@ def test_compile(cc, *cflags):
         return subprocess.Popen([cc] + list(cflags) + [f.name, '-o', os.devnull]).wait() == 0
 
 
+def first_successful_compile(cc, *cflags):
+    for x in cflags:
+        if test_compile(cc, *shlex.split(x)):
+            return x
+    return ''
+
+
 class Env:
 
     def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=[]):
@@ -163,12 +170,7 @@ def init_env(
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
-    if test_compile(cc, '-fstack-protector-strong'):
-        stack_protector = '-fstack-protector-strong'
-    elif test_compile(cc, '-fstack-protector'):
-        stack_protector = '-fstack-protector'
-    else:
-        stack_protector = ''
+    stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
