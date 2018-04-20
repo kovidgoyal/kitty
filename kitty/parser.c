@@ -816,7 +816,7 @@ parse_graphics_code(Screen *screen, PyObject UNUSED *dump_callback) {
     enum KEYS key = 'a';
     static GraphicsCommand g;
     unsigned int i, code;
-    unsigned long lcode;
+    uint64_t lcode;
     bool is_negative;
     memset(&g, 0, sizeof(g));
     static uint8_t payload[4096];
