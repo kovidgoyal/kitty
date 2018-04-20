@@ -6,7 +6,7 @@ matrix:
           group: beta
           sudo: false
           env:
-            - CC=gcc SANITIZE_ARG=--sanitize
+            - CC=gcc CFLAGS=-funsigned-char SANITIZE_ARG=--sanitize
           language: python
           python: "3.5"
           addons:
