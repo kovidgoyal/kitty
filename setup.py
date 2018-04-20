@@ -141,16 +141,17 @@ def get_sanitize_args(cc, ccver):
     return sanitize_args
 
 
-def test_compile(cc, *cflags):
+def test_compile(cc, *cflags, src=None):
     with tempfile.NamedTemporaryFile(suffix='.c') as f:
-        f.write(b'int main(void) { return 0; }')
+        src = src or 'int main(void) { return 0; }'
+        f.write(src.encode('utf-8'))
         f.flush()
         return subprocess.Popen([cc] + list(cflags) + [f.name, '-o', os.devnull]).wait() == 0
 
 
-def first_successful_compile(cc, *cflags):
+def first_successful_compile(cc, *cflags, src=None):
     for x in cflags:
-        if test_compile(cc, *shlex.split(x)):
+        if test_compile(cc, *shlex.split(x), src=src):
             return x
     return ''
 
