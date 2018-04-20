@@ -511,8 +511,8 @@ def print_shortcut(key, action):
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
-        mmap = {m.split('_')[-1].lower(): x for m, x in v.items() if m.startswith('GLFW_MOD_')}
-        kmap = {k.split('_')[-1].lower(): x for k, x in v.items() if k.startswith('GLFW_KEY_')}
+        mmap = {m[len('GLFW_MOD_'):].lower(): x for m, x in v.items() if m.startswith('GLFW_MOD_')}
+        kmap = {k[len('GLFW_KEY_'):].lower(): x for k, x in v.items() if k.startswith('GLFW_KEY_')}
         krmap = {v: k for k, v in kmap.items()}
         print_shortcut.maps = mmap, krmap
     mmap, krmap = print_shortcut.maps
