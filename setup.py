@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import time
 
 base = os.path.dirname(os.path.abspath(__file__))
@@ -140,6 +141,13 @@ def get_sanitize_args(cc, ccver):
     return sanitize_args
 
 
+def test_compile(cc, *cflags):
+    with tempfile.NamedTemporaryFile(suffix='.c') as f:
+        f.write(b'int main(void) { return 0; }')
+        f.flush()
+        return subprocess.Popen([cc] + list(cflags) + [f.name, '-o', os.devnull]).wait() == 0
+
+
 class Env:
 
     def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=[]):
@@ -155,9 +163,12 @@ def init_env(
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
-    stack_protector = '-fstack-protector'
-    if ccver >= (4, 9) and cc == 'gcc':
-        stack_protector += '-strong'
+    if test_compile(cc, '-fstack-protector-strong'):
+        stack_protector = '-fstack-protector-strong'
+    elif test_compile(cc, '-fstack-protector'):
+        stack_protector = '-fstack-protector'
+    else:
+        stack_protector = ''
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
