@@ -1633,7 +1633,7 @@ static PyObject*
 start_selection(Screen *self, PyObject *args) {
     unsigned int x, y;
     int rectangle_select = 0, extend_mode = EXTEND_CELL;
-    if (!PyArg_ParseTuple(args, "II|pp", &x, &y, &rectangle_select, &extend_mode)) return NULL;
+    if (!PyArg_ParseTuple(args, "II|pi", &x, &y, &rectangle_select, &extend_mode)) return NULL;
     screen_start_selection(self, x, y, rectangle_select, extend_mode);
     Py_RETURN_NONE;
 }
