@@ -78,11 +78,7 @@ send_key_to_child(Window *w, int key, int mods, int action) {
 
 static inline bool
 is_ascii_control_char(char c) {
-#if CHAR_MIN == 0
-    return (c <= 31) || c == 127;
-#else
-    return (0 <= c && c <= 31) || c == 127;
-#endif
+    return c == 0 || (1 <= c && c <= 31) || c == 127;
 }
 
 void
