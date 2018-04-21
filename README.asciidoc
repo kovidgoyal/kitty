@@ -128,6 +128,18 @@ You can run kitty, as:
 python3 .
 ....
 
+If that works, you can create a script to launch kitty:
+
+....
+#!/usr/bin/env python3
+
+import runpy
+runpy.run_path('/path/to/kitty/dir', run_name='__main__')
+....
+
+And place it in `~/bin` or `/usr/bin` so that you can run kitty using
+just `kitty`.
+
 === Linux packages
 
 * Arch Linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
