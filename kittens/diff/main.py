@@ -13,20 +13,42 @@ from kitty.key_encoding import ESCAPE
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import clear_screen, set_line_wrapping, set_window_title
-from .collect import create_collection
+from .collect import create_collection, data_for_path
+from .git import Differ
+from .render import render_diff
 
-INITIALIZING, READY, RENDERED = range(3)
+INITIALIZING, COLLECTED, DIFFED = range(3)
+
+
+def generate_diff(collection, context):
+    d = Differ()
+
+    for path, item_type, changed_path in collection:
+        if item_type == 'diff':
+            is_binary = isinstance(data_for_path(path), bytes)
+            if not is_binary:
+                d.add_diff(path, changed_path)
+
+    return d(context)
 
 
 class DiffHandler(Handler):
 
-    def __init__(self, left, right):
+    def __init__(self, args, left, right):
         self.state = INITIALIZING
         self.left, self.right = left, right
         self.report_traceback_on_exit = None
+        self.args = args
+        self.scroll_pos = 0
 
     def create_collection(self):
-        self.start_job('diff', create_collection, self.left, self.right)
+        self.start_job('collect', create_collection, self.left, self.right)
+
+    def generate_diff(self):
+        self.start_job('diff', generate_diff, self.collection, self.args.context)
+
+    def render_diff(self):
+        self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols))
 
     def init_terminal_state(self):
         self.write(set_line_wrapping(False))
@@ -39,14 +61,11 @@ class DiffHandler(Handler):
         self.create_collection()
 
     def draw_screen(self):
-        if self.state is INITIALIZING:
+        if self.state < DIFFED:
             self.write(clear_screen())
             self.write(_('Calculating diff, please wait...'))
             return
-        if self.state is READY:
-            self.write(clear_screen())
-            self.state = RENDERED
-            return
+        self.write(clear_screen())
 
     def on_key(self, key_event):
         if self.state is INITIALIZING:
@@ -54,15 +73,30 @@ class DiffHandler(Handler):
                 self.quit_loop(0)
             return
 
+    def on_resize(self, screen_size):
+        self.screen_size = screen_size
+        if self.state > COLLECTED:
+            self.render_diff()
+        self.draw_screen()
+
     def on_job_done(self, job_id, job_result):
         if 'tb' in job_result:
             self.report_traceback_on_exit = job_result['tb']
             self.quit_loop(1)
             return
-        if job_id == 'diff':
+        if job_id == 'collect':
             self.collection = job_result['result']
-            self.state = READY
-            self.write(clear_screen())
+            self.generate_diff()
+        elif job_id == 'diff':
+            diff_map = job_result['result']
+            if isinstance(diff_map, str):
+                self.report_traceback_on_exit = diff_map
+                self.quit_loop(1)
+                return
+            self.state = DIFFED
+            self.diff_map = diff_map
+            self.render_diff()
+            self.draw_screen()
 
     def on_interrupt(self):
         self.quit_loop(1)
@@ -72,6 +106,10 @@ class DiffHandler(Handler):
 
 
 OPTIONS = partial('''\
+--context
+type=int
+default=3
+Number of lines of context to show between changes.
 '''.format, )
 
 
@@ -85,7 +123,7 @@ def main(args):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
 
     loop = Loop()
-    handler = DiffHandler(left, right)
+    handler = DiffHandler(args, left, right)
     loop.loop(handler)
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:

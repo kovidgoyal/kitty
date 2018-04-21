@@ -10,7 +10,7 @@ import subprocess
 def run_diff(file1, file2, context=3):
     # returns: ok, is_different, patch
     p = subprocess.Popen([
-        'git', '--no-index', '--no-color', '--no-ext-diff', '--exit-code', '-U', str(context), '--'
+        'git', 'diff', '--no-color', '--no-ext-diff', '--exit-code', '-U' + str(context), '--no-index', '--'
         ] + [file1, file2],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     stdout, stderr = p.communicate()
@@ -29,6 +29,7 @@ class Hunk:
         self.left_lines = []
         self.right_lines = []
         self.left_pos = self.right_pos = 0
+        self.largest_line_number = max(self.left_start + self.left_count, self.right_start + self.right_count)
 
     def add_line(self):
         self.right_lines.append((self.right_pos, True))
@@ -78,6 +79,19 @@ def parse_hunk_header(line):
     return Hunk(title, left, right)
 
 
+class Patch:
+
+    def __init__(self, all_hunks):
+        self.all_hunks = all_hunks
+        self.largest_line_number = self.all_hunks[-1].largest_line_number if self.all_hunks else 0
+
+    def __iter__(self):
+        return iter(self.all_hunks)
+
+    def __len__(self):
+        return len(self.all_hunks)
+
+
 def parse_patch(raw):
     all_hunks = []
     for line in raw.splitlines():
@@ -96,32 +110,38 @@ def parse_patch(raw):
                 all_hunks[-1].context_line()
     for h in all_hunks:
         h.finalize()
+    return Patch(all_hunks)
 
 
 class Differ:
 
     def __init__(self):
+        self.jmap = {}
         self.jobs = []
 
     def add_diff(self, file1, file2):
-        key = file1, file2
-        self.jobs.append(key)
+        self.jmap[file1] = file2
+        self.jobs.append(file1)
 
     def __call__(self, context=3):
         ans = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-            jobs = {executor.submit(run_diff, key[0], key[1], context): key for key in self.jobs}
+            jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
             for future in concurrent.futures.as_completed(jobs):
                 key = jobs[future]
                 try:
                     ok, returncode, output = future.result()
-                except FileNotFoundError:
-                    raise SystemExit('Could not find the git executable. Is it in your PATH?')
+                except FileNotFoundError as err:
+                    return 'Could not find the {} executable. Is it in your PATH?'.format(err.filename)
                 except Exception as e:
-                    print('Running git diff for {} vs. {} generated an exception'.format(key[0], key[1]))
-                    raise
+                    return 'Running git diff for {} vs. {} generated an exception: {}'.format(key[0], key[1], e)
                 if not ok:
-                    print(output)
-                    raise SystemExit('Running git diff for {} vs. {} failed'.format(key[0], key[1]))
-                ans[key] = parse_patch(output)
+                    return output + '\nRunning git diff for {} vs. {} failed'.format(key[0], key[1])
+                try:
+                    patch = parse_patch(output)
+                except Exception:
+                    import traceback
+                    return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(key[0], key[1])
+                else:
+                    ans[key] = patch
         return ans

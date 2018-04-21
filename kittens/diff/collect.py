@@ -8,25 +8,47 @@ from hashlib import md5
 from mimetypes import guess_type
 
 
+path_name_map = {}
+
+
 class Collection:
 
     def __init__(self):
-        self.changes = []
+        self.changes = {}
         self.renames = {}
-        self.adds = []
-        self.removes = []
+        self.adds = set()
+        self.removes = set()
+        self.all_paths = []
+        self.type_map = {}
 
     def add_change(self, left_path, right_path):
-        self.changes.append((left_path, right_path))
+        self.changes[left_path] = right_path
+        self.all_paths.append(left_path)
+        self.type_map[left_path] = 'diff'
 
     def add_rename(self, left_path, right_path):
         self.renames[left_path] = right_path
+        self.all_paths.append(left_path)
+        self.type_map[left_path] = 'rename'
 
     def add_add(self, right_path):
-        self.adds.append(right_path)
+        self.adds.add(right_path)
+        self.all_paths.append(right_path)
+        self.type_map[right_path] = 'add'
 
     def add_removal(self, left_path):
-        self.removes.append(left_path)
+        self.removes.add(left_path)
+        self.all_paths.append(left_path)
+        self.type_map[left_path] = 'removal'
+
+    def finalize(self):
+        self.all_paths.sort(key=path_name_map.get)
+
+    def __iter__(self):
+        for path in self.all_paths:
+            typ = self.type_map[path]
+            data = self.changes[path] if typ == 'diff' else None
+            yield path, self.type_map[path], data
 
 
 def collect_files(collection, left, right):
@@ -86,9 +108,6 @@ def hash_for_path(path):
     md5(data_for_path(path)).digest()
 
 
-path_name_map = {}
-
-
 def create_collection(left, right):
     collection = Collection()
     if os.path.isdir(left):
@@ -98,4 +117,5 @@ def create_collection(left, right):
         path_name_map[left] = pl
         path_name_map[right] = pr
         collection.add_change(pl, pr)
+    collection.finalize()
     return collection
