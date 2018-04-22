@@ -227,8 +227,8 @@ face_from_descriptor(PyObject *descriptor) {
     long hint_style;
     D(path, PyUnicode_AsUTF8, false, "");
     D(index, PyLong_AsLong, true, 0);
-    D(hinting, PyObject_IsTrue, true, 1);
-    D(hint_style, PyLong_AsLong, true, 1);
+    D(hinting, PyObject_IsTrue, true, 0);
+    D(hint_style, PyLong_AsLong, true, 0);
 #undef D
     Face *self = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
     if (self != NULL) {
