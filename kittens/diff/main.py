@@ -54,8 +54,7 @@ class DiffHandler(Handler):
         self.write(set_line_wrapping(False))
         self.write(set_window_title('kitty +diff'))
 
-    def initialize(self, *args):
-        Handler.initialize(self, *args)
+    def initialize(self):
         self.init_terminal_state()
         self.draw_screen()
         self.create_collection()

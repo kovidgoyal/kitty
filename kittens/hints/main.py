@@ -100,8 +100,7 @@ class Hints(Handler):
         self.write(set_cursor_visible(False))
         self.write(set_window_title(self.window_title))
 
-    def initialize(self, *args):
-        Handler.initialize(self, *args)
+    def initialize(self):
         self.init_terminal_state()
         self.draw_screen()
 
@@ -211,7 +210,7 @@ def run(args, text):
         if chars is None:
             import json
             chars = json.loads(os.environ['KITTY_COMMON_OPTS'])['select_by_word_characters']
-        pat = re.compile('(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length))
+        pat = re.compile(r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length))
         finditer = partial(regex_finditer, pat, args.minimum_match_length)
     else:
         finditer = partial(regex_finditer, re.compile(args.regex), args.minimum_match_length)

@@ -121,8 +121,7 @@ class UnhandledException(Handler):
     def __init__(self, tb):
         self.tb = tb
 
-    def initialize(self, *args):
-        Handler.initialize(self, *args)
+    def initialize(self):
         self.write(clear_screen())
         self.write(self.tb.replace('\n', '\r\n'))
         self.write('\r\n')
@@ -359,29 +358,24 @@ class Loop:
             handler._term_manager = term_manager
             keep_going = True
             try:
-                handler.initialize(screen_size(), self.quit, self.wakeup, self.start_job)
+                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job)
+                with handler:
+                    while keep_going:
+                        has_data_to_write = bool(handler.write_buf)
+                        if not has_data_to_write and not self.read_allowed:
+                            break
+                        if has_data_to_write != waiting_for_write:
+                            waiting_for_write = has_data_to_write
+                            self._modify_output_selector(waiting_for_write)
+                        events = select()
+                        for key, mask in events:
+                            key.data(handler)
             except Exception:
                 import traceback
                 tb = traceback.format_exc()
                 self.return_code = 1
                 keep_going = False
-            while keep_going:
-                has_data_to_write = bool(handler.write_buf)
-                if not has_data_to_write and not self.read_allowed:
-                    break
-                if has_data_to_write != waiting_for_write:
-                    waiting_for_write = has_data_to_write
-                    self._modify_output_selector(waiting_for_write)
-                events = select()
-                for key, mask in events:
-                    try:
-                        key.data(handler)
-                    except Exception:
-                        import traceback
-                        tb = traceback.format_exc()
-                        self.return_code = 1
-                        keep_going = False
-                        break
+
             if tb is not None:
                 self._report_error_loop(tb, term_manager)
 
@@ -391,14 +385,15 @@ class Loop:
         handler = UnhandledException(tb)
         handler.write_buf = []
         handler._term_manager = term_manager
-        handler.initialize(screen_size(), self.quit, self.wakeup, self.start_job)
-        while True:
-            has_data_to_write = bool(handler.write_buf)
-            if not has_data_to_write and not self.read_allowed:
-                break
-            if has_data_to_write != waiting_for_write:
-                waiting_for_write = has_data_to_write
-                self._modify_output_selector(waiting_for_write)
-            events = select()
-            for key, mask in events:
-                key.data(handler)
+        handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job)
+        with handler:
+            while True:
+                has_data_to_write = bool(handler.write_buf)
+                if not has_data_to_write and not self.read_allowed:
+                    break
+                if has_data_to_write != waiting_for_write:
+                    waiting_for_write = has_data_to_write
+                    self._modify_output_selector(waiting_for_write)
+                events = select()
+                for key, mask in events:
+                    key.data(handler)
