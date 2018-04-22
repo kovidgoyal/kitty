@@ -117,6 +117,12 @@ def create_options_class(keys):
     return ans
 
 
+def merge_dicts(defaults, newvals):
+    ans = defaults.copy()
+    ans.update(newvals)
+    return ans
+
+
 def load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=None):
     ans = defaults._asdict()
     for path in paths:

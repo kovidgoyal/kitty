@@ -14,8 +14,8 @@ from contextlib import contextmanager
 
 from . import fast_data_types as defines
 from .config_utils import (
-    init_config, parse_config_base, positive_float, positive_int, to_bool,
-    to_color, unit_float, load_config as _load_config
+    init_config, load_config as _load_config, merge_dicts, parse_config_base,
+    positive_float, positive_int, to_bool, to_color, unit_float
 )
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -421,12 +421,6 @@ def merge_keys(ans, defaults, newvals):
             elif f in actions:
                 s[k] = v
     ans['sequence_map'] = {k: v for k, v in ans['sequence_map'].items() if v}
-
-
-def merge_dicts(defaults, newvals):
-    ans = defaults.copy()
-    ans.update(newvals)
-    return ans
 
 
 def merge_configs(defaults, vals):
