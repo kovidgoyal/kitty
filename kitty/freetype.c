@@ -214,15 +214,21 @@ ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_dat
 
 PyObject*
 face_from_descriptor(PyObject *descriptor) {
-#define D(key, conv) { PyObject *t = PyDict_GetItemString(descriptor, #key); if (t == NULL) { PyErr_SetString(PyExc_KeyError, "font descriptor is missing the key: " #key); return NULL; } key = conv(t); t = NULL; }
+#define D(key, conv, missing_ok, defval) { \
+    PyObject *t = PyDict_GetItemString(descriptor, #key); \
+    if (t == NULL) { \
+        if (!missing_ok) { PyErr_SetString(PyExc_KeyError, "font descriptor is missing the key: " #key); return NULL; } \
+        else key = defval; \
+    } else key = conv(t); \
+}
     char *path;
     long index;
     bool hinting;
     long hint_style;
-    D(path, PyUnicode_AsUTF8);
-    D(index, PyLong_AsLong);
-    D(hinting, PyObject_IsTrue);
-    D(hint_style, PyLong_AsLong);
+    D(path, PyUnicode_AsUTF8, false, "");
+    D(index, PyLong_AsLong, true, 0);
+    D(hinting, PyObject_IsTrue, true, 1);
+    D(hint_style, PyLong_AsLong, true, 1);
 #undef D
     Face *self = (Face *)Face_Type.tp_alloc(&Face_Type, 0);
     if (self != NULL) {
