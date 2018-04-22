@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from . import fast_data_types as defines
 from .config_utils import (
     init_config, parse_config_base, positive_float, positive_int, to_bool,
-    to_color, unit_float
+    to_color, unit_float, load_config as _load_config
 )
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -446,24 +446,6 @@ def merge_configs(defaults, vals):
     return ans
 
 
-def load_config(*paths, overrides=None) -> Options:
-    ans = defaults._asdict()
-    for path in paths:
-        if not path:
-            continue
-        try:
-            f = open(path, encoding='utf-8', errors='replace')
-        except FileNotFoundError:
-            continue
-        with f:
-            vals = parse_config(f)
-            ans = merge_configs(ans, vals)
-    if overrides is not None:
-        vals = parse_config(overrides)
-        ans = merge_configs(ans, vals)
-    return Options(ans)
-
-
 def build_ansi_color_table(opts: Options = defaults):
 
     def as_int(x):
@@ -547,3 +529,7 @@ def prepare_config_file_for_editing():
         with open(defconf, 'w') as f:
             f.write(commented_out_default_config())
     return defconf
+
+
+def load_config(*paths, overrides=None):
+    return _load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=overrides)

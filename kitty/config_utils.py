@@ -117,6 +117,24 @@ def create_options_class(keys):
     return ans
 
 
+def load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=None):
+    ans = defaults._asdict()
+    for path in paths:
+        if not path:
+            continue
+        try:
+            f = open(path, encoding='utf-8', errors='replace')
+        except FileNotFoundError:
+            continue
+        with f:
+            vals = parse_config(f)
+            ans = merge_configs(ans, vals)
+    if overrides is not None:
+        vals = parse_config(overrides)
+        ans = merge_configs(ans, vals)
+    return Options(ans)
+
+
 def init_config(defaults_path, parse_config):
     with open(defaults_path, encoding='utf-8', errors='replace') as f:
         defaults = parse_config(f, check_keys=False)
