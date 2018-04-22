@@ -66,6 +66,14 @@ class DiffHandler(Handler):
             self.write(_('Calculating diff, please wait...'))
             return
         self.write(clear_screen())
+        for i in range(self.screen_size.rows - 1):
+            lpos = self.scroll_pos + i
+            if lpos >= len(self.diff_lines):
+                text = ''
+            else:
+                text = self.diff_lines[lpos].text
+            self.write(text)
+            self.write('\n\r')
 
     def on_key(self, key_event):
         if self.state is INITIALIZING:

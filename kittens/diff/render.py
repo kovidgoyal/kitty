@@ -11,7 +11,27 @@ from kitty.fast_data_types import wcswidth
 from .collect import data_for_path, path_name_map
 from .config import formats
 
-sanitize_pat = re.compile('[\x00-\x1f\x7f\x80-\x9f]')
+
+class Reference:
+
+    __slots__ = ('path',)
+
+    def __init__(self, path):
+        self.path = path
+
+
+class Line:
+
+    __slots__ = ('text', 'ref')
+
+    def __init__(self, text, ref):
+        self.text = text
+        self.ref = ref
+
+
+def yield_lines_from(iterator, reference):
+    for text in iterator:
+        yield Line(text, reference)
 
 
 def human_readable(size, sep=' '):
@@ -27,6 +47,9 @@ def human_readable(size, sep=' '):
     if size.endswith('.0'):
         size = size[:-2]
     return size + sep + suffix
+
+
+sanitize_pat = re.compile('[\x00-\x1f\x7f\x80-\x9f]')
 
 
 def sanitize_sub(m):
@@ -94,10 +117,11 @@ def render_diff(collection, diff_map, args, columns):
     margin_size = max(3, len(str(largest_line_number)) + 1)
 
     for path, item_type, other_path in collection:
+        item_ref = Reference(path)
         if item_type == 'diff':
-            yield from title_lines(path, other_path, args, columns, margin_size)
+            yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref)
             is_binary = isinstance(data_for_path(path), bytes)
             if is_binary:
-                yield from binary_lines(path, other_path, columns, margin_size)
+                yield from yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
             else:
                 yield from lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
