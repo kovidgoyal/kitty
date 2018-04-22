@@ -123,6 +123,17 @@ def merge_dicts(defaults, newvals):
     return ans
 
 
+def resolve_config(SYSTEM_CONF, defconf, config_files_on_cmd_line):
+    if config_files_on_cmd_line:
+        if 'NONE' not in config_files_on_cmd_line:
+            yield SYSTEM_CONF
+            for cf in config_files_on_cmd_line:
+                yield cf
+    else:
+        yield SYSTEM_CONF
+        yield defconf
+
+
 def load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=None):
     ans = defaults._asdict()
     for path in paths:

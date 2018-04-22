@@ -7,13 +7,14 @@ import sys
 from functools import partial
 from gettext import gettext as _
 
-from kitty.cli import parse_args
+from kitty.cli import CONFIG_HELP, appname, parse_args
 from kitty.key_encoding import ESCAPE
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import clear_screen, set_line_wrapping, set_window_title
 from .collect import create_collection, data_for_path
+from .config import init_config
 from .git import Differ
 from .render import render_diff
 
@@ -58,6 +59,9 @@ class DiffHandler(Handler):
         self.init_terminal_state()
         self.draw_screen()
         self.create_collection()
+
+    def finalize(self):
+        pass
 
     def draw_screen(self):
         if self.state < DIFFED:
@@ -117,7 +121,19 @@ OPTIONS = partial('''\
 type=int
 default=3
 Number of lines of context to show between changes.
-'''.format, )
+
+
+--config
+type=list
+{config_help}
+
+
+--override -o
+type=list
+Override individual configuration options, can be specified multiple times.
+Syntax: |_ name=value|. For example: |_ -o background=gray|
+
+'''.format, config_help=CONFIG_HELP.format(conf_name='diff', appname=appname))
 
 
 def main(args):
@@ -128,6 +144,7 @@ def main(args):
     left, right = items
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
+    init_config(args)
 
     loop = Loop()
     handler = DiffHandler(args, left, right)

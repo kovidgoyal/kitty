@@ -9,8 +9,29 @@ import sys
 from collections import deque
 
 from .config import defaults, load_config
+from .config_utils import resolve_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .layout import all_layouts
+
+CONFIG_HELP = '''\
+Specify a path to the configuration file(s) to use. All configuration files are
+merged onto the builtin {conf_name}.conf, overriding the builtin values. This option
+can be specified multiple times to read multiple configuration files in
+sequence, which are merged. Use the special value NONE to not load a config
+file.
+
+If this option is not specified, config files are searched for in the order:
+"$XDG_CONFIG_HOME/{appname}/{conf_name}.conf", "~/.config/{appname}/{conf_name}.conf", {macos_confpath}
+"$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf". The first one that exists is used as the
+config file.
+
+If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
+directory is always used and the above searching does not happen.
+
+If "/etc/xdg/{appname}/{conf_name}.conf" exists it is merged before (i.e. with lower
+priority) than any user config files. It can be used to specify system-wide
+defaults for all users.
+'''.replace('{macos_confpath}', '~/Library/Preferences/{appname}/{conf_name}.conf, ' if is_macos else '')
 
 OPTIONS = '''
 --class
@@ -32,24 +53,7 @@ only use this if you are running a program that does not set titles.
 
 --config
 type=list
-Specify a path to the configuration file(s) to use. All configuration files are
-merged onto the builtin kitty.conf, overriding the builtin values. This option
-can be specified multiple times to read multiple configuration files in
-sequence, which are merged. Use the special value NONE to not load a config
-file.
-
-If this option is not specified, config files are searched for in the order:
-"$XDG_CONFIG_HOME/kitty/kitty.conf", "~/.config/kitty/kitty.conf", {macos_confpath}
-"$XDG_CONFIG_DIRS/kitty/kitty.conf". The first one that exists is used as the
-config file.
-
-If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
-directory is always used and the above searching does not happen.
-
-If "/etc/xdg/kitty/kitty.conf" exists it is merged before (i.e. with lower
-priority) than any user config files. It can be used to specify system-wide
-defaults for all users.
-
+{config_help}
 
 --override -o
 type=list
@@ -480,7 +484,7 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
-            appname=appname, macos_confpath='~/Library/Preferences/kitty/kitty.conf, ' if is_macos else '',
+            appname=appname, config_help=CONFIG_HELP.format(conf_name=appname),
             window_layout_choices=', '.join(all_layouts)
         )
     return options_spec.ans
@@ -494,17 +498,6 @@ def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=
 
 
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
-
-
-def resolve_config(config_files_on_cmd_line):
-    if config_files_on_cmd_line:
-        if 'NONE' not in config_files_on_cmd_line:
-            yield SYSTEM_CONF
-            for cf in config_files_on_cmd_line:
-                yield cf
-    else:
-        yield SYSTEM_CONF
-        yield defconf
 
 
 def print_shortcut(key, action):
@@ -555,7 +548,7 @@ def compare_opts(opts):
 
 
 def create_opts(args, debug_config=False):
-    config = tuple(resolve_config(args.config))
+    config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
         print(version(add_rev=True))
         print(' '.join(os.uname()))
