@@ -115,6 +115,8 @@ def command_for_open(program='default'):
         program = to_cmdline(program)
     if program == ['default']:
         cmd = ['open'] if is_macos else ['xdg-open']
+    else:
+        cmd = program
     return cmd
 
 
