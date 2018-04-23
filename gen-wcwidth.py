@@ -256,7 +256,7 @@ def gen_ucd():
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
-    with open('kittens/url_hints/url_regex.py', 'w') as f:
+    with open('kittens/hints/url_regex.py', 'w') as f:
         f.write("url_delimiters = '{}'  # noqa".format(''.join(classes_to_regex(cz))))
 
 
