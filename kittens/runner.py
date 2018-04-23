@@ -50,13 +50,24 @@ def launch(args):
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
     from kittens.tui.operations import clear_screen, reset_mode
     m = import_kitten_main_module(config_dir, kitten)
-    result = m['start'](args)
+    try:
+        result = m['start'](args)
+    finally:
+        sys.stdin = sys.__stdin__
     print(reset_mode('ALTERNATE_SCREEN') + clear_screen(), end='')
     if result is not None:
         import json
-        print('OK:', json.dumps(result))
+        data = json.dumps(result)
+        print('OK:', len(data), data)
     sys.stderr.flush()
     sys.stdout.flush()
+
+
+def deserialize(output):
+    import json
+    if output.startswith('OK: '):
+        prefix, sz, rest = output.split(' ', 2)
+        return json.loads(rest[:int(sz)])
 
 
 def run_kitten(kitten):

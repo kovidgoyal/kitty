@@ -498,7 +498,7 @@ class Boss:
                 SpecialWindow(
                     ['kitty', '+runpy', 'from kittens.runner import main; main()'] + args,
                     stdin=data,
-                    env={'KITTY_COMMON_OPTS': json.dumps(copts)},
+                    env={'KITTY_COMMON_OPTS': json.dumps(copts), 'PYTHONWARNINGS': 'ignore'},
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
 
@@ -510,8 +510,9 @@ class Boss:
 
     def on_kitten_finish(self, target_window_id, end_kitten, source_window):
         output = self.get_output(source_window, num_lines=None)
-        if output.startswith('OK: '):
-            data = json.loads(output.partition(' ')[2].strip())
+        from kittens.runner import deserialize
+        data = deserialize(output)
+        if data is not None:
             end_kitten(data, target_window_id, self)
 
     def input_unicode_character(self):
