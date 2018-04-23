@@ -15,7 +15,8 @@ from .cli import create_opts, parse_args
 from .config import (
     MINIMUM_FONT_SIZE, initial_window_size, prepare_config_file_for_editing
 )
-from .constants import appname, editor, set_boss, config_dir
+from .config_utils import to_cmdline
+from .constants import appname, config_dir, editor, set_boss
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -562,6 +563,8 @@ class Boss:
 
     def open_url(self, url, program=None):
         if url:
+            if isinstance(program, str):
+                program = to_cmdline(program)
             open_url(url, program or self.opts.open_url_with)
 
     def open_url_lines(self, lines, program=None):

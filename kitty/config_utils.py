@@ -4,6 +4,7 @@
 
 import os
 import re
+import shlex
 
 from .rgb import to_color as as_color
 from .utils import log_error
@@ -29,6 +30,12 @@ def unit_float(x):
 
 def to_bool(x):
     return x.lower() in 'y yes true'.split()
+
+
+def to_cmdline(x):
+    ans = shlex.split(x)
+    ans[0] = os.path.expandvars(os.path.expanduser(ans[0]))
+    return ans
 
 
 def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes):

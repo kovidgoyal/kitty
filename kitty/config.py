@@ -6,7 +6,6 @@ import ast
 import json
 import os
 import re
-import shlex
 import sys
 import tempfile
 from collections import namedtuple
@@ -15,7 +14,7 @@ from contextlib import contextmanager
 from . import fast_data_types as defines
 from .config_utils import (
     init_config, load_config as _load_config, merge_dicts, parse_config_base,
-    positive_float, positive_int, to_bool, to_color, unit_float
+    positive_float, positive_int, to_bool, to_cmdline, to_color, unit_float
 )
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -119,7 +118,7 @@ def parse_key_action(action):
     elif func == 'set_font_size':
         args = (float(rest),)
     elif func in shlex_actions:
-        args = shlex.split(rest)
+        args = to_cmdline(rest)
     return KeyAction(func, args)
 
 
@@ -292,7 +291,8 @@ type_map = {
     'adjust_line_height': adjust_line_height,
     'adjust_column_width': adjust_line_height,
     'scrollback_lines': positive_int,
-    'scrollback_pager': shlex.split,
+    'scrollback_pager': to_cmdline,
+    'open_url_with': to_cmdline,
     'font_size': to_font_size,
     'font_size_delta': positive_float,
     'focus_follows_mouse': to_bool,
