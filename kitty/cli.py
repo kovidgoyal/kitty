@@ -484,7 +484,7 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
-            appname=appname, config_help=CONFIG_HELP.format(conf_name=appname),
+            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
             window_layout_choices=', '.join(all_layouts)
         )
     return options_spec.ans
