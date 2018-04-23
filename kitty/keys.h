@@ -546,6 +546,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -580,29 +606,55 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 63: // END
                     return "\x06\x1b\x5b\x31\x3b\x32\x46";
                   case 69: // F1
-                    return "\x03\x1b\x4f\x50";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
                   case 70: // F2
-                    return "\x03\x1b\x4f\x51";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
                   case 71: // F3
-                    return "\x03\x1b\x4f\x52";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
                   case 72: // F4
-                    return "\x03\x1b\x4f\x53";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
                   case 73: // F5
-                    return "\x05\x1b\x5b\x31\x35\x7e";
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
                   case 74: // F6
-                    return "\x05\x1b\x5b\x31\x37\x7e";
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
                   case 75: // F7
-                    return "\x05\x1b\x5b\x31\x38\x7e";
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
                   case 76: // F8
-                    return "\x05\x1b\x5b\x31\x39\x7e";
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
                   case 77: // F9
-                    return "\x05\x1b\x5b\x32\x30\x7e";
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
                   case 78: // F10
-                    return "\x05\x1b\x5b\x32\x31\x7e";
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
                   case 79: // F11
-                    return "\x05\x1b\x5b\x32\x33\x7e";
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
                   case 80: // F12
-                    return "\x05\x1b\x5b\x32\x34\x7e";
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -754,6 +806,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x07\x1b\x5b\x32\x33\x3b\x35\x7e";
                   case 80: // F12
                     return "\x07\x1b\x5b\x32\x34\x3b\x35\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -819,6 +897,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1230,6 +1334,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1287,6 +1417,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1344,6 +1500,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1401,6 +1583,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1458,6 +1666,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1515,6 +1749,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1572,6 +1832,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1629,6 +1915,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1686,6 +1998,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1743,6 +2081,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1805,6 +2169,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -1839,29 +2229,55 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 63: // END
                     return "\x06\x1b\x5b\x31\x3b\x32\x46";
                   case 69: // F1
-                    return "\x03\x1b\x4f\x50";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
                   case 70: // F2
-                    return "\x03\x1b\x4f\x51";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
                   case 71: // F3
-                    return "\x03\x1b\x4f\x52";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
                   case 72: // F4
-                    return "\x03\x1b\x4f\x53";
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
                   case 73: // F5
-                    return "\x05\x1b\x5b\x31\x35\x7e";
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
                   case 74: // F6
-                    return "\x05\x1b\x5b\x31\x37\x7e";
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
                   case 75: // F7
-                    return "\x05\x1b\x5b\x31\x38\x7e";
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
                   case 76: // F8
-                    return "\x05\x1b\x5b\x31\x39\x7e";
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
                   case 77: // F9
-                    return "\x05\x1b\x5b\x32\x30\x7e";
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
                   case 78: // F10
-                    return "\x05\x1b\x5b\x32\x31\x7e";
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
                   case 79: // F11
-                    return "\x05\x1b\x5b\x32\x33\x7e";
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
                   case 80: // F12
-                    return "\x05\x1b\x5b\x32\x34\x7e";
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2013,6 +2429,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x07\x1b\x5b\x32\x33\x3b\x35\x7e";
                   case 80: // F12
                     return "\x07\x1b\x5b\x32\x34\x3b\x35\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2078,6 +2520,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2489,6 +2957,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2546,6 +3040,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2603,6 +3123,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2660,6 +3206,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2717,6 +3289,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2774,6 +3372,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2831,6 +3455,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2888,6 +3538,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -2945,6 +3621,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -3002,6 +3704,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x05\x1b\x5b\x32\x33\x7e";
                   case 80: // F12
                     return "\x05\x1b\x5b\x32\x34\x7e";
+                  case 81: // F13
+                    return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                  case 82: // F14
+                    return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                  case 83: // F15
+                    return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                  case 84: // F16
+                    return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                  case 85: // F17
+                    return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                  case 86: // F18
+                    return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                  case 87: // F19
+                    return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                  case 88: // F20
+                    return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                  case 89: // F21
+                    return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                  case 90: // F22
+                    return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                  case 91: // F23
+                    return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                  case 92: // F24
+                    return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                  case 93: // F25
+                    return "\x06\x1b\x5b\x31\x3b\x35\x50";
                   case 109: // KP_ENTER
                     return "\x01\x0d";
                 } // end switch(key)
@@ -3073,6 +3801,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3107,29 +3861,55 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 63: // END
                       return "\x06\x1b\x5b\x31\x3b\x32\x46";
                     case 69: // F1
-                      return "\x03\x1b\x4f\x50";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
                     case 70: // F2
-                      return "\x03\x1b\x4f\x51";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
                     case 71: // F3
-                      return "\x03\x1b\x4f\x52";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
                     case 72: // F4
-                      return "\x03\x1b\x4f\x53";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
                     case 73: // F5
-                      return "\x05\x1b\x5b\x31\x35\x7e";
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
                     case 74: // F6
-                      return "\x05\x1b\x5b\x31\x37\x7e";
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
                     case 75: // F7
-                      return "\x05\x1b\x5b\x31\x38\x7e";
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
                     case 76: // F8
-                      return "\x05\x1b\x5b\x31\x39\x7e";
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
                     case 77: // F9
-                      return "\x05\x1b\x5b\x32\x30\x7e";
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
                     case 78: // F10
-                      return "\x05\x1b\x5b\x32\x31\x7e";
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
                     case 79: // F11
-                      return "\x05\x1b\x5b\x32\x33\x7e";
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
                     case 80: // F12
-                      return "\x05\x1b\x5b\x32\x34\x7e";
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3281,6 +4061,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x07\x1b\x5b\x32\x33\x3b\x35\x7e";
                     case 80: // F12
                       return "\x07\x1b\x5b\x32\x34\x3b\x35\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3346,6 +4152,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3757,6 +4589,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3814,6 +4672,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3871,6 +4755,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3928,6 +4838,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -3985,6 +4921,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4042,6 +5004,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4099,6 +5087,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4156,6 +5170,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4213,6 +5253,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4270,6 +5336,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4332,6 +5424,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4366,29 +5484,55 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 63: // END
                       return "\x06\x1b\x5b\x31\x3b\x32\x46";
                     case 69: // F1
-                      return "\x03\x1b\x4f\x50";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
                     case 70: // F2
-                      return "\x03\x1b\x4f\x51";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
                     case 71: // F3
-                      return "\x03\x1b\x4f\x52";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
                     case 72: // F4
-                      return "\x03\x1b\x4f\x53";
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
                     case 73: // F5
-                      return "\x05\x1b\x5b\x31\x35\x7e";
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
                     case 74: // F6
-                      return "\x05\x1b\x5b\x31\x37\x7e";
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
                     case 75: // F7
-                      return "\x05\x1b\x5b\x31\x38\x7e";
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
                     case 76: // F8
-                      return "\x05\x1b\x5b\x31\x39\x7e";
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
                     case 77: // F9
-                      return "\x05\x1b\x5b\x32\x30\x7e";
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
                     case 78: // F10
-                      return "\x05\x1b\x5b\x32\x31\x7e";
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
                     case 79: // F11
-                      return "\x05\x1b\x5b\x32\x33\x7e";
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
                     case 80: // F12
-                      return "\x05\x1b\x5b\x32\x34\x7e";
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4540,6 +5684,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x07\x1b\x5b\x32\x33\x3b\x35\x7e";
                     case 80: // F12
                       return "\x07\x1b\x5b\x32\x34\x3b\x35\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -4605,6 +5775,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5016,6 +6212,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5073,6 +6295,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5130,6 +6378,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5187,6 +6461,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5244,6 +6544,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5301,6 +6627,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5358,6 +6710,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5415,6 +6793,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5472,6 +6876,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)
@@ -5529,6 +6959,32 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x05\x1b\x5b\x32\x33\x7e";
                     case 80: // F12
                       return "\x05\x1b\x5b\x32\x34\x7e";
+                    case 81: // F13
+                      return "\x06\x1b\x5b\x31\x3b\x32\x50";
+                    case 82: // F14
+                      return "\x06\x1b\x5b\x31\x3b\x32\x51";
+                    case 83: // F15
+                      return "\x06\x1b\x5b\x31\x3b\x32\x52";
+                    case 84: // F16
+                      return "\x06\x1b\x5b\x31\x3b\x32\x53";
+                    case 85: // F17
+                      return "\x07\x1b\x5b\x31\x35\x3b\x32\x7e";
+                    case 86: // F18
+                      return "\x07\x1b\x5b\x31\x37\x3b\x32\x7e";
+                    case 87: // F19
+                      return "\x07\x1b\x5b\x31\x38\x3b\x32\x7e";
+                    case 88: // F20
+                      return "\x07\x1b\x5b\x31\x39\x3b\x32\x7e";
+                    case 89: // F21
+                      return "\x07\x1b\x5b\x32\x30\x3b\x32\x7e";
+                    case 90: // F22
+                      return "\x07\x1b\x5b\x32\x31\x3b\x32\x7e";
+                    case 91: // F23
+                      return "\x07\x1b\x5b\x32\x33\x3b\x32\x7e";
+                    case 92: // F24
+                      return "\x07\x1b\x5b\x32\x34\x3b\x32\x7e";
+                    case 93: // F25
+                      return "\x06\x1b\x5b\x31\x3b\x35\x50";
                     case 109: // KP_ENTER
                       return "\x01\x0d";
                   } // end switch(key)

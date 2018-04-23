@@ -37,6 +37,16 @@ shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
 alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 ctrl_shift_mod = defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_CONTROL
 ctrl_alt_mod = defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL
+SHIFTED_KEYS = {
+    defines.GLFW_KEY_TAB: key_as_bytes('kcbt'),
+    defines.GLFW_KEY_HOME: key_as_bytes('kHOM'),
+    defines.GLFW_KEY_END: key_as_bytes('kEND'),
+    defines.GLFW_KEY_LEFT: key_as_bytes('kLFT'),
+    defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
+    defines.GLFW_KEY_UP: key_as_bytes('kri'),
+    defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
+}
+
 
 for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -58,9 +68,14 @@ for f in range(1, 13):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
     kn = 'kf{}'.format(f)
     smkx_key_map[kf] = key_as_bytes(kn)
+    SHIFTED_KEYS[kf] = modify_complex_key(kn, 2)
     alt_codes[kf] = modify_complex_key(kn, 3)
     shift_alt_codes[kf] = modify_complex_key(kn, 4)
     control_codes[kf] = modify_complex_key(kn, 5)
+for f in range(13, 26):
+    kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
+    kn = 'kf{}'.format(f)
+    smkx_key_map[kf] = key_as_bytes(kn)
 f = {k: k for k in '0123456789'}
 f.update({
     'COMMA': ',',
@@ -79,16 +94,6 @@ smkx_key_map[defines.GLFW_KEY_ENTER] = b'\r'
 smkx_key_map[defines.GLFW_KEY_KP_ENTER] = b'\r'
 smkx_key_map[defines.GLFW_KEY_BACKSPACE] = key_as_bytes('kbs')
 smkx_key_map[defines.GLFW_KEY_TAB] = b'\t'
-
-SHIFTED_KEYS = {
-    defines.GLFW_KEY_TAB: key_as_bytes('kcbt'),
-    defines.GLFW_KEY_HOME: key_as_bytes('kHOM'),
-    defines.GLFW_KEY_END: key_as_bytes('kEND'),
-    defines.GLFW_KEY_LEFT: key_as_bytes('kLFT'),
-    defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
-    defines.GLFW_KEY_UP: key_as_bytes('kri'),
-    defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
-}
 
 control_codes.update({
     k: (1 + i, )
