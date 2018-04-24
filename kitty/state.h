@@ -32,6 +32,7 @@ typedef struct {
     Edge tab_bar_edge;
     bool sync_to_monitor;
     bool close_on_child_death;
+    int kitty_mod;
 } Options;
 
 typedef struct {

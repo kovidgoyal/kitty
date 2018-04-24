@@ -47,10 +47,13 @@ def to_cursor_shape(x):
         )
 
 
+mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER', '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
+
+
 def parse_mods(parts):
 
     def map_mod(m):
-        return {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER', '⌥': 'ALT', 'OPTION': 'ALT'}.get(m, m)
+        return mod_map.get(m, m)
 
     mods = 0
     for m in parts:
@@ -329,6 +332,7 @@ type_map = {
     'url_style': url_style,
     'copy_on_select': to_bool,
     'tab_bar_edge': tab_bar_edge,
+    'kitty_mod': to_modifiers,
 }
 
 for name in (

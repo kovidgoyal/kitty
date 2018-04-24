@@ -935,6 +935,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_MOD_CONTROL);
     ADDC(GLFW_MOD_ALT);
     ADDC(GLFW_MOD_SUPER);
+    ADDC(GLFW_MOD_KITTY);
 
 // --- Mouse -------------------------------------------------------------------
     ADDC(GLFW_MOUSE_BUTTON_1);
