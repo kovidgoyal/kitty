@@ -56,7 +56,7 @@ def name(cp):
 @lru_cache(maxsize=256)
 def codepoints_matching_search(parts):
     ans = []
-    if parts and parts[0]:
+    if parts and parts[0] and len(parts[0]) > 1:
         codepoints = points_for_word(parts[0])
         for word in parts[1:]:
             pts = points_for_word(word)
