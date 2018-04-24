@@ -86,7 +86,10 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     Window *w = active_window();
     if (!w) return;
     if (global_state.in_sequence_mode) {
-        if (action != GLFW_RELEASE) call_boss(process_sequence, "iiii", key, scancode, action, mods);
+        if (
+            action != GLFW_RELEASE &&
+            key != GLFW_KEY_LEFT_SHIFT && key != GLFW_KEY_RIGHT_SHIFT && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_RIGHT_ALT && key != GLFW_KEY_LEFT_CONTROL && key != GLFW_KEY_RIGHT_CONTROL
+        ) call_boss(process_sequence, "iiii", key, scancode, action, mods);
         return;
     }
     Screen *screen = w->render_data.screen;

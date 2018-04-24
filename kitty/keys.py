@@ -257,7 +257,7 @@ def get_shortcut(keymap, mods, key, scancode):
 
 
 def shortcut_matches(s, mods, key, scancode):
-    return s[0] & 0b1111 == mods & 0b1111 and s[1] == key
+    return defines.resolve_key_mods(s[0]) & 0b1111 == mods & 0b1111 and s[1] == key
 
 
 def generate_key_table():
