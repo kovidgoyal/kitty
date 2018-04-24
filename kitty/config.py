@@ -318,6 +318,7 @@ type_map = {
     'initial_window_width': positive_int,
     'initial_window_height': positive_int,
     'macos_hide_titlebar': to_bool,
+    'macos_hide_from_tasks': to_bool,
     'macos_option_as_alt': to_bool,
     'macos_titlebar_color': macos_titlebar_color,
     'box_drawing_scale': box_drawing_scale,
