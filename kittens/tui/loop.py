@@ -376,8 +376,12 @@ class Loop:
                 self.return_code = 1
                 keep_going = False
 
+            finalize_output = b''.join(handler.write_buf).decode('utf-8')
+
             if tb is not None:
-                self._report_error_loop(tb, term_manager)
+                self._report_error_loop(finalize_output + tb, term_manager)
+        if tb is None:
+            os.write(self.output_fd, finalize_output.encode('utf-8'))
 
     def _report_error_loop(self, tb, term_manager):
         select = self.sel.select

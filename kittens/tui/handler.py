@@ -14,6 +14,7 @@ class Handler:
         self.initialize()
 
     def __exit__(self, *a):
+        del self.write_buf[:]
         self.finalize()
 
     def initialize(self):

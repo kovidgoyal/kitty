@@ -5,7 +5,7 @@
 import sys
 from contextlib import contextmanager
 
-from kitty.rgb import color_as_sharp, to_color
+from kitty.rgb import Color, color_as_sharp, to_color
 from kitty.terminfo import string_capabilities
 
 S7C1T = '\033 F'
@@ -168,9 +168,9 @@ def set_default_colors(fg=None, bg=None):
     if fg is None:
         ans += '\x1b]110\x1b\\'
     else:
-        ans += '\x1b]10;{}\x1b\\'.format(color_as_sharp(to_color(fg)))
+        ans += '\x1b]10;{}\x1b\\'.format(color_as_sharp(fg if isinstance(fg, Color) else to_color(fg)))
     if bg is None:
         ans += '\x1b]111\x1b\\'
     else:
-        ans += '\x1b]11;{}\x1b\\'.format(color_as_sharp(to_color(bg)))
+        ans += '\x1b]11;{}\x1b\\'.format(color_as_sharp(bg if isinstance(bg, Color) else to_color(bg)))
     return ans

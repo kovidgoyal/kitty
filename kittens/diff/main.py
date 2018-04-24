@@ -12,7 +12,9 @@ from kitty.key_encoding import ESCAPE
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import clear_screen, set_line_wrapping, set_window_title
+from ..tui.operations import (
+    clear_screen, set_default_colors, set_line_wrapping, set_window_title
+)
 from .collect import create_collection, data_for_path
 from .config import init_config
 from .git import Differ
@@ -35,8 +37,9 @@ def generate_diff(collection, context):
 
 class DiffHandler(Handler):
 
-    def __init__(self, args, left, right):
+    def __init__(self, args, opts, left, right):
         self.state = INITIALIZING
+        self.opts = opts
         self.left, self.right = left, right
         self.report_traceback_on_exit = None
         self.args = args
@@ -54,6 +57,7 @@ class DiffHandler(Handler):
     def init_terminal_state(self):
         self.write(set_line_wrapping(False))
         self.write(set_window_title('kitty +diff'))
+        self.write(set_default_colors(self.opts.foreground, self.opts.background))
 
     def initialize(self):
         self.init_terminal_state()
@@ -61,7 +65,7 @@ class DiffHandler(Handler):
         self.create_collection()
 
     def finalize(self):
-        pass
+        self.write(set_default_colors())
 
     def draw_screen(self):
         if self.state < DIFFED:
@@ -144,10 +148,10 @@ def main(args):
     left, right = items
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
-    init_config(args)
+    opts = init_config(args)
 
     loop = Loop()
-    handler = DiffHandler(args, left, right)
+    handler = DiffHandler(args, opts, left, right)
     loop.loop(handler)
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
