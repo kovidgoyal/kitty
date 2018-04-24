@@ -263,12 +263,14 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
         S(super, XKB_MOD_NAME_LOGO);
         S(capsLock, XKB_MOD_NAME_CAPS);
         S(numLock, XKB_MOD_NAME_NUM);
+#undef S
         size_t capacity = sizeof(xkb->unknownModifiers)/sizeof(xkb->unknownModifiers[0]), j = 0;
         for (xkb_mod_index_t i = 0; i < capacity; i++) xkb->unknownModifiers[i] = XKB_MOD_INVALID;
         for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap) && j < capacity - 1; i++) {
             if (i != xkb->controlIdx && i != xkb->altIdx && i != xkb->shiftIdx && i != xkb->superIdx && i != xkb->capsLockIdx && i != xkb->numLockIdx) xkb->unknownModifiers[j++] = i;
         }
-#undef S
+        xkb->modifiers = 0;
+        xkb->activeUnknownModifiers = 0;
     }
     return ok;
 }
