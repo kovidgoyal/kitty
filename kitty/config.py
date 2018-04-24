@@ -333,6 +333,7 @@ type_map = {
     'copy_on_select': to_bool,
     'tab_bar_edge': tab_bar_edge,
     'kitty_mod': to_modifiers,
+    'clear_all_shortcuts': to_bool,
 }
 
 for name in (
@@ -347,6 +348,11 @@ for a in ('active', 'inactive'):
         type_map['%s_tab_%s' % (a, b)] = to_color
 
 
+def init_shortcut_maps(ans):
+    ans['keymap'] = {}
+    ans['sequence_map'] = {}
+
+
 def special_handling(key, val, ans):
     if key == 'map':
         parse_key(val, ans['keymap'], ans['sequence_map'])
@@ -358,6 +364,10 @@ def special_handling(key, val, ans):
         # For legacy compatibility
         parse_send_text(val, ans['keymap'], ans['sequence_map'])
         return True
+    if key == 'clear_all_shortcuts':
+        if to_bool(val):
+            init_shortcut_maps(ans)
+        return
 
 
 defaults = None
@@ -367,11 +377,8 @@ default_config_path = os.path.join(
 
 
 def parse_config(lines, check_keys=True):
-    ans = {
-        'keymap': {},
-        'sequence_map': {},
-        'symbol_map': {},
-    }
+    ans = {'symbol_map': {}}
+    init_shortcut_maps(ans)
     parse_config_base(
         lines,
         defaults,
@@ -436,9 +443,12 @@ def merge_configs(defaults, vals):
                 ans[k] = merge_dicts(v, newvals)
         else:
             ans[k] = vals.get(k, v)
+    defvals = {'keymap': defaults.get('keymap', {}), 'sequence_map': defaults.get('sequence_map', {})}
+    if vals.get('clear_all_shortcuts'):
+        init_shortcut_maps(defvals)
     merge_keys(
             ans,
-            {'keymap': defaults.get('keymap', {}), 'sequence_map': defaults.get('sequence_map', {})},
+            defvals,
             {'keymap': vals.get('keymap', {}), 'sequence_map': vals.get('sequence_map', {})}
     )
     return ans
