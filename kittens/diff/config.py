@@ -9,6 +9,7 @@ from kitty.config_utils import (
     resolve_config, to_color
 )
 from kitty.constants import config_dir
+from kitty.rgb import color_as_sgr
 
 defaults = None
 default_config_path = os.path.join(
@@ -21,10 +22,17 @@ formats = {
     'text': '',
 }
 
+
+def set_formats(opts):
+    formats['text'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.background)
+    formats['margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.margin_bg)
+    formats['title'] = '38' + color_as_sgr(opts.title_fg) + ';48' + color_as_sgr(opts.title_bg) + ';1'
+
+
 type_map = {}
 
 for name in (
-    'foreground background'
+    'foreground background title_fg title_bg'
 ).split():
     type_map[name] = to_color
 
@@ -76,4 +84,5 @@ def init_config(args):
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)
+    set_formats(opts)
     return opts

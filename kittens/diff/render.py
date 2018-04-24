@@ -4,7 +4,6 @@
 
 import re
 from gettext import gettext as _
-from functools import partial
 
 from kitty.fast_data_types import wcswidth
 
@@ -70,14 +69,17 @@ def fit_in(text, count):
     return text + '…'
 
 
-def formatted(fmt, text):
-    return '\x1b[' + fmt + 'm' + text + '\x1b[0m'
+def format_func(which):
+    def formatted(text):
+        fmt = formats[which]
+        return '\x1b[' + fmt + 'm' + text + '\x1b[0m'
+    formatted.__name__ = which + '_format'
+    return formatted
 
 
-title_format = partial(formatted, formats['title'])
-margin_format = partial(formatted, formats['margin'])
-text_format = partial(formatted, formats['text'])
-del formatted
+text_format = format_func('text')
+title_format = format_func('title')
+margin_format = format_func('margin')
 
 
 def place_in(text, sz):
