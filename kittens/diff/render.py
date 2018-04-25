@@ -7,7 +7,7 @@ from gettext import gettext as _
 
 from kitty.fast_data_types import truncate_point_for_length
 
-from .collect import data_for_path, path_name_map
+from .collect import data_for_path, lines_for_path, path_name_map
 from .config import formats
 
 
@@ -111,10 +111,15 @@ def split_to_size(line, width):
 
 
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
-    available_cols = columns // 2 - margin_size
-    for hunk_num, hunk in enumerate(hunks):
-        for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
-            pass
+    raise NotImplementedError('TODO')
+    lines_for_path()
+    # available_cols = columns // 2 - margin_size
+    #
+    # for hunk_num, hunk in enumerate(hunks):
+    #     for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
+    #         left_line_number, left_is_
+    #         left_line = lines_for_path(left_path)[
+    #         left_lines, right_lines = list(split_to_size(left_line, available_cols)), list(split_to_size(
 
 
 def render_diff(collection, diff_map, args, columns):

@@ -104,6 +104,12 @@ def data_for_path(path):
 
 
 @lru_cache(maxsize=1024)
+def lines_for_path(path):
+    data = data_for_path(path)
+    return data.splitlines()
+
+
+@lru_cache(maxsize=1024)
 def hash_for_path(path):
     md5(data_for_path(path)).digest()
 
