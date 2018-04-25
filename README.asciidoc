@@ -142,9 +142,9 @@ just `kitty`.
 
 === Linux packages
 
-* Arch Linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
+* Arch Linux: https://www.archlinux.org/packages/community/x86_64/kitty/
 
-* Arch Linux: AUR stable package https://aur.archlinux.org/packages/kitty/
+* Arch Linux: AUR git package https://aur.archlinux.org/packages/kitty-git/
 
 * NixOS / nixpkgs: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix
 
