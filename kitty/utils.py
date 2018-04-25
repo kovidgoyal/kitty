@@ -120,15 +120,15 @@ def command_for_open(program='default'):
     return cmd
 
 
-def open_cmd(cmd, arg=None):
+def open_cmd(cmd, arg=None, cwd=None):
     if arg is not None:
         cmd = list(cmd)
         cmd.append(arg)
-    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
 
 
-def open_url(url, program='default'):
-    return open_cmd(command_for_open(program), url)
+def open_url(url, program='default', cwd=None):
+    return open_cmd(command_for_open(program), url, cwd=cwd)
 
 
 def detach(fork=True, setsid=True, redirect=True):

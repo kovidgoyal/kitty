@@ -8,6 +8,7 @@ import weakref
 from collections import deque
 from enum import Enum
 
+from .child import cwd_of_process
 from .config import build_ansi_color_table, parse_send_text_bytes
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
@@ -348,12 +349,14 @@ class Window:
             set_clipboard_string(text)
 
     def pass_selection_to_program(self, *args):
+        pid = self.child.pid
+        cwd = cwd_of_process(pid)
         text = self.text_for_selection()
         if text:
             if args:
-                open_cmd(args, text)
+                open_cmd(args, text, cwd=cwd)
             else:
-                open_url(text)
+                open_url(text, cwd=cwd)
 
     def scroll_line_up(self):
         if self.screen.is_main_linebuf():
