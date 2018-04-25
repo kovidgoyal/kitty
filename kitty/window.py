@@ -333,7 +333,7 @@ class Window:
     @property
     def cwd_of_child(self):
         # TODO: Maybe use the cwd of the leader of the foreground process
-        # group?
+        # group in the session of the child process?
         pid = self.child.pid
         if pid is not None:
             return cwd_of_process(pid) or None
