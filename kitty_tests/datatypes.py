@@ -5,7 +5,7 @@
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
     REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
-    parse_input_from_terminal, wcswidth, wcwidth
+    parse_input_from_terminal, wcswidth, wcwidth, truncate_point_for_length
 )
 from kitty.rgb import to_color
 from kitty.utils import sanitize_title
@@ -338,7 +338,15 @@ class TestDataTypes(BaseTest):
         self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
         self.ae(wcswidth('\033a\033[2mb'), 2)
+        tpl = truncate_point_for_length
+        self.ae(tpl('abc', 4), 3)
+        self.ae(tpl('abc', 2), 2)
+        self.ae(tpl('abc', 0), 0)
+        self.ae(tpl('a\U0001f337', 2), 1)
+        self.ae(tpl('a\U0001f337', 3), 2)
+        self.ae(tpl('a\U0001f337b', 4), 3)
         self.ae(sanitize_title('a\0\01 \t\n\f\rb'), 'a b')
+        self.ae(tpl('a\x1b[31mbc', 2), 7)
 
         def tp(*data, leftover='', text='', csi='', apc='', ibp=False):
             text_r, csi_r, apc_r, rest = [], [], [], []

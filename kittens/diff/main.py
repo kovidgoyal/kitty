@@ -80,7 +80,7 @@ class DiffHandler(Handler):
             else:
                 text = self.diff_lines[lpos].text
             self.write(text)
-            self.write('\n\r')
+            self.write('\x1b[0m\n\r')
 
     def on_key(self, key_event):
         if self.state is INITIALIZING:

@@ -5,7 +5,7 @@
 import re
 from gettext import gettext as _
 
-from kitty.fast_data_types import wcswidth
+from kitty.fast_data_types import truncate_point_for_length
 
 from .collect import data_for_path, path_name_map
 from .config import formats
@@ -60,13 +60,16 @@ def sanitize(text):
 
 
 def fit_in(text, count):
-    w = wcswidth(text)
-    if w <= count:
+    p = truncate_point_for_length(text, count)
+    if p >= len(text):
         return text
-    text = text[:count-1]
-    while wcswidth(text) > count - 1:
-        text = text[:-1]
-    return text + '…'
+    if count > 1:
+        p = truncate_point_for_length(text, count - 1)
+    return text[:p] + '…'
+
+
+def place_in(text, sz):
+    return fit_in(text, sz).ljust(sz)
 
 
 def format_func(which):
@@ -82,10 +85,6 @@ title_format = format_func('title')
 margin_format = format_func('margin')
 
 
-def place_in(text, sz):
-    return fit_in(text, sz).ljust(sz)
-
-
 def title_lines(left_path, right_path, args, columns, margin_size):
     name = fit_in(sanitize(path_name_map[left_path]), columns - 2 * margin_size)
     yield title_format((' ' + name).ljust(columns))
@@ -99,13 +98,23 @@ def binary_lines(path, other_path, columns, margin_size):
     def fl(path):
         text = template.format(human_readable(len(data_for_path(path))))
         text = place_in(text, columns // 2 - margin_size)
-        return margin_format(' ' * margin_size) + text_format(text)
+        return margin_format(' ' * margin_size) + text_format(text) + '\x1b[0m'
 
     return fl(path) + fl(other_path)
 
 
+def split_to_size(line, width):
+    while line:
+        p = truncate_point_for_length(line, width)
+        yield line[:p]
+        line = line[p:]
+
+
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
-    return iter(())
+    available_cols = columns // 2 - margin_size
+    for hunk_num, hunk in enumerate(hunks):
+        for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
+            pass
 
 
 def render_diff(collection, diff_map, args, columns):

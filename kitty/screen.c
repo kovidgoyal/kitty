@@ -1516,6 +1516,52 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     return PyLong_FromUnsignedLong(ans);
 }
 
+
+static PyObject*
+screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
+    PyObject *str; unsigned int num_cells;
+    if (!PyArg_ParseTuple(args, "OI", &str, &num_cells)) return NULL;
+    if (PyUnicode_READY(str) != 0) return NULL;
+    int kind = PyUnicode_KIND(str);
+    void *data = PyUnicode_DATA(str);
+    Py_ssize_t len = PyUnicode_GET_LENGTH(str), i;
+    char_type prev_ch = 0;
+    int prev_width = 0;
+    bool in_sgr = false;
+    unsigned long width_so_far = 0;
+    for (i = 0; i < len && width_so_far < num_cells; i++) {
+        char_type ch = PyUnicode_READ(kind, data, i);
+        if (in_sgr) {
+            if (ch == 'm') in_sgr = false;
+            continue;
+        }
+        if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') { in_sgr = true; continue; }
+        if (ch == 0xfe0f) {
+            if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
+                width_so_far += 1;
+                prev_width = 2;
+            } else prev_width = 0;
+        } else {
+            int w = wcwidth_std(ch);
+            switch(w) {
+                case -1:
+                case 0:
+                    prev_width = 0; break;
+                case 2:
+                    prev_width = 2; break;
+                default:
+                    prev_width = 1; break;
+            }
+            if (width_so_far + prev_width > num_cells) { break; }
+            width_so_far += prev_width;
+        }
+        prev_ch = ch;
+
+    }
+    return PyLong_FromUnsignedLong(i);
+}
+
+
 static PyObject*
 line(Screen *self, PyObject *val) {
     unsigned long y = PyLong_AsUnsignedLong(val);
@@ -1987,6 +2033,7 @@ PyTypeObject Screen_Type = {
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
+    {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 
