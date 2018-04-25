@@ -563,11 +563,11 @@ class Boss:
             old_focus.focus_changed(False)
         tab.active_window.focus_changed(True)
 
-    def open_url(self, url, program=None):
+    def open_url(self, url, program=None, cwd=None):
         if url:
             if isinstance(program, str):
                 program = to_cmdline(program)
-            open_url(url, program or self.opts.open_url_with)
+            open_url(url, program or self.opts.open_url_with, cwd=cwd)
 
     def open_url_lines(self, lines, program=None):
         self.open_url(''.join(lines), program)

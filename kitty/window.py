@@ -330,6 +330,14 @@ class Window:
             lines = h + lines
         return ''.join(lines)
 
+    @property
+    def cwd_of_child(self):
+        # TODO: Maybe use the cwd of the leader of the foreground process
+        # group?
+        pid = self.child.pid
+        if pid is not None:
+            return cwd_of_process(pid) or None
+
     # actions {{{
 
     def show_scrollback(self):
@@ -349,8 +357,7 @@ class Window:
             set_clipboard_string(text)
 
     def pass_selection_to_program(self, *args):
-        pid = self.child.pid
-        cwd = cwd_of_process(pid)
+        cwd = self.cwd_of_child
         text = self.text_for_selection()
         if text:
             if args:

@@ -306,7 +306,11 @@ def handle_result(args, data, target_window_id, boss):
     elif program == '@':
         set_clipboard_string(data['match'])
     else:
-        boss.open_url(data['match'], None if program == 'default' else program)
+        cwd = None
+        w = boss.window_id_map.get(target_window_id)
+        if w is not None:
+            cwd = w.cwd_of_child
+        boss.open_url(data['match'], None if program == 'default' else program, cwd=cwd)
 
 
 if __name__ == '__main__':
