@@ -158,6 +158,9 @@ def regex_finditer(pat, minimum_match_length, line):
             yield s, e
 
 
+closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>'}
+
+
 def find_urls(pat, line):
     for m in pat.finditer(line):
         s, e = m.span()
@@ -167,6 +170,9 @@ def find_urls(pat, line):
             if idx > -1:
                 e -= len(url) - idx
         while line[e - 1] in '.,?!' and e > 1:  # remove trailing punctuation
+            e -= 1
+        # Detect a bracketed URL
+        if s > 0 and e > s + 4 and line[s-1] in '({[<' and line[e-1] == closing_bracket_map[line[s-1]]:
             e -= 1
         yield s, e
 
