@@ -1847,19 +1847,29 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
             }
             break;
         }
-        case EXTEND_LINE:
-            if (extending_leftwards) {
-                found = screen_selection_range_for_line(self, self->selection.end_y, &start, &end);
-                if (found) { self->selection.end_x = start; }
-                found = screen_selection_range_for_line(self, self->selection.start_y, &start, &end);
-                if (found) { self->selection.start_x = end; }
-            } else {
-                found = screen_selection_range_for_line(self, self->selection.start_y, &start, &end);
-                if (found) { self->selection.start_x = start; }
-                found = screen_selection_range_for_line(self, self->selection.end_y, &start, &end);
-                if (found) { self->selection.end_x = end; }
+        case EXTEND_LINE: {
+            index_type top_line = extending_leftwards ? self->selection.end_y : self->selection.start_y;
+            index_type bottom_line = extending_leftwards ? self->selection.start_y : self->selection.end_y;
+            while(top_line > 0 && visual_line_(self, top_line)->continued) top_line--;
+            while(bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) bottom_line++;
+            found = screen_selection_range_for_line(self, top_line, &start, &end);
+            if (found) {
+                if (extending_leftwards) {
+                    self->selection.end_x = start; self->selection.end_y = top_line;
+                } else {
+                    self->selection.start_x = start; self->selection.start_y = top_line;
+                }
+            }
+            found = screen_selection_range_for_line(self, bottom_line, &start, &end);
+            if (found) {
+                if (extending_leftwards) {
+                    self->selection.start_x = end; self->selection.start_y = bottom_line;
+                } else {
+                    self->selection.end_x = end; self->selection.end_y = bottom_line;
+                }
             }
             break;
+        }
         case EXTEND_CELL:
             break;
     }
