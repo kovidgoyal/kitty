@@ -4582,7 +4582,7 @@ GLFWAPI const char* glfwGetJoystickGUID(int jid);
  *  This function may be called from the joystick callback, even for a joystick
  *  that is being disconnected.
  *
- *  @param[in] joystick The joystick whose pointer to set.
+ *  @param[in] jid The joystick whose pointer to set.
  *  @param[in] pointer The new value.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
@@ -4607,7 +4607,7 @@ GLFWAPI void glfwSetJoystickUserPointer(int jid, void* pointer);
  *  This function may be called from the joystick callback, even for a joystick
  *  that is being disconnected.
  *
- *  @param[in] joystick The joystick whose pointer to return.
+ *  @param[in] jid The joystick whose pointer to return.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *

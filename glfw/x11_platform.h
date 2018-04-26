@@ -35,6 +35,9 @@
 #include <X11/Xatom.h>
 #include <X11/Xcursor/Xcursor.h>
 
+// The xcb library is needed to work with libxkb
+#include <X11/Xlib-xcb.h>
+
 // The XRandR extension provides mode setting and gamma control
 #include <X11/extensions/Xrandr.h>
 
@@ -47,6 +50,7 @@
 // The XInput extension provides raw mouse motion input
 #include <X11/extensions/XInput2.h>
 
+// The libxkb library is used for improved keyboard support
 #include "xkb_glfw.h"
 
 typedef XRRCrtcGamma* (* PFN_XRRAllocGamma)(int);
@@ -99,8 +103,6 @@ typedef XineramaScreenInfo* (* PFN_XineramaQueryScreens)(Display*,int*);
 #define XineramaQueryScreens _glfw.x11.xinerama.QueryScreens
 
 typedef struct xcb_connection_t xcb_connection_t;
-typedef xcb_connection_t* (* PFN_XGetXCBConnection)(Display*);
-#define XGetXCBConnection _glfw.x11.x11xcb.GetXCBConnection
 
 typedef Bool (* PFN_XF86VidModeQueryExtension)(Display*,int*,int*);
 typedef Bool (* PFN_XF86VidModeGetGammaRamp)(Display*,int,int,unsigned short*,unsigned short*,unsigned short*);
@@ -340,11 +342,6 @@ typedef struct _GLFWlibraryX11
         PFN_XineramaQueryExtension QueryExtension;
         PFN_XineramaQueryScreens QueryScreens;
     } xinerama;
-
-    struct {
-        void*       handle;
-        PFN_XGetXCBConnection GetXCBConnection;
-    } x11xcb;
 
     struct {
         GLFWbool    available;

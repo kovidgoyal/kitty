@@ -166,7 +166,11 @@ static GLFWbool initExtensions(void)
                                       &_glfw.x11.vidmode.errorBase);
     }
 
+#if defined(__CYGWIN__)
+    _glfw.x11.xi.handle = _glfw_dlopen("libXi-6.so");
+#else
     _glfw.x11.xi.handle = _glfw_dlopen("libXi.so.6");
+#endif
     if (_glfw.x11.xi.handle)
     {
         _glfw.x11.xi.QueryVersion = (PFN_XIQueryVersion)
@@ -192,7 +196,11 @@ static GLFWbool initExtensions(void)
         }
     }
 
+#if defined(__CYGWIN__)
+    _glfw.x11.randr.handle = _glfw_dlopen("libXrandr-2.so");
+#else
     _glfw.x11.randr.handle = _glfw_dlopen("libXrandr.so.2");
+#endif
     if (_glfw.x11.randr.handle)
     {
         _glfw.x11.randr.AllocGamma = (PFN_XRRAllocGamma)
@@ -280,7 +288,11 @@ static GLFWbool initExtensions(void)
                        RROutputChangeNotifyMask);
     }
 
+#if defined(__CYGWIN__)
+    _glfw.x11.xcursor.handle = _glfw_dlopen("libXcursor-1.so");
+#else
     _glfw.x11.xcursor.handle = _glfw_dlopen("libXcursor.so.1");
+#endif
     if (_glfw.x11.xcursor.handle)
     {
         _glfw.x11.xcursor.ImageCreate = (PFN_XcursorImageCreate)
@@ -291,7 +303,11 @@ static GLFWbool initExtensions(void)
             _glfw_dlsym(_glfw.x11.xcursor.handle, "XcursorImageLoadCursor");
     }
 
+#if defined(__CYGWIN__)
+    _glfw.x11.xinerama.handle = _glfw_dlopen("libXinerama-1.so");
+#else
     _glfw.x11.xinerama.handle = _glfw_dlopen("libXinerama.so.1");
+#endif
     if (_glfw.x11.xinerama.handle)
     {
         _glfw.x11.xinerama.IsActive = (PFN_XineramaIsActive)
@@ -310,16 +326,11 @@ static GLFWbool initExtensions(void)
         }
     }
 
-    _glfw.x11.x11xcb.handle = _glfw_dlopen("libX11-xcb.so.1");
-    if (!_glfw.x11.x11xcb.handle)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to load libX11-xcb");
-        return GLFW_FALSE;
-    }
-    _glfw.x11.x11xcb.GetXCBConnection = (PFN_XGetXCBConnection)
-        _glfw_dlsym(_glfw.x11.x11xcb.handle, "XGetXCBConnection");
-
+#if defined(__CYGWIN__)
+    _glfw.x11.xrender.handle = _glfw_dlopen("libXrender-1.so");
+#else
     _glfw.x11.xrender.handle = _glfw_dlopen("libXrender.so.1");
+#endif
     if (_glfw.x11.xrender.handle)
     {
         _glfw.x11.xrender.QueryExtension = (PFN_XRenderQueryExtension)
@@ -659,12 +670,6 @@ void _glfwPlatformTerminate(void)
         _glfw.x11.display = NULL;
     }
 
-    if (_glfw.x11.x11xcb.handle)
-    {
-        _glfw_dlclose(_glfw.x11.x11xcb.handle);
-        _glfw.x11.x11xcb.handle = NULL;
-    }
-
     if (_glfw.x11.xcursor.handle)
     {
         _glfw_dlclose(_glfw.x11.xcursor.handle);
@@ -681,6 +686,24 @@ void _glfwPlatformTerminate(void)
     {
         _glfw_dlclose(_glfw.x11.xinerama.handle);
         _glfw.x11.xinerama.handle = NULL;
+    }
+
+    if (_glfw.x11.xrender.handle)
+    {
+        _glfw_dlclose(_glfw.x11.xrender.handle);
+        _glfw.x11.xrender.handle = NULL;
+    }
+
+    if (_glfw.x11.vidmode.handle)
+    {
+        _glfw_dlclose(_glfw.x11.vidmode.handle);
+        _glfw.x11.vidmode.handle = NULL;
+    }
+
+    if (_glfw.x11.xi.handle)
+    {
+        _glfw_dlclose(_glfw.x11.xi.handle);
+        _glfw.x11.xi.handle = NULL;
     }
 
     // NOTE: These need to be unloaded after XCloseDisplay, as they register

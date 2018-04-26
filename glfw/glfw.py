@@ -50,7 +50,7 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':
-        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11'.split():
+        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
@@ -101,7 +101,7 @@ def collect_source_information():
                 ).group(1).strip().split()
             )
 
-    wayland_protocols = re.search('WaylandProtocols\s+(\S+)\s+', mraw).group(1)
+    wayland_protocols = re.search(r'WaylandProtocols\s+(\S+)\s+', mraw).group(1)
     wayland_protocols = list(map(int, wayland_protocols.split('.')))
     ans = {
         'common': dict(extract_sources('common')),

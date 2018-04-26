@@ -619,11 +619,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* handle, int mode, int value)
         _glfwPlatformGetCursorPos(window,
                                   &window->virtualCursorPosX,
                                   &window->virtualCursorPosY);
-
-#ifdef __APPLE__
-        if (_glfwPlatformWindowFocused(window))
-#endif
-            _glfwPlatformSetCursorMode(window, value);
+        _glfwPlatformSetCursorMode(window, value);
     }
     else if (mode == GLFW_STICKY_KEYS)
     {
