@@ -20,6 +20,14 @@ def run_diff(file1, file2, context=3):
     return False, returncode, stderr.decode('utf-8')
 
 
+def even_up_sides(left, right, filler):
+    delta = len(left) - len(right)
+    if delta != 0:
+        dest = left if delta < 0 else right
+        for i in range(abs(delta)):
+            dest.append(filler)
+
+
 class Hunk:
 
     def __init__(self, title, left, right):
@@ -39,22 +47,15 @@ class Hunk:
         self.left_lines.append((self.left_pos, True))
         self.left_pos += 1
 
-    def _even_up_sides(self):
-        delta = len(self.left_lines) - len(self.right_lines)
-        if delta != 0:
-            dest = self.left_lines if delta < 0 else self.right_lines
-            for i in range(abs(delta)):
-                dest.append((None, True))
-
     def context_line(self):
-        self._even_up_sides()
+        even_up_sides(self.left_lines, self.right_lines, (None, True))
         self.left_lines.append((self.left_pos, False))
         self.right_lines.append((self.right_pos, False))
         self.left_pos += 1
         self.right_pos += 1
 
     def finalize(self):
-        self._even_up_sides()
+        even_up_sides(self.left_lines, self.right_lines, (None, True))
         # Sanity check
         if self.left_pos != self.left_count:
             raise ValueError('Left side line mismatch {} != {}'.format(self.left_pos, self.left_count))

@@ -9,6 +9,7 @@ from kitty.fast_data_types import truncate_point_for_length
 
 from .collect import data_for_path, lines_for_path, path_name_map
 from .config import formats
+from .git import even_up_sides
 
 
 class Reference:
@@ -98,7 +99,7 @@ def binary_lines(path, other_path, columns, margin_size):
     def fl(path):
         text = template.format(human_readable(len(data_for_path(path))))
         text = place_in(text, columns // 2 - margin_size)
-        return margin_format(' ' * margin_size) + text_format(text) + '\x1b[0m'
+        return margin_format(' ' * margin_size) + text_format(text)
 
     return fl(path) + fl(other_path)
 
@@ -110,16 +111,38 @@ def split_to_size(line, width):
         line = line[p:]
 
 
+def render_diff_line(number, text, ltype, margin_size):
+    pass
+
+
+def render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, is_first, margin_size):
+    ltype = 'filler' if left_line_number is None else 'remove'
+    rtype = 'filler' if right_line_number is None else 'add'
+    return (
+            render_diff_line(left_line_number if is_first else None, left, ltype, margin_size) +
+            render_diff_line(right_line_number if is_first else None, right, rtype, margin_size)
+    )
+
+
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
-    raise NotImplementedError('TODO')
-    lines_for_path()
-    # available_cols = columns // 2 - margin_size
-    #
-    # for hunk_num, hunk in enumerate(hunks):
-    #     for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
-    #         left_line_number, left_is_
-    #         left_line = lines_for_path(left_path)[
-    #         left_lines, right_lines = list(split_to_size(left_line, available_cols)), list(split_to_size(
+    available_cols = columns // 2 - margin_size
+    left_lines, right_lines = map(lines_for_path, (left_path, right_path))
+
+    for hunk_num, hunk in enumerate(hunks):
+        for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
+            left_line_number, left_is_change = left
+            right_line_number, right_is_change = right
+            if left_line_number is None:
+                left_wrapped_lines = []
+            else:
+                left_wrapped_lines = split_to_size(left_lines[left_line_number], available_cols)
+            if right_line_number is None:
+                right_wrapped_lines = []
+            else:
+                right_wrapped_lines = split_to_size(right_lines[right_line_number], available_cols)
+            even_up_sides(left_wrapped_lines, right_wrapped_lines, '')
+            for i, (left, right) in enumerate(zip(left_wrapped_lines, right_wrapped_lines)):
+                yield render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, i == 0, margin_size)
 
 
 def render_diff(collection, diff_map, args, columns):
