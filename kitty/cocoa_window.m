@@ -228,10 +228,9 @@ macos_change_titlebar_color(PyObject *self UNUSED, PyObject *val) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-macos_set_hide_from_tasks(PyObject *self UNUSED, PyObject *val UNUSED) {
+void
+cocoa_set_hide_from_tasks(void) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
-    Py_RETURN_NONE;
 }
 
 void
@@ -266,7 +265,6 @@ static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
     {"macos_change_titlebar_color", (PyCFunction)macos_change_titlebar_color, METH_O, ""},
-    {"macos_set_hide_from_tasks", (PyCFunction)macos_set_hide_from_tasks, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -45,10 +45,6 @@ def run_app(opts, args):
     with cached_values_for('main') as cached_values:
         w, h = initial_window_size(opts, cached_values)
         window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
-        if is_macos and opts.macos_hide_from_tasks:
-            from .fast_data_types import macos_set_hide_from_tasks
-            # This needs to be done after creating the OS window as glfw sets the activation policy as well.
-            macos_set_hide_from_tasks()
         startup_ctx = init_startup_notification(window_id)
         show_window(window_id)
         if not is_wayland and not is_macos:  # no window icons on wayland
