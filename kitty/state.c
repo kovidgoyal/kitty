@@ -303,10 +303,12 @@ repaint_delay(PyObject *val) {
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
 
+static int kitty_mod = 0;
+
 static inline int
 resolve_mods(int mods) {
     if (mods & GLFW_MOD_KITTY) {
-        mods = (mods & ~GLFW_MOD_KITTY) | OPT(kitty_mod);
+        mods = (mods & ~GLFW_MOD_KITTY) | kitty_mod;
     }
     return mods;
 }
@@ -320,7 +322,7 @@ static inline void
 set_special_keys(PyObject *dict) {
     dict_iter(dict) {
         if (!PyTuple_Check(key)) { PyErr_SetString(PyExc_TypeError, "dict keys for special keys must be tuples"); return; }
-        int mods = resolve_mods(PyLong_AsLong(PyTuple_GET_ITEM(key, 0)));
+        int mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 0));
         int glfw_key = PyLong_AsLong(PyTuple_GET_ITEM(key, 1));
         set_special_key_combo(glfw_key, mods);
     }}
@@ -345,7 +347,8 @@ PYWRAP1(set_options) {
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
-    S(kitty_mod, PyLong_AsLong);
+    GA(kitty_mod);
+    kitty_mod = PyLong_AsLong(ret); Py_CLEAR(ret); if (PyErr_Occurred()) return NULL;
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
@@ -560,7 +563,7 @@ PYWRAP1(set_display_state) {
 
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
-PYWRAP1(resolve_key_mods) { return PyLong_FromLong(convert_mods(args)); }
+PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
@@ -578,7 +581,7 @@ static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
     MW(set_options, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
-    MW(resolve_key_mods, METH_O),
+    MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
     MW(set_logical_dpi, METH_VARARGS),
     MW(pt_to_px, METH_O),

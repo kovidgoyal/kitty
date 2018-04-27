@@ -20,9 +20,9 @@ from .constants import appname, config_dir, editor, set_boss
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, mark_os_window_for_close, resolve_key_mods,
-    set_clipboard_string, set_dpi_from_os_window, set_in_sequence_mode,
-    show_window, toggle_fullscreen, viewport_for_window
+    layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
+    set_dpi_from_os_window, set_in_sequence_mode, show_window,
+    toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut, shortcut_matches
@@ -105,8 +105,6 @@ class Boss:
         initialize_renderer()
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
-        self.resolved_keymap = {(resolve_key_mods(mods), key): v for (mods, key), v in self.opts.keymap.items()}
-        self.resolved_sequence_map = {(resolve_key_mods(mods), key): v for (mods, key), v in self.opts.sequence_map.items()}
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, startup_id=None):
         dpi_changed = False
@@ -370,9 +368,9 @@ class Boss:
 
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        key_action = get_shortcut(self.resolved_keymap, mods, key, scancode)
+        key_action = get_shortcut(self.opts.keymap, mods, key, scancode)
         if key_action is None:
-            sequences = get_shortcut(self.resolved_sequence_map, mods, key, scancode)
+            sequences = get_shortcut(self.opts.sequence_map, mods, key, scancode)
             if sequences:
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)

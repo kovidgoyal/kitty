@@ -500,7 +500,7 @@ def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
 
 
-def print_shortcut(key, action):
+def print_shortcut(key_or_sequence, action):
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
@@ -509,42 +509,67 @@ def print_shortcut(key, action):
         krmap = {v: k for k, v in kmap.items()}
         print_shortcut.maps = mmap, krmap
     mmap, krmap = print_shortcut.maps
-    names = []
-    mods, key = key
-    for name, val in mmap.items():
-        if mods & val:
-            names.append(name)
-    if key:
-        names.append(krmap[key])
-    print('\t', '+'.join(names), action)
+    keys = []
+    if isinstance(key_or_sequence[0], int):
+        key_or_sequence = (key_or_sequence,)
+    for key in key_or_sequence:
+        names = []
+        mods, key = key
+        for name, val in mmap.items():
+            if mods & val:
+                names.append(name)
+        if key:
+            names.append(krmap[key])
+        keys.append('+'.join(names))
+
+    print('\t', ' > '.join(keys), action)
+
+
+def print_shortcut_changes(defns, text, changes):
+    if changes:
+        print(title(text))
+
+        def k(x):
+            if isinstance(x[0], int):
+                x = (x,)
+            return x
+
+        for k in sorted(changes, key=k):
+            print_shortcut(k, defns[k])
 
 
 def compare_keymaps(final, initial):
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
-    if added:
-        print(title('Added shortcuts:'))
-        for k in added:
-            print_shortcut(k, final[k])
-    if removed:
-        print(title('Removed shortcuts:'))
-        for k in removed:
-            print_shortcut(k, initial[k])
-    if changed:
-        print(title('Changed shortcuts:'))
-        for k in changed:
-            print_shortcut(k, final[k])
+    print_shortcut_changes(final, 'Added shortcuts:', added)
+    print_shortcut_changes(initial, 'Removed shortcuts:', removed)
+    print_shortcut_changes(final, 'Changed shortcuts:', changed)
+
+
+def flatten_sequence_map(m):
+    ans = {}
+    for k, rest_map in m.items():
+        for r, action in rest_map.items():
+            ans[(k,) + (r)] = action
+    return ans
 
 
 def compare_opts(opts):
     print('\nConfig options different from defaults:')
+    default_opts = load_config()
+
     for f in sorted(defaults._fields):
         if getattr(opts, f) != getattr(defaults, f):
-            if f == 'keymap':
-                compare_keymaps(opts.keymap, defaults.keymap)
-            else:
-                print(title('{:20s}'.format(f)), getattr(opts, f))
+            if f in ('key_definitions', 'keymap', 'sequence_map'):
+                continue
+            print(title('{:20s}'.format(f)), getattr(opts, f))
+
+    final, initial = opts.keymap, default_opts.keymap
+    final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
+    final.update(final_s)
+    initial.update(initial_s)
+    compare_keymaps(final, initial)
 
 
 def create_opts(args, debug_config=False):
