@@ -500,7 +500,7 @@ def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
 
 
-def print_shortcut(key_or_sequence, action):
+def print_shortcut(key_sequence, action):
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
@@ -510,9 +510,7 @@ def print_shortcut(key_or_sequence, action):
         print_shortcut.maps = mmap, krmap
     mmap, krmap = print_shortcut.maps
     keys = []
-    if isinstance(key_or_sequence[0], int):
-        key_or_sequence = (key_or_sequence,)
-    for key in key_or_sequence:
+    for key in key_sequence:
         names = []
         mods, key = key
         for name, val in mmap.items():
@@ -529,12 +527,7 @@ def print_shortcut_changes(defns, text, changes):
     if changes:
         print(title(text))
 
-        def k(x):
-            if isinstance(x[0], int):
-                x = (x,)
-            return x
-
-        for k in sorted(changes, key=k):
+        for k in sorted(changes):
             print_shortcut(k, defns[k])
 
 
@@ -566,6 +559,8 @@ def compare_opts(opts):
             print(title('{:20s}'.format(f)), getattr(opts, f))
 
     final, initial = opts.keymap, default_opts.keymap
+    final = {(k,): v for k, v in final.items()}
+    initial = {(k,): v for k, v in initial.items()}
     final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
     final.update(final_s)
     initial.update(initial_s)
