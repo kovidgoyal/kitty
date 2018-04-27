@@ -111,6 +111,12 @@ def parse_key_action(action):
         args = tuple(map(parse_key_action, filter(None, parts)))
     elif func == 'send_text':
         args = rest.split(' ', 1)
+        if len(args) > 0:
+            try:
+                args[1] = parse_send_text_bytes(args[1])
+            except Exception:
+                log_error('Ignoring invalid send_text string: ' + args[1])
+                args[1] = ''
     elif func in ('run_kitten', 'run_simple_kitten'):
         if func == 'run_simple_kitten':
             func = 'run_kitten'

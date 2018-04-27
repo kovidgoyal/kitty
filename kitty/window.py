@@ -9,7 +9,7 @@ from collections import deque
 from enum import Enum
 
 from .child import cwd_of_process
-from .config import build_ansi_color_table, parse_send_text_bytes
+from .config import build_ansi_color_table
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
@@ -187,10 +187,9 @@ class Window:
         required_mode = frozenset(required_mode.split(','))
         if not required_mode & {mode, 'all'}:
             return True
-        data = parse_send_text_bytes(text)
-        if not data:
+        if not text:
             return True
-        self.write_to_child(data)
+        self.write_to_child(text)
 
     def write_to_child(self, data):
         if data:
