@@ -14,10 +14,22 @@ from .cli import (
     emph, green, italic, parse_option_spec, print_help_for_seq, title
 )
 from .cmds import cmap, display_subcommand_help, parse_subcommand_cli
-from .constants import cache_dir, version
+from .constants import cache_dir, is_macos, version
 
 all_commands = tuple(sorted(cmap))
 match_commands = tuple(sorted(all_commands + ('exit', 'help', 'quit')))
+
+
+def init_readline(readline):
+    try:
+        readline.read_init_file()
+    except EnvironmentError:
+        if not is_macos:
+            raise
+    if 'libedit' in readline.__doc__:
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        readline.parse_and_bind('tab: complete')
 
 
 def cmd_names_matching(prefix):
@@ -76,7 +88,6 @@ class Completer:
         if os.path.exists(self.history_path):
             readline.read_history_file(self.history_path)
         readline.set_completer(self.complete)
-        readline.parse_and_bind('tab: complete')
         delims = readline.get_completer_delims()
         readline.set_completer_delims(delims.replace('-', ''))
         return self
@@ -141,7 +152,7 @@ def run_cmd(global_opts, cmd, func, opts, items):
 
 
 def real_main(global_opts):
-    readline.read_init_file()
+    init_readline(readline)
     print_help_for_seq.allow_pager = False
     print('Welcome to the kitty shell!')
     print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))

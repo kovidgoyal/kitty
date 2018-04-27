@@ -53,7 +53,6 @@ class HistoryCompleter:
             if os.path.exists(self.history_path):
                 readline.read_history_file(self.history_path)
             readline.set_completer(self.complete)
-            readline.parse_and_bind('tab: complete')
         return self
 
     def __exit__(self, *a):
@@ -87,6 +86,7 @@ def main(args):
     global readline
     import readline as rl
     readline = rl
+    from kitty.shell import init_readline
     msg = 'Ask the user for input'
     try:
         args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask')
@@ -96,7 +96,7 @@ def main(args):
             input('Press enter to quit...')
         raise SystemExit(e.code)
 
-    readline.read_init_file()
+    init_readline(readline)
     ans = {'items': items}
 
     with alternate_screen(), HistoryCompleter(args.name):
