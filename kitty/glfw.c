@@ -9,6 +9,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
+extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -375,6 +376,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
         cocoa_create_global_menu();
         if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
+        // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
+        if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
         is_first_window = false;
     }

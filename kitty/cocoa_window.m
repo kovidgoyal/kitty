@@ -229,6 +229,11 @@ macos_change_titlebar_color(PyObject *self UNUSED, PyObject *val) {
 }
 
 void
+cocoa_set_hide_from_tasks(void) {
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+}
+
+void
 cocoa_set_titlebar_color(void *w)
 {
     if (!change_titlebar_color) return;
