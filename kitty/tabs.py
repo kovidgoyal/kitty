@@ -183,6 +183,10 @@ class Tab:  # {{{
             return
         self.set_active_window_idx(idx)
 
+    def get_nth_window(self, n):
+        if self.windows:
+            return self.current_layout.nth_window(self.windows, n, make_active=False)
+
     def nth_window(self, num=0):
         if self.windows:
             self.active_window_idx = self.current_layout.nth_window(self.windows, num)

@@ -149,10 +149,20 @@ class Boss:
             field, exp = match.split(':', 1)
         except ValueError:
             return
-        pat = re.compile(exp)
-        for window in self.all_windows:
-            if window.matches(field, pat):
-                yield window
+        if field == 'num':
+            tab = self.active_tab
+            if tab is not None:
+                try:
+                    w = tab.get_nth_window(int(exp))
+                except Exception:
+                    return
+                if w is not None:
+                    yield w
+        else:
+            pat = re.compile(exp)
+            for window in self.all_windows:
+                if window.matches(field, pat):
+                    yield window
 
     def tab_for_window(self, window):
         for tab in self.all_tabs:

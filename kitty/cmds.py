@@ -39,10 +39,12 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
 MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form:
-|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline.
+|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline, num.
 You can use the |_ ls| command to get a list of windows. Note that for
-numeric fields such as id and pid the expression is interpreted as a number,
-not a regular expression.
+numeric fields such as id, pid and num the expression is interpreted as a number,
+not a regular expression. The field num refers to the window position in the current tab,
+starting from zero and counting clockwise (this is the same as the order in which the
+windows are reported by the |_ ls| command).
 '''
 MATCH_TAB_OPTION = '''\
 --match -m
