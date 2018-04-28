@@ -320,8 +320,8 @@ HANDLER(handle_button_event) {
         switch(button) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 update_drag(true, w, is_release, modifiers);
-                if (is_release) {
-                    if (modifiers == (int)OPT(open_url_modifiers)) open_url(w);
+                if (is_release && !screen_has_selection(w->render_data.screen)) {
+                    if (!OPT(open_url_modifiers) || modifiers == (int)OPT(open_url_modifiers)) open_url(w);
                 } else add_click(w, button, modifiers, window_idx);
                 break;
             case GLFW_MOUSE_BUTTON_MIDDLE:
