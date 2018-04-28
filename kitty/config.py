@@ -60,7 +60,8 @@ def parse_mods(parts, sc):
         try:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
-            log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
+            if 'none' not in m.lower():
+                log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
             return
 
     return mods
