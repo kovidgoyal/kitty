@@ -25,14 +25,19 @@ formats = {
 
 def set_formats(opts):
     formats['text'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.background)
-    formats['margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.margin_bg)
     formats['title'] = '38' + color_as_sgr(opts.title_fg) + ';48' + color_as_sgr(opts.title_bg) + ';1'
+    formats['margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.margin_bg)
+    formats['added_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.added_margin_bg)
+    formats['removed_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.removed_margin_bg)
+    formats['added'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.added_bg)
+    formats['removed'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.removed_bg)
+    formats['filler'] = '48' + color_as_sgr(opts.filler_bg)
 
 
 type_map = {}
 
 for name in (
-    'foreground background title_fg title_bg'
+    'foreground background title_fg title_bg margin_bg margin_fg removed_bg removed_margin_bg added_bg added_margin_bg filler_bg'
 ).split():
     type_map[name] = to_color
 

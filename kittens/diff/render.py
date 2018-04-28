@@ -5,19 +5,29 @@
 import re
 from gettext import gettext as _
 
-from kitty.fast_data_types import truncate_point_for_length
+from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
 from .collect import data_for_path, lines_for_path, path_name_map
 from .config import formats
 from .git import even_up_sides
 
 
+class HunkRef:
+
+    __slots__ = ('hunk_num', 'line_num')
+
+    def __init__(self, hunk_num, line_num):
+        self.hunk_num = hunk_num
+        self.line_num = line_num
+
+
 class Reference:
 
-    __slots__ = ('path',)
+    __slots__ = ('path', 'extra')
 
-    def __init__(self, path):
+    def __init__(self, path, extra=None):
         self.path = path
+        self.extra = extra
 
 
 class Line:
@@ -69,8 +79,15 @@ def fit_in(text, count):
     return text[:p] + '…'
 
 
+def fill_in(text, sz):
+    w = wcswidth(text)
+    if w < sz:
+        text += ' ' * (sz - w)
+    return text
+
+
 def place_in(text, sz):
-    return fit_in(text, sz).ljust(sz)
+    return fill_in(fit_in(text, sz), sz)
 
 
 def format_func(which):
@@ -84,11 +101,16 @@ def format_func(which):
 text_format = format_func('text')
 title_format = format_func('title')
 margin_format = format_func('margin')
+added_format = format_func('added')
+removed_format = format_func('removed')
+removed_margin_format = format_func('removed_margin')
+added_margin_format = format_func('added_margin')
+filler_format = format_func('filler')
 
 
 def title_lines(left_path, right_path, args, columns, margin_size):
     name = fit_in(sanitize(path_name_map[left_path]), columns - 2 * margin_size)
-    yield title_format((' ' + name).ljust(columns))
+    yield title_format(place_in(' ' + name, columns))
     yield title_format('━' * columns)
     yield title_format(' ' * columns)
 
@@ -111,16 +133,22 @@ def split_to_size(line, width):
         line = line[p:]
 
 
-def render_diff_line(number, text, ltype, margin_size):
-    pass
+margin_bg_map = {'filler': filler_format, 'remove': removed_margin_format, 'add': added_margin_format, 'context': margin_format}
+text_bg_map = {'filler': filler_format, 'remove': removed_format, 'add': added_format, 'context': text_format}
 
 
-def render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, is_first, margin_size):
-    ltype = 'filler' if left_line_number is None else 'remove'
-    rtype = 'filler' if right_line_number is None else 'add'
+def render_diff_line(number, text, ltype, margin_size, available_cols):
+    margin = margin_bg_map[ltype](place_in(str(number or ''), margin_size))
+    content = text_bg_map[ltype](fill_in(text or '', available_cols))
+    return margin + content
+
+
+def render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, is_first, margin_size, available_cols):
+    ltype = 'filler' if left_line_number is None else ('remove' if left_is_change else 'context')
+    rtype = 'filler' if right_line_number is None else ('add' if right_is_change else 'context')
     return (
-            render_diff_line(left_line_number if is_first else None, left, ltype, margin_size) +
-            render_diff_line(right_line_number if is_first else None, right, rtype, margin_size)
+            render_diff_line(left_line_number if is_first else None, left, ltype, margin_size, available_cols) +
+            render_diff_line(right_line_number if is_first else None, right, rtype, margin_size, available_cols)
     )
 
 
@@ -135,14 +163,20 @@ def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
             if left_line_number is None:
                 left_wrapped_lines = []
             else:
-                left_wrapped_lines = split_to_size(left_lines[left_line_number], available_cols)
+                left_wrapped_lines = list(split_to_size(left_lines[left_line_number], available_cols))
             if right_line_number is None:
                 right_wrapped_lines = []
             else:
-                right_wrapped_lines = split_to_size(right_lines[right_line_number], available_cols)
+                right_wrapped_lines = list(split_to_size(right_lines[right_line_number], available_cols))
             even_up_sides(left_wrapped_lines, right_wrapped_lines, '')
             for i, (left, right) in enumerate(zip(left_wrapped_lines, right_wrapped_lines)):
-                yield render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, i == 0, margin_size)
+                yield Line(
+                    render_diff_pair(
+                        left_line_number, left, left_is_change, right_line_number, right,
+                        right_is_change, i == 0, margin_size, available_cols
+                    ),
+                    Reference(left_path, HunkRef(hunk_num, line_num))
+                )
 
 
 def render_diff(collection, diff_map, args, columns):
