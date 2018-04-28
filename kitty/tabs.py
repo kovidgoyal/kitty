@@ -227,7 +227,7 @@ class Tab:  # {{{
         return False
 
     def __iter__(self):
-        yield from iter(self.windows)
+        return iter(self.windows)
 
     def __len__(self):
         return len(self.windows)
