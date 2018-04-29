@@ -351,6 +351,7 @@ type_map = {
     'inactive_text_alpha': unit_float,
     'url_style': url_style,
     'copy_on_select': to_bool,
+    'window_alert_on_bell': to_bool,
     'tab_bar_edge': tab_bar_edge,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,

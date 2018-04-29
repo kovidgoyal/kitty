@@ -373,6 +373,7 @@ PYWRAP1(set_options) {
     S(input_delay, repaint_delay);
     S(sync_to_monitor, PyObject_IsTrue);
     S(close_on_child_death, PyObject_IsTrue);
+    S(window_alert_on_bell, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);

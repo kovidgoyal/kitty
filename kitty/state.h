@@ -32,6 +32,7 @@ typedef struct {
     Edge tab_bar_edge;
     bool sync_to_monitor;
     bool close_on_child_death;
+    bool window_alert_on_bell;
 } Options;
 
 typedef struct {

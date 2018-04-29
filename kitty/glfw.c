@@ -620,7 +620,7 @@ request_window_attention(id_type kitty_window_id, bool audio_bell) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
         if (audio_bell) ring_audio_bell(w);
-        glfwRequestWindowAttention(w->handle);
+        if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
         glfwPostEmptyEvent();
     }
 }
