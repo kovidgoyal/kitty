@@ -112,7 +112,6 @@ def title_lines(left_path, right_path, args, columns, margin_size):
     name = fit_in(sanitize(path_name_map[left_path]), columns - 2 * margin_size)
     yield title_format(place_in(' ' + name, columns))
     yield title_format('━' * columns)
-    yield title_format(' ' * columns)
 
 
 def binary_lines(path, other_path, columns, margin_size):
@@ -170,9 +169,11 @@ def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
                 right_wrapped_lines = list(split_to_size(right_lines[right_line_number], available_cols))
             even_up_sides(left_wrapped_lines, right_wrapped_lines, '')
             for i, (left, right) in enumerate(zip(left_wrapped_lines, right_wrapped_lines)):
+                ln = None if left_line_number is None else hunk.left_start + left_line_number
+                rn = None if right_line_number is None else hunk.right_start + right_line_number
                 yield Line(
                     render_diff_pair(
-                        left_line_number, left, left_is_change, right_line_number, right,
+                        ln, left, left_is_change, rn, right,
                         right_is_change, i == 0, margin_size, available_cols
                     ),
                     Reference(left_path, HunkRef(hunk_num, line_num))
