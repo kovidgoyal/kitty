@@ -3,6 +3,42 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.9.1 [future]
+------------------------------
+
+- macOS: Add support for dead keys
+
+- Unicode input: When searching by name search for prefix matches as well as
+  whole word matches
+
+- Add an option to not request window attention on bell.
+
+- Remote control: Allow matching windows by number (visible position).
+
+- macOS: Fix changing tab title and kitty shell not working
+
+- When triple-clicking select all wrapped lines belonging to a single logical line.
+
+- hints kitten: Detect bracketed URLs and dont include the closing bracket in the URL.
+
+- When calling pass_selection_to_program use the current directory of the child process as the cwd of the program.
+
+- Add macos_hide_from_tasks option to hide kitty from the macOS task switcher
+
+- Add a setting to clear all shortcuts defined up to that point in the config
+  file(s)
+
+- Add a setting (kitty_mod) to change the modifier used by all the default kitty shortcuts, globally
+
+- Fix Shift+function key not working
+
+- Support the F13 to F25 function keys
+  
+- Don't fail to start if the user deletes the hintstyle key from their fontconfig configuration.
+
+- When rendering a private use unicode codepoint and a space as a two cell ligature, set the foreground colors of the space cell to match the colors of the first cell. Works around applications like powerline that use different colors for the two cells.
+
+
 version 0.9.0 [2018-04-15]
 ------------------------------
 
