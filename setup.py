@@ -203,9 +203,6 @@ def init_env(
     cflags = shlex.split(cflags) + shlex.split(
         sysconfig.get_config_var('CCSHARED')
     )
-    if os.path.exists('.git'):
-        rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-        cppflags.append('-DKITTY_VCS_REV="{}"'.format(rev))
     ldflags = os.environ.get(
         'OVERRIDE_LDFLAGS',
         '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
@@ -377,6 +374,10 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
             src, defines = SPECIAL_SOURCES[src]
             cppflags.extend(map(define, defines))
 
+        if src == 'kitty/data-types.c':
+            if os.path.exists('.git'):
+                rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+                cppflags.append(define('KITTY_VCS_REV="{}"'.format(rev)))
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         key = original_src, os.path.basename(dest)
         all_keys.add(key)
