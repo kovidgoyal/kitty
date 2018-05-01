@@ -85,12 +85,13 @@ nfc(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(all_words, METH_NOARGS),
+    {"all_words", (PyCFunction)all_words, METH_NOARGS, ""},
     {"codepoints_for_word", (PyCFunction)cfw, METH_VARARGS, ""},
     {"name_for_codepoint", (PyCFunction)nfc, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#if PY_VERSION_HEX >= 0x03000000
 static struct PyModuleDef module = {
    .m_base = PyModuleDef_HEAD_INIT,
    .m_name = "unicode_names",   /* name of module */
@@ -108,3 +109,13 @@ PyInit_unicode_names(void) {
     if (m == NULL) return NULL;
     return m;
 }
+#else
+EXPORTED
+initunicode_names(void) {
+    PyObject *m;
+    m = Py_InitModule3("unicode_names", module_methods,
+    ""
+    );
+    if (m == NULL) return;
+}
+#endif

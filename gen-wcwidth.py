@@ -55,7 +55,9 @@ def parse_ucd():
     for line in get_data('ucd/UnicodeData.txt'):
         parts = [x.strip() for x in line.split(';')]
         codepoint = int(parts[0], 16)
-        name = parts[1]
+        name = parts[1] or parts[10]
+        if name == '<control>':
+            name = parts[10]
         if name:
             name_map[codepoint] = name
             for word in name.lower().split():
