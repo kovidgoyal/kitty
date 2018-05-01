@@ -25,6 +25,8 @@ version 0.9.1 [future]
 
 - Add macos_hide_from_tasks option to hide kitty from the macOS task switcher
 
+- macOS: When the macos_titlebar_color is set to background change the titlebar colors to match the current background color of the active kitty window
+
 - Add a setting to clear all shortcuts defined up to that point in the config
   file(s)
 
