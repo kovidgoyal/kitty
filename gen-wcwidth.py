@@ -210,7 +210,8 @@ def codepoint_to_mark_map(p, mark_map):
     for spec in get_ranges(mark_map):
         if isinstance(spec, tuple):
             s = rmap[spec[0]]
-            p(f'\t\tcase {spec[0]} ... {spec[1]}: return {s} + c - {spec[0]};')
+            cases = ' '.join(f'case {i}:' for i in range(spec[0], spec[1]+1))
+            p(f'\t\t{cases} return {s} + c - {spec[0]};')
         else:
             p(f'\t\tcase {spec}: return {rmap[spec]};')
     p('default: return 0;')
