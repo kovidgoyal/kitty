@@ -38,6 +38,8 @@ version 0.9.1 [future]
 
 - When rendering a private use unicode codepoint and a space as a two cell ligature, set the foreground colors of the space cell to match the colors of the first cell. Works around applications like powerline that use different colors for the two cells.
 
+- Fix passing @text to other programs such as when viewing the scrollback buffer not working correctly if kitty is itself scrolled up.
+
 
 version 0.9.0 [2018-04-15]
 ------------------------------

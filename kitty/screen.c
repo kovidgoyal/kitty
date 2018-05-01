@@ -1466,6 +1466,11 @@ as_text(Screen *self, PyObject *args) {
 }
 
 static PyObject*
+as_text_non_visual(Screen *self, PyObject *args) {
+    as_text_generic(args, self, range_line_, self->lines, self->columns, callback, as_ansi);
+}
+
+static PyObject*
 refresh_sprite_positions(Screen *self, PyObject *a UNUSED) {
     self->is_dirty = true;
     for (index_type i = 0; i < self->lines; i++) {
@@ -1968,6 +1973,7 @@ static PyMethodDef methods[] = {
     MND(cursor_forward, METH_VARARGS)
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(as_text, METH_VARARGS)
+    MND(as_text_non_visual, METH_VARARGS)
     MND(refresh_sprite_positions, METH_NOARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
