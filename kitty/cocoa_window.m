@@ -23,8 +23,6 @@ typedef void* rusage_info_t;  // needed for libproc.h
 #endif
 
 static NSMenuItem* title_menu = NULL;
-static bool change_titlebar_color = false;
-static color_type titlebar_color = 0;
 
 
 static NSString*
@@ -207,37 +205,14 @@ cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
     return PyUnicode_FromString(vpi.pvi_cdir.vip_path);
 }
 
-static inline color_type
-color_as_int(PyObject *color) {
-#define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
-    return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
-#undef I
-}
-
-static PyObject*
-macos_change_titlebar_color(PyObject *self UNUSED, PyObject *val) {
-    if (val == Py_None) change_titlebar_color = false;
-    else if (val == Py_True) {
-        change_titlebar_color = true;
-        titlebar_color = OPT(background);
-    } else {
-        if (!PyTuple_Check(val)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return NULL; }
-        change_titlebar_color = true;
-        titlebar_color = color_as_int(val);
-    }
-    Py_RETURN_NONE;
-}
-
 void
 cocoa_set_hide_from_tasks(void) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 }
 
 void
-cocoa_set_titlebar_color(void *w)
+cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 {
-    if (!change_titlebar_color) return;
-
     NSWindow *window = (NSWindow *)w;
 
     double red = ((titlebar_color >> 16) & 0xFF) / 255.0;
@@ -264,7 +239,6 @@ cocoa_set_titlebar_color(void *w)
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
-    {"macos_change_titlebar_color", (PyCFunction)macos_change_titlebar_color, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

@@ -478,6 +478,17 @@ PYWRAP1(mark_os_window_for_close) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(set_titlebar_color) {
+    id_type os_window_id;
+    unsigned int color;
+    PA("KI", &os_window_id, &color);
+    WITH_OS_WINDOW(os_window_id)
+        set_titlebar_color(os_window, color);
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
 static inline bool
 fix_window_idx(Tab *tab, id_type window_id, unsigned int *window_idx) {
     for (id_type fix = 0; fix < tab->num_windows; fix++) {
@@ -602,6 +613,7 @@ static PyMethodDef module_methods[] = {
     MW(set_window_render_data, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
+    MW(set_titlebar_color, METH_VARARGS),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(set_display_state, METH_VARARGS),

@@ -19,7 +19,7 @@ from .config_utils import (
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .rgb import color_from_int
+from .rgb import color_as_int, color_from_int
 from .utils import log_error
 
 MINIMUM_FONT_SIZE = 4
@@ -265,10 +265,10 @@ def adjust_line_height(x):
 def macos_titlebar_color(x):
     x = x.strip('"')
     if x == 'system':
-        return
+        return 0
     if x == 'background':
-        return True
-    return to_color(x)
+        return 1
+    return (color_as_int(to_color(x)) << 8) | 2
 
 
 def box_drawing_scale(x):

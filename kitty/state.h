@@ -116,6 +116,7 @@ typedef struct {
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;
+    color_type last_titlebar_color;
 } OSWindow;
 
 
@@ -180,3 +181,4 @@ void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(unsigned int, unsigned int, unsigned int, pixel*);
+void set_titlebar_color(OSWindow *w, color_type color);

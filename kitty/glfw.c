@@ -10,7 +10,7 @@
 extern bool cocoa_make_window_resizable(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
-extern void cocoa_set_titlebar_color(void *w);
+extern void cocoa_set_titlebar_color(void *w, color_type color);
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -317,6 +317,16 @@ filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
 }
 #endif
 
+void
+set_titlebar_color(OSWindow *w, color_type color) {
+    if (w->handle && (!w->last_titlebar_color || (w->last_titlebar_color & 0xffffff) != (color & 0xffffff))) {
+        w->last_titlebar_color = (1 << 24) | (color & 0xffffff);
+#ifdef __APPLE__
+        cocoa_set_titlebar_color(glfwGetCocoaWindow(w->handle), color);
+#endif
+    }
+}
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int width, height, x = -1, y = -1;
@@ -406,7 +416,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
         else log_error("Failed to load glfwGetCocoaWindow");
     }
-    cocoa_set_titlebar_color(glfwGetCocoaWindow(glfw_window));
 #endif
     double now = monotonic();
     w->is_focused = true;

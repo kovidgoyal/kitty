@@ -100,8 +100,11 @@ class Tab:  # {{{
         tm = self.tab_manager_ref()
         if tm is not None:
             visible_windows = [w for w in self.windows if w.is_visible_in_layout]
-            self.borders(visible_windows, self.active_window, self.current_layout,
+            w = self.active_window
+            self.borders(visible_windows, w, self.current_layout,
                          tm.blank_rects, self.current_layout.needs_window_borders and len(visible_windows) > 1)
+            if w is not None:
+                w.change_titlebar_color()
 
     def create_layout_object(self, idx):
         return all_layouts[idx](self.os_window_id, self.id, self.opts, self.borders.border_width)

@@ -18,8 +18,9 @@ from .fast_data_types import (
     CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM, OSC, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
     add_window, compile_program, glfw_post_empty_event, init_cell_program,
-    init_cursor_program, set_clipboard_string, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    init_cursor_program, set_clipboard_string, set_titlebar_color,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -226,6 +227,15 @@ class Window:
 
     def icon_changed(self, new_icon):
         pass  # TODO: Implement this
+
+    def change_titlebar_color(self):
+        val = self.opts.macos_titlebar_color
+        if val:
+            if (val & 0xff) == 1:
+                val = self.screen.color_profile.default_bg
+            else:
+                val = val >> 8
+            set_titlebar_color(self.os_window_id, val)
 
     def change_colors(self, changes):
         dirtied = default_bg_changed = False
