@@ -4,20 +4,21 @@
 
 import re
 from gettext import gettext as _
+from itertools import repeat
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
 from .collect import data_for_path, lines_for_path, path_name_map
 from .config import formats
-from .git import even_up_sides
 
 
 class HunkRef:
 
-    __slots__ = ('hunk_num', 'line_num')
+    __slots__ = ('hunk_num', 'line_num', 'chunk_num')
 
-    def __init__(self, hunk_num, line_num=None):
+    def __init__(self, hunk_num, chunk_num=None, line_num=None):
         self.hunk_num = hunk_num
+        self.chunk_num = chunk_num
         self.line_num = line_num
 
 
@@ -128,6 +129,8 @@ def binary_lines(path, other_path, columns, margin_size):
 
 
 def split_to_size(line, width):
+    if not line:
+        yield line
     while line:
         p = truncate_point_for_length(line, width)
         yield line[:p]
@@ -138,8 +141,20 @@ margin_bg_map = {'filler': filler_format, 'remove': removed_margin_format, 'add'
 text_bg_map = {'filler': filler_format, 'remove': removed_format, 'add': added_format, 'context': text_format}
 
 
+class DiffData:
+
+    def __init__(self, left_path, right_path, available_cols, margin_size):
+        self.left_path, self.right_path = left_path, right_path
+        self.available_cols = available_cols
+        self.margin_size = margin_size
+        self.left_lines, self.right_lines = map(lines_for_path, (left_path, right_path))
+        self.filler_line = render_diff_line('', '', 'filler', margin_size, available_cols)
+        self.left_filler_line = render_diff_line('', '', 'remove', margin_size, available_cols)
+        self.right_filler_line = render_diff_line('', '', 'add', margin_size, available_cols)
+
+
 def render_diff_line(number, text, ltype, margin_size, available_cols):
-    margin = margin_bg_map[ltype](place_in(str(number or ''), margin_size))
+    margin = margin_bg_map[ltype](place_in(number, margin_size))
     content = text_bg_map[ltype](fill_in(text or '', available_cols))
     return margin + content
 
@@ -155,38 +170,71 @@ def render_diff_pair(left_line_number, left, left_is_change, right_line_number, 
 
 def hunk_title(hunk_num, hunk, margin_size, available_cols):
     m = hunk_margin_format(' ' * margin_size)
-    t = '@@ -{},{} +{},{} @@ {}'.format(hunk.left_start, hunk.left_count, hunk.right_start, hunk.right_count, hunk.title)
+    t = '@@ -{},{} +{},{} @@ {}'.format(hunk.left_start + 1, hunk.left_count, hunk.right_start + 1, hunk.right_count, hunk.title)
     return m + hunk_format(place_in(t, available_cols))
+
+
+def render_half_line(line_number, src, ltype, margin_size, available_cols):
+    lines = split_to_size(src[line_number], available_cols)
+    line_number = str(line_number)
+    for line in lines:
+        yield render_diff_line(line_number, line, ltype, margin_size, available_cols)
+        line_number = ''
+
+
+def lines_for_chunk(data, hunk_num, chunk, chunk_num):
+    if chunk.is_context:
+        for i in range(chunk.left_count):
+            left_line_number = chunk.left_start + i
+            right_line_number = chunk.right_start + i
+            lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
+            ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
+            left_line_number = str(left_line_number)
+            right_line_number = str(right_line_number)
+            for text in lines:
+                line = render_diff_line(left_line_number, text, 'context', data.margin_size, data.available_cols)
+                if right_line_number == left_line_number:
+                    r = line
+                else:
+                    r = render_diff_line(right_line_number, text, 'context', data.margin_size, data.available_cols)
+                yield Line(line + r, ref)
+                left_line_number = right_line_number = ''
+    else:
+        common = min(chunk.left_count, chunk.right_count)
+        for i in range(max(chunk.left_count, chunk.right_count)):
+            ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
+            ll, rl = [], []
+            if i < chunk.left_count:
+                ll.extend(render_half_line(chunk.left_start + i, data.left_lines, 'remove', data.margin_size, data.available_cols))
+            if i < chunk.right_count:
+                rl.extend(render_half_line(chunk.right_start + i, data.right_lines, 'add', data.margin_size, data.available_cols))
+            if i < common:
+                extra = len(ll) - len(rl)
+                if extra != 0:
+                    if extra < 0:
+                        x, fl = ll, data.left_filler_line
+                        extra = -extra
+                    else:
+                        x, fl = rl, data.right_filler_line
+                    x.extend(repeat(fl, extra))
+            else:
+                if ll:
+                    x, count = rl, len(ll)
+                else:
+                    x, count = ll, len(rl)
+                x.extend(repeat(data.filler_line, count))
+            for left_line, right_line in zip(ll, rl):
+                yield Line(left_line + right_line, ref)
 
 
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
     available_cols = columns // 2 - margin_size
-    left_lines, right_lines = map(lines_for_path, (left_path, right_path))
+    data = DiffData(left_path, right_path, available_cols, margin_size)
 
     for hunk_num, hunk in enumerate(hunks):
         yield Line(hunk_title(hunk_num, hunk, margin_size, columns - margin_size), Reference(left_path, HunkRef(hunk_num)))
-        for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
-            left_line_number, left_is_change = left
-            right_line_number, right_is_change = right
-            if left_line_number is None:
-                left_wrapped_lines = []
-            else:
-                left_wrapped_lines = list(split_to_size(left_lines[left_line_number], available_cols))
-            if right_line_number is None:
-                right_wrapped_lines = []
-            else:
-                right_wrapped_lines = list(split_to_size(right_lines[right_line_number], available_cols))
-            even_up_sides(left_wrapped_lines, right_wrapped_lines, '')
-            for i, (left, right) in enumerate(zip(left_wrapped_lines, right_wrapped_lines)):
-                ln = None if left_line_number is None else hunk.left_start + left_line_number
-                rn = None if right_line_number is None else hunk.right_start + right_line_number
-                yield Line(
-                    render_diff_pair(
-                        ln, left, left_is_change, rn, right,
-                        right_is_change, i == 0, margin_size, available_cols
-                    ),
-                    Reference(left_path, HunkRef(hunk_num, line_num))
-                )
+        for cnum, chunk in enumerate(hunk.chunks):
+            yield from lines_for_chunk(data, hunk_num, chunk, cnum)
 
 
 def render_diff(collection, diff_map, args, columns):

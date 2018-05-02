@@ -20,12 +20,29 @@ def run_diff(file1, file2, context=3):
     return False, returncode, stderr.decode('utf-8')
 
 
-def even_up_sides(left, right, filler):
-    delta = len(left) - len(right)
-    if delta != 0:
-        dest = left if delta < 0 else right
-        for i in range(abs(delta)):
-            dest.append(filler)
+class Chunk:
+
+    __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count')
+
+    def __init__(self, left_start, right_start, is_context=False):
+        self.is_context = is_context
+        self.left_start = left_start
+        self.right_start = right_start
+        self.left_count = self.right_count = 0
+
+    def add_line(self):
+        self.right_count += 1
+
+    def remove_line(self):
+        self.left_count += 1
+
+    def context_line(self):
+        self.left_count += 1
+        self.right_count += 1
+
+    def __repr__(self):
+        return 'Chunk(is_context={}, left_start={}, left_count={}, right_start={}, right_count={})'.format(
+                self.is_context, self.left_start, self.left_count, self.right_start, self.right_count)
 
 
 class Hunk:
@@ -33,34 +50,58 @@ class Hunk:
     def __init__(self, title, left, right):
         self.left_start, self.left_count = left
         self.right_start, self.right_count = right
+        self.left_start -= 1  # 0-index
+        self.right_start -= 1  # 0-index
         self.title = title
-        self.left_lines = []
-        self.right_lines = []
-        self.left_pos = self.right_pos = 0
+        self.chunks = []
+        self.current_chunk = None
         self.largest_line_number = max(self.left_start + self.left_count, self.right_start + self.right_count)
 
+    def new_chunk(self, is_context=False):
+        if self.chunks:
+            c = self.chunks[-1]
+            left_start = c.left_start + c.left_count
+            right_start = c.right_start + c.right_count
+        else:
+            left_start = self.left_start
+            right_start = self.right_start
+        return Chunk(left_start, right_start, is_context)
+
+    def ensure_diff_chunk(self):
+        if self.current_chunk is None:
+            self.current_chunk = self.new_chunk(is_context=False)
+        elif self.current_chunk.is_context:
+            self.chunks.append(self.current_chunk)
+            self.current_chunk = self.new_chunk(is_context=False)
+
+    def ensure_context_chunk(self):
+        if self.current_chunk is None:
+            self.current_chunk = self.new_chunk(is_context=True)
+        elif not self.current_chunk.is_context:
+            self.chunks.append(self.current_chunk)
+            self.current_chunk = self.new_chunk(is_context=True)
+
     def add_line(self):
-        self.right_lines.append((self.right_pos, True))
-        self.right_pos += 1
+        self.ensure_diff_chunk()
+        self.current_chunk.add_line()
 
     def remove_line(self):
-        self.left_lines.append((self.left_pos, True))
-        self.left_pos += 1
+        self.ensure_diff_chunk()
+        self.current_chunk.remove_line()
 
     def context_line(self):
-        even_up_sides(self.left_lines, self.right_lines, (None, True))
-        self.left_lines.append((self.left_pos, False))
-        self.right_lines.append((self.right_pos, False))
-        self.left_pos += 1
-        self.right_pos += 1
+        self.ensure_context_chunk()
+        self.current_chunk.context_line()
 
     def finalize(self):
-        even_up_sides(self.left_lines, self.right_lines, (None, True))
+        self.chunks.append(self.current_chunk)
+        del self.current_chunk
         # Sanity check
-        if self.left_pos != self.left_count:
-            raise ValueError('Left side line mismatch {} != {}'.format(self.left_pos, self.left_count))
-        if self.right_pos != self.right_count:
-            raise ValueError('Right side line mismatch {} != {}'.format(self.right_pos, self.right_count))
+        c = self.chunks[-1]
+        if c.left_start + c.left_count != self.left_start + self.left_count:
+            raise ValueError('Left side line mismatch {} != {}'.format(c.left_start + c.left_count, self.left_start + self.left_count))
+        if c.right_start + c.right_count != self.right_start + self.right_count:
+            raise ValueError('Left side line mismatch {} != {}'.format(c.right_start + c.right_count, self.right_start + self.right_count))
 
 
 def parse_range(x):
