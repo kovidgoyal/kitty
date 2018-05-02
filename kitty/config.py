@@ -353,6 +353,7 @@ type_map = {
     'copy_on_select': to_bool,
     'window_alert_on_bell': to_bool,
     'tab_bar_edge': tab_bar_edge,
+    'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
 }

@@ -366,7 +366,7 @@ class TabBar:  # {{{
             before = s.cursor.x
             if self.leading_spaces:
                 s.draw(' ' * self.leading_spaces)
-            if t.needs_attention:
+            if t.needs_attention and self.opts.bell_on_tab:
                 s.cursor.fg = self.bell_fg
                 s.draw('🔔 ')
                 s.cursor.fg = fg
