@@ -32,12 +32,14 @@ def set_formats(opts):
     formats['added'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.added_bg)
     formats['removed'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.removed_bg)
     formats['filler'] = '48' + color_as_sgr(opts.filler_bg)
+    formats['hunk_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_margin_bg)
+    formats['hunk'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_bg)
 
 
 type_map = {}
 
 for name in (
-    'foreground background title_fg title_bg margin_bg margin_fg removed_bg removed_margin_bg added_bg added_margin_bg filler_bg'
+    'foreground background title_fg title_bg margin_bg margin_fg removed_bg removed_margin_bg added_bg added_margin_bg filler_bg hunk_bg hunk_margin_bg'
 ).split():
     type_map[name] = to_color
 

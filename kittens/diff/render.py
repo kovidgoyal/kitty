@@ -16,7 +16,7 @@ class HunkRef:
 
     __slots__ = ('hunk_num', 'line_num')
 
-    def __init__(self, hunk_num, line_num):
+    def __init__(self, hunk_num, line_num=None):
         self.hunk_num = hunk_num
         self.line_num = line_num
 
@@ -106,6 +106,8 @@ removed_format = format_func('removed')
 removed_margin_format = format_func('removed_margin')
 added_margin_format = format_func('added_margin')
 filler_format = format_func('filler')
+hunk_margin_format = format_func('hunk_margin')
+hunk_format = format_func('hunk')
 
 
 def title_lines(left_path, right_path, args, columns, margin_size):
@@ -151,11 +153,18 @@ def render_diff_pair(left_line_number, left, left_is_change, right_line_number, 
     )
 
 
+def hunk_title(hunk_num, hunk, margin_size, available_cols):
+    m = hunk_margin_format(' ' * margin_size)
+    t = '@@ -{},{} +{},{} @@ {}'.format(hunk.left_start, hunk.left_count, hunk.right_start, hunk.right_count, hunk.title)
+    return m + hunk_format(place_in(t, available_cols))
+
+
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
     available_cols = columns // 2 - margin_size
     left_lines, right_lines = map(lines_for_path, (left_path, right_path))
 
     for hunk_num, hunk in enumerate(hunks):
+        yield Line(hunk_title(hunk_num, hunk, margin_size, columns - margin_size), Reference(left_path, HunkRef(hunk_num)))
         for line_num, (left, right) in enumerate(zip(hunk.left_lines, hunk.right_lines)):
             left_line_number, left_is_change = left
             right_line_number, right_is_change = right
