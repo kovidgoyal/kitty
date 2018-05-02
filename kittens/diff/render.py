@@ -176,7 +176,7 @@ def hunk_title(hunk_num, hunk, margin_size, available_cols):
 
 def render_half_line(line_number, src, ltype, margin_size, available_cols):
     lines = split_to_size(src[line_number], available_cols)
-    line_number = str(line_number)
+    line_number = str(line_number + 1)
     for line in lines:
         yield render_diff_line(line_number, line, ltype, margin_size, available_cols)
         line_number = ''
@@ -189,8 +189,8 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
             right_line_number = chunk.right_start + i
             lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
             ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
-            left_line_number = str(left_line_number)
-            right_line_number = str(right_line_number)
+            left_line_number = str(left_line_number + 1)
+            right_line_number = str(right_line_number + 1)
             for text in lines:
                 line = render_diff_line(left_line_number, text, 'context', data.margin_size, data.available_cols)
                 if right_line_number == left_line_number:
