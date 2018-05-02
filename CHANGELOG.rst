@@ -45,6 +45,8 @@ version 0.9.1 [future]
 - Fix window focus gained/lost events not being reported to child programs when
   switching windows/tabs using the various keyboard shortcuts.
 
+- Fix tab title not changing to reflect the window title when switching between different windows in a tab
+
 
 version 0.9.0 [2018-04-15]
 ------------------------------

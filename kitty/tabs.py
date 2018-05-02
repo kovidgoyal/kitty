@@ -86,6 +86,9 @@ class Tab:  # {{{
                 old_active_window.focus_changed(False)
             if new_active_window is not None:
                 new_active_window.focus_changed(True)
+            tm = self.tab_manager_ref()
+            if tm is not None:
+                tm.update_tab_bar()
 
     @property
     def active_window(self):
@@ -99,13 +102,13 @@ class Tab:  # {{{
         self.name = title or ''
         tm = self.tab_manager_ref()
         if tm is not None:
-            tm.title_changed(self.name)
+            tm.update_tab_bar()
 
     def title_changed(self, window):
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
-                tm.title_changed(window.title)
+                tm.update_tab_bar()
 
     def visible_windows(self):
         for w in self.windows:
@@ -513,9 +516,6 @@ class TabManager:  # {{{
             swap_tabs(self.os_window_id, idx, nidx)
             self._set_active_tab(nidx)
             self.update_tab_bar()
-
-    def title_changed(self, new_title):
-        self.update_tab_bar()
 
     def new_tab(self, special_window=None, cwd_from=None):
         idx = len(self.tabs)
