@@ -451,6 +451,7 @@ class Boss:
             w = tm.active_window
             if w is not None:
                 w.focus_changed(focused)
+            tm.update_tab_bar()
 
     def on_drop(self, os_window_id, paths):
         tm = self.os_window_map.get(os_window_id)

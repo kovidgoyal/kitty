@@ -6,6 +6,9 @@ kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 version 0.9.1 [future]
 ------------------------------
 
+- Show a bell on the tab if a bell occurs in one of the windows in the tab and
+  the window is not the currently focused window
+
 - macOS: Add support for dead keys
 
 - Unicode input: When searching by name search for prefix matches as well as

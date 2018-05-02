@@ -20,7 +20,7 @@ from .session import resolved_shell
 from .utils import color_as_int, log_error
 from .window import Window, calculate_gl_geometry
 
-TabbarData = namedtuple('TabbarData', 'title is_active is_last')
+TabbarData = namedtuple('TabbarData', 'title is_active is_last needs_attention')
 SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for env')
 
 
@@ -109,6 +109,11 @@ class Tab:  # {{{
             tm = self.tab_manager_ref()
             if tm is not None:
                 tm.update_tab_bar()
+
+    def on_bell(self, window):
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.update_tab_bar()
 
     def visible_windows(self):
         for w in self.windows:
@@ -310,6 +315,7 @@ class TabBar:  # {{{
 
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
+        self.bell_fg = as_rgb(0xff0000)
 
     def patch_colors(self, spec):
         if 'active_tab_foreground' in spec:
@@ -353,10 +359,18 @@ class TabBar:  # {{{
 
         for t in data:
             s.cursor.bg = self.active_bg if t.is_active else 0
-            s.cursor.fg = self.active_fg if t.is_active else 0
+            s.cursor.fg = fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            s.draw(' ' * self.leading_spaces + t.title + ' ' * self.trailing_spaces)
+            if self.leading_spaces:
+                s.draw(' ' * self.leading_spaces)
+            if t.needs_attention:
+                s.cursor.fg = self.bell_fg
+                s.draw('🔔 ')
+                s.cursor.fg = fg
+            s.draw(t.title)
+            if self.trailing_spaces:
+                s.draw(' ' * self.trailing_spaces)
             extra = s.cursor.x - before - max_title_length
             if extra > 0:
                 s.cursor.x -= extra + 1
@@ -536,7 +550,12 @@ class TabManager:  # {{{
         ans = []
         for t in self.tabs:
             title = (t.name or t.title or appname).strip()
-            ans.append(TabbarData(title, t is at, t is self.tabs[-1]))
+            needs_attention = False
+            for w in t:
+                if w.needs_attention:
+                    needs_attention = True
+                    break
+            ans.append(TabbarData(title, t is at, t is self.tabs[-1], needs_attention))
         return ans
 
     def activate_tab_at(self, x):

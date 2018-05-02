@@ -1077,6 +1077,7 @@ void
 screen_bell(Screen *self) {
     request_window_attention(self->window_id, OPT(enable_audio_bell));
     if (OPT(visual_bell_duration) > 0.0f) self->start_visual_bell_at = monotonic();
+    CALLBACK("on_bell", NULL);
 }
 
 void

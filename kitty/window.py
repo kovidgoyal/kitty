@@ -90,6 +90,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
         self.action_on_close = None
+        self.needs_attention = False
         self.override_title = override_title
         self.overlay_window_id = None
         self.overlay_for = None
@@ -214,6 +215,7 @@ class Window:
 
     def focus_changed(self, focused):
         if focused:
+            self.needs_attention = False
             if self.screen.focus_tracking_enabled:
                 self.screen.send_escape_code_to_child(CSI, 'I')
         else:
@@ -227,6 +229,17 @@ class Window:
 
     def icon_changed(self, new_icon):
         pass  # TODO: Implement this
+
+    @property
+    def is_active(self):
+        return get_boss().active_window is self
+
+    def on_bell(self):
+        if not self.is_active:
+            self.needs_attention = True
+            tab = self.tabref()
+            if tab is not None:
+                tab.on_bell(self)
 
     def change_titlebar_color(self):
         val = self.opts.macos_titlebar_color
