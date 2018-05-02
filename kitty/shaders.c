@@ -486,7 +486,7 @@ draw_cursor(CursorRenderInfo *cursor, bool is_focused) {
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -500,6 +500,7 @@ init_borders_program() {
         else if SET_LOC(default_bg);
         else if SET_LOC(active_border_color);
         else if SET_LOC(inactive_border_color);
+        else if SET_LOC(bell_border_color);
         else { fatal("Unknown uniform in borders program: %s", p->uniforms[i].name); return; }
     }
     if (left) { fatal("Left over uniforms in borders program"); return; }
@@ -536,6 +537,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             glUniform1f(border_uniform_locations[BORDER_background_opacity], OPT(background_opacity));
             glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
             glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
+            glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
         }
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         color_type default_bg = num_visible_windows > 1 ? OPT(background) : active_window_bg;

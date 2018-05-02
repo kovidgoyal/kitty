@@ -20,7 +20,7 @@ typedef struct {
     unsigned int rectangle_select_modifiers;
     unsigned int url_style;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
-    color_type url_color, background, active_border_color, inactive_border_color;
+    color_type url_color, background, active_border_color, inactive_border_color, bell_border_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
     bool macos_option_as_alt, macos_hide_titlebar, macos_hide_from_tasks;

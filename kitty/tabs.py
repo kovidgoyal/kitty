@@ -88,6 +88,7 @@ class Tab:  # {{{
                 new_active_window.focus_changed(True)
             tm = self.tab_manager_ref()
             if tm is not None:
+                self.relayout_borders()
                 tm.update_tab_bar()
 
     @property
@@ -113,6 +114,7 @@ class Tab:  # {{{
     def on_bell(self, window):
         tm = self.tab_manager_ref()
         if tm is not None:
+            self.relayout_borders()
             tm.update_tab_bar()
 
     def visible_windows(self):

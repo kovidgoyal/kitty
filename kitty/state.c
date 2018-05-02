@@ -369,6 +369,7 @@ PYWRAP1(set_options) {
     S(background, color_as_int);
     S(active_border_color, color_as_int);
     S(inactive_border_color, color_as_int);
+    S(bell_border_color, color_as_int);
     S(repaint_delay, repaint_delay);
     S(input_delay, repaint_delay);
     S(sync_to_monitor, PyObject_IsTrue);

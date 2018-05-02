@@ -6,8 +6,12 @@ kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 version 0.9.1 [future]
 ------------------------------
 
-- Show a bell on the tab if a bell occurs in one of the windows in the tab and
+- Show a bell symbol on the tab if a bell occurs in one of the windows in the tab and
   the window is not the currently focused window
+
+- Change the window border color if a bell occurs in an unfocused window. Can
+  be disabled by setting the bell_border_color to be the same as the
+  inactive_border_color.
 
 - macOS: Add support for dead keys
 

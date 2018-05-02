@@ -359,7 +359,7 @@ type_map = {
 
 for name in (
     'foreground background cursor active_border_color inactive_border_color'
-    ' selection_foreground selection_background url_color'
+    ' selection_foreground selection_background url_color bell_border_color'
 ).split():
     type_map[name] = to_color
 for i in range(256):

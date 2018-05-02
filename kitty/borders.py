@@ -64,7 +64,7 @@ class Borders:
                 g = w.geometry
                 if bw > 0 and draw_window_borders:
                     # Draw the border rectangles
-                    color = 2 if w is active_window else 4
+                    color = 2 if w is active_window else (16 if w.needs_attention else 4)
                     border(
                         self.os_window_id, self.tab_id,
                         color, bw, g.left - fw, g.top - fw, g.right + fw,
