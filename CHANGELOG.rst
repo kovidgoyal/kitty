@@ -42,6 +42,9 @@ version 0.9.1 [future]
 
 - Fix passing @text to other programs such as when viewing the scrollback buffer not working correctly if kitty is itself scrolled up.
 
+- Fix window focus gained/lost events not being reported to child programs when
+  switching windows/tabs using the various keyboard shortcuts.
+
 
 version 0.9.0 [2018-04-15]
 ------------------------------

@@ -566,10 +566,6 @@ class Boss:
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
         tab.set_active_window_idx(window_idx)
-        old_focus = tab.active_window
-        if not old_focus.destroyed:
-            old_focus.focus_changed(False)
-        tab.active_window.focus_changed(True)
 
     def open_url(self, url, program=None, cwd=None):
         if url:

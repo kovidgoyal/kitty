@@ -31,6 +31,7 @@ def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None,
 class Tab:  # {{{
 
     def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None):
+        self._active_window_idx = 0
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
         self.id = add_tab(self.os_window_id)
@@ -41,7 +42,6 @@ class Tab:  # {{{
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
         self.windows = deque()
-        self.active_window_idx = 0
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         if session_tab is None:
@@ -65,6 +65,27 @@ class Tab:  # {{{
             else:
                 self.new_window(cmd=cmd)
         self.set_active_window_idx(session_tab.active_window_idx)
+
+    @property
+    def active_window_idx(self):
+        return self._active_window_idx
+
+    @active_window_idx.setter
+    def active_window_idx(self, val):
+        try:
+            old_active_window = self.windows[self._active_window_idx]
+        except Exception:
+            old_active_window = None
+        self._active_window_idx = max(0, min(val, len(self.windows) - 1))
+        try:
+            new_active_window = self.windows[self._active_window_idx]
+        except Exception:
+            new_active_window = None
+        if old_active_window is not new_active_window:
+            if old_active_window is not None:
+                old_active_window.focus_changed(False)
+            if new_active_window is not None:
+                new_active_window.focus_changed(True)
 
     @property
     def active_window(self):
@@ -367,12 +388,37 @@ class TabManager:  # {{{
         self.opts, self.args = opts, args
         self.tabs = []
         self.tab_bar = TabBar(self.os_window_id, opts)
-        self.active_tab_idx = 0
+        self._active_tab_idx = 0
 
         for t in startup_session.tabs:
             self._add_tab(Tab(self, session_tab=t))
         self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
         self.update_tab_bar()
+
+    @property
+    def active_tab_idx(self):
+        return self._active_tab_idx
+
+    @active_tab_idx.setter
+    def active_tab_idx(self, val):
+        try:
+            old_active_tab = self.tabs[self._active_tab_idx]
+        except Exception:
+            old_active_tab = None
+        self._active_tab_idx = max(0, min(val, len(self.tabs) - 1))
+        try:
+            new_active_tab = self.tabs[self._active_tab_idx]
+        except Exception:
+            new_active_tab = None
+        if old_active_tab is not new_active_tab:
+            if old_active_tab is not None:
+                w = old_active_tab.active_window
+                if w is not None:
+                    w.focus_changed(False)
+            if new_active_tab is not None:
+                w = new_active_tab.active_window
+                if w is not None:
+                    w.focus_changed(True)
 
     def refresh_sprite_positions(self):
         self.tab_bar.screen.refresh_sprite_positions()
