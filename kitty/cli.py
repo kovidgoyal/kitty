@@ -61,10 +61,6 @@ Override individual configuration options, can be specified multiple times.
 Syntax: |_ name=value|. For example: |_ -o font_size=20|
 
 
---cmd -c
-Run python code in the kitty context
-
-
 --directory -d
 default=.
 Change to the specified directory when launching
