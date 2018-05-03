@@ -7,7 +7,6 @@ import json
 import os
 import re
 import sys
-import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -449,6 +448,7 @@ def build_ansi_color_table(opts=defaults):
 
 
 def atomic_save(data, path):
+    import tempfile
     fd, p = tempfile.mkstemp(dir=os.path.dirname(path), suffix='.tmp')
     try:
         with os.fdopen(fd, 'wb') as f:

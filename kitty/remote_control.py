@@ -4,7 +4,6 @@
 
 import json
 import re
-import socket
 import sys
 import types
 from functools import partial
@@ -41,6 +40,7 @@ will only work if this process is run within an existing kitty window.
 
 
 def do_io(to, send, no_response):
+    import socket
     send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
     send = b'\x1bP' + send + b'\x1b\\'
     if to:

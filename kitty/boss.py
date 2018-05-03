@@ -6,7 +6,6 @@ import atexit
 import json
 import os
 import re
-import socket
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
@@ -43,6 +42,7 @@ def initialize_renderer():
 
 
 def listen_on(spec):
+    import socket
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
     atexit.register(remove_socket_file, s, socket_path)

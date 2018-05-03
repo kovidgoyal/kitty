@@ -8,11 +8,8 @@ import fcntl
 import math
 import os
 import re
-import socket
 import string
-import subprocess
 import sys
-import tempfile
 from contextlib import contextmanager
 from time import monotonic
 
@@ -121,6 +118,7 @@ def command_for_open(program='default'):
 
 
 def open_cmd(cmd, arg=None, cwd=None):
+    import subprocess
     if arg is not None:
         cmd = list(cmd)
         cmd.append(arg)
@@ -201,6 +199,8 @@ def remove_socket_file(s, path=None):
 
 
 def single_instance_unix(name):
+    import socket
+    import tempfile
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
     if is_macos:
@@ -239,6 +239,7 @@ def single_instance_unix(name):
 
 
 def single_instance(group_id=None):
+    import socket
     name = '{}-ipc-{}'.format(appname, os.geteuid())
     if group_id:
         name += '-{}'.format(group_id)
@@ -264,6 +265,7 @@ def single_instance(group_id=None):
 
 
 def parse_address_spec(spec):
+    import socket
     protocol, rest = spec.split(':', 1)
     socket_path = None
     if protocol == 'unix':

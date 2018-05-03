@@ -4,7 +4,6 @@
 
 import os
 import re
-import subprocess
 import sys
 from collections import deque
 
@@ -349,6 +348,7 @@ def print_help_for_seq(seq, usage, message, appname):
 
     text = '\n'.join(blocks) + '\n\n' + version()
     if print_help_for_seq.allow_pager and sys.stdout.isatty():
+        import subprocess
         p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
         p.communicate(text.encode('utf-8'))
         raise SystemExit(p.wait())
@@ -577,6 +577,7 @@ def create_opts(args, debug_config=False):
         print(version(add_rev=True))
         print(' '.join(os.uname()))
         if is_macos:
+            import subprocess
             print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
         else:
             print('Running under:', green('Wayland' if is_wayland else 'X11'))
