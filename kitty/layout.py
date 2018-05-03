@@ -254,7 +254,9 @@ def top_blank_rect(w, rects):
 
 def bottom_blank_rect(w, rects):
     b = w.geometry.bottom
-    if b < central.bottom:
+    # Need to use <= here as otherwise a single pixel row at the bottom of the
+    # window is sometimes not covered. See https://github.com/kovidgoyal/kitty/issues/506
+    if b <= central.bottom:
         rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
 
 
