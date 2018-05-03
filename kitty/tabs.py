@@ -11,9 +11,9 @@ from .child import Child
 from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
-    DECAWM, Screen, add_tab, glfw_post_empty_event, remove_tab, remove_window,
-    set_active_tab, set_tab_bar_render_data, swap_tabs, viewport_for_window,
-    x11_window_id
+    DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
+    remove_tab, remove_window, set_active_tab, set_tab_bar_render_data,
+    swap_tabs, viewport_for_window, x11_window_id
 )
 from .layout import Rect, all_layouts
 from .session import resolved_shell
@@ -89,7 +89,7 @@ class Tab:  # {{{
             tm = self.tab_manager_ref()
             if tm is not None:
                 self.relayout_borders()
-                tm.update_tab_bar()
+                tm.mark_tab_bar_dirty()
 
     @property
     def active_window(self):
@@ -103,19 +103,19 @@ class Tab:  # {{{
         self.name = title or ''
         tm = self.tab_manager_ref()
         if tm is not None:
-            tm.update_tab_bar()
+            tm.mark_tab_bar_dirty()
 
     def title_changed(self, window):
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
-                tm.update_tab_bar()
+                tm.mark_tab_bar_dirty()
 
     def on_bell(self, window):
         tm = self.tab_manager_ref()
         if tm is not None:
             self.relayout_borders()
-            tm.update_tab_bar()
+            tm.mark_tab_bar_dirty()
 
     def visible_windows(self):
         for w in self.windows:
@@ -412,7 +412,6 @@ class TabManager:  # {{{
         for t in startup_session.tabs:
             self._add_tab(Tab(self, session_tab=t))
         self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
-        self.update_tab_bar()
 
     @property
     def active_tab_idx(self):
@@ -464,21 +463,24 @@ class TabManager:  # {{{
         self.resize(only_tabs=True)
         glfw_post_empty_event()
 
-    def update_tab_bar(self):
+    def mark_tab_bar_dirty(self):
         if len(self.tabs) > 1:
-            self.tab_bar.update(self.tab_bar_data)
+            mark_tab_bar_dirty(self.os_window_id)
+
+    def update_tab_bar_data(self):
+        self.tab_bar.update(self.tab_bar_data)
 
     def resize(self, only_tabs=False):
         if not only_tabs:
             self.tab_bar.layout()
-            self.update_tab_bar()
+            self.mark_tab_bar_dirty()
         for tab in self.tabs:
             tab.relayout()
 
     def set_active_tab_idx(self, idx):
         self._set_active_tab(idx)
         self.active_tab.relayout_borders()
-        self.update_tab_bar()
+        self.mark_tab_bar_dirty()
 
     def set_active_tab(self, tab):
         try:
@@ -531,19 +533,19 @@ class TabManager:  # {{{
             self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
             swap_tabs(self.os_window_id, idx, nidx)
             self._set_active_tab(nidx)
-            self.update_tab_bar()
+            self.mark_tab_bar_dirty()
 
     def new_tab(self, special_window=None, cwd_from=None):
         idx = len(self.tabs)
         self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
-        self.update_tab_bar()
+        self.mark_tab_bar_dirty()
         return self.tabs[idx]
 
     def remove(self, tab):
         self._remove_tab(tab)
         self._set_active_tab(max(0, min(self.active_tab_idx, len(self.tabs) - 1)))
-        self.update_tab_bar()
+        self.mark_tab_bar_dirty()
         tab.destroy()
 
     @property

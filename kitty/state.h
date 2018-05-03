@@ -105,6 +105,7 @@ typedef struct {
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render;
     ScreenRenderData tab_bar_render_data;
+    bool tab_bar_data_updated;
     bool is_focused;
     double cursor_blink_zero_time, last_mouse_activity_at;
     double mouse_x, mouse_y;
