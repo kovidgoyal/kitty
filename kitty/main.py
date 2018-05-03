@@ -151,9 +151,6 @@ def _main():
         return
     if getattr(args, 'detach', False):
         detach()
-    if args.cmd:
-        exec(args.cmd)
-        return
     if args.replay_commands:
         from kitty.client import main
         main(args.replay_commands)
