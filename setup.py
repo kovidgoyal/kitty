@@ -453,9 +453,12 @@ def kittens_env():
 
 
 def compile_kittens(incremental, compilation_database, all_keys):
-    sources = ['kittens/unicode_input/unicode_names.c']
-    all_headers = ['kittens/unicode_input/names.h', 'kitty/data-types.h']
-    compile_c_extension(kittens_env(), 'kittens/unicode_input/unicode_names', incremental, compilation_database, all_keys, sources, all_headers)
+    kenv = kittens_env()
+    for sources, all_headers, dest in [
+        (['kittens/unicode_input/unicode_names.c'], ['kittens/unicode_input/names.h', 'kitty/data-types.h'],  'kittens/unicode_input/unicode_names'),
+        (['kittens/diff/speedup.c'], ['kitty/data-types.h'], 'kittens/diff/diff_speedup'),
+    ]:
+        compile_c_extension(kenv, dest, incremental, compilation_database, all_keys, sources, all_headers)
 
 
 def build(args, native_optimizations=True):

@@ -6,6 +6,10 @@ import concurrent.futures
 import os
 import subprocess
 
+from .collect import lines_for_path
+
+left_lines = right_lines = None
+
 
 def run_diff(file1, file2, context=3):
     # returns: ok, is_different, patch
@@ -22,13 +26,14 @@ def run_diff(file1, file2, context=3):
 
 class Chunk:
 
-    __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count')
+    __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count', 'is_change')
 
     def __init__(self, left_start, right_start, is_context=False):
         self.is_context = is_context
         self.left_start = left_start
         self.right_start = right_start
         self.left_count = self.right_count = 0
+        self.is_change = False
 
     def add_line(self):
         self.right_count += 1
@@ -39,6 +44,10 @@ class Chunk:
     def context_line(self):
         self.left_count += 1
         self.right_count += 1
+
+    def finalize(self):
+        if not self.is_context and self.left_count == self.right_count:
+            self.is_change = True
 
     def __repr__(self):
         return 'Chunk(is_context={}, left_start={}, left_count={}, right_start={}, right_count={})'.format(
@@ -102,6 +111,8 @@ class Hunk:
             raise ValueError('Left side line mismatch {} != {}'.format(c.left_start + c.left_count, self.left_start + self.left_count))
         if c.right_start + c.right_count != self.right_start + self.right_count:
             raise ValueError('Left side line mismatch {} != {}'.format(c.right_start + c.right_count, self.right_start + self.right_count))
+        for c in self.chunks:
+            c.finalize()
 
 
 def parse_range(x):
@@ -166,6 +177,7 @@ class Differ:
         self.jobs.append(file1)
 
     def __call__(self, context=3):
+        global left_lines, right_lines
         ans = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
             jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
@@ -179,6 +191,8 @@ class Differ:
                     return 'Running git diff for {} vs. {} generated an exception: {}'.format(key[0], key[1], e)
                 if not ok:
                     return output + '\nRunning git diff for {} vs. {} failed'.format(key[0], key[1])
+                left_lines = lines_for_path(key[0])
+                right_lines = lines_for_path(key[1])
                 try:
                     patch = parse_patch(output)
                 except Exception:
