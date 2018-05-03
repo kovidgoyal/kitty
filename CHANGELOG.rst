@@ -54,6 +54,10 @@ version 0.9.1 [future]
 
 - Fix tab title not changing to reflect the window title when switching between different windows in a tab
 
+- Ignore -e if it is specified on the command line. This is for compatibility
+  with broken software that assumes terminals should run with an -e option to
+  execute commands instead of just passing the commands as arguments. 
+
 
 version 0.9.0 [2018-04-15]
 ------------------------------

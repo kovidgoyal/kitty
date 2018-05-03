@@ -145,6 +145,11 @@ Print out information about the selection of fallback fonts for characters not p
 --debug-config
 type=bool-set
 Print out information about the system and kitty configuration.
+
+
+--execute -e
+type=bool-set
+!
 '''
 
 
@@ -330,12 +335,15 @@ def print_help_for_seq(seq, usage, message, appname):
         if isinstance(opt, str):
             a('{}:'.format(title(opt)))
             continue
+        help_text = opt['help']
+        if help_text == '!':
+            continue  # hidden option
         a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
         if not opt.get('type', '').startswith('bool-'):
             blocks[-1] += '={}'.format(italic(opt['dest'].upper()))
         if opt.get('help'):
             defval = opt.get('default')
-            t = opt['help'].replace('%default', str(defval))
+            t = help_text.replace('%default', str(defval))
             wa(prettify(t.strip()), indent=4)
             if defval is not None:
                 wa('Default: {}'.format(defval), indent=4)
