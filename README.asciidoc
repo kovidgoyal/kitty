@@ -550,6 +550,17 @@ Really, the correct solution for this is to convince the OpenSSH maintainers to
 have ssh do this automatically when connecting to a server, so that all
 terminals work transparently.
 
+In the meantime, you can automate it by using a simple script called, for example,
+`~/bin/myssh`
+
+....
+#!/bin/sh
+infocmp xterm-kitty | ssh $1 tic -x -o \~/.terminfo /dev/stdin && ssh $1
+....
+
+Then you can use `myssh server` to log in to `server` with the terminfo file
+being automatically available.
+
 
 === How do I change the colors in a running kitty instance?
 
