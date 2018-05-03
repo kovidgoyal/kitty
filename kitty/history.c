@@ -10,10 +10,42 @@
 #include <structmember.h>
 
 extern PyTypeObject Line_Type;
+#define SEGMENT_SIZE 2048
+
+static inline void
+add_segment(HistoryBuf *self) {
+    self->num_segments += 1;
+    self->segments = PyMem_Realloc(self->segments, sizeof(HistoryBufSegment) * self->num_segments);
+    if (self->segments == NULL) fatal("Out of memory allocating new history buffer segment");
+    HistoryBufSegment *s = self->segments + self->num_segments - 1;
+    s->cells = PyMem_Calloc(self->xnum * SEGMENT_SIZE, sizeof(Cell));
+    s->line_attrs = PyMem_Calloc(SEGMENT_SIZE, sizeof(line_attrs_type));
+    if (s->cells == NULL || s->line_attrs == NULL) fatal("Out of memory allocating new history buffer segment");
+}
+
+static inline index_type
+segment_for(HistoryBuf *self, index_type y) {
+    index_type seg_num = y / SEGMENT_SIZE;
+    while (UNLIKELY(seg_num >= self->num_segments && SEGMENT_SIZE * self->num_segments < self->ynum)) add_segment(self);
+    if (UNLIKELY(seg_num >= self->num_segments)) fatal("Out of bounds access to history buffer line number: %u", y);
+    return seg_num;
+}
+
+#define seg_ptr(which, stride) { \
+    index_type seg_num = segment_for(self, y); \
+    y -= seg_num * SEGMENT_SIZE; \
+    return self->segments[seg_num].which + y * stride; \
+}
 
 static inline Cell*
-lineptr(HistoryBuf *linebuf, index_type y) {
-    return linebuf->buf + y * linebuf->xnum;
+lineptr(HistoryBuf *self, index_type y) {
+    seg_ptr(cells, self->xnum);
+}
+
+
+static inline line_attrs_type*
+attrptr(HistoryBuf *self, index_type y) {
+    seg_ptr(line_attrs, 1);
 }
 
 static PyObject *
@@ -32,18 +64,12 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->buf = PyMem_Calloc(xnum * ynum, sizeof(Cell));
-        self->line_attrs = PyMem_Calloc(ynum, sizeof(line_attrs_type));
         self->line = alloc_line();
-        if (self->buf == NULL || self->line == NULL || self->line_attrs == NULL) {
-            PyErr_NoMemory();
-            PyMem_Free(self->buf); Py_CLEAR(self->line); PyMem_Free(self->line_attrs);
-            Py_CLEAR(self);
-        } else {
-            self->line->xnum = xnum;
-            for(index_type y = 0; y < self->ynum; y++) {
-                clear_chars_in_line(lineptr(self, y), self->xnum, BLANK_CHAR);
-            }
+        self->num_segments = 0;
+        add_segment(self);
+        self->line->xnum = xnum;
+        for(index_type y = 0; y < self->ynum; y++) {
+            clear_chars_in_line(lineptr(self, y), self->xnum, BLANK_CHAR);
         }
     }
 
@@ -53,8 +79,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
-    PyMem_Free(self->buf);
-    PyMem_Free(self->line_attrs);
+    for (size_t i = 0; i < self->num_segments; i++) {
+        PyMem_Free(self->segments[i].cells);
+        PyMem_Free(self->segments[i].line_attrs);
+    }
+    PyMem_Free(self->segments);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -71,8 +100,8 @@ static inline void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cells = lineptr(self, num);
-    l->continued = self->line_attrs[num] & CONTINUED_MASK;
-    l->has_dirty_text = self->line_attrs[num] & TEXT_DIRTY_MASK ? true : false;
+    l->continued = *attrptr(self, num) & CONTINUED_MASK;
+    l->has_dirty_text = *attrptr(self, num) & TEXT_DIRTY_MASK ? true : false;
 }
 
 void
@@ -82,12 +111,14 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
 
 void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
-    self->line_attrs[index_of(self, y)] &= ~TEXT_DIRTY_MASK;
+    line_attrs_type *p = attrptr(self, index_of(self, y));
+    *p &= ~TEXT_DIRTY_MASK;
 }
 
 void
 historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
-    self->line_attrs[index_of(self, y)] |= TEXT_DIRTY_MASK;
+    line_attrs_type *p = attrptr(self, index_of(self, y));
+    *p |= TEXT_DIRTY_MASK;
 }
 
 inline void
@@ -105,43 +136,11 @@ historybuf_push(HistoryBuf *self) {
     return idx;
 }
 
-bool
-historybuf_resize(HistoryBuf *self, index_type lines) {
-    HistoryBuf t = {{0}};
-    t.xnum=self->xnum;
-    t.ynum=lines;
-    if (t.ynum > 0 && t.ynum != self->ynum) {
-        t.buf = PyMem_Calloc(t.xnum * t.ynum, sizeof(Cell));
-        if (t.buf == NULL) { PyErr_NoMemory(); return false; }
-        t.line_attrs = PyMem_Calloc(t.ynum, sizeof(line_attrs_type));
-        if (t.line_attrs == NULL) { PyMem_Free(t.buf); PyErr_NoMemory(); return false; }
-        t.count = MIN(self->count, t.ynum);
-        for (index_type s=0; s < t.count; s++) {
-            index_type si = index_of(self, s), ti = index_of(&t, s);
-            copy_cells(lineptr(self, si), lineptr(&t, ti), t.xnum);
-            t.line_attrs[ti] = self->line_attrs[si];
-        }
-        self->count = t.count;
-        self->start_of_data = t.start_of_data;
-        self->ynum = t.ynum;
-        PyMem_Free(self->buf); PyMem_Free(self->line_attrs);
-        self->buf = t.buf; self->line_attrs = t.line_attrs;
-    }
-    return true;
-}
-
 void
 historybuf_add_line(HistoryBuf *self, const Line *line) {
     index_type idx = historybuf_push(self);
     copy_line(line, self->line);
-    self->line_attrs[idx] = (line->continued & CONTINUED_MASK) | (line->has_dirty_text ? TEXT_DIRTY_MASK : 0);
-}
-
-static PyObject*
-change_num_of_lines(HistoryBuf *self, PyObject *val) {
-#define change_num_of_lines_doc "Change the number of lines in this buffer"
-    if(!historybuf_resize(self, (index_type)PyLong_AsUnsignedLong(val))) return NULL;
-    Py_RETURN_NONE;
+    *attrptr(self, idx) = (line->continued & CONTINUED_MASK) | (line->has_dirty_text ? TEXT_DIRTY_MASK : 0);
 }
 
 static PyObject*
@@ -188,7 +187,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
-            l.continued = self->line_attrs[index_of(self, i + 1)] & CONTINUED_MASK;
+            l.continued = *attrptr(self, index_of(self, i + 1)) & CONTINUED_MASK;
         } else l.continued = false;
         index_type num = line_as_ansi(&l, t, 5120);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
@@ -219,7 +218,7 @@ dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->ynum; i++) {
-        if (self->line_attrs[i] & TEXT_DIRTY_MASK) {
+        if (*attrptr(self, i) & TEXT_DIRTY_MASK) {
             PyList_Append(ans, PyLong_FromUnsignedLong(i));
         }
     }
@@ -232,7 +231,6 @@ static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 #define rewrap_doc ""
 
 static PyMethodDef methods[] = {
-    METHOD(change_num_of_lines, METH_O)
     METHOD(line, METH_O)
     METHOD(as_ansi, METH_O)
     METHODB(as_text, METH_VARARGS),
@@ -275,19 +273,22 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns) {
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (src->line_attrs[map_src_index(src_y + 1)] & CONTINUED_MASK) : false)
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (*attrptr(src, map_src_index(src_y + 1)) & CONTINUED_MASK) : false)
 
-#define next_dest_line(cont) dest->line_attrs[historybuf_push(dest)] = cont & CONTINUED_MASK; dest->line->continued = cont;
+#define next_dest_line(cont) *attrptr(dest, historybuf_push(dest)) = cont & CONTINUED_MASK; dest->line->continued = cont;
 
 #define first_dest_line next_dest_line(false);
 
 #include "rewrap.h"
 
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
-    // Fast path
+    while(other->num_segments < self->num_segments) add_segment(other);
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
-        memcpy(other->buf, self->buf, sizeof(Cell) * self->xnum * self->ynum);
-        memcpy(other->line_attrs, self->line_attrs, sizeof(line_attrs_type) * self->ynum);
+        // Fast path
+        for (index_type i = 0; i < self->num_segments; i++) {
+            memcpy(other->segments[i].cells, self->segments[i].cells, SEGMENT_SIZE * self->xnum * sizeof(Cell));
+            memcpy(other->segments[i].line_attrs, self->segments[i].line_attrs, SEGMENT_SIZE * sizeof(line_attrs_type));
+        }
         other->count = self->count; other->start_of_data = self->start_of_data;
         return;
     }
@@ -295,7 +296,7 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
     index_type x = 0, y = 0;
     if (self->count > 0) {
         rewrap_inner(self, other, self->count, NULL, &x, &y);
-        for (index_type i = 0; i < other->count; i++) other->line_attrs[(other->start_of_data + i) % other->ynum] |= TEXT_DIRTY_MASK;
+        for (index_type i = 0; i < other->count; i++) *attrptr(other, (other->start_of_data + i) % other->ynum) |= TEXT_DIRTY_MASK;
     }
 }
 

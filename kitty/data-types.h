@@ -161,15 +161,18 @@ typedef struct {
     Line *line;
 } LineBuf;
 
+typedef struct {
+    Cell *cells;
+    line_attrs_type *line_attrs;
+} HistoryBufSegment;
 
 typedef struct {
     PyObject_HEAD
 
-    Cell *buf;
-    index_type xnum, ynum;
+    index_type xnum, ynum, num_segments;
+    HistoryBufSegment* segments;
     Line *line;
     index_type start_of_data, count;
-    line_attrs_type *line_attrs;
 } HistoryBuf;
 
 typedef struct {

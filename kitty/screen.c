@@ -212,12 +212,6 @@ screen_rescale_images(Screen *self, unsigned int old_cell_width, unsigned int ol
 }
 
 
-static bool
-screen_change_scrollback_size(Screen *self, unsigned int size) {
-    if (size != self->historybuf->ynum) return historybuf_resize(self->historybuf, size);
-    return true;
-}
-
 static PyObject*
 reset_callbacks(Screen *self, PyObject *a UNUSED) {
     Py_CLEAR(self->callbacks);
@@ -1691,14 +1685,6 @@ start_selection(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-change_scrollback_size(Screen *self, PyObject *args) {
-    unsigned int count = 1;
-    if (!PyArg_ParseTuple(args, "|I", &count)) return NULL;
-    if (!screen_change_scrollback_size(self, MAX(self->lines, count))) return NULL;
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
@@ -1965,7 +1951,6 @@ static PyMethodDef methods[] = {
     MND(delete_lines, METH_VARARGS)
     MND(insert_characters, METH_VARARGS)
     MND(delete_characters, METH_VARARGS)
-    MND(change_scrollback_size, METH_VARARGS)
     MND(erase_characters, METH_VARARGS)
     MND(cursor_up, METH_VARARGS)
     MND(cursor_up1, METH_VARARGS)

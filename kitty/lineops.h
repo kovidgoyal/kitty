@@ -72,7 +72,6 @@ void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
-bool historybuf_resize(HistoryBuf *self, index_type lines);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
