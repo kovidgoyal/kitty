@@ -51,7 +51,7 @@ Set the window title. This will override any title set by the program running in
 only use this if you are running a program that does not set titles.
 
 
---config
+--config -c
 type=list
 {config_help}
 
