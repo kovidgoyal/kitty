@@ -146,8 +146,12 @@ def split_to_size(line, width):
 
 
 def split_to_size_with_center(line, width, prefix_count, suffix_count, start, stop):
+    sz = len(line)
+    if prefix_count + suffix_count == sz:
+        yield from split_to_size(line, width)
+        return
+    suffix_pos = sz - suffix_count
     pos = state = 0
-    suffix_pos = len(line) - suffix_count
     while line:
         p = truncate_point_for_length(line, width)
         if state is 0:
