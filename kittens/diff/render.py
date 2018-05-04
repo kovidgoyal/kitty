@@ -109,6 +109,14 @@ added_margin_format = format_func('added_margin')
 filler_format = format_func('filler')
 hunk_margin_format = format_func('hunk_margin')
 hunk_format = format_func('hunk')
+highlight_map = {'remove': ('removed_highlight', 'removed'), 'add': ('added_highlight', 'added')}
+
+
+def highlight_boundaries(ltype):
+    s, e = highlight_map[ltype]
+    start = '\x1b[' + formats[s] + 'm'
+    stop = '\x1b[' + formats[e] + 'm'
+    return start, stop
 
 
 def title_lines(left_path, right_path, args, columns, margin_size):
@@ -135,6 +143,36 @@ def split_to_size(line, width):
         p = truncate_point_for_length(line, width)
         yield line[:p]
         line = line[p:]
+
+
+def split_to_size_with_center(line, width, prefix_count, suffix_count, start, stop):
+    pos = state = 0
+    suffix_pos = len(line) - suffix_count
+    while line:
+        p = truncate_point_for_length(line, width)
+        if state is 0:
+            if pos + p > prefix_count:
+                state = 1
+                a, line = line[:p], line[p:]
+                if pos + p > suffix_pos:
+                    a = a[:suffix_pos - pos] + stop + a[suffix_pos - pos:]
+                    state = 2
+                yield a[:prefix_count - pos] + start + a[prefix_count - pos:]
+            else:
+                yield line[:p]
+                line = line[p:]
+        elif state is 1:
+            if pos + p > suffix_pos:
+                state = 2
+                a, line = line[:p], line[p:]
+                yield start + a[:suffix_pos - pos] + stop + a[suffix_pos - pos:]
+            else:
+                yield start + line[:p]
+                line = line[p:]
+        elif state is 2:
+            yield line[:p]
+            line = line[p:]
+        pos += p
 
 
 margin_bg_map = {'filler': filler_format, 'remove': removed_margin_format, 'add': added_margin_format, 'context': margin_format}
@@ -174,8 +212,12 @@ def hunk_title(hunk_num, hunk, margin_size, available_cols):
     return m + hunk_format(place_in(t, available_cols))
 
 
-def render_half_line(line_number, src, ltype, margin_size, available_cols):
-    lines = split_to_size(src[line_number], available_cols)
+def render_half_line(line_number, src, ltype, margin_size, available_cols, changed_center):
+    if changed_center is not None and changed_center[0]:
+        start, stop = highlight_boundaries(ltype)
+        lines = split_to_size_with_center(src[line_number], available_cols, changed_center[0], changed_center[1], start, stop)
+    else:
+        lines = split_to_size(src[line_number], available_cols)
     line_number = str(line_number + 1)
     for line in lines:
         yield render_diff_line(line_number, line, ltype, margin_size, available_cols)
@@ -205,9 +247,13 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
             ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
             ll, rl = [], []
             if i < chunk.left_count:
-                ll.extend(render_half_line(chunk.left_start + i, data.left_lines, 'remove', data.margin_size, data.available_cols))
+                ll.extend(render_half_line(
+                    chunk.left_start + i, data.left_lines, 'remove', data.margin_size,
+                    data.available_cols, None if chunk.centers is None else chunk.centers[i]))
             if i < chunk.right_count:
-                rl.extend(render_half_line(chunk.right_start + i, data.right_lines, 'add', data.margin_size, data.available_cols))
+                rl.extend(render_half_line(
+                    chunk.right_start + i, data.right_lines, 'add', data.margin_size,
+                    data.available_cols, None if chunk.centers is None else chunk.centers[i]))
             if i < common:
                 extra = len(ll) - len(rl)
                 if extra != 0:

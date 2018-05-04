@@ -7,6 +7,7 @@ import os
 import subprocess
 
 from .collect import lines_for_path
+from .diff_speedup import changed_center
 
 left_lines = right_lines = None
 
@@ -26,14 +27,14 @@ def run_diff(file1, file2, context=3):
 
 class Chunk:
 
-    __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count', 'is_change')
+    __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count', 'centers')
 
     def __init__(self, left_start, right_start, is_context=False):
         self.is_context = is_context
         self.left_start = left_start
         self.right_start = right_start
         self.left_count = self.right_count = 0
-        self.is_change = False
+        self.centers = None
 
     def add_line(self):
         self.right_count += 1
@@ -47,7 +48,7 @@ class Chunk:
 
     def finalize(self):
         if not self.is_context and self.left_count == self.right_count:
-            self.is_change = True
+            self.centers = tuple(changed_center(left_lines[self.left_start + i], right_lines[self.right_start + i]) for i in range(self.left_count))
 
     def __repr__(self):
         return 'Chunk(is_context={}, left_start={}, left_count={}, right_start={}, right_count={})'.format(
@@ -183,16 +184,17 @@ class Differ:
             jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
             for future in concurrent.futures.as_completed(jobs):
                 key = jobs[future]
+                left_path, right_path = key, self.jmap[key]
                 try:
                     ok, returncode, output = future.result()
                 except FileNotFoundError as err:
                     return 'Could not find the {} executable. Is it in your PATH?'.format(err.filename)
                 except Exception as e:
-                    return 'Running git diff for {} vs. {} generated an exception: {}'.format(key[0], key[1], e)
+                    return 'Running git diff for {} vs. {} generated an exception: {}'.format(left_path, right_path, e)
                 if not ok:
-                    return output + '\nRunning git diff for {} vs. {} failed'.format(key[0], key[1])
-                left_lines = lines_for_path(key[0])
-                right_lines = lines_for_path(key[1])
+                    return output + '\nRunning git diff for {} vs. {} failed'.format(left_path, right_path)
+                left_lines = lines_for_path(left_path)
+                right_lines = lines_for_path(right_path)
                 try:
                     patch = parse_patch(output)
                 except Exception:
