@@ -27,6 +27,10 @@ def regenerate():
     )
 
 
+def strip_trailing_whitespace(c):
+    return re.sub(r'\s+$', '', c, flags=re.MULTILINE) + '\n'
+
+
 def export():
     c = open('out/src/glad.c', 'rb').read().decode('utf-8')
     functions = []
@@ -48,12 +52,13 @@ init_glad(GLADloadproc load, int debug) {
     }
     return ret;
 }'''.replace('SUB', ';\n        '.join(switch), 1)
-    open('../kitty/gl-wrapper.c', 'w').write(c)
+    open('../kitty/gl-wrapper.c', 'w').write(strip_trailing_whitespace(c))
     raw = open('out/include/glad/glad.h').read()
     raw = raw.replace('<KHR/khrplatform.h>', '"khrplatform.h"')
     raw += '\nint init_glad(GLADloadproc, int);\n'
-    open('../kitty/gl-wrapper.h', 'w').write(raw)
-    shutil.copy2('out/include/KHR/khrplatform.h', '../kitty')
+    open('../kitty/gl-wrapper.h', 'w').write(strip_trailing_whitespace(raw))
+    raw = open('out/include/KHR/khrplatform.h', 'rb').read().decode('utf-8')
+    open('../kitty/khrplatform.h', 'w').write(strip_trailing_whitespace(raw))
 
 
 if __name__ == '__main__':
