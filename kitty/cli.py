@@ -556,8 +556,8 @@ def compare_opts(opts):
     print('\nConfig options different from defaults:')
     default_opts = load_config()
     changed_opts = [
-            f for f in sorted(defaults._fields)
-            if f not in ('key_definitions', 'keymap', 'sequence_map') and getattr(opts, f) != getattr(defaults, f)
+        f for f in sorted(defaults._fields)
+        if f not in ('key_definitions', 'keymap', 'sequence_map') and getattr(opts, f) != getattr(defaults, f)
     ]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = '{{:{:d}s}}'.format(field_len)
