@@ -3,7 +3,7 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-version 0.9.1 [future]
+version 0.9.1 [2018-05-05]
 ------------------------------
 
 - Show a bell symbol on the tab if a bell occurs in one of the windows in the tab and
