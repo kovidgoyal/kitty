@@ -560,9 +560,7 @@ def compare_opts(opts):
             max(len(k) for k in opts if getattr(opts, k) != getattr(defaults, k) and k not in skip))
 
     for f in sorted(defaults._fields):
-        if getattr(opts, f) != getattr(defaults, f):
-            if f in skip:
-                continue
+        if getattr(opts, f) != getattr(defaults, f) and f not in skip:
             print(title(fmt.format(f)), getattr(opts, f))
 
     final, initial = opts.keymap, default_opts.keymap
