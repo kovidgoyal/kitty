@@ -47,7 +47,12 @@ class Collection:
     def __iter__(self):
         for path in self.all_paths:
             typ = self.type_map[path]
-            data = self.changes[path] if typ == 'diff' else None
+            if typ == 'diff':
+                data = self.changes[path]
+            elif typ == 'rename':
+                data = self.renames[path]
+            else:
+                data = None
             yield path, self.type_map[path], data
 
 
@@ -76,7 +81,7 @@ def collect_files(collection, left, right):
     for name, rh in rhash.items():
         for n, ah in ahash.items():
             if ah == rh and data_for_path(left_path_map[name]) == data_for_path(right_path_map[n]):
-                collection.add_rename(left_path_map[name], right_path_map[name])
+                collection.add_rename(left_path_map[name], right_path_map[n])
                 added.discard(n)
                 break
         else:
@@ -103,9 +108,14 @@ def mime_type_for_path(path):
 
 
 @lru_cache(maxsize=1024)
-def data_for_path(path):
+def raw_data_for_path(path):
     with open(path, 'rb') as f:
-        ans = f.read()
+        return f.read()
+
+
+@lru_cache(maxsize=1024)
+def data_for_path(path):
+    ans = raw_data_for_path(path)
     if not mime_type_for_path(path).startswith('image/'):
         try:
             ans = ans.decode('utf-8')
@@ -122,7 +132,7 @@ def lines_for_path(path):
 
 @lru_cache(maxsize=1024)
 def hash_for_path(path):
-    md5(data_for_path(path)).digest()
+    return md5(raw_data_for_path(path)).digest()
 
 
 def create_collection(left, right):

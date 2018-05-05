@@ -124,13 +124,21 @@ def title_lines(left_path, args, columns, margin_size):
 
 def binary_lines(path, other_path, columns, margin_size):
     template = _('Binary file: {}')
+    available_cols = columns // 2 - margin_size
 
-    def fl(path):
+    def fl(path, fmt):
         text = template.format(human_readable(len(data_for_path(path))))
-        text = place_in(text, columns // 2 - margin_size)
-        return margin_format(' ' * margin_size) + text_format(text)
+        text = place_in(text, available_cols)
+        return margin_format(' ' * margin_size) + fmt(text)
 
-    return fl(path) + fl(other_path)
+    if path is None:
+        filler = render_diff_line('', '', 'filler', margin_size, available_cols)
+        yield filler + fl(other_path, added_format)
+    elif other_path is None:
+        filler = render_diff_line('', '', 'filler', margin_size, available_cols)
+        yield fl(other_path, added_format) + filler
+    else:
+        yield fl(path, removed_format) + fl(other_path, added_format)
 
 
 def split_to_size(line, width):
@@ -289,17 +297,24 @@ def all_lines(path, args, columns, margin_size, is_add=True):
     ltype = 'add' if is_add else 'remove'
     lines = lines_for_path(path)
     filler = render_diff_line('', '', 'filler', margin_size, available_cols)
+    msg_written = False
     for line_number in range(len(lines)):
         h = render_half_line(line_number, lines, ltype, margin_size, available_cols)
         for i, hl in enumerate(h):
             ref = Reference(path, LineRef(line_number, i))
-            text = (filler + h) if is_add else (h + filler)
+            empty = filler
+            if not msg_written:
+                msg_written = True
+                empty = render_diff_line(
+                        '', _('This file was added') if is_add else _('This file was removed'),
+                        'filler', margin_size, available_cols)
+            text = (empty + hl) if is_add else (hl + empty)
             yield Line(text, ref)
 
 
 def rename_lines(path, other_path, args, columns, margin_size):
     m = ' ' * margin_size
-    for line in split_to_size(margin_size + _('The file {0} was renamed to {1}').format(
+    for line in split_to_size(_('The file {0} was renamed to {1}').format(
             sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns - margin_size):
         yield m + line
 
@@ -316,19 +331,25 @@ def render_diff(collection, diff_map, args, columns):
 
     for path, item_type, other_path in collection:
         item_ref = Reference(path)
+        is_binary = isinstance(data_for_path(path), bytes)
+        yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
         if item_type == 'diff':
-            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
-            is_binary = isinstance(data_for_path(path), bytes)
             if is_binary:
-                yield from yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
+                ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
             else:
-                yield from lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
+                ans = lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
         elif item_type == 'add':
-            yield from yield_lines_from(title_lines(other_path, args, columns, margin_size), item_ref)
-            yield from all_lines(other_path, args, columns, margin_size, is_add=True)
+            if is_binary:
+                ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
+            else:
+                ans = all_lines(path, args, columns, margin_size, is_add=True)
         elif item_type == 'removal':
-            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
-            yield from all_lines(path, args, columns, margin_size, is_add=False)
+            if is_binary:
+                ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
+            else:
+                ans = all_lines(path, args, columns, margin_size, is_add=False)
         elif item_type == 'rename':
-            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
-            yield from yield_lines_from(rename_lines(path, other_path, args, columns, margin_size))
+            ans = yield_lines_from(rename_lines(path, other_path, args, columns, margin_size), item_ref)
+        else:
+            raise ValueError('Unsupported item type: {}'.format(item_type))
+        yield from ans
