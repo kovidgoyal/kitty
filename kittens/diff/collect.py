@@ -3,10 +3,10 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 from functools import lru_cache
 from hashlib import md5
 from mimetypes import guess_type
-
 
 path_name_map = {}
 
@@ -86,6 +86,17 @@ def collect_files(collection, left, right):
         collection.add_add(right_path_map[name])
 
 
+sanitize_pat = re.compile('[\x00-\x1f\x7f\x80-\x9f]')
+
+
+def sanitize_sub(m):
+    return '<{:x}>'.format(ord(m.group()[0]))
+
+
+def sanitize(text):
+    return sanitize_pat.sub(sanitize_sub, text)
+
+
 @lru_cache(maxsize=1024)
 def mime_type_for_path(path):
     return guess_type(path)[0] or 'application/octet-stream'
@@ -106,7 +117,7 @@ def data_for_path(path):
 @lru_cache(maxsize=1024)
 def lines_for_path(path):
     data = data_for_path(path)
-    return data.splitlines()
+    return tuple(map(sanitize, data.splitlines()))
 
 
 @lru_cache(maxsize=1024)

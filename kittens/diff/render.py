@@ -2,13 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import re
 from gettext import gettext as _
 from itertools import repeat
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
-from .collect import data_for_path, lines_for_path, path_name_map
+from .collect import data_for_path, lines_for_path, path_name_map, sanitize
 from .config import formats
 
 
@@ -20,6 +19,15 @@ class HunkRef:
         self.hunk_num = hunk_num
         self.chunk_num = chunk_num
         self.line_num = line_num
+
+
+class LineRef:
+
+    __slots__ = ('src_line_number', 'wrapped_line_idx')
+
+    def __init__(self, sln, wli):
+        self.src_line_number = sln
+        self.wrapped_line_idx = wli
 
 
 class Reference:
@@ -58,17 +66,6 @@ def human_readable(size, sep=' '):
     if size.endswith('.0'):
         size = size[:-2]
     return size + sep + suffix
-
-
-sanitize_pat = re.compile('[\x00-\x1f\x7f\x80-\x9f]')
-
-
-def sanitize_sub(m):
-    return '<{:x}>'.format(ord(m.group()[0]))
-
-
-def sanitize(text):
-    return sanitize_pat.sub(sanitize_sub, text)
 
 
 def fit_in(text, count):
@@ -119,7 +116,7 @@ def highlight_boundaries(ltype):
     return start, stop
 
 
-def title_lines(left_path, right_path, args, columns, margin_size):
+def title_lines(left_path, args, columns, margin_size):
     name = fit_in(sanitize(path_name_map[left_path]), columns - 2 * margin_size)
     yield title_format(place_in(' ' + name, columns))
     yield title_format('━' * columns)
@@ -216,7 +213,7 @@ def hunk_title(hunk_num, hunk, margin_size, available_cols):
     return m + hunk_format(place_in(t, available_cols))
 
 
-def render_half_line(line_number, src, ltype, margin_size, available_cols, changed_center):
+def render_half_line(line_number, src, ltype, margin_size, available_cols, changed_center=None):
     if changed_center is not None and changed_center[0]:
         start, stop = highlight_boundaries(ltype)
         lines = split_to_size_with_center(src[line_number], available_cols, changed_center[0], changed_center[1], start, stop)
@@ -287,6 +284,26 @@ def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
             yield from lines_for_chunk(data, hunk_num, chunk, cnum)
 
 
+def all_lines(path, args, columns, margin_size, is_add=True):
+    available_cols = columns // 2 - margin_size
+    ltype = 'add' if is_add else 'remove'
+    lines = lines_for_path(path)
+    filler = render_diff_line('', '', 'filler', margin_size, available_cols)
+    for line_number in range(len(lines)):
+        h = render_half_line(line_number, lines, ltype, margin_size, available_cols)
+        for i, hl in enumerate(h):
+            ref = Reference(path, LineRef(line_number, i))
+            text = (filler + h) if is_add else (h + filler)
+            yield Line(text, ref)
+
+
+def rename_lines(path, other_path, args, columns, margin_size):
+    m = ' ' * margin_size
+    for line in split_to_size(margin_size + _('The file {0} was renamed to {1}').format(
+            sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns - margin_size):
+        yield m + line
+
+
 def render_diff(collection, diff_map, args, columns):
     largest_line_number = 0
     for path, item_type, other_path in collection:
@@ -300,9 +317,18 @@ def render_diff(collection, diff_map, args, columns):
     for path, item_type, other_path in collection:
         item_ref = Reference(path)
         if item_type == 'diff':
-            yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref)
+            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
             is_binary = isinstance(data_for_path(path), bytes)
             if is_binary:
                 yield from yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
             else:
                 yield from lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
+        elif item_type == 'add':
+            yield from yield_lines_from(title_lines(other_path, args, columns, margin_size), item_ref)
+            yield from all_lines(other_path, args, columns, margin_size, is_add=True)
+        elif item_type == 'removal':
+            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
+            yield from all_lines(path, args, columns, margin_size, is_add=False)
+        elif item_type == 'rename':
+            yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
+            yield from yield_lines_from(rename_lines(path, other_path, args, columns, margin_size))
