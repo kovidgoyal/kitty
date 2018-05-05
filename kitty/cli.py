@@ -555,12 +555,15 @@ def flatten_sequence_map(m):
 def compare_opts(opts):
     print('\nConfig options different from defaults:')
     default_opts = load_config()
+    l = ('key_definitions', 'keymap', 'sequence_map')
+    fmt = '{{:{:d}s}}'.format(max(len(k) for k in opts
+        if getattr(opts, k) != getattr(defaults, k) and k not in l))
 
     for f in sorted(defaults._fields):
         if getattr(opts, f) != getattr(defaults, f):
-            if f in ('key_definitions', 'keymap', 'sequence_map'):
+            if f in l:
                 continue
-            print(title('{:20s}'.format(f)), getattr(opts, f))
+            print(title(fmt.format(f)), getattr(opts, f))
 
     final, initial = opts.keymap, default_opts.keymap
     final = {(k,): v for k, v in final.items()}
