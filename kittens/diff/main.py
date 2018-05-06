@@ -17,7 +17,7 @@ from ..tui.operations import (
 )
 from .collect import create_collection, data_for_path
 from .config import init_config
-from .git import Differ
+from .patch import Differ
 from .render import render_diff
 
 INITIALIZING, COLLECTED, DIFFED = range(3)
