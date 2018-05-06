@@ -42,6 +42,14 @@ def create_kitten_handler(kitten, orig_args):
     return partial(m['end'], [kitten] + orig_args)
 
 
+def set_debug(kitten):
+    from kittens.tui.loop import debug
+    path = os.path.join('/tmp', 'kitten-' + kitten)
+    debug.fd = open(path, 'w')
+    import builtins
+    builtins.debug = debug
+
+
 def launch(args):
     config_dir, kitten = args[:2]
     kitten = resolved_kitten(kitten)
@@ -49,6 +57,7 @@ def launch(args):
     args = [kitten] + args
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
     from kittens.tui.operations import clear_screen, reset_mode
+    set_debug(kitten)
     m = import_kitten_main_module(config_dir, kitten)
     try:
         result = m['start'](args)
@@ -73,6 +82,7 @@ def deserialize(output):
 def run_kitten(kitten):
     import runpy
     kitten = resolved_kitten(kitten)
+    set_debug(kitten)
     runpy.run_module('kittens.{}.main'.format(kitten), run_name='__main__')
 
 

@@ -28,10 +28,10 @@ from .handler import Handler
 from .operations import clear_screen, init_state, reset_state
 
 
-def log(*a, **kw):
-    fd = getattr(log, 'fd', None)
+def debug(*a, **kw):
+    fd = getattr(debug, 'fd', None)
     if fd is None:
-        fd = log.fd = open('/tmp/kitten-debug', 'w')
+        fd = debug.fd = open('/tmp/kitten-debug', 'w')
     kw['file'] = fd
     print(*a, **kw)
     fd.flush()
