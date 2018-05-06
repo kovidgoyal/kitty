@@ -12,11 +12,6 @@ from kitty.key_encoding import DOWN, ESCAPE, PRESS, REPEAT, UP
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import (
-    bell, clear_screen, scroll_screen, set_cursor_position, set_cursor_visible,
-    set_default_colors, set_line_wrapping, set_scrolling_region,
-    set_window_title
-)
 from .collect import create_collection, data_for_path
 from .config import init_config
 from .patch import Differ
@@ -62,31 +57,31 @@ class DiffHandler(Handler):
         return self.screen_size.rows - 1
 
     def set_scrolling_region(self):
-        self.write(set_scrolling_region(self.screen_size, 0, self.num_lines - 2))
+        self.cmd.set_scrolling_region(self.screen_size, 0, self.num_lines - 2)
 
     def scroll_lines(self, amt=1):
         new_pos = max(0, min(self.scroll_pos + amt, self.max_scroll_pos))
         if new_pos == self.scroll_pos:
-            self.write(bell())
+            self.cmd.bell()
             return
         if abs(new_pos - self.scroll_pos) >= self.num_lines - 1:
             self.scroll_pos = new_pos
             self.draw_screen()
             return
         self.enforce_cursor_state()
-        self.write(scroll_screen(amt))
+        self.cmd.scroll_screen(amt)
         self.scroll_pos = new_pos
         if amt < 0:
-            self.write(set_cursor_position(0, 0))
+            self.cmd.set_cursor_position(0, 0)
             self.draw_lines(-amt)
         else:
-            self.write(set_cursor_position(0, self.num_lines - amt))
+            self.cmd.set_cursor_position(0, self.num_lines - amt)
             self.draw_lines(amt, self.num_lines - amt)
 
     def init_terminal_state(self):
-        self.write(set_line_wrapping(False))
-        self.write(set_window_title('kitty +diff'))
-        self.write(set_default_colors(self.opts.foreground, self.opts.background))
+        self.cmd.set_line_wrapping(False)
+        self.cmd.set_window_title('kitty +diff')
+        self.cmd.set_default_colors(self.opts.foreground, self.opts.background)
 
     def initialize(self):
         self.init_terminal_state()
@@ -95,11 +90,11 @@ class DiffHandler(Handler):
         self.create_collection()
 
     def enforce_cursor_state(self):
-        self.write(set_cursor_visible(self.state > DIFFED))
+        self.cmd.set_cursor_visible(self.state > DIFFED)
 
     def finalize(self):
-        self.write(set_cursor_visible(True))
-        self.write(set_default_colors())
+        self.cmd.set_cursor_visible(True)
+        self.cmd.set_default_colors()
 
     def draw_lines(self, num, offset=0):
         offset += self.scroll_pos
@@ -116,16 +111,17 @@ class DiffHandler(Handler):
     def draw_screen(self):
         self.enforce_cursor_state()
         if self.state < DIFFED:
-            self.write(clear_screen())
+            self.cmd.clear_screen()
             self.write(_('Calculating diff, please wait...'))
             return
-        self.write(clear_screen())
+        self.cmd.clear_screen()
         self.draw_lines(self.num_lines)
         self.draw_status_line()
 
     def draw_status_line(self):
-        self.write(set_cursor_position(0, self.num_lines))
-        self.write('\033[K:')
+        self.cmd.set_cursor_position(0, self.num_lines)
+        self.cmd.clear_to_eol()
+        self.write(':')
 
     def on_text(self, text, in_bracketed_paste=False):
         if text == 'q':

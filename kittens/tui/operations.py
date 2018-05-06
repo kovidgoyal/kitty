@@ -4,9 +4,9 @@
 
 import sys
 from contextlib import contextmanager
+from functools import wraps
 
 from kitty.rgb import Color, color_as_sharp, to_color
-from kitty.terminfo import string_capabilities
 
 S7C1T = '\033 F'
 SAVE_CURSOR = '\0337'
@@ -36,46 +36,45 @@ MODES = dict(
 )
 
 
-def set_mode(which, private=True):
+def set_mode(which, private=True) -> str:
     num, private = MODES[which]
     return '\033[{}{}h'.format(private, num)
 
 
-def reset_mode(which):
+def reset_mode(which) -> str:
     num, private = MODES[which]
     return '\033[{}{}l'.format(private, num)
 
 
-def simple_capability(name):
-    ans = string_capabilities[name].replace(r'\E', '\033')
-    return lambda: ans
+def clear_screen() -> str:
+    return '\033[H\033[2J'
 
 
-clear_screen = simple_capability('clear')
-clear_to_bottom = simple_capability('ed')
+def clear_to_eol() -> str:
+    return '\033[K'
 
 
-def bell():
+def bell() -> str:
     return '\a'
 
 
-def set_window_title(value):
+def set_window_title(value) -> str:
     return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\')
 
 
-def set_line_wrapping(yes_or_no):
+def set_line_wrapping(yes_or_no) -> str:
     return (set_mode if yes_or_no else reset_mode)('DECAWM')
 
 
-def set_cursor_visible(yes_or_no):
+def set_cursor_visible(yes_or_no) -> str:
     return (set_mode if yes_or_no else reset_mode)('DECTCEM')
 
 
-def set_cursor_position(x, y):  # (0, 0) is top left
+def set_cursor_position(x, y) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 
-def set_scrolling_region(screen_size, top=None, bottom=None):
+def set_scrolling_region(screen_size, top=None, bottom=None) -> str:
     if top is None:
         top = 0
     if bottom is None:
@@ -87,7 +86,7 @@ def set_scrolling_region(screen_size, top=None, bottom=None):
     return '\033[{};{}r'.format(top + 1, bottom + 1)
 
 
-def scroll_screen(amt=1):
+def scroll_screen(amt=1) -> str:
     return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
 
 
@@ -107,20 +106,20 @@ def color_code(color, intense=False, base=30):
     return e
 
 
-def sgr(*parts):
+def sgr(*parts) -> str:
     return '\033[{}m'.format(';'.join(parts))
 
 
-def colored(text, color, intense=False, reset_to=None, reset_to_intense=False):
+def colored(text, color, intense=False, reset_to=None, reset_to_intense=False) -> str:
     e = color_code(color, intense)
     return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
 
 
-def faint(text):
+def faint(text) -> str:
     return colored(text, 'black', True)
 
 
-def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None):
+def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None) -> str:
     start, end = [], []
     if fg is not None:
         start.append(color_code(fg, fg_intense))
@@ -192,7 +191,7 @@ def alternate_screen(f=None):
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
 
 
-def set_default_colors(fg=None, bg=None):
+def set_default_colors(fg=None, bg=None) -> str:
     ans = ''
     if fg is None:
         ans += '\x1b]110\x1b\\'
@@ -203,3 +202,20 @@ def set_default_colors(fg=None, bg=None):
     else:
         ans += '\x1b]11;{}\x1b\\'.format(color_as_sharp(bg if isinstance(bg, Color) else to_color(bg)))
     return ans
+
+
+all_cmds = tuple(
+        (name, obj) for name, obj in globals().items()
+        if hasattr(obj, '__annotations__') and obj.__annotations__.get('return') is str)
+
+
+def writer(handler, func):
+    @wraps(func)
+    def f(self, *a, **kw):
+        handler.write(func(*a, **kw))
+    return f
+
+
+def commander(handler):
+    ans = {name: writer(handler, obj) for name, obj in all_cmds}
+    return type('CMD', (), ans)()

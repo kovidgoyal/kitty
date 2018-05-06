@@ -3,12 +3,16 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from kittens.tui.operations import commander
+
+
 class Handler:
 
     def _initialize(self, screen_size, quit_loop, wakeup, start_job):
         self.screen_size, self.quit_loop = screen_size, quit_loop
         self.wakeup = wakeup
         self.start_job = start_job
+        self.cmd = commander(self)
 
     def __enter__(self):
         self.initialize()
