@@ -8,12 +8,14 @@ from functools import partial
 from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, appname, parse_args
-from kitty.key_encoding import ESCAPE
+from kitty.key_encoding import DOWN, ESCAPE, PRESS, REPEAT, UP
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import (
-    clear_screen, set_default_colors, set_line_wrapping, set_window_title
+    bell, clear_screen, scroll_screen, set_cursor_position, set_cursor_visible,
+    set_default_colors, set_line_wrapping, set_scrolling_region,
+    set_window_title
 )
 from .collect import create_collection, data_for_path
 from .config import init_config
@@ -43,7 +45,7 @@ class DiffHandler(Handler):
         self.left, self.right = left, right
         self.report_traceback_on_exit = None
         self.args = args
-        self.scroll_pos = 0
+        self.scroll_pos = self.max_scroll_pos = 0
 
     def create_collection(self):
         self.start_job('collect', create_collection, self.left, self.right)
@@ -53,6 +55,33 @@ class DiffHandler(Handler):
 
     def render_diff(self):
         self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols))
+        self.max_scroll_pos = len(self.diff_lines) - self.num_lines
+
+    @property
+    def num_lines(self):
+        return self.screen_size.rows - 1
+
+    def set_scrolling_region(self):
+        self.write(set_scrolling_region(self.screen_size, 0, self.num_lines - 2))
+
+    def scroll_lines(self, amt=1):
+        new_pos = max(0, min(self.scroll_pos + amt, self.max_scroll_pos))
+        if new_pos == self.scroll_pos:
+            self.write(bell())
+            return
+        if abs(new_pos - self.scroll_pos) >= self.num_lines - 1:
+            self.scroll_pos = new_pos
+            self.draw_screen()
+            return
+        self.enforce_cursor_state()
+        self.write(scroll_screen(amt))
+        self.scroll_pos = new_pos
+        if amt < 0:
+            self.write(set_cursor_position(0, 0))
+            self.draw_lines(-amt)
+        else:
+            self.write(set_cursor_position(0, self.num_lines - amt))
+            self.draw_lines(amt, self.num_lines - amt)
 
     def init_terminal_state(self):
         self.write(set_line_wrapping(False))
@@ -61,35 +90,67 @@ class DiffHandler(Handler):
 
     def initialize(self):
         self.init_terminal_state()
+        self.set_scrolling_region()
         self.draw_screen()
         self.create_collection()
 
+    def enforce_cursor_state(self):
+        self.write(set_cursor_visible(self.state > DIFFED))
+
     def finalize(self):
+        self.write(set_cursor_visible(True))
         self.write(set_default_colors())
 
+    def draw_lines(self, num, offset=0):
+        offset += self.scroll_pos
+        for i in range(num):
+            lpos = offset + i
+            if lpos >= len(self.diff_lines):
+                text = ''
+            else:
+                text = self.diff_lines[lpos].text
+            self.write('\r' + text + '\x1b[0m')
+            if i < num - 1:
+                self.write('\n')
+
     def draw_screen(self):
+        self.enforce_cursor_state()
         if self.state < DIFFED:
             self.write(clear_screen())
             self.write(_('Calculating diff, please wait...'))
             return
         self.write(clear_screen())
-        for i in range(self.screen_size.rows - 1):
-            lpos = self.scroll_pos + i
-            if lpos >= len(self.diff_lines):
-                text = ''
-            else:
-                text = self.diff_lines[lpos].text
-            self.write(text)
-            self.write('\x1b[0m\n\r')
+        self.draw_lines(self.num_lines)
+        self.draw_status_line()
+
+    def draw_status_line(self):
+        self.write(set_cursor_position(0, self.num_lines))
+        self.write('\033[K:')
+
+    def on_text(self, text, in_bracketed_paste=False):
+        if text == 'q':
+            if self.state <= DIFFED:
+                self.quit_loop(0)
+                return
+        if self.state is DIFFED:
+            if text in 'jk':
+                self.scroll_lines(1 if text == 'j' else -1)
+                return
 
     def on_key(self, key_event):
-        if self.state is INITIALIZING:
-            if key_event.key is ESCAPE:
+        if key_event.key is ESCAPE:
+            if self.state <= DIFFED:
                 self.quit_loop(0)
-            return
+                return
+        if self.state is DIFFED:
+            if key_event.type is PRESS or key_event.type is REPEAT:
+                if key_event.key is UP or key_event.key is DOWN:
+                    self.scroll_lines(1 if key_event.key is DOWN else -1)
+                    return
 
     def on_resize(self, screen_size):
         self.screen_size = screen_size
+        self.set_scrolling_region()
         if self.state > COLLECTED:
             self.render_diff()
         self.draw_screen()

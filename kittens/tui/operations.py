@@ -46,8 +46,17 @@ def reset_mode(which):
     return '\033[{}{}l'.format(private, num)
 
 
-def clear_screen():
-    return string_capabilities['clear'].replace(r'\E', '\033')
+def simple_capability(name):
+    ans = string_capabilities[name].replace(r'\E', '\033')
+    return lambda: ans
+
+
+clear_screen = simple_capability('clear')
+clear_to_bottom = simple_capability('ed')
+
+
+def bell():
+    return '\a'
 
 
 def set_window_title(value):
@@ -60,6 +69,26 @@ def set_line_wrapping(yes_or_no):
 
 def set_cursor_visible(yes_or_no):
     return (set_mode if yes_or_no else reset_mode)('DECTCEM')
+
+
+def set_cursor_position(x, y):  # (0, 0) is top left
+    return '\033[{};{}H'.format(y + 1, x + 1)
+
+
+def set_scrolling_region(screen_size, top=None, bottom=None):
+    if top is None:
+        top = 0
+    if bottom is None:
+        bottom = screen_size.rows - 1
+    if bottom < 0:
+        bottom = screen_size.rows - 1 + bottom
+    else:
+        bottom += 1
+    return '\033[{};{}r'.format(top + 1, bottom + 1)
+
+
+def scroll_screen(amt=1):
+    return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
 
 
 STANDARD_COLORS = {name: i for i, name in enumerate(
