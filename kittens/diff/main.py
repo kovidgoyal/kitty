@@ -8,7 +8,9 @@ from functools import partial
 from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, appname, parse_args
-from kitty.key_encoding import DOWN, ESCAPE, PRESS, REPEAT, UP
+from kitty.key_encoding import (
+    DOWN, END, ESCAPE, HOME, PAGE_DOWN, PAGE_UP, RELEASE, UP
+)
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -134,15 +136,24 @@ class DiffHandler(Handler):
                 return
 
     def on_key(self, key_event):
+        if key_event.type is RELEASE:
+            return
         if key_event.key is ESCAPE:
             if self.state <= DIFFED:
                 self.quit_loop(0)
                 return
         if self.state is DIFFED:
-            if key_event.type is PRESS or key_event.type is REPEAT:
-                if key_event.key is UP or key_event.key is DOWN:
-                    self.scroll_lines(1 if key_event.key is DOWN else -1)
-                    return
+            if key_event.key is UP or key_event.key is DOWN:
+                self.scroll_lines(1 if key_event.key is DOWN else -1)
+                return
+            if key_event.key is PAGE_UP or key_event.key is PAGE_DOWN:
+                amt = self.num_lines * (1 if key_event.key is PAGE_DOWN else -1)
+                self.scroll_lines(amt)
+                return
+            if key_event.key is HOME or key_event.key is END:
+                amt = len(self.diff_lines) * (1 if key_event.key is END else -1)
+                self.scroll_lines(amt)
+                return
 
     def on_resize(self, screen_size):
         self.screen_size = screen_size
