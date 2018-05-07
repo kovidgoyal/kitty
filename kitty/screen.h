@@ -143,6 +143,7 @@ void screen_use_latin1(Screen *, bool);
 void set_title(Screen *self, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
+void clipboard_control(Screen *self, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
 void screen_request_capabilities(Screen *, char, PyObject *);

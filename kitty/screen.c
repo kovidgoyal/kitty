@@ -1195,6 +1195,11 @@ set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
+clipboard_control(Screen *self, PyObject *data) {
+    CALLBACK("clipboard_control", "O", data);
+}
+
+void
 set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
     else { CALLBACK("set_color_table_color", "IO", code, color); }

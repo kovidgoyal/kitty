@@ -355,6 +355,7 @@ type_map = {
     'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
+    'clipboard_control': lambda x: frozenset(x.lower().split()),
 }
 
 for name in (

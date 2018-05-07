@@ -341,6 +341,9 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             case 119:
                 SET_COLOR(set_dynamic_color);
                 break;
+            case 52:
+                DISPATCH_OSC(clipboard_control);
+                break;
             default:
                 REPORT_ERROR("Unknown OSC code: %u", code);
                 break;

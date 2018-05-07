@@ -17,17 +17,17 @@ from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
     CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM, OSC, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
-    add_window, compile_program, glfw_post_empty_event, init_cell_program,
-    init_cursor_program, set_clipboard_string, set_titlebar_color,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    add_window, compile_program, get_clipboard_string, glfw_post_empty_event,
+    init_cell_program, init_cursor_program, set_clipboard_string,
+    set_titlebar_color, set_window_render_data, update_window_title,
+    update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
-    color_as_int, load_shaders, open_cmd, open_url, parse_color_set,
-    sanitize_title
+    color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
+    open_url, parse_color_set, sanitize_title, set_primary_selection
 )
 
 
@@ -331,6 +331,37 @@ class Window:
     def send_cmd_response(self, response):
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 
+    def clipboard_control(self, data):
+        where, text = data.partition(';')[::2]
+        if text == '?':
+            response = None
+            if 'read-clipboard' in self.opts.clipboard_control and ('s' in where or 'c' in where):
+                response = get_clipboard_string()
+                loc = 'c'
+            elif 'p' in where and 'read-primary' in self.opts.clipboard_control:
+                response = get_primary_selection()
+                loc = 'p'
+            if response is not None:
+                from base64 import standard_b64encode
+                self.screen.send_escape_code_to_child(OSC, '{};{}'.format(
+                    loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
+
+        else:
+            from base64 import standard_b64decode
+            try:
+                text = standard_b64decode(text).decode('utf-8')
+            except Exception:
+                log_error('Invalid data to write to clipboard received, ignoring')
+                return
+            if 's' in where or 'c' in where:
+                if 'write-clipboard' in self.opts.clipboard_control:
+                    set_clipboard_string(text)
+            if 'p' in where:
+                if self.opts.copy_on_select:
+                    if 'write-clipboard' in self.opts.clipboard_control:
+                        set_clipboard_string(text)
+                if 'write-primary' in self.opts.clipboard_control:
+                    set_primary_selection(text)
     # }}}
 
     def text_for_selection(self):
