@@ -38,7 +38,7 @@ def call(*cmd):
 
 def run_build(args):
     os.chdir(build_path)
-    call('./osx kitty')
+    call('./osx kitty --sign-installers')
     call('./osx shutdown')
 
 
