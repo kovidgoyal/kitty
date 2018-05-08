@@ -74,6 +74,9 @@ def initialize_highlighter(style='default'):
 
 
 def highlight_data(code, filename):
+    base, ext = os.path.splitext(filename)
+    if ext.lower() == '.pyj':
+        filename = base + '.py'
     try:
         lexer = get_lexer_for_filename(filename, stripnl=False)
     except ClassNotFound:
