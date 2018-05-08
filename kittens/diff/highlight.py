@@ -13,7 +13,7 @@ from pygments.util import ClassNotFound
 
 from kitty.rgb import color_as_sgr, parse_sharp
 
-from .collect import data_for_path, lines_for_path
+from .collect import Segment, data_for_path, lines_for_path
 
 
 class DiffFormatter(Formatter):
@@ -85,15 +85,6 @@ def highlight_data(code, filename):
 split_pat = re.compile(r'(\033\[.*?m)')
 
 
-class Segment:
-
-    __slots__ = ('start', 'end', 'start_code', 'end_code')
-
-    def __init__(self, start, start_code):
-        self.start = start
-        self.start_code = start_code
-
-
 def highlight_line(line):
     ans = []
     current = None
@@ -127,9 +118,12 @@ def highlight_collection(collection):
     ans = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         for path, item_type, other_path in collection:
-            is_binary = isinstance(data_for_path(path), bytes)
-            if not is_binary:
-                jobs[executor.submit(highlight_for_diff, path)] = path
+            if item_type != 'rename':
+                for p in (path, other_path):
+                    if p:
+                        is_binary = isinstance(data_for_path(p), bytes)
+                        if not is_binary:
+                            jobs[executor.submit(highlight_for_diff, p)] = p
         for future in concurrent.futures.as_completed(jobs):
             path = jobs[future]
             try:

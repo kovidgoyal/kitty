@@ -11,6 +11,15 @@ from mimetypes import guess_type
 path_name_map = {}
 
 
+class Segment:
+
+    __slots__ = ('start', 'end', 'start_code', 'end_code')
+
+    def __init__(self, start, start_code):
+        self.start = start
+        self.start_code = start_code
+
+
 class Collection:
 
     def __init__(self):
@@ -53,7 +62,7 @@ class Collection:
                 data = self.renames[path]
             else:
                 data = None
-            yield path, self.type_map[path], data
+            yield path, typ, data
 
 
 def collect_files(collection, left, right):
@@ -157,4 +166,4 @@ def set_highlight_data(data):
 
 
 def highlights_for_path(path):
-    return highlight_data.get(path, ())
+    return highlight_data.get(path, [])

@@ -8,10 +8,11 @@ from itertools import repeat
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
 from .collect import (
-    data_for_path, highlights_for_path, lines_for_path, path_name_map,
+    Segment, data_for_path, highlights_for_path, lines_for_path, path_name_map,
     sanitize
 )
 from .config import formats
+from .diff_speedup import split_with_highlights as _split_with_highlights
 
 
 class HunkRef:
@@ -153,38 +154,20 @@ def split_to_size(line, width):
         line = line[p:]
 
 
-def split_to_size_with_center(line, width, prefix_count, suffix_count, start, stop):
+def truncate_points(line, width):
+    pos = 0
     sz = len(line)
-    if prefix_count + suffix_count == sz:
-        yield from split_to_size(line, width)
-        return
-    suffix_pos = sz - suffix_count
-    pos = state = 0
-    while line:
-        p = truncate_point_for_length(line, width)
-        if state is 0:
-            if pos + p > prefix_count:
-                state = 1
-                a, line = line[:p], line[p:]
-                if pos + p > suffix_pos:
-                    a = a[:suffix_pos - pos] + stop + a[suffix_pos - pos:]
-                    state = 2
-                yield a[:prefix_count - pos] + start + a[prefix_count - pos:]
-            else:
-                yield line[:p]
-                line = line[p:]
-        elif state is 1:
-            if pos + p > suffix_pos:
-                state = 2
-                a, line = line[:p], line[p:]
-                yield start + a[:suffix_pos - pos] + stop + a[suffix_pos - pos:]
-            else:
-                yield start + line[:p]
-                line = line[p:]
-        elif state is 2:
-            yield line[:p]
-            line = line[p:]
-        pos += p
+    while True:
+        pos = truncate_point_for_length(line, width, pos)
+        if pos < sz:
+            yield pos
+        else:
+            break
+
+
+def split_with_highlights(line, width, highlights, bg_highlight=None):
+    truncate_pts = list(truncate_points(line, width))
+    return _split_with_highlights(line, truncate_pts, highlights, bg_highlight)
 
 
 margin_bg_map = {'filler': filler_format, 'remove': removed_margin_format, 'add': added_margin_format, 'context': margin_format}
@@ -207,12 +190,12 @@ class DiffData:
     def left_highlights_for_line(self, line_num):
         if line_num < len(self.left_hdata):
             return self.left_hdata[line_num]
-        return ()
+        return []
 
     def right_highlights_for_line(self, line_num):
         if line_num < len(self.right_hdata):
             return self.right_hdata[line_num]
-        return ()
+        return []
 
 
 def render_diff_line(number, text, ltype, margin_size, available_cols):
@@ -237,9 +220,18 @@ def hunk_title(hunk_num, hunk, margin_size, available_cols):
 
 
 def render_half_line(line_number, line, highlights, ltype, margin_size, available_cols, changed_center=None):
+    bg_highlight = None
     if changed_center is not None and changed_center[0]:
-        start, stop = highlight_boundaries(ltype)
-        lines = split_to_size_with_center(line, available_cols, changed_center[0], changed_center[1], start, stop)
+        prefix_count, suffix_count = changed_center
+        line_sz = len(line)
+        if prefix_count + suffix_count < line_sz:
+            start, stop = highlight_boundaries(ltype)
+            seg = Segment(prefix_count, start)
+            seg.end = line_sz - suffix_count
+            seg.end_code = stop
+            bg_highlight = seg
+    if highlights or bg_highlight:
+        lines = split_with_highlights(line, available_cols, highlights, bg_highlight)
     else:
         lines = split_to_size(line, available_cols)
     line_number = str(line_number + 1)
@@ -253,7 +245,11 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
         for i in range(chunk.left_count):
             left_line_number = chunk.left_start + i
             right_line_number = chunk.right_start + i
-            lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
+            highlights = data.left_highlights_for_line(left_line_number)
+            if highlights:
+                lines = split_with_highlights(data.left_lines[left_line_number], data.available_cols, highlights)
+            else:
+                lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
             ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
             left_line_number = str(left_line_number + 1)
             right_line_number = str(right_line_number + 1)
@@ -277,7 +273,7 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
                     'remove', data.margin_size, data.available_cols,
                     None if chunk.centers is None else chunk.centers[i]))
             if i < chunk.right_count:
-                rln = chunk.left_start + i
+                rln = chunk.right_start + i
                 rl.extend(render_half_line(
                     rln, data.right_lines[rln], data.right_highlights_for_line(rln),
                     'add', data.margin_size, data.available_cols,
@@ -320,7 +316,7 @@ def all_lines(path, args, columns, margin_size, is_add=True):
     hdata = highlights_for_path(path)
 
     def highlights(num):
-        return hdata[num] if num < len(hdata) else ()
+        return hdata[num] if num < len(hdata) else []
 
     for line_number, line in enumerate(lines):
         h = render_half_line(line_number, line, highlights(line_number), ltype, margin_size, available_cols)
