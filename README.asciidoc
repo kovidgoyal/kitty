@@ -73,7 +73,7 @@ link:#layouts[layouts] without needing to use an extra program like tmux
 * Can be link:remote-control.asciidoc[controlled from scripts or the shell prompt], even over SSH.
 
 * Has a framework for _kittens_, small terminal programs that can be used to extend kitty's functionality.
-For example, they are used for link:#unicode-input[Unicode input] and link:#url-hints[Hints].
+For example, they are used for link:#unicode-input[Unicode input] and link:#hints[Hints].
 
 * Supports link:#startup-sessions[startup sessions] which allow you to specify the window/tab layout,
 working directories and programs to run on startup.
