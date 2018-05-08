@@ -49,6 +49,7 @@ def syntax_aliases(raw):
 
 type_map = {
     'syntax_aliases': syntax_aliases,
+    'num_context_lines': int,
 }
 
 for name in (

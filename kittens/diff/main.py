@@ -50,7 +50,9 @@ class DiffHandler(Handler):
         self.report_traceback_on_exit = None
         self.args = args
         self.scroll_pos = self.max_scroll_pos = 0
-        self.current_context_count = self.args.context
+        self.current_context_count = self.original_context_count = self.args.context
+        if self.current_context_count < 0:
+            self.current_context_count = self.original_context_count = self.opts.num_context_lines
         self.highlighting_done = False
         self.restore_position = None
 
@@ -185,7 +187,7 @@ class DiffHandler(Handler):
                 if text == 'a':
                     new_ctx = 100000
                 elif text == '=':
-                    new_ctx = 3
+                    new_ctx = self.original_context_count
                 else:
                     new_ctx += (-1 if text == '-' else 1) * 5
                 self.change_context_count(new_ctx)
@@ -270,8 +272,9 @@ class DiffHandler(Handler):
 OPTIONS = partial('''\
 --context
 type=int
-default=3
-Number of lines of context to show between changes.
+default=-1
+Number of lines of context to show between changes. Negative values
+use the number set in diff.conf
 
 
 --config
