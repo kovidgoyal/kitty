@@ -49,6 +49,7 @@ class DiffHandler(Handler):
         self.report_traceback_on_exit = None
         self.args = args
         self.scroll_pos = self.max_scroll_pos = 0
+        self.highlighting_done = False
 
     def create_collection(self):
         self.start_job('collect', create_collection, self.left, self.right)
@@ -186,7 +187,8 @@ class DiffHandler(Handler):
             self.diff_map = diff_map
             self.render_diff()
             self.draw_screen()
-            if initialize_highlighter is not None:
+            if initialize_highlighter is not None and not self.highlighting_done:
+                self.highlighting_done = True
                 initialize_highlighter()
                 self.start_job('highlight', highlight_collection, self.collection)
         elif job_id == 'highlight':
