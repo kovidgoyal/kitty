@@ -7,7 +7,10 @@ from itertools import repeat
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
-from .collect import data_for_path, lines_for_path, path_name_map, sanitize
+from .collect import (
+    data_for_path, highlights_for_path, lines_for_path, path_name_map,
+    sanitize
+)
 from .config import formats
 
 
@@ -198,6 +201,18 @@ class DiffData:
         self.filler_line = render_diff_line('', '', 'filler', margin_size, available_cols)
         self.left_filler_line = render_diff_line('', '', 'remove', margin_size, available_cols)
         self.right_filler_line = render_diff_line('', '', 'add', margin_size, available_cols)
+        self.left_hdata = highlights_for_path(left_path)
+        self.right_hdata = highlights_for_path(right_path)
+
+    def left_highlights_for_line(self, line_num):
+        if line_num < len(self.left_hdata):
+            return self.left_hdata[line_num]
+        return ()
+
+    def right_highlights_for_line(self, line_num):
+        if line_num < len(self.right_hdata):
+            return self.right_hdata[line_num]
+        return ()
 
 
 def render_diff_line(number, text, ltype, margin_size, available_cols):
@@ -221,12 +236,12 @@ def hunk_title(hunk_num, hunk, margin_size, available_cols):
     return m + hunk_format(place_in(t, available_cols))
 
 
-def render_half_line(line_number, src, ltype, margin_size, available_cols, changed_center=None):
+def render_half_line(line_number, line, highlights, ltype, margin_size, available_cols, changed_center=None):
     if changed_center is not None and changed_center[0]:
         start, stop = highlight_boundaries(ltype)
-        lines = split_to_size_with_center(src[line_number], available_cols, changed_center[0], changed_center[1], start, stop)
+        lines = split_to_size_with_center(line, available_cols, changed_center[0], changed_center[1], start, stop)
     else:
-        lines = split_to_size(src[line_number], available_cols)
+        lines = split_to_size(line, available_cols)
     line_number = str(line_number + 1)
     for line in lines:
         yield render_diff_line(line_number, line, ltype, margin_size, available_cols)
@@ -256,13 +271,17 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
             ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
             ll, rl = [], []
             if i < chunk.left_count:
+                rln = chunk.left_start + i
                 ll.extend(render_half_line(
-                    chunk.left_start + i, data.left_lines, 'remove', data.margin_size,
-                    data.available_cols, None if chunk.centers is None else chunk.centers[i]))
+                    rln, data.left_lines[rln], data.left_highlights_for_line(rln),
+                    'remove', data.margin_size, data.available_cols,
+                    None if chunk.centers is None else chunk.centers[i]))
             if i < chunk.right_count:
+                rln = chunk.left_start + i
                 rl.extend(render_half_line(
-                    chunk.right_start + i, data.right_lines, 'add', data.margin_size,
-                    data.available_cols, None if chunk.centers is None else chunk.centers[i]))
+                    rln, data.right_lines[rln], data.right_highlights_for_line(rln),
+                    'add', data.margin_size, data.available_cols,
+                    None if chunk.centers is None else chunk.centers[i]))
             if i < common:
                 extra = len(ll) - len(rl)
                 if extra != 0:
@@ -298,8 +317,13 @@ def all_lines(path, args, columns, margin_size, is_add=True):
     lines = lines_for_path(path)
     filler = render_diff_line('', '', 'filler', margin_size, available_cols)
     msg_written = False
-    for line_number in range(len(lines)):
-        h = render_half_line(line_number, lines, ltype, margin_size, available_cols)
+    hdata = highlights_for_path(path)
+
+    def highlights(num):
+        return hdata[num] if num < len(hdata) else ()
+
+    for line_number, line in enumerate(lines):
+        h = render_half_line(line_number, line, highlights(line_number), ltype, margin_size, available_cols)
         for i, hl in enumerate(h):
             ref = Reference(path, LineRef(line_number, i))
             empty = filler

@@ -91,7 +91,7 @@ def collect_files(collection, left, right):
         collection.add_add(right_path_map[name])
 
 
-sanitize_pat = re.compile('[\x00-\x1f\x7f\x80-\x9f]')
+sanitize_pat = re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
 
 
 def sanitize_sub(m):
@@ -127,7 +127,7 @@ def data_for_path(path):
 @lru_cache(maxsize=1024)
 def lines_for_path(path):
     data = data_for_path(path)
-    return tuple(map(sanitize, data.splitlines()))
+    return tuple(sanitize(data).splitlines())
 
 
 @lru_cache(maxsize=1024)
@@ -146,3 +146,15 @@ def create_collection(left, right):
         collection.add_change(pl, pr)
     collection.finalize()
     return collection
+
+
+highlight_data = {}
+
+
+def set_highlight_data(data):
+    global highlight_data
+    highlight_data = data
+
+
+def highlights_for_path(path):
+    return highlight_data.get(path, ())

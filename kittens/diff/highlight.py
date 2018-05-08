@@ -2,12 +2,18 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import concurrent
+import os
+import re
+
 from pygments import highlight
 from pygments.formatter import Formatter
 from pygments.lexers import get_lexer_for_filename
 from pygments.util import ClassNotFound
 
 from kitty.rgb import color_as_sgr, parse_sharp
+
+from .collect import data_for_path, lines_for_path
 
 
 class DiffFormatter(Formatter):
@@ -74,6 +80,64 @@ def highlight_data(code, filename):
         pass
     else:
         return highlight(code, lexer, formatter)
+
+
+split_pat = re.compile(r'(\033\[.*?m)')
+
+
+class Segment:
+
+    __slots__ = ('start', 'end', 'start_code', 'end_code')
+
+    def __init__(self, start, start_code):
+        self.start = start
+        self.start_code = start_code
+
+
+def highlight_line(line):
+    ans = []
+    current = None
+    pos = 0
+    for x in split_pat.split(line):
+        if x.startswith('\033'):
+            if current is None:
+                current = Segment(pos, x)
+            else:
+                current.end = pos
+                current.end_code = x
+                ans.append(current)
+                current = None
+        else:
+            pos += len(x)
+    return ans
+
+
+def highlight_for_diff(path):
+    ans = []
+    lines = lines_for_path(path)
+    hd = highlight_data('\n'.join(lines), path)
+    if hd is not None:
+        for line in hd.splitlines():
+            ans.append(highlight_line(line))
+    return ans
+
+
+def highlight_collection(collection):
+    jobs = {}
+    ans = {}
+    with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+        for path, item_type, other_path in collection:
+            is_binary = isinstance(data_for_path(path), bytes)
+            if not is_binary:
+                jobs[executor.submit(highlight_for_diff, path)] = path
+        for future in concurrent.futures.as_completed(jobs):
+            path = jobs[future]
+            try:
+                highlights = future.result()
+            except Exception as e:
+                return 'Running syntax highlighting for {} generated an exception: {}'.format(path, e)
+            ans[path] = highlights
+    return ans
 
 
 def main():

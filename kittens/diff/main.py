@@ -14,10 +14,16 @@ from kitty.key_encoding import (
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from .collect import create_collection, data_for_path
+from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
 from .patch import Differ
 from .render import render_diff
+
+try:
+    from .highlight import initialize_highlighter, highlight_collection
+except ImportError:
+    initialize_highlighter = None
+
 
 INITIALIZING, COLLECTED, DIFFED = range(3)
 
@@ -178,6 +184,18 @@ class DiffHandler(Handler):
                 return
             self.state = DIFFED
             self.diff_map = diff_map
+            self.render_diff()
+            self.draw_screen()
+            if initialize_highlighter is not None:
+                initialize_highlighter()
+                self.start_job('highlight', highlight_collection, self.collection)
+        elif job_id == 'highlight':
+            hdata = job_result['result']
+            if isinstance(hdata, str):
+                self.report_traceback_on_exit = diff_map
+                self.quit_loop(1)
+                return
+            set_highlight_data(hdata)
             self.render_diff()
             self.draw_screen()
 
