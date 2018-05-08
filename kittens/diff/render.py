@@ -120,9 +120,18 @@ def highlight_boundaries(ltype):
     return start, stop
 
 
-def title_lines(left_path, args, columns, margin_size):
-    name = fit_in(sanitize(path_name_map[left_path]), columns - 2 * margin_size)
-    yield title_format(place_in(' ' + name, columns))
+def title_lines(left_path, right_path, args, columns, margin_size):
+    m = ' ' * margin_size
+    left_name, right_name = map(path_name_map.get, (left_path, right_path))
+    if right_name and right_name != left_name:
+        n1 = fit_in(m + sanitize(left_name), columns // 2 - margin_size)
+        n1 = place_in(n1, columns // 2)
+        n2 = fit_in(m + sanitize(right_name), columns // 2 - margin_size)
+        n2 = place_in(n2, columns // 2)
+        name = n1 + n2
+    else:
+        name = place_in(m + sanitize(left_name), columns)
+    yield title_format(place_in(name, columns))
     yield title_format('━' * columns)
 
 
@@ -354,7 +363,7 @@ def render_diff(collection, diff_map, args, columns):
     for path, item_type, other_path in collection:
         item_ref = Reference(path)
         is_binary = isinstance(data_for_path(path), bytes)
-        yield from yield_lines_from(title_lines(path, args, columns, margin_size), item_ref)
+        yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref)
         if item_type == 'diff':
             if is_binary:
                 ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)

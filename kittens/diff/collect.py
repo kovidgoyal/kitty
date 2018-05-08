@@ -150,8 +150,8 @@ def create_collection(left, right):
         collect_files(collection, left, right)
     else:
         pl, pr = os.path.abspath(left), os.path.abspath(right)
-        path_name_map[left] = pl
-        path_name_map[right] = pr
+        path_name_map[pl] = left
+        path_name_map[pr] = right
         collection.add_change(pl, pr)
     collection.finalize()
     return collection
