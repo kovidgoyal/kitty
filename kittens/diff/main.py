@@ -17,7 +17,7 @@ from ..tui.handler import Handler
 from ..tui.loop import Loop
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
-from .patch import Differ
+from .patch import Differ, set_diff_command
 from .render import LineRef, render_diff
 
 try:
@@ -299,6 +299,7 @@ def main(args):
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     opts = init_config(args)
+    set_diff_command(opts.diff_cmd)
 
     loop = Loop()
     handler = DiffHandler(args, opts, left, right)

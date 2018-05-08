@@ -4,20 +4,41 @@
 
 import concurrent.futures
 import os
+import shlex
+import shutil
 import subprocess
 
 from .collect import lines_for_path
 from .diff_speedup import changed_center
 
 left_lines = right_lines = None
+GIT_DIFF = 'git diff --no-color --no-ext-diff --exit-code -U_CONTEXT_ --no-index --'
+DIFF_DIFF = 'diff -p -U _CONTEXT_ --'
+
+
+def find_differ():
+    if shutil.which('git'):
+        return GIT_DIFF
+    if shutil.which('diff'):
+        return DIFF_DIFF
+
+
+def set_diff_command(opt):
+    if opt == 'auto':
+        cmd = find_differ()
+        if cmd is None:
+            raise SystemExit('Failed to find either the git or diff programs on your system')
+    else:
+        cmd = opt
+    set_diff_command.cmd = cmd
 
 
 def run_diff(file1, file2, context=3):
     # returns: ok, is_different, patch
-    p = subprocess.Popen([
-        'git', 'diff', '--no-color', '--no-ext-diff', '--exit-code', '-U' + str(context), '--no-index', '--'
-        ] + [file1, file2],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+    cmd = shlex.split(set_diff_command.cmd.replace('_CONTEXT_', str(context)))
+    p = subprocess.Popen(
+            cmd + [file1, file2],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     stdout, stderr = p.communicate()
     returncode = p.wait()
     if returncode in (0, 1):
