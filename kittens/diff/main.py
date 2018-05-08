@@ -242,7 +242,7 @@ class DiffHandler(Handler):
             self.draw_screen()
             if initialize_highlighter is not None and not self.highlighting_done:
                 self.highlighting_done = True
-                initialize_highlighter()
+                initialize_highlighter(self.opts.pygments_style)
                 self.start_job('highlight', highlight_collection, self.collection, self.opts.syntax_aliases)
         elif job_id == 'highlight':
             hdata = job_result['result']
