@@ -15,32 +15,32 @@ from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
 
 
-class HunkRef:
+class Ref:
 
-    __slots__ = ('hunk_num', 'line_num', 'chunk_num')
+    def __setattr__(self, name, value):
+        raise AttributeError("can't set attribute")
 
-    def __init__(self, hunk_num, chunk_num=None, line_num=None):
-        self.hunk_num = hunk_num
-        self.chunk_num = chunk_num
-        self.line_num = line_num
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, ', '.join(
+            '{}={}'.format(n, getattr(self, n)) for n in self.__slots__ if n != '_hash'))
 
 
-class LineRef:
+class LineRef(Ref):
 
     __slots__ = ('src_line_number', 'wrapped_line_idx')
 
-    def __init__(self, sln, wli):
-        self.src_line_number = sln
-        self.wrapped_line_idx = wli
+    def __init__(self, sln, wli=0):
+        object.__setattr__(self, 'src_line_number', sln)
+        object.__setattr__(self, 'wrapped_line_idx', wli)
 
 
-class Reference:
+class Reference(Ref):
 
     __slots__ = ('path', 'extra')
 
     def __init__(self, path, extra=None):
-        self.path = path
-        self.extra = extra
+        object.__setattr__(self, 'path', path)
+        object.__setattr__(self, 'extra', extra)
 
 
 class Line:
@@ -243,41 +243,42 @@ def render_half_line(line_number, line, highlights, ltype, margin_size, availabl
 def lines_for_chunk(data, hunk_num, chunk, chunk_num):
     if chunk.is_context:
         for i in range(chunk.left_count):
-            left_line_number = chunk.left_start + i
+            left_line_number = line_ref = chunk.left_start + i
             right_line_number = chunk.right_start + i
             highlights = data.left_highlights_for_line(left_line_number)
             if highlights:
                 lines = split_with_highlights(data.left_lines[left_line_number], data.available_cols, highlights)
             else:
                 lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
-            ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
             left_line_number = str(left_line_number + 1)
             right_line_number = str(right_line_number + 1)
-            for text in lines:
+            for wli, text in enumerate(lines):
                 line = render_diff_line(left_line_number, text, 'context', data.margin_size, data.available_cols)
                 if right_line_number == left_line_number:
                     r = line
                 else:
                     r = render_diff_line(right_line_number, text, 'context', data.margin_size, data.available_cols)
+                ref = Reference(data.left_path, LineRef(line_ref, wli))
                 yield Line(line + r, ref)
                 left_line_number = right_line_number = ''
     else:
         common = min(chunk.left_count, chunk.right_count)
         for i in range(max(chunk.left_count, chunk.right_count)):
-            ref = Reference(data.left_path, HunkRef(hunk_num, chunk_num, i))
             ll, rl = [], []
             if i < chunk.left_count:
-                rln = chunk.left_start + i
+                rln = ref_ln = chunk.left_start + i
                 ll.extend(render_half_line(
                     rln, data.left_lines[rln], data.left_highlights_for_line(rln),
                     'remove', data.margin_size, data.available_cols,
                     None if chunk.centers is None else chunk.centers[i]))
+                ref_path = data.left_path
             if i < chunk.right_count:
-                rln = chunk.right_start + i
+                rln = ref_ln = chunk.right_start + i
                 rl.extend(render_half_line(
                     rln, data.right_lines[rln], data.right_highlights_for_line(rln),
                     'add', data.margin_size, data.available_cols,
                     None if chunk.centers is None else chunk.centers[i]))
+                ref_path = data.right_path
             if i < common:
                 extra = len(ll) - len(rl)
                 if extra != 0:
@@ -293,7 +294,8 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
                 else:
                     x, count = ll, len(rl)
                 x.extend(repeat(data.filler_line, count))
-            for left_line, right_line in zip(ll, rl):
+            for wli, (left_line, right_line) in enumerate(zip(ll, rl)):
+                ref = Reference(ref_path, LineRef(ref_ln, wli))
                 yield Line(left_line + right_line, ref)
 
 
@@ -302,7 +304,7 @@ def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
     data = DiffData(left_path, right_path, available_cols, margin_size)
 
     for hunk_num, hunk in enumerate(hunks):
-        yield Line(hunk_title(hunk_num, hunk, margin_size, columns - margin_size), Reference(left_path, HunkRef(hunk_num)))
+        yield Line(hunk_title(hunk_num, hunk, margin_size, columns - margin_size), Reference(left_path, LineRef(hunk.left_start)))
         for cnum, chunk in enumerate(hunk.chunks):
             yield from lines_for_chunk(data, hunk_num, chunk, cnum)
 

@@ -4,6 +4,7 @@
 
 import os
 import sys
+from collections import defaultdict
 from functools import partial
 from gettext import gettext as _
 
@@ -17,7 +18,7 @@ from ..tui.loop import Loop
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
 from .patch import Differ
-from .render import render_diff
+from .render import LineRef, render_diff
 
 try:
     from .highlight import initialize_highlighter, highlight_collection
@@ -49,17 +50,46 @@ class DiffHandler(Handler):
         self.report_traceback_on_exit = None
         self.args = args
         self.scroll_pos = self.max_scroll_pos = 0
+        self.current_context_count = self.args.context
         self.highlighting_done = False
+        self.restore_position = None
 
     def create_collection(self):
         self.start_job('collect', create_collection, self.left, self.right)
 
     def generate_diff(self):
-        self.start_job('diff', generate_diff, self.collection, self.args.context)
+        self.start_job('diff', generate_diff, self.collection, self.current_context_count)
 
     def render_diff(self):
         self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols))
+        self.ref_path_map = defaultdict(list)
+        for i, l in enumerate(self.diff_lines):
+            self.ref_path_map[l.ref.path].append((i, l.ref))
         self.max_scroll_pos = len(self.diff_lines) - self.num_lines
+
+    @property
+    def current_position(self):
+        return self.diff_lines[min(len(self.diff_lines) - 1, self.scroll_pos)].ref
+
+    @current_position.setter
+    def current_position(self, ref):
+        num = None
+        if isinstance(ref.extra, LineRef):
+            sln = ref.extra.src_line_number
+            for i, q in self.ref_path_map[ref.path]:
+                if isinstance(q.extra, LineRef):
+                    if q.extra.src_line_number >= sln:
+                        if q.extra.src_line_number == sln:
+                            num = i
+                        break
+                    num = i
+        if num is None:
+            for i, q in self.ref_path_map[ref.path]:
+                num = i
+                break
+
+        if num is not None:
+            self.scroll_pos = min(num, self.max_scroll_pos)
 
     @property
     def num_lines(self):
@@ -132,6 +162,15 @@ class DiffHandler(Handler):
         self.cmd.clear_to_eol()
         self.write(':')
 
+    def change_context_count(self, new_ctx):
+        new_ctx = max(0, new_ctx)
+        if new_ctx != self.current_context_count:
+            self.current_context_count = new_ctx
+            self.state = COLLECTED
+            self.generate_diff()
+            self.restore_position = self.current_position
+            self.draw_screen()
+
     def on_text(self, text, in_bracketed_paste=False):
         if text == 'q':
             if self.state <= DIFFED:
@@ -141,6 +180,15 @@ class DiffHandler(Handler):
             if text in 'jk':
                 self.scroll_lines(1 if text == 'j' else -1)
                 return
+            if text in 'a+-=':
+                new_ctx = self.current_context_count
+                if text == 'a':
+                    new_ctx = 100000
+                elif text == '=':
+                    new_ctx = 3
+                else:
+                    new_ctx += (-1 if text == '-' else 1) * 5
+                self.change_context_count(new_ctx)
 
     def on_key(self, key_event):
         if key_event.type is RELEASE:
@@ -176,6 +224,7 @@ class DiffHandler(Handler):
             return
         if job_id == 'collect':
             self.collection = job_result['result']
+            self.state = COLLECTED
             self.generate_diff()
         elif job_id == 'diff':
             diff_map = job_result['result']
@@ -186,6 +235,10 @@ class DiffHandler(Handler):
             self.state = DIFFED
             self.diff_map = diff_map
             self.render_diff()
+            self.scroll_pos = 0
+            if self.restore_position is not None:
+                self.current_position = self.restore_position
+                self.restore_position = None
             self.draw_screen()
             if initialize_highlighter is not None and not self.highlighting_done:
                 self.highlighting_done = True
