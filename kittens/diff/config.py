@@ -38,7 +38,18 @@ def set_formats(opts):
     formats['added_highlight'] = '48' + color_as_sgr(opts.highlight_added_bg)
 
 
-type_map = {}
+def syntax_aliases(raw):
+    ans = {}
+    for x in raw.split():
+        a, b = x.partition(':')[::2]
+        if a and b:
+            ans[a.lower()] = b
+    return ans
+
+
+type_map = {
+    'syntax_aliases': syntax_aliases,
+}
 
 for name in (
     'foreground background title_fg title_bg margin_bg margin_fg removed_bg removed_margin_bg added_bg added_margin_bg filler_bg hunk_bg hunk_margin_bg'

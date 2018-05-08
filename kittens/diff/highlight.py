@@ -73,10 +73,12 @@ def initialize_highlighter(style='default'):
     formatter = DiffFormatter(style)
 
 
-def highlight_data(code, filename):
-    base, ext = os.path.splitext(filename)
-    if ext.lower() == '.pyj':
-        filename = base + '.py'
+def highlight_data(code, filename, aliases=None):
+    if aliases:
+        base, ext = os.path.splitext(filename)
+        alias = aliases.get(ext[1:])
+        if alias is not None:
+            filename = base + '.' + alias
     try:
         lexer = get_lexer_for_filename(filename, stripnl=False)
     except ClassNotFound:
@@ -106,17 +108,17 @@ def highlight_line(line):
     return ans
 
 
-def highlight_for_diff(path):
+def highlight_for_diff(path, aliases):
     ans = []
     lines = lines_for_path(path)
-    hd = highlight_data('\n'.join(lines), path)
+    hd = highlight_data('\n'.join(lines), path, aliases)
     if hd is not None:
         for line in hd.splitlines():
             ans.append(highlight_line(line))
     return ans
 
 
-def highlight_collection(collection):
+def highlight_collection(collection, aliases=None):
     jobs = {}
     ans = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
@@ -126,7 +128,7 @@ def highlight_collection(collection):
                     if p:
                         is_binary = isinstance(data_for_path(p), bytes)
                         if not is_binary:
-                            jobs[executor.submit(highlight_for_diff, p)] = p
+                            jobs[executor.submit(highlight_for_diff, p, aliases)] = p
         for future in concurrent.futures.as_completed(jobs):
             path = jobs[future]
             try:
@@ -138,11 +140,12 @@ def highlight_collection(collection):
 
 
 def main():
+    from .config import defaults
     # kitty +runpy "from kittens.diff.highlight import main; main()" file
     import sys
     initialize_highlighter()
     with open(sys.argv[-1]) as f:
-        highlighted = highlight_data(f.read(), f.name)
+        highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
     if highlighted is None:
         raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
     print(highlighted)

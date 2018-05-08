@@ -243,7 +243,7 @@ class DiffHandler(Handler):
             if initialize_highlighter is not None and not self.highlighting_done:
                 self.highlighting_done = True
                 initialize_highlighter()
-                self.start_job('highlight', highlight_collection, self.collection)
+                self.start_job('highlight', highlight_collection, self.collection, self.opts.syntax_aliases)
         elif job_id == 'highlight':
             hdata = job_result['result']
             if isinstance(hdata, str):
