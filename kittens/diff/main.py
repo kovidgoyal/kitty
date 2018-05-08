@@ -46,7 +46,7 @@ class DiffHandler(Handler):
     def __init__(self, args, opts, left, right):
         self.state = INITIALIZING
         self.opts = opts
-        self.left, self.right = left, right
+        self.left, self.right = map(os.path.abspath, (left, right))
         self.report_traceback_on_exit = None
         self.args = args
         self.scroll_pos = self.max_scroll_pos = 0
