@@ -241,8 +241,14 @@ class DiffHandler(Handler):
                 self.restore_position = None
             self.draw_screen()
             if initialize_highlighter is not None and not self.highlighting_done:
+                from .highlight import StyleNotFound
                 self.highlighting_done = True
-                initialize_highlighter(self.opts.pygments_style)
+                try:
+                    initialize_highlighter(self.opts.pygments_style)
+                except StyleNotFound as e:
+                    self.report_traceback_on_exit = str(e)
+                    self.quit_loop(1)
+                    return
                 self.start_job('highlight', highlight_collection, self.collection, self.opts.syntax_aliases)
         elif job_id == 'highlight':
             hdata = job_result['result']

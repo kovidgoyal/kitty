@@ -16,10 +16,21 @@ from kitty.rgb import color_as_sgr, parse_sharp
 from .collect import Segment, data_for_path, lines_for_path
 
 
+class StyleNotFound(Exception):
+    pass
+
+
 class DiffFormatter(Formatter):
 
     def __init__(self, style='default'):
-        Formatter.__init__(self, style=style)
+        try:
+            Formatter.__init__(self, style=style)
+            initialized = True
+        except ClassNotFound:
+            initialized = False
+        if not initialized:
+            raise StyleNotFound('pygments style "{}" not found'.format(style))
+
         self.styles = {}
         for token, style in self.style:
             start = []
