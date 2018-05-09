@@ -4,6 +4,7 @@
 
 import os
 import sys
+import warnings
 from collections import defaultdict
 from functools import partial
 from gettext import gettext as _
@@ -17,6 +18,7 @@ from ..tui.handler import Handler
 from ..tui.loop import Loop
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
+from .images import ImageSupportWarning
 from .patch import Differ, set_diff_command
 from .render import LineRef, render_diff
 
@@ -305,7 +307,16 @@ Syntax: |_ name=value|. For example: |_ -o background=gray|
 '''.format, config_help=CONFIG_HELP.format(conf_name='diff', appname=appname))
 
 
+def showwarning(message, category, filename, lineno, file=None, line=None):
+    if category is ImageSupportWarning:
+        showwarning.warnings.append(message)
+
+
+showwarning.warnings = []
+
+
 def main(args):
+    warnings.showwarning = showwarning
     msg = 'Show a side-by-side diff of the specified files/directories'
     args, items = parse_args(args[1:], OPTIONS, 'file_or_directory file_or_directory', msg, 'kitty +kitten diff')
     if len(items) != 2:
@@ -319,6 +330,9 @@ def main(args):
     loop = Loop()
     handler = DiffHandler(args, opts, left, right)
     loop.loop(handler)
+    for message in showwarning.warnings:
+        from kitty.utils import safe_print
+        safe_print(message, file=sys.stderr)
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
             print(handler.report_traceback_on_exit, file=sys.stderr)

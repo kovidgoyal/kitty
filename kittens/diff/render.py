@@ -8,11 +8,12 @@ from itertools import repeat
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
 from .collect import (
-    Segment, data_for_path, highlights_for_path, lines_for_path, path_name_map,
-    sanitize
+    Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
+    path_name_map, sanitize
 )
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
+from .images import images_supported
 
 
 class Ref:
@@ -352,6 +353,11 @@ def rename_lines(path, other_path, args, columns, margin_size):
         yield m + line
 
 
+def image_lines(left_path, right_path, columns, margin_size):
+    if False:
+        yield 0
+
+
 def render_diff(collection, diff_map, args, columns):
     largest_line_number = 0
     for path, item_type, other_path in collection:
@@ -366,20 +372,30 @@ def render_diff(collection, diff_map, args, columns):
     for i, (path, item_type, other_path) in enumerate(collection):
         item_ref = Reference(path)
         is_binary = isinstance(data_for_path(path), bytes)
+        is_img = is_binary and is_image(path) and images_supported()
         yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
         if item_type == 'diff':
             if is_binary:
-                ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
+                if is_img:
+                    ans = image_lines(path, other_path, columns, margin_size)
+                else:
+                    ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
             else:
                 ans = lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
         elif item_type == 'add':
             if is_binary:
-                ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
+                if is_img:
+                    ans = image_lines(None, path, columns, margin_size)
+                else:
+                    ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
             else:
                 ans = all_lines(path, args, columns, margin_size, is_add=True)
         elif item_type == 'removal':
             if is_binary:
-                ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
+                if is_img:
+                    ans = image_lines(path, None, columns, margin_size)
+                else:
+                    ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
             else:
                 ans = all_lines(path, args, columns, margin_size, is_add=False)
         elif item_type == 'rename':
