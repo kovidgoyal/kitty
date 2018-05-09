@@ -27,7 +27,6 @@ from kitty.utils import screen_size_function
 from .handler import Handler
 from .operations import clear_screen, init_state, reset_state
 
-
 screen_size = screen_size_function()
 
 
@@ -271,6 +270,9 @@ class Loop:
                         self.handler.on_eot()
                         return
                 self.handler.on_key(k)
+        elif apc.startswith('G'):
+            if self.handler.image_manager is not None:
+                self.handler.image_manager.handle_response(apc)
 
     def _write_ready(self, handler):
         if len(handler.write_buf) > self.iov_limit:
@@ -359,9 +361,12 @@ class Loop:
             signal.signal(signal.SIGINT, self._on_sigint)
             handler.write_buf = []
             handler._term_manager = term_manager
+            image_manager = None
+            if handler.image_manager_class is not None:
+                image_manager = handler.image_manager_class(handler)
             keep_going = True
             try:
-                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job)
+                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, image_manager)
                 with handler:
                     while keep_going:
                         has_data_to_write = bool(handler.write_buf)

@@ -149,6 +149,22 @@ def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=No
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
 
 
+def serialize_gr_command(cmd, payload=None):
+    cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
+    ans = []
+    w = ans.append
+    w(b'\033_G'), w(cmd.encode('ascii'))
+    if payload:
+        w(b';')
+        w(payload)
+    w(b'\033\\')
+    return b''.join(ans)
+
+
+def clear_images_on_screen(delete_data=False) -> str:
+    return serialize_gr_command({'a': 'D' if delete_data else 'd'})
+
+
 def init_state(alternate_screen=True):
     ans = (
         S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode('LNM') +

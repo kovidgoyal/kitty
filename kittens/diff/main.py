@@ -15,6 +15,7 @@ from kitty.key_encoding import (
 )
 
 from ..tui.handler import Handler
+from ..tui.images import ImageManager
 from ..tui.loop import Loop
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
@@ -44,6 +45,8 @@ def generate_diff(collection, context):
 
 
 class DiffHandler(Handler):
+
+    image_manager_class = ImageManager
 
     def __init__(self, args, opts, left, right):
         self.state = INITIALIZING
