@@ -45,16 +45,18 @@ class Reference(Ref):
 
 class Line:
 
-    __slots__ = ('text', 'ref')
+    __slots__ = ('text', 'ref', 'is_change_start')
 
-    def __init__(self, text, ref):
+    def __init__(self, text, ref, change_start=False):
         self.text = text
         self.ref = ref
+        self.is_change_start = change_start
 
 
-def yield_lines_from(iterator, reference):
+def yield_lines_from(iterator, reference, is_change_start=True):
     for text in iterator:
-        yield Line(text, reference)
+        yield Line(text, reference, is_change_start)
+        is_change_start = False
 
 
 def human_readable(size, sep=' '):
@@ -305,7 +307,7 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
                 x.extend(repeat(data.filler_line, count))
             for wli, (left_line, right_line) in enumerate(zip(ll, rl)):
                 ref = Reference(ref_path, LineRef(ref_ln, wli))
-                yield Line(left_line + right_line, ref)
+                yield Line(left_line + right_line, ref, i == 0 and wli == 0)
 
 
 def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
@@ -340,7 +342,7 @@ def all_lines(path, args, columns, margin_size, is_add=True):
                         '', _('This file was added') if is_add else _('This file was removed'),
                         'filler', margin_size, available_cols)
             text = (empty + hl) if is_add else (hl + empty)
-            yield Line(text, ref)
+            yield Line(text, ref, line_number == 0 and i == 0)
 
 
 def rename_lines(path, other_path, args, columns, margin_size):
@@ -363,7 +365,7 @@ def render_diff(collection, diff_map, args, columns):
     for path, item_type, other_path in collection:
         item_ref = Reference(path)
         is_binary = isinstance(data_for_path(path), bytes)
-        yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref)
+        yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
         if item_type == 'diff':
             if is_binary:
                 ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)

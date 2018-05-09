@@ -97,6 +97,18 @@ class DiffHandler(Handler):
     def num_lines(self):
         return self.screen_size.rows - 1
 
+    def scroll_to_next_change(self, backwards=False):
+        if backwards:
+            r = range(self.scroll_pos - 1, -1, -1)
+        else:
+            r = range(self.scroll_pos + 1, len(self.diff_lines))
+        for i in r:
+            line = self.diff_lines[i]
+            if line.is_change_start:
+                self.scroll_lines(i - self.scroll_pos)
+                return
+        self.cmd.bell()
+
     def set_scrolling_region(self):
         self.cmd.set_scrolling_region(self.screen_size, 0, self.num_lines - 2)
 
@@ -191,6 +203,9 @@ class DiffHandler(Handler):
                 else:
                     new_ctx += (-1 if text == '-' else 1) * 5
                 self.change_context_count(new_ctx)
+            if text in 'np':
+                self.scroll_to_next_change(backwards=text == 'p')
+                return
 
     def on_key(self, key_event):
         if key_event.type is RELEASE:
