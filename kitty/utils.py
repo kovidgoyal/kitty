@@ -77,22 +77,26 @@ def parse_color_set(raw):
 
 
 def screen_size_function():
-    from collections import namedtuple
-    import array
-    import fcntl
-    import termios
-    Size = namedtuple('Size', 'rows cols width height')
+    ans = getattr(screen_size_function, 'ans', None)
+    if ans is None:
+        from collections import namedtuple
+        import array
+        import fcntl
+        import termios
+        Size = namedtuple('Size', 'rows cols width height')
 
-    def screen_size():
-        if screen_size.changed:
-            buf = array.array('H', [0, 0, 0, 0])
-            fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-            screen_size.ans = Size(*buf)
-            screen_size.changed = False
-        return screen_size.ans
-    screen_size.changed = True
+        def screen_size():
+            if screen_size.changed:
+                buf = array.array('H', [0, 0, 0, 0])
+                fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+                screen_size.ans = Size(*buf)
+                screen_size.changed = False
+            return screen_size.ans
+        screen_size.changed = True
+        screen_size.Size = Size
+        ans = screen_size_function.ans = screen_size
 
-    return screen_size
+    return ans
 
 
 def set_primary_selection(text):
