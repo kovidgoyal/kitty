@@ -151,9 +151,10 @@ def binary_lines(path, other_path, columns, margin_size):
         yield filler + fl(other_path, added_format)
     elif other_path is None:
         filler = render_diff_line('', '', 'filler', margin_size, available_cols)
-        yield fl(other_path, added_format) + filler
+        yield fl(path, removed_format) + filler
     else:
         yield fl(path, removed_format) + fl(other_path, added_format)
+    yield ''
 
 
 def split_to_size(line, width):
