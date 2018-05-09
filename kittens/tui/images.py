@@ -33,7 +33,7 @@ class OpenFailed(ValueError):
 
     def __init__(self, path, message):
         ValueError.__init__(
-            self, 'Failed to open: {} with error: {}'.format(path, message)
+            self, 'Failed to open image: {} with error: {}'.format(path, message)
         )
         self.path = path
 

@@ -162,7 +162,7 @@ def serialize_gr_command(cmd, payload=None):
 
 
 def clear_images_on_screen(delete_data=False) -> str:
-    return serialize_gr_command({'a': 'D' if delete_data else 'd'})
+    return serialize_gr_command({'a': 'd', 'd': 'A' if delete_data else 'a'})
 
 
 def init_state(alternate_screen=True):

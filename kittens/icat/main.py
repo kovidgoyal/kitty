@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-import codecs
 import mimetypes
 import os
 import re
@@ -17,24 +16,10 @@ from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
 from kitty.constants import appname
-from kitty.utils import fit_image, read_with_timeout, screen_size_function
+from kitty.utils import fit_image, read_with_timeout
 
-screen_size = screen_size_function()
-try:
-    fsenc = sys.getfilesystemencoding() or 'utf-8'
-    codecs.lookup(fsenc)
-except Exception:
-    fsenc = 'utf-8'
-
-
-class OpenFailed(ValueError):
-
-    def __init__(self, path, message):
-        ValueError.__init__(
-            self, 'Failed to open: {} with error: {}'.format(path, message)
-        )
-        self.path = path
-
+from ..tui.images import ImageData, OpenFailed, fsenc, screen_size
+from ..tui.operations import clear_images_on_screen, serialize_gr_command
 
 OPTIONS = '''\
 --align
@@ -99,13 +84,7 @@ def options_spec():
 
 
 def write_gr_cmd(cmd, payload=None):
-    cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
-    w = sys.stdout.buffer.write
-    w(b'\033_G'), w(cmd.encode('ascii'))
-    if payload:
-        w(b';')
-        w(payload)
-    w(b'\033\\')
+    sys.stdout.buffer.write(serialize_gr_command(cmd, payload))
     sys.stdout.flush()
 
 
@@ -184,9 +163,6 @@ def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=N
         if fmt == 100:
             cmd['S'] = len(data)
         write_chunked(cmd, data)
-
-
-ImageData = namedtuple('ImageData', 'fmt width height mode')
 
 
 def run_imagemagick(path, cmd, keep_stdout=True):
@@ -338,7 +314,7 @@ def main(args=sys.argv):
         detect_support.has_files = args.transfer_mode == 'file'
     errors = []
     if args.clear:
-        write_gr_cmd({'a': 'd'})
+        sys.stdout.buffer.write(clear_images_on_screen(delete_data=True))
         if not items:
             return
     if not items:
@@ -363,6 +339,10 @@ def main(args=sys.argv):
     for err in errors:
         print(err, file=sys.stderr)
     raise SystemExit(1)
+
+
+def handle_result(args, current_char, target_window_id, boss):
+    pass
 
 
 if __name__ == '__main__':

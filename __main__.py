@@ -6,7 +6,7 @@ import sys
 
 
 def icat(args):
-    from kitty.icat import main
+    from kittens.icat.main import main
     main(args)
 
 

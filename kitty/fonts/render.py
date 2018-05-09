@@ -220,7 +220,7 @@ def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None
 
 def display_bitmap(rgb_data, width, height):
     from tempfile import NamedTemporaryFile
-    from kitty.icat import detect_support, show
+    from kittens.icat.main import detect_support, show
     if not hasattr(display_bitmap, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
     display_bitmap.detected = True
