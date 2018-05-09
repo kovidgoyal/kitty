@@ -4,13 +4,10 @@
 
 import codecs
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
 from base64 import standard_b64encode
 
-from kitty.utils import screen_size_function
+from kitty.utils import fit_image, screen_size_function
 
 from .operations import serialize_gr_command
 
@@ -38,8 +35,16 @@ class OpenFailed(ValueError):
         self.path = path
 
 
+class NoImageMagick(Exception):
+    pass
+
+
 def run_imagemagick(path, cmd, keep_stdout=True):
-    p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
+    import subprocess
+    try:
+        p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        raise NoImageMagick('ImageMagick is required to process images')
     if p.returncode != 0:
         raise OpenFailed(path, p.stderr.decode('utf-8'))
     return p
@@ -52,7 +57,35 @@ def identify(path):
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
+def convert(path, m, available_width, available_height, scale_up, tdir=None, err_class=SystemExit):
+    from tempfile import NamedTemporaryFile
+    width, height = m.width, m.height
+    cmd = ['convert', '-background', 'none', path]
+    if scale_up:
+        if width < available_width:
+            r = available_width / width
+            width, height = available_width, int(height * r)
+    if width > available_width or height > available_height:
+        width, height = fit_image(width, height, available_width, available_height)
+        cmd += ['-resize', '{}x{}'.format(width, height)]
+    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
+        run_imagemagick(path, cmd + [outfile.name])
+    # ImageMagick sometimes generated rgba images smaller than the specified
+    # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
+    sz = os.path.getsize(outfile.name)
+    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
+    expected_size = bytes_per_pixel * width * height
+    if sz < expected_size:
+        missing = expected_size - sz
+        if missing % (bytes_per_pixel * width) != 0:
+            raise err_class('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
+        height -= missing // (bytes_per_pixel * width)
+
+    return outfile.name, width, height
+
+
 def can_display_images():
+    import shutil
     ans = getattr(can_display_images, 'ans', None)
     if ans is None:
         ans = shutil.which('convert') is not None
@@ -73,6 +106,7 @@ class ImageManager:
         self.transmission_status = {}
 
     def __enter__(self):
+        import tempfile
         self.tdir = tempfile.mkdtemp(prefix='kitten-images-')
         with tempfile.NamedTemporaryFile(dir=self.tdir, delete=False) as f:
             f.write(b'abcd')
@@ -80,6 +114,7 @@ class ImageManager:
         self.sent_ids.add(1)
 
     def __exit__(self, *a):
+        import shutil
         shutil.rmtree(self.tdir, ignore_errors=True)
         self.handler.cmd.clear_images_on_screen(delete_data=True)
         self.delete_all_sent_images()
@@ -129,7 +164,6 @@ class ImageManager:
         return image_id, skey[0], skey[1]
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
-        from kitty.icat import convert
         try:
             rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir, exc_class=ValueError)
         except ValueError:

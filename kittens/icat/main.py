@@ -6,7 +6,6 @@ import mimetypes
 import os
 import re
 import signal
-import subprocess
 import sys
 import zlib
 from base64 import standard_b64encode
@@ -18,7 +17,9 @@ from kitty.cli import parse_args
 from kitty.constants import appname
 from kitty.utils import fit_image, read_with_timeout
 
-from ..tui.images import ImageData, OpenFailed, fsenc, screen_size
+from ..tui.images import (
+    NoImageMagick, OpenFailed, convert, fsenc, identify, screen_size
+)
 from ..tui.operations import clear_images_on_screen, serialize_gr_command
 
 OPTIONS = '''\
@@ -165,49 +166,6 @@ def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=N
         write_chunked(cmd, data)
 
 
-def run_imagemagick(path, cmd, keep_stdout=True):
-    try:
-        p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
-    except FileNotFoundError:
-        raise SystemExit('ImageMagick is required to cat images')
-    if p.returncode != 0:
-        raise OpenFailed(path, p.stderr.decode('utf-8'))
-    return p
-
-
-def identify(path):
-    p = run_imagemagick(path, ['identify', '-format', '%m %w %h %A', path])
-    parts = tuple(filter(None, p.stdout.decode('utf-8').split()))
-    mode = 'rgb' if parts[3].lower() == 'false' else 'rgba'
-    return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
-
-
-def convert(path, m, available_width, available_height, scale_up, tdir=None, err_class=SystemExit):
-    width, height = m.width, m.height
-    cmd = ['convert', '-background', 'none', path]
-    if scale_up:
-        if width < available_width:
-            r = available_width / width
-            width, height = available_width, int(height * r)
-    if width > available_width or height > available_height:
-        width, height = fit_image(width, height, available_width, available_height)
-        cmd += ['-resize', '{}x{}'.format(width, height)]
-    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
-        run_imagemagick(path, cmd + [outfile.name])
-    # ImageMagick sometimes generated rgba images smaller than the specified
-    # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
-    sz = os.path.getsize(outfile.name)
-    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
-    expected_size = bytes_per_pixel * width * height
-    if sz < expected_size:
-        missing = expected_size - sz
-        if missing % (bytes_per_pixel * width) != 0:
-            raise err_class('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
-        height -= missing // (bytes_per_pixel * width)
-
-    return outfile.name, width, height
-
-
 def process(path, args):
     m = identify(path)
     ss = screen_size()
@@ -330,6 +288,8 @@ def main(args=sys.argv):
                     process(item, args)
             else:
                 process(item, args)
+        except NoImageMagick as e:
+            raise SystemExit(str(e))
         except OpenFailed as e:
             errors.append(e)
     if args.place:
