@@ -48,7 +48,7 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
         if special_handling(key, val, ans):
             return
         if key == 'include':
-            val = val.strip()
+            val = os.path.expandvars(os.path.expanduser(val.strip()))
             if not os.path.isabs(val):
                 val = os.path.join(base_path_for_includes, val)
             try:
