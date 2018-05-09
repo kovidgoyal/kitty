@@ -154,7 +154,6 @@ def binary_lines(path, other_path, columns, margin_size):
         yield fl(path, removed_format) + filler
     else:
         yield fl(path, removed_format) + fl(other_path, added_format)
-    yield ''
 
 
 def split_to_size(line, width):
@@ -362,8 +361,9 @@ def render_diff(collection, diff_map, args, columns):
                 largest_line_number = max(largest_line_number, patch.largest_line_number)
 
     margin_size = max(3, len(str(largest_line_number)) + 1)
+    last_item_num = len(collection) - 1
 
-    for path, item_type, other_path in collection:
+    for i, (path, item_type, other_path) in enumerate(collection):
         item_ref = Reference(path)
         is_binary = isinstance(data_for_path(path), bytes)
         yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
@@ -387,3 +387,5 @@ def render_diff(collection, diff_map, args, columns):
         else:
             raise ValueError('Unsupported item type: {}'.format(item_type))
         yield from ans
+        if i < last_item_num:
+            yield Line('', item_ref)

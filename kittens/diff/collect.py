@@ -64,6 +64,9 @@ class Collection:
                 data = None
             yield path, typ, data
 
+    def __len__(self):
+        return len(self.all_paths)
+
 
 def collect_files(collection, left, right):
     left_names, right_names = set(), set()
