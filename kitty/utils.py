@@ -83,13 +83,15 @@ def screen_size_function():
         import array
         import fcntl
         import termios
-        Size = namedtuple('Size', 'rows cols width height')
+        Size = namedtuple('Size', 'rows cols width height cell_width cell_height')
 
         def screen_size():
             if screen_size.changed:
                 buf = array.array('H', [0, 0, 0, 0])
                 fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-                screen_size.ans = Size(*buf)
+                rows, cols, width, height = tuple(buf)
+                cell_width, cell_height = width // cols, height // rows
+                screen_size.ans = Size(rows, cols, width, height, cell_width, cell_height)
                 screen_size.changed = False
             return screen_size.ans
         screen_size.changed = True
@@ -97,6 +99,21 @@ def screen_size_function():
         ans = screen_size_function.ans = screen_size
 
     return ans
+
+
+def fit_image(width, height, pwidth, pheight):
+    from math import floor
+    if height > pheight:
+        corrf = pheight / float(height)
+        width, height = floor(corrf * width), pheight
+    if width > pwidth:
+        corrf = pwidth / float(width)
+        width, height = pwidth, floor(corrf * height)
+    if height > pheight:
+        corrf = pheight / float(height)
+        width, height = floor(corrf * width), pheight
+
+    return int(width), int(height)
 
 
 def set_primary_selection(text):

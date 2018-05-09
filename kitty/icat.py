@@ -12,12 +12,12 @@ import sys
 import zlib
 from base64 import standard_b64encode
 from collections import namedtuple
-from math import ceil, floor
+from math import ceil
 from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
 from kitty.constants import appname
-from kitty.utils import read_with_timeout, screen_size_function
+from kitty.utils import fit_image, read_with_timeout, screen_size_function
 
 screen_size = screen_size_function()
 try:
@@ -107,20 +107,6 @@ def write_gr_cmd(cmd, payload=None):
         w(payload)
     w(b'\033\\')
     sys.stdout.flush()
-
-
-def fit_image(width, height, pwidth, pheight):
-    if height > pheight:
-        corrf = pheight / float(height)
-        width, height = floor(corrf * width), pheight
-    if width > pwidth:
-        corrf = pwidth / float(width)
-        width, height = pwidth, floor(corrf * height)
-    if height > pheight:
-        corrf = pheight / float(height)
-        width, height = floor(corrf * width), pheight
-
-    return int(width), int(height)
 
 
 def calculate_in_cell_x_offset(width, cell_width, align):
@@ -220,7 +206,7 @@ def identify(path):
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
-def convert(path, m, available_width, available_height, scale_up):
+def convert(path, m, available_width, available_height, scale_up, tdir=None, err_class=SystemExit):
     width, height = m.width, m.height
     cmd = ['convert', '-background', 'none', path]
     if scale_up:
@@ -230,7 +216,7 @@ def convert(path, m, available_width, available_height, scale_up):
     if width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
         cmd += ['-resize', '{}x{}'.format(width, height)]
-    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False) as outfile:
+    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
         run_imagemagick(path, cmd + [outfile.name])
     # ImageMagick sometimes generated rgba images smaller than the specified
     # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
@@ -240,7 +226,7 @@ def convert(path, m, available_width, available_height, scale_up):
     if sz < expected_size:
         missing = expected_size - sz
         if missing % (bytes_per_pixel * width) != 0:
-            raise SystemExit('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
+            raise err_class('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
         height -= missing // (bytes_per_pixel * width)
 
     return outfile.name, width, height
