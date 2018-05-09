@@ -125,10 +125,14 @@ def raw_data_for_path(path):
         return f.read()
 
 
+def is_image(path):
+    return mime_type_for_path(path).startswith('image/')
+
+
 @lru_cache(maxsize=1024)
 def data_for_path(path):
     ans = raw_data_for_path(path)
-    if not mime_type_for_path(path).startswith('image/'):
+    if not is_image(path):
         try:
             ans = ans.decode('utf-8')
         except UnicodeDecodeError:
