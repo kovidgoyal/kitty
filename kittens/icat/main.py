@@ -18,7 +18,8 @@ from kitty.constants import appname
 from kitty.utils import fit_image, read_with_timeout
 
 from ..tui.images import (
-    NoImageMagick, OpenFailed, convert, fsenc, identify, screen_size
+    ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify,
+    screen_size
 )
 from ..tui.operations import clear_images_on_screen, serialize_gr_command
 
@@ -289,6 +290,8 @@ def main(args=sys.argv):
             else:
                 process(item, args)
         except NoImageMagick as e:
+            raise SystemExit(str(e))
+        except ConvertFailed as e:
             raise SystemExit(str(e))
         except OpenFailed as e:
             errors.append(e)

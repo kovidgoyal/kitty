@@ -35,6 +35,15 @@ class OpenFailed(ValueError):
         self.path = path
 
 
+class ConvertFailed(ValueError):
+
+    def __init__(self, path, message):
+        ValueError.__init__(
+            self, 'Failed to convert image: {} with error: {}'.format(path, message)
+        )
+        self.path = path
+
+
 class NoImageMagick(Exception):
     pass
 
@@ -57,7 +66,7 @@ def identify(path):
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
-def convert(path, m, available_width, available_height, scale_up, tdir=None, err_class=SystemExit):
+def convert(path, m, available_width, available_height, scale_up, tdir=None):
     from tempfile import NamedTemporaryFile
     width, height = m.width, m.height
     cmd = ['convert', '-background', 'none', path]
@@ -78,7 +87,7 @@ def convert(path, m, available_width, available_height, scale_up, tdir=None, err
     if sz < expected_size:
         missing = expected_size - sz
         if missing % (bytes_per_pixel * width) != 0:
-            raise err_class('ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
+            raise ConvertFailed(path, 'ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
         height -= missing // (bytes_per_pixel * width)
 
     return outfile.name, width, height
@@ -165,7 +174,7 @@ class ImageManager:
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
         try:
-            rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir, exc_class=ValueError)
+            rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir)
         except ValueError:
             rgba_path = None
             width = height = 0
