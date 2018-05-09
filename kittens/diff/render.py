@@ -353,12 +353,12 @@ def rename_lines(path, other_path, args, columns, margin_size):
         yield m + line
 
 
-def image_lines(left_path, right_path, columns, margin_size):
+def image_lines(left_path, right_path, columns, margin_size, image_manager):
     if False:
         yield 0
 
 
-def render_diff(collection, diff_map, args, columns):
+def render_diff(collection, diff_map, args, columns, image_manager):
     largest_line_number = 0
     for path, item_type, other_path in collection:
         if item_type == 'diff':
@@ -377,7 +377,7 @@ def render_diff(collection, diff_map, args, columns):
         if item_type == 'diff':
             if is_binary:
                 if is_img:
-                    ans = image_lines(path, other_path, columns, margin_size)
+                    ans = image_lines(path, other_path, columns, margin_size, image_manager)
                 else:
                     ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
             else:
@@ -385,7 +385,7 @@ def render_diff(collection, diff_map, args, columns):
         elif item_type == 'add':
             if is_binary:
                 if is_img:
-                    ans = image_lines(None, path, columns, margin_size)
+                    ans = image_lines(None, path, columns, margin_size, image_manager)
                 else:
                     ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
             else:
@@ -393,7 +393,7 @@ def render_diff(collection, diff_map, args, columns):
         elif item_type == 'removal':
             if is_binary:
                 if is_img:
-                    ans = image_lines(path, None, columns, margin_size)
+                    ans = image_lines(path, None, columns, margin_size, image_manager)
                 else:
                     ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
             else:

@@ -68,7 +68,7 @@ class DiffHandler(Handler):
         self.start_job('diff', generate_diff, self.collection, self.current_context_count)
 
     def render_diff(self):
-        self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols))
+        self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols, self.image_manager))
         self.ref_path_map = defaultdict(list)
         for i, l in enumerate(self.diff_lines):
             self.ref_path_map[l.ref.path].append((i, l.ref))
