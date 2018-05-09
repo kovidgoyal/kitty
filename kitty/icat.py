@@ -2,16 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-import array
 import codecs
-import fcntl
 import mimetypes
 import os
 import re
 import signal
 import subprocess
 import sys
-import termios
 import zlib
 from base64 import standard_b64encode
 from collections import namedtuple
@@ -20,8 +17,9 @@ from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
 from kitty.constants import appname
-from kitty.utils import read_with_timeout
+from kitty.utils import read_with_timeout, screen_size_function
 
+screen_size = screen_size_function()
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
     codecs.lookup(fsenc)
@@ -98,21 +96,6 @@ def options_spec():
             appname='{}-icat'.format(appname),
         )
     return options_spec.ans
-
-
-Size = namedtuple('Size', 'rows cols width height')
-
-
-def screen_size():
-    if screen_size.changed:
-        buf = array.array('H', [0, 0, 0, 0])
-        fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-        screen_size.ans = Size(*buf)
-        screen_size.changed = False
-    return screen_size.ans
-
-
-screen_size.changed = True
 
 
 def write_gr_cmd(cmd, payload=None):

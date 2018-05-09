@@ -293,8 +293,8 @@ def wrap(text, limit=80):
 
 
 def print_help_for_seq(seq, usage, message, appname):
-    from kitty.icat import screen_size
-    screen_size.changed = True
+    from kitty.utils import screen_size_function
+    screen_size = screen_size_function()
     try:
         linesz = min(screen_size().cols, 76)
     except EnvironmentError:

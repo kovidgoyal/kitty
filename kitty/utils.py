@@ -76,6 +76,25 @@ def parse_color_set(raw):
             continue
 
 
+def screen_size_function():
+    from collections import namedtuple
+    import array
+    import fcntl
+    import termios
+    Size = namedtuple('Size', 'rows cols width height')
+
+    def screen_size():
+        if screen_size.changed:
+            buf = array.array('H', [0, 0, 0, 0])
+            fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+            screen_size.ans = Size(*buf)
+            screen_size.changed = False
+        return screen_size.ans
+    screen_size.changed = True
+
+    return screen_size
+
+
 def set_primary_selection(text):
     if is_macos or is_wayland:
         return  # There is no primary selection

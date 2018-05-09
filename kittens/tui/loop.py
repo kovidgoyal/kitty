@@ -18,14 +18,17 @@ from functools import partial
 from queue import Empty, Queue
 
 from kitty.fast_data_types import parse_input_from_terminal, safe_pipe
-from kitty.icat import screen_size
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
     decode_key_event, enter_key
 )
+from kitty.utils import screen_size_function
 
 from .handler import Handler
 from .operations import clear_screen, init_state, reset_state
+
+
+screen_size = screen_size_function()
 
 
 def debug(*a, **kw):
