@@ -311,6 +311,37 @@ class Tall(Layout):
         self.bottom_blank_rect(windows[0])
 
 
+class Fat(Layout):
+
+    name = 'fat'
+
+    def do_layout(self, windows, active_window_idx):
+        self.blank_rects = []
+        if len(windows) == 1:
+            wg = layout_single_window(self.margin_width, self.padding_width)
+            windows[0].set_geometry(0, wg)
+            self.blank_rects = blank_rects_for_window(windows[0])
+            return
+        xstart, xnum = next(self.xlayout(1))
+        ylayout = self.ylayout(2)
+        ystart, ynum = next(ylayout)
+        windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
+        xlayout = self.xlayout(len(windows) - 1)
+        ystart, ynum = next(ylayout)
+        for i, (w, (xstart, xnum)) in enumerate(zip(islice(windows, 1, None), xlayout)):
+            w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
+            if i > 0:
+                # bottom between blank rect
+                self.between_blank_rect(windows[i - 1], windows[i])
+
+        # left, top and right blank rects
+        self.simple_blank_rects(windows[0], windows[-1])
+        # top bottom blank rect
+        self.bottom_blank_rect(windows[0])
+        # bottom blank rect
+        self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+
+
 class Grid(Tall):
 
     name = 'grid'
