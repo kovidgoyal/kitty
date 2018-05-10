@@ -12,8 +12,8 @@ from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
-    remove_tab, remove_window, set_active_tab, set_tab_bar_render_data,
-    swap_tabs, viewport_for_window, x11_window_id
+    next_window_id, remove_tab, remove_window, set_active_tab,
+    set_tab_bar_render_data, swap_tabs, viewport_for_window, x11_window_id
 )
 from .layout import Rect, all_layouts
 from .session import resolved_shell
@@ -167,6 +167,7 @@ class Tab:  # {{{
         fenv = {}
         if env:
             fenv.update(env)
+        fenv['KITTY_WINDOW_ID'] = str(next_window_id())
         if not is_macos and not is_wayland:
             try:
                 fenv['WINDOWID'] = str(x11_window_id(self.os_window_id))

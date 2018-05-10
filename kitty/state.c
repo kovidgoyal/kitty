@@ -328,6 +328,10 @@ set_special_keys(PyObject *dict) {
     }}
 }
 
+PYWRAP0(next_window_id) {
+    return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
+}
+
 PYWRAP1(handle_for_window_id) {
     id_type os_window_id;
     PA("K", &os_window_id);
@@ -600,6 +604,7 @@ KK5I(add_borders_rect)
 
 static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
+    MW(next_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
