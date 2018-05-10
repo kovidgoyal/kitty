@@ -147,6 +147,7 @@ class ImageManager:
         if image_id == 1:
             self.filesystem_ok = payload == 'OK'
             return
+        self.transmission_status[image_id] = payload
 
     def send_image(self, path, max_cols=None, max_rows=None, scale_up=False):
         path = os.path.abspath(path)
@@ -169,8 +170,8 @@ class ImageManager:
             return 0, 0, 0
         image_id = self.sent_images.get(skey)
         if image_id is None:
-            image_id = self.sent_image[skey] = self.transmit_image(m, key, *skey)
-        return image_id, skey[0], skey[1]
+            image_id = self.sent_images[skey] = self.transmit_image(m, key, *skey)
+        return image_id, skey[1], skey[2]
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
         try:

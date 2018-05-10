@@ -3,10 +3,12 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from gettext import gettext as _
-from itertools import repeat
+from itertools import repeat, zip_longest
+from math import ceil
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
+from ..tui.images import screen_size
 from .collect import (
     Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
     path_name_map, sanitize
@@ -46,12 +48,13 @@ class Reference(Ref):
 
 class Line:
 
-    __slots__ = ('text', 'ref', 'is_change_start')
+    __slots__ = ('text', 'ref', 'is_change_start', 'image_data')
 
-    def __init__(self, text, ref, change_start=False):
+    def __init__(self, text, ref, change_start=False, image_data=None):
         self.text = text
         self.ref = ref
         self.is_change_start = change_start
+        self.image_data = image_data
 
 
 def yield_lines_from(iterator, reference, is_change_start=True):
@@ -353,9 +356,61 @@ def rename_lines(path, other_path, args, columns, margin_size):
         yield m + line
 
 
+class Image:
+
+    def __init__(self, image_id, width, height):
+        self.image_id = image_id
+        self.width, self.height = width, height
+        ss = screen_size()
+        self.rows = int(ceil(self.height / ss.cell_height))
+        self.columns = int(ceil(self.width / ss.cell_width))
+
+
+def render_image(path, is_left, available_cols, margin_size, image_manager):
+    lnum = 0
+    m = ' ' * margin_size
+    image_data = None
+    margin_fmt = removed_margin_format if is_left else added_margin_format
+    fmt = removed_format if is_left else added_format
+
+    def yield_split(text):
+        nonlocal lnum
+        for i, line in enumerate(split_to_size(text, available_cols)):
+            yield margin_fmt(m) + fmt(place_in(line, available_cols)), Reference(path, LineRef(lnum, i)), image_data
+        lnum += 1
+
+    try:
+        image_id, width, height = image_manager.send_image(path, available_cols - 2, screen_size().rows - 1)
+    except Exception as e:
+        yield from yield_split(_('Failed to render image, with error:'))
+        yield from yield_split(str(e))
+        return
+    meta = _('Dimensions: {0}x{1} pixels Size: {2}').format(
+            width, height, human_readable(len(data_for_path(path))))
+    yield from yield_split(meta)
+    bg_line = margin_fmt(m) + fmt(' ' * available_cols)
+    img = Image(image_id, width, height)
+    for r in range(img.rows):
+        yield bg_line, Reference(path, LineRef(lnum)), (img, r)
+        lnum += 1
+
+
 def image_lines(left_path, right_path, columns, margin_size, image_manager):
-    if False:
-        yield 0
+    available_cols = columns // 2 - margin_size
+    left_lines, right_lines = iter(()), iter(())
+    if left_path is not None:
+        left_lines = render_image(left_path, True, available_cols, margin_size, image_manager)
+    if right_path is not None:
+        right_lines = render_image(right_path, False, available_cols, margin_size, image_manager)
+    filler = ' ' * (available_cols + margin_size)
+    for left, right in zip_longest(left_lines, right_lines):
+        if left is None:
+            left = filler
+            right, ref, image_data = right
+        else:
+            right = filler
+            left, ref, image_data = left
+        yield Line(left + right, ref, image_data=image_data)
 
 
 def render_diff(collection, diff_map, args, columns, image_manager):
