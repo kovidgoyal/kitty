@@ -111,6 +111,7 @@ class ImageManager:
         self.handler = handler
         self.filesystem_ok = None
         self.image_data = {}
+        self.failed_images = {}
         self.converted_images = {}
         self.sent_images = {}
         self.image_id_to_image_data = {}
@@ -120,7 +121,7 @@ class ImageManager:
 
     @property
     def next_image_id(self):
-        return next(self.image_id_counter)
+        return next(self.image_id_counter) + 2
 
     def __enter__(self):
         import tempfile
@@ -138,7 +139,7 @@ class ImageManager:
 
     def delete_all_sent_images(self):
         for img_id in self.transmission_status:
-            self.handler.write(serialize_gr_command({'a': 'D', 'i': img_id}))
+            self.handler.write(serialize_gr_command({'a': 'd', 'i': img_id}))
         self.transmission_status.clear()
 
     def handle_response(self, apc):
@@ -161,8 +162,8 @@ class ImageManager:
         else:
             in_flight = self.placements_in_flight[image_id]
             if in_flight:
-                pl = in_flight.pop(0)
-                if payload.startswith('ENOENT:') and pl['retry_count'] == 0:
+                pl = in_flight.popleft()
+                if payload.startswith('ENOENT:'):
                     try:
                         self.resend_image(image_id, pl)
                     except Exception:
@@ -171,7 +172,6 @@ class ImageManager:
                     self.placements_in_flight.pop(image_id, None)
 
     def resend_image(self, image_id, pl):
-        pl['retry_count'] += 1
         image_data = self.image_id_to_image_data[image_id]
         skey = self.image_id_to_converted_data[image_id]
         self.transmit_image(image_data, image_id, *skey)
@@ -179,8 +179,14 @@ class ImageManager:
 
     def send_image(self, path, max_cols=None, max_rows=None, scale_up=False):
         path = os.path.abspath(path)
+        if path in self.failed_images:
+            raise self.failed_images[path]
         if path not in self.image_data:
-            self.image_data[path] = identify(path)
+            try:
+                self.image_data[path] = identify(path)
+            except Exception as e:
+                self.failed_images[path] = e
+                raise
         m = self.image_data[path]
         ss = screen_size()
         if max_cols is None:
@@ -192,7 +198,11 @@ class ImageManager:
         key = path, available_width, available_height
         skey = self.converted_images.get(key)
         if skey is None:
-            self.converted_images[key] = skey = self.convert_image(path, available_width, available_height, m, scale_up)
+            try:
+                self.converted_images[key] = skey = self.convert_image(path, available_width, available_height, m, scale_up)
+            except Exception as e:
+                self.failed_images[path] = e
+                raise
         final_width, final_height = skey[1:]
         if final_width == 0:
             return 0, 0, 0
@@ -208,9 +218,11 @@ class ImageManager:
     def hide_image(self, image_id):
         self.handler.write(serialize_gr_command({'a': 'd', 'i': image_id}))
 
-    def show_image(self, image_id):
+    def show_image(self, image_id, src_rect=None):
         cmd = {'a': 'p', 'i': image_id}
-        self.placements_in_flight[image_id].append({'cmd': cmd, 'retry_count': 0})
+        if src_rect is not None:
+            cmd['x'], cmd['y'], cmd['w'], cmd['h'] = map(int, src_rect)
+        self.placements_in_flight[image_id].append({'cmd': cmd})
         self.handler.write(serialize_gr_command(cmd))
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):

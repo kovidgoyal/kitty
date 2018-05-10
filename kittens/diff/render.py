@@ -371,40 +371,47 @@ def rename_lines(path, other_path, args, columns, margin_size):
 
 class Image:
 
-    def __init__(self, image_id, width, height):
+    def __init__(self, image_id, width, height, margin_size):
         self.image_id = image_id
         self.width, self.height = width, height
         ss = screen_size()
         self.rows = int(ceil(self.height / ss.cell_height))
         self.columns = int(ceil(self.width / ss.cell_width))
+        self.margin_size = margin_size
+
+
+class ImagePlacement:
+
+    def __init__(self, image, row):
+        self.image = image
+        self.row = row
 
 
 def render_image(path, is_left, available_cols, margin_size, image_manager):
     lnum = 0
-    m = ' ' * margin_size
-    image_data = None
     margin_fmt = removed_margin_format if is_left else added_margin_format
+    m = margin_fmt(' ' * margin_size)
     fmt = removed_format if is_left else added_format
 
     def yield_split(text):
         nonlocal lnum
         for i, line in enumerate(split_to_size(text, available_cols)):
-            yield margin_fmt(m) + fmt(place_in(line, available_cols)), Reference(path, LineRef(lnum, i)), image_data
+            yield m + fmt(place_in(line, available_cols)), Reference(path, LineRef(lnum, i)), None
         lnum += 1
 
     try:
-        image_id, width, height = image_manager.send_image(path, available_cols - 2, screen_size().rows - 1)
+        image_id, width, height = image_manager.send_image(path, available_cols - margin_size, screen_size().rows - 1)
     except Exception as e:
         yield from yield_split(_('Failed to render image, with error:'))
-        yield from yield_split(str(e))
+        yield from yield_split(' '.join(str(e).splitlines()))
         return
     meta = _('Dimensions: {0}x{1} pixels Size: {2}').format(
             width, height, human_readable(len(data_for_path(path))))
     yield from yield_split(meta)
-    bg_line = margin_fmt(m) + fmt(' ' * available_cols)
-    img = Image(image_id, width, height)
+    bg_line = m + fmt(' ' * available_cols)
+    img = Image(image_id, width, height, margin_size)
     for r in range(img.rows):
-        yield bg_line, Reference(path, LineRef(lnum)), (img, r)
+        yield bg_line, Reference(path, LineRef(lnum)), ImagePlacement(img, r)
         lnum += 1
 
 
@@ -417,12 +424,17 @@ def image_lines(left_path, right_path, columns, margin_size, image_manager):
         right_lines = render_image(right_path, False, available_cols, margin_size, image_manager)
     filler = ' ' * (available_cols + margin_size)
     for left, right in zip_longest(left_lines, right_lines):
+        left_placement = right_placement = None
         if left is None:
             left = filler
-            right, ref, image_data = right
-        else:
+            right, ref, right_placement = right
+        elif right is None:
             right = filler
-            left, ref, image_data = left
+            left, ref, left_placement = left
+        else:
+            right, ref, right_placement = right
+            left, ref, left_placement = left
+        image_data = (left_placement, right_placement) if left_placement or right_placement else None
         yield Line(left + right, ref, image_data=image_data)
 
 

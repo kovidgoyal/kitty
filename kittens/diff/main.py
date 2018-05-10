@@ -155,15 +155,59 @@ class DiffHandler(Handler):
 
     def draw_lines(self, num, offset=0):
         offset += self.scroll_pos
+        image_involved = False
+        limit = len(self.diff_lines)
         for i in range(num):
             lpos = offset + i
-            if lpos >= len(self.diff_lines):
+            if lpos >= limit:
                 text = ''
             else:
-                text = self.diff_lines[lpos].text
+                line = self.diff_lines[lpos]
+                text = line.text
+                if line.image_data is not None:
+                    image_involved = True
             self.write('\r' + text + '\x1b[0m')
             if i < num - 1:
                 self.write('\n')
+        if image_involved:
+            self.place_images()
+        self.cmd.set_cursor_position(0, self.num_lines - 1)
+
+    def place_images(self):
+        offset = self.scroll_pos
+        limit = len(self.diff_lines)
+        in_image = False
+        for row in range(self.num_lines):
+            lpos = offset + row
+            if lpos >= limit:
+                break
+            line = self.diff_lines[lpos]
+            if in_image:
+                if line.image_data is None:
+                    in_image = False
+                continue
+            if line.image_data is not None:
+                left_placement, right_placement = line.image_data
+                if left_placement is not None:
+                    self.place_image(row, left_placement, True)
+                    in_image = True
+                if right_placement is not None:
+                    self.place_image(row, right_placement, False)
+                    in_image = True
+
+    def place_image(self, row, placement, is_left):
+        xpos = (0 if is_left else (self.screen_size.cols // 2)) + placement.image.margin_size
+        image_height_in_rows = placement.image.rows
+        topmost_visible_row = placement.row
+        num_visible_rows = image_height_in_rows - topmost_visible_row
+        visible_frac = min(num_visible_rows / image_height_in_rows, 1)
+        if visible_frac > 0:
+            self.cmd.set_cursor_position(xpos, row)
+            height = int(visible_frac * placement.image.height)
+            top = placement.image.height - height
+            self.image_manager.hide_image(placement.image.image_id)
+            self.image_manager.show_image(placement.image.image_id, src_rect=(
+                0, top, placement.image.width, height))
 
     def draw_screen(self):
         self.enforce_cursor_state()
