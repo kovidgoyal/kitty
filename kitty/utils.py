@@ -78,7 +78,7 @@ def parse_color_set(raw):
             continue
 
 
-def screen_size_function():
+def screen_size_function(fd=None):
     ans = getattr(screen_size_function, 'ans', None)
     if ans is None:
         from collections import namedtuple
@@ -86,11 +86,13 @@ def screen_size_function():
         import fcntl
         import termios
         Size = namedtuple('Size', 'rows cols width height cell_width cell_height')
+        if fd is None:
+            fd = sys.stdout
 
         def screen_size():
             if screen_size.changed:
                 buf = array.array('H', [0, 0, 0, 0])
-                fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+                fcntl.ioctl(fd, termios.TIOCGWINSZ, buf)
                 rows, cols, width, height = tuple(buf)
                 cell_width, cell_height = width // (cols or 1), height // (rows or 1)
                 screen_size.ans = Size(rows, cols, width, height, cell_width, cell_height)
