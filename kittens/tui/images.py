@@ -5,11 +5,13 @@
 import codecs
 import os
 import sys
+from collections import defaultdict, deque
 from base64 import standard_b64encode
 
 from kitty.utils import fit_image, screen_size_function
 
 from .operations import serialize_gr_command
+from itertools import count
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -105,14 +107,20 @@ def can_display_images():
 class ImageManager:
 
     def __init__(self, handler):
+        self.image_id_counter = count()
         self.handler = handler
-        self.sent_ids = set()
         self.filesystem_ok = None
         self.image_data = {}
         self.converted_images = {}
         self.sent_images = {}
-        self.image_id_map = {}
+        self.image_id_to_image_data = {}
+        self.image_id_to_converted_data = {}
         self.transmission_status = {}
+        self.placements_in_flight = defaultdict(deque)
+
+    @property
+    def next_image_id(self):
+        return next(self.image_id_counter)
 
     def __enter__(self):
         import tempfile
@@ -120,7 +128,6 @@ class ImageManager:
         with tempfile.NamedTemporaryFile(dir=self.tdir, delete=False) as f:
             f.write(b'abcd')
         self.handler.write(serialize_gr_command(dict(a='q', s=1, v=1, i=1, t='f'), standard_b64encode(f.name.encode(fsenc))))
-        self.sent_ids.add(1)
 
     def __exit__(self, *a):
         import shutil
@@ -130,9 +137,9 @@ class ImageManager:
         del self.handler
 
     def delete_all_sent_images(self):
-        for img_id in self.sent_ids:
-            self.handler.write(serialize_gr_command({'a': 'D', 'i': str(img_id)}))
-        self.sent_ids = set()
+        for img_id in self.transmission_status:
+            self.handler.write(serialize_gr_command({'a': 'D', 'i': img_id}))
+        self.transmission_status.clear()
 
     def handle_response(self, apc):
         cdata, payload = apc[1:].partition(';')[::2]
@@ -147,7 +154,28 @@ class ImageManager:
         if image_id == 1:
             self.filesystem_ok = payload == 'OK'
             return
-        self.transmission_status[image_id] = payload
+        if not image_id:
+            return
+        if not self.transmission_status.get(image_id):
+            self.transmission_status[image_id] = payload
+        else:
+            in_flight = self.placements_in_flight[image_id]
+            if in_flight:
+                pl = in_flight.pop(0)
+                if payload.startswith('ENOENT:') and pl['retry_count'] == 0:
+                    try:
+                        self.resend_image(image_id, pl)
+                    except Exception:
+                        pass
+                if not in_flight:
+                    self.placements_in_flight.pop(image_id, None)
+
+    def resend_image(self, image_id, pl):
+        pl['retry_count'] += 1
+        image_data = self.image_id_to_image_data[image_id]
+        skey = self.image_id_to_converted_data[image_id]
+        self.transmit_image(image_data, image_id, *skey)
+        self.handler.write(serialize_gr_command(pl['cmd']))
 
     def send_image(self, path, max_cols=None, max_rows=None, scale_up=False):
         path = os.path.abspath(path)
@@ -170,8 +198,20 @@ class ImageManager:
             return 0, 0, 0
         image_id = self.sent_images.get(skey)
         if image_id is None:
-            image_id = self.sent_images[skey] = self.transmit_image(m, key, *skey)
+            image_id = self.next_image_id
+            self.transmit_image(m, image_id, *skey)
+            self.sent_images[skey] = image_id
+        self.image_id_to_converted_data[image_id] = skey
+        self.image_id_to_image_data[image_id] = m
         return image_id, skey[1], skey[2]
+
+    def hide_image(self, image_id):
+        self.handler.write(serialize_gr_command({'a': 'd', 'i': image_id}))
+
+    def show_image(self, image_id):
+        cmd = {'a': 'p', 'i': image_id}
+        self.placements_in_flight[image_id].append({'cmd': cmd, 'retry_count': 0})
+        self.handler.write(serialize_gr_command(cmd))
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
         try:
@@ -181,10 +221,7 @@ class ImageManager:
             width = height = 0
         return rgba_path, width, height
 
-    def transmit_image(self, image_data, key, rgba_path, width, height):
-        image_id = len(self.sent_ids) + 1
-        self.image_id_map[key] = image_id
-        self.sent_ids.add(image_id)
+    def transmit_image(self, image_data, image_id, rgba_path, width, height):
         self.transmission_status[image_id] = 0
         cmd = {'a': 't', 'f': image_data.transmit_fmt, 's': width, 'v': height, 'i': image_id}
         if self.filesystem_ok:
