@@ -25,7 +25,7 @@ from kitty.key_encoding import (
 from kitty.utils import screen_size_function
 
 from .handler import Handler
-from .operations import clear_screen, init_state, reset_state
+from .operations import init_state, reset_state
 
 screen_size = screen_size_function()
 
@@ -55,6 +55,7 @@ class TermManager:
         self.input_fd = input_fd
         self.output_fd = output_fd
         self.original_fl = fcntl.fcntl(self.input_fd, fcntl.F_GETFL)
+        self.extra_finalize = None
         self.isatty = os.isatty(self.input_fd)
         if self.isatty:
             self.original_termios = termios.tcgetattr(self.input_fd)
@@ -69,6 +70,8 @@ class TermManager:
         if self.isatty:
             termios.tcsetattr(self.input_fd, termios.TCSADRAIN, self.original_termios)
         fcntl.fcntl(self.input_fd, fcntl.F_SETFL, self.original_fl)
+        if self.extra_finalize:
+            write_all(self.output_fd, self.extra_finalize)
         write_all(self.output_fd, reset_state())
 
     @contextmanager
@@ -124,7 +127,10 @@ class UnhandledException(Handler):
         self.tb = tb
 
     def initialize(self):
-        self.write(clear_screen())
+        self.cmd.clear_screen()
+        self.cmd.set_scrolling_region()
+        self.cmd.set_cursor_visible(True)
+        self.cmd.set_default_colors()
         self.write(self.tb.replace('\n', '\r\n'))
         self.write('\r\n')
         self.write('Press the Enter key to quit')
@@ -384,12 +390,10 @@ class Loop:
                 self.return_code = 1
                 keep_going = False
 
-            finalize_output = b''.join(handler.write_buf).decode('utf-8')
+            term_manager.extra_finalize = b''.join(handler.write_buf).decode('utf-8')
 
             if tb is not None:
-                self._report_error_loop(finalize_output + tb, term_manager)
-        if tb is None:
-            os.write(self.output_fd, finalize_output.encode('utf-8'))
+                self._report_error_loop(tb, term_manager)
 
     def _report_error_loop(self, tb, term_manager):
         select = self.sel.select
