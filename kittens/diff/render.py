@@ -423,6 +423,7 @@ def image_lines(left_path, right_path, columns, margin_size, image_manager):
     if right_path is not None:
         right_lines = render_image(right_path, False, available_cols, margin_size, image_manager)
     filler = ' ' * (available_cols + margin_size)
+    is_change_start = True
     for left, right in zip_longest(left_lines, right_lines):
         left_placement = right_placement = None
         if left is None:
@@ -435,7 +436,8 @@ def image_lines(left_path, right_path, columns, margin_size, image_manager):
             right, ref, right_placement = right
             left, ref, left_placement = left
         image_data = (left_placement, right_placement) if left_placement or right_placement else None
-        yield Line(left + right, ref, image_data=image_data)
+        yield Line(left + right, ref, is_change_start, image_data)
+        is_change_start = False
 
 
 def render_diff(collection, diff_map, args, columns, image_manager):
