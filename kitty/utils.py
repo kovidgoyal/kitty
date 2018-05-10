@@ -13,7 +13,9 @@ import sys
 from contextlib import contextmanager
 from time import monotonic
 
-from .constants import appname, is_macos, is_wayland
+from .constants import (
+    appname, is_macos, is_wayland, supports_primary_selection
+)
 from .fast_data_types import (
     GLSL_VERSION, log_error_string, redirect_std_streams, x11_display,
     x11_window_id
@@ -117,7 +119,7 @@ def fit_image(width, height, pwidth, pheight):
 
 
 def set_primary_selection(text):
-    if is_macos or is_wayland:
+    if not supports_primary_selection:
         return  # There is no primary selection
     if isinstance(text, bytes):
         text = text.decode('utf-8')
@@ -126,7 +128,7 @@ def set_primary_selection(text):
 
 
 def get_primary_selection():
-    if is_macos or is_wayland:
+    if not supports_primary_selection:
         return ''  # There is no primary selection
     from kitty.fast_data_types import get_primary_selection
     return (get_primary_selection() or b'').decode('utf-8', 'replace')
