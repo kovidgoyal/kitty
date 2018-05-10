@@ -152,6 +152,7 @@ class DiffHandler(Handler):
     def finalize(self):
         self.cmd.set_cursor_visible(True)
         self.cmd.set_default_colors()
+        self.cmd.set_scrolling_region()
 
     def draw_lines(self, num, offset=0):
         offset += self.scroll_pos
