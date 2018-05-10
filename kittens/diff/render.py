@@ -400,7 +400,7 @@ def render_image(path, is_left, available_cols, margin_size, image_manager):
         lnum += 1
 
     try:
-        image_id, width, height = image_manager.send_image(path, available_cols - margin_size, screen_size().rows - 1)
+        image_id, width, height = image_manager.send_image(path, available_cols - margin_size, screen_size().rows - 2)
     except Exception as e:
         yield from yield_split(_('Failed to render image, with error:'))
         yield from yield_split(' '.join(str(e).splitlines()))

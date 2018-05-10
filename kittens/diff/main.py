@@ -166,14 +166,14 @@ class DiffHandler(Handler):
                 text = line.text
                 if line.image_data is not None:
                     image_involved = True
-            self.write('\r' + text + '\x1b[0m')
+            self.write('\r\x1b[K' + text + '\x1b[0m')
             if i < num - 1:
                 self.write('\n')
         if image_involved:
             self.place_images()
-        self.cmd.set_cursor_position(0, self.num_lines - 1)
 
     def place_images(self):
+        self.cmd.clear_images_on_screen()
         offset = self.scroll_pos
         limit = len(self.diff_lines)
         in_image = False
@@ -204,7 +204,6 @@ class DiffHandler(Handler):
         if visible_frac > 0:
             height = int(visible_frac * placement.image.height)
             top = placement.image.height - height
-            self.image_manager.hide_image(placement.image.image_id)
             self.image_manager.show_image(placement.image.image_id, xpos, row, src_rect=(
                 0, top, placement.image.width, height))
 
@@ -214,7 +213,8 @@ class DiffHandler(Handler):
             self.cmd.clear_screen()
             self.write(_('Calculating diff, please wait...'))
             return
-        self.cmd.clear_screen()
+        self.cmd.clear_images_on_screen()
+        self.cmd.set_cursor_position(0, 0)
         self.draw_lines(self.num_lines)
         self.draw_status_line()
 
