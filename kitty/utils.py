@@ -92,7 +92,7 @@ def screen_size_function():
                 buf = array.array('H', [0, 0, 0, 0])
                 fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
                 rows, cols, width, height = tuple(buf)
-                cell_width, cell_height = width // cols, height // rows
+                cell_width, cell_height = width // (cols or 1), height // (rows or 1)
                 screen_size.ans = Size(rows, cols, width, height, cell_width, cell_height)
                 screen_size.changed = False
             return screen_size.ans
