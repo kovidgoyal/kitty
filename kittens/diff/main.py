@@ -19,9 +19,8 @@ from ..tui.images import ImageManager
 from ..tui.loop import Loop
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
-from .images import ImageSupportWarning
 from .patch import Differ, set_diff_command
-from .render import LineRef, render_diff
+from .render import LineRef, render_diff, ImageSupportWarning
 
 try:
     from .highlight import initialize_highlighter, highlight_collection

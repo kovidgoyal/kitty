@@ -2,20 +2,33 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import warnings
 from gettext import gettext as _
 from itertools import repeat, zip_longest
 from math import ceil
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
-from ..tui.images import screen_size
+from ..tui.images import can_display_images, screen_size
 from .collect import (
     Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
     path_name_map, sanitize
 )
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
-from .images import images_supported
+
+
+class ImageSupportWarning(Warning):
+    pass
+
+
+def images_supported():
+    ans = getattr(images_supported, 'ans', None)
+    if ans is None:
+        images_supported.ans = ans = can_display_images()
+        if not ans:
+            warnings.warn('ImageMagick not found images cannot be displayed', ImageSupportWarning)
+    return ans
 
 
 class Ref:
