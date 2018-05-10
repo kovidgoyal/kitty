@@ -15,7 +15,9 @@ from .config import (
     MINIMUM_FONT_SIZE, initial_window_size, prepare_config_file_for_editing
 )
 from .config_utils import to_cmdline
-from .constants import appname, config_dir, editor, set_boss
+from .constants import (
+    appname, config_dir, editor, set_boss, supports_primary_selection
+)
 from .fast_data_types import (
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
@@ -603,7 +605,7 @@ class Boss:
         self.paste_to_active_window(text)
 
     def paste_from_selection(self):
-        text = get_primary_selection()
+        text = get_primary_selection() if supports_primary_selection else get_clipboard_string()
         self.paste_to_active_window(text)
 
     def set_primary_selection(self):
