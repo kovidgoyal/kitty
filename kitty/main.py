@@ -39,9 +39,10 @@ def init_graphics():
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
-    with cached_values_for('main') as cached_values:
-        w, h = initial_window_size(opts, cached_values)
+    with cached_values_for(run_app.cached_values_name) as cached_values:
+        w, h = run_app.initial_window_size(opts, cached_values)
         window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
+        run_app.first_window_callback(opts, window_id)
         startup_ctx = init_startup_notification(window_id)
         show_window(window_id)
         if not is_wayland and not is_macos:  # no window icons on wayland
@@ -54,6 +55,11 @@ def run_app(opts, args):
             boss.child_monitor.main_loop()
         finally:
             boss.destroy()
+
+
+run_app.cached_values_name = 'main'
+run_app.first_window_callback = lambda opts, window_id: None
+run_app.initial_window_size = initial_window_size
 
 
 def ensure_osx_locale():
