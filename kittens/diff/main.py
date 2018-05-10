@@ -174,7 +174,6 @@ class DiffHandler(Handler):
         self.cmd.set_cursor_position(0, self.num_lines - 1)
 
     def place_images(self):
-        self.cmd.set_cursor_position(0, 0)
         offset = self.scroll_pos
         limit = len(self.diff_lines)
         in_image = False
@@ -203,11 +202,10 @@ class DiffHandler(Handler):
         num_visible_rows = image_height_in_rows - topmost_visible_row
         visible_frac = min(num_visible_rows / image_height_in_rows, 1)
         if visible_frac > 0:
-            self.cmd.set_cursor_position(xpos, row)
             height = int(visible_frac * placement.image.height)
             top = placement.image.height - height
             self.image_manager.hide_image(placement.image.image_id)
-            self.image_manager.show_image(placement.image.image_id, src_rect=(
+            self.image_manager.show_image(placement.image.image_id, xpos, row, src_rect=(
                 0, top, placement.image.width, height))
 
     def draw_screen(self):

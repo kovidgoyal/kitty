@@ -161,6 +161,10 @@ def serialize_gr_command(cmd, payload=None):
     return b''.join(ans)
 
 
+def gr_command(cmd, payload=None) -> str:
+    return serialize_gr_command(cmd, payload)
+
+
 def clear_images_on_screen(delete_data=False) -> str:
     return serialize_gr_command({'a': 'd', 'd': 'A' if delete_data else 'a'})
 

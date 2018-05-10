@@ -5,13 +5,13 @@
 import codecs
 import os
 import sys
-from collections import defaultdict, deque
 from base64 import standard_b64encode
+from collections import defaultdict, deque
+from itertools import count
 
 from kitty.utils import fit_image, screen_size_function
 
-from .operations import serialize_gr_command
-from itertools import count
+from .operations import cursor
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -128,7 +128,7 @@ class ImageManager:
         self.tdir = tempfile.mkdtemp(prefix='kitten-images-')
         with tempfile.NamedTemporaryFile(dir=self.tdir, delete=False) as f:
             f.write(b'abcd')
-        self.handler.write(serialize_gr_command(dict(a='q', s=1, v=1, i=1, t='f'), standard_b64encode(f.name.encode(fsenc))))
+        self.handler.cmd.gr_command(dict(a='q', s=1, v=1, i=1, t='f'), standard_b64encode(f.name.encode(fsenc)))
 
     def __exit__(self, *a):
         import shutil
@@ -139,7 +139,7 @@ class ImageManager:
 
     def delete_all_sent_images(self):
         for img_id in self.transmission_status:
-            self.handler.write(serialize_gr_command({'a': 'd', 'i': img_id}))
+            self.handler.cmd.gr_command({'a': 'd', 'i': img_id})
         self.transmission_status.clear()
 
     def handle_response(self, apc):
@@ -175,7 +175,9 @@ class ImageManager:
         image_data = self.image_id_to_image_data[image_id]
         skey = self.image_id_to_converted_data[image_id]
         self.transmit_image(image_data, image_id, *skey)
-        self.handler.write(serialize_gr_command(pl['cmd']))
+        with cursor(self.handler.write):
+            self.handler.cmd.set_cursor_position(pl['x'], pl['y'])
+            self.handler.cmd.gr_command(pl['cmd'])
 
     def send_image(self, path, max_cols=None, max_rows=None, scale_up=False):
         path = os.path.abspath(path)
@@ -216,14 +218,16 @@ class ImageManager:
         return image_id, skey[1], skey[2]
 
     def hide_image(self, image_id):
-        self.handler.write(serialize_gr_command({'a': 'd', 'i': image_id}))
+        self.handler.cmd.gr_command({'a': 'd', 'i': image_id})
 
-    def show_image(self, image_id, src_rect=None):
+    def show_image(self, image_id, x, y, src_rect=None):
         cmd = {'a': 'p', 'i': image_id}
         if src_rect is not None:
             cmd['x'], cmd['y'], cmd['w'], cmd['h'] = map(int, src_rect)
-        self.placements_in_flight[image_id].append({'cmd': cmd})
-        self.handler.write(serialize_gr_command(cmd))
+        self.placements_in_flight[image_id].append({'cmd': cmd, 'x': x, 'y': y})
+        with cursor(self.handler.write):
+            self.handler.cmd.set_cursor_position(x, y)
+            self.handler.cmd.gr_command(cmd)
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
         try:
@@ -238,8 +242,8 @@ class ImageManager:
         cmd = {'a': 't', 'f': image_data.transmit_fmt, 's': width, 'v': height, 'i': image_id}
         if self.filesystem_ok:
             cmd['t'] = 'f'
-            self.handler.write(serialize_gr_command(
-                cmd, standard_b64encode(rgba_path.encode(fsenc))))
+            self.handler.cmd.gr_command(
+                cmd, standard_b64encode(rgba_path.encode(fsenc)))
         else:
             import zlib
             data = open(rgba_path, 'rb').read()
@@ -251,6 +255,6 @@ class ImageManager:
                 chunk, data = data[:4096], data[4096:]
                 m = 1 if data else 0
                 cmd['m'] = m
-                self.handler.write(serialize_gr_command(cmd, chunk))
+                self.handler.cmd.gr_command(cmd, chunk)
                 cmd.clear()
         return image_id
