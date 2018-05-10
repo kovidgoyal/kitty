@@ -933,7 +933,7 @@ void
 screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     /* Erases display in a specific way.
 
-        :param int how: defines the way the line should be erased in:
+        :param int how: defines the way the screen should be erased:
 
             * ``0`` -- Erases from cursor to end of screen, including
               cursor position.
