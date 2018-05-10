@@ -174,6 +174,7 @@ class DiffHandler(Handler):
         self.cmd.set_cursor_position(0, self.num_lines - 1)
 
     def place_images(self):
+        self.cmd.set_cursor_position(0, 0)
         offset = self.scroll_pos
         limit = len(self.diff_lines)
         in_image = False
@@ -279,6 +280,7 @@ class DiffHandler(Handler):
         self.screen_size = screen_size
         self.set_scrolling_region()
         if self.state > COLLECTED:
+            self.image_manager.delete_all_sent_images()
             self.render_diff()
         self.draw_screen()
 
