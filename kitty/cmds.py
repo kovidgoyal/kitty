@@ -374,6 +374,7 @@ def new_window(boss, window, payload):
 # focus_window {{{
 @cmd(
     'Focus the specified window',
+    'Focus the specified window, if no window is specified, focus the window this command is run inside.',
     options_spec=MATCH_WINDOW_OPTION,
     argspec='',
 )
