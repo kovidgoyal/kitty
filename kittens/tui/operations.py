@@ -74,7 +74,9 @@ def set_cursor_position(x, y) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 
-def set_scrolling_region(screen_size, top=None, bottom=None) -> str:
+def set_scrolling_region(screen_size=None, top=None, bottom=None) -> str:
+    if screen_size is None:
+        return '\033[r'
     if top is None:
         top = 0
     if bottom is None:
