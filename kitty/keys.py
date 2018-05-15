@@ -24,7 +24,9 @@ def modify_complex_key(name, amt):
     return modify_key_bytes(key_as_bytes(name), amt)
 
 
-control_codes = {}
+control_codes = {
+    defines.GLFW_KEY_BACKSPACE: b'\x08'
+}
 smkx_key_map = {}
 alt_codes = {
     defines.GLFW_KEY_TAB: b'\033\t',
@@ -261,7 +263,7 @@ def shortcut_matches(s, mods, key, scancode):
 
 
 def generate_key_table():
-    # To run this, use: python3 . -c "from kitty.keys import *; generate_key_table()"
+    # To run this, use: python3 . +runpy "from kitty.keys import *; generate_key_table()"
     import os
     from functools import partial
     f = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w')
