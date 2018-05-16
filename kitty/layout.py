@@ -42,14 +42,15 @@ def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_
         inner_length = cells_in_window * cell_length
         return 2 * (border_length + margin_length) + inner_length
 
-    if bias is not None and number_of_windows == 2:
-        cells_per_window = int(bias * number_of_cells)
-        window_length = calc_window_length(cells_per_window)
-        yield pos, cells_per_window
-        pos += window_length
-        cells_per_window = number_of_cells - cells_per_window
-        window_length = calc_window_length(cells_per_window)
-        yield pos, cells_per_window
+    if bias is not None and number_of_windows > 1 and len(bias) == number_of_windows:
+        cells_map = [int(b * number_of_cells) for b in bias]
+        extra = number_of_cells - sum(cells_map)
+        if extra:
+            cells_map[-1] += extra
+        for cells_per_window in cells_map:
+            window_length = calc_window_length(cells_per_window)
+            yield pos, cells_per_window
+            pos += window_length
         return
 
     window_length = calc_window_length(cells_per_window)
@@ -318,6 +319,7 @@ class Tall(Layout):
         except Exception:
             ans['bias'] = 0.5
         ans['bias'] = max(0.1, min(ans['bias'], 0.9))
+        ans['bias'] = ans['bias'], 1.0 - ans['bias']
         return ans
 
     def do_layout(self, windows, active_window_idx):
