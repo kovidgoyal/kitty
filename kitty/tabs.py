@@ -12,10 +12,10 @@ from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
-    next_window_id, remove_tab, remove_window, set_active_tab,
+    next_window_id, pt_to_px, remove_tab, remove_window, set_active_tab,
     set_tab_bar_render_data, swap_tabs, viewport_for_window, x11_window_id
 )
-from .layout import Rect, all_layouts
+from .layout import Rect, create_layout_object_for, evict_cached_layouts
 from .session import resolved_shell
 from .utils import color_as_int, log_error
 from .window import Window, calculate_gl_geometry
@@ -38,6 +38,8 @@ class Tab:  # {{{
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
+        self.margin_width, self.padding_width = map(pt_to_px, (
+            self.opts.window_margin_width, self.opts.window_padding_width))
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
@@ -138,8 +140,7 @@ class Tab:  # {{{
                 w.change_titlebar_color()
 
     def create_layout_object(self, name):
-        name, rest = name.partition(':')[::2]
-        return all_layouts[name](self.os_window_id, self.id, self.opts, self.borders.border_width, rest)
+        return create_layout_object_for(name, self.os_window_id, self.id, self.margin_width, self.padding_width, self.borders.border_width)
 
     def next_layout(self):
         if len(self.enabled_layouts) > 1:
@@ -278,6 +279,7 @@ class Tab:  # {{{
         return window in self.windows
 
     def destroy(self):
+        evict_cached_layouts(self.id)
         for w in self.windows:
             w.destroy()
         self.windows = deque()

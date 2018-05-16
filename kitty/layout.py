@@ -8,7 +8,7 @@ from itertools import islice
 
 from .constants import WindowGeometry
 from .fast_data_types import (
-    Region, pt_to_px, set_active_window, swap_windows, viewport_for_window
+    Region, set_active_window, swap_windows, viewport_for_window
 )
 
 central = Region((0, 0, 199, 199, 200, 200))
@@ -77,15 +77,14 @@ class Layout:
     needs_window_borders = True
     only_active_window_visible = False
 
-    def __init__(self, os_window_id, tab_id, opts, border_width, layout_opts=''):
+    def __init__(self, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts=''):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
         self.swap_windows_in_os_window = partial(swap_windows, os_window_id, tab_id)
-        self.opts = opts
         self.border_width = border_width
-        self.margin_width = pt_to_px(opts.window_margin_width)
-        self.padding_width = pt_to_px(opts.window_padding_width)
+        self.margin_width = margin_width
+        self.padding_width = padding_width
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects = ()
@@ -485,3 +484,24 @@ class Horizontal(Layout):
 
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
+
+
+def create_layout_object_for(name, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts=''):
+    key = name, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts
+    ans = create_layout_object_for.cache.get(key)
+    if ans is None:
+        name, layout_opts = name.partition(':')[::2]
+        ans = create_layout_object_for.cache[key] = all_layouts[name](os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts)
+    return ans
+
+
+create_layout_object_for.cache = {}
+
+
+def evict_cached_layouts(tab_id):
+    remove = []
+    for key in create_layout_object_for.cache:
+        if key[2] == tab_id:
+            remove.append(key)
+    for key in remove:
+        del create_layout_object_for.cache[key]
