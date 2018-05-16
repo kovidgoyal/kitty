@@ -245,14 +245,24 @@ def to_modifiers(val):
     return parse_mods(val.split('+'), val) or 0
 
 
+def uniq(vals, result_type=list):
+    seen = set()
+    seen_add = seen.add
+    return result_type(x for x in vals if x not in seen and not seen_add(x))
+
+
 def to_layout_names(raw):
     parts = [x.strip().lower() for x in raw.split(',')]
-    if '*' in parts:
-        return sorted(all_layouts)
+    ans = []
     for p in parts:
-        if p not in all_layouts:
+        if p == '*':
+            ans.extend(sorted(all_layouts))
+            continue
+        name = p.partition(':')[0]
+        if name not in all_layouts:
             raise ValueError('The window layout {} is unknown'.format(p))
-    return parts
+        ans.append(p)
+    return uniq(ans)
 
 
 def adjust_line_height(x):

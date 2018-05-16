@@ -110,12 +110,7 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
         with open(args.session) as f:
             return parse_session(f.read(), opts)
     ans = Session()
-    if args and args.window_layout:
-        if args.window_layout not in opts.enabled_layouts:
-            opts.enabled_layouts.insert(0, args.window_layout)
-        current_layout = args.window_layout
-    else:
-        current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
+    current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout
     if special_window is None:

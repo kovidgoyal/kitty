@@ -21,7 +21,7 @@ def idx_for_id(win_id, windows):
             return i
 
 
-def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False):
+def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False, bias=None):
     number_of_cells = length // cell_length
     border_length += padding_length
     space_needed_for_border = number_of_windows * 2 * border_length
@@ -37,8 +37,22 @@ def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_
     if not left_align:
         pos += extra // 2
     pos += border_length + margin_length
-    inner_length = cells_per_window * cell_length
-    window_length = 2 * (border_length + margin_length) + inner_length
+
+    def calc_window_length(cells_in_window):
+        inner_length = cells_in_window * cell_length
+        return 2 * (border_length + margin_length) + inner_length
+
+    if bias is not None and number_of_windows == 2:
+        cells_per_window = int(bias * number_of_cells)
+        window_length = calc_window_length(cells_per_window)
+        yield pos, cells_per_window
+        pos += window_length
+        cells_per_window = number_of_cells - cells_per_window
+        window_length = calc_window_length(cells_per_window)
+        yield pos, cells_per_window
+        return
+
+    window_length = calc_window_length(cells_per_window)
     extra = number_of_cells - (cells_per_window * number_of_windows)
     while number_of_windows > 0:
         number_of_windows -= 1
@@ -62,7 +76,7 @@ class Layout:
     needs_window_borders = True
     only_active_window_visible = False
 
-    def __init__(self, os_window_id, tab_id, opts, border_width):
+    def __init__(self, os_window_id, tab_id, opts, border_width, layout_opts=''):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
@@ -74,6 +88,18 @@ class Layout:
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects = ()
+        self.layout_opts = self.parse_layout_opts(layout_opts)
+        self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
+
+    def parse_layout_opts(self, layout_opts):
+        if not layout_opts:
+            return {}
+        ans = {}
+        for x in layout_opts.split(';'):
+            k, v = x.partition('=')[::2]
+            if k and v:
+                ans[k] = v
+        return ans
 
     def nth_window(self, all_windows, num, make_active=True):
         windows = process_overlaid_windows(all_windows)[1]
@@ -199,15 +225,15 @@ class Layout:
         return idx_for_id(active_window.id, all_windows)
 
     # Utils {{{
-    def xlayout(self, num):
+    def xlayout(self, num, bias=None):
         return layout_dimension(
             central.left, central.width, cell_width, num, self.border_width,
-            margin_length=self.margin_width, padding_length=self.padding_width)
+            margin_length=self.margin_width, padding_length=self.padding_width, bias=bias)
 
-    def ylayout(self, num, left_align=True):
+    def ylayout(self, num, left_align=True, bias=None):
         return layout_dimension(
             central.top, central.height, cell_height, num, self.border_width, left_align=left_align,
-            margin_length=self.margin_width, padding_length=self.padding_width)
+            margin_length=self.margin_width, padding_length=self.padding_width, bias=bias)
 
     def simple_blank_rects(self, first_window, last_window):
         br = self.blank_rects
@@ -285,6 +311,15 @@ class Tall(Layout):
 
     name = 'tall'
 
+    def parse_layout_opts(self, layout_opts):
+        ans = Layout.parse_layout_opts(self, layout_opts)
+        try:
+            ans['bias'] = int(ans.get('bias', 50)) / 100
+        except Exception:
+            ans['bias'] = 0.5
+        ans['bias'] = max(0.1, min(ans['bias'], 0.9))
+        return ans
+
     def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
         if len(windows) == 1:
@@ -292,7 +327,7 @@ class Tall(Layout):
             windows[0].set_geometry(0, wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
-        xlayout = self.xlayout(2)
+        xlayout = self.xlayout(2, bias=self.layout_opts['bias'])
         xstart, xnum = next(xlayout)
         ystart, ynum = next(self.ylayout(1))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
@@ -311,7 +346,7 @@ class Tall(Layout):
         self.bottom_blank_rect(windows[0])
 
 
-class Fat(Layout):
+class Fat(Tall):
 
     name = 'fat'
 
@@ -323,7 +358,7 @@ class Fat(Layout):
             self.blank_rects = blank_rects_for_window(windows[0])
             return
         xstart, xnum = next(self.xlayout(1))
-        ylayout = self.ylayout(2)
+        ylayout = self.ylayout(2, bias=self.layout_opts['bias'])
         ystart, ynum = next(ylayout)
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
         xlayout = self.xlayout(len(windows) - 1)

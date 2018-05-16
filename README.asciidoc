@@ -343,6 +343,17 @@ You can switch between layouts using the {sc_next_layout} key combination. You c
 also create shortcuts to select particular layouts, and choose which layouts
 you want to enable/disable, see link:kitty/kitty.conf[kitty.conf] for examples.
 
+Some layouts take options to control their behavior. For example, the `fat` and `tall`
+layouts accept the `bias` option to control how the available space is split up. To specify the
+option, in kitty.conf use:
+
+```
+enabled_layouts tall:bias=70
+```
+
+this will make the tall window occupy `70%` of available width. `bias` can be
+any number between 10 and 90.
+
 Writing a new layout only requires about fifty lines of code, so if there is
 some layout you want, take a look at link:kitty/layout.py[layout.py] and submit
 a pull request!

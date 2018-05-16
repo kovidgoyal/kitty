@@ -137,14 +137,17 @@ class Tab:  # {{{
             if w is not None:
                 w.change_titlebar_color()
 
-    def create_layout_object(self, idx):
-        return all_layouts[idx](self.os_window_id, self.id, self.opts, self.borders.border_width)
+    def create_layout_object(self, name):
+        name, rest = name.partition(':')[::2]
+        return all_layouts[name](self.os_window_id, self.id, self.opts, self.borders.border_width, rest)
 
     def next_layout(self):
         if len(self.enabled_layouts) > 1:
-            try:
-                idx = self.enabled_layouts.index(self.current_layout.name)
-            except Exception:
+            for i, layout_name in enumerate(self.enabled_layouts):
+                if layout_name == self.current_layout.full_name:
+                    idx = i
+                    break
+            else:
                 idx = -1
             nl = self.enabled_layouts[(idx + 1) % len(self.enabled_layouts)]
             self.current_layout = self.create_layout_object(nl)

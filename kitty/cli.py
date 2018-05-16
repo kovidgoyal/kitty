@@ -10,7 +10,6 @@ from collections import deque
 from .config import defaults, load_config
 from .config_utils import resolve_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
-from .layout import all_layouts
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
@@ -69,12 +68,6 @@ Change to the specified directory when launching
 type=bool-set
 condition=not is_macos
 Detach from the controlling terminal, if any
-
-
---window-layout
-type=choices
-choices={window_layout_choices}
-The window layout to use on startup.
 
 
 --session
@@ -488,8 +481,8 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
-            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
-            window_layout_choices=', '.join(all_layouts)
+            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname)
+
         )
     return options_spec.ans
 
