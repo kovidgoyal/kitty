@@ -499,9 +499,6 @@ create_layout_object_for.cache = {}
 
 
 def evict_cached_layouts(tab_id):
-    remove = []
-    for key in create_layout_object_for.cache:
-        if key[2] == tab_id:
-            remove.append(key)
+    remove = [key for key in create_layout_object_for.cache if key[2] == tab_id]
     for key in remove:
         del create_layout_object_for.cache[key]
