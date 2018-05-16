@@ -720,6 +720,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
             num_codepoints_used_by_glyph = UINT32_MAX;
         } else {
             next_cluster = G(info)[G(glyph_idx) + 1].cluster;
+            // RTL languages like Arabic have decreasing cluster numbers
             if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
         }
         if (!current_group->num_glyphs) {
