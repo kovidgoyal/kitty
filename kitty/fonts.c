@@ -720,7 +720,7 @@ shape_run(Cell *first_cell, index_type num_cells, Font *font) {
             num_codepoints_used_by_glyph = UINT32_MAX;
         } else {
             next_cluster = G(info)[G(glyph_idx) + 1].cluster;
-            if (next_cluster > cluster) num_codepoints_used_by_glyph = next_cluster - cluster;
+            if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
         }
         if (!current_group->num_glyphs) {
             add_to_current_group = true;
