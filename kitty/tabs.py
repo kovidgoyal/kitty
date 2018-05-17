@@ -166,7 +166,7 @@ class Tab:  # {{{
         increment_as_percent = self.current_layout.bias_increment_for_cell(is_horizontal) * increment
         if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
             self.relayout()
-            return ''
+            return
         return 'Could not resize'
 
     def reset_window_sizes(self):

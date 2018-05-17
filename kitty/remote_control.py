@@ -130,5 +130,8 @@ def main(args):
         if response.get('tb'):
             print(response['tb'], file=sys.stderr)
         raise SystemExit(response['error'])
-    if 'data' in response:
-        print(response['data'])
+    data = response.get('data')
+    if data is not None:
+        if func.string_return_is_error and isinstance(data, str):
+            raise SystemExit(data)
+        print(data)

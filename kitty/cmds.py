@@ -21,7 +21,7 @@ class MatchError(ValueError):
         ValueError.__init__(self, 'No matching {} for expression: {}'.format(target, expression))
 
 
-def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...'):
+def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False):
 
     def w(func):
         func.short_desc = short_desc
@@ -32,6 +32,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
         func.is_cmd = True
         func.impl = lambda: globals()[func.__name__[4:]]
         func.no_response = no_response
+        func.string_return_is_error = string_return_is_error
         return func
     return w
 
@@ -299,7 +300,8 @@ reset the layout to its default configuration.
 type=bool-set
 If specified close the window this command is run in, rather than the active window.
 ''',
-    argspec=''
+    argspec='',
+    string_return_is_error=True
 )
 def cmd_resize_window(global_opts, opts, args):
     return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self}
