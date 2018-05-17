@@ -97,10 +97,7 @@ class Layout:
         self.blank_rects = ()
         self.layout_opts = self.parse_layout_opts(layout_opts)
         self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
-        self.initialize_sub_class()
-
-    def initialize_sub_class(self):
-        pass
+        self.remove_all_biases()
 
     def bias_increment_for_cell(self, is_horizontal):
         self._set_dimensions()
@@ -378,9 +375,6 @@ class Tall(Layout):
     vlayout = Layout.ylayout
     main_is_horizontal = True
 
-    def initialize_sub_class(self):
-        self.remove_all_biases()
-
     def remove_all_biases(self):
         self.main_bias = list(self.layout_opts['bias'])
         self.biased_map = {}
@@ -533,6 +527,29 @@ class Grid(Tall):
 class Vertical(Layout):
 
     name = 'vertical'
+    main_is_horizontal = False
+    vlayout = Layout.ylayout
+
+    def variable_layout(self, num_windows, biased_map):
+        return self.vlayout(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows else None)
+
+    def remove_all_biases(self):
+        self.biased_map = {}
+        return True
+
+    def apply_bias(self, idx, increment, num_windows, is_horizontal):
+        if self.main_is_horizontal != is_horizontal:
+            return False
+        if num_windows < 2:
+            return False
+        before_layout = list(self.variable_layout(num_windows, self.biased_map))
+        candidate = self.biased_map.copy()
+        before = candidate.get(idx, 0)
+        candidate[idx] = before + increment
+        if before_layout == list(self.variable_layout(num_windows, candidate)):
+            return False
+        self.biased_map = candidate
+        return True
 
     def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
@@ -545,11 +562,9 @@ class Vertical(Layout):
 
         xlayout = self.xlayout(1)
         xstart, xnum = next(xlayout)
-        ylayout = self.ylayout(window_count)
-
-        for i in range(window_count):
-            ystart, ynum = next(ylayout)
-            windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+        ylayout = self.variable_layout(window_count, self.biased_map)
+        for i, (w, (ystart, ynum)) in enumerate(zip(windows, ylayout)):
+            w.set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
             # bottom blank rect
             self.bottom_blank_rect(windows[i])
 
@@ -557,9 +572,11 @@ class Vertical(Layout):
         self.simple_blank_rects(windows[0], windows[-1])
 
 
-class Horizontal(Layout):
+class Horizontal(Vertical):
 
     name = 'horizontal'
+    main_is_horizontal = True
+    vlayout = Layout.xlayout
 
     def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
@@ -570,13 +587,11 @@ class Horizontal(Layout):
             self.blank_rects = blank_rects_for_window(windows[0])
             return
 
-        xlayout = self.xlayout(window_count)
+        xlayout = self.variable_layout(window_count, self.biased_map)
         ylayout = self.ylayout(1)
         ystart, ynum = next(ylayout)
-
-        for i in range(window_count):
-            xstart, xnum = next(xlayout)
-            windows[i].set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
+        for i, (w, (xstart, xnum)) in enumerate(zip(windows, xlayout)):
+            w.set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
             if i > 0:
                 # between blank rect
                 self.between_blank_rect(windows[i - 1], windows[i])
