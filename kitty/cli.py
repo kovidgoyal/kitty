@@ -112,7 +112,6 @@ Output commands received from child process to stdout
 
 
 --replay-commands
-type=bool-set
 Replay previously dumped commands. Specify the path to a dump file previously created by --dump-commands. You
 can open a new kitty window to replay the commands with:
 
