@@ -12,8 +12,9 @@ from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
-    next_window_id, pt_to_px, remove_tab, remove_window, set_active_tab,
-    set_tab_bar_render_data, swap_tabs, viewport_for_window, x11_window_id
+    next_window_id, pt_to_px, remove_tab, remove_window, ring_bell,
+    set_active_tab, set_tab_bar_render_data, swap_tabs, viewport_for_window,
+    x11_window_id
 )
 from .layout import Rect, create_layout_object_for, evict_cached_layouts
 from .session import resolved_shell
@@ -161,6 +162,16 @@ class Tab:  # {{{
             return
         self.current_layout = self.create_layout_object(layout_name)
         self.relayout()
+
+    def resize_window_by(self, window_id, increment, is_horizontal):
+        if self.current_layout.modify_size_of_window(self.windows, window_id, increment, is_horizontal):
+            self.relayout()
+        else:
+            ring_bell(self.os_window_id)
+
+    def reset_window_sizes(self):
+        if self.current_layout.remove_all_biases():
+            self.relayout()
 
     def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None, env=None):
         if cmd is None:

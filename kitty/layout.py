@@ -4,7 +4,7 @@
 
 from collections import namedtuple
 from functools import partial
-from itertools import islice
+from itertools import islice, repeat
 
 from .constants import WindowGeometry
 from .fast_data_types import (
@@ -42,8 +42,15 @@ def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_
         inner_length = cells_in_window * cell_length
         return 2 * (border_length + margin_length) + inner_length
 
-    if bias is not None and number_of_windows > 1 and len(bias) == number_of_windows:
+    if bias is not None and number_of_windows > 1 and len(bias) == number_of_windows and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]
+        while min(cells_map) < 5:
+            maxi, mini = map(cells_map.index, (max(cells_map), min(cells_map)))
+            if maxi == mini:
+                break
+            cells_map[mini] += 1
+            cells_map[maxi] -= 1
+
         extra = number_of_cells - sum(cells_map)
         if extra:
             cells_map[-1] += extra
@@ -90,6 +97,28 @@ class Layout:
         self.blank_rects = ()
         self.layout_opts = self.parse_layout_opts(layout_opts)
         self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
+        self.initialize_sub_class()
+
+    def initialize_sub_class(self):
+        pass
+
+    def apply_bias(self, idx, increment, num_windows, is_horizontal):
+        return False
+
+    def remove_all_biases(self):
+        return False
+
+    def modify_size_of_window(self, all_windows, window_id, increment, is_horizontal=True):
+        idx = idx_for_id(window_id, all_windows)
+        if idx is None:
+            return
+        w = all_windows[idx]
+        windows = process_overlaid_windows(all_windows)[1]
+        idx = idx_for_id(w.id, windows)
+        if idx is None:
+            idx = idx_for_id(w.overlay_window_id, windows)
+        if idx is not None:
+            return self.apply_bias(idx, increment, len(windows), is_horizontal)
 
     def parse_layout_opts(self, layout_opts):
         if not layout_opts:
@@ -307,9 +336,58 @@ class Stack(Layout):
                 self.blank_rects = blank_rects_for_window(w)
 
 
+def safe_increment_bias(old_val, increment):
+    return max(0.1, min(old_val + increment, 0.9))
+
+
+def normalize_biases(biases):
+    s = sum(biases)
+    if s == 1:
+        return biases
+    return [x/s for x in biases]
+
+
+def distribute_indexed_bias(base_bias, index_bias_map):
+    if not index_bias_map:
+        return base_bias
+    ans = list(base_bias)
+    limit = len(ans)
+    for row, increment in index_bias_map.items():
+        if row >= limit or not increment:
+            continue
+        other_increment = -increment / (limit - 1)
+        ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
+    return normalize_biases(ans)
+
+
 class Tall(Layout):
 
     name = 'tall'
+
+    def initialize_sub_class(self):
+        self.remove_all_biases()
+
+    def remove_all_biases(self):
+        self.x_bias = list(self.layout_opts['bias'])
+        self.biased_rows = {}
+        return True
+
+    def apply_bias(self, idx, increment, num_windows, is_horizontal):
+        if is_horizontal:
+            before = self.x_bias
+            if idx == 0:
+                self.x_bias = [safe_increment_bias(self.x_bias[0], increment), safe_increment_bias(self.x_bias[1], -increment)]
+            else:
+                self.x_bias = [safe_increment_bias(self.x_bias[0], -increment), safe_increment_bias(self.x_bias[1], increment)]
+            self.x_bias = normalize_biases(self.x_bias)
+            after = self.x_bias
+        else:
+            if idx == 0:
+                return False
+            idx -= 1
+            before = self.biased_rows.get(idx, 0)
+            self.biased_rows[idx] = after = before + increment
+        return before != after
 
     def parse_layout_opts(self, layout_opts):
         ans = Layout.parse_layout_opts(self, layout_opts)
@@ -328,12 +406,16 @@ class Tall(Layout):
             windows[0].set_geometry(0, wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
-        xlayout = self.xlayout(2, bias=self.layout_opts['bias'])
+        xlayout = self.xlayout(2, bias=self.x_bias)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(self.ylayout(1))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
         xstart, xnum = next(xlayout)
-        ylayout = self.ylayout(len(windows) - 1)
+        if len(windows) > 2:
+            y_bias = distribute_indexed_bias(list(repeat(1/(len(windows) - 1), len(windows) - 1)), self.biased_rows)
+        else:
+            y_bias = None
+        ylayout = self.ylayout(len(windows) - 1, bias=y_bias)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
             # right bottom blank rect

@@ -19,7 +19,8 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, create_os_window, current_os_window, destroy_global_data,
+    GLFW_KEY_0, GLFW_KEY_W, GLFW_KEY_N, GLFW_KEY_S, ChildMonitor,
+    create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
     layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
     set_dpi_from_os_window, set_in_sequence_mode, show_window,
@@ -412,6 +413,22 @@ class Boss:
             set_in_sequence_mode(False)
             if matched_action is not None:
                 self.dispatch_action(matched_action)
+
+    def handle_resize_keypress(self, key, mods, os_window_id, tab_id, window_id):
+        tm = self.os_window_map.get(os_window_id)
+        if tm is None:
+            return
+        tab = tm.tab_for_id(tab_id)
+        if tab is None:
+            return
+        if key == GLFW_KEY_0:
+            tab.reset_window_sizes()
+            return
+        is_horizontal = key in (GLFW_KEY_W, GLFW_KEY_N)
+        increment = 0.05
+        if key in (GLFW_KEY_N, GLFW_KEY_S):
+            increment *= -1
+        tab.resize_window_by(window_id, increment, is_horizontal)
 
     def default_bg_changed_for(self, window_id):
         w = self.window_id_map.get(window_id)

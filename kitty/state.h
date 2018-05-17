@@ -137,6 +137,9 @@ typedef struct {
     bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
     bool in_sequence_mode;
+    struct {
+        id_type os_window_id, tab_id, window_id;
+    } currently_resizing;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -183,3 +186,4 @@ void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(unsigned int, unsigned int, unsigned int, pixel*);
 void set_titlebar_color(OSWindow *w, color_type color);
+void terminate_resize_mode();

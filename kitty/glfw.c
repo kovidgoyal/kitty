@@ -765,6 +765,16 @@ os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
     return NULL;
 }
 
+static PyObject*
+ring_bell(PyObject UNUSED *self, PyObject *args) {
+    id_type os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    OSWindow *w = os_window_for_kitty_window(os_window_id);
+    if (w && w->handle) {
+        glfwWindowBell(w->handle);
+    }
+    Py_RETURN_NONE;
+}
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -778,6 +788,7 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
+    METHODB(ring_bell, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),

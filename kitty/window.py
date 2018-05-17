@@ -17,10 +17,10 @@ from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
     CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM, OSC, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, Screen,
-    add_window, compile_program, get_clipboard_string, glfw_post_empty_event,
-    init_cell_program, init_cursor_program, set_clipboard_string,
-    set_titlebar_color, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    add_window, compile_program, enter_resize_mode, get_clipboard_string,
+    glfw_post_empty_event, init_cell_program, init_cursor_program,
+    set_clipboard_string, set_titlebar_color, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -192,6 +192,9 @@ class Window:
         if not text:
             return True
         self.write_to_child(text)
+
+    def start_resizing_window(self):
+        enter_resize_mode(self.os_window_id, self.tab_id, self.id)
 
     def write_to_child(self, data):
         if data:
