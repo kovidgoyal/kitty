@@ -61,6 +61,9 @@ class Handler:
     def on_job_done(self, job_id, job_result):
         pass
 
+    def on_kitty_cmd_response(self, response):
+        pass
+
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')

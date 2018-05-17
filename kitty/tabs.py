@@ -12,9 +12,8 @@ from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
-    next_window_id, pt_to_px, remove_tab, remove_window, ring_bell,
-    set_active_tab, set_tab_bar_render_data, swap_tabs, viewport_for_window,
-    x11_window_id
+    next_window_id, pt_to_px, remove_tab, remove_window, set_active_tab,
+    set_tab_bar_render_data, swap_tabs, viewport_for_window, x11_window_id
 )
 from .layout import Rect, create_layout_object_for, evict_cached_layouts
 from .session import resolved_shell
@@ -167,8 +166,8 @@ class Tab:  # {{{
         increment_as_percent = self.current_layout.bias_increment_for_cell(is_horizontal) * increment
         if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
             self.relayout()
-        else:
-            ring_bell(self.os_window_id)
+            return ''
+        return 'Could not resize'
 
     def reset_window_sizes(self):
         if self.current_layout.remove_all_biases():

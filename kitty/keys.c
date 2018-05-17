@@ -81,25 +81,10 @@ is_ascii_control_char(char c) {
     return c == 0 || (1 <= c && c <= 31) || c == 127;
 }
 
-static inline bool
-handle_resize_key(int key, int action, int mods) {
-    if (action == GLFW_RELEASE) return true;
-    if (key == GLFW_KEY_T || key == GLFW_KEY_S || key == GLFW_KEY_W || key == GLFW_KEY_N || key == GLFW_KEY_0) {
-        call_boss(handle_resize_keypress, "iiKKK", key, mods, global_state.currently_resizing.os_window_id, global_state.currently_resizing.tab_id, global_state.currently_resizing.window_id);
-        return true;
-    }
-    if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) return true;
-    return false;
-}
-
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
     if (!w) return;
-    if (global_state.currently_resizing.os_window_id) {
-        if (handle_resize_key(key, action, mods)) return;
-        terminate_resize_mode();
-    }
     if (global_state.in_sequence_mode) {
         if (
             action != GLFW_RELEASE &&

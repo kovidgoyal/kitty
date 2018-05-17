@@ -114,7 +114,7 @@ class Layout:
     def modify_size_of_window(self, all_windows, window_id, increment, is_horizontal=True):
         idx = idx_for_id(window_id, all_windows)
         if idx is None:
-            return
+            return False
         w = all_windows[idx]
         windows = process_overlaid_windows(all_windows)[1]
         idx = idx_for_id(w.id, windows)
@@ -122,6 +122,7 @@ class Layout:
             idx = idx_for_id(w.overlay_window_id, windows)
         if idx is not None:
             return self.apply_bias(idx, increment, len(windows), is_horizontal)
+        return False
 
     def parse_layout_opts(self, layout_opts):
         if not layout_opts:

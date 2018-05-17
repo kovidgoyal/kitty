@@ -39,10 +39,14 @@ will only work if this process is run within an existing kitty window.
 '''.format, appname=appname)
 
 
+def encode_send(send):
+    send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
+    return b'\x1bP' + send + b'\x1b\\'
+
+
 def do_io(to, send, no_response):
     import socket
-    send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
-    send = b'\x1bP' + send + b'\x1b\\'
+    send = encode_send(send)
     if to:
         family, address = parse_address_spec(to)[:2]
         s = socket.socket(family)
@@ -79,8 +83,10 @@ def do_io(to, send, no_response):
     return response
 
 
-def main(args):
-    all_commands = tuple(sorted(cmap))
+all_commands = tuple(sorted(cmap))
+
+
+def parse_rc_args(args):
     cmds = ('  |G {}|\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
     msg = (
         'Control {appname} by sending it commands. Add'
@@ -90,7 +96,11 @@ def main(args):
         '{appname} @ |_ command| -h'
     ).format(appname=appname, cmds='\n'.join(cmds))
 
-    global_opts, items = parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))
+    return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))
+
+
+def main(args):
+    global_opts, items = parse_rc_args(args)
 
     if not items:
         from kitty.shell import main

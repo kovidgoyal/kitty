@@ -19,12 +19,11 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    GLFW_KEY_0, GLFW_KEY_N, GLFW_KEY_S, GLFW_KEY_W, GLFW_MOD_CONTROL,
     ChildMonitor, create_os_window, current_os_window, destroy_global_data,
-    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
-    set_dpi_from_os_window, set_in_sequence_mode, show_window,
-    toggle_fullscreen, viewport_for_window
+    destroy_sprite_map, get_clipboard_string,
+    glfw_post_empty_event, layout_sprite_map, mark_os_window_for_close,
+    set_clipboard_string, set_dpi_from_os_window, set_in_sequence_mode,
+    show_window, toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut, shortcut_matches
@@ -414,23 +413,24 @@ class Boss:
             if matched_action is not None:
                 self.dispatch_action(matched_action)
 
-    def handle_resize_keypress(self, key, mods, os_window_id, tab_id, window_id):
-        tm = self.os_window_map.get(os_window_id)
-        if tm is None:
+    def start_resizing_window(self):
+        w = self.active_window
+        if w is None:
             return
-        tab = tm.tab_for_id(tab_id)
-        if tab is None:
-            return
-        if key == GLFW_KEY_0:
-            tab.reset_window_sizes()
-            return
-        is_horizontal = key in (GLFW_KEY_W, GLFW_KEY_N)
-        increment = self.opts.window_resize_step_cells if is_horizontal else self.opts.window_resize_step_lines
-        if mods == GLFW_MOD_CONTROL:
-            increment *= 2
-        if key in (GLFW_KEY_N, GLFW_KEY_S):
-            increment *= -1
-        tab.resize_window_by(window_id, increment, is_horizontal)
+        overlay_window = self._run_kitten('resize_window', args=[
+            '--horizontal-increment={}'.format(self.opts.window_resize_step_cells),
+            '--vertical-increment={}'.format(self.opts.window_resize_step_lines)
+        ])
+        if overlay_window is not None:
+            overlay_window.allow_remote_control = True
+
+    def resize_layout_window(self, window, increment, is_horizontal, reset=False):
+        tab = window.tabref()
+        if tab is None or not increment:
+            return False
+        if reset:
+            return tab.reset_window_sizes()
+        return tab.resize_window_by(window.id, increment, is_horizontal)
 
     def default_bg_changed_for(self, window_id):
         w = self.window_id_map.get(window_id)
@@ -539,6 +539,7 @@ class Boss:
                     env={'KITTY_COMMON_OPTS': json.dumps(copts), 'PYTHONWARNINGS': 'ignore'},
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
+            return overlay_window
 
     def run_kitten(self, type_of_input, kitten, *args):
         import shlex

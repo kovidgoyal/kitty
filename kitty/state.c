@@ -268,14 +268,6 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     }
 }
 
-void
-terminate_resize_mode() {
-    global_state.currently_resizing.os_window_id = 0;
-    global_state.currently_resizing.tab_id = 0;
-    global_state.currently_resizing.window_id = 0;
-}
-
-
 
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
@@ -594,14 +586,6 @@ PYWRAP1(set_display_state) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(enter_resize_mode) {
-    global_state.currently_resizing.os_window_id = 0;
-    global_state.currently_resizing.tab_id = 0;
-    global_state.currently_resizing.window_id = 0;
-    PA("|KKK", &global_state.currently_resizing.os_window_id, &global_state.currently_resizing.tab_id, &global_state.currently_resizing.window_id);
-    Py_RETURN_NONE;
-}
-
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
@@ -648,7 +632,6 @@ static PyMethodDef module_methods[] = {
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(set_display_state, METH_VARARGS),
-    MW(enter_resize_mode, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

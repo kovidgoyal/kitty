@@ -303,7 +303,6 @@ open_url(Window *w) {
 }
 
 HANDLER(handle_button_event) {
-    if (global_state.currently_resizing.os_window_id) { terminate_resize_mode(); }
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
     if (window_idx != t->active_window) {

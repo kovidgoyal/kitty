@@ -58,6 +58,10 @@ def bell() -> str:
     return '\a'
 
 
+def beep() -> str:
+    return '\a'
+
+
 def set_window_title(value) -> str:
     return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\')
 
@@ -94,6 +98,7 @@ def scroll_screen(amt=1) -> str:
 
 STANDARD_COLORS = {name: i for i, name in enumerate(
     'black red green yellow blue magenta cyan gray'.split())}
+STANDARD_COLORS['white'] = STANDARD_COLORS['gray']
 UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
     'straight double curly'.split())}
 

@@ -275,6 +275,54 @@ def close_window(boss, window, payload):
 # }}}
 
 
+# resize_window {{{
+@cmd(
+    'Resize the specified window',
+    'Resize the specified window. Note that not all layouts can resize all windows in all directions.',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--increment -i
+type=int
+default=2
+The number of cells to change the size by, can be negative to decrease the size.
+
+
+--axis -a
+type=choices
+choices=horizontal,vertical,reset
+default=horizontal
+The axis along which to resize. If |_ horizontal|, it will make the window wider or narrower by the specified increment.
+If |_ vertical|, it will make the window taller or shorter by the specified increment. The special value |_ reset| will
+reset the layout to its default configuration.
+
+
+--self
+type=bool-set
+If specified close the window this command is run in, rather than the active window.
+''',
+    argspec=''
+)
+def cmd_resize_window(global_opts, opts, args):
+    return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self}
+
+
+def resize_window(boss, window, payload):
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    else:
+        windows = [window if window and payload['self'] else boss.active_window]
+    resized = False
+    if windows and windows[0]:
+        resized = boss.resize_layout_window(
+            windows[0], increment=payload['increment'], is_horizontal=payload['axis'] == 'horizontal',
+            reset=payload['axis'] == 'reset'
+        )
+    return resized
+# }}}
+
+
 # close_tab {{{
 @cmd(
     'Close the specified tab(s)',
