@@ -523,7 +523,7 @@ class Grid(Layout):  # {{{
             attr = 'biased_cols'
         else:
             b = self.biased_rows
-            if nrows < 2:
+            if max(nrows, special_rows) < 2:
                 return False
             bias_idx = row_num
             layout_func = self.ylayout
