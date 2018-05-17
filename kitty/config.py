@@ -366,6 +366,8 @@ type_map = {
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
     'clipboard_control': lambda x: frozenset(x.lower().split()),
+    'window_resize_step_cells': int,
+    'window_resize_step_lines': int,
 }
 
 for name in (

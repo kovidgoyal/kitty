@@ -102,7 +102,13 @@ class Layout:
     def initialize_sub_class(self):
         pass
 
-    def apply_bias(self, idx, increment, num_windows, is_horizontal):
+    def bias_increment_for_cell(self, is_horizontal):
+        self._set_dimensions()
+        if is_horizontal:
+            return (cell_width + 1) / central.width
+        return (cell_height + 1) / central.height
+
+    def apply_bias(self, idx, increment_as_percent, num_windows, is_horizontal):
         return False
 
     def remove_all_biases(self):
@@ -235,10 +241,12 @@ class Layout:
         self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
-    def __call__(self, all_windows, active_window_idx):
+    def _set_dimensions(self):
         global central, cell_width, cell_height
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
 
+    def __call__(self, all_windows, active_window_idx):
+        self._set_dimensions()
         active_window = all_windows[active_window_idx]
         overlaid_windows, windows = process_overlaid_windows(all_windows)
         if overlaid_windows:

@@ -164,7 +164,8 @@ class Tab:  # {{{
         self.relayout()
 
     def resize_window_by(self, window_id, increment, is_horizontal):
-        if self.current_layout.modify_size_of_window(self.windows, window_id, increment, is_horizontal):
+        increment_as_percent = self.current_layout.bias_increment_for_cell(is_horizontal) * increment
+        if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
             self.relayout()
         else:
             ring_bell(self.os_window_id)

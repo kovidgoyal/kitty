@@ -19,8 +19,8 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    GLFW_KEY_0, GLFW_KEY_W, GLFW_KEY_N, GLFW_KEY_S, ChildMonitor,
-    create_os_window, current_os_window, destroy_global_data,
+    GLFW_KEY_0, GLFW_KEY_N, GLFW_KEY_S, GLFW_KEY_W, GLFW_MOD_CONTROL,
+    ChildMonitor, create_os_window, current_os_window, destroy_global_data,
     destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
     layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
     set_dpi_from_os_window, set_in_sequence_mode, show_window,
@@ -425,7 +425,9 @@ class Boss:
             tab.reset_window_sizes()
             return
         is_horizontal = key in (GLFW_KEY_W, GLFW_KEY_N)
-        increment = 0.05
+        increment = self.opts.window_resize_step_cells if is_horizontal else self.opts.window_resize_step_lines
+        if mods == GLFW_MOD_CONTROL:
+            increment *= 2
         if key in (GLFW_KEY_N, GLFW_KEY_S):
             increment *= -1
         tab.resize_window_by(window_id, increment, is_horizontal)

@@ -88,6 +88,7 @@ handle_resize_key(int key, int action, int mods) {
         call_boss(handle_resize_keypress, "iiKKK", key, mods, global_state.currently_resizing.os_window_id, global_state.currently_resizing.tab_id, global_state.currently_resizing.window_id);
         return true;
     }
+    if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL) return true;
     return false;
 }
 
