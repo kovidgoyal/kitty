@@ -49,6 +49,7 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
 }
 
+control_alt_codes = {}
 
 for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -66,6 +67,7 @@ for kf, kn in {
     alt_codes[kf] = modify_complex_key(kn, 3)
     shift_alt_codes[kf] = modify_complex_key(kn, 4)
     control_codes[kf] = modify_complex_key(kn, 5)
+    control_alt_codes[kf] = modify_complex_key(kn, 7)
 for f in range(1, 13):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
     kn = 'kf{}'.format(f)
@@ -74,6 +76,7 @@ for f in range(1, 13):
     alt_codes[kf] = modify_complex_key(kn, 3)
     shift_alt_codes[kf] = modify_complex_key(kn, 4)
     control_codes[kf] = modify_complex_key(kn, 5)
+    control_alt_codes[kf] = modify_complex_key(kn, 7)
 for f in range(13, 26):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
     kn = 'kf{}'.format(f)
@@ -213,6 +216,7 @@ ASCII_C0_SHIFTED = {
 }
 CTRL_SHIFT_KEYS = {getattr(defines, 'GLFW_KEY_' + k): v for k, v in ASCII_C0_SHIFTED.items()}
 CTRL_ALT_KEYS = {getattr(defines, 'GLFW_KEY_' + k) for k in string.ascii_uppercase}
+all_control_alt_keys = set(CTRL_ALT_KEYS) | set(control_alt_codes)
 
 
 def key_to_bytes(key, smkx, extended, mods, action):
@@ -231,8 +235,11 @@ def key_to_bytes(key, smkx, extended, mods, action):
             m = UN_SHIFTED_PRINTABLE if mods == defines.GLFW_MOD_ALT else SHIFTED_PRINTABLE
             data.append(0o33)
             data.extend(m[key])
-    elif mods == ctrl_alt_mod and key in CTRL_ALT_KEYS:
-        data.append(0x1b), data.extend(control_codes[key])
+    elif mods == ctrl_alt_mod and key in all_control_alt_keys:
+        if key in CTRL_ALT_KEYS:
+            data.append(0x1b), data.extend(control_codes[key])
+        else:
+            data.extend(control_alt_codes[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
