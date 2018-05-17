@@ -11,6 +11,7 @@ from .fast_data_types import (
     Region, set_active_window, swap_windows, viewport_for_window
 )
 
+# Utils {{{
 central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
 
@@ -78,7 +79,80 @@ def process_overlaid_windows(all_windows):
     return overlaid_windows, windows
 
 
-class Layout:
+def window_geometry(xstart, xnum, ystart, ynum):
+    return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
+
+
+def layout_single_window(margin_length, padding_length):
+    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, margin_length=margin_length, padding_length=padding_length))
+    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, margin_length=margin_length, padding_length=padding_length))
+    return window_geometry(xstart, xnum, ystart, ynum)
+
+
+def left_blank_rect(w, rects):
+    lt = w.geometry.left
+    if lt > central.left:
+        rects.append(Rect(central.left, central.top, lt, central.bottom + 1))
+
+
+def right_blank_rect(w, rects):
+    r = w.geometry.right
+    if r < central.right:
+        rects.append(Rect(r, central.top, central.right + 1, central.bottom + 1))
+
+
+def top_blank_rect(w, rects):
+    t = w.geometry.top
+    if t > central.top:
+        rects.append(Rect(central.left, central.top, central.right + 1, t))
+
+
+def bottom_blank_rect(w, rects):
+    b = w.geometry.bottom
+    # Need to use <= here as otherwise a single pixel row at the bottom of the
+    # window is sometimes not covered. See https://github.com/kovidgoyal/kitty/issues/506
+    if b <= central.bottom:
+        rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
+
+
+def blank_rects_for_window(w):
+    ans = []
+    left_blank_rect(w, ans), top_blank_rect(w, ans), right_blank_rect(w, ans), bottom_blank_rect(w, ans)
+    return ans
+
+
+def safe_increment_bias(old_val, increment):
+    return max(0.1, min(old_val + increment, 0.9))
+
+
+def normalize_biases(biases):
+    s = sum(biases)
+    if s == 1:
+        return biases
+    return [x/s for x in biases]
+
+
+def distribute_indexed_bias(base_bias, index_bias_map):
+    if not index_bias_map:
+        return base_bias
+    ans = list(base_bias)
+    limit = len(ans)
+    for row, increment in index_bias_map.items():
+        if row >= limit or not increment:
+            continue
+        other_increment = -increment / (limit - 1)
+        ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
+    return normalize_biases(ans)
+
+
+def variable_bias(num_windows, candidate):
+    return distribute_indexed_bias(list(repeat(1/(num_windows), num_windows)), candidate)
+
+
+# }}}
+
+
+class Layout:  # {{{
 
     name = None
     needs_window_borders = True
@@ -289,51 +363,10 @@ class Layout:
 
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
+# }}}
 
 
-def window_geometry(xstart, xnum, ystart, ynum):
-    return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
-
-
-def layout_single_window(margin_length, padding_length):
-    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, margin_length=margin_length, padding_length=padding_length))
-    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, margin_length=margin_length, padding_length=padding_length))
-    return window_geometry(xstart, xnum, ystart, ynum)
-
-
-def left_blank_rect(w, rects):
-    lt = w.geometry.left
-    if lt > central.left:
-        rects.append(Rect(central.left, central.top, lt, central.bottom + 1))
-
-
-def right_blank_rect(w, rects):
-    r = w.geometry.right
-    if r < central.right:
-        rects.append(Rect(r, central.top, central.right + 1, central.bottom + 1))
-
-
-def top_blank_rect(w, rects):
-    t = w.geometry.top
-    if t > central.top:
-        rects.append(Rect(central.left, central.top, central.right + 1, t))
-
-
-def bottom_blank_rect(w, rects):
-    b = w.geometry.bottom
-    # Need to use <= here as otherwise a single pixel row at the bottom of the
-    # window is sometimes not covered. See https://github.com/kovidgoyal/kitty/issues/506
-    if b <= central.bottom:
-        rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
-
-
-def blank_rects_for_window(w):
-    ans = []
-    left_blank_rect(w, ans), top_blank_rect(w, ans), right_blank_rect(w, ans), bottom_blank_rect(w, ans)
-    return ans
-
-
-class Stack(Layout):
+class Stack(Layout):  # {{{
 
     name = 'stack'
     needs_window_borders = False
@@ -345,37 +378,10 @@ class Stack(Layout):
             w.set_geometry(i, wg)
             if w.is_visible_in_layout:
                 self.blank_rects = blank_rects_for_window(w)
+# }}}
 
 
-def safe_increment_bias(old_val, increment):
-    return max(0.1, min(old_val + increment, 0.9))
-
-
-def normalize_biases(biases):
-    s = sum(biases)
-    if s == 1:
-        return biases
-    return [x/s for x in biases]
-
-
-def distribute_indexed_bias(base_bias, index_bias_map):
-    if not index_bias_map:
-        return base_bias
-    ans = list(base_bias)
-    limit = len(ans)
-    for row, increment in index_bias_map.items():
-        if row >= limit or not increment:
-            continue
-        other_increment = -increment / (limit - 1)
-        ans = [safe_increment_bias(b, increment if i == row else other_increment) for i, b in enumerate(ans)]
-    return normalize_biases(ans)
-
-
-def variable_bias(num_windows, candidate):
-    return distribute_indexed_bias(list(repeat(1/(num_windows), num_windows)), candidate)
-
-
-class Tall(Layout):
+class Tall(Layout):  # {{{
 
     name = 'tall'
     vlayout = Layout.ylayout
@@ -443,9 +449,10 @@ class Tall(Layout):
         self.between_blank_rect(windows[0], windows[1])
         # left bottom blank rect
         self.bottom_blank_rect(windows[0])
+# }}}
 
 
-class Fat(Tall):
+class Fat(Tall):  # {{{
 
     name = 'fat'
     vlayout = Layout.xlayout
@@ -472,9 +479,10 @@ class Fat(Tall):
         self.bottom_blank_rect(windows[0])
         # bottom blank rect
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+# }}}
 
 
-class Grid(Layout):
+class Grid(Layout):  # {{{
 
     name = 'grid'
 
@@ -655,7 +663,10 @@ class Horizontal(Vertical):
         self.simple_blank_rects(windows[0], windows[-1])
         # bottom blank rect
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+# }}}
 
+
+# Instantiation {{{
 
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
 
@@ -676,3 +687,5 @@ def evict_cached_layouts(tab_id):
     remove = [key for key in create_layout_object_for.cache if key[2] == tab_id]
     for key in remove:
         del create_layout_object_for.cache[key]
+
+# }}}
