@@ -473,16 +473,16 @@ class Fat(Tall):
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
 
 
-class Grid(Tall):
+class Grid(Layout):
 
     name = 'grid'
 
     def do_layout(self, windows, active_window_idx):
         n = len(windows)
-        if n < 4:
-            return Tall.do_layout(self, windows, active_window_idx)
+        if n == 1:
+            return self.layout_single_window(windows[0])
         if n <= 5:
-            ncols = 2
+            ncols = 1 if n == 1 else 2
         else:
             for ncols in range(3, (n // 2) + 1):
                 if ncols * ncols >= n:
