@@ -503,14 +503,14 @@ class Grid(Layout):  # {{{
 
             def on_col_done(col_windows):
                 nonlocal col_num, row_num
-                col_num = 0
-                row_num += 1
+                row_num = 0
+                col_num += 1
 
             for window_idx, xstart, xnum, ystart, ynum in self.layout_windows(
                     num_windows, nrows, ncols, special_rows, special_col, on_col_done):
                 if idx == window_idx:
                     return row_num, col_num
-                col_num += 1
+                row_num += 1
 
         row_num, col_num = position_for_window_idx(idx)
 
