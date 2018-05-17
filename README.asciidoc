@@ -346,7 +346,7 @@ you want to enable/disable, see link:kitty/kitty.conf[kitty.conf] for examples.
 
 You can resize windows inside layouts. Press {sc_start_resizing_window} to
 enter resizing mode. Then use the `W/N` (Wider/Narrower) and `T/S`
-(Taller/Shorter) keys to change the window size.  Press the `0` key to rest the
+(Taller/Shorter) keys to change the window size.  Press the `0` key to reset the
 layout to default sizes. Press the `Ctrl` modifier to double the step size. Any
 other key will exit resize mode.  In a given window layout only some operations
 may be possible for a particular window. For example, in the Tall layout you
