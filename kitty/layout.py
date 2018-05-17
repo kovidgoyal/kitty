@@ -477,10 +477,7 @@ class Grid(Layout):
 
     name = 'grid'
 
-    def do_layout(self, windows, active_window_idx):
-        n = len(windows)
-        if n == 1:
-            return self.layout_single_window(windows[0])
+    def calc_grid_size(self, n):
         if n <= 5:
             ncols = 1 if n == 1 else 2
         else:
@@ -490,27 +487,42 @@ class Grid(Layout):
         nrows = n // ncols
         special_rows = n - (nrows * (ncols - 1))
         special_col = 0 if special_rows < nrows else ncols - 1
+        return ncols, nrows, special_rows, special_col
 
+    def layout_windows(self, windows, nrows, ncols, special_rows, special_col, on_col_done=lambda col_windows: None):
         # Distribute windows top-to-bottom, left-to-right (i.e. in columns)
         xlayout = self.xlayout(ncols)
         yvals_normal = tuple(self.ylayout(nrows))
         yvals_special = yvals_normal if special_rows == nrows else tuple(self.ylayout(special_rows))
-
-        winmap = list(enumerate(windows))
         pos = 0
-        win_col_map = []
+        winmap = list(enumerate(windows))
         for col in range(ncols):
             rows = special_rows if col == special_col else nrows
             yl = yvals_special if col == special_col else yvals_normal
             xstart, xnum = next(xlayout)
             col_windows = []
             for (ystart, ynum), (window_idx, w) in zip(yl, winmap[pos:pos + rows]):
-                w.set_geometry(window_idx, window_geometry(xstart, xnum, ystart, ynum))
+                yield window_idx, w, xstart, xnum, ystart, ynum
                 col_windows.append(w)
-            # bottom blank rect
-            self.bottom_blank_rect(w)
             pos += rows
+            on_col_done(col_windows)
+
+    def do_layout(self, windows, active_window_idx):
+        n = len(windows)
+        if n == 1:
+            return self.layout_single_window(windows[0])
+        ncols, nrows, special_rows, special_col = self.calc_grid_size(n)
+
+        win_col_map = []
+
+        def on_col_done(col_windows):
             win_col_map.append(col_windows)
+            # bottom blank rect
+            self.bottom_blank_rect(col_windows[-1])
+
+        for window_idx, w, xstart, xnum, ystart, ynum in self.layout_windows(
+                windows, nrows, ncols, special_rows, special_col, on_col_done):
+            w.set_geometry(window_idx, window_geometry(xstart, xnum, ystart, ynum))
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
