@@ -477,6 +477,58 @@ class Grid(Layout):
 
     name = 'grid'
 
+    def remove_all_biases(self):
+        self.biased_rows = {}
+        self.biased_cols = {}
+        return True
+
+    def variable_layout(self, layout_func, num_windows, biased_map):
+        return layout_func(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows > 1 else None)
+
+    def apply_bias(self, idx, increment, num_windows, is_horizontal):
+        b = self.biased_cols if is_horizontal else self.biased_rows
+        ncols, nrows, special_rows, special_col = self.calc_grid_size(num_windows)
+
+        def position_for_window_idx(idx):
+            row_num = col_num = 0
+
+            def on_col_done(col_windows):
+                nonlocal col_num, row_num
+                col_num = 0
+                row_num += 1
+
+            for window_idx, xstart, xnum, ystart, ynum in self.layout_windows(
+                    num_windows, nrows, ncols, special_rows, special_col, on_col_done):
+                if idx == window_idx:
+                    return row_num, col_num
+                col_num += 1
+
+        row_num, col_num = position_for_window_idx(idx)
+
+        if is_horizontal:
+            b = self.biased_cols
+            if ncols < 2:
+                return False
+            bias_idx = col_num
+            layout_func = self.xlayout
+            attr = 'biased_cols'
+        else:
+            b = self.biased_rows
+            if nrows < 2:
+                return False
+            bias_idx = row_num
+            layout_func = self.ylayout
+            attr = 'biased_rows'
+
+        before_layout = list(self.variable_layout(layout_func, num_windows, b))
+        candidate = b.copy()
+        before = candidate.get(bias_idx, 0)
+        candidate[bias_idx] = before + increment
+        if before_layout == list(self.variable_layout(layout_func, num_windows, candidate)):
+            return False
+        setattr(self, attr, candidate)
+        return True
+
     def calc_grid_size(self, n):
         if n <= 5:
             ncols = 1 if n == 1 else 2
@@ -489,21 +541,21 @@ class Grid(Layout):
         special_col = 0 if special_rows < nrows else ncols - 1
         return ncols, nrows, special_rows, special_col
 
-    def layout_windows(self, windows, nrows, ncols, special_rows, special_col, on_col_done=lambda col_windows: None):
+    def layout_windows(self, num_windows, nrows, ncols, special_rows, special_col, on_col_done=lambda col_windows: None):
         # Distribute windows top-to-bottom, left-to-right (i.e. in columns)
-        xlayout = self.xlayout(ncols)
-        yvals_normal = tuple(self.ylayout(nrows))
-        yvals_special = yvals_normal if special_rows == nrows else tuple(self.ylayout(special_rows))
+        xlayout = self.variable_layout(self.xlayout, ncols, self.biased_cols)
+        yvals_normal = tuple(self.variable_layout(self.ylayout, nrows, self.biased_rows))
+        yvals_special = yvals_normal if special_rows == nrows else tuple(self.variable_layout(self.ylayout, special_rows, self.biased_rows))
         pos = 0
-        winmap = list(enumerate(windows))
         for col in range(ncols):
             rows = special_rows if col == special_col else nrows
             yl = yvals_special if col == special_col else yvals_normal
             xstart, xnum = next(xlayout)
             col_windows = []
-            for (ystart, ynum), (window_idx, w) in zip(yl, winmap[pos:pos + rows]):
-                yield window_idx, w, xstart, xnum, ystart, ynum
-                col_windows.append(w)
+            for i, (ystart, ynum) in enumerate(yl):
+                window_idx = pos + i
+                yield window_idx, xstart, xnum, ystart, ynum
+                col_windows.append(window_idx)
             pos += rows
             on_col_done(col_windows)
 
@@ -516,12 +568,14 @@ class Grid(Layout):
         win_col_map = []
 
         def on_col_done(col_windows):
+            col_windows = [windows[i] for i in col_windows]
             win_col_map.append(col_windows)
             # bottom blank rect
             self.bottom_blank_rect(col_windows[-1])
 
-        for window_idx, w, xstart, xnum, ystart, ynum in self.layout_windows(
-                windows, nrows, ncols, special_rows, special_col, on_col_done):
+        for window_idx, xstart, xnum, ystart, ynum in self.layout_windows(
+                len(windows), nrows, ncols, special_rows, special_col, on_col_done):
+            w = windows[window_idx]
             w.set_geometry(window_idx, window_geometry(xstart, xnum, ystart, ynum))
 
         # left, top and right blank rects
