@@ -88,7 +88,7 @@ window using arbitrary programs of your choice. This is useful for browsing
 the history comfortably in a pager or editor.
 
 
-image::screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
+image::screenshots/screenshot.png?raw=true[Screenshot, showing three programs in the "Tall" layout]
 
 toc::[]
 
@@ -293,7 +293,7 @@ the scrollback pager comfortably within the pager.
 You can input unicode characters by name, hex code, recently used and even an editable favorites list.
 Press {sc_input_unicode_character} to start the unicode input widget, shown below.
 
-image::unicode.png?raw=true[Unicode input widget, showing selection of unicode characters by name]
+image::screenshots/unicode.png?raw=true[Unicode input widget, showing selection of unicode characters by name]
 
 In Code mode, you enter a unicode character by typing in the hex code for the
 character and pressing enter, for example, type in 2716 and press enter to get
@@ -312,7 +312,7 @@ visible on the screen.  For example, you can press {sc_run_kitten_text_hints}
 to choose any URL visible on the screen and then open it using your system
 browser.
 
-image::hints_mode.png?raw=true[URL hints mode]
+image::screenshots/hints_mode.png?raw=true[URL hints mode]
 
 Similarly, you can press {sc_run_kitten_text_hints_type_path_program} to
 select anything that looks like a path or filename and then insert it into the
