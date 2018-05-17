@@ -260,6 +260,11 @@ class Layout:
         return idx_for_id(active_window.id, all_windows)
 
     # Utils {{{
+    def layout_single_window(self, w):
+        wg = layout_single_window(self.margin_width, self.padding_width)
+        w.set_geometry(0, wg)
+        self.blank_rects = blank_rects_for_window(w)
+
     def xlayout(self, num, bias=None):
         return layout_dimension(
             central.left, central.width, cell_width, num, self.border_width,
@@ -419,10 +424,7 @@ class Tall(Layout):
 
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
-            wg = layout_single_window(self.margin_width, self.padding_width)
-            windows[0].set_geometry(0, wg)
-            self.blank_rects = blank_rects_for_window(windows[0])
-            return
+            return self.layout_single_window(windows[0])
         xlayout = self.xlayout(2, bias=self.main_bias)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(self.vlayout(1))
@@ -450,10 +452,7 @@ class Fat(Tall):
 
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
-            wg = layout_single_window(self.margin_width, self.padding_width)
-            windows[0].set_geometry(0, wg)
-            self.blank_rects = blank_rects_for_window(windows[0])
-            return
+            return self.layout_single_window(windows[0])
         xstart, xnum = next(self.xlayout(1))
         ylayout = self.ylayout(2, bias=self.main_bias)
         ystart, ynum = next(ylayout)
@@ -551,10 +550,7 @@ class Vertical(Layout):
     def do_layout(self, windows, active_window_idx):
         window_count = len(windows)
         if window_count == 1:
-            wg = layout_single_window(self.margin_width, self.padding_width)
-            windows[0].set_geometry(0, wg)
-            self.blank_rects = blank_rects_for_window(windows[0])
-            return
+            return self.layout_single_window(windows[0])
 
         xlayout = self.xlayout(1)
         xstart, xnum = next(xlayout)
@@ -577,10 +573,7 @@ class Horizontal(Vertical):
     def do_layout(self, windows, active_window_idx):
         window_count = len(windows)
         if window_count == 1:
-            wg = layout_single_window(self.margin_width, self.padding_width)
-            windows[0].set_geometry(0, wg)
-            self.blank_rects = blank_rects_for_window(windows[0])
-            return
+            return self.layout_single_window(windows[0])
 
         xlayout = self.variable_layout(window_count, self.biased_map)
         ylayout = self.ylayout(1)
