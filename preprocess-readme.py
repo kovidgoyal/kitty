@@ -38,7 +38,7 @@ if raw != nraw:
     open('README.asciidoc', 'w').write(nraw)
 
 raw = subprocess.check_output([
-    'kitty', '-c',
+    'kitty', '+runpy',
     'from kitty.key_encoding import *; import json; print(json.dumps(ENCODING))'
 ]).decode('utf-8')
 key_map = json.loads(raw)
