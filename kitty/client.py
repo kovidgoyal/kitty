@@ -106,6 +106,14 @@ def screen_backspace():
     write('\x08')
 
 
+def screen_set_cursor(mode, secondary):
+    write(CSI + '%d q' % secondary)
+
+
+def screen_insert_lines(num):
+    write(CSI + '%dL' % num)
+
+
 def draw(*a):
     write(' '.join(a))
 
