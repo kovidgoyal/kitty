@@ -360,33 +360,49 @@ def distribute_indexed_bias(base_bias, index_bias_map):
     return normalize_biases(ans)
 
 
+def variable_bias(num_windows, candidate):
+    return distribute_indexed_bias(list(repeat(1/(num_windows), num_windows)), candidate)
+
+
 class Tall(Layout):
 
     name = 'tall'
+    vlayout = Layout.ylayout
+    main_is_horizontal = True
 
     def initialize_sub_class(self):
         self.remove_all_biases()
 
     def remove_all_biases(self):
-        self.x_bias = list(self.layout_opts['bias'])
-        self.biased_rows = {}
+        self.main_bias = list(self.layout_opts['bias'])
+        self.biased_map = {}
         return True
 
+    def variable_layout(self, num_windows, biased_map):
+        num_windows -= 1
+        return self.vlayout(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows > 1 else None)
+
     def apply_bias(self, idx, increment, num_windows, is_horizontal):
-        if is_horizontal:
-            before = self.x_bias
+        if self.main_is_horizontal == is_horizontal:
+            before = self.main_bias
             if idx == 0:
-                self.x_bias = [safe_increment_bias(self.x_bias[0], increment), safe_increment_bias(self.x_bias[1], -increment)]
+                self.main_bias = [safe_increment_bias(self.main_bias[0], increment), safe_increment_bias(self.main_bias[1], -increment)]
             else:
-                self.x_bias = [safe_increment_bias(self.x_bias[0], -increment), safe_increment_bias(self.x_bias[1], increment)]
-            self.x_bias = normalize_biases(self.x_bias)
-            after = self.x_bias
+                self.main_bias = [safe_increment_bias(self.main_bias[0], -increment), safe_increment_bias(self.main_bias[1], increment)]
+            self.main_bias = normalize_biases(self.main_bias)
+            after = self.main_bias
         else:
-            if idx == 0:
+            if idx == 0 or num_windows < 3:
                 return False
             idx -= 1
-            before = self.biased_rows.get(idx, 0)
-            self.biased_rows[idx] = after = before + increment
+            before_layout = list(self.variable_layout(num_windows, self.biased_map))
+            candidate = self.biased_map.copy()
+            before = candidate.get(idx, 0)
+            candidate[idx] = after = before + increment
+            if before_layout == list(self.variable_layout(num_windows, candidate)):
+                return False
+            self.biased_map = candidate
+
         return before != after
 
     def parse_layout_opts(self, layout_opts):
@@ -406,16 +422,12 @@ class Tall(Layout):
             windows[0].set_geometry(0, wg)
             self.blank_rects = blank_rects_for_window(windows[0])
             return
-        xlayout = self.xlayout(2, bias=self.x_bias)
+        xlayout = self.xlayout(2, bias=self.main_bias)
         xstart, xnum = next(xlayout)
-        ystart, ynum = next(self.ylayout(1))
+        ystart, ynum = next(self.vlayout(1))
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
         xstart, xnum = next(xlayout)
-        if len(windows) > 2:
-            y_bias = distribute_indexed_bias(list(repeat(1/(len(windows) - 1), len(windows) - 1)), self.biased_rows)
-        else:
-            y_bias = None
-        ylayout = self.ylayout(len(windows) - 1, bias=y_bias)
+        ylayout = self.variable_layout(len(windows), self.biased_map)
         for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
             # right bottom blank rect
@@ -432,28 +444,8 @@ class Tall(Layout):
 class Fat(Tall):
 
     name = 'fat'
-
-    def remove_all_biases(self):
-        self.y_bias = list(self.layout_opts['bias'])
-        self.biased_columns = {}
-        return True
-
-    def apply_bias(self, idx, increment, num_windows, is_horizontal):
-        if not is_horizontal:
-            before = self.y_bias
-            if idx == 0:
-                self.y_bias = [safe_increment_bias(self.y_bias[0], increment), safe_increment_bias(self.y_bias[1], -increment)]
-            else:
-                self.y_bias = [safe_increment_bias(self.y_bias[0], -increment), safe_increment_bias(self.y_bias[1], increment)]
-            self.y_bias = normalize_biases(self.y_bias)
-            after = self.y_bias
-        else:
-            if idx == 0:
-                return False
-            idx -= 1
-            before = self.biased_columns.get(idx, 0)
-            self.biased_columns[idx] = after = before + increment
-        return before != after
+    vlayout = Layout.xlayout
+    main_is_horizontal = False
 
     def do_layout(self, windows, active_window_idx):
         self.blank_rects = []
@@ -463,14 +455,10 @@ class Fat(Tall):
             self.blank_rects = blank_rects_for_window(windows[0])
             return
         xstart, xnum = next(self.xlayout(1))
-        ylayout = self.ylayout(2, bias=self.y_bias)
+        ylayout = self.ylayout(2, bias=self.main_bias)
         ystart, ynum = next(ylayout)
         windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
-        if len(windows) > 2:
-            x_bias = distribute_indexed_bias(list(repeat(1/(len(windows) - 1), len(windows) - 1)), self.biased_columns)
-        else:
-            x_bias = None
-        xlayout = self.xlayout(len(windows) - 1, bias=x_bias)
+        xlayout = self.variable_layout(len(windows), self.biased_map)
         ystart, ynum = next(ylayout)
         for i, (w, (xstart, xnum)) in enumerate(zip(islice(windows, 1, None), xlayout)):
             w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
