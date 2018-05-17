@@ -278,7 +278,7 @@ def close_window(boss, window, payload):
 # resize_window {{{
 @cmd(
     'Resize the specified window',
-    'Resize the specified window. Note that not all layouts can resize all windows in all directions.',
+    'Resize the specified window in the current layout. Note that not all layouts can resize all windows in all directions.',
     options_spec=MATCH_WINDOW_OPTION + '''\n
 --increment -i
 type=int
