@@ -94,7 +94,7 @@ class Layout:
         self.padding_width = padding_width
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
-        self.blank_rects = ()
+        self.blank_rects = []
         self.layout_opts = self.parse_layout_opts(layout_opts)
         self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
         self.remove_all_biases()
@@ -255,6 +255,7 @@ class Layout:
         else:
             windows = all_windows
         self.update_visibility(all_windows, active_window, overlaid_windows)
+        self.blank_rects = []
         self.do_layout(windows, active_window_idx)
         return idx_for_id(active_window.id, all_windows)
 
@@ -333,7 +334,6 @@ class Stack(Layout):
     only_active_window_visible = True
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = []
         wg = layout_single_window(self.margin_width, self.padding_width)
         for i, w in enumerate(windows):
             w.set_geometry(i, wg)
@@ -418,7 +418,6 @@ class Tall(Layout):
         return ans
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = []
         if len(windows) == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
             windows[0].set_geometry(0, wg)
@@ -450,7 +449,6 @@ class Fat(Tall):
     main_is_horizontal = False
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = []
         if len(windows) == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
             windows[0].set_geometry(0, wg)
@@ -484,7 +482,6 @@ class Grid(Tall):
         n = len(windows)
         if n < 4:
             return Tall.do_layout(self, windows, active_window_idx)
-        self.blank_rects = []
         if n <= 5:
             ncols = 2
         else:
@@ -552,7 +549,6 @@ class Vertical(Layout):
         return True
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = []
         window_count = len(windows)
         if window_count == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
@@ -579,7 +575,6 @@ class Horizontal(Vertical):
     vlayout = Layout.xlayout
 
     def do_layout(self, windows, active_window_idx):
-        self.blank_rects = []
         window_count = len(windows)
         if window_count == 1:
             wg = layout_single_window(self.margin_width, self.padding_width)
