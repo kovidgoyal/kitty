@@ -128,9 +128,15 @@ class Hints(Handler):
             self.current_text = None
             self.draw_screen()
         elif key_event is enter_key and self.current_input:
-            idx = decode_hint(self.current_input)
-            self.chosen = self.index_map[idx].text
-            self.quit_loop(0)
+            try:
+                idx = decode_hint(self.current_input)
+                self.chosen = self.index_map[idx].text
+            except Exception:
+                self.current_input = ''
+                self.current_text = None
+                self.draw_screen()
+            else:
+                self.quit_loop(0)
         elif key_event.key is ESCAPE:
             self.quit_loop(1)
 
