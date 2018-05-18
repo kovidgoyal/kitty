@@ -39,7 +39,9 @@ def create_kitten_handler(kitten, orig_args):
     from kitty.constants import config_dir
     kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
-    return partial(m['end'], [kitten] + orig_args)
+    ans = partial(m['end'], [kitten] + orig_args)
+    ans.type_of_input = getattr(m['end'], 'type_of_input', None)
+    return ans
 
 
 def set_debug(kitten):

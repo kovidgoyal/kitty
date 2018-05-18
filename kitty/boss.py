@@ -517,35 +517,41 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=(), type_of_input='none'):
+    def _run_kitten(self, kitten, args=()):
         w = self.active_window
         tab = self.active_tab
         if w is not None and tab is not None and w.overlay_for is None:
             orig_args, args = list(args), list(args)
+            from kittens.runner import create_kitten_handler
+            end_kitten = create_kitten_handler(kitten, orig_args)
             args[0:0] = [config_dir, kitten]
+            type_of_input = end_kitten.type_of_input
             if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
                 data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
-            elif type_of_input == 'none':
+            elif type_of_input is None:
                 data = None
             else:
                 raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
-            from kittens.runner import create_kitten_handler
-            end_kitten = create_kitten_handler(kitten, orig_args)
             copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with')}
             overlay_window = tab.new_special_window(
                 SpecialWindow(
                     ['kitty', '+runpy', 'from kittens.runner import main; main()'] + args,
                     stdin=data,
-                    env={'KITTY_COMMON_OPTS': json.dumps(copts), 'PYTHONWARNINGS': 'ignore'},
+                    env={
+                        'KITTY_COMMON_OPTS': json.dumps(copts),
+                        'PYTHONWARNINGS': 'ignore',
+                        'OVERLAID_WINDOW_LINES': str(w.screen.lines),
+                        'OVERLAID_WINDOW_COLS': str(w.screen.columns),
+                    },
                     overlay_for=w.id))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
             return overlay_window
 
-    def run_kitten(self, type_of_input, kitten, *args):
+    def kitten(self, kitten, *args):
         import shlex
         cmdline = args[0] if args else ''
         args = shlex.split(cmdline) if cmdline else []
-        self._run_kitten(kitten, args, type_of_input)
+        self._run_kitten(kitten, args)
 
     def on_kitten_finish(self, target_window_id, end_kitten, source_window):
         output = self.get_output(source_window, num_lines=None)

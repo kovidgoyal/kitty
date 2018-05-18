@@ -325,6 +325,9 @@ def handle_result(args, data, target_window_id, boss):
         boss.open_url(data['match'], None if program == 'default' else program, cwd=cwd)
 
 
+handle_result.type_of_input = 'text'
+
+
 if __name__ == '__main__':
     # Run with kitty +kitten hints
     ans = main(sys.argv)

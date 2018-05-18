@@ -116,10 +116,12 @@ def parse_key_action(action):
             except Exception:
                 log_error('Ignoring invalid send_text string: ' + args[1])
                 args[1] = ''
-    elif func in ('run_kitten', 'run_simple_kitten'):
-        if func == 'run_simple_kitten':
-            func = 'run_kitten'
-        args = rest.split(' ', 2)
+    elif func in ('run_kitten', 'run_simple_kitten', 'kitten'):
+        if func == 'kitten':
+            args = rest.split(' ', 1)
+        else:
+            args = rest.split(' ', 2)[1:]
+            func = 'kitten'
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
     elif func == 'goto_layout' or func == 'kitty_shell':
