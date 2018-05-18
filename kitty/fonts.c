@@ -424,6 +424,8 @@ START_ALLOW_CASE_RANGE
         case 0x2574 ... 0x259f:
         case 0xe0b0:
         case 0xe0b2:
+        case 0xe0b4:
+        case 0xe0b6:
             return BOX_FONT;
         default:
             ans = in_symbol_maps(cell->ch);
@@ -460,6 +462,10 @@ START_ALLOW_CASE_RANGE
             return 0xfa;
         case 0xe0b2:
             return 0xfb;
+        case 0xe0b4:
+            return 0xfc;
+        case 0xe0b6:
+            return 0xfd;
         default:
             return 0xff;
     }

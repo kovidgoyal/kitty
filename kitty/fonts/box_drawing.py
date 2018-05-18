@@ -138,6 +138,20 @@ def cross(*s, a=1, b=1, c=1, d=1):
     half_vline(*s, level=d, which='bottom')
 
 
+def fill_region(buf, width, height, xlimits):
+    for y in range(height):
+        offset = y * width
+        for x, (upper, lower) in enumerate(xlimits):
+            buf[x + offset] = 255 if upper <= y <= lower else 0
+    # Anti-alias the boundary, simple y-axis anti-aliasing
+    for x, limits in enumerate(xlimits):
+        for y in limits:
+            for ypx in range(int(math.floor(y)), int(math.ceil(y)) + 1):
+                if 0 <= ypx < height:
+                    off = ypx * width + x
+                    buf[off] = min(255, buf[off] + int((1 - abs(y - ypx)) * 255))
+
+
 def line_equation(x1, y1, x2, y2):
     m = (y2 - y1) / (x2 - x1)
     c = y1 - m * x1
@@ -157,17 +171,91 @@ def triangle(buf, width, height, left=True):
     uppery = line_equation(x1, ay1, x2, y2)
     lowery = line_equation(x1, by1, x2, y2)
     xlimits = [(uppery(x), lowery(x)) for x in range(width)]
-    for y in range(height):
-        offset = y * width
-        for x, (upper, lower) in zip(range(width), xlimits):
-            buf[x + offset] = 255 if upper <= y <= lower else 0
-    # Anti-alias the diagonals, simple y-axis anti-aliasing
-    for x in range(width):
-        for y in xlimits[x]:
-            for ypx in range(int(math.floor(y)), int(math.ceil(y)) + 1):
-                if 0 <= ypx < height:
-                    off = ypx * width + x
-                    buf[off] = min(255, buf[off] + int((1 - abs(y - ypx)) * 255))
+    fill_region(buf, width, height, xlimits)
+
+
+def cubic_bezier(start, end, c1, c2):
+
+    def bezier_eq(p0, p1, p2, p3):
+
+        def f(t):
+            tm1 = 1 - t
+            tm1_3 = tm1 * tm1 * tm1
+            t_3 = t * t * t
+            return tm1_3 * p0 + 3 * t * tm1 * (tm1 * p1 + t * p2) + t_3 * p3
+        return f
+
+    bezier_x = bezier_eq(start[0], c1[0], c2[0], end[0])
+    bezier_y = bezier_eq(start[1], c1[1], c2[1], end[1])
+    return bezier_x, bezier_y
+
+
+def find_bezier_for_D(width, height):
+    cx = last_cx = width - 1
+    start = (0, 0)
+    end = (0, height - 1)
+    while True:
+        c1 = cx, start[1]
+        c2 = cx, end[1]
+        bezier_x, bezier_y = cubic_bezier(start, end, c1, c2)
+        if bezier_x(0.5) > width - 1:
+            return last_cx
+        last_cx = cx
+        cx += 1
+
+
+def get_bezier_limits(bezier_x, bezier_y):
+    start_x = bezier_x(0)
+    max_x = int(bezier_x(0.5))
+    last_t, t_limit = 0, 0.5
+
+    def find_t_for_x(x, start_t):
+        if abs(bezier_x(start_t) - x) < 0.1:
+            return start_t
+        increment = t_limit - start_t
+        if increment <= 0:
+            return start_t
+        while True:
+            q = bezier_x(start_t + increment)
+            if (abs(q - x) < 0.1):
+                return start_t + increment
+            if q > x:
+                increment /= 2
+                if increment < 1e-6:
+                    raise ValueError('Failed to find t for x={}'.format(x))
+            else:
+                start_t += increment
+                increment = t_limit - start_t
+                if increment <= 0:
+                    return start_t
+
+    for x in range(start_x, max_x + 1):
+        if x > start_x:
+            last_t = find_t_for_x(x, last_t)
+        upper, lower = bezier_y(last_t), bezier_y(1 - last_t)
+        if abs(upper - lower) <= 2:  # avoid pip on end of D
+            break
+        yield upper, lower
+
+
+def D(buf, width, height, left=True):
+    c1x = find_bezier_for_D(width, height)
+    start = (0, 0)
+    end = (0, height - 1)
+    c1 = c1x, start[1]
+    c2 = c1x, end[1]
+    bezier_x, bezier_y = cubic_bezier(start, end, c1, c2)
+    xlimits = list(get_bezier_limits(bezier_x, bezier_y))
+    if left:
+        fill_region(buf, width, height, xlimits)
+    else:
+        mbuf = bytearray(width * height)
+        fill_region(mbuf, width, height, xlimits)
+        for y in range(height):
+            offset = y * width
+            for src_x in range(width):
+                dest_x = width - 1 - src_x
+                buf[offset + dest_x] = mbuf[offset + src_x]
 
 
 def half_dhline(buf, width, height, level=1, which='left', only=None):
@@ -345,6 +433,8 @@ box_chars = {
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
     '': [triangle],
     '': [p(triangle, left=False)],
+    '': [D],
+    '': [p(D, left=False)],
     '═': [dhline],
     '║': [dvline],
     '╞': [vline, p(half_dhline, which='right')],
