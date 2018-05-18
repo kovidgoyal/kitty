@@ -526,8 +526,12 @@ class Boss:
             end_kitten = create_kitten_handler(kitten, orig_args)
             args[0:0] = [config_dir, kitten]
             type_of_input = end_kitten.type_of_input
-            if type_of_input in ('text', 'history', 'ansi', 'ansi-history'):
-                data = w.as_text(as_ansi='ansi' in type_of_input, add_history='history' in type_of_input).encode('utf-8')
+            if type_of_input in ('text', 'history', 'ansi', 'ansi-history', 'screen', 'screen-history', 'screen-ansi-history'):
+                data = w.as_text(
+                        as_ansi='ansi' in type_of_input,
+                        add_history='history' in type_of_input,
+                        add_wrap_markers='screen' in type_of_input
+                ).encode('utf-8')
             elif type_of_input is None:
                 data = None
             else:
