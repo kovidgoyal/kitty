@@ -434,6 +434,26 @@ def render_missing_glyph(buf, width, height):
     draw_vline(buf, width, vgap, height - vgap + 1, width - hgap, 0)
 
 
+def test_char(ch, sz=48):
+    # kitty +runpy "from kitty.fonts.box_drawing import test_char; import sys; test_char('XXX')"
+    from .render import display_bitmap, setup_for_testing
+    from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
+    width, height = setup_for_testing('monospace', sz)[1:]
+    buf = bytearray(width * height)
+    try:
+        render_box_char(ch, buf, width, height)
+
+        def join_cells(*cells):
+            cells = tuple(bytes(x) for x in cells)
+            return concat_cells(width, height, False, cells)
+
+        rgb_data = join_cells(buf)
+        display_bitmap(rgb_data, width, height)
+        print()
+    finally:
+        set_send_sprite_to_gpu(None)
+
+
 def test_drawing(sz=48, family='monospace'):
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
