@@ -10,6 +10,7 @@ from functools import partial
 from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, appname, parse_args
+from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
     DOWN, END, ESCAPE, HOME, PAGE_DOWN, PAGE_UP, RELEASE, UP
 )
@@ -17,10 +18,11 @@ from kitty.key_encoding import (
 from ..tui.handler import Handler
 from ..tui.images import ImageManager
 from ..tui.loop import Loop
+from ..tui.operations import styled
 from .collect import create_collection, data_for_path, set_highlight_data
 from .config import init_config
 from .patch import Differ, set_diff_command
-from .render import LineRef, render_diff, ImageSupportWarning
+from .render import ImageSupportWarning, LineRef, render_diff
 
 try:
     from .highlight import initialize_highlighter, highlight_collection
@@ -134,6 +136,7 @@ class DiffHandler(Handler):
         else:
             self.cmd.set_cursor_position(0, self.num_lines - amt)
             self.draw_lines(amt, self.num_lines - amt)
+        self.draw_status_line()
 
     def init_terminal_state(self):
         self.cmd.set_line_wrapping(False)
@@ -222,7 +225,12 @@ class DiffHandler(Handler):
     def draw_status_line(self):
         self.cmd.set_cursor_position(0, self.num_lines)
         self.cmd.clear_to_eol()
-        self.write(':')
+        scroll_frac = styled('{:.0%}'.format(self.scroll_pos / self.max_scroll_pos), fg=self.opts.margin_fg)
+        suffix = scroll_frac
+        prefix = styled(':', fg=self.opts.margin_fg)
+        filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
+        text = '{}{}{}'.format(prefix, ' ' * filler, suffix)
+        self.write(text)
 
     def change_context_count(self, new_ctx):
         new_ctx = max(0, new_ctx)
