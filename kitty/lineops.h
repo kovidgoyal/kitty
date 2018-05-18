@@ -81,14 +81,15 @@ void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 
 
-#define as_text_generic(args, container, get_line, lines, columns, callback, as_ansi) { \
+#define as_text_generic(args, container, get_line, lines, columns) { \
     PyObject *callback; \
-    int as_ansi = 0; \
-    if (!PyArg_ParseTuple(args, "O|p", &callback, &as_ansi)) return NULL; \
+    int as_ansi = 0, insert_wrap_markers = 0; \
+    if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL; \
     PyObject *ret = NULL, *t = NULL; \
     Py_UCS4 *buf = NULL; \
     PyObject *nl = PyUnicode_FromString("\n"); \
-    if (nl == NULL) goto end; \
+    PyObject *cr = PyUnicode_FromString("\r"); \
+    if (nl == NULL || cr == NULL) goto end; \
     if (as_ansi) { \
         buf = malloc(sizeof(Py_UCS4) * columns * 100); \
         if (buf == NULL) { PyErr_NoMemory(); goto end; } \
@@ -109,9 +110,14 @@ void historybuf_clear(HistoryBuf *self);
         if (t == NULL) goto end; \
         ret = PyObject_CallFunctionObjArgs(callback, t, NULL); \
         Py_DECREF(t); if (ret == NULL) goto end; Py_DECREF(ret); \
+        if (insert_wrap_markers) { \
+            ret = PyObject_CallFunctionObjArgs(callback, cr, NULL); \
+            if (ret == NULL) goto end; \
+            Py_CLEAR(ret); \
+        }\
     } \
 end: \
-    Py_CLEAR(nl); free(buf); \
+    Py_CLEAR(nl); Py_CLEAR(cr); free(buf); \
     if (PyErr_Occurred()) return NULL; \
     Py_RETURN_NONE; \
 }

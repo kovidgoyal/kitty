@@ -208,7 +208,7 @@ static PyObject*
 as_text(HistoryBuf *self, PyObject *args) {
     Line l = {.xnum=self->xnum};
 #define gl(self, y) get_line(self, y, &l);
-    as_text_generic(args, self, gl, self->count, self->xnum, callback, as_ansi);
+    as_text_generic(args, self, gl, self->count, self->xnum);
 #undef gl
 }
 

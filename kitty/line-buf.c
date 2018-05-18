@@ -414,7 +414,7 @@ get_line(LineBuf *self, index_type y) {
 
 static PyObject*
 as_text(LineBuf *self, PyObject *args) {
-    as_text_generic(args, self, get_line, self->ynum, self->xnum, callback, as_ansi);
+    as_text_generic(args, self, get_line, self->ynum, self->xnum);
 }
 
 

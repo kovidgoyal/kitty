@@ -1462,12 +1462,12 @@ screen_open_url(Screen *self) {
 
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    as_text_generic(args, self, visual_line_, self->lines, self->columns, callback, as_ansi);
+    as_text_generic(args, self, visual_line_, self->lines, self->columns);
 }
 
 static PyObject*
 as_text_non_visual(Screen *self, PyObject *args) {
-    as_text_generic(args, self, range_line_, self->lines, self->columns, callback, as_ansi);
+    as_text_generic(args, self, range_line_, self->lines, self->columns);
 }
 
 static PyObject*
