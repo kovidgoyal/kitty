@@ -84,6 +84,7 @@ class Hunk:
         self.left_start -= 1  # 0-index
         self.right_start -= 1  # 0-index
         self.title = title
+        self.added_count = self.removed_count = 0
         self.chunks = []
         self.current_chunk = None
         self.largest_line_number = max(self.left_start + self.left_count, self.right_start + self.right_count)
@@ -115,10 +116,12 @@ class Hunk:
     def add_line(self):
         self.ensure_diff_chunk()
         self.current_chunk.add_line()
+        self.added_count += 1
 
     def remove_line(self):
         self.ensure_diff_chunk()
         self.current_chunk.remove_line()
+        self.removed_count += 1
 
     def context_line(self):
         self.ensure_context_chunk()
@@ -159,6 +162,8 @@ class Patch:
     def __init__(self, all_hunks):
         self.all_hunks = all_hunks
         self.largest_line_number = self.all_hunks[-1].largest_line_number if self.all_hunks else 0
+        self.added_count = sum(h.added_count for h in all_hunks)
+        self.removed_count = sum(h.removed_count for h in all_hunks)
 
     def __iter__(self):
         return iter(self.all_hunks)

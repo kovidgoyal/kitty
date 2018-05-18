@@ -29,6 +29,7 @@ class Collection:
         self.removes = set()
         self.all_paths = []
         self.type_map = {}
+        self.added_count = self.removed_count = 0
 
     def add_change(self, left_path, right_path):
         self.changes[left_path] = right_path
@@ -44,11 +45,15 @@ class Collection:
         self.adds.add(right_path)
         self.all_paths.append(right_path)
         self.type_map[right_path] = 'add'
+        if isinstance(data_for_path(right_path), str):
+            self.added_count += len(lines_for_path(right_path))
 
     def add_removal(self, left_path):
         self.removes.add(left_path)
         self.all_paths.append(left_path)
         self.type_map[left_path] = 'removal'
+        if isinstance(data_for_path(left_path), str):
+            self.removed_count += len(lines_for_path(left_path))
 
     def finalize(self):
         self.all_paths.sort(key=path_name_map.get)

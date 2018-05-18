@@ -68,6 +68,13 @@ class DiffHandler(Handler):
     def generate_diff(self):
         self.start_job('diff', generate_diff, self.collection, self.current_context_count)
 
+    def calculate_statistics(self):
+        self.added_count = self.collection.added_count
+        self.removed_count = self.collection.removed_count
+        for patch in self.diff_map.values():
+            self.added_count += patch.added_count
+            self.removed_count += patch.removed_count
+
     def render_diff(self):
         self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols, self.image_manager))
         self.ref_path_map = defaultdict(list)
@@ -223,10 +230,17 @@ class DiffHandler(Handler):
         self.draw_status_line()
 
     def draw_status_line(self):
+        if self.state < DIFFED:
+            return
         self.cmd.set_cursor_position(0, self.num_lines)
         self.cmd.clear_to_eol()
         scroll_frac = styled('{:.0%}'.format(self.scroll_pos / self.max_scroll_pos), fg=self.opts.margin_fg)
-        suffix = scroll_frac
+        counts = '{}{}{}'.format(
+                styled(str(self.added_count), fg=self.opts.highlight_added_bg),
+                styled(',', fg=self.opts.margin_fg),
+                styled(str(self.removed_count), fg=self.opts.highlight_removed_bg)
+        )
+        suffix = counts + '  ' + scroll_frac
         prefix = styled(':', fg=self.opts.margin_fg)
         filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
         text = '{}{}{}'.format(prefix, ' ' * filler, suffix)
@@ -308,6 +322,7 @@ class DiffHandler(Handler):
                 return
             self.state = DIFFED
             self.diff_map = diff_map
+            self.calculate_statistics()
             self.render_diff()
             self.scroll_pos = 0
             if self.restore_position is not None:
