@@ -138,7 +138,7 @@ set_dynamic_color = set_color_table_color = write_osc
 
 def replay(raw):
     for line in raw.splitlines():
-        if line.strip():
+        if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]
             if cmd in {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color'}:
                 globals()[cmd](rest)
