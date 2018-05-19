@@ -335,7 +335,7 @@ The minimum number of characters to consider a match.
 
 def parse_hints_args(args):
     msg = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
-    return parse_args(args[1:], OPTIONS, '', msg, 'hints')
+    return parse_args(args, OPTIONS, '', msg, 'hints')
 
 
 def main(args):
