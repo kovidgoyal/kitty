@@ -317,6 +317,13 @@ class TestScreen(BaseTest):
                 c = chr(ord('I') + l - 2)
                 self.ae(c + ' ' * (s.columns - 2) + c.lower(), str(s.line(l)))
             s.reset_mode(DECOM)
+        # Test that moving cursor outside the margins works as expected
+        s = self.create_screen(10, 10)
+        s.set_margins(5, 7)
+        s.cursor_position(0, 0)
+        self.ae(s.cursor.y, 0)
+        nl()
+        self.ae(s.cursor.y, 1)
 
     def test_sgr(self):
         s = self.create_screen()

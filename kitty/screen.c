@@ -446,15 +446,21 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
     if (suffix[0]) write_to_child(self, suffix, strlen(suffix));
 }
 
+static inline bool
+cursor_within_margins(Screen *self) {
+    return self->margin_top <= self->cursor->y && self->cursor->y >= self->margin_bottom;
+}
+
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty);
     if (response != NULL) write_escape_code_to_child(self, APC, response);
     if (x != self->cursor->x || y != self->cursor->y) {
+        bool in_margins = cursor_within_margins(self);
         if (self->cursor->x >= self->columns) { self->cursor->x = 0; self->cursor->y++; }
         if (self->cursor->y > self->margin_bottom) screen_scroll(self, self->cursor->y - self->margin_bottom);
-        screen_ensure_bounds(self, false);
+        screen_ensure_bounds(self, false, in_margins);
     }
 }
 // }}}
@@ -658,7 +664,7 @@ screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->x) self->cursor->x = 0;
     else self->cursor->x += move_direction * count;
-    screen_ensure_bounds(self, false);
+    screen_ensure_bounds(self, false, cursor_within_margins(self));
 }
 
 void
@@ -668,10 +674,11 @@ screen_cursor_forward(Screen *self, unsigned int count/*=1*/) {
 
 void
 screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/) {
+    bool in_margins = cursor_within_margins(self);
     if (count == 0) count = 1;
     if (move_direction < 0 && count > self->cursor->y) self->cursor->y = 0;
     else self->cursor->y += move_direction * count;
-    screen_ensure_bounds(self, true);
+    screen_ensure_bounds(self, true, in_margins);
     if (do_carriage_return) self->cursor->x = 0;
 }
 
@@ -695,7 +702,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     unsigned int x = MAX(column, 1) - 1;
     if (x != self->cursor->x) {
         self->cursor->x = x;
-        screen_ensure_bounds(self, false);
+        screen_ensure_bounds(self, false, cursor_within_margins(self));
     }
 }
 
@@ -775,9 +782,10 @@ screen_carriage_return(Screen *self) {
 
 void
 screen_linefeed(Screen *self) {
+    bool in_margins = cursor_within_margins(self);
     screen_index(self);
     if (self->modes.mLNM) screen_carriage_return(self);
-    screen_ensure_bounds(self, false);
+    screen_ensure_bounds(self, false, in_margins);
 }
 
 #define buffer_push(self, ans) { \
@@ -838,7 +846,7 @@ screen_restore_cursor(Screen *self) {
         set_mode_from_const(self, DECAWM, sp->mDECAWM);
         set_mode_from_const(self, DECSCNM, sp->mDECSCNM);
         cursor_copy_to(&(sp->cursor), self->cursor);
-        screen_ensure_bounds(self, false);
+        screen_ensure_bounds(self, false, false);
     }
 }
 
@@ -856,9 +864,9 @@ screen_restore_modes(Screen *self) {
 }
 
 void
-screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/) {
+screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/, bool in_margins) {
     unsigned int top, bottom;
-    if (force_use_margins || self->modes.mDECOM) {
+    if (in_margins && (force_use_margins || self->modes.mDECOM)) {
         top = self->margin_top; bottom = self->margin_bottom;
     } else {
         top = 0; bottom = self->lines - 1;
@@ -869,6 +877,7 @@ screen_ensure_bounds(Screen *self, bool force_use_margins/*=false*/) {
 
 void
 screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
+    bool in_margins = cursor_within_margins(self);
     line = (line == 0 ? 1 : line) - 1;
     column = (column == 0 ? 1: column) - 1;
     if (self->modes.mDECOM) {
@@ -876,7 +885,7 @@ screen_cursor_position(Screen *self, unsigned int line, unsigned int column) {
         line = MAX(self->margin_top, MIN(line, self->margin_bottom));
     }
     self->cursor->x = column; self->cursor->y = line;
-    screen_ensure_bounds(self, false);
+    screen_ensure_bounds(self, false, in_margins);
 }
 
 void
