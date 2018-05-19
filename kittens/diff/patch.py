@@ -174,20 +174,23 @@ class Patch:
 
 def parse_patch(raw):
     all_hunks = []
+    current_hunk = None
     for line in raw.splitlines():
         if line.startswith('@@ '):
             current_hunk = parse_hunk_header(line)
             all_hunks.append(current_hunk)
         else:
-            if not all_hunks:
+            if current_hunk is None:
                 continue
             q = line[0]
             if q == '+':
-                all_hunks[-1].add_line()
+                current_hunk.add_line()
             elif q == '-':
-                all_hunks[-1].remove_line()
+                current_hunk.remove_line()
+            elif q == '\\':
+                continue
             else:
-                all_hunks[-1].context_line()
+                current_hunk.context_line()
     for h in all_hunks:
         h.finalize()
     return Patch(all_hunks)
