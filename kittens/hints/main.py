@@ -12,15 +12,15 @@ from gettext import gettext as _
 from kitty.cli import parse_args
 from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import ESCAPE, backspace_key, enter_key
+from kitty.utils import screen_size_function
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import (
-    clear_screen, faint, set_cursor_visible, set_window_title, styled
-)
+from ..tui.operations import faint, styled
 
 URL_PREFIXES = 'http https file ftp'.split()
 HINT_ALPHABET = string.digits + string.ascii_lowercase
+screen_size = screen_size_function()
 
 
 class Mark(object):
@@ -46,50 +46,37 @@ def decode_hint(x):
     return int(x, 36)
 
 
-def render(lines, current_input):
-    ans = []
+def highlight_mark(m, text, current_input):
+    hint = encode_hint(m.index)
+    if current_input and not hint.startswith(current_input):
+        return faint(text)
+    hint = hint[len(current_input):] or ' '
+    text = text[len(hint):]
+    return styled(
+        hint,
+        fg='black',
+        bg='green',
+        bold=True
+    ) + styled(
+        text, fg='gray', fg_intense=True, bold=True
+    )
 
-    def mark(m):
-        hint = encode_hint(m.index)
-        text = m.text
-        if current_input and not hint.startswith(current_input):
-            return faint(text)
-        hint = hint[len(current_input):] or ' '
-        text = text[len(hint):]
-        return styled(
-            hint,
-            fg='black',
-            bg='green',
-            bold=True
-        ) + styled(
-            text, fg='gray', fg_intense=True, bold=True
-        )
 
-    for line, marks in lines:
-        if not marks:
-            ans.append(faint(line))
-            continue
-        buf = []
+def render(text, current_input, all_marks):
+    for mark in reversed(all_marks):
+        mtext = highlight_mark(mark, text[mark.start:mark.end], current_input)
+        text = text[:mark.start] + mtext + text[mark.end:]
 
-        for i, m in enumerate(marks):
-            if i == 0 and m.start:
-                buf.append(faint(line[:m.start]))
-            buf.append(mark(m))
-            if m is not marks[-1]:
-                buf.append(faint(line[m.end:marks[i + 1].start]))
+    text = text.replace('\0', '')
 
-        rest = line[marks[-1].end:]
-        if rest:
-            buf.append(faint(rest))
-
-        ans.append(''.join(buf))
-    return '\r\n'.join(ans)
+    return text.replace('\n', '\r\n').rstrip()
 
 
 class Hints(Handler):
 
-    def __init__(self, lines, index_map, args):
-        self.lines, self.index_map = tuple(lines), index_map
+    def __init__(self, text, all_marks, index_map, args):
+        self.text, self.index_map = text, index_map
+        self.all_marks = all_marks
         self.current_input = ''
         self.current_text = None
         self.args = args
@@ -97,8 +84,9 @@ class Hints(Handler):
         self.chosen = None
 
     def init_terminal_state(self):
-        self.write(set_cursor_visible(False))
-        self.write(set_window_title(self.window_title))
+        self.cmd.set_cursor_visible(False)
+        self.cmd.set_window_title(self.window_title)
+        self.cmd.set_line_wrapping(False)
 
     def initialize(self):
         self.init_terminal_state()
@@ -152,50 +140,82 @@ class Hints(Handler):
 
     def draw_screen(self):
         if self.current_text is None:
-            self.current_text = render(self.lines, self.current_input)
-        self.write(clear_screen())
+            self.current_text = render(self.text, self.current_input, self.all_marks)
+        self.cmd.clear_screen()
         self.write(self.current_text)
 
 
-def regex_finditer(pat, minimum_match_length, line):
-    for m in pat.finditer(line):
+def regex_finditer(pat, minimum_match_length, text):
+    for m in pat.finditer(text):
         s, e = m.span(pat.groups)
+        while e > s + 1 and text[e-1] == '\0':
+            e -= 1
         if e - s >= minimum_match_length:
             yield s, e
 
 
 closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>'}
+opening_brackets = ''.join(closing_bracket_map)
+postprocessor_map = {}
 
 
-def find_urls(pat, line):
-    for m in pat.finditer(line):
-        s, e = m.span()
-        if s > 4 and line[s - 5:s] == 'link:':  # asciidoc URLs
-            url = line[s:e]
-            idx = url.rfind('[')
-            if idx > -1:
-                e -= len(url) - idx
-        while line[e - 1] in '.,?!' and e > 1:  # remove trailing punctuation
+def postprocessor(func):
+    postprocessor_map[func.__name__] = func
+    return func
+
+
+@postprocessor
+def url(text, s, e):
+    if s > 4 and text[s - 5:s] == 'link:':  # asciidoc URLs
+        url = text[s:e]
+        idx = url.rfind('[')
+        if idx > -1:
+            e -= len(url) - idx
+    while text[e - 1] in '.,?!' and e > 1:  # remove trailing punctuation
+        e -= 1
+    # Remove trailing bracket if matched by leading bracket
+    if s > 0 and e < len(text) and text[s-1] in opening_brackets and text[e-1] == closing_bracket_map[text[s-1]]:
+        e -= 1
+    # Remove trailing quote if matched by leading quote
+    if s > 0 and e < len(text) and text[s-1] in '\'"' and text[e-1] == text[s-1]:
+        e -= 1
+    return s, e
+
+
+@postprocessor
+def brackets(text, s, e):
+    # Remove matching brackets
+    if e > s and e <= len(text):
+        before = text[s]
+        if before in '({[<' and text[e-1] == closing_bracket_map[before]:
+            s += 1
             e -= 1
-        # Detect a bracketed URL
-        if s > 0 and e > s + 4 and line[s-1] in '({[<' and line[e-1] == closing_bracket_map[line[s-1]]:
+    return s, e
+
+
+@postprocessor
+def quotes(text, s, e):
+    # Remove matching quotes
+    if e > s and e <= len(text):
+        before = text[s]
+        if before in '\'"' and text[e-1] == before:
+            s += 1
             e -= 1
-        yield s, e
+    return s, e
 
 
-def mark(finditer, line, all_marks):
-    marks = []
-    for s, e in finditer(line):
-        idx = len(all_marks)
-        text = line[s:e]
-        marks.append(Mark(idx, s, e, text))
-        all_marks.append(marks[-1])
-    return line, marks
+def mark(pattern, post_processors, text, args):
+    pat = re.compile(pattern)
+    for idx, (s, e) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
+        for func in post_processors:
+            s, e = func(text, s, e)
+        mark_text = text[s:e].replace('\n', '').replace('\0', '')
+        yield Mark(idx, s, e, mark_text)
 
 
-def run_loop(args, lines, index_map):
+def run_loop(args, text, all_marks, index_map):
     loop = Loop()
-    handler = Hints(lines, index_map, args)
+    handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
         return {'match': handler.chosen, 'program': args.program}
@@ -206,45 +226,74 @@ def escape(chars):
     return chars.replace('\\', '\\\\').replace('-', r'\-').replace(']', r'\]')
 
 
-def run(args, text):
+def functions_for(args):
+    post_processors = []
     if args.type == 'url':
         from .url_regex import url_delimiters
-        url_pat = '(?:{})://[^{}]{{3,}}'.format(
+        pattern = '(?:{})://[^{}]{{3,}}'.format(
             '|'.join(args.url_prefixes.split(',')), url_delimiters
         )
-        finditer = partial(find_urls, re.compile(url_pat))
+        post_processors.append(url)
     elif args.type == 'path':
-        finditer = partial(regex_finditer, re.compile(r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'), args.minimum_match_length)
+        pattern = r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'
+        post_processors.extend((brackets, quotes))
     elif args.type == 'line':
-        finditer = partial(regex_finditer, re.compile(r'(?m)^\s*(.+)\s*$'), args.minimum_match_length)
+        pattern = '(?m)^\\s*(.+)[\\s\0]*$'
     elif args.type == 'word':
         chars = args.word_characters
         if chars is None:
             import json
             chars = json.loads(os.environ['KITTY_COMMON_OPTS'])['select_by_word_characters']
-        pat = re.compile(r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length))
-        finditer = partial(regex_finditer, pat, args.minimum_match_length)
+        pattern = r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length)
+        post_processors.extend((brackets, quotes))
     else:
-        finditer = partial(regex_finditer, re.compile(args.regex), args.minimum_match_length)
+        pattern = args.regex
+    return pattern, post_processors
+
+
+def convert_text(text, cols):
     lines = []
-    all_marks = []
-    for line in text.splitlines():
-        marked = mark(finditer, line, all_marks)
-        lines.append(marked)
-    if not all_marks:
-        input(_('No {} found, press Enter to abort.').format(
-            'URLs' if args.type == 'url' else 'matches'
-            ))
-        return
-
-    largest_index = all_marks[-1].index
-    for m in all_marks:
-        m.index = largest_index - m.index
-    index_map = {m.index: m for m in all_marks}
-
-    return run_loop(args, lines, index_map)
+    for full_line in text.split('\n'):
+        if full_line:
+            for line in full_line.split('\r'):
+                if line:
+                    lines.append(line.ljust(cols, '\0'))
+    return '\n'.join(lines)
 
 
+def parse_input(text):
+    try:
+        cols = int(os.environ['OVERLAID_WINDOW_COLS'])
+    except KeyError:
+        cols = screen_size().cols
+    return convert_text(text, cols)
+
+
+def run(args, text):
+    try:
+        pattern, post_processors = functions_for(args)
+        text = parse_input(text)
+        all_marks = tuple(mark(pattern, post_processors, text, args))
+        if not all_marks:
+            input(_('No {} found, press Enter to quit.').format(
+                'URLs' if args.type == 'url' else 'matches'
+                ))
+            return
+
+        largest_index = all_marks[-1].index
+        for m in all_marks:
+            m.index = largest_index - m.index
+        index_map = {m.index: m for m in all_marks}
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input('Press Enter to quit.')
+        raise SystemExit(1)
+
+    return run_loop(args, text, all_marks, index_map)
+
+
+# CLI {{{
 OPTIONS = partial(r'''
 --program
 default=default
@@ -284,8 +333,12 @@ The minimum number of characters to consider a match.
 '''.format, ','.join(sorted(URL_PREFIXES)))
 
 
-def main(args):
+def parse_hints_args(args):
     msg = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
+    return parse_args(args[1:], OPTIONS, '', msg, 'hints')
+
+
+def main(args):
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
@@ -296,7 +349,7 @@ def main(args):
         text = sys.stdin.buffer.read().decode('utf-8')
         sys.stdin = open('/dev/tty')
     try:
-        args, items = parse_args(args[1:], OPTIONS, '', msg, 'hints')
+        args, items = parse_hints_args(args[1:])
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0], file=sys.stderr)
@@ -325,7 +378,7 @@ def handle_result(args, data, target_window_id, boss):
         boss.open_url(data['match'], None if program == 'default' else program, cwd=cwd)
 
 
-handle_result.type_of_input = 'text'
+handle_result.type_of_input = 'screen'
 
 
 if __name__ == '__main__':
@@ -333,3 +386,4 @@ if __name__ == '__main__':
     ans = main(sys.argv)
     if ans:
         print(ans)
+# }}}

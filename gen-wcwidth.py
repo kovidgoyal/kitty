@@ -219,10 +219,12 @@ def codepoint_to_mark_map(p, mark_map):
     return rmap
 
 
-def classes_to_regex(classes):
+def classes_to_regex(classes, exclude=''):
     chars = set()
     for c in classes:
         chars |= class_maps[c]
+    for c in map(ord, exclude):
+        chars.discard(c)
 
     def as_string(codepoint):
         if codepoint < 256:
@@ -261,7 +263,7 @@ def gen_ucd():
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
     with open('kittens/hints/url_regex.py', 'w') as f:
-        f.write("url_delimiters = '{}'  # noqa".format(''.join(classes_to_regex(cz))))
+        f.write("url_delimiters = '{}'  # noqa".format(''.join(classes_to_regex(cz, exclude='\n'))))
 
 
 def gen_names():
