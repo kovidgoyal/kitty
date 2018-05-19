@@ -406,6 +406,7 @@ def main(args):
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
             print(handler.report_traceback_on_exit, file=sys.stderr)
+            input('Press Enter to quit.')
         raise SystemExit(loop.return_code)
 
 

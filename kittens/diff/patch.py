@@ -225,7 +225,7 @@ class Differ:
                     patch = parse_patch(output)
                 except Exception:
                     import traceback
-                    return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(key[0], key[1])
+                    return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(left_path, right_path)
                 else:
                     ans[key] = patch
         return ans
