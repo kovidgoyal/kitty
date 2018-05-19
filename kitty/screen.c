@@ -1220,6 +1220,11 @@ screen_handle_cmd(Screen *self, PyObject *cmd) {
 }
 
 void
+screen_handle_print(Screen *self, PyObject *msg) {
+    CALLBACK("handle_remote_print", "O", msg);
+}
+
+void
 screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;

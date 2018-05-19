@@ -31,12 +31,16 @@ screen_size = screen_size_function()
 
 
 def debug(*a, **kw):
-    fd = getattr(debug, 'fd', None)
-    if fd is None:
-        fd = debug.fd = open('/tmp/kitten-debug', 'w')
-    kw['file'] = fd
+    from base64 import standard_b64encode
+    buf = io.StringIO()
+    kw['file'] = buf
     print(*a, **kw)
-    fd.flush()
+    text = buf.getvalue()
+    text = b'\x1bP@kitty-print|' + standard_b64encode(text.encode('utf-8')) + b'\x1b\\'
+    fobj = getattr(debug, 'fobj', sys.stdout.buffer)
+    fobj.write(text)
+    if hasattr(fobj, 'flush'):
+        fobj.flush()
 
 
 def write_all(fd, data):
@@ -374,7 +378,7 @@ class Loop:
                 image_manager = handler.image_manager_class(handler)
             keep_going = True
             try:
-                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, image_manager)
+                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, debug, image_manager)
                 with handler:
                     while keep_going:
                         has_data_to_write = bool(handler.write_buf)
@@ -403,7 +407,7 @@ class Loop:
         handler = UnhandledException(tb)
         handler.write_buf = []
         handler._term_manager = term_manager
-        handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job)
+        handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, debug)
         with handler:
             while True:
                 has_data_to_write = bool(handler.write_buf)

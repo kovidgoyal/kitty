@@ -3,16 +3,17 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kittens.tui.operations import commander
+from .operations import commander
 
 
 class Handler:
 
     image_manager_class = None
 
-    def _initialize(self, screen_size, quit_loop, wakeup, start_job, image_manager=None):
+    def _initialize(self, screen_size, quit_loop, wakeup, start_job, debug, image_manager=None):
         self.screen_size, self.quit_loop = screen_size, quit_loop
         self.wakeup = wakeup
+        self.debug = debug
         self.start_job = start_job
         self.cmd = commander(self)
         self.image_manager = image_manager
@@ -20,10 +21,12 @@ class Handler:
     def __enter__(self):
         if self.image_manager is not None:
             self.image_manager.__enter__()
+        self.debug.fobj = self
         self.initialize()
 
     def __exit__(self, *a):
         del self.write_buf[:]
+        del self.debug.fobj
         self.finalize()
         if self.image_manager is not None:
             self.image_manager.__exit__(*a)

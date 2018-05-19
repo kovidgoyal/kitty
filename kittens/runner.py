@@ -46,8 +46,6 @@ def create_kitten_handler(kitten, orig_args):
 
 def set_debug(kitten):
     from kittens.tui.loop import debug
-    path = os.path.join('/tmp', 'kitten-' + kitten)
-    debug.fd = open(path, 'w')
     import builtins
     builtins.debug = debug
 

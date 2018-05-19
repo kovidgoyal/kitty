@@ -328,6 +328,12 @@ class Window:
     def handle_remote_cmd(self, cmd):
         get_boss().handle_remote_cmd(cmd, self)
 
+    def handle_remote_print(self, msg):
+        from base64 import standard_b64decode
+        msg = standard_b64decode(msg).decode('utf-8')
+        print(msg, end='', file=sys.stderr)
+        sys.stderr.flush()
+
     def send_cmd_response(self, response):
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 

@@ -769,17 +769,28 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             }
             break;
         case '@':
-            if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, "kitty-cmd{")) {
+#define CMD_PREFIX "kitty-cmd{"
+            if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 2, CMD_PREFIX)) {
                 PyObject *cmd = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + 10, screen->parser_buf_pos - 10);
                 if (cmd != NULL) {
                     REPORT_OSC2(screen_handle_cmd, (char)screen->parser_buf[0], cmd);
                     screen_handle_cmd(screen, cmd);
                     Py_DECREF(cmd);
                 } else PyErr_Clear();
+#undef CMD_PREFIX
+#define PRINT_PREFIX "kitty-print|"
+            } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, PRINT_PREFIX)) {
+                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + sizeof(PRINT_PREFIX), screen->parser_buf_pos - sizeof(PRINT_PREFIX));
+                if (msg != NULL) {
+                    REPORT_OSC2(screen_handle_print, (char)screen->parser_buf[0], msg);
+                    screen_handle_print(screen, msg);
+                    Py_DECREF(msg);
+                } else PyErr_Clear();
             } else {
                 REPORT_ERROR("Unrecognized DCS @ code: 0x%x", screen->parser_buf[1]);
             }
             break;
+#undef PRINT_PREFIX
         default:
             REPORT_ERROR("Unrecognized DCS code: 0x%x", screen->parser_buf[0]);
             break;
