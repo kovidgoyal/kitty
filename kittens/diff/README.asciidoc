@@ -1,0 +1,64 @@
+= kitty-diff - A side-by-side diff tool with syntax highlighting and images
+:toc:
+:toc-placement!:
+
+
+== Major Features
+
+* Displays diffs side-by-side in the kitty terminal.
+
+* Does syntax highlighting of displayed diffs
+
+* Displays images as well as text diffs, even over SSH
+
+* Does recursive directory diffing
+
+
+image::../../screenshots/diff.png?raw=true[Screenshot, showing a sample diff]
+
+toc::[]
+
+
+== Installation
+
+Simply install kitty. You also ned to have either the git program or the diff program installed.
+
+
+== Usage
+
+In the kitty terminal, run:
+
+....
+kitty +kitten diff file1 file2
+....
+
+to see the diff between file1 and file2.
+
+Create an alias in `~/.bashrc` or similar to shorten the command.
+
+You can also pass directories instead of files to see the recursive diff of the directory contents.
+
+
+== Keyboard controls
+
+|===
+|Action |Shortcut
+
+|Quit             | `q, Ctrl+c`
+|Scroll line up   | `k, up`
+|Scroll line down | `j, down`
+|Scroll page up   | `PgUp`
+|Scroll page down | `PgDn`
+|Scroll to top    | `Home`
+|Scroll to bottom | `End`
+|Scroll to next change | `n`
+|Scroll to previous change | `p`
+
+|Increase lines of context | `+`
+|Decrease lines of context | `-`
+|All lines of context      | `a`
+|Restore context to default| `=`
+
+|===
+
+[options="header"]
