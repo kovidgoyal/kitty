@@ -24,13 +24,13 @@ formats = {
 
 
 def set_formats(opts):
-    formats['text'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.background)
+    formats['text'] = '48' + color_as_sgr(opts.background)
     formats['title'] = '38' + color_as_sgr(opts.title_fg) + ';48' + color_as_sgr(opts.title_bg) + ';1'
     formats['margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.margin_bg)
     formats['added_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.added_margin_bg)
     formats['removed_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.removed_margin_bg)
-    formats['added'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.added_bg)
-    formats['removed'] = '38' + color_as_sgr(opts.foreground) + ';48' + color_as_sgr(opts.removed_bg)
+    formats['added'] = '48' + color_as_sgr(opts.added_bg)
+    formats['removed'] = '48' + color_as_sgr(opts.removed_bg)
     formats['filler'] = '48' + color_as_sgr(opts.filler_bg)
     formats['hunk_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_margin_bg)
     formats['hunk'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_bg)

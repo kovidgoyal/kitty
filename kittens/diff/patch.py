@@ -69,7 +69,10 @@ class Chunk:
 
     def finalize(self):
         if not self.is_context and self.left_count == self.right_count:
-            self.centers = tuple(changed_center(left_lines[self.left_start + i], right_lines[self.right_start + i]) for i in range(self.left_count))
+            self.centers = tuple(
+                changed_center(left_lines[self.left_start + i], right_lines[self.right_start + i])
+                for i in range(self.left_count)
+            )
 
     def __repr__(self):
         return 'Chunk(is_context={}, left_start={}, left_count={}, right_start={}, right_count={})'.format(

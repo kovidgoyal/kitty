@@ -19,6 +19,11 @@ class Segment:
         self.start = start
         self.start_code = start_code
 
+    def __repr__(self):
+        return 'Segment(start={!r}, start_code={!r}, end={!r}, end_code={!r})'.format(
+                self.start, self.start_code, getattr(self, 'end', None), getattr(self, 'end_code', None)
+        )
+
 
 class Collection:
 
