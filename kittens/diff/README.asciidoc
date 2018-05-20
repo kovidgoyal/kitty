@@ -21,8 +21,11 @@ toc::[]
 
 == Installation
 
-Simply install link:https://github.com/kovidgoyal/kitty[kitty].
-You also need to have either the git program or the diff program installed.
+Simply install link:https://github.com/kovidgoyal/kitty[kitty].  You also need
+to have either the link:https://git-scm.com/[git] program or the `diff` program
+installed. Additionally, for syntax highlighting to work,
+link:http://pygments.org/[pygments] must be installed (note that pygments is
+included in the macOS kitty app).
 
 
 == Usage
