@@ -39,10 +39,10 @@ version 0.10.0 [future]
   some situations.
 
 - Render a couple more powerline symbols directly, bypassing the font
-  (`#550 <https://github.com/kovidgoyal/kitty/issues/550 >`_).
+  (`#550 <https://github.com/kovidgoyal/kitty/issues/550>`_).
 
 - Fix ctrl+alt+<special> not working in normal and application keyboard (`#548
-  https://github.com/kovidgoyal/kitty/issues/548`_).
+  <https://github.com/kovidgoyal/kitty/issues/548>`_).
 
 - Partial fix for rendering Right-to-left languages like Arabic. Rendering of
   Arabic is never going to be perfect, but now it is at least readable.
