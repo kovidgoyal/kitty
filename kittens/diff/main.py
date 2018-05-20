@@ -19,7 +19,9 @@ from ..tui.handler import Handler
 from ..tui.images import ImageManager
 from ..tui.loop import Loop
 from ..tui.operations import styled
-from .collect import create_collection, data_for_path, set_highlight_data
+from .collect import (
+    create_collection, data_for_path, lines_for_path, set_highlight_data
+)
 from .config import init_config
 from .patch import Differ, set_diff_command
 from .render import ImageSupportWarning, LineRef, render_diff
@@ -397,6 +399,7 @@ def main(args):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     opts = init_config(args)
     set_diff_command(opts.diff_cmd)
+    lines_for_path.replace_tab_by = opts.replace_tab_by
 
     loop = Loop()
     handler = DiffHandler(args, opts, left, right)

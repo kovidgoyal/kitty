@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import ast
 import os
 import re
 import shlex
@@ -36,6 +37,10 @@ def to_cmdline(x):
     ans = shlex.split(x)
     ans[0] = os.path.expandvars(os.path.expanduser(ans[0]))
     return ans
+
+
+def python_string(text):
+    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
 
 
 def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes):

@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import ast
 import json
 import os
 import re
@@ -13,7 +12,8 @@ from contextlib import contextmanager
 from . import fast_data_types as defines
 from .config_utils import (
     init_config, load_config as _load_config, merge_dicts, parse_config_base,
-    positive_float, positive_int, to_bool, to_cmdline, to_color, unit_float
+    positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
+    unit_float
 )
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -223,8 +223,7 @@ def parse_symbol_map(val):
 
 
 def parse_send_text_bytes(text):
-    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''"
-                            ).encode('utf-8')
+    return python_string(text).encode('utf-8')
 
 
 def parse_send_text(val, key_definitions):

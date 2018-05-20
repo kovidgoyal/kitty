@@ -6,7 +6,7 @@ import os
 
 from kitty.config_utils import (
     init_config, load_config as _load_config, merge_dicts, parse_config_base,
-    resolve_config, to_color
+    python_string, resolve_config, to_color
 )
 from kitty.constants import config_dir
 from kitty.rgb import color_as_sgr
@@ -50,6 +50,7 @@ def syntax_aliases(raw):
 type_map = {
     'syntax_aliases': syntax_aliases,
     'num_context_lines': int,
+    'replace_tab_by': python_string,
 }
 
 for name in (
