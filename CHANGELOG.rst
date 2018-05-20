@@ -14,7 +14,7 @@ version 0.10.0 [future]
   `Layouts section of the README
   <https://github.com/kovidgoyal/kitty#layouts>`_ for details.
 
-- Implement support for the SGR _faint_ escape code to make text blend
+- Implement support for the SGR *faint* escape code to make text blend
   into the background (`#446 <https://github.com/kovidgoyal/kitty/issues/446>`_).
 
 - Make the hints kitten a little `smarter
