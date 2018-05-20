@@ -35,7 +35,17 @@ kitty +kitten diff file1 file2
 
 to see the diff between file1 and file2.
 
-Create an alias in `~/.bashrc` or similar to shorten the command.
+Create an alias in your shell's startup file to shorten the command, for example:
+
+```sh
+alias d="kitty +kitten diff"
+```
+
+Now all you need to do to diff two files is:
+
+```
+d file1 file2
+```
 
 You can also pass directories instead of files to see the recursive diff of the
 directory contents.
@@ -64,3 +74,29 @@ directory contents.
 |===
 
 [options="header"]
+
+
+== Integrating with git
+
+Add the following to `~/.gitconfig`:
+
+```gitconfig
+[diff]
+	tool = kitty
+    guitool = kitty.gui
+[difftool]
+	prompt = false
+    trustExitCode = true
+[difftool "kitty"]
+    cmd = kitty +kitten diff $LOCAL $REMOTE
+[difftool "kitty.gui"]
+    cmd = kitty kitty +kitten diff $LOCAL $REMOTE
+```
+
+Now to use kitty-diff to view git diffs, you can simply do:
+
+```
+git difftool --no-symlinks --dir-diff
+```
+
+Once again, creating an alias for this command is useful.
