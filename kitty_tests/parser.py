@@ -118,8 +118,8 @@ class TestParser(BaseTest):
         def sgr(params):
             return (('select_graphic_rendition', '{} '.format(x)) for x in params.split())
 
-        pb('\033[1;3;4;7;9;34;44m', *sgr('1 3 4 7 9 34 44'))
-        for attr in 'bold italic reverse strikethrough'.split():
+        pb('\033[1;2;3;4;7;9;34;44m', *sgr('1 2 3 4 7 9 34 44'))
+        for attr in 'bold italic reverse strikethrough dim'.split():
             self.assertTrue(getattr(s.cursor, attr))
         self.ae(s.cursor.decoration, 1)
         self.ae(s.cursor.fg, 4 << 8 | 1)
@@ -202,7 +202,7 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033P$qm\033\\', ('screen_request_capabilities', ord('$'), 'm'))
         self.ae(c.wtcbuf, b'\033P1$rm\033\\')
-        for sgr in '0;34;102;1;3;4 0;38:5:200;58:2:10:11:12'.split():
+        for sgr in '0;34;102;1;2;3;4 0;38:5:200;58:2:10:11:12'.split():
             expected = set(sgr.split(';')) - {'0'}
             c.clear()
             parse_bytes(s, '\033[{}m\033P$qm\033\\'.format(sgr).encode('ascii'))

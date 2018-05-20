@@ -515,7 +515,7 @@ set_attribute(Line *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
     unsigned int shift, val;
     if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
-    if (shift < DECORATION_SHIFT || shift > STRIKE_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
+    if (shift < DECORATION_SHIFT || shift > DIM_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
     set_attribute_on_line(self->cells, shift, val, self->xnum);
     Py_RETURN_NONE;
 }

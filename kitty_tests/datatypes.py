@@ -179,7 +179,7 @@ class TestDataTypes(BaseTest):
         self.assertEqual(str(l0), 'a' + t[1:])
 
         c = C(3, 5)
-        c.bold = c.italic = c.reverse = c.strikethrough = True
+        c.bold = c.italic = c.reverse = c.strikethrough = c.dim = True
         c.fg = c.bg = c.decoration_fg = 0x0101
         self.ae(c, c)
         c2, c3 = c.copy(), c.copy()
@@ -219,7 +219,7 @@ class TestDataTypes(BaseTest):
 
         l3.set_text(t, 0, len(t), C())
         q = C()
-        q.bold = q.italic = q.reverse = q.strikethrough = True
+        q.bold = q.italic = q.reverse = q.strikethrough = c.dim = True
         q.decoration = 2
         c = C()
         c.x = 3
@@ -450,12 +450,12 @@ class TestDataTypes(BaseTest):
         self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
         l2 = lb.line(0)
         c = C()
-        c.bold = c.italic = c.reverse = c.strikethrough = True
+        c.bold = c.italic = c.reverse = c.strikethrough = c.dim = True
         c.fg = (4 << 8) | 1
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
         c.decoration_fg = (5 << 8) | 1
         l2.set_text('1', 0, 1, c)
-        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
+        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
                 '\x1b[22;23;27;29;39;49;59m' '0000')
         lb = filled_line_buf()
         for i in range(lb.ynum):

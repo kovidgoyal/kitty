@@ -24,7 +24,7 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink);
+    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink);
 }
 
 static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE" };
@@ -33,16 +33,16 @@ static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, decoration=%d, decoration_fg=#%08x)",
+        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x)",
         self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
-        BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), self->decoration, self->decoration_fg
+        BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), self->decoration, self->decoration_fg
     );
 }
 
 void
 cursor_reset_display_attrs(Cursor *self) {
     self->bg = 0; self->fg = 0; self->decoration_fg = 0;
-    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false;
+    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false; self->dim = false;
 }
 
 
@@ -85,6 +85,8 @@ START_ALLOW_CASE_RANGE
                 cursor_reset_display_attrs(self);  break;
             case 1:
                 self->bold = true;  break;
+            case 2:
+                self->dim = true; break;
             case 3:
                 self->italic = true;  break;
             case 4:
@@ -98,7 +100,7 @@ START_ALLOW_CASE_RANGE
             case 21:
                 self->decoration = 2; break;
             case 22:
-                self->bold = false;  break;
+                self->bold = false;  self->dim = false; break;
             case 23:
                 self->italic = false;  break;
             case 24:
@@ -138,6 +140,7 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
 #define RANGE for(unsigned c = 0; c < cell_count; c++, cell++)
 #define SET(shift) RANGE { cell->attrs |= (1 << shift); } break;
 #define RESET(shift) RANGE { cell->attrs &= ~(1 << shift); } break;
+#define RESET2(shift1, shift2) RANGE { cell->attrs &= ~((1 << shift1) | (1 << shift2)); } break;
 #define SETM(val, mask, shift) { RANGE { cell->attrs &= ~(mask << shift); cell->attrs |= ((val) << shift); } break; }
 #define SET_COLOR(which) { color_type color = 0; parse_color(params, &i, count, &color); if (color) { RANGE { cell->which = color; }} } break;
 #define SIMPLE(which, val) RANGE { cell->which = (val); } break;
@@ -153,6 +156,8 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
                 break;
             case 1:
                 SET(BOLD_SHIFT);
+            case 2:
+                SET(DIM_SHIFT);
             case 3:
                 SET(ITALIC_SHIFT);
             case 4:
@@ -165,7 +170,7 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
             case 21:
                 SETM(2, DECORATION_MASK, DECORATION_SHIFT);
             case 22:
-                RESET(BOLD_SHIFT);
+                RESET2(DIM_SHIFT, BOLD_SHIFT);
             case 23:
                 RESET(ITALIC_SHIFT);
             case 24:
@@ -199,6 +204,7 @@ END_ALLOW_CASE_RANGE
         }
     }
 #undef RESET
+#undef RESET2
 #undef SET_COLOR
 #undef SET
 #undef SETM
@@ -237,7 +243,11 @@ cursor_as_sgr(Cursor *self, Cursor *prev) {
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(fmt, ...) { p += snprintf(p, SZ, fmt ";", __VA_ARGS__); }
     char *p = buf;
-    if (self->bold != prev->bold) P("%d", self->bold ? 1 : 22);
+    bool intensity_differs = self->bold != prev->bold || self->dim != prev->dim;
+    if (intensity_differs) {
+        if (!self->bold || !self->dim) { P("%d", 22); }
+        else P("%d;%d", 1, 2);
+    }
     if (self->italic != prev->italic) P("%d", self->italic ? 3 : 23);
     if (self->reverse != prev->reverse) P("%d", self->reverse ? 7 : 27);
     if (self->strikethrough != prev->strikethrough) P("%d", self->strikethrough ? 9 : 29);
@@ -268,7 +278,7 @@ void cursor_reset(Cursor *self) {
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
     CCY(x); CCY(y); CCY(shape); CCY(blink);
-    CCY(bold); CCY(italic); CCY(strikethrough); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
+    CCY(bold); CCY(italic); CCY(strikethrough); CCY(dim); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
 }
 
 static PyObject*
@@ -281,6 +291,7 @@ BOOL_GETSET(Cursor, bold)
 BOOL_GETSET(Cursor, italic)
 BOOL_GETSET(Cursor, reverse)
 BOOL_GETSET(Cursor, strikethrough)
+BOOL_GETSET(Cursor, dim)
 BOOL_GETSET(Cursor, blink)
 
 static PyMemberDef members[] = {
@@ -299,6 +310,7 @@ static PyGetSetDef getseters[] = {
     GETSET(italic)
     GETSET(reverse)
     GETSET(strikethrough)
+    GETSET(dim)
     GETSET(blink)
     {NULL}  /* Sentinel */
 };

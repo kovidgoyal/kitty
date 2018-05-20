@@ -1,6 +1,7 @@
 #version GLSL_VERSION
 #define WHICH_PROGRAM
 #define NOT_TRANSPARENT
+#define SHIFTS
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
@@ -45,12 +46,14 @@ out float bg_alpha;
 #endif
 
 #ifdef NEEDS_FOREGROUND
+uniform float inactive_text_alpha;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
 out float colored_sprite;
+out float effective_text_alpha;
 #endif
 
 
@@ -63,9 +66,6 @@ const uint ONE = uint(1);
 const uint TWO = uint(2);
 const uint THREE = uint(3);
 const uint FOUR = uint(4);
-const uint DECORATION_MASK = uint(3);
-const uint STRIKE_MASK = uint(1);
-const uint REVERSE_MASK = uint(1);
 
 vec3 color_to_vec(uint c) {
     uint r, g, b;
@@ -134,7 +134,7 @@ void main() {
     // set cell color indices {{{
     uvec2 default_colors = uvec2(default_fg, default_bg);
     uint text_attrs = sprite_coords[3];
-    uint is_inverted = ((text_attrs >> 6) & REVERSE_MASK) + inverted;
+    uint is_inverted = ((text_attrs >> REVERSE_SHIFT) & ONE) + inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
     float cursor = is_cursor(c, r);
@@ -151,13 +151,15 @@ void main() {
     // Foreground
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
     foreground = color_to_vec(resolved_fg);
+    float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
+    effective_text_alpha = inactive_text_alpha * mix(1.0, 0.75, has_dim);
     // Selection
     foreground = choose_color(float(is_selected & ONE), color_to_vec(highlight_fg), foreground);
     // Underline and strike through (rendered via sprites)
     float in_url = float((is_selected & TWO) >> 1);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
-    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> 2) & DECORATION_MASK, ZERO, ZERO));
-    strike_pos = to_sprite_pos(pos, ((text_attrs >> 7) & STRIKE_MASK) * FOUR, ZERO, ZERO);
+    underline_pos = choose_color(in_url, to_sprite_pos(pos, url_style, ZERO, ZERO), to_sprite_pos(pos, (text_attrs >> DECORATION_SHIFT) & THREE, ZERO, ZERO));
+    strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor
     foreground = choose_color(cursor, bg, foreground);

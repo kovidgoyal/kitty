@@ -197,6 +197,7 @@ PyInit_fast_data_types(void) {
         PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
         PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
         PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
+        PyModule_AddIntConstant(m, "DIM", DIM_SHIFT);
         PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
         PyModule_AddStringMacro(m, ERROR_PREFIX);
 #ifdef KITTY_VCS_REV

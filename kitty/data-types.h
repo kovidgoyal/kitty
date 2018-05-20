@@ -58,6 +58,7 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 #define BI_VAL(attrs) ((attrs >> 4) & 3)
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
+#define DIM_SHIFT 8
 #define COL_MASK 0xFFFFFFFF
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
@@ -71,11 +72,12 @@ typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 
 #define CURSOR_TO_ATTRS(c, w) \
     ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
-            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | ((c->strikethrough & 1) << STRIKE_SHIFT)))
+            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | \
+            ((c->strikethrough & 1) << STRIKE_SHIFT) | ((c->dim & 1) << DIM_SHIFT)))
 
 #define ATTRS_TO_CURSOR(a, c) \
     (c)->decoration = (a >> DECORATION_SHIFT) & 3; (c)->bold = (a >> BOLD_SHIFT) & 1; (c)->italic = (a >> ITALIC_SHIFT) & 1; \
-    (c)->reverse = (a >> REVERSE_SHIFT) & 1; (c)->strikethrough = (a >> STRIKE_SHIFT) & 1;
+    (c)->reverse = (a >> REVERSE_SHIFT) & 1; (c)->strikethrough = (a >> STRIKE_SHIFT) & 1; (c)->dim = (a >> DIM_SHIFT) & 1;
 
 #define COPY_CELL(src, s, dest, d) \
     (dest)->cells[d] = (src)->cells[s];
@@ -178,7 +180,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    bool bold, italic, reverse, strikethrough, blink;
+    bool bold, italic, reverse, strikethrough, blink, dim;
     unsigned int x, y;
     uint8_t decoration;
     CursorShape shape;
