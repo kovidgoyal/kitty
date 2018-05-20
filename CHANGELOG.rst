@@ -3,6 +3,20 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.10.0 [future]
+------------------------------
+
+- A diff kitten to show side-by-side diffs with syntax highlighting and support
+  for images. See `diff README
+  <https://github.com/kovidgoyal/kitty/tree/master/kittens/diff>`_.
+
+- Make windows in the various kitty layouts manually resizable. See the
+  `Layouts section of the README
+  <https://github.com/kovidgoyal/kitty#layouts>`_ for details.
+
+- Implement support for the SGR _faint_ escape code to make text blend
+  into the background (#446).
+
 version 0.9.1 [2018-05-05]
 ------------------------------
 
