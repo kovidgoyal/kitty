@@ -21,7 +21,8 @@ toc::[]
 
 == Installation
 
-Simply install kitty. You also ned to have either the git program or the diff program installed.
+Simply install link:https://github.com/kovidgoyal/kitty[kitty].
+You also need to have either the git program or the diff program installed.
 
 
 == Usage
@@ -36,7 +37,8 @@ to see the diff between file1 and file2.
 
 Create an alias in `~/.bashrc` or similar to shorten the command.
 
-You can also pass directories instead of files to see the recursive diff of the directory contents.
+You can also pass directories instead of files to see the recursive diff of the
+directory contents.
 
 
 == Keyboard controls
