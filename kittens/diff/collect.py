@@ -152,8 +152,11 @@ def data_for_path(path):
 
 @lru_cache(maxsize=1024)
 def lines_for_path(path):
-    data = data_for_path(path)
+    data = data_for_path(path).replace('\t', lines_for_path.replace_tab_by)
     return tuple(sanitize(data).splitlines())
+
+
+lines_for_path.replace_tab_by = ' ' * 4
 
 
 @lru_cache(maxsize=1024)
