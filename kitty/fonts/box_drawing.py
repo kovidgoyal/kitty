@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import math
-import os
 from functools import partial as p
 from itertools import repeat
 
@@ -377,16 +376,42 @@ def hblock(buf, width, height, frac=1, gravity='left'):
             buf[c] = 255
 
 
-def shade(buf, width, height, frac=1/4):
-    rand = bytearray(os.urandom(width * height))
-    cutoff = int(frac * 255)
+def shade(buf, width, height, light=False, invert=False):
+    square_sz = max(1, width // 12)
+    number_of_rows = height // square_sz
+    number_of_cols = width // square_sz
+    nums = tuple(range(square_sz))
 
-    for r in range(height):
-        off = width * r
-        for c in range(width):
-            q = off + c
-            if rand[q] < cutoff:
-                buf[q] = 255
+    dest = bytearray(width * height) if invert else buf
+
+    for r in range(number_of_rows):
+        y = r * square_sz
+        is_odd = r % 2 != 0
+        if is_odd:
+            continue
+        fill_even = r % 4 == 0
+        for yr in nums:
+            y = r * square_sz + yr
+            if y >= height:
+                break
+            off = width * y
+            for c in range(number_of_cols):
+                if light:
+                    fill = (c % 4) == (0 if fill_even else 2)
+                else:
+                    fill = (c % 2 == 0) == fill_even
+                if fill:
+                    for xc in nums:
+                        x = (c * square_sz) + xc
+                        if x >= width:
+                            break
+                        dest[off + x] = 255
+    if invert:
+        for y in range(height):
+            off = width * y
+            for x in range(width):
+                q = off + x
+                buf[q] = 255 - dest[q]
 
 
 def quad(buf, width, height, x=0, y=0):
@@ -465,9 +490,9 @@ box_chars = {
     '▎': [p(hblock, frac=1/4)],
     '▏': [p(hblock, frac=1/8)],
     '▐': [p(hblock, frac=1/2, gravity='right')],
-    '░': [p(shade, frac=1/4)],
-    '▒': [p(shade, frac=2/4)],
-    '▓': [p(shade, frac=3/4)],
+    '░': [p(shade, light=True)],
+    '▒': [shade],
+    '▓': [p(shade, invert=True)],
     '▔': [p(vblock, frac=1/8)],
     '▕': [p(hblock, frac=1/8, gravity='right')],
     '▖': [p(quad, y=1)],
