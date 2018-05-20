@@ -359,6 +359,7 @@ PYWRAP1(set_options) {
     S(cursor_blink_interval, PyFloat_AsDouble);
     S(cursor_stop_blinking_after, PyFloat_AsDouble);
     S(background_opacity, PyFloat_AsDouble);
+    S(dim_opacity, PyFloat_AsDouble);
     S(inactive_text_alpha, PyFloat_AsDouble);
     S(window_padding_width, PyFloat_AsDouble);
     S(cursor_shape, PyLong_AsLong);

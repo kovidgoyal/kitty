@@ -356,6 +356,7 @@ type_map = {
     'macos_titlebar_color': macos_titlebar_color,
     'box_drawing_scale': box_drawing_scale,
     'background_opacity': unit_float,
+    'dim_opacity': unit_float,
     'tab_separator': tab_separator,
     'active_tab_font_style': tab_font_style,
     'inactive_tab_font_style': tab_font_style,

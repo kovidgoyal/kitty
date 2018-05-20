@@ -47,6 +47,7 @@ out float bg_alpha;
 
 #ifdef NEEDS_FOREGROUND
 uniform float inactive_text_alpha;
+uniform float dim_opacity;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 strike_pos;
@@ -152,7 +153,7 @@ void main() {
     uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
     foreground = color_to_vec(resolved_fg);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
-    effective_text_alpha = inactive_text_alpha * mix(1.0, 0.75, has_dim);
+    effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
     // Selection
     foreground = choose_color(float(is_selected & ONE), color_to_vec(highlight_fg), foreground);
     // Underline and strike through (rendered via sprites)

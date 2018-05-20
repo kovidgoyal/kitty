@@ -26,7 +26,7 @@ typedef struct {
     bool macos_option_as_alt, macos_hide_titlebar, macos_hide_from_tasks;
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
-    float background_opacity;
+    float background_opacity, dim_opacity;
     float inactive_text_alpha;
     float window_padding_width;
     Edge tab_bar_edge;

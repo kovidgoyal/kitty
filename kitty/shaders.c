@@ -394,9 +394,10 @@ set_cell_uniforms(float current_inactive_text_alpha) {
         cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
-#define S(prog, name, val) { bind_program(prog); glUniform1i(glGetUniformLocation(program_id(prog), #name), val); }
-        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT); S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT);
-        S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT);
+#define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
+        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i); S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
+        S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
 #undef S
         cell_uniform_data.constants_set = true;
     }
