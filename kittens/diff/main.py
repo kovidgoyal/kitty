@@ -147,7 +147,7 @@ class DiffHandler(Handler):
 
     def init_terminal_state(self):
         self.cmd.set_line_wrapping(False)
-        self.cmd.set_window_title('kitty +diff')
+        self.cmd.set_window_title(main.title)
         self.cmd.set_default_colors(self.opts.foreground, self.opts.background)
 
     def initialize(self):
@@ -392,6 +392,7 @@ def main(args):
     if len(items) != 2:
         raise SystemExit('You must specify exactly two files/directories to compare')
     left, right = items
+    main.title = _('{} vs. {}').format(left, right)
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     opts = init_config(args)
