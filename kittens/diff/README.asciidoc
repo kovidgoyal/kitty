@@ -82,10 +82,10 @@ Add the following to `~/.gitconfig`:
 
 ```gitconfig
 [diff]
-	tool = kitty
+    tool = kitty
     guitool = kitty.gui
 [difftool]
-	prompt = false
+    prompt = false
     trustExitCode = true
 [difftool "kitty"]
     cmd = kitty +kitten diff $LOCAL $REMOTE
