@@ -142,7 +142,7 @@ def is_image(path):
 @lru_cache(maxsize=1024)
 def data_for_path(path):
     ans = raw_data_for_path(path)
-    if not is_image(path):
+    if not is_image(path) and not os.path.samefile(path, os.devnull):
         try:
             ans = ans.decode('utf-8')
         except UnicodeDecodeError:

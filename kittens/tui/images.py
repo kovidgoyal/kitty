@@ -230,11 +230,7 @@ class ImageManager:
             self.handler.cmd.gr_command(cmd)
 
     def convert_image(self, path, available_width, available_height, image_data, scale_up=False):
-        try:
-            rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir)
-        except ValueError:
-            rgba_path = None
-            width = height = 0
+        rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir)
         return rgba_path, width, height
 
     def transmit_image(self, image_data, image_id, rgba_path, width, height):
