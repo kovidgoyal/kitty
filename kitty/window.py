@@ -346,16 +346,16 @@ class Window:
         where, text = data.partition(';')[::2]
         if text == '?':
             response = None
-            if 'read-clipboard' in self.opts.clipboard_control and ('s' in where or 'c' in where):
-                response = get_clipboard_string()
+            if 's' in where or 'c' in where:
+                response = get_clipboard_string() if 'read-clipboard' in self.opts.clipboard_control else ''
                 loc = 'c'
-            elif 'p' in where and 'read-primary' in self.opts.clipboard_control:
-                response = get_primary_selection()
+            elif 'p' in where:
+                response = get_primary_selection() if 'read-primary' in self.opts.clipboard_control else ''
                 loc = 'p'
-            if response is not None:
-                from base64 import standard_b64encode
-                self.screen.send_escape_code_to_child(OSC, '{};{}'.format(
-                    loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
+            response = response or ''
+            from base64 import standard_b64encode
+            self.screen.send_escape_code_to_child(OSC, '52;{};{}'.format(
+                loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
 
         else:
             from base64 import standard_b64decode
@@ -365,7 +365,7 @@ class Window:
                 log_error('Invalid data to write to clipboard received, ignoring')
                 return
             if 's' in where or 'c' in where:
-                if 'write-clipboard' in self.opts.clipboard_control:
+                if 'write-clipboard' not in self.opts.clipboard_control:
                     set_clipboard_string(text)
             if 'p' in where:
                 if self.opts.copy_on_select:
