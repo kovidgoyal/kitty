@@ -265,7 +265,15 @@ class Loop:
         pass
 
     def _on_osc(self, osc):
-        pass
+        m = re.match(r'(\d+);', osc)
+        if m is not None:
+            code = int(m.group(1))
+            rest = osc[m.end():]
+            if code == 52:
+                where, rest = rest.partition(';')[::2]
+                from_primary = 'p' in where
+                from base64 import standard_b64decode
+                self.handler.on_clipboard_response(standard_b64decode(rest).decode('utf-8'), from_primary)
 
     def _on_apc(self, apc):
         if apc.startswith('K'):

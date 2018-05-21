@@ -67,6 +67,9 @@ class Handler:
     def on_kitty_cmd_response(self, response):
         pass
 
+    def on_clipboard_response(self, text, from_primary=False):
+        pass
+
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')

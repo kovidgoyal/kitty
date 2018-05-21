@@ -231,6 +231,17 @@ def set_default_colors(fg=None, bg=None) -> str:
     return ans
 
 
+def write_to_clipboard(data, use_primary=False) -> str:
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    from base64 import standard_b64encode
+    return '\x1b]52;{};{}\x07'.format('p' if use_primary else 'c', standard_b64encode(data).decode('ascii'))
+
+
+def request_from_clipboard(use_primary=False) -> str:
+    return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
+
+
 all_cmds = tuple(
         (name, obj) for name, obj in globals().items()
         if hasattr(obj, '__annotations__') and obj.__annotations__.get('return') is str)
