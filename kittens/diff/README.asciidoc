@@ -79,6 +79,13 @@ directory contents.
 [options="header"]
 
 
+== Configuring kitty-diff
+
+You can configure the colors used, the diff implementation, the default lines of context, etc.
+by creating a diff.conf in your kitty config folder. See the link:diff.conf[default diff.conf]
+for details.
+
+
 == Integrating with git
 
 Add the following to `~/.gitconfig`:
