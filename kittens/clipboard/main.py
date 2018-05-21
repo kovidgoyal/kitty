@@ -35,7 +35,7 @@ OPTIONS = r'''
 default=False
 type=bool-set
 Output the current contents of the clipboard to stdout. Note that this
-will hang if you have not enabled the option to allow reading the clipboard
+will not work if you have not enabled the option to allow reading the clipboard
 in kitty.conf
 
 
