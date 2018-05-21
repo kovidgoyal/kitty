@@ -36,8 +36,12 @@ def set_diff_command(opt):
 def run_diff(file1, file2, context=3):
     # returns: ok, is_different, patch
     cmd = shlex.split(set_diff_command.cmd.replace('_CONTEXT_', str(context)))
+    # we resolve symlinks because git diff does not follow symlinks, while diff
+    # does. We want consistent behavior, also for integration with git difftool
+    # we always want symlinks to be followed.
+    path1, path2 = map(os.path.realpath, (file1, file2))
     p = subprocess.Popen(
-            cmd + [file1, file2],
+            cmd + [path1, path2],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     stdout, stderr = p.communicate()
     returncode = p.wait()
