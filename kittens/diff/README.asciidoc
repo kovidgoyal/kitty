@@ -103,3 +103,15 @@ git difftool --no-symlinks --dir-diff
 ```
 
 Once again, creating an alias for this command is useful.
+
+
+== Why does this work only in kitty?
+
+The diff kitten makes use of various features that are kitty only, such as the
+kitty graphics protocol, the extended keyboard protocol, etc. It also leverages
+terminal program infrastructure I created for all of kitty's other kittens to
+reduce the amount of code needed (the entire implementation is under 2000 lines
+of code).
+
+And fundamentally, it's kitty only because I wrote it for myself, and I am
+highly unlikely to use any other terminals :)
