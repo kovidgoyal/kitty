@@ -126,7 +126,7 @@ def main(args):
     handler = Resize(args)
     loop.loop(handler)
     if handler.print_on_fail:
-        print(handler.print_on_fail)
+        print(handler.print_on_fail, file=sys.stderr)
         input('Press Enter to quit')
     raise SystemExit(loop.return_code)
 
