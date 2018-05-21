@@ -24,10 +24,11 @@ kitty icat path/to/some/image.png
 You can also see a screenshot with more sophisticated features such as alpha-blending and text over graphics
 link:https://github.com/kovidgoyal/kitty/issues/33#issuecomment-334436100[here].
 
-Some third-party programs that use the kitty graphics protocol:
+Some programs that use the kitty graphics protocol:
 
  * link:https://github.com/dsanson/termpdf[termdpf] - a terminal PDF/DJVU/CBR viewer
  * link:https://github.com/ranger/ranger[ranger] - a terminal file manager, with image previews, see this link:https://github.com/ranger/ranger/pull/1077[PR]
+ * link:https://github.com/kovidgoyal/kitty/tree/master/kittens/diff[kitty-diff] - a side-by-side terminal diff program with support for images
 
 toc::[]
 
