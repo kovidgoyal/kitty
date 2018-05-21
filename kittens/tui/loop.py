@@ -170,7 +170,7 @@ class Loop:
         self.read_buf = ''
         self.decoder = codecs.getincrementaldecoder('utf-8')('ignore')
         try:
-            self.iov_limit = os.sysconf('SC_IOV_MAX') - 1
+            self.iov_limit = max(os.sysconf('SC_IOV_MAX') - 1, 255)
         except Exception:
             self.iov_limit = 255
         self.parse_input_from_terminal = partial(parse_input_from_terminal, self._on_text, self._on_dcs, self._on_csi, self._on_osc, self._on_pm, self._on_apc)
