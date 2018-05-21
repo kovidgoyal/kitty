@@ -236,7 +236,7 @@ class DiffHandler(Handler):
             return
         self.cmd.set_cursor_position(0, self.num_lines)
         self.cmd.clear_to_eol()
-        scroll_frac = styled('{:.0%}'.format(self.scroll_pos / self.max_scroll_pos), fg=self.opts.margin_fg)
+        scroll_frac = styled('{:.0%}'.format(self.scroll_pos / (self.max_scroll_pos or 1)), fg=self.opts.margin_fg)
         counts = '{}{}{}'.format(
                 styled(str(self.added_count), fg=self.opts.highlight_added_bg),
                 styled(',', fg=self.opts.margin_fg),
