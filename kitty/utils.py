@@ -335,7 +335,7 @@ def make_fd_non_blocking(fd):
 
 
 @contextmanager
-def non_blocking_read(src=sys.stdin):
+def non_blocking_read(src=sys.stdin, disable_echo=False):
     import termios
     import tty
     import fcntl
@@ -343,6 +343,10 @@ def non_blocking_read(src=sys.stdin):
     if src.isatty():
         old = termios.tcgetattr(fd)
         tty.setraw(fd)
+        if disable_echo:
+            new = list(old)
+            new[3] |= termios.ECHO
+            termios.tcsetattr(fd, termios.TCSANOW, new)
     oldfl = make_fd_non_blocking(fd)
     yield fd
     if src.isatty():
