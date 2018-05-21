@@ -36,7 +36,7 @@ version 0.10.0 [2018-05-21]
 
 - Fix moving cursor outside a defined page area incorrectly causing the cursor
   to be placed inside the page area. Caused incorrect rendering in neovim, in
-  some situations.
+  some situations (`#542 <https://github.com/kovidgoyal/kitty/issues/542>`_).
 
 - Render a couple more powerline symbols directly, bypassing the font
   (`#550 <https://github.com/kovidgoyal/kitty/issues/550>`_).
