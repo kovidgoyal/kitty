@@ -107,6 +107,7 @@ the following dependencies are installed first.
 * freetype (not needed on macOS)
 * fontconfig (not needed on macOS)
 * ImageMagick (optional, needed to use the `kitty icat` tool to display images in the terminal)
+* pygments (optional, need for syntax highlighting in `kitty +kitten diff`)
 * gcc or clang (required only for building)
 * pkg-config (required only for building)
 * For building on Linux in addition to the above dependencies you might also need to install the `-dev` packages for `xcursor`, `xrandr`, `libxi`, `xinerama`, `libgl1-mesa` and `xkbcommon-x11`, if they are not already installed by your distro.
@@ -603,6 +604,20 @@ You can, of course, also run kitty from a terminal with command line options, us
 
 And within kitty itself, you can always run kitty using just `kitty` as it
 cleverly adds itself to the PATH.
+
+
+=== kitty is not able to use my favorite font?
+
+kitty achieves its stellar performance by caching alpha masks of each rendered
+character on the GPU, so that every character needs to be rendered only once.
+This means it is a strictly character cell based display.  As such it can use
+only monospace fonts, since every cell in the grid has to be the same size. If
+your font is not listed in `kitty list-fonts` it means that it is not
+monospace. On Linux you can list all monospace fonts with,
+
+```
+fc-list : family spacing | grep spacing=100
+```
 
 == Resources on terminal behavior
 
