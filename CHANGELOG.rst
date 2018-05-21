@@ -32,7 +32,8 @@ version 0.10.0 [2018-05-21]
 
 - Allow programs running in kitty to `read/write from the clipboard
   <https://github.com/kovidgoyal/kitty/commit/889ca7791244253cb08fbc3eca8883a87fb943a7>`_.
-  By default only writing is allowed.
+  By default only writing is allowed. This feature is supported in many
+  terminals, search for `OSC 52 clipboard` to find out more about using it.
 
 - Fix moving cursor outside a defined page area incorrectly causing the cursor
   to be placed inside the page area. Caused incorrect rendering in neovim, in
