@@ -1230,6 +1230,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x6:
                 switch(key & 0x7f) { default: return NULL;
+                  case 0: // SPACE
+                    return "\x02\x1b\x00";
                   case 18: // A
                     return "\x02\x1b\x01";
                   case 19: // B
@@ -2853,6 +2855,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                 } // end switch(key)
               case 0x6:
                 switch(key & 0x7f) { default: return NULL;
+                  case 0: // SPACE
+                    return "\x02\x1b\x00";
                   case 18: // A
                     return "\x02\x1b\x01";
                   case 19: // B
@@ -4485,6 +4489,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x6:
                   switch(key & 0x7f) { default: return NULL;
+                    case 0: // SPACE
+                      return "\x02\x1b\x00";
                     case 18: // A
                       return "\x02\x1b\x01";
                     case 19: // B
@@ -6108,6 +6114,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   } // end switch(key)
                 case 0x6:
                   switch(key & 0x7f) { default: return NULL;
+                    case 0: // SPACE
+                      return "\x02\x1b\x00";
                     case 18: // A
                       return "\x02\x1b\x01";
                     case 19: // B

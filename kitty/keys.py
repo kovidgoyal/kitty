@@ -49,7 +49,9 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
 }
 
-control_alt_codes = {}
+control_alt_codes = {
+    defines.GLFW_KEY_SPACE: b'\x1b\0',
+}
 
 for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
