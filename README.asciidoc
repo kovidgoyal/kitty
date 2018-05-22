@@ -154,7 +154,7 @@ just `kitty`.
 
 * openSUSE: https://build.opensuse.org/package/show/X11:terminals/kitty
 
-* Debian: https://packages.qa.debian.org/k/kitty/news/20180419T070013Z.html
+* Debian: https://packages.debian.org/buster/kitty
 
 === macOS packages
 
