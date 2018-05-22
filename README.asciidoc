@@ -560,8 +560,15 @@ for why kitty does not support background color erase.
 === I get errors about the terminal being unknown or opening the terminal failing when SSHing into a different computer?
 
 This happens because the kitty terminfo files are not available on the server.
-Either install kitty on the server, or simply copy over the terminfo files,
-using:
+If you have python installed on the server, you can ssh in using the following
+command which will automatically copy the terminfo files over.
+
+....
+kitty +kitten ssh server_name
+....
+
+Alternatively, you can use the following one-liner which does not require python
+on the server, but is slower, as it has to ssh into the server twice:
 
 ....
 infocmp xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
@@ -581,7 +588,6 @@ infocmp xterm-kitty | ssh $1 tic -x -o \~/.terminfo /dev/stdin && ssh $1
 
 Then you can use `myssh server` to log in to `server` with the terminfo file
 being automatically available.
-
 
 === How do I change the colors in a running kitty instance?
 
