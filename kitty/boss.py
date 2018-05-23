@@ -369,6 +369,10 @@ class Boss:
         window = self.active_window
         if window is None or not opacity:
             return
+        if not self.opts.dynamic_background_opacity:
+            return self.show_error(
+                    _('Cannot change background opacity'),
+                    _('You must set the dynamic_background_opacity option in kitty.conf to be able to change background opacity'))
         os_window_id = window.os_window_id
         if opacity[0] in '+-':
             opacity = background_opacity_of(os_window_id)
@@ -537,7 +541,7 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=()):
+    def _run_kitten(self, kitten, args=(), input_data=None):
         w = self.active_window
         tab = self.active_tab
         if w is not None and tab is not None and w.overlay_for is None:
@@ -545,17 +549,22 @@ class Boss:
             from kittens.runner import create_kitten_handler
             end_kitten = create_kitten_handler(kitten, orig_args)
             args[0:0] = [config_dir, kitten]
-            type_of_input = end_kitten.type_of_input
-            if type_of_input in ('text', 'history', 'ansi', 'ansi-history', 'screen', 'screen-history', 'screen-ansi', 'screen-ansi-history'):
-                data = w.as_text(
-                        as_ansi='ansi' in type_of_input,
-                        add_history='history' in type_of_input,
-                        add_wrap_markers='screen' in type_of_input
-                ).encode('utf-8')
-            elif type_of_input is None:
-                data = None
+            if input_data is None:
+                type_of_input = end_kitten.type_of_input
+                if type_of_input in ('text', 'history', 'ansi', 'ansi-history', 'screen', 'screen-history', 'screen-ansi', 'screen-ansi-history'):
+                    data = w.as_text(
+                            as_ansi='ansi' in type_of_input,
+                            add_history='history' in type_of_input,
+                            add_wrap_markers='screen' in type_of_input
+                    ).encode('utf-8')
+                elif type_of_input is None:
+                    data = None
+                else:
+                    raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
             else:
-                raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
+                data = input_data
+            if isinstance(data, str):
+                data = data.encode('utf-8')
             copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with')}
             overlay_window = tab.new_special_window(
                 SpecialWindow(
@@ -592,6 +601,9 @@ class Boss:
         if tab:
             args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.'), 'do_set_tab_title', str(tab.id)]
             self._run_kitten('ask', args)
+
+    def show_error(self, title, msg):
+        self._run_kitten('show_error', ['--title', title], input_data=msg)
 
     def do_set_tab_title(self, title, tab_id):
         tm = self.active_tab_manager
