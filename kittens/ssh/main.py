@@ -19,15 +19,22 @@ rc=$?
 rm $tmp
 if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
 if [ -z "$USER" ]; then export USER=$(whoami); fi
+shell_name=$(basename $0)
 
 
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
-# support exec -a
-shell_name=$(basename $0)
+# support exec -a so we use the below to try to detect such shells
+
+case "dash" in
+    *$shell_name*)
+        python=$(command -v python3)
+        if [ -z "$python" ]; then python=$(command -v python2); fi
+        if [ -z "$python" ]; then python=python; fi
+        exec $python -c "import os; os.execlp('$0', '-' '$shell_name')"
+    ;;
+esac
 exec -a "-$shell_name" "$0"
-# exec does not support -a
-exec "$0" --login
 '''
 
 
