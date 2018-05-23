@@ -38,9 +38,5 @@ def main(args):
         input('Press Enter to close.')
 
 
-def handle_result(args, data, target_window_id, boss):
-    pass
-
-
 if __name__ == '__main__':
     main(sys.argv)

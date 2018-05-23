@@ -129,7 +129,3 @@ def main(args):
         print(handler.print_on_fail, file=sys.stderr)
         input('Press Enter to quit')
     raise SystemExit(loop.return_code)
-
-
-def handle_result(args, data, target_window_id, boss):
-    pass

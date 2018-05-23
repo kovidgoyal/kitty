@@ -409,9 +409,5 @@ def main(args):
         raise SystemExit(loop.return_code)
 
 
-def handle_result(args, current_char, target_window_id, boss):
-    pass
-
-
 if __name__ == '__main__':
     main(sys.argv)

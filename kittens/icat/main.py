@@ -304,9 +304,5 @@ def main(args=sys.argv):
     raise SystemExit(1)
 
 
-def handle_result(args, current_char, target_window_id, boss):
-    pass
-
-
 if __name__ == '__main__':
     main()

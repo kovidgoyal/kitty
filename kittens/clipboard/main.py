@@ -72,9 +72,5 @@ to output the current clipboard contents to stdout. Note that you must enable re
     raise SystemExit(loop.return_code)
 
 
-def handle_result(args, data, target_window_id, boss):
-    pass
-
-
 if __name__ == '__main__':
     main(sys.argv)
