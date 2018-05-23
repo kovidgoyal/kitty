@@ -11,9 +11,9 @@ from contextlib import contextmanager
 
 from . import fast_data_types as defines
 from .config_utils import (
-    init_config, load_config as _load_config, merge_dicts, parse_config_base,
-    positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
-    unit_float
+    init_config, key_func, load_config as _load_config, merge_dicts,
+    parse_config_base, positive_float, positive_int, python_string, to_bool,
+    to_cmdline, to_color, unit_float
 )
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -92,18 +92,7 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
-args_funcs = {}
-
-
-def func_with_args(*names):
-
-    def w(f):
-        for name in names:
-            if args_funcs.setdefault(name, f) is not f:
-                raise ValueError('the args_func {} is being redefined'.format(name))
-        return f
-
-    return w
+func_with_args, args_funcs = key_func()
 
 
 @func_with_args(

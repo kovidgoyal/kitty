@@ -18,6 +18,19 @@ class Handler:
         self.cmd = commander(self)
         self.image_manager = image_manager
 
+    def add_shortcut(self, action, key, mods=None, is_text=False):
+        if not hasattr(self, '_text_shortcuts'):
+            self._text_shortcuts, self._key_shortcuts = {}, {}
+        if is_text:
+            self._text_shortcuts[key] = action
+        else:
+            self._key_shortcuts[(key, mods or 0)] = action
+
+    def shortcut_action(self, key_event_or_text):
+        if isinstance(key_event_or_text, str):
+            return self._text_shortcuts.get(key_event_or_text)
+        return self._key_shortcuts.get((key_event_or_text.key, key_event_or_text.mods))
+
     def __enter__(self):
         if self.image_manager is not None:
             self.image_manager.__enter__()

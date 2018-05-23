@@ -254,6 +254,15 @@ KEY_MAP = {
 # END_ENCODING }}}
 
 
+text_keys = string.ascii_uppercase + string.ascii_lowercase + string.digits + '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
+
+
+def text_match(key):
+    if key not in text_keys:
+        return
+    return key
+
+
 def encode(
     integer,
     chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
@@ -312,10 +321,31 @@ type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
 key_rmap = {}
 g = globals()
+config_key_map = {}
+config_mod_map = {'SHIFT': SHIFT, 'ALT': ALT, 'OPTION': ALT, '⌥': ALT, '⌘': SUPER, 'CMD': SUPER, 'SUPER': SUPER, 'CTRL': CTRL, 'CONTROL': CTRL}
 for key_name, enc in ENCODING.items():
     key_name = key_name.replace(' ', '_')
-    g[key_name] = key_name
+    g[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
+config_key_map.update({
+        '`': g['GRAVE_ACCENT'],
+        '-': g['MINUS'],
+        '=': g['EQUAL'],
+
+        '[': g['LEFT_BRACKET'],
+        ']': g['RIGHT_BRACKET'],
+        '\\': g['BACKSLASH'],
+
+        ';': g['SEMICOLON'],
+        "'": g['APOSTROPHE'],
+
+        ',': g['COMMA'],
+        '.': g['PERIOD'],
+        '/': g['SLASH'],
+
+        'ESC': g['ESCAPE'],
+})
+
 del key_name, enc, g
 enter_key = KeyEvent(PRESS, 0, ENCODING['ENTER'])
 backspace_key = KeyEvent(PRESS, 0, ENCODING['BACKSPACE'])

@@ -5,8 +5,9 @@
 import os
 
 from kitty.config_utils import (
-    init_config, load_config as _load_config, merge_dicts, parse_config_base,
-    python_string, resolve_config, to_color
+    init_config, key_func, load_config as _load_config, merge_dicts,
+    parse_config_base, parse_kittens_key, python_string, resolve_config,
+    to_color
 )
 from kitty.constants import config_dir
 from kitty.rgb import color_as_sgr
@@ -58,14 +59,46 @@ for name in (
     ' highlight_removed_bg highlight_added_bg'
 ).split():
     type_map[name] = to_color
+func_with_args, args_funcs = key_func()
 
 
-def special_handling(*a):
-    pass
+@func_with_args('scroll_by')
+def parse_scroll_by(func, rest):
+    try:
+        return func, int(rest)
+    except Exception:
+        return func, 1
+
+
+@func_with_args('scroll_to')
+def parse_scroll_to(func, rest):
+    rest = rest.lower()
+    if rest not in {'start', 'end', 'next-change', 'prev-change'}:
+        rest = 'start'
+    return func, rest
+
+
+@func_with_args('change_context')
+def parse_change_context(func, rest):
+    rest = rest.lower()
+    if rest in {'all', 'default'}:
+        return func, rest
+    try:
+        amount = int(rest)
+    except Exception:
+        amount = 5
+    return func, amount
+
+
+def special_handling(key, val, ans):
+    if key == 'map':
+        action, *key_def = parse_kittens_key(val, args_funcs)
+        ans['key_definitions'][tuple(key_def)] = action
+        return True
 
 
 def parse_config(lines, check_keys=True):
-    ans = {}
+    ans = {'key_definitions': {}}
     parse_config_base(
         lines,
         defaults,

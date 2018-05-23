@@ -170,3 +170,71 @@ def init_config(defaults_path, parse_config):
     Options = create_options_class(defaults.keys())
     defaults = Options(defaults)
     return Options, defaults
+
+
+def key_func():
+    ans = {}
+
+    def func_with_args(*names):
+
+        def w(f):
+            for name in names:
+                if ans.setdefault(name, f) is not f:
+                    raise ValueError('the args_func {} is being redefined'.format(name))
+            return f
+
+        return w
+    return func_with_args, ans
+
+
+def parse_kittens_shortcut(sc):
+    from kitty.key_encoding import config_key_map, config_mod_map, text_match
+    if sc.endswith('+'):
+        parts = list(filter(None, sc.rstrip('+').split('+') + ['+']))
+    else:
+        parts = sc.split('+')
+    mods = parts[:-1] or None
+    if mods is not None:
+        resolved_mods = 0
+        for mod in mods:
+            m = config_mod_map.get(mod.upper())
+            if m is None:
+                raise ValueError('Unknown shortcut modifiers: {}'.format(sc))
+            resolved_mods |= m
+        mods = resolved_mods
+    is_text = False
+    rkey = parts[-1]
+    if text_match(rkey) is None:
+        rkey = rkey.upper()
+        rkey = config_key_map.get(rkey)
+        if rkey is None:
+            raise ValueError('Unknown shortcut key: {}'.format(sc))
+    else:
+        is_text = True
+    return mods, rkey, is_text
+
+
+def parse_kittens_func_args(action, args_funcs):
+    parts = action.split(' ', 1)
+    func = parts[0]
+    if len(parts) == 1:
+        return func, ()
+    rest = parts[1]
+    parser = args_funcs.get(func)
+    if parser is not None:
+        try:
+            func, args = parser(func, rest)
+        except Exception:
+            raise ValueError('Unknown key action: {}'.format(action))
+    if not isinstance(args, (list, tuple)):
+        args = (args,)
+    return func, tuple(args)
+
+
+def parse_kittens_key(val, funcs_with_args):
+    sc, action = val.partition(' ')[::2]
+    if not sc or not action:
+        return
+    mods, key, is_text = parse_kittens_shortcut(sc)
+    action = parse_kittens_func_args(action, funcs_with_args)
+    return action, key, mods, is_text

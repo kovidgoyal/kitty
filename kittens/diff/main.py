@@ -11,9 +11,7 @@ from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, appname, parse_args
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import (
-    DOWN, END, ESCAPE, HOME, PAGE_DOWN, PAGE_UP, RELEASE, UP
-)
+from kitty.key_encoding import RELEASE
 
 from ..tui.handler import Handler
 from ..tui.images import ImageManager
@@ -63,6 +61,33 @@ class DiffHandler(Handler):
             self.current_context_count = self.original_context_count = self.opts.num_context_lines
         self.highlighting_done = False
         self.restore_position = None
+        for key_def, action in self.opts.key_definitions.items():
+            self.add_shortcut(action, *key_def)
+
+    def perform_action(self, action):
+        func, args = action
+        if func == 'quit':
+            self.quit_loop(0)
+            return
+        if self.state <= DIFFED:
+            if func == 'scroll_by':
+                return self.scroll_lines(*args)
+            if func == 'scroll_to':
+                where = args[0]
+                if 'change' in where:
+                    return self.scroll_to_next_change(backwards='prev' in where)
+                amt = len(self.diff_lines) * (1 if 'end' in where else -1)
+                return self.scroll_lines(amt)
+            if func == 'change_context':
+                new_ctx = self.current_context_count
+                to = args[0]
+                if to == 'all':
+                    new_ctx = 100000
+                elif to == 'default':
+                    new_ctx = self.original_context_count
+                else:
+                    new_ctx += to
+                return self.change_context_count(new_ctx)
 
     def create_collection(self):
         self.start_job('collect', create_collection, self.left, self.right)
@@ -258,46 +283,16 @@ class DiffHandler(Handler):
             self.draw_screen()
 
     def on_text(self, text, in_bracketed_paste=False):
-        if text == 'q':
-            if self.state <= DIFFED:
-                self.quit_loop(0)
-                return
-        if self.state is DIFFED:
-            if text in 'jk':
-                self.scroll_lines(1 if text == 'j' else -1)
-                return
-            if text in 'a+-=':
-                new_ctx = self.current_context_count
-                if text == 'a':
-                    new_ctx = 100000
-                elif text == '=':
-                    new_ctx = self.original_context_count
-                else:
-                    new_ctx += (-1 if text == '-' else 1) * 5
-                self.change_context_count(new_ctx)
-            if text in 'np':
-                self.scroll_to_next_change(backwards=text == 'p')
-                return
+        action = self.shortcut_action(text)
+        if action is not None:
+            return self.perform_action(action)
 
     def on_key(self, key_event):
         if key_event.type is RELEASE:
             return
-        if key_event.key is ESCAPE:
-            if self.state <= DIFFED:
-                self.quit_loop(0)
-                return
-        if self.state is DIFFED:
-            if key_event.key is UP or key_event.key is DOWN:
-                self.scroll_lines(1 if key_event.key is DOWN else -1)
-                return
-            if key_event.key is PAGE_UP or key_event.key is PAGE_DOWN:
-                amt = self.num_lines * (1 if key_event.key is PAGE_DOWN else -1)
-                self.scroll_lines(amt)
-                return
-            if key_event.key is HOME or key_event.key is END:
-                amt = len(self.diff_lines) * (1 if key_event.key is END else -1)
-                self.scroll_lines(amt)
-                return
+        action = self.shortcut_action(key_event)
+        if action is not None:
+            return self.perform_action(action)
 
     def on_resize(self, screen_size):
         self.screen_size = screen_size
