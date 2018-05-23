@@ -26,7 +26,7 @@ class OpacityError(ValueError):
     hide_traceback = True
 
 
-def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False):
+def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False, args_count=None):
 
     def w(func):
         func.short_desc = short_desc
@@ -38,6 +38,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
         func.impl = lambda: globals()[func.__name__[4:]]
         func.no_response = no_response
         func.string_return_is_error = string_return_is_error
+        func.args_count = args_count
         return func
     return w
 
@@ -604,15 +605,14 @@ By default, colors are only changed for the currently active window. This option
 cause colors to be changed in all windows.
 
 ''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t'),
-    argspec='OPACITY'
+    argspec='OPACITY',
+    args_count=1
 )
 def cmd_set_background_opacity(global_opts, opts, args):
-    if len(args) != 1:
-        raise SystemExit('Must specify exactly one argument, the new opacity')
     opacity = max(0.1, min(float(args[0]), 1.0))
     return {
             'opacity': opacity, 'match_window': opts.match,
-            'all': opts.all or opts.reset,
+            'all': opts.all,
     }
 
 
@@ -637,6 +637,8 @@ cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 def parse_subcommand_cli(func, args):
     opts, items = parse_args(args[1:], (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name))
+    if func.args_count is not None and func.args_count != len(items):
+        raise SystemExit('Must specify exactly {} argument(s) for {}'.format(func.args_count, func.name))
     return opts, items
 
 
