@@ -1,7 +1,10 @@
 #version GLSL_VERSION
 #define WHICH_PROGRAM
 #define NOT_TRANSPARENT
-#define SHIFTS
+#define DECORATION_SHIFT {DECORATION_SHIFT}
+#define REVERSE_SHIFT {REVERSE_SHIFT}
+#define STRIKE_SHIFT {STRIKE_SHIFT}
+#define DIM_SHIFT {DIM_SHIFT}
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {

@@ -65,10 +65,8 @@ def load_shader_programs(semi_transparent=0):
             'FOREGROUND': CELL_FG_PROGRAM,
     }.items():
         vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
-        shifts = '\n'.join('#define {} {}'.format(name, val) for name, val in (
-            ('DECORATION_SHIFT', DECORATION), ('REVERSE_SHIFT', REVERSE), ('STRIKE_SHIFT', STRIKETHROUGH), ('DIM_SHIFT', DIM),
-        ))
-        vv = vv.replace('#define SHIFTS', shifts)
+        for gln, pyn in {'REVERSE_SHIFT': REVERSE, 'STRIKE_SHIFT': STRIKETHROUGH, 'DIM_SHIFT': DIM, 'DECORATION_SHIFT': DECORATION}.items():
+            vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
         if semi_transparent:
             vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
             ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
