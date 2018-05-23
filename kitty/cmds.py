@@ -38,7 +38,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
         func.impl = lambda: globals()[func.__name__[4:]]
         func.no_response = no_response
         func.string_return_is_error = string_return_is_error
-        func.args_count = args_count
+        func.args_count = 0 if not argspec else args_count
         return func
     return w
 
@@ -92,7 +92,7 @@ def ls(boss, window):
 @cmd(
     'Set the font size in all windows',
     'Sets the font size to the specified size, in pts.',
-    argspec='FONT_SIZE'
+    argspec='FONT_SIZE', args_count=1
 )
 def cmd_set_font_size(global_opts, opts, args):
     try:
@@ -638,6 +638,8 @@ cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 def parse_subcommand_cli(func, args):
     opts, items = parse_args(args[1:], (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name))
     if func.args_count is not None and func.args_count != len(items):
+        if func.args_count == 0:
+            raise SystemExit('Unknown extra argument(s) supplied to {}'.format(func.name))
         raise SystemExit('Must specify exactly {} argument(s) for {}'.format(func.args_count, func.name))
     return opts, items
 
