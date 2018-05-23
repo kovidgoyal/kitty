@@ -21,6 +21,11 @@ class MatchError(ValueError):
         ValueError.__init__(self, 'No matching {} for expression: {}'.format(target, expression))
 
 
+class OpacityError(ValueError):
+
+    hide_traceback = True
+
+
 def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False):
 
     def w(func):
@@ -612,6 +617,8 @@ def cmd_set_background_opacity(global_opts, opts, args):
 
 
 def set_background_opacity(boss, window, payload):
+    if not boss.opts.dynamic_background_opacity:
+        raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
     if payload['all']:
         windows = tuple(boss.all_windows)
     else:
