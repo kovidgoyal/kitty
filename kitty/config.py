@@ -92,10 +92,73 @@ def parse_shortcut(sc):
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
-shlex_actions = {
+args_funcs = {}
+
+
+def func_with_args(*names):
+
+    def w(f):
+        for name in names:
+            if name in args_funcs:
+                raise ValueError('the args_func {} is being redefined'.format(name))
+            args_funcs[name] = f
+        return f
+
+    return w
+
+
+@func_with_args(
     'pass_selection_to_program', 'new_window', 'new_tab', 'new_os_window',
     'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd'
-}
+    )
+def shlex_parse(func, rest):
+    return func, to_cmdline(rest)
+
+
+@func_with_args('combine')
+def combine_parse(func, rest):
+    sep, rest = rest.split(' ', 1)
+    parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
+    args = tuple(map(parse_key_action, filter(None, parts)))
+    return func, args
+
+
+@func_with_args('send_text')
+def send_text_parse(func, rest):
+    args = rest.split(' ', 1)
+    if len(args) > 0:
+        try:
+            args[1] = parse_send_text_bytes(args[1])
+        except Exception:
+            log_error('Ignoring invalid send_text string: ' + args[1])
+            args[1] = ''
+    return func, args
+
+
+@func_with_args('run_kitten', 'run_simple_kitten', 'kitten')
+def kitten_parse(func, rest):
+    if func == 'kitten':
+        args = rest.split(' ', 1)
+    else:
+        args = rest.split(' ', 2)[1:]
+        func = 'kitten'
+    return func, args
+
+
+@func_with_args('goto_tab')
+def goto_tab_parse(func, rest):
+    args = (max(0, int(rest)), )
+    return func, args
+
+
+@func_with_args('set_background_opacity', 'goto_layout', 'kitty_shell')
+def simple_parse(func, rest):
+    return func, [rest]
+
+
+@func_with_args('set_font_size')
+def float_parse(func, rest):
+    return func, (float(rest),)
 
 
 def parse_key_action(action):
@@ -104,34 +167,12 @@ def parse_key_action(action):
     if len(parts) == 1:
         return KeyAction(func, ())
     rest = parts[1]
-    if func == 'combine':
-        sep, rest = rest.split(' ', 1)
-        parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
-        args = tuple(map(parse_key_action, filter(None, parts)))
-    elif func == 'send_text':
-        args = rest.split(' ', 1)
-        if len(args) > 0:
-            try:
-                args[1] = parse_send_text_bytes(args[1])
-            except Exception:
-                log_error('Ignoring invalid send_text string: ' + args[1])
-                args[1] = ''
-    elif func in ('run_kitten', 'run_simple_kitten', 'kitten'):
-        if func == 'kitten':
-            args = rest.split(' ', 1)
-        else:
-            args = rest.split(' ', 2)[1:]
-            func = 'kitten'
-    elif func == 'goto_tab':
-        args = (max(0, int(rest)), )
-    elif func == 'set_background_opacity':
-        args = [rest]
-    elif func == 'goto_layout' or func == 'kitty_shell':
-        args = [rest]
-    elif func == 'set_font_size':
-        args = (float(rest),)
-    elif func in shlex_actions:
-        args = to_cmdline(rest)
+    parser = args_funcs.get(func)
+    if parser is not None:
+        try:
+            func, args = parser(func, rest)
+        except Exception:
+            log_error('Ignoring invalid key action: {}'.format(action))
     return KeyAction(func, args)
 
 
