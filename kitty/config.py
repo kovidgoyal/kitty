@@ -99,7 +99,7 @@ def func_with_args(*names):
 
     def w(f):
         for name in names:
-            if name in args_funcs:
+            if args_funcs.setdefault(name, f) is not f:
                 raise ValueError('the args_func {} is being redefined'.format(name))
             args_funcs[name] = f
         return f
