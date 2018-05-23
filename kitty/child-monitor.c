@@ -614,7 +614,7 @@ static inline void
 render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows) {
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows);
+    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
     if (TD.screen && os_window->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;

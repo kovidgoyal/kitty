@@ -19,11 +19,11 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, create_os_window, current_os_window, destroy_global_data,
-    destroy_sprite_map, get_clipboard_string,
-    glfw_post_empty_event, layout_sprite_map, mark_os_window_for_close,
-    set_clipboard_string, set_dpi_from_os_window, set_in_sequence_mode,
-    show_window, toggle_fullscreen, viewport_for_window
+    ChildMonitor, change_background_opacity, create_os_window,
+    current_os_window, destroy_global_data, destroy_sprite_map,
+    get_clipboard_string, glfw_post_empty_event, layout_sprite_map,
+    mark_os_window_for_close, set_clipboard_string, set_dpi_from_os_window,
+    set_in_sequence_mode, show_window, toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut, shortcut_matches
@@ -360,6 +360,9 @@ class Boss:
 
     def on_dpi_change(self, os_window_id):
         self._change_font_size()
+
+    def _set_os_window_background_opacity(self, os_window_id, opacity):
+        change_background_opacity(os_window_id, opacity)
 
     @property
     def active_tab_manager(self):

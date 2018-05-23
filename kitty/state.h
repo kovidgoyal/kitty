@@ -27,6 +27,7 @@ typedef struct {
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
     float background_opacity, dim_opacity;
+    bool dynamic_background_opacity;
     float inactive_text_alpha;
     float window_padding_width;
     Edge tab_bar_edge;
@@ -118,6 +119,7 @@ typedef struct {
     uint32_t offscreen_texture_id;
     unsigned int clear_count;
     color_type last_titlebar_color;
+    float background_opacity;
 } OSWindow;
 
 
@@ -171,7 +173,7 @@ OSWindow* add_os_window();
 OSWindow* current_os_window();
 void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
-void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int);
+void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int, OSWindow *w);
 ssize_t create_cell_vao();
 ssize_t create_graphics_vao();
 ssize_t create_border_vao();

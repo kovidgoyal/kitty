@@ -209,7 +209,7 @@ struct CellUniformData {
 static struct CellUniformData cell_uniform_data = {0, .prev_inactive_text_alpha=-1};
 
 static inline void
-cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted) {
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
@@ -239,7 +239,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     sprite_tracker_current_layout(&x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = inverted ? 1 : 0;
-    rd->background_opacity = OPT(background_opacity);
+    rd->background_opacity = os_window->background_opacity;
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -415,7 +415,7 @@ send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat
     if (os_window->clear_count < 2) {
         os_window->clear_count++;
 #define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
-        glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? OPT(background_opacity) : 1.0f);
+        glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? os_window->background_opacity : 1.0f);
 #undef C
         glClear(GL_COLOR_BUFFER_BIT);
         changed = true;
@@ -430,7 +430,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     CELL_BUFFERS;
     bool inverted = screen_invert_colors(screen);
 
-    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted);
+    cell_update_uniform_block(vao_idx, screen, uniform_buffer, xstart, ystart, dx, dy, &screen->cursor_render_info, inverted, os_window);
 
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[CELL_PROGRAM].render_data.index);
     bind_vertex_array(vao_idx);
@@ -522,7 +522,7 @@ create_border_vao() {
 }
 
 void
-draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows) {
+draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, OSWindow *w) {
     if (num_border_rects) {
         if (rect_data_is_dirty) {
             size_t sz = sizeof(GLuint) * 5 * num_border_rects;
@@ -535,10 +535,13 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
         if (!constants_set) {
             constants_set = true;
-            glUniform1f(border_uniform_locations[BORDER_background_opacity], OPT(background_opacity));
+            glUniform1f(border_uniform_locations[BORDER_background_opacity], w->background_opacity);
             glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
             glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
             glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
+        }
+        if (OPT(dynamic_background_opacity)) {
+            glUniform1f(border_uniform_locations[BORDER_background_opacity], w->background_opacity);
         }
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         color_type default_bg = num_visible_windows > 1 ? OPT(background) : active_window_bg;

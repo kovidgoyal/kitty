@@ -586,6 +586,45 @@ def set_colors(boss, window, payload):
 # }}}
 
 
+# set_background_opacity {{{
+@cmd(
+    'Set the background_opacity',
+    'Set the background opacity for the specified windows. This will only work if you have turned on'
+    ' dynamic_background_opacity in kitty.conf. The background opacity affects all kitty windows in a'
+    ' single os_window. For example: kitty @ set-background-opacity 0.5',
+    options_spec='''\
+--all -a
+type=bool-set
+By default, colors are only changed for the currently active window. This option will
+cause colors to be changed in all windows.
+
+''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t'),
+    argspec='OPACITY'
+)
+def cmd_set_background_opacity(global_opts, opts, args):
+    if len(args) != 1:
+        raise SystemExit('Must specify exactly one argument, the new opacity')
+    opacity = max(0.1, min(float(args[0]), 1.0))
+    return {
+            'opacity': opacity, 'match_window': opts.match,
+            'all': opts.all or opts.reset,
+    }
+
+
+def set_background_opacity(boss, window, payload):
+    if payload['all']:
+        windows = tuple(boss.all_windows)
+    else:
+        windows = (window or boss.active_window,)
+        if payload['match_window']:
+            windows = tuple(boss.match_windows(payload['match_window']))
+            if not windows:
+                raise MatchError(payload['match_window'])
+    for os_window_id in {w.os_window_id for w in windows}:
+        boss._set_os_window_background_opacity(os_window_id, payload['opacity'])
+# }}}
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 

@@ -354,6 +354,7 @@ type_map = {
     'macos_option_as_alt': to_bool,
     'macos_titlebar_color': macos_titlebar_color,
     'box_drawing_scale': box_drawing_scale,
+    'dynamic_background_opacity': to_bool,
     'background_opacity': unit_float,
     'dim_opacity': unit_float,
     'tab_separator': tab_separator,
