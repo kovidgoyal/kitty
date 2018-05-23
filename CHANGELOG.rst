@@ -8,7 +8,7 @@ version 0.10.0 [2018-05-21]
 
 - A diff kitten to show side-by-side diffs with syntax highlighting and support
   for images. See `diff README
-  <https://github.com/kovidgoyal/kitty/tree/master/kittens/diff>`_.
+  <https://github.com/kovidgoyal/kitty/blob/master/kittens/diff/README.asciidoc>`_.
 
 - Make windows in the various kitty layouts manually resizable. See the
   `Layouts section of the README
