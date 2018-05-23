@@ -396,7 +396,8 @@ layout tall
 cd ~
 # Create a window and run the specified command in it
 launch zsh
-launch vim
+# Create a window with some environment variables set and run vim in it
+launch env FOO=BAR vim
 # Set the title for the next window
 title Chat with x
 launch irssi --profile x
