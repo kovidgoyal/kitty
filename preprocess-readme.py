@@ -17,7 +17,7 @@ for line in open('kitty/kitty.conf'):
     if line.startswith('map '):
         _, sc, name = line.split(maxsplit=2)
         sc = sc.replace('kitty_mod', 'ctrl+shift')
-        name = name.rstrip().replace(' ', '_').replace('-', '_').replace('___', '_').replace('__', '_').strip('_')
+        name = name.rstrip().replace(' ', '_').replace('-', '_').replace('+', 'plus').replace('.', '_').replace('___', '_').replace('__', '_').strip('_')
         defns[name].append('`' + sc.replace('>', ' → ') + '`')
 
 defns = [

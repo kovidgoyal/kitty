@@ -124,6 +124,8 @@ def parse_key_action(action):
             func = 'kitten'
     elif func == 'goto_tab':
         args = (max(0, int(rest)), )
+    elif func == 'set_background_opacity':
+        args = [rest]
     elif func == 'goto_layout' or func == 'kitty_shell':
         args = [rest]
     elif func == 'set_font_size':

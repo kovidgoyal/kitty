@@ -19,11 +19,12 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, change_background_opacity, create_os_window,
-    current_os_window, destroy_global_data, destroy_sprite_map,
-    get_clipboard_string, glfw_post_empty_event, layout_sprite_map,
-    mark_os_window_for_close, set_clipboard_string, set_dpi_from_os_window,
-    set_in_sequence_mode, show_window, toggle_fullscreen, viewport_for_window
+    ChildMonitor, background_opacity_of, change_background_opacity,
+    create_os_window, current_os_window, destroy_global_data,
+    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
+    layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
+    set_dpi_from_os_window, set_in_sequence_mode, show_window,
+    toggle_fullscreen, viewport_for_window
 )
 from .fonts.render import prerender, resize_fonts, set_font_family
 from .keys import get_shortcut, shortcut_matches
@@ -362,7 +363,23 @@ class Boss:
         self._change_font_size()
 
     def _set_os_window_background_opacity(self, os_window_id, opacity):
-        change_background_opacity(os_window_id, opacity)
+        change_background_opacity(os_window_id, max(0.1, min(opacity, 1.0)))
+
+    def set_background_opacity(self, opacity):
+        window = self.active_window
+        if window is None or not opacity:
+            return
+        os_window_id = window.os_window_id
+        if opacity[0] in '+-':
+            opacity = background_opacity_of(os_window_id)
+            if opacity is None:
+                return
+            opacity += float(opacity)
+        elif opacity == 'default':
+            opacity = self.opts.background_opacity
+        else:
+            opacity = float(opacity)
+        self._set_os_window_background_opacity(os_window_id, opacity)
 
     @property
     def active_tab_manager(self):

@@ -13,6 +13,11 @@
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
 :sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
 :sc_input_unicode_character: pass:quotes[`ctrl+shift+u`]
+:sc_kitten_hints: pass:quotes[`ctrl+shift+e`]
+:sc_kitten_hints_type_line_program: pass:quotes[`ctrl+shift+p → l`]
+:sc_kitten_hints_type_path: pass:quotes[`ctrl+shift+p → shift+f`]
+:sc_kitten_hints_type_path_program: pass:quotes[`ctrl+shift+p → f`]
+:sc_kitten_hints_type_word_program: pass:quotes[`ctrl+shift+p → w`]
 :sc_kitty_shell_window: pass:quotes[`ctrl+shift+escape`]
 :sc_move_tab_backward: pass:quotes[`ctrl+shift+,`]
 :sc_move_tab_forward: pass:quotes[`ctrl+shift+.`]
@@ -32,11 +37,6 @@
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
 :sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
-:sc_run_kitten_text_hints: pass:quotes[`ctrl+shift+e`]
-:sc_run_kitten_text_hints_type_line_program: pass:quotes[`ctrl+shift+p → l`]
-:sc_run_kitten_text_hints_type_path: pass:quotes[`ctrl+shift+p → shift+f`]
-:sc_run_kitten_text_hints_type_path_program: pass:quotes[`ctrl+shift+p → f`]
-:sc_run_kitten_text_hints_type_word_program: pass:quotes[`ctrl+shift+p → w`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -44,6 +44,10 @@
 :sc_scroll_page_down: pass:quotes[`ctrl+shift+page_down`]
 :sc_scroll_page_up: pass:quotes[`ctrl+shift+page_up`]
 :sc_second_window: pass:quotes[`ctrl+shift+2`]
+:sc_set_background_opacity_0_1: pass:quotes[`ctrl+shift+a → shift+-`]
+:sc_set_background_opacity_1: pass:quotes[`ctrl+shift+a → shift+1`]
+:sc_set_background_opacity_default: pass:quotes[`ctrl+shift+a → shift+d`]
+:sc_set_background_opacity_plus0_1: pass:quotes[`ctrl+shift+a → shift+=`]
 :sc_set_tab_title: pass:quotes[`ctrl+shift+alt+t`]
 :sc_seventh_window: pass:quotes[`ctrl+shift+7`]
 :sc_show_scrollback: pass:quotes[`ctrl+shift+h`]
@@ -262,6 +266,10 @@ windows are:
 |Pass current selection to program | {sc_pass_selection_to_program}
 |Edit kitty config file | {sc_edit_config_file}
 |Open a kitty shell | {sc_kitty_shell}
+|Increase background opacity | {sc_set_background_opacity_plus0_1}
+|Decrease background opacity | {sc_set_background_opacity_0_1}
+|Remove background opacity | {sc_set_background_opacity_1}
+|Reset background opacity | {sc_set_background_opacity_default}
 |===
 
 

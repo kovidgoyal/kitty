@@ -517,6 +517,14 @@ PYWRAP1(change_background_opacity) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(background_opacity_of) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+    WITH_OS_WINDOW(os_window_id)
+        return PyFloat_FromDouble((double)os_window->background_opacity);
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
 static inline bool
 fix_window_idx(Tab *tab, id_type window_id, unsigned int *window_idx) {
     for (id_type fix = 0; fix < tab->num_windows; fix++) {
@@ -645,6 +653,7 @@ static PyMethodDef module_methods[] = {
     MW(set_titlebar_color, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
     MW(change_background_opacity, METH_VARARGS),
+    MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(set_display_state, METH_VARARGS),
