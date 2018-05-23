@@ -268,7 +268,7 @@ windows are:
 |Open a kitty shell | {sc_kitty_shell}
 |Increase background opacity | {sc_set_background_opacity_plus0_1}
 |Decrease background opacity | {sc_set_background_opacity_0_1}
-|Remove background opacity | {sc_set_background_opacity_1}
+|Full background opacity | {sc_set_background_opacity_1}
 |Reset background opacity | {sc_set_background_opacity_default}
 |===
 
