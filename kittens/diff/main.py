@@ -76,7 +76,10 @@ class DiffHandler(Handler):
                 where = args[0]
                 if 'change' in where:
                     return self.scroll_to_next_change(backwards='prev' in where)
-                amt = len(self.diff_lines) * (1 if 'end' in where else -1)
+                if 'page' in where:
+                    amt = self.num_lines * (1 if 'next' in where else -1)
+                else:
+                    amt = len(self.diff_lines) * (1 if 'end' in where else -1)
                 return self.scroll_lines(amt)
             if func == 'change_context':
                 new_ctx = self.current_context_count

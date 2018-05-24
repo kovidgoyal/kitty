@@ -73,7 +73,7 @@ def parse_scroll_by(func, rest):
 @func_with_args('scroll_to')
 def parse_scroll_to(func, rest):
     rest = rest.lower()
-    if rest not in {'start', 'end', 'next-change', 'prev-change'}:
+    if rest not in {'start', 'end', 'next-change', 'prev-change', 'next-page', 'prev-page'}:
         rest = 'start'
     return func, rest
 

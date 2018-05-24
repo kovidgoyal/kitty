@@ -258,6 +258,8 @@ text_keys = string.ascii_uppercase + string.ascii_lowercase + string.digits + '`
 
 
 def text_match(key):
+    if key.upper() == 'SPACE':
+        return ' '
     if key not in text_keys:
         return
     return key

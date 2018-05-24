@@ -204,13 +204,15 @@ def parse_kittens_shortcut(sc):
         mods = resolved_mods
     is_text = False
     rkey = parts[-1]
-    if text_match(rkey) is None:
+    tkey = text_match(rkey)
+    if tkey is None:
         rkey = rkey.upper()
         rkey = config_key_map.get(rkey)
         if rkey is None:
             raise ValueError('Unknown shortcut key: {}'.format(sc))
     else:
         is_text = True
+        rkey = tkey
     return mods, rkey, is_text
 
 
