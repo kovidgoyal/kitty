@@ -66,6 +66,8 @@ directory contents.
 |Scroll page down | `PgDn`
 |Scroll to top    | `Home`
 |Scroll to bottom | `End`
+|Scroll to next page | `Space, PgDn`
+|Scroll to previous page | `PgUp`
 |Scroll to next change | `n`
 |Scroll to previous change | `p`
 
@@ -81,9 +83,9 @@ directory contents.
 
 == Configuring kitty-diff
 
-You can configure the colors used, the diff implementation, the default lines of context, etc.
-by creating a diff.conf in your kitty config folder. See the link:diff.conf[default diff.conf]
-for details.
+You can configure the colors used, keyboard shortcut, the diff implementation,
+the default lines of context, etc.  by creating a diff.conf in your kitty
+config folder. See the link:diff.conf[default diff.conf] for details.
 
 
 == Integrating with git
