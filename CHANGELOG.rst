@@ -3,6 +3,32 @@ Changelog
 
 kitty is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+version 0.10.1 [2018-05-24]
+------------------------------
+
+- Add a kitten to easily ssh into servers that automatically copies the
+  terminfo files over. ``kitty +kitten ssh myserver``.
+
+- diff kitten: Make the keyboard shortcuts configurable
+  (`#563 <https://github.com/kovidgoyal/kitty/issues/563>`_)
+
+- Allow controlling *background_opacity* via either keyboard shortcuts or
+  remote control. Note that you must set *dynamic_background_opacity yes* in
+  kitty.conf first. (`#569 <https://github.com/kovidgoyal/kitty/issues/569>`_)
+
+- diff kitten: Add keybindings to scroll by page
+
+- diff kitten: Fix incorrect syntax highlighting for a few file formats such as
+  yaml
+
+- macOS: Fix regression that caused the *macos_option_as_alt* setting to always
+  be disabled for all OS windows in a kitty instance after the first window
+  (`#571 <https://github.com/kovidgoyal/kitty/issues/571>`_)
+
+- Fix Ctrl+Alt+Space not working in normal and application keyboard modes 
+  (`#562 <https://github.com/kovidgoyal/kitty/issues/562>`_)
+
+
 version 0.10.0 [2018-05-21]
 ------------------------------
 
