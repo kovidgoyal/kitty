@@ -385,12 +385,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
-        if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
         is_first_window = false;
     }
+#ifdef __APPLE__
+    if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
+#endif
 
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
