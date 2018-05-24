@@ -348,9 +348,9 @@ config_key_map.update({
         'ESC': g['ESCAPE'],
 })
 
+enter_key = KeyEvent(PRESS, 0, g['ENTER'])
+backspace_key = KeyEvent(PRESS, 0, g['BACKSPACE'])
 del key_name, enc, g
-enter_key = KeyEvent(PRESS, 0, ENCODING['ENTER'])
-backspace_key = KeyEvent(PRESS, 0, ENCODING['BACKSPACE'])
 
 
 def decode_key_event(text):
