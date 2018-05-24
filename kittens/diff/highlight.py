@@ -57,7 +57,7 @@ class DiffFormatter(Formatter):
     def format(self, tokensource, outfile):
         for ttype, value in tokensource:
             not_found = True
-            if value != '\n':
+            if value.rstrip('\n'):
                 while ttype and not_found:
                     tok = self.styles.get(ttype)
                     if tok is None:
