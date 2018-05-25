@@ -104,6 +104,17 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
 }
 
 static void
+dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
+    if (!set_callback_window(w)) return;
+    // Ensure update_os_window_viewport() is called in the near future, it will
+    // take care of DPI changes.
+    OSWindow *window = global_state.callback_os_window;
+    window->has_pending_resizes = true; global_state.has_pending_resizes = true;
+    window->last_resize_event_at = monotonic();
+    global_state.callback_os_window = NULL;
+}
+
+static void
 refresh_callback(GLFWwindow *w) {
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_damaged = true;
@@ -408,6 +419,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
+    glfwSetWindowContentScaleCallback(glfw_window, dpi_change_callback);
     glfwSetWindowRefreshCallback(glfw_window, refresh_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
@@ -440,30 +452,19 @@ static PyObject*
 show_window(PyObject UNUSED *self, PyObject *args) {
     id_type os_window_id;
     int yes = 1;
-    bool dpi_changed = false;
     if (!PyArg_ParseTuple(args, "K|p", &os_window_id, &yes)) return NULL;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (w->id == os_window_id) {
             if (yes) {
-                bool first_show = !w->shown_once;
                 glfwShowWindow(w->handle);
                 w->shown_once = true;
                 push_focus_history(w);
-                if (first_show) {
-                    double before_x = w->logical_dpi_x, before_y = w->logical_dpi_y;
-                    set_os_window_dpi(w);
-                    dpi_changed = before_x != w->logical_dpi_x || before_y != w->logical_dpi_y;
-                    if (dpi_changed) load_fonts_for_window(w);
-                    w->has_pending_resizes = true;
-                    global_state.has_pending_resizes = true;
-                }
             } else glfwHideWindow(w->handle);
             break;
         }
     }
-    if (dpi_changed) Py_RETURN_TRUE;
-    Py_RETURN_FALSE;
+    Py_RETURN_NONE;
 }
 
 void

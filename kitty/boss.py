@@ -100,20 +100,17 @@ class Boss:
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, startup_id=None):
-        dpi_changed = False
         if os_window_id is None:
             w, h = initial_window_size(self.opts, self.cached_values) if size is None else size
             cls = wclass or self.args.cls or appname
             os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls)
             if startup_id:
                 ctx = init_startup_notification(os_window_id, startup_id)
-            dpi_changed = show_window(os_window_id)
+            show_window(os_window_id)
             if startup_id:
                 end_startup_notification(ctx)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
-        if dpi_changed:
-            self.on_dpi_change(os_window_id)
         return os_window_id
 
     def list_os_windows(self):
@@ -305,9 +302,12 @@ class Boss:
             tm.activate_tab_at(x)
 
     def on_window_resize(self, os_window_id, w, h, dpi_changed):
-        tm = self.os_window_map.get(os_window_id)
-        if tm is not None:
-            tm.resize()
+        if dpi_changed:
+            self.on_dpi_change(os_window_id)
+        else:
+            tm = self.os_window_map.get(os_window_id)
+            if tm is not None:
+                tm.resize()
 
     def increase_font_size(self):  # legacy
         self.set_font_size(min(self.opts.font_size * 5, self.current_font_size + 2.0))
