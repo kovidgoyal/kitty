@@ -19,14 +19,13 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, background_opacity_of, change_background_opacity,
-    create_os_window, current_os_window, destroy_global_data,
-    destroy_sprite_map, get_clipboard_string, glfw_post_empty_event,
-    layout_sprite_map, mark_os_window_for_close, set_clipboard_string,
-    set_dpi_from_os_window, set_in_sequence_mode, show_window,
-    toggle_fullscreen, viewport_for_window
+    ChildMonitor, background_opacity_of, cell_size_for_window,
+    change_background_opacity, create_os_window, current_os_window,
+    destroy_global_data, get_clipboard_string, glfw_post_empty_event,
+    mark_os_window_for_close, set_clipboard_string,
+    set_in_sequence_mode, show_window, toggle_fullscreen
 )
-from .fonts.render import prerender, resize_fonts, set_font_family
+from .fonts.render import resize_fonts
 from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
 from .rgb import Color, color_from_int
@@ -37,11 +36,6 @@ from .utils import (
     log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance
 )
-
-
-def initialize_renderer():
-    layout_sprite_map()
-    prerender()
 
 
 def listen_on(spec):
@@ -103,9 +97,7 @@ class Boss:
         )
         set_boss(self)
         self.current_font_size = opts.font_size
-        set_font_family(opts)
         self.opts, self.args = opts, args
-        initialize_renderer()
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
@@ -317,13 +309,7 @@ class Boss:
     def on_window_resize(self, os_window_id, w, h, dpi_changed):
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
-            if dpi_changed:
-                if set_dpi_from_os_window(os_window_id):
-                    self.on_dpi_change(os_window_id)
-                else:
-                    tm.resize()
-            else:
-                tm.resize()
+            tm.resize()
 
     def increase_font_size(self):
         self.set_font_size(
@@ -340,12 +326,11 @@ class Boss:
     def _change_font_size(self, new_size=None, on_dpi_change=False):
         if new_size is not None:
             self.current_font_size = new_size
-        old_cell_width, old_cell_height = viewport_for_window()[-2:]
         windows = tuple(filter(None, self.window_id_map.values()))
+        old_sz_map = {w.id: cell_size_for_window(w.os_window_id) for w in windows}
         resize_fonts(self.current_font_size, on_dpi_change=on_dpi_change)
-        layout_sprite_map()
-        prerender()
         for window in windows:
+            old_cell_width, old_cell_height = old_sz_map[window.id]
             window.screen.rescale_images(old_cell_width, old_cell_height)
             window.screen.refresh_sprite_positions()
         for tm in self.os_window_map.values():
@@ -653,7 +638,6 @@ class Boss:
         for tm in self.os_window_map.values():
             tm.destroy()
         self.os_window_map = {}
-        destroy_sprite_map()
         destroy_global_data()
 
     def paste_to_active_window(self, text):

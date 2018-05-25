@@ -11,12 +11,15 @@ from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size
-from .constants import appname, glfw_path, is_macos, is_wayland, logo_data_file, config_dir
+from .constants import (
+    appname, config_dir, glfw_path, is_macos, is_wayland, logo_data_file
+)
 from .fast_data_types import (
     create_os_window, glfw_init, glfw_terminate, set_default_window_icon,
     set_options, show_window
 )
 from .fonts.box_drawing import set_scale
+from .fonts.render import set_font_family
 from .utils import (
     detach, end_startup_notification, init_startup_notification, log_error,
     single_instance
@@ -39,6 +42,7 @@ def init_graphics():
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
+    set_font_family(opts)
     with cached_values_for(run_app.cached_values_name) as cached_values:
         w, h = run_app.initial_window_size(opts, cached_values)
         window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)

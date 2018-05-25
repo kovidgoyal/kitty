@@ -4,16 +4,15 @@
 
 import ctypes
 import sys
-from collections import namedtuple
+from functools import partial
 from math import ceil, floor, pi, sin, sqrt
 
 from kitty.config import defaults
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    Screen, get_fallback_font, send_prerendered_sprites,
-    set_font, set_font_size, set_logical_dpi, set_options,
-    set_send_sprite_to_gpu, sprite_map_set_limits, test_render_line,
-    test_shape
+    Screen, create_test_font_group, get_fallback_font, set_font_data,
+    set_options, set_send_sprite_to_gpu, sprite_map_set_limits,
+    test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
 
@@ -36,12 +35,6 @@ def create_symbol_map(opts):
     return sm, tuple(faces)
 
 
-FontState = namedtuple(
-    'FontState',
-    'family pt_sz cell_width cell_height baseline underline_position underline_thickness'
-)
-
-
 def set_font_family(opts=None, override_font_size=None):
     opts = opts or defaults
     sz = override_font_size or opts.font_size
@@ -51,24 +44,9 @@ def set_font_family(opts=None, override_font_size=None):
         if k in font_map:
             faces.append(font_map[k])
     sm, sfonts = create_symbol_map(opts)
-    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font(
-        render_box_drawing, sm, sfonts, sz, *faces
+    set_font_data(
+        render_box_drawing, prerender_function, sm, sfonts, sz, *faces
     )
-    set_font_family.state = FontState(
-        opts.font_family, sz, cell_width, cell_height, baseline,
-        underline_position, underline_thickness
-    )
-    return cell_width, cell_height
-
-
-def resize_fonts(new_sz, on_dpi_change=False):
-    s = set_font_family.state
-    cell_width, cell_height, baseline, underline_position, underline_thickness = set_font_size(new_sz, on_dpi_change)
-    set_font_family.state = FontState(
-        s.family, new_sz, cell_width, cell_height, baseline,
-        underline_position, underline_thickness
-    )
-    return cell_width, cell_height
 
 
 def add_line(buf, cell_width, position, thickness, cell_height):
@@ -125,10 +103,9 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
                 add_intensity(x, y, dist)
 
 
-def render_special(underline=0, strikethrough=False, missing=False):
-    s = set_font_family.state
-    cell_width, cell_height, baseline = s.cell_width, s.cell_height, s.baseline
-    underline_position, underline_thickness = s.underline_position, s.underline_thickness
+def render_special(
+        underline=0, strikethrough=False, missing=False,
+        cell_width=None, cell_height=None, baseline=None, underline_position=None, underline_thickness=None):
     underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture if missing else CharTexture()
@@ -152,36 +129,36 @@ def render_special(underline=0, strikethrough=False, missing=False):
     return ans
 
 
-def prerender():
-    # Pre-render the special blank, underline and strikethrough cells
-    cells = render_special(1), render_special(2), render_special(3), render_special(0, True), render_special(missing=True)
-    if send_prerendered_sprites(*map(ctypes.addressof, cells)) != len(cells):
-        raise RuntimeError('Your GPU has too small a max texture size')
+def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness):
+    # Pre-render the special underline, strikethrough and missing cells
+    f = partial(
+        render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
+        underline_position=underline_position, underline_thickness=underline_thickness)
+    cells = f(1), f(2), f(3), f(0, True), f(missing=True)
+    return tuple(map(ctypes.addressof, cells)) + (cells,)
 
 
-def render_box_drawing(codepoint):
-    s = set_font_family.state
-    cell_width, cell_height = s.cell_width, s.cell_height
+def render_box_drawing(codepoint, cell_width, cell_height, dpi):
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = render_box_char(
-        chr(codepoint), CharTexture(), cell_width, cell_height
+        chr(codepoint), CharTexture(), cell_width, dpi
     )
     return ctypes.addressof(buf), buf
 
 
-def setup_for_testing(family='monospace', size=11.0, dpi=96.0):
-    opts = defaults._replace(font_family=family)
+def setup_for_testing(family='monospace', size=11.0, dpi=96.0, send_to_gpu=None):
+    from collections import OrderedDict
+    opts = defaults._replace(font_family=family, font_size=size)
     set_options(opts)
-    sprites = {}
+    sprites = OrderedDict()
 
-    def send_to_gpu(x, y, z, data):
+    def _send_to_gpu(x, y, z, data):
         sprites[(x, y, z)] = data
 
     sprite_map_set_limits(100000, 100)
-    set_send_sprite_to_gpu(send_to_gpu)
-    set_logical_dpi(dpi, dpi)
-    cell_width, cell_height = set_font_family(opts, override_font_size=size)
-    prerender()
+    set_send_sprite_to_gpu(send_to_gpu or _send_to_gpu)
+    set_font_family(opts)
+    cell_width, cell_height = create_test_font_group(size, dpi, dpi)
     return sprites, cell_width, cell_height
 
 
@@ -248,8 +225,7 @@ def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=
 
 
 def test_fallback_font(qtext=None, bold=False, italic=False):
-    set_logical_dpi(96.0, 96.0)
-    set_font_family()
+    setup_for_testing()
     trials = (qtext,) if qtext else ('你', 'He\u0347\u0305', '\U0001F929')
     for text in trials:
         f = get_fallback_font(text, bold, italic)

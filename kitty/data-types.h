@@ -209,6 +209,13 @@ typedef struct {
     DynamicColor configured, overridden;
 } ColorProfile;
 
+typedef struct {
+    unsigned int width, height;
+} CellPixelSize;
+
+typedef struct {int x;} *SPRITE_MAP_HANDLE;
+#define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
+typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)
@@ -273,3 +280,5 @@ void fake_scroll(int, bool);
 void set_special_key_combo(int glfw_key, int mods);
 void on_key_input(int key, int scancode, int action, int mods, const char*, int);
 void request_window_attention(id_type, bool);
+SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
+SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);

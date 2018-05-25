@@ -535,17 +535,17 @@ update_src_rect(ImageRef *ref, Image *img) {
 }
 
 static inline void
-update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows) {
+update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelSize cell) {
     uint32_t t;
     if (num_cols == 0) {
         t = ref->src_width + ref->cell_x_offset;
-        num_cols = t / global_state.cell_width;
-        if (t > num_cols * global_state.cell_width) num_cols += 1;
+        num_cols = t / cell.width;
+        if (t > num_cols * cell.width) num_cols += 1;
     }
     if (num_rows == 0) {
         t = ref->src_height + ref->cell_y_offset;
-        num_rows = t / global_state.cell_height;
-        if (t > num_rows * global_state.cell_height) num_rows += 1;
+        num_rows = t / cell.height;
+        if (t > num_rows * cell.height) num_rows += 1;
     }
     ref->effective_num_rows = num_rows;
     ref->effective_num_cols = num_cols;
@@ -553,7 +553,7 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows) {
 
 
 static void
-handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img) {
+handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img, CellPixelSize cell) {
     has_add_respose = false;
     if (img == NULL) img = img_by_client_id(self, g->id);
     if (img == NULL) { set_add_response("ENOENT", "Put command refers to non-existent image with id: %u", g->id); return; }
@@ -575,11 +575,11 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->src_height = MIN(ref->src_height, img->height - (img->height > ref->src_y ? ref->src_y : img->height));
     ref->z_index = g->z_index;
     ref->start_row = c->y; ref->start_column = c->x;
-    ref->cell_x_offset = MIN(g->cell_x_offset, global_state.cell_width - 1);
-    ref->cell_y_offset = MIN(g->cell_y_offset, global_state.cell_height - 1);
+    ref->cell_x_offset = MIN(g->cell_x_offset, cell.width - 1);
+    ref->cell_y_offset = MIN(g->cell_y_offset, cell.height - 1);
     ref->num_cols = g->num_cells; ref->num_rows = g->num_lines;
     update_src_rect(ref, img);
-    update_dest_rect(ref, g->num_cells, g->num_lines);
+    update_dest_rect(ref, g->num_cells, g->num_lines, cell);
     // Move the cursor, the screen will take care of ensuring it is in bounds
     c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
 }
@@ -593,7 +593,7 @@ cmp_by_zindex_and_image(const void *a_, const void *b_) {
 }
 
 bool
-grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows) {
+grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
     self->last_scrolled_by = scrolled_by;
     if (!self->layers_dirty) return false;
@@ -604,19 +604,19 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
     float screen_bottom = screen_top - screen_height;
-    float screen_width_px = num_cols * global_state.cell_width;
-    float screen_height_px = num_rows * global_state.cell_height;
+    float screen_width_px = num_cols * cell.width;
+    float screen_height_px = num_rows * cell.height;
     float y0 = screen_top - dy * scrolled_by;
 
     // Iterate over all visible refs and create render data
     self->count = 0;
     for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-        r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)global_state.cell_height;
+        r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
         if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
         else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
         if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
-        r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) global_state.cell_width;
+        r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
         if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
         else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
@@ -651,7 +651,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 // Image lifetime/scrolling {{{
 
 static inline void
-filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*)) {
+filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
     Image *img; ImageRef *ref;
     size_t i, j;
 
@@ -660,7 +660,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
             img = self->images + i;
             for (j = img->refcnt; j-- > 0;) {
                 ref = img->refs + j;
-                if (filter_func(ref, img, data)) {
+                if (filter_func(ref, img, data, cell)) {
                     remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
                 }
             }
@@ -671,7 +671,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
 }
 
 static inline bool
-scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     ScrollData *d = (ScrollData*)data;
     ref->start_row += d->amt;
     return ref->start_row + (int32_t)ref->effective_num_rows <= d->limit;
@@ -688,7 +688,7 @@ ref_outside_region(ImageRef *ref, index_type margin_top, index_type margin_botto
 }
 
 static inline bool
-scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
+scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixelSize cell) {
     ScrollData *d = (ScrollData*)data;
     if (ref_within_region(ref, d->margin_top, d->margin_bottom)) {
         ref->start_row += d->amt;
@@ -698,7 +698,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
         if (ref->start_row < (int32_t)d->margin_top) {
             // image moved up
             clipped_rows = d->margin_top - ref->start_row;
-            clip_amt = global_state.cell_height * clipped_rows;
+            clip_amt = cell.height * clipped_rows;
             if (ref->src_height <= clip_amt) return true;
             ref->src_y += clip_amt; ref->src_height -= clip_amt;
             ref->effective_num_rows -= clipped_rows;
@@ -707,7 +707,7 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
         } else if (ref->start_row + ref->effective_num_rows > d->margin_bottom) {
             // image moved down
             clipped_rows = ref->start_row + ref->effective_num_rows - d->margin_bottom;
-            clip_amt = global_state.cell_height * clipped_rows;
+            clip_amt = cell.height * clipped_rows;
             if (ref->src_height <= clip_amt) return true;
             ref->src_height -= clip_amt;
             ref->effective_num_rows -= clipped_rows;
@@ -719,66 +719,66 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data) {
 }
 
 void
-grman_scroll_images(GraphicsManager *self, const ScrollData *data) {
-    filter_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func);
+grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize cell) {
+    filter_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
 }
 
 static inline bool
-clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data) {
+clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 
 static inline bool
-clear_all_filter_func(ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data) {
+clear_all_filter_func(ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
     return true;
 }
 
 void
-grman_clear(GraphicsManager *self, bool all) {
-    filter_refs(self, NULL, true, all ? clear_all_filter_func : clear_filter_func);
+grman_clear(GraphicsManager *self, bool all, CellPixelSize cell) {
+    filter_refs(self, NULL, true, all ? clear_all_filter_func : clear_filter_func, cell);
 }
 
 static inline bool
-id_filter_func(ImageRef UNUSED *ref, Image *img, const void *data) {
+id_filter_func(ImageRef UNUSED *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
     uint32_t iid = *(uint32_t*)data;
     return img->client_id == iid;
 }
 
 static inline bool
-x_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+x_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->start_column <= (int32_t)g->x_offset - 1 && ((int32_t)g->x_offset - 1) < ((int32_t)(ref->start_column + ref->effective_num_cols));
 }
 
 static inline bool
-y_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+y_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->start_row <= (int32_t)g->y_offset - 1 && ((int32_t)(g->y_offset - 1 < ref->start_row + ref->effective_num_rows));
 }
 
 static inline bool
-z_filter_func(ImageRef *ref, Image UNUSED *img, const void *data) {
+z_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->z_index == g->z_index;
 }
 
 
 static inline bool
-point_filter_func(ImageRef *ref, Image *img, const void *data) {
-    return x_filter_func(ref, img, data) && y_filter_func(ref, img, data);
+point_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+    return x_filter_func(ref, img, data, cell) && y_filter_func(ref, img, data, cell);
 }
 
 static inline bool
-point3d_filter_func(ImageRef *ref, Image *img, const void *data) {
-    return z_filter_func(ref, img, data) && point_filter_func(ref, img, data);
+point3d_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+    return z_filter_func(ref, img, data, cell) && point_filter_func(ref, img, data, cell);
 }
 
 
 static void
-handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty) {
+handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, CellPixelSize cell) {
     static GraphicsCommand d;
     switch (g->delete_action) {
-#define I(u, data, func) filter_refs(self, data, g->delete_action == u, func); *is_dirty = true; break
+#define I(u, data, func) filter_refs(self, data, g->delete_action == u, func, cell); *is_dirty = true; break
 #define D(l, u, data, func) case l: case u: I(u, data, func)
 #define G(l, u, func) D(l, u, g, func)
         case 0:
@@ -810,22 +810,22 @@ grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUS
 }
 
 void
-grman_rescale(GraphicsManager *self, unsigned int UNUSED old_cell_width, unsigned int UNUSED old_cell_height) {
+grman_rescale(GraphicsManager *self, unsigned int UNUSED old_cell_width, unsigned int UNUSED old_cell_height, CellPixelSize cell) {
     ImageRef *ref; Image *img;
     self->layers_dirty = true;
     for (size_t i = self->image_count; i-- > 0;) {
         img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
             ref = img->refs + j;
-            ref->cell_x_offset = MIN(ref->cell_x_offset, global_state.cell_width - 1);
-            ref->cell_y_offset = MIN(ref->cell_y_offset, global_state.cell_height - 1);
-            update_dest_rect(ref, ref->num_cols, ref->num_rows);
+            ref->cell_x_offset = MIN(ref->cell_x_offset, cell.width - 1);
+            ref->cell_y_offset = MIN(ref->cell_y_offset, cell.height - 1);
+            update_dest_rect(ref, ref->num_cols, ref->num_rows, cell);
         }
     }
 }
 
 const char*
-grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty) {
+grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize cell) {
     Image *image;
     const char *ret = NULL;
     uint32_t iid, q_iid;
@@ -839,7 +839,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             if (g->action == 'q') { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             image = handle_add_command(self, g, payload, is_dirty, iid);
             ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
-            if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image);
+            if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
             if (g->action == 'q') remove_images(self, add_trim_predicate, NULL);
             if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, image);
             break;
@@ -848,11 +848,11 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 REPORT_ERROR("Put graphics command without image id");
                 break;
             }
-            handle_put_command(self, g, c, is_dirty, NULL);
+            handle_put_command(self, g, c, is_dirty, NULL, cell);
             ret = create_add_response(self, true, g->id);
             break;
         case 'd':
-            handle_delete_command(self, g, c, is_dirty);
+            handle_delete_command(self, g, c, is_dirty, cell);
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);
@@ -925,8 +925,9 @@ W(set_send_to_gpu) {
 
 W(update_layers) {
     unsigned int scrolled_by, sx, sy; float xstart, ystart, dx, dy;
-    PA("IffffII", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy);
-    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy, sx, sy);
+    CellPixelSize cell;
+    PA("IffffIIII", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height);
+    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy, sx, sy, cell);
     PyObject *ans = PyTuple_New(self->count);
     for (size_t i = 0; i < self->count; i++) {
         ImageRenderData *r = self->render_data + i;

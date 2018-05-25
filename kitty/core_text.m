@@ -178,7 +178,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
 }
 
 PyObject*
-create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation) {
+create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONT_DATA_HANDLE fg UNUSED) {
     CTFace *self = (CTFace*)base_face;
     CTFontRef new_font;
     if (emoji_presentation) new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);
@@ -214,14 +214,14 @@ is_glyph_empty(PyObject *s, glyph_index g) {
 }
 
 static inline float
-scaled_point_sz() {
-    return ((global_state.logical_dpi_x + global_state.logical_dpi_y) / 144.0) * global_state.font_sz_in_pts;
+scaled_point_sz(FONT_DATA_HANDLE fg) {
+    return ((fg->logical_dpi_x + fg->logical_dpi_y) / 144.0) * fg->font_sz_in_pts;
 }
 
 bool
-set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force) {
+set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, FONT_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)s;
-    float sz = scaled_point_sz();
+    float sz = scaled_point_sz(fg);
     if (!force && self->scaled_point_sz == sz) return true;
     CTFontRef new_font = CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL);
     if (new_font == NULL) fatal("Out of memory");
@@ -282,17 +282,17 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
 }
 
 PyObject*
-face_from_descriptor(PyObject *descriptor) {
+face_from_descriptor(PyObject *descriptor, FONT_DATA_HANDLE fg) {
     CTFontDescriptorRef desc = font_descriptor_from_python(descriptor);
     if (!desc) return NULL;
-    CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz(), NULL);
+    CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz(fg), NULL);
     CFRelease(desc); desc = NULL;
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
     return (PyObject*) ct_face(font);
 }
 
 PyObject*
-face_from_path(const char *path, int UNUSED index) {
+face_from_path(const char *path, int UNUSED index, FONT_DATA_HANDLE fg UNUSED) {
     CFStringRef s = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
     CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false);
     CGDataProviderRef dp = CGDataProviderCreateWithURL(url);
@@ -371,7 +371,7 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
 }
 
 static inline bool
-do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize) {
+do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONT_DATA_HANDLE fg) {
     unsigned int canvas_width = cell_width * num_cells;
     CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
     if (allow_resize) {
@@ -382,7 +382,7 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
             CGFloat sz = CTFontGetSize(ct_font);
             sz *= canvas_width / right;
             CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
-            bool ret = do_render(new_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false);
+            bool ret = do_render(new_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, false, fg);
             CFRelease(new_font);
             return ret;
         }
@@ -408,10 +408,10 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
 }
 
 bool
-render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
+render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONT_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)s;
     for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
-    return do_render(self->ct_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true);
+    return do_render(self->ct_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg);
 }
 
 

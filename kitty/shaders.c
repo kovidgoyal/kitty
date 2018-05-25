@@ -13,13 +13,47 @@ enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
 typedef struct {
+    unsigned int cell_width, cell_height;
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
     GLuint texture_id;
-    GLenum texture_unit;
     GLint max_texture_size, max_array_texture_layers;
 } SpriteMap;
 
-static SpriteMap sprite_map = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1, .texture_unit = GL_TEXTURE0 };
+static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
+static GLint max_texture_size = 0, max_array_texture_layers = 0;
+
+SPRITE_MAP_HANDLE
+alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
+    if (!max_texture_size) {
+        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
+        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
+#ifdef __APPLE__
+        // Since on Apple we could have multiple GPUs, with different capabilities,
+        // upper bound the values according to the data from http://developer.apple.com/graphicsimaging/opengl/capabilities/
+        max_texture_size = MIN(8192, sprite_map.max_texture_size);
+        max_array_texture_layers = MIN(512, sprite_map.max_array_texture_layers);
+#endif
+        sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
+    }
+    SpriteMap *ans = calloc(1, sizeof(SpriteMap));
+    ans->cell_width = cell_width; ans->cell_height = cell_height;
+    if (ans) {
+        *ans = NEW_SPRITE_MAP;
+        ans->max_texture_size = max_texture_size;
+        ans->max_array_texture_layers = max_array_texture_layers;
+    }
+    return (SPRITE_MAP_HANDLE)ans;
+}
+
+SPRITE_MAP_HANDLE
+free_sprite_map(SPRITE_MAP_HANDLE sm) {
+    SpriteMap *sprite_map = (SpriteMap*)sm;
+    if (sprite_map) {
+        if (sprite_map->texture_id) free_texture(&sprite_map->texture_id);
+        free(sprite_map);
+    }
+    return NULL;
+}
 
 static bool copy_image_warned = false;
 
@@ -47,7 +81,7 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
 
 
 static void
-realloc_sprite_texture() {
+realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
@@ -58,40 +92,43 @@ realloc_sprite_texture() {
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     unsigned int xnum, ynum, z, znum, width, height, src_ynum;
-    sprite_tracker_current_layout(&xnum, &ynum, &z);
+    sprite_tracker_current_layout(fg, &xnum, &ynum, &z);
     znum = z + 1;
-    width = xnum * global_state.cell_width; height = ynum * global_state.cell_height;
+    SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
+    width = xnum * sprite_map->cell_width; height = ynum * sprite_map->cell_height;
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, width, height, znum);
-    if (sprite_map.texture_id) {
+    if (sprite_map->texture_id) {
         // need to re-alloc
-        src_ynum = MAX(1, sprite_map.last_ynum);
-        copy_image_sub_data(sprite_map.texture_id, tex, width, src_ynum * global_state.cell_height, sprite_map.last_num_of_layers);
-        glDeleteTextures(1, &sprite_map.texture_id);
+        src_ynum = MAX(1, sprite_map->last_ynum);
+        copy_image_sub_data(sprite_map->texture_id, tex, width, src_ynum * sprite_map->cell_height, sprite_map->last_num_of_layers);
+        glDeleteTextures(1, &sprite_map->texture_id);
     }
     glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    sprite_map.last_num_of_layers = znum;
-    sprite_map.last_ynum = ynum;
-    sprite_map.texture_id = tex;
+    sprite_map->last_num_of_layers = znum;
+    sprite_map->last_ynum = ynum;
+    sprite_map->texture_id = tex;
 }
 
 static inline void
-ensure_sprite_map() {
-    if (!sprite_map.texture_id) realloc_sprite_texture();
+ensure_sprite_map(FONTS_DATA_HANDLE fg) {
+    SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
+    if (!sprite_map->texture_id) realloc_sprite_texture(fg);
     // We have to rebind since we dont know if the texture was ever bound
     // in the context of the current OSWindow
     glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
 }
 
 void
-send_sprite_to_gpu(unsigned int x, unsigned int y, unsigned int z, pixel *buf) {
+send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigned int z, pixel *buf) {
+    SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     unsigned int xnum, ynum, znum;
-    sprite_tracker_current_layout(&xnum, &ynum, &znum);
-    if ((int)znum >= sprite_map.last_num_of_layers || (znum == 0 && (int)ynum > sprite_map.last_ynum)) realloc_sprite_texture();
-    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map.texture_id);
+    sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
+    if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) realloc_sprite_texture(fg);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    x *= global_state.cell_width; y *= global_state.cell_height;
-    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, global_state.cell_width, global_state.cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
+    x *= sprite_map->cell_width; y *= sprite_map->cell_height;
+    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, sprite_map->cell_width, sprite_map->cell_height, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
 }
 
 void
@@ -104,35 +141,6 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
-}
-
-static bool limits_updated = false;
-
-static void
-layout_sprite_map() {
-    if (!limits_updated) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(sprite_map.max_texture_size));
-        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(sprite_map.max_array_texture_layers));
-#ifdef __APPLE__
-        // Since on Apple we could have multiple GPUs, with different capabilities,
-        // upper bound the values according to the data from http://developer.apple.com/graphicsimaging/opengl/capabilities/
-        sprite_map.max_texture_size = MIN(8192, sprite_map.max_texture_size);
-        sprite_map.max_array_texture_layers = MIN(512, sprite_map.max_array_texture_layers);
-#endif
-        sprite_tracker_set_limits(sprite_map.max_texture_size, sprite_map.max_array_texture_layers);
-        limits_updated = true;
-    }
-    if (sprite_map.texture_id) { glDeleteTextures(1, &(sprite_map.texture_id)); sprite_map.texture_id = 0; }
-    realloc_sprite_texture();
-}
-
-static void
-destroy_sprite_map() {
-    /* sprite_map_free(); */
-    if (sprite_map.texture_id) {
-        glDeleteTextures(1, &(sprite_map.texture_id));
-        sprite_map.texture_id = 0;
-    }
 }
 
 // }}}
@@ -236,7 +244,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
     rd->xstart = xstart; rd->ystart = ystart; rd->dx = dx; rd->dy = dy;
     unsigned int x, y, z;
-    sprite_tracker_current_layout(&x, &y, &z);
+    sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = inverted ? 1 : 0;
     rd->background_opacity = os_window->background_opacity;
@@ -250,18 +258,18 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 }
 
 static inline bool
-cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy) {
+cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, FONTS_DATA_HANDLE fonts_data) {
     size_t sz;
     CELL_BUFFERS;
     void *address;
     bool changed = false;
 
-    ensure_sprite_map();
+    ensure_sprite_map(fonts_data);
 
     if (screen->scroll_changed || screen->is_dirty) {
         sz = sizeof(Cell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        screen_update_cell_data(screen, address, sz);
+        screen_update_cell_data(screen, address, sz, fonts_data);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
         changed = true;
     }
@@ -274,7 +282,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         changed = true;
     }
 
-    if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines)) {
+    if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)) {
         sz = sizeof(GLfloat) * 16 * screen->grman->count;
         GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
         for (size_t i = 0; i < screen->grman->count; i++, a += 16) memcpy(a, screen->grman->render_data[i].vertices, sizeof(screen->grman->render_data[0].vertices));
@@ -420,9 +428,10 @@ send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat
         glClear(GL_COLOR_BUFFER_BIT);
         changed = true;
     }
-    if (cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy)) changed = true;
+    if (os_window->fonts_data) {
+        if (cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy, os_window->fonts_data)) changed = true;
+    }
     return changed;
-
 }
 
 void
@@ -616,13 +625,23 @@ NO_ARG(init_cursor_program)
 NO_ARG(init_borders_program)
 
 NO_ARG(init_cell_program)
-NO_ARG(destroy_sprite_map)
-NO_ARG(layout_sprite_map)
+
+static PyObject*
+sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
+    unsigned int w, h;
+    if(!PyArg_ParseTuple(args, "II", &w, &h)) return NULL;
+    sprite_tracker_set_limits(w, h);
+    max_texture_size = w; max_array_texture_layers = h;
+    Py_RETURN_NONE;
+}
+
+
 
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef module_methods[] = {
     M(compile_program, METH_VARARGS),
+    M(sprite_map_set_limits, METH_VARARGS),
     MW(create_vao, METH_NOARGS),
     MW(bind_vertex_array, METH_O),
     MW(unbind_vertex_array, METH_NOARGS),
@@ -632,8 +651,6 @@ static PyMethodDef module_methods[] = {
     MW(init_cursor_program, METH_NOARGS),
     MW(init_borders_program, METH_NOARGS),
     MW(init_cell_program, METH_NOARGS),
-    MW(layout_sprite_map, METH_VARARGS),
-    MW(destroy_sprite_map, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

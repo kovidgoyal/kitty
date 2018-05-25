@@ -2,17 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections import OrderedDict
-
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    DECAWM, set_logical_dpi, set_send_sprite_to_gpu, sprite_map_set_layout,
+    DECAWM, set_send_sprite_to_gpu, sprite_map_set_layout,
     sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import (
-    prerender, render_string, set_font_family, shape_string
-)
+from kitty.fonts.render import render_string, setup_for_testing, shape_string
 
 from . import BaseTest
 
@@ -20,21 +16,12 @@ from . import BaseTest
 class Rendering(BaseTest):
 
     def setUp(self):
-        sprite_map_set_limits(100000, 100)
-        self.sprites = OrderedDict()
-
-        def send_to_gpu(x, y, z, data):
-            self.sprites[(x, y, z)] = data
-
-        set_send_sprite_to_gpu(send_to_gpu)
-        set_logical_dpi(96.0, 96.0)
-        self.cell_width, self.cell_height = set_font_family()
-        prerender()
+        self.sprites, self.cell_width, self.cell_height = setup_for_testing()
         self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5])
 
     def tearDown(self):
         set_send_sprite_to_gpu(None)
-        del self.sprites
+        del self.sprites, self.cell_width, self.cell_height
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)

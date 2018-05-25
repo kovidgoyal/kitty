@@ -10,7 +10,7 @@ from base64 import standard_b64encode
 from io import BytesIO
 
 from kitty.fast_data_types import (
-    parse_bytes, set_display_state, set_send_to_gpu, shm_unlink, shm_write
+    parse_bytes, set_send_to_gpu, shm_unlink, shm_write
 )
 
 from . import BaseTest
@@ -87,8 +87,7 @@ def put_helpers(self, cw, ch):
     iid = 0
 
     def create_screen():
-        s = self.create_screen(10, 5)
-        set_display_state(s.columns * cw, s.lines * ch, cw, ch)
+        s = self.create_screen(10, 5, cell_width=cw, cell_height=ch)
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0):
@@ -107,7 +106,7 @@ def put_helpers(self, cw, ch):
         send_command(screen, cmd)
 
     def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
-        return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines)
+        return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines, cw, ch)
 
     def rect_eq(r, left, top, right, bottom):
         for side in 'left top right bottom'.split():
@@ -134,7 +133,7 @@ class TestGraphics(BaseTest):
             img = sl(p, s=1, v=1, f=f)
             self.ae(bool(img['is_4byte_aligned']), f == 32)
 
-        # Test chuunked load
+        # Test chunked load
         self.assertIsNone(l('abcd', s=2, v=2, m=1))
         self.assertIsNone(l('efgh', m=1))
         self.assertIsNone(l('ijkl', m=1))

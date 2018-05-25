@@ -5,6 +5,7 @@
  */
 
 #include "state.h"
+#include "fonts.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w);
@@ -293,9 +294,9 @@ current_monitor(GLFWwindow *window) {
 
 
 void
-set_dpi_from_os_window(OSWindow *w) {
+set_os_window_dpi(OSWindow *w) {
     GLFWmonitor *monitor = NULL;
-    if (w) { monitor = current_monitor(w->handle); }
+    if (w && w->handle) { monitor = current_monitor(w->handle); }
     if (monitor == NULL) monitor = glfwGetPrimaryMonitor();
     float xscale = 1, yscale = 1;
     if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
@@ -304,8 +305,8 @@ set_dpi_from_os_window(OSWindow *w) {
 #else
     double factor = 96.0;
 #endif
-    global_state.logical_dpi_x = xscale * factor;
-    global_state.logical_dpi_y = yscale * factor;
+    w->logical_dpi_x = xscale * factor;
+    w->logical_dpi_y = yscale * factor;
 }
 
 static bool is_first_window = true;
@@ -378,7 +379,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
-        set_dpi_from_os_window(NULL);
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
         if (ret == NULL) return NULL;
@@ -402,6 +402,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         OSWindow *q = global_state.os_windows + i;
         q->is_focused = q == w ? true : false;
     }
+    set_os_window_dpi(w);
+    load_fonts_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
@@ -449,9 +451,10 @@ show_window(PyObject UNUSED *self, PyObject *args) {
                 w->shown_once = true;
                 push_focus_history(w);
                 if (first_show) {
-                    double before_x = global_state.logical_dpi_x, before_y = global_state.logical_dpi_y;
-                    set_dpi_from_os_window(w);
-                    dpi_changed = before_x != global_state.logical_dpi_x || before_y != global_state.logical_dpi_y;
+                    double before_x = w->logical_dpi_x, before_y = w->logical_dpi_y;
+                    set_os_window_dpi(w);
+                    dpi_changed = before_x != w->logical_dpi_x || before_y != w->logical_dpi_y;
+                    if (dpi_changed) load_fonts_for_window(w);
                     w->has_pending_resizes = true;
                     global_state.has_pending_resizes = true;
                 }
@@ -508,6 +511,12 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     glfwInitHint(GLFW_COCOA_MENUBAR, 0);
 #endif
     PyObject *ans = glfwInit() ? Py_True: Py_False;
+    if (ans == Py_True) {
+        OSWindow w = {0};
+        set_os_window_dpi(&w);
+        global_state.default_dpi.x = w.logical_dpi_x;
+        global_state.default_dpi.y = w.logical_dpi_y;
+    }
     Py_INCREF(ans);
     return ans;
 }
@@ -767,16 +776,6 @@ os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
     return NULL;
 }
 
-static PyObject*
-ring_bell(PyObject UNUSED *self, PyObject *args) {
-    id_type os_window_id;
-    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
-    OSWindow *w = os_window_for_kitty_window(os_window_id);
-    if (w && w->handle) {
-        glfwWindowBell(w->handle);
-    }
-    Py_RETURN_NONE;
-}
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -790,7 +789,6 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
-    METHODB(ring_bell, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),

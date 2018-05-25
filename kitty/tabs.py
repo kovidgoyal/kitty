@@ -11,9 +11,10 @@ from .child import Child
 from .config import build_ansi_color_table
 from .constants import WindowGeometry, appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
-    DECAWM, Screen, add_tab, glfw_post_empty_event, mark_tab_bar_dirty,
-    next_window_id, pt_to_px, remove_tab, remove_window, set_active_tab,
-    set_tab_bar_render_data, swap_tabs, viewport_for_window, x11_window_id
+    DECAWM, Screen, add_tab, cell_size_for_window, glfw_post_empty_event,
+    mark_tab_bar_dirty, next_window_id, pt_to_px, remove_tab, remove_window,
+    set_active_tab, set_tab_bar_render_data, swap_tabs, viewport_for_window,
+    x11_window_id
 )
 from .layout import Rect, create_layout_object_for, evict_cached_layouts
 from .session import resolved_shell
@@ -38,11 +39,11 @@ class Tab:  # {{{
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
-        self.margin_width, self.padding_width = map(pt_to_px, (
-            self.opts.window_margin_width, self.opts.window_padding_width))
+        self.margin_width, self.padding_width = pt_to_px(
+                self.opts.window_margin_width, self.os_window_id), pt_to_px(self.opts.window_padding_width, self.os_window_id)
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
-        self.borders = Borders(self.os_window_id, self.id, self.opts)
+        self.borders = Borders(self.os_window_id, self.id, self.opts, pt_to_px(self.opts.window_border_width, self.os_window_id), self.padding_width)
         self.windows = deque()
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
@@ -306,11 +307,11 @@ class TabBar:  # {{{
         self.os_window_id = os_window_id
         self.opts = opts
         self.num_tabs = 1
-        self.cell_width = 1
+        self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.data_buffer_size = 0
         self.laid_out_once = False
         self.dirty = True
-        self.screen = s = Screen(None, 1, 10)
+        self.screen = s = Screen(None, 1, 10, 0, 0, self.cell_width, cell_height)
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         s.color_profile.set_configured_colors(
             color_as_int(opts.inactive_tab_foreground),

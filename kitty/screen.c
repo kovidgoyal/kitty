@@ -60,9 +60,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     Screen *self;
     int ret = 0;
     PyObject *callbacks = Py_None, *test_child = Py_None;
-    unsigned int columns=80, lines=24, scrollback=0;
+    unsigned int columns=80, lines=24, scrollback=0, cell_width=10, cell_height=20;
     id_type window_id=0;
-    if (!PyArg_ParseTuple(args, "|OIIIKO", &callbacks, &lines, &columns, &scrollback, &window_id, &test_child)) return NULL;
+    if (!PyArg_ParseTuple(args, "|OIIIIIKO", &callbacks, &lines, &columns, &scrollback, &cell_width, &cell_height, &window_id, &test_child)) return NULL;
 
     self = (Screen *)type->tp_alloc(type, 0);
     if (self != NULL) {
@@ -74,6 +74,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen write_buf_lock mutex: %s", strerror(ret));
             return NULL;
         }
+        self->cell_size.width = cell_width; self->cell_size.height = cell_height;
         self->columns = columns; self->lines = lines;
         self->write_buf = PyMem_RawMalloc(BUFSIZ);
         self->window_id = window_id;
@@ -111,7 +112,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
-    grman_clear(self->grman, false);
+    grman_clear(self->grman, false, self->cell_size);
     self->modes = empty_modes;
 #define R(name) self->color_profile->overridden.name = 0
     R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
@@ -207,8 +208,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
 static void
 screen_rescale_images(Screen *self, unsigned int old_cell_width, unsigned int old_cell_height) {
-    grman_rescale(self->main_grman, old_cell_width, old_cell_height);
-    grman_rescale(self->alt_grman, old_cell_width, old_cell_height);
+    grman_rescale(self->main_grman, old_cell_width, old_cell_height, self->cell_size);
+    grman_rescale(self->alt_grman, old_cell_width, old_cell_height, self->cell_size);
 }
 
 
@@ -454,7 +455,7 @@ cursor_within_margins(Screen *self) {
 void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
-    const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty);
+    const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty, self->cell_size);
     if (response != NULL) write_escape_code_to_child(self, APC, response);
     if (x != self->cursor->x || y != self->cursor->y) {
         bool in_margins = cursor_within_margins(self);
@@ -471,7 +472,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 void
 screen_toggle_screen_buffer(Screen *self) {
     bool to_alt = self->linebuf == self->main_linebuf;
-    grman_clear(self->alt_grman, true);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
+    grman_clear(self->alt_grman, true, self->cell_size);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
         linebuf_clear(self->alt_linebuf, BLANK_CHAR);
         screen_save_cursor(self);
@@ -712,7 +713,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     s.amt = amtv; s.limit = is_main ? -self->historybuf->ynum : 0; \
     s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
     s.margin_top = top; s.margin_bottom = bottom; \
-    grman_scroll_images(self->grman, &s); \
+    grman_scroll_images(self->grman, &s, self->cell_size); \
 }
 
 #define INDEX_UP \
@@ -961,7 +962,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             a = 0; b = self->cursor->y; break;
         case 2:
         case 3:
-            grman_clear(self->grman, how == 3);
+            grman_clear(self->grman, how == 3, self->cell_size);
             a = 0; b = self->lines; break;
         default:
             return;
@@ -1281,7 +1282,7 @@ screen_reset_dirty(Screen *self) {
 }
 
 void
-screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
+screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz, FONTS_DATA_HANDLE fonts_data) {
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
     bool selection_must_be_cleared = self->is_dirty ? true : false;
@@ -1292,7 +1293,7 @@ screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
         if (self->historybuf->line->has_dirty_text) {
-            render_line(self->historybuf->line);
+            render_line(fonts_data, self->historybuf->line);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
         update_line_data(self->historybuf->line, y, address);
@@ -1301,7 +1302,7 @@ screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz) {
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->has_dirty_text) {
-            render_line(self->linebuf->line);
+            render_line(fonts_data, self->linebuf->line);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
         update_line_data(self->linebuf->line, y, address);

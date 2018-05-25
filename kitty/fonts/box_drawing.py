@@ -6,9 +6,8 @@ import math
 from functools import partial as p
 from itertools import repeat
 
-from kitty.fast_data_types import pt_to_px_ceil
-
 scale = (0.001, 1, 1.5, 2)
+_dpi = 96.0
 
 
 def set_scale(new_scale):
@@ -18,7 +17,7 @@ def set_scale(new_scale):
 
 def thickness(level=1, horizontal=True):
     pts = scale[level]
-    return pt_to_px_ceil(pts)
+    return int(math.ceil(pts * (_dpi / 72.0)))
 
 
 def draw_hline(buf, width, x1, x2, y, level):
@@ -534,7 +533,9 @@ for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('�
         box_chars[ch] = [p(func, which=ch)]
 
 
-def render_box_char(ch, buf, width, height):
+def render_box_char(ch, buf, width, height, dpi=96.0):
+    global _dpi
+    _dpi = dpi
     for func in box_chars[ch]:
         func(buf, width, height)
     return buf

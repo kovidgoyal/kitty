@@ -83,9 +83,9 @@ typedef struct {
 } ScrollData;
 
 GraphicsManager* grman_alloc();
-void grman_clear(GraphicsManager*, bool);
-const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty);
-bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows);
-void grman_scroll_images(GraphicsManager *self, const ScrollData*);
+void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
+const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
+bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
+void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type);
-void grman_rescale(GraphicsManager *self, unsigned int old_cell_width, unsigned int old_cell_height);
+void grman_rescale(GraphicsManager *self, unsigned int old_cell_width, unsigned int old_cell_height, CellPixelSize fg);

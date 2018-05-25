@@ -182,7 +182,7 @@ specialize_font_descriptor(PyObject *base_descriptor) {
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
     AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
     AP(FcPatternAddDouble, FC_SIZE, global_state.font_sz_in_pts, "size");
-    AP(FcPatternAddDouble, FC_DPI, (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.0, "dpi");
+    AP(FcPatternAddDouble, FC_DPI, (global_state.default_dpi.x + global_state.default_dpi.y) / 2.0, "dpi");
     ans = _fc_match(pat);
     if (face_idx > 0) {
         // For some reason FcFontMatch sets the index to zero, so manually restore it.
@@ -194,7 +194,7 @@ end:
 }
 
 PyObject*
-create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool italic, bool emoji_presentation) {
+create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     PyObject *ans = NULL;
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
@@ -205,7 +205,7 @@ create_fallback_face(PyObject UNUSED *base_face, Cell* cell, bool bold, bool ita
     size_t num = cell_as_unicode(cell, true, char_buf, ' ');
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);
-    if (d) { ans = face_from_descriptor(d); Py_CLEAR(d); }
+    if (d) { ans = face_from_descriptor(d, fg); Py_CLEAR(d); }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ans;

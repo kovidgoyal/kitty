@@ -8,6 +8,7 @@
 #include "threading.h"
 #include "state.h"
 #include "screen.h"
+#include "fonts.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -486,7 +487,7 @@ static double last_render_at = -DBL_MAX;
 
 static inline double
 cursor_width(double w, bool vert, OSWindow *os_window) {
-    double dpi = vert ? global_state.logical_dpi_x : global_state.logical_dpi_y;
+    double dpi = vert ? os_window->fonts_data->logical_dpi_x : os_window->fonts_data->logical_dpi_y;
     double ans = w * dpi / 72.0;  // as pixels
     double factor = 2.0 / (vert ? os_window->viewport_width : os_window->viewport_height);
     return ans * factor;
@@ -550,20 +551,6 @@ update_window_title(Window *w, OSWindow *os_window) {
         return true;
     }
     return false;
-}
-
-static PyObject*
-simple_render_screen(PyObject UNUSED *self, PyObject *args) {
-#define simple_render_screen_doc "Render a Screen object, with no cursor"
-    Screen *screen;
-    float xstart, ystart, dx, dy;
-    static ssize_t vao_idx = -1, gvao_idx = -1;
-    if (vao_idx == -1) vao_idx = create_cell_vao();
-    if (gvao_idx == -1) gvao_idx = create_graphics_vao();
-    if (!PyArg_ParseTuple(args, "O!ffff", &Screen_Type, &screen, &xstart, &ystart, &dx, &dy)) return NULL;
-    send_cell_data_to_gpu(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window());
-    draw_cells(vao_idx, gvao_idx, xstart, ystart, dx, dy, screen, current_os_window(), true);
-    Py_RETURN_NONE;
 }
 
 static inline bool
@@ -661,6 +648,7 @@ render(double now) {
         }
         unsigned int active_window_id = 0, num_visible_windows = 0;
         color_type active_window_bg = 0;
+        if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); continue; }
         if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows)) needs_render = true;
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
         if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows);
@@ -1330,7 +1318,6 @@ safe_pipe(PYNOARG) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHOD(simple_render_screen, METH_VARARGS)
     METHODB(safe_pipe, METH_NOARGS),
     {NULL}  /* Sentinel */
 };

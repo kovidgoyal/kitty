@@ -6,8 +6,7 @@ from functools import partial
 from itertools import chain
 
 from .fast_data_types import (
-    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
-    pt_to_px
+    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program
 )
 from .utils import load_shaders
 
@@ -39,11 +38,11 @@ def load_borders_program():
 
 class Borders:
 
-    def __init__(self, os_window_id, tab_id, opts):
+    def __init__(self, os_window_id, tab_id, opts, border_width, padding_width):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
-        self.border_width = pt_to_px(opts.window_border_width)
-        self.padding_width = pt_to_px(opts.window_padding_width)
+        self.border_width = border_width
+        self.padding_width = padding_width
 
     def __call__(
         self,

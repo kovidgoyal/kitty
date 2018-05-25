@@ -72,9 +72,9 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
     maxDiff = 2000
 
-    def create_screen(self, cols=5, lines=5, scrollback=5):
+    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20):
         c = Callbacks()
-        return Screen(c, lines, cols, scrollback, 0, c)
+        return Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
 
     def assertEqualAttributes(self, c1, c2):
         x1, y1, c1.x, c1.y = c1.x, c1.y, 0, 0

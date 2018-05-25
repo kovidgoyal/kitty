@@ -78,13 +78,13 @@ font_units_to_pixels(Face *self, int x) {
 }
 
 static inline bool
-set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height) {
+set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height, unsigned int cell_height) {
     int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
     if (!error) {
         unsigned int ch = CALC_CELL_HEIGHT(self);
         if (desired_height && ch != desired_height) {
             FT_F26Dot6 h = floor((double)char_height * (double)desired_height / (double) ch);
-            return set_font_size(self, 0, h, xdpi, ydpi, 0);
+            return set_font_size(self, 0, h, xdpi, ydpi, 0, cell_height);
         }
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
         if (self->harfbuzz_font != NULL) {
@@ -101,7 +101,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
     } else {
         if (!self->is_scalable && self->face->num_fixed_sizes > 0) {
             int32_t min_diff = INT32_MAX;
-            if (desired_height == 0) desired_height = global_state.cell_height;
+            if (desired_height == 0) desired_height = cell_height;
             if (desired_height == 0) {
                 desired_height = ceil(((double)char_height / 64.) * (double)ydpi / 72.);
                 desired_height += ceil(0.2 * desired_height);
@@ -128,13 +128,13 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
 }
 
 bool
-set_size_for_face(PyObject *s, unsigned int desired_height, bool force) {
+set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DATA_HANDLE fg) {
     Face *self = (Face*)s;
     FT_F26Dot6 w = (FT_F26Dot6)(ceil(global_state.font_sz_in_pts * 64.0));
-    FT_UInt xdpi = (FT_UInt)global_state.logical_dpi_x, ydpi = (FT_UInt)global_state.logical_dpi_y;
+    FT_UInt xdpi = (FT_UInt)fg->logical_dpi_x, ydpi = (FT_UInt)fg->logical_dpi_y;
     if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
     ((Face*)self)->size_in_pts = global_state.font_sz_in_pts;
-    return set_font_size(self, w, w, xdpi, ydpi, desired_height);
+    return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
 }
 
 static inline int
@@ -149,14 +149,14 @@ get_load_flags(int hinting, int hintstyle, int base) {
 
 
 static inline bool
-init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
+init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
 #define CPY(n) self->n = self->face->n;
     CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
 #undef CPY
     self->is_scalable = FT_IS_SCALABLE(self->face);
     self->has_color = FT_HAS_COLOR(self->face);
     self->hinting = hinting; self->hintstyle = hintstyle;
-    if (!set_size_for_face((PyObject*)self, 0, false)) return false;
+    if (!set_size_for_face((PyObject*)self, 0, false, fg)) return false;
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
@@ -168,52 +168,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle) {
 }
 
 PyObject*
-ft_face_from_data(const uint8_t* data, size_t sz, void *extra_data, free_extra_data_func fed, PyObject *path, int hinting, int hintstyle, float apple_leading) {
-    Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
-    if (ans == NULL) return NULL;
-    int error = FT_New_Memory_Face(library, data, sz, 0, &ans->face);
-    if(error) { set_freetype_error("Failed to load memory face, with error:", error); Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle)) { Py_CLEAR(ans); return NULL; }
-    ans->extra_data = extra_data;
-    ans->free_extra_data = fed;
-    ans->apple_leading = apple_leading;
-    return (PyObject*)ans;
-}
-
-static inline bool
-load_from_path_and_psname(const char *path, const char* psname, Face *ans) {
-    int error, num_faces, index = 0;
-    error = FT_New_Face(library, path, index, &ans->face);
-    if (error) { set_freetype_error("Failed to load face, with error:", error); ans->face = NULL; return false; }
-    num_faces = ans->face->num_faces;
-    if (num_faces < 2) return true;
-    do {
-        if (ans->face) {
-            if (!psname || strcmp(FT_Get_Postscript_Name(ans->face), psname) == 0) return true;
-            FT_Done_Face(ans->face); ans->face = NULL;
-        }
-        error = FT_New_Face(library, path, ++index, &ans->face);
-        if (error) ans->face = NULL;
-    } while(index < num_faces);
-    PyErr_Format(PyExc_ValueError, "No face matching the postscript name: %s found in: %s", psname, path);
-    return false;
-}
-
-PyObject*
-ft_face_from_path_and_psname(PyObject* path, const char* psname, void *extra_data, free_extra_data_func fed, int hinting, int hintstyle, float apple_leading) {
-    if (PyUnicode_READY(path) != 0) return NULL;
-    Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
-    if (!ans) return NULL;
-    if (!load_from_path_and_psname(PyUnicode_AsUTF8(path), psname, ans)) { Py_CLEAR(ans); return NULL; }
-    if (!init_ft_face(ans, path, hinting, hintstyle)) { Py_CLEAR(ans); return NULL; }
-    ans->extra_data = extra_data;
-    ans->free_extra_data = fed;
-    ans->apple_leading = apple_leading;
-    return (PyObject*)ans;
-}
-
-PyObject*
-face_from_descriptor(PyObject *descriptor) {
+face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
 #define D(key, conv, missing_ok) { \
     PyObject *t = PyDict_GetItemString(descriptor, #key); \
     if (t == NULL) { \
@@ -233,19 +188,19 @@ face_from_descriptor(PyObject *descriptor) {
     if (self != NULL) {
         int error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
-        if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style)) { Py_CLEAR(self); return NULL; }
+        if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, fg)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
 }
 
 PyObject*
-face_from_path(const char *path, int index) {
+face_from_path(const char *path, int index, FONTS_DATA_HANDLE fg) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);
     if (ans == NULL) return NULL;
     int error;
     error = FT_New_Face(library, path, index, &ans->face);
     if (error) { set_freetype_error("Failed to load face, with error:", error); ans->face = NULL; return NULL; }
-    if (!init_ft_face(ans, Py_None, true, 3)) { Py_CLEAR(ans); return NULL; }
+    if (!init_ft_face(ans, Py_None, true, 3, fg)) { Py_CLEAR(ans); return NULL; }
     return (PyObject*)ans;
 }
 
@@ -349,7 +304,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
 
 
 static inline bool
-render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale) {
+render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
     unsigned int max_width = cell_width * num_cells;
     FT_Bitmap *bitmap = &self->face->glyph->bitmap;
@@ -369,9 +324,9 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
             float ar = (float)max_width / (float)bitmap->width;
-            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0)) {
-                if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false)) return false;
-                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0)) return false;
+            if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0, fg->cell_height)) {
+                if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false, fg)) return false;
+                if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->cell_height)) return false;
             } else return false;
         }
     }
@@ -506,7 +461,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg) {
     Face *self = (Face*)f;
     bool is_emoji = *was_colored; *was_colored = is_emoji && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
@@ -518,10 +473,10 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
             if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
                 if (PyErr_Occurred()) PyErr_Print();
                 *was_colored = false;
-                if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
+                if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) return false;
             }
         } else {
-            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true)) return false;
+            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) return false;
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;

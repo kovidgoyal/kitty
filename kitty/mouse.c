@@ -94,45 +94,45 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
 // }}}
 
 static inline double
-window_left(Window *w) {
-    return w->geometry.left - OPT(window_padding_width) * (global_state.logical_dpi_x / 72.0);
+window_left(Window *w, OSWindow *os_window) {
+    return w->geometry.left - OPT(window_padding_width) * (os_window->logical_dpi_x / 72.0);
 }
 
 static inline double
-window_right(Window *w) {
-    return w->geometry.right + OPT(window_padding_width) * (global_state.logical_dpi_x / 72.0);
+window_right(Window *w, OSWindow *os_window) {
+    return w->geometry.right + OPT(window_padding_width) * (os_window->logical_dpi_x / 72.0);
 }
 
 static inline double
-window_top(Window *w) {
-    return w->geometry.top - OPT(window_padding_width) * (global_state.logical_dpi_y / 72.0);
+window_top(Window *w, OSWindow *os_window) {
+    return w->geometry.top - OPT(window_padding_width) * (os_window->logical_dpi_y / 72.0);
 }
 
 static inline double
-window_bottom(Window *w) {
-    return w->geometry.bottom + OPT(window_padding_width) * (global_state.logical_dpi_y / 72.0);
+window_bottom(Window *w, OSWindow *os_window) {
+    return w->geometry.bottom + OPT(window_padding_width) * (os_window->logical_dpi_y / 72.0);
 }
 
 static inline bool
-contains_mouse(Window *w) {
+contains_mouse(Window *w, OSWindow *os_window) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    return (w->visible && window_left(w) <= x && x <= window_right(w) && window_top(w) <= y && y <= window_bottom(w));
+    return (w->visible && window_left(w, os_window) <= x && x <= window_right(w, os_window) && window_top(w, os_window) <= y && y <= window_bottom(w, os_window));
 }
 
 static inline bool
-cell_for_pos(Window *w, unsigned int *x, unsigned int *y) {
+cell_for_pos(Window *w, unsigned int *x, unsigned int *y, OSWindow *os_window) {
     WindowGeometry *g = &w->geometry;
     Screen *screen = w->render_data.screen;
     if (!screen) return false;
     unsigned int qx = 0, qy = 0;
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
-    double left = window_left(w), top = window_top(w), right = window_right(w), bottom = window_bottom(w);
+    double left = window_left(w, os_window), top = window_top(w, os_window), right = window_right(w, os_window), bottom = window_bottom(w, os_window);
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
     if (mouse_x >= g->right) qx = screen->columns - 1;
-    else if (mouse_x >= g->left) qx = (unsigned int)((double)(mouse_x - g->left) / global_state.cell_width);
+    else if (mouse_x >= g->left) qx = (unsigned int)((double)(mouse_x - g->left) / os_window->fonts_data->cell_width);
     if (mouse_y >= g->bottom) qy = screen->lines - 1;
-    else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / global_state.cell_height);
+    else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / os_window->fonts_data->cell_height);
     if (qx < screen->columns && qy < screen->lines) {
         *x = qx; *y = qy;
         return true;
@@ -156,8 +156,8 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
 
 bool
 drag_scroll(Window *w, OSWindow *frame) {
-    unsigned int margin = global_state.cell_height / 2;
-    double left = window_left(w), top = window_top(w), right = window_right(w), bottom = window_bottom(w);
+    unsigned int margin = frame->fonts_data->cell_height / 2;
+    double left = window_left(w, frame), top = window_top(w, frame), right = window_right(w, frame), bottom = window_bottom(w, frame);
     double x = frame->mouse_x, y = frame->mouse_y;
     if (y < top || y > bottom) return false;
     if (x < left || x > right) return false;
@@ -229,7 +229,7 @@ HANDLER(handle_move_event) {
             call_boss(switch_focus_to, "I", window_idx);
         }
     }
-    if (!cell_for_pos(w, &x, &y)) return;
+    if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y;
@@ -377,7 +377,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     if (!*in_tab_bar && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
-            if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
+            if (contains_mouse(t->windows + i, global_state.callback_os_window) && t->windows[i].render_data.screen) {
                 *window_idx = i; return t->windows + i;
             }
         }

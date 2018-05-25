@@ -18,10 +18,10 @@ from .fast_data_types import (
     CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, DECORATION, DIM,
     GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL,
     SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen, add_window,
-    compile_program, get_clipboard_string, glfw_post_empty_event,
-    init_cell_program, init_cursor_program, set_clipboard_string,
-    set_titlebar_color, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    cell_size_for_window, compile_program, get_clipboard_string,
+    glfw_post_empty_event, init_cell_program, init_cursor_program,
+    set_clipboard_string, set_titlebar_color, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -110,7 +110,8 @@ class Window:
         self.needs_layout = True
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
-        self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id)
+        cell_width, cell_height = cell_size_for_window(self.os_window_id)
+        self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id, cell_width, cell_height)
         setup_colors(self.screen, opts)
 
     @property

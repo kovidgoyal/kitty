@@ -82,6 +82,7 @@ add_os_window() {
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     ans->background_opacity = OPT(background_opacity);
+    ans->font_sz_in_pts = global_state.font_sz_in_pts;
     END_WITH_OS_WINDOW_REFS
     return ans;
 }
@@ -250,14 +251,14 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     if (os_window->num_tabs > 1) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
-                central->left = 0; central->top = global_state.cell_height; central->right = os_window->viewport_width - 1;
+                central->left = 0; central->top = os_window->fonts_data->cell_height; central->right = os_window->viewport_width - 1;
                 central->bottom = os_window->viewport_height - 1;
                 tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = 0;
                 tab_bar->bottom = central->top - 1;
                 break;
             default:
                 central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-                central->bottom = os_window->viewport_height - global_state.cell_height - 1;
+                central->bottom = os_window->viewport_height - os_window->fonts_data->cell_height - 1;
                 tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = central->bottom + 1;
                 tab_bar->bottom = os_window->viewport_height - 1;
                 break;
@@ -453,27 +454,33 @@ wrap_region(Region *r) {
 }
 
 PYWRAP1(viewport_for_window) {
-    id_type os_window_id = 0;
+    id_type os_window_id;
     int vw = 100, vh = 100;
-    PA("|K", &os_window_id);
+    unsigned int cell_width = 1, cell_height = 1;
+    PA("K", &os_window_id);
     Region central = {0}, tab_bar = {0};
     WITH_OS_WINDOW(os_window_id)
         os_window_regions(os_window, &central, &tab_bar);
         vw = os_window->viewport_width; vh = os_window->viewport_height;
+        cell_width = os_window->fonts_data->cell_width; cell_height = os_window->fonts_data->cell_height;
         goto end;
     END_WITH_OS_WINDOW
 end:
-    return Py_BuildValue("NNiiII", wrap_region(&central), wrap_region(&tab_bar), vw, vh, global_state.cell_width, global_state.cell_height);
+    return Py_BuildValue("NNiiII", wrap_region(&central), wrap_region(&tab_bar), vw, vh, cell_width, cell_height);
 }
 
-PYWRAP1(set_dpi_from_os_window) {
-    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
+PYWRAP1(cell_size_for_window) {
+    id_type os_window_id;
+    unsigned int cell_width = 0, cell_height = 0;
+    PA("K", &os_window_id);
     WITH_OS_WINDOW(os_window_id)
-        set_dpi_from_os_window(os_window);
-        Py_RETURN_TRUE;
+        cell_width = os_window->fonts_data->cell_width; cell_height = os_window->fonts_data->cell_height;
+        goto end;
     END_WITH_OS_WINDOW
-    Py_RETURN_FALSE;
+end:
+    return Py_BuildValue("II", cell_width, cell_height);
 }
+
 
 PYWRAP1(mark_os_window_for_close) {
     id_type os_window_id;
@@ -572,21 +579,26 @@ PYWRAP1(update_window_visibility) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(set_logical_dpi) {
-    PA("dd", &global_state.logical_dpi_x, &global_state.logical_dpi_y);
-    Py_RETURN_NONE;
+static inline double
+dpi_for_os_window_id(id_type os_window_id) {
+    double dpi = 0;
+    if (os_window_id) {
+        WITH_OS_WINDOW(os_window_id)
+            dpi = (os_window->logical_dpi_x + os_window->logical_dpi_y) / 2.;
+        END_WITH_OS_WINDOW
+    }
+    if (dpi == 0) {
+        dpi = (global_state.default_dpi.x + global_state.default_dpi.y) / 2.;
+    }
+    return dpi;
 }
 
 PYWRAP1(pt_to_px) {
-    long pt = PyLong_AsLong(args);
-    double dpi = (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.f;
+    double pt, dpi = 0;
+    id_type os_window_id = 0;
+    PA("d|K", &pt, &os_window_id);
+    dpi = dpi_for_os_window_id(os_window_id);
     return PyLong_FromLong((long)round((pt * (dpi / 72.0))));
-}
-
-PYWRAP1(pt_to_px_ceil) {
-    long pt = PyLong_AsLong(args);
-    double dpi = (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.f;
-    return PyLong_FromLong((long)ceil((pt * (dpi / 72.0))));
 }
 
 
@@ -600,12 +612,6 @@ PYWRAP1(set_boss) {
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.boss);
     free(global_state.os_windows); global_state.os_windows = NULL;
-    Py_RETURN_NONE;
-}
-
-PYWRAP1(set_display_state) {
-    int vw, vh;
-    PA("iiII", &vw, &vh, &global_state.cell_width, &global_state.cell_height);
     Py_RETURN_NONE;
 }
 
@@ -632,10 +638,7 @@ static PyMethodDef module_methods[] = {
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),
-    MW(set_logical_dpi, METH_VARARGS),
-    MW(pt_to_px, METH_O),
-    MW(pt_to_px_ceil, METH_O),
-    MW(set_dpi_from_os_window, METH_O),
+    MW(pt_to_px, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),
@@ -649,6 +652,7 @@ static PyMethodDef module_methods[] = {
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
+    MW(cell_size_for_window, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_titlebar_color, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
@@ -656,7 +660,6 @@ static PyMethodDef module_methods[] = {
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(set_boss, METH_O),
-    MW(set_display_state, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -664,7 +667,13 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_state(PyObject *module) {
-    global_state.cell_width = 1; global_state.cell_height = 1;
+    global_state.font_sz_in_pts = 11.0;
+#ifdef __APPLE__
+#define DPI 72.0
+#else
+#define DPI 96.0
+#endif
+    global_state.default_dpi.x = DPI; global_state.default_dpi.y = DPI;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     if (PyStructSequence_InitType2(&RegionType, &region_desc) != 0) return false;
     Py_INCREF((PyObject *) &RegionType);
