@@ -336,7 +336,7 @@ sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_wi
 
 static inline PyObject*
 desc_to_face(PyObject *desc, FONTS_DATA_HANDLE fg) {
-    PyObject *d = specialize_font_descriptor(desc);
+    PyObject *d = specialize_font_descriptor(desc, fg);
     if (d == NULL) return NULL;
     PyObject *ans = face_from_descriptor(d, fg);
     Py_DECREF(d);

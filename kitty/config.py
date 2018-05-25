@@ -149,6 +149,22 @@ def float_parse(func, rest):
     return func, (float(rest),)
 
 
+@func_with_args('change_font_size')
+def parse_change_font_size(func, rest):
+    vals = rest.split(' ', 1)
+    if len(vals) != 2:
+        log_error('Invalid change_font_size specification: {}, treating it as default'.format(rest))
+        args = [True, None, 0]
+    else:
+        args = [vals[0].lower() == 'all', None, 0]
+        amt = vals[1]
+        if amt[0] in '+-':
+            args[1] = amt[0]
+            amt = amt[1:]
+        args[2] = float(amt)
+    return func, args
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]
@@ -357,7 +373,6 @@ type_map = {
     'scrollback_pager': to_cmdline,
     'open_url_with': to_cmdline,
     'font_size': to_font_size,
-    'font_size_delta': positive_float,
     'focus_follows_mouse': to_bool,
     'cursor_shape': to_cursor_shape,
     'open_url_modifiers': to_modifiers,

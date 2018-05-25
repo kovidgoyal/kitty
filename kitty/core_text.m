@@ -303,7 +303,7 @@ face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) 
 }
 
 PyObject*
-specialize_font_descriptor(PyObject *base_descriptor) {
+specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg UNUSED) {
     Py_INCREF(base_descriptor);
     return base_descriptor;
 }

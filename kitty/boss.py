@@ -19,13 +19,12 @@ from .constants import (
     appname, config_dir, editor, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, background_opacity_of, cell_size_for_window,
-    change_background_opacity, create_os_window, current_os_window,
-    destroy_global_data, get_clipboard_string, glfw_post_empty_event,
-    mark_os_window_for_close, set_clipboard_string,
+    ChildMonitor, background_opacity_of, change_background_opacity,
+    create_os_window, current_os_window, destroy_global_data,
+    get_clipboard_string, glfw_post_empty_event, global_font_size,
+    mark_os_window_for_close, os_window_font_size, set_clipboard_string,
     set_in_sequence_mode, show_window, toggle_fullscreen
 )
-from .fonts.render import resize_fonts
 from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
 from .rgb import Color, color_from_int
@@ -96,7 +95,6 @@ class Boss:
             talk_fd, listen_fd
         )
         set_boss(self)
-        self.current_font_size = opts.font_size
         self.opts, self.args = opts, args
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
@@ -311,41 +309,67 @@ class Boss:
         if tm is not None:
             tm.resize()
 
-    def increase_font_size(self):
-        self.set_font_size(
-            min(
-                self.opts.font_size * 5, self.current_font_size +
-                self.opts.font_size_delta))
+    def increase_font_size(self):  # legacy
+        self.set_font_size(min(self.opts.font_size * 5, self.current_font_size + 2.0))
 
-    def decrease_font_size(self):
+    def decrease_font_size(self):  # legacy
         self.set_font_size(self.current_font_size - self.opts.font_size_delta)
 
-    def restore_font_size(self):
+    def restore_font_size(self):  # legacy
         self.set_font_size(self.opts.font_size)
 
-    def _change_font_size(self, new_size=None, on_dpi_change=False):
-        if new_size is not None:
-            self.current_font_size = new_size
-        windows = tuple(filter(None, self.window_id_map.values()))
-        old_sz_map = {w.id: cell_size_for_window(w.os_window_id) for w in windows}
-        resize_fonts(self.current_font_size, on_dpi_change=on_dpi_change)
-        for window in windows:
-            old_cell_width, old_cell_height = old_sz_map[window.id]
-            window.screen.rescale_images(old_cell_width, old_cell_height)
-            window.screen.refresh_sprite_positions()
-        for tm in self.os_window_map.values():
-            tm.resize()
-            tm.refresh_sprite_positions()
-        glfw_post_empty_event()
+    def set_font_size(self, new_size):  # legacy
+        self.change_font_size(True, None, new_size)
 
-    def set_font_size(self, new_size):
-        new_size = max(MINIMUM_FONT_SIZE, new_size)
-        if new_size == self.current_font_size:
-            return
-        self._change_font_size(new_size)
+    def change_font_size(self, all_windows, increment_operation, amt):
+        def calc_new_size(old_size):
+            new_size = old_size
+            if amt == 0:
+                new_size = self.opts.font_size
+            else:
+                if increment_operation:
+                    new_size += (1 if increment_operation == '+' else -1) * amt
+                else:
+                    new_size = amt
+                new_size = max(MINIMUM_FONT_SIZE, min(new_size, self.opts.font_size * 5))
+            return new_size
+
+        if all_windows:
+            current_global_size = global_font_size()
+            new_size = calc_new_size(current_global_size)
+            if new_size != current_global_size:
+                global_font_size(new_size)
+            os_windows = tuple(self.os_window_map.keys())
+        else:
+            os_windows = []
+            w = self.active_window
+            if w is not None:
+                os_windows.append(w.os_window_id)
+        if os_windows:
+            final_windows = {}
+            for wid in os_windows:
+                current_size = os_window_font_size(wid)
+                if current_size:
+                    new_size = calc_new_size(current_size)
+                    if new_size != current_size:
+                        final_windows[wid] = new_size
+            if final_windows:
+                self._change_font_size(final_windows)
+
+    def _change_font_size(self, sz_map):
+        for os_window_id, sz in sz_map.items():
+            tm = self.os_window_map.get(os_window_id)
+            if tm is not None:
+                os_window_font_size(os_window_id, sz)
+                tm.resize()
 
     def on_dpi_change(self, os_window_id):
-        self._change_font_size()
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            sz = os_window_font_size(os_window_id)
+            if sz:
+                os_window_font_size(os_window_id, sz, True)
+                tm.resize()
 
     def _set_os_window_background_opacity(self, os_window_id, opacity):
         change_background_opacity(os_window_id, max(0.1, min(opacity, 1.0)))

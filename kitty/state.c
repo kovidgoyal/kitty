@@ -601,6 +601,45 @@ PYWRAP1(pt_to_px) {
     return PyLong_FromLong((long)round((pt * (dpi / 72.0))));
 }
 
+PYWRAP1(global_font_size) {
+    double set_val = -1;
+    PA("|d", &set_val);
+    if (set_val > 0) global_state.font_sz_in_pts = set_val;
+    return Py_BuildValue("d", global_state.font_sz_in_pts);
+}
+
+static inline void
+resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
+    if (screen) {
+        screen->cell_size.width = os_window->fonts_data->cell_width;
+        screen->cell_size.height = os_window->fonts_data->cell_height;
+        screen_dirty_sprite_positions(screen);
+        if (has_graphics) screen_rescale_images(screen);
+    }
+}
+
+PYWRAP1(os_window_font_size) {
+    id_type os_window_id;
+    int force = 0;
+    double new_sz = -1;
+    PA("K|dp", &os_window_id, &new_sz, &force);
+    WITH_OS_WINDOW(os_window_id)
+        if (new_sz > 0 && (force || new_sz != os_window->font_sz_in_pts)) {
+            os_window->font_sz_in_pts = new_sz;
+            load_fonts_for_window(os_window);
+            resize_screen(os_window, os_window->tab_bar_render_data.screen, false);
+            for (size_t ti = 0; ti < os_window->num_tabs; ti++) {
+                Tab *tab = os_window->tabs + ti;
+                for (size_t wi = 0; wi < tab->num_windows; wi++) {
+                    Window *w = tab->windows + wi;
+                    resize_screen(os_window, w->render_data.screen, true);
+                }
+            }
+        }
+        return Py_BuildValue("d", os_window->font_sz_in_pts);
+    END_WITH_OS_WINDOW
+    return Py_BuildValue("d", 0.0);
+}
 
 PYWRAP1(set_boss) {
     Py_CLEAR(global_state.boss);
@@ -659,6 +698,8 @@ static PyMethodDef module_methods[] = {
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
+    MW(global_font_size, METH_VARARGS),
+    MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(destroy_global_data, METH_NOARGS),
 

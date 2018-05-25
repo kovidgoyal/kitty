@@ -130,6 +130,16 @@ screen_reset(Screen *self) {
     set_color_table_color(self, 104, NULL);
 }
 
+void
+screen_dirty_sprite_positions(Screen *self) {
+    self->is_dirty = true;
+    for (index_type i = 0; i < self->lines; i++) {
+        linebuf_mark_line_dirty(self->main_linebuf, i);
+        linebuf_mark_line_dirty(self->alt_linebuf, i);
+    }
+    for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
+}
+
 static inline HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
     HistoryBuf *ans = alloc_historybuf(lines, columns);
@@ -206,10 +216,10 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     return true;
 }
 
-static void
-screen_rescale_images(Screen *self, unsigned int old_cell_width, unsigned int old_cell_height) {
-    grman_rescale(self->main_grman, old_cell_width, old_cell_height, self->cell_size);
-    grman_rescale(self->alt_grman, old_cell_width, old_cell_height, self->cell_size);
+void
+screen_rescale_images(Screen *self) {
+    grman_rescale(self->main_grman, self->cell_size);
+    grman_rescale(self->alt_grman, self->cell_size);
 }
 
 
@@ -1486,17 +1496,6 @@ as_text_non_visual(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-refresh_sprite_positions(Screen *self, PyObject *a UNUSED) {
-    self->is_dirty = true;
-    for (index_type i = 0; i < self->lines; i++) {
-        linebuf_mark_line_dirty(self->main_linebuf, i);
-        linebuf_mark_line_dirty(self->alt_linebuf, i);
-    }
-    for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     if (PyUnicode_READY(str) != 0) return NULL;
     int kind = PyUnicode_KIND(str);
@@ -1692,7 +1691,7 @@ WRAP0(linefeed)
 WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
-WRAP2(rescale_images, 1, 1)
+WRAP0(rescale_images)
 WRAP2B(update_selection)
 
 static PyObject*
@@ -1980,7 +1979,6 @@ static PyMethodDef methods[] = {
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
-    MND(refresh_sprite_positions, METH_NOARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)
@@ -1993,7 +1991,7 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
-    MND(rescale_images, METH_VARARGS)
+    MND(rescale_images, METH_NOARGS)
     MND(text_for_selection, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)

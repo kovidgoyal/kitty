@@ -810,7 +810,7 @@ grman_resize(GraphicsManager *self, index_type UNUSED old_lines, index_type UNUS
 }
 
 void
-grman_rescale(GraphicsManager *self, unsigned int UNUSED old_cell_width, unsigned int UNUSED old_cell_height, CellPixelSize cell) {
+grman_rescale(GraphicsManager *self, CellPixelSize cell) {
     ImageRef *ref; Image *img;
     self->layers_dirty = true;
     for (size_t i = self->image_count; i-- > 0;) {

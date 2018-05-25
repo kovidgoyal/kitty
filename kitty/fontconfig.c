@@ -171,7 +171,7 @@ end:
 }
 
 PyObject*
-specialize_font_descriptor(PyObject *base_descriptor) {
+specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     PyObject *p = PyDict_GetItemString(base_descriptor, "path"), *ans = NULL;
     PyObject *idx = PyDict_GetItemString(base_descriptor, "index");
     if (p == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no path"); return NULL; }
@@ -181,8 +181,8 @@ specialize_font_descriptor(PyObject *base_descriptor) {
     long face_idx = MAX(0, PyLong_AsLong(idx));
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
     AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
-    AP(FcPatternAddDouble, FC_SIZE, global_state.font_sz_in_pts, "size");
-    AP(FcPatternAddDouble, FC_DPI, (global_state.default_dpi.x + global_state.default_dpi.y) / 2.0, "dpi");
+    AP(FcPatternAddDouble, FC_SIZE, fg->font_sz_in_pts, "size");
+    AP(FcPatternAddDouble, FC_DPI, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
     if (face_idx > 0) {
         // For some reason FcFontMatch sets the index to zero, so manually restore it.
