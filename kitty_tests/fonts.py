@@ -4,8 +4,8 @@
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    DECAWM, set_send_sprite_to_gpu, sprite_map_set_layout,
-    sprite_map_set_limits, test_render_line, test_sprite_position_for, wcwidth
+    DECAWM, sprite_map_set_layout, sprite_map_set_limits, test_render_line,
+    test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
 from kitty.fonts.render import render_string, setup_for_testing, shape_string
@@ -16,12 +16,19 @@ from . import BaseTest
 class Rendering(BaseTest):
 
     def setUp(self):
-        self.sprites, self.cell_width, self.cell_height = setup_for_testing()
-        self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5])
+        self.test_ctx = setup_for_testing()
+        self.test_ctx.__enter__()
+        self.sprites, self.cell_width, self.cell_height = self.test_ctx.__enter__()
+        try:
+            self.assertEqual([k[0] for k in self.sprites], [0, 1, 2, 3, 4, 5])
+        except Exception:
+            self.test_ctx.__exit__()
+            del self.test_ctx
+            raise
 
     def tearDown(self):
-        set_send_sprite_to_gpu(None)
-        del self.sprites, self.cell_width, self.cell_height
+        self.test_ctx.__exit__()
+        del self.sprites, self.cell_width, self.cell_height, self.test_ctx
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)

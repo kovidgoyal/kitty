@@ -30,17 +30,17 @@ alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
 #ifdef __APPLE__
         // Since on Apple we could have multiple GPUs, with different capabilities,
         // upper bound the values according to the data from http://developer.apple.com/graphicsimaging/opengl/capabilities/
-        max_texture_size = MIN(8192, sprite_map.max_texture_size);
-        max_array_texture_layers = MIN(512, sprite_map.max_array_texture_layers);
+        max_texture_size = MIN(8192, max_texture_size);
+        max_array_texture_layers = MIN(512, max_array_texture_layers);
 #endif
         sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
     }
     SpriteMap *ans = calloc(1, sizeof(SpriteMap));
-    ans->cell_width = cell_width; ans->cell_height = cell_height;
     if (ans) {
         *ans = NEW_SPRITE_MAP;
         ans->max_texture_size = max_texture_size;
         ans->max_array_texture_layers = max_array_texture_layers;
+        ans->cell_width = cell_width; ans->cell_height = cell_height;
     }
     return (SPRITE_MAP_HANDLE)ans;
 }

@@ -21,31 +21,50 @@ if is_macos:
 else:
     from .fontconfig import get_font_files, font_for_family
 
+current_faces = None
+
 
 def create_symbol_map(opts):
     val = opts.symbol_map
     family_map = {}
-    faces = []
+    count = 0
     for family in val.values():
         if family not in family_map:
             font, bold, italic = font_for_family(family)
-            family_map[family] = len(faces)
-            faces.append((font, bold, italic))
+            family_map[family] = count
+            count += 1
+            current_faces.append((font, bold, italic))
     sm = tuple((a, b, family_map[f]) for (a, b), f in val.items())
-    return sm, tuple(faces)
+    return sm
+
+
+def descriptor_for_idx(idx):
+    return current_faces[idx]
 
 
 def set_font_family(opts=None, override_font_size=None):
+    global current_faces
     opts = opts or defaults
     sz = override_font_size or opts.font_size
     font_map = get_font_files(opts)
-    faces = [font_map['medium']]
+    current_faces = [(font_map['medium'], False, False)]
+    bold_idx = italic_idx = bi_idx = 0
     for k in 'bold italic bi'.split():
         if k in font_map:
-            faces.append(font_map[k])
-    sm, sfonts = create_symbol_map(opts)
+            if k == 'bold':
+                bold_idx = len(current_faces)
+            elif k == 'italic':
+                italic_idx = len(current_faces)
+            elif k == 'bi':
+                bi_idx = len(current_faces)
+            current_faces.append((font_map[k], 'b' in k, 'i' in k))
+    before = len(current_faces)
+    sm = create_symbol_map(opts)
+    num_symbol_fonts = len(current_faces) - before
     set_font_data(
-        render_box_drawing, prerender_function, sm, sfonts, sz, *faces
+        render_box_drawing, prerender_function, descriptor_for_idx,
+        bold_idx, italic_idx, bi_idx, num_symbol_fonts,
+        sm, sz
     )
 
 
@@ -141,36 +160,45 @@ def prerender_function(cell_width, cell_height, baseline, underline_position, un
 def render_box_drawing(codepoint, cell_width, cell_height, dpi):
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = render_box_char(
-        chr(codepoint), CharTexture(), cell_width, dpi
+        chr(codepoint), CharTexture(), cell_width, cell_height, dpi
     )
     return ctypes.addressof(buf), buf
 
 
-def setup_for_testing(family='monospace', size=11.0, dpi=96.0, send_to_gpu=None):
-    from collections import OrderedDict
-    opts = defaults._replace(font_family=family, font_size=size)
-    set_options(opts)
-    sprites = OrderedDict()
+class setup_for_testing:
 
-    def _send_to_gpu(x, y, z, data):
-        sprites[(x, y, z)] = data
+    def __init__(self, family='monospace', size=11.0, dpi=96.0):
+        self.family, self.size, self.dpi = family, size, dpi
 
-    sprite_map_set_limits(100000, 100)
-    set_send_sprite_to_gpu(send_to_gpu or _send_to_gpu)
-    set_font_family(opts)
-    cell_width, cell_height = create_test_font_group(size, dpi, dpi)
-    return sprites, cell_width, cell_height
+    def __enter__(self):
+        from collections import OrderedDict
+        opts = defaults._replace(font_family=self.family, font_size=self.size)
+        set_options(opts)
+        sprites = OrderedDict()
+
+        def send_to_gpu(x, y, z, data):
+            sprites[(x, y, z)] = data
+
+        sprite_map_set_limits(100000, 100)
+        set_send_sprite_to_gpu(send_to_gpu)
+        try:
+            set_font_family(opts)
+            cell_width, cell_height = create_test_font_group(self.size, self.dpi, self.dpi)
+            return sprites, cell_width, cell_height
+        except Exception:
+            set_send_sprite_to_gpu(None)
+            raise
+
+    def __exit__(self, *args):
+        set_send_sprite_to_gpu(None)
 
 
 def render_string(text, family='monospace', size=11.0, dpi=96.0):
-    try:
-        sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
+    with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
         test_render_line(line)
-    finally:
-        set_send_sprite_to_gpu(None)
     cells = []
     found_content = False
     for i in reversed(range(s.columns)):
@@ -185,14 +213,11 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
 
 
 def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None):
-    try:
-        sprites, cell_width, cell_height = setup_for_testing(family, size, dpi)
+    with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
         s.draw(text)
         return test_shape(line, path)
-    finally:
-        set_send_sprite_to_gpu(None)
 
 
 def display_bitmap(rgb_data, width, height):
@@ -225,14 +250,14 @@ def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=
 
 
 def test_fallback_font(qtext=None, bold=False, italic=False):
-    setup_for_testing()
-    trials = (qtext,) if qtext else ('你', 'He\u0347\u0305', '\U0001F929')
-    for text in trials:
-        f = get_fallback_font(text, bold, italic)
-        try:
-            print(text, f)
-        except UnicodeEncodeError:
-            sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
+    with setup_for_testing():
+        trials = (qtext,) if qtext else ('你', 'He\u0347\u0305', '\U0001F929')
+        for text in trials:
+            f = get_fallback_font(text, bold, italic)
+            try:
+                print(text, f)
+            except UnicodeEncodeError:
+                sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
 
 
 def showcase():
