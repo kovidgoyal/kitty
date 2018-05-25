@@ -48,22 +48,18 @@ def set_font_family(opts=None, override_font_size=None):
     sz = override_font_size or opts.font_size
     font_map = get_font_files(opts)
     current_faces = [(font_map['medium'], False, False)]
-    bold_idx = italic_idx = bi_idx = 0
-    for k in 'bold italic bi'.split():
+    ftypes = 'bold italic bi'.split()
+    indices = {k: 0 for k in ftypes}
+    for k in ftypes:
         if k in font_map:
-            if k == 'bold':
-                bold_idx = len(current_faces)
-            elif k == 'italic':
-                italic_idx = len(current_faces)
-            elif k == 'bi':
-                bi_idx = len(current_faces)
+            indices[k] = len(current_faces)
             current_faces.append((font_map[k], 'b' in k, 'i' in k))
     before = len(current_faces)
     sm = create_symbol_map(opts)
     num_symbol_fonts = len(current_faces) - before
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
-        bold_idx, italic_idx, bi_idx, num_symbol_fonts,
+        indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
         sm, sz
     )
 
