@@ -325,8 +325,6 @@ set_os_window_dpi(OSWindow *w) {
     get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }
 
-static bool is_first_window = true;
-
 #ifdef __APPLE__
 static int
 filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
@@ -351,6 +349,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     PyObject *load_programs = NULL, *get_window_size;
     if (!PyArg_ParseTuple(args, "Osss|Oii", &get_window_size, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
 
+    static bool is_first_window = true;
     if (is_first_window) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
@@ -365,12 +364,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
 #endif
 
-        standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-        click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-        arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
-            PyErr_SetString(PyExc_ValueError, "Failed to create standard mouse cursors"); return NULL;
-        }
     }
 
 #ifndef __APPLE__
@@ -390,13 +383,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     double dpi_x, dpi_y;
     get_window_dpi(temp_window, &dpi_x, &dpi_y);
-    glfwMakeContextCurrent(temp_window);
-    if (is_first_window) {
-        gl_init();
-        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(temp_window, GLFW_TRANSPARENT_FRAMEBUFFER));
-        if (ret == NULL) return NULL;
-        Py_DECREF(ret);
-    }
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, dpi_x, dpi_y);
     PyObject *ret = PyObject_CallFunction(get_window_size, "IIdd", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y);
     if (ret == NULL) return NULL;
@@ -407,20 +393,24 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
-    current_os_window_ctx = glfw_window;
-    glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
+        gl_init();
+        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
+        if (ret == NULL) return NULL;
+        Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
+        standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+        click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+        arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+        if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
+            log_error("Failed to create standard mouse cursors, using default cursor only.");
+        }
         is_first_window = false;
     }
-#ifdef __APPLE__
-    if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
-#endif
-
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     update_os_window_references();
@@ -431,6 +421,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
     w->fonts_data = fonts_data;
+    current_os_window_ctx = glfw_window;
+    glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);
+#ifdef __APPLE__
+    if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
+#endif
     send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
