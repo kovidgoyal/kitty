@@ -16,13 +16,12 @@ from .constants import (
 )
 from .fast_data_types import (
     create_os_window, glfw_init, glfw_terminate, set_default_window_icon,
-    set_options, show_window
+    set_options
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .utils import (
-    detach, end_startup_notification, init_startup_notification, log_error,
-    single_instance
+    detach, log_error, single_instance, startup_notification_handler
 )
 from .window import load_shader_programs
 
@@ -44,19 +43,17 @@ def run_app(opts, args):
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
     set_font_family(opts)
     with cached_values_for(run_app.cached_values_name) as cached_values:
-        window_id = create_os_window(
-                run_app.initial_window_size_func(opts, cached_values),
-                appname, args.name or args.cls or appname,
-                args.cls or appname, load_all_shaders)
-        run_app.first_window_callback(opts, window_id)
-        startup_ctx = init_startup_notification(window_id)
-        show_window(window_id)
+        with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
+            window_id = create_os_window(
+                    run_app.initial_window_size_func(opts, cached_values),
+                    pre_show_callback,
+                    appname, args.name or args.cls or appname,
+                    args.cls or appname, load_all_shaders)
         if not is_wayland and not is_macos:  # no window icons on wayland
             with open(logo_data_file, 'rb') as f:
                 set_default_window_icon(f.read(), 256, 256)
         boss = Boss(window_id, opts, args, cached_values)
         boss.start()
-        end_startup_notification(startup_ctx)
         try:
             boss.child_monitor.main_loop()
         finally:
@@ -64,7 +61,7 @@ def run_app(opts, args):
 
 
 run_app.cached_values_name = 'main'
-run_app.first_window_callback = lambda opts, window_id: None
+run_app.first_window_callback = lambda window_handle: None
 run_app.initial_window_size_func = initial_window_size_func
 
 

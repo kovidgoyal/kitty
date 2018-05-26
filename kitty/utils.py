@@ -17,8 +17,7 @@ from .constants import (
     appname, is_macos, is_wayland, supports_primary_selection
 )
 from .fast_data_types import (
-    GLSL_VERSION, log_error_string, redirect_std_streams, x11_display,
-    x11_window_id
+    GLSL_VERSION, log_error_string, redirect_std_streams, x11_display
 )
 from .rgb import Color, to_color
 
@@ -190,7 +189,7 @@ def adjust_line_height(cell_height, val):
     return int(cell_height * val)
 
 
-def init_startup_notification_x11(window_id, startup_id=None):
+def init_startup_notification_x11(window_handle, startup_id=None):
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
     sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
@@ -199,8 +198,7 @@ def init_startup_notification_x11(window_id, startup_id=None):
     display = x11_display()
     if not display:
         return
-    window_id = x11_window_id(window_id)
-    return init_x11_startup_notification(display, window_id, sid)
+    return init_x11_startup_notification(display, window_handle, sid)
 
 
 def end_startup_notification_x11(ctx):
@@ -208,11 +206,14 @@ def end_startup_notification_x11(ctx):
     end_x11_startup_notification(ctx)
 
 
-def init_startup_notification(window, startup_id=None):
+def init_startup_notification(window_handle, startup_id=None):
     if is_macos or is_wayland:
         return
+    if window_handle is None:
+        log_error('Could not perform startup notification as window handle not present')
+        return
     try:
-        return init_startup_notification_x11(window, startup_id)
+        return init_startup_notification_x11(window_handle, startup_id)
     except Exception:
         import traceback
         traceback.print_exc()
@@ -228,6 +229,29 @@ def end_startup_notification(ctx):
     except Exception:
         import traceback
         traceback.print_exc()
+
+
+class startup_notification_handler:
+
+    def __init__(self, do_notify=True, startup_id=None, extra_callback=None):
+        self.do_notify = do_notify
+        self.startup_id = startup_id
+        self.extra_callback = extra_callback
+        self.ctx = None
+
+    def __enter__(self):
+
+        def pre_show_callback(window_handle):
+            if self.extra_callback is not None:
+                self.extra_callback(window_handle)
+            if self.do_notify:
+                self.ctx = init_startup_notification(window_handle, self.startup_id)
+
+        return pre_show_callback
+
+    def __exit__(self, *a):
+        if self.ctx is not None:
+            end_startup_notification(self.ctx)
 
 
 def remove_socket_file(s, path=None):

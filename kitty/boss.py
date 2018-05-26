@@ -12,7 +12,8 @@ from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
 from .config import (
-    MINIMUM_FONT_SIZE, initial_window_size_func, prepare_config_file_for_editing
+    MINIMUM_FONT_SIZE, initial_window_size_func,
+    prepare_config_file_for_editing
 )
 from .config_utils import to_cmdline
 from .constants import (
@@ -23,7 +24,7 @@ from .fast_data_types import (
     create_os_window, current_os_window, destroy_global_data,
     get_clipboard_string, glfw_post_empty_event, global_font_size,
     mark_os_window_for_close, os_window_font_size, set_clipboard_string,
-    set_in_sequence_mode, show_window, toggle_fullscreen
+    set_in_sequence_mode, toggle_fullscreen
 )
 from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
@@ -31,9 +32,9 @@ from .rgb import Color, color_from_int
 from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
-    end_startup_notification, get_primary_selection, init_startup_notification,
-    log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
-    set_primary_selection, single_instance
+    get_primary_selection, log_error, open_url, parse_address_spec,
+    remove_socket_file, safe_print, set_primary_selection, single_instance,
+    startup_notification_handler
 )
 
 
@@ -103,12 +104,11 @@ class Boss:
         if os_window_id is None:
             opts_for_size = opts_for_size or self.opts
             cls = wclass or self.args.cls or appname
-            os_window_id = create_os_window(initial_window_size_func(opts_for_size, self.cached_values), appname, wname or self.args.name or cls, cls)
-            if startup_id:
-                ctx = init_startup_notification(os_window_id, startup_id)
-            show_window(os_window_id)
-            if startup_id:
-                end_startup_notification(ctx)
+            with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
+                os_window_id = create_os_window(
+                        initial_window_size_func(opts_for_size, self.cached_values),
+                        pre_show_callback,
+                        appname, wname or self.args.name or cls, cls)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id

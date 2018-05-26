@@ -342,12 +342,22 @@ set_titlebar_color(OSWindow *w, color_type color) {
     }
 }
 
+static inline PyObject*
+native_window_handle(GLFWwindow *w) {
+#ifdef __APPLE__
+    void *ans = glfwGetCocoaWindow(w);
+    return PyLong_FromVoidPtr(ans);
+#endif
+    if (glfwGetX11Window) return PyLong_FromLong((long)glfwGetX11Window(w));
+    return Py_None;
+}
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
-    PyObject *load_programs = NULL, *get_window_size;
-    if (!PyArg_ParseTuple(args, "Osss|Oii", &get_window_size, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
+    PyObject *load_programs = NULL, *get_window_size, *pre_show_callback;
+    if (!PyArg_ParseTuple(args, "OOsss|Oii", &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
 
     static bool is_first_window = true;
     if (is_first_window) {
@@ -391,8 +401,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
     glfwDestroyWindow(temp_window); temp_window = NULL;
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
+    if (pret == NULL) return NULL;
+    Py_DECREF(pret);
     glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
+    glfwShowWindow(glfw_window);
     if (is_first_window) {
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
@@ -421,6 +435,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
     w->fonts_data = fonts_data;
     current_os_window_ctx = glfw_window;
+    w->shown_once = true;
+    push_focus_history(w);
     glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
@@ -457,25 +473,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         }
     }
     return PyLong_FromUnsignedLongLong(w->id);
-}
-
-static PyObject*
-show_window(PyObject UNUSED *self, PyObject *args) {
-    id_type os_window_id;
-    int yes = 1;
-    if (!PyArg_ParseTuple(args, "K|p", &os_window_id, &yes)) return NULL;
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *w = global_state.os_windows + i;
-        if (w->id == os_window_id) {
-            if (yes) {
-                glfwShowWindow(w->handle);
-                w->shown_once = true;
-                push_focus_history(w);
-            } else glfwHideWindow(w->handle);
-            break;
-        }
-    }
-    Py_RETURN_NONE;
 }
 
 void
@@ -804,7 +801,6 @@ static PyMethodDef module_methods[] = {
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(set_clipboard_string, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_NOARGS),
-    METHODB(show_window, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
