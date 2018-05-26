@@ -404,9 +404,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
-    glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     glfwShowWindow(glfw_window);
+    glfwMakeContextCurrent(glfw_window);
     if (is_first_window) {
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
