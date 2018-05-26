@@ -8,6 +8,7 @@ import string
 import sys
 from functools import lru_cache, partial
 from gettext import gettext as _
+from itertools import repeat
 
 from kitty.cli import parse_args
 from kitty.fast_data_types import set_clipboard_string
@@ -257,10 +258,11 @@ def functions_for(args):
 
 def convert_text(text, cols):
     lines = []
+    empty_line = '\0' * cols
     for full_line in text.split('\n'):
         if full_line:
-            if full_line == '\r':  # empty line
-                lines.append('\0' * cols)
+            if not full_line.rstrip('\r'):  # empty lines
+                lines.extend(repeat(empty_line, len(full_line)))
                 continue
             for line in full_line.split('\r'):
                 if line:
