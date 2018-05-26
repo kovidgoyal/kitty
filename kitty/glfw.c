@@ -361,7 +361,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
     static bool is_first_window = true;
     if (is_first_window) {
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -390,6 +389,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // We use a temp window to avoid the need to set the window size after
     // creation, which causes a resize event and all the associated processing.
     // The temp window is used to get the DPI.
+    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
     double dpi_x, dpi_y;
     get_window_dpi(temp_window, &dpi_x, &dpi_y);
@@ -398,14 +398,21 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
+    // The GLFW Wayland backend cannot create ans show windows separately
+    // so we cannot call the pre_show_callback. See https://github.com/glfw/glfw/issues/1268
+    // It doesn't matter since there is no startup notification in wayland. It amazes
+    // me that anyone uses Wayland as anything other than a butt for jokes.
+    if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
     glfwDestroyWindow(temp_window); temp_window = NULL;
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
-    PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
-    if (pret == NULL) return NULL;
-    Py_DECREF(pret);
-    if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
-    glfwShowWindow(glfw_window);
+    if (!global_state.is_wayland) {
+        PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
+        if (pret == NULL) return NULL;
+        Py_DECREF(pret);
+        if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
+        glfwShowWindow(glfw_window);
+    }
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) {
         gl_init();
