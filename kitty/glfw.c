@@ -398,10 +398,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
-    // The GLFW Wayland backend cannot create ans show windows separately
-    // so we cannot call the pre_show_callback. See https://github.com/glfw/glfw/issues/1268
-    // It doesn't matter since there is no startup notification in wayland. It amazes
-    // me that anyone uses Wayland as anything other than a butt for jokes.
+    // The GLFW Wayland backend cannot create and show windows separately so we
+    // cannot call the pre_show_callback. See
+    // https://github.com/glfw/glfw/issues/1268 It doesn't matter since there
+    // is no startup notification in Wayland anyway. It amazes me that anyone
+    // uses Wayland as anything other than a butt for jokes.
     if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
     glfwDestroyWindow(temp_window); temp_window = NULL;
