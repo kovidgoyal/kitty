@@ -403,12 +403,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
-        standard_cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-        click_cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-        arrow_cursor = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-        if (standard_cursor == NULL || click_cursor == NULL || arrow_cursor == NULL) {
-            log_error("Failed to create standard mouse cursors, using default cursor only.");
-        }
+#define CC(dest, shape) {\
+    dest##_cursor = glfwCreateStandardCursor(GLFW_##shape##_CURSOR); \
+    if (dest##_cursor == NULL) { log_error("Failed to create the %s mouse cursor, using default cursor.", #shape); }}
+    CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
+#undef CC
         is_first_window = false;
     }
     OSWindow *w = add_os_window();
