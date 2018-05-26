@@ -111,7 +111,7 @@ class Window:
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
-        self.screen = Screen(self, 24, 80, opts.scrollback_lines, self.id, cell_width, cell_height)
+        self.screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         setup_colors(self.screen, opts)
 
     @property

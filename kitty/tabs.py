@@ -311,7 +311,7 @@ class TabBar:  # {{{
         self.data_buffer_size = 0
         self.laid_out_once = False
         self.dirty = True
-        self.screen = s = Screen(None, 1, 10, 0, 0, self.cell_width, cell_height)
+        self.screen = s = Screen(None, 1, 10, 0, self.cell_width, cell_height)
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         s.color_profile.set_configured_colors(
             color_as_int(opts.inactive_tab_foreground),
