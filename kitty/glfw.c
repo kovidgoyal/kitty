@@ -80,6 +80,7 @@ show_mouse_cursor(GLFWwindow *w) {
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
+static int min_width = 100, min_height = 100;
 // On Cocoa, glfwWaitEvents() can block indefinitely because of the way Cocoa
 // works. See https://github.com/glfw/glfw/issues/1251. I have noticed this
 // happening in particular with window resize events, when waiting with no
@@ -94,7 +95,7 @@ show_mouse_cursor(GLFWwindow *w) {
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
-    if (width > 100 && height > 100) {
+    if (width >= min_width && height >= min_height) {
         OSWindow *window = global_state.callback_os_window;
         window->has_pending_resizes = true; global_state.has_pending_resizes = true;
         window->last_resize_event_at = monotonic();
@@ -792,9 +793,16 @@ os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
     return NULL;
 }
 
+static PyObject*
+set_smallest_allowed_resize(PyObject *self UNUSED, PyObject *args) {
+    if (!PyArg_ParseTuple(args, "ii", &min_width, &min_height)) return NULL;
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
+    METHODB(set_smallest_allowed_resize, METH_VARARGS),
     METHODB(create_os_window, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),
