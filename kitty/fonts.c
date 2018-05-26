@@ -1118,9 +1118,17 @@ initialize_font_group(FontGroup *fg) {
     }
 #undef I
     calc_cell_metrics(fg);
-    fg->sprite_map = alloc_sprite_map(fg->cell_width, fg->cell_height);
-    if (!fg->sprite_map) fatal("Out of memory allocating a sprite map");
-    send_prerendered_sprites(fg);
+}
+
+
+void
+send_prerendered_sprites_for_window(OSWindow *w) {
+    FontGroup *fg = (FontGroup*)w->fonts_data;
+    if (!fg->sprite_map) {
+        fg->sprite_map = alloc_sprite_map(fg->cell_width, fg->cell_height);
+        if (!fg->sprite_map) fatal("Out of memory allocating a sprite map");
+        send_prerendered_sprites(fg);
+    }
 }
 
 FONTS_DATA_HANDLE
@@ -1269,6 +1277,7 @@ create_test_font_group(PyObject *self UNUSED, PyObject *args) {
     double sz, dpix, dpiy;
     if (!PyArg_ParseTuple(args, "ddd", &sz, &dpix, &dpiy)) return NULL;
     FontGroup *fg = font_group_for(sz, dpix, dpiy);
+    if (!fg->sprite_map) send_prerendered_sprites(fg);
     return Py_BuildValue("II", fg->cell_width, fg->cell_height);
 }
 

@@ -431,6 +431,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
     w->fonts_data = fonts_data;
+    send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);
