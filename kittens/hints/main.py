@@ -259,6 +259,9 @@ def convert_text(text, cols):
     lines = []
     for full_line in text.split('\n'):
         if full_line:
+            if full_line == '\r':  # empty line
+                lines.append('\0' * cols)
+                continue
             for line in full_line.split('\r'):
                 if line:
                     lines.append(line.ljust(cols, '\0'))
