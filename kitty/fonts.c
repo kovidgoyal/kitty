@@ -1123,11 +1123,10 @@ initialize_font_group(FontGroup *fg) {
     send_prerendered_sprites(fg);
 }
 
-void
-load_fonts_for_window(OSWindow *w) {
-    w->fonts_data = NULL;
-    FontGroup *fg = font_group_for(w->font_sz_in_pts, w->logical_dpi_x, w->logical_dpi_y);
-    w->fonts_data = (FONTS_DATA_HANDLE)fg;
+FONTS_DATA_HANDLE
+load_fonts_data(double font_sz_in_pts, double dpi_x, double dpi_y) {
+    FontGroup *fg = font_group_for(font_sz_in_pts, dpi_x, dpi_y);
+    return (FONTS_DATA_HANDLE)fg;
 }
 
 static void

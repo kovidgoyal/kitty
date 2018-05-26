@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from .borders import load_borders_program
 from .boss import Boss
 from .cli import create_opts, parse_args
-from .config import cached_values_for, initial_window_size
+from .config import cached_values_for, initial_window_size_func
 from .constants import (
     appname, config_dir, glfw_path, is_macos, is_wayland, logo_data_file
 )
@@ -44,8 +44,10 @@ def run_app(opts, args):
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
     set_font_family(opts)
     with cached_values_for(run_app.cached_values_name) as cached_values:
-        w, h = run_app.initial_window_size(opts, cached_values)
-        window_id = create_os_window(w, h, appname, args.name or args.cls or appname, args.cls or appname, load_all_shaders)
+        window_id = create_os_window(
+                run_app.initial_window_size_func(opts, cached_values),
+                appname, args.name or args.cls or appname,
+                args.cls or appname, load_all_shaders)
         run_app.first_window_callback(opts, window_id)
         startup_ctx = init_startup_notification(window_id)
         show_window(window_id)
@@ -63,7 +65,7 @@ def run_app(opts, args):
 
 run_app.cached_values_name = 'main'
 run_app.first_window_callback = lambda opts, window_id: None
-run_app.initial_window_size = initial_window_size
+run_app.initial_window_size_func = initial_window_size_func
 
 
 def ensure_osx_locale():

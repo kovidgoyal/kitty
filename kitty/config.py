@@ -361,6 +361,12 @@ def url_style(x):
     return url_style.map.get(x, url_style.map['curly'])
 
 
+def window_size(val):
+    val = val.lower()
+    unit = 'cells' if val.endswith('c') else 'px'
+    return positive_int(val.rstrip('c')), unit
+
+
 url_style.map = dict(
     ((v, i) for i, v in enumerate('none single double curly'.split()))
 )
@@ -393,8 +399,8 @@ type_map = {
     'cursor_stop_blinking_after': positive_float,
     'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,
-    'initial_window_width': positive_int,
-    'initial_window_height': positive_int,
+    'initial_window_width': window_size,
+    'initial_window_height': window_size,
     'macos_hide_titlebar': to_bool,
     'macos_hide_from_tasks': to_bool,
     'macos_option_as_alt': to_bool,
@@ -549,15 +555,34 @@ def cached_values_for(name):
             err))
 
 
-def initial_window_size(opts, cached_values):
-    w, h = opts.initial_window_width, opts.initial_window_height
+def initial_window_size_func(opts, cached_values):
+
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
         try:
             w, h = map(int, ws)
+
+            def initial_window_size(*a):
+                return w, h
+            return initial_window_size
         except Exception:
             log_error('Invalid cached window size, ignoring')
-    return w, h
+
+    w, w_unit = opts.initial_window_width
+    h, h_unit = opts.initial_window_height
+
+    def get_window_size(cell_width, cell_height, dpi_x, dpi_y):
+        if w_unit == 'cells':
+            width = cell_width * w + (dpi_x / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
+        else:
+            width = w
+        if h_unit == 'cells':
+            height = cell_height * h + (dpi_y / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
+        else:
+            height = h
+        return width, height
+
+    return get_window_size
 
 
 def commented_out_default_config():

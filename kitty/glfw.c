@@ -303,11 +303,10 @@ current_monitor(GLFWwindow *window) {
     return bestmonitor;
 }
 
-
-void
-set_os_window_dpi(OSWindow *w) {
+static inline void
+get_window_dpi(GLFWwindow *w, double *x, double *y) {
     GLFWmonitor *monitor = NULL;
-    if (w && w->handle) { monitor = current_monitor(w->handle); }
+    if (w) monitor = current_monitor(w);
     if (monitor == NULL) monitor = glfwGetPrimaryMonitor();
     float xscale = 1, yscale = 1;
     if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
@@ -316,8 +315,13 @@ set_os_window_dpi(OSWindow *w) {
 #else
     double factor = 96.0;
 #endif
-    w->logical_dpi_x = xscale * factor;
-    w->logical_dpi_y = yscale * factor;
+    *x = xscale * factor;
+    *y = yscale * factor;
+}
+
+void
+set_os_window_dpi(OSWindow *w) {
+    get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }
 
 static bool is_first_window = true;
@@ -341,10 +345,10 @@ set_titlebar_color(OSWindow *w, color_type color) {
 
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
-    int width, height, x = -1, y = -1;
+    int x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
-    PyObject *load_programs = NULL;
-    if (!PyArg_ParseTuple(args, "iisss|Oii", &width, &height, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
+    PyObject *load_programs = NULL, *get_window_size;
+    if (!PyArg_ParseTuple(args, "Osss|Oii", &get_window_size, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
 
     if (is_first_window) {
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -379,21 +383,32 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     bool want_semi_transparent = (1.0 - OPT(background_opacity) >= 0.01) || OPT(dynamic_background_opacity);
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, want_semi_transparent);
-    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
-    if (glfw_window == NULL) {
-        log_error("Failed to create a window at size: %dx%d, using a standard size instead.", width, height);
-        glfw_window = glfwCreateWindow(640, 400, title, NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
+    // We use a temp window to avoid the need to set the window size after
+    // creation, which causes a resize event and all the associated processing.
+    // The temp window is used to get the DPI.
+    GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
+    double dpi_x, dpi_y;
+    get_window_dpi(temp_window, &dpi_x, &dpi_y);
+    glfwMakeContextCurrent(temp_window);
+    if (is_first_window) {
+        gl_init();
+        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(temp_window, GLFW_TRANSPARENT_FRAMEBUFFER));
+        if (ret == NULL) return NULL;
+        Py_DECREF(ret);
     }
+    FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, dpi_x, dpi_y);
+    PyObject *ret = PyObject_CallFunction(get_window_size, "IIdd", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y);
+    if (ret == NULL) return NULL;
+    int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
+    Py_CLEAR(ret);
+    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
+    glfwDestroyWindow(temp_window); temp_window = NULL;
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
     if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
     current_os_window_ctx = glfw_window;
     glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);  // a value of 1 makes mouse selection laggy
     if (is_first_window) {
-        gl_init();
-        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
-        if (ret == NULL) return NULL;
-        Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
@@ -413,8 +428,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         OSWindow *q = global_state.os_windows + i;
         q->is_focused = q == w ? true : false;
     }
-    set_os_window_dpi(w);
-    load_fonts_for_window(w);
+    w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
+    w->fonts_data = fonts_data;
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
     glfwSetCursor(glfw_window, standard_cursor);
     update_os_window_viewport(w, false);

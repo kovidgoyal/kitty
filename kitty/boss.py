@@ -12,7 +12,7 @@ from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
 from .config import (
-    MINIMUM_FONT_SIZE, initial_window_size, prepare_config_file_for_editing
+    MINIMUM_FONT_SIZE, initial_window_size_func, prepare_config_file_for_editing
 )
 from .config_utils import to_cmdline
 from .constants import (
@@ -99,11 +99,11 @@ class Boss:
         startup_session = create_session(opts, args)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
-    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, size=None, startup_id=None):
+    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:
-            w, h = initial_window_size(self.opts, self.cached_values) if size is None else size
+            opts_for_size = opts_for_size or self.opts
             cls = wclass or self.args.cls or appname
-            os_window_id = create_os_window(w, h, appname, wname or self.args.name or cls, cls)
+            os_window_id = create_os_window(initial_window_size_func(opts_for_size, self.cached_values), appname, wname or self.args.name or cls, cls)
             if startup_id:
                 ctx = init_startup_notification(os_window_id, startup_id)
             show_window(os_window_id)
@@ -238,7 +238,7 @@ class Boss:
                 if not os.path.isabs(args.directory):
                     args.directory = os.path.join(msg['cwd'], args.directory)
                 session = create_session(opts, args, respect_cwd=True)
-                self.add_os_window(session, wclass=args.cls, wname=args.name, size=initial_window_size(opts, self.cached_values), startup_id=startup_id)
+                self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
             else:
                 log_error('Unknown message received from peer, ignoring')
 

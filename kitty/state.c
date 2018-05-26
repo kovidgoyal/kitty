@@ -626,7 +626,8 @@ PYWRAP1(os_window_font_size) {
     WITH_OS_WINDOW(os_window_id)
         if (new_sz > 0 && (force || new_sz != os_window->font_sz_in_pts)) {
             os_window->font_sz_in_pts = new_sz;
-            load_fonts_for_window(os_window);
+            os_window->fonts_data = NULL;
+            os_window->fonts_data = load_fonts_data(os_window->font_sz_in_pts, os_window->logical_dpi_x, os_window->logical_dpi_y);
             resize_screen(os_window, os_window->tab_bar_render_data.screen, false);
             for (size_t ti = 0; ti < os_window->num_tabs; ti++) {
                 Tab *tab = os_window->tabs + ti;
