@@ -136,7 +136,7 @@ END_ALLOW_CASE_RANGE
 }
 
 void
-apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *params, unsigned int count) {
+apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned int *params, unsigned int count) {
 #define RANGE for(unsigned c = 0; c < cell_count; c++, cell++)
 #define SET(shift) RANGE { cell->attrs |= (1 << shift); } break;
 #define RESET(shift) RANGE { cell->attrs &= ~(1 << shift); } break;
@@ -148,7 +148,7 @@ apply_sgr_to_cells(Cell *first_cell, unsigned int cell_count, unsigned int *para
     unsigned int i = 0, attr;
     if (!count) { params[0] = 0; count = 1; }
     while (i < count) {
-        Cell *cell = first_cell;
+        GPUCell *cell = first_cell;
         attr = params[i++];
         switch(attr) {
             case 0:

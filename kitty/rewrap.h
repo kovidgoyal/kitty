@@ -43,7 +43,8 @@
 
 static inline void
 copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
-    memcpy(dest->cells + dest_at, src->cells + src_at, num * sizeof(Cell));
+    memcpy(dest->cpu_cells + dest_at, src->cpu_cells + src_at, num * sizeof(CPUCell));
+    memcpy(dest->gpu_cells + dest_at, src->gpu_cells + src_at, num * sizeof(GPUCell));
 }
 
 
@@ -60,7 +61,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         src_x_limit = src->xnum;
         if (!src_line_is_continued) {
             // Trim trailing blanks since there is a hard line break at the end of this line
-            while(src_x_limit && (src->line->cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
+            while(src_x_limit && (src->line->cpu_cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
 
         }
         if (is_tracked_line && *track_x >= src_x_limit) *track_x = MAX(1, src_x_limit) - 1;

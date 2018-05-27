@@ -9,7 +9,7 @@
 #include "data-types.h"
 
 static inline void
-set_attribute_on_line(Cell *cells, uint32_t shift, uint32_t val, index_type xnum) {
+set_attribute_on_line(GPUCell *cells, uint32_t shift, uint32_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
     attrs_type mask = shift == DECORATION_SHIFT ? 3 : 1;
     attrs_type aval = (val & mask) << shift;
@@ -17,21 +17,18 @@ set_attribute_on_line(Cell *cells, uint32_t shift, uint32_t val, index_type xnum
     for (index_type i = 0; i < xnum; i++) cells[i].attrs = (cells[i].attrs & mask) | aval;
 }
 
-static inline void
-copy_cells(const Cell *src, Cell *dest, index_type xnum) {
-    memcpy(dest, src, sizeof(Cell) * xnum);
-}
 
 static inline void
 copy_line(const Line *src, Line *dest) {
-    copy_cells(src->cells, dest->cells, MIN(src->xnum, dest->xnum));
+    memcpy(dest->cpu_cells, src->cpu_cells, sizeof(CPUCell) * MIN(src->xnum, dest->xnum));
+    memcpy(dest->gpu_cells, src->gpu_cells, sizeof(GPUCell) * MIN(src->xnum, dest->xnum));
 }
 
 static inline void
-clear_chars_in_line(Cell *cells, index_type xnum, char_type ch) {
+clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        for (index_type i = 0; i < xnum; i++) { cells[i].ch = ch; cells[i].attrs = 1; }
+        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; gpu_cells[i].attrs = 1; }
     }
 }
 
@@ -39,7 +36,7 @@ static inline index_type
 xlimit_for_line(Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
-        while (xlimit > 0 && (line->cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;
+        while (xlimit > 0 && (line->cpu_cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;
     }
     return xlimit;
 }
@@ -54,8 +51,8 @@ index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool);
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen);
 unsigned int line_length(Line *self);
-size_t cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type);
-size_t cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type);
+size_t cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type);
+size_t cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type);
 PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
 PyObject* line_as_unicode(Line *);
 

@@ -12,19 +12,25 @@
 extern PyTypeObject Line_Type;
 extern PyTypeObject HistoryBuf_Type;
 
-static inline Cell*
-lineptr(LineBuf *linebuf, index_type y) {
-    return linebuf->buf + y * linebuf->xnum;
+static inline CPUCell*
+cpu_lineptr(LineBuf *linebuf, index_type y) {
+    return linebuf->cpu_cell_buf + y * linebuf->xnum;
+}
+
+static inline GPUCell*
+gpu_lineptr(LineBuf *linebuf, index_type y) {
+    return linebuf->gpu_cell_buf + y * linebuf->xnum;
 }
 
 static inline void
 clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
-    clear_chars_in_line(lineptr(linebuf, y), linebuf->xnum, ch);
+    clear_chars_in_line(cpu_lineptr(linebuf, y), gpu_lineptr(linebuf, y), linebuf->xnum, ch);
 }
 
 void
 linebuf_clear(LineBuf *self, char_type ch) {
-    memset(self->buf, 0, self->xnum * self->ynum * sizeof(Cell));
+    memset(self->cpu_cell_buf, 0, self->xnum * self->ynum * sizeof(CPUCell));
+    memset(self->gpu_cell_buf, 0, self->xnum * self->ynum * sizeof(GPUCell));
     memset(self->line_attrs, 0, self->ynum * sizeof(line_attrs_type));
     for (index_type i = 0; i < self->ynum; i++) self->line_map[i] = i;
     if (ch != 0) {
@@ -73,14 +79,15 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->buf = PyMem_Calloc(xnum * ynum, sizeof(Cell));
+        self->cpu_cell_buf = PyMem_Calloc(xnum * ynum, sizeof(CPUCell));
+        self->gpu_cell_buf = PyMem_Calloc(xnum * ynum, sizeof(GPUCell));
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
         self->line_attrs = PyMem_Calloc(ynum, sizeof(line_attrs_type));
         self->line = alloc_line();
-        if (self->buf == NULL || self->line_map == NULL || self->scratch == NULL || self->line_attrs == NULL || self->line == NULL) {
+        if (self->cpu_cell_buf == NULL || self->gpu_cell_buf == NULL || self->line_map == NULL || self->scratch == NULL || self->line_attrs == NULL || self->line == NULL) {
             PyErr_NoMemory();
-            PyMem_Free(self->buf); PyMem_Free(self->line_map); PyMem_Free(self->line_attrs); Py_CLEAR(self->line);
+            PyMem_Free(self->cpu_cell_buf); PyMem_Free(self->gpu_cell_buf); PyMem_Free(self->line_map); PyMem_Free(self->line_attrs); Py_CLEAR(self->line);
             Py_CLEAR(self);
         } else {
             self->line->xnum = xnum;
@@ -96,7 +103,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(LineBuf* self) {
-    PyMem_Free(self->buf);
+    PyMem_Free(self->cpu_cell_buf);
+    PyMem_Free(self->gpu_cell_buf);
     PyMem_Free(self->line_map);
     PyMem_Free(self->line_attrs);
     PyMem_Free(self->scratch);
@@ -106,7 +114,8 @@ dealloc(LineBuf* self) {
 
 static inline void
 init_line(LineBuf *lb, Line *l, index_type ynum) {
-    l->cells = lineptr(lb, ynum);
+    l->cpu_cells = cpu_lineptr(lb, ynum);
+    l->gpu_cells = gpu_lineptr(lb, ynum);
 }
 
 void
@@ -133,13 +142,13 @@ line(LineBuf *self, PyObject *y) {
 
 unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return (lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
+    return (gpu_lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
 }
 
 void
 linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
     for (index_type y = 0; y < self->ynum; y++) {
-        set_attribute_on_line(lineptr(self, y), shift, val, self->xnum);
+        set_attribute_on_line(gpu_lineptr(self, y), shift, val, self->xnum);
         self->line_attrs[y] |= TEXT_DIRTY_MASK;
     }
 }
@@ -181,12 +190,14 @@ dirty_lines(LineBuf *self, PyObject *a UNUSED) {
 static inline bool
 allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
-        line->cells = PyMem_Calloc(line->xnum, sizeof(Cell));
-        if (line->cells == NULL) { PyErr_NoMemory(); return false; }
-        if (BLANK_CHAR != 0) clear_chars_in_line(line->cells, line->xnum, BLANK_CHAR);
+        line->cpu_cells = PyMem_Calloc(line->xnum, sizeof(CPUCell));
+        line->gpu_cells = PyMem_Calloc(line->xnum, sizeof(GPUCell));
+        if (line->cpu_cells == NULL || line->gpu_cells) { PyErr_NoMemory(); return false; }
+        if (BLANK_CHAR != 0) clear_chars_in_line(line->cpu_cells, line->gpu_cells, line->xnum, BLANK_CHAR);
     } else {
-        line->cells = PyMem_Malloc(line->xnum * sizeof(Cell));
-        if (line->cells == NULL) { PyErr_NoMemory(); return false; }
+        line->cpu_cells = PyMem_Malloc(line->xnum * sizeof(CPUCell));
+        line->gpu_cells = PyMem_Malloc(line->xnum * sizeof(GPUCell));
+        if (line->cpu_cells == NULL || line->gpu_cells == NULL) { PyErr_NoMemory(); return false; }
     }
     line->needs_free = 1;
     return true;
@@ -232,8 +243,9 @@ copy_line_to(LineBuf *self, PyObject *args) {
 
 static inline void
 clear_line_(Line *l, index_type xnum) {
-    memset(l->cells, 0, xnum * sizeof(Cell));
-    if (BLANK_CHAR != 0) clear_chars_in_line(l->cells, xnum, BLANK_CHAR);
+    memset(l->cpu_cells, 0, xnum * sizeof(CPUCell));
+    memset(l->gpu_cells, 0, xnum * sizeof(GPUCell));
+    if (BLANK_CHAR != 0) clear_chars_in_line(l->cpu_cells, l->gpu_cells, xnum, BLANK_CHAR);
     l->has_dirty_text = false;
 }
 
@@ -515,7 +527,8 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->line_attrs, self->line_attrs, sizeof(bool) * self->ynum);
-        memcpy(other->buf, self->buf, self->xnum * self->ynum * sizeof(Cell));
+        memcpy(other->cpu_cell_buf, self->cpu_cell_buf, self->xnum * self->ynum * sizeof(CPUCell));
+        memcpy(other->gpu_cell_buf, self->gpu_cell_buf, self->xnum * self->ynum * sizeof(GPUCell));
         *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
         return;
     }
@@ -524,7 +537,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     first = self->ynum;
     do {
         first--;
-        Cell *cells = lineptr(self, self->line_map[first]);
+        CPUCell *cells = cpu_lineptr(self, self->line_map[first]);
         for(i = 0; i < self->xnum; i++) {
             if ((cells[i].ch) != BLANK_CHAR) { is_empty = false; break; }
         }

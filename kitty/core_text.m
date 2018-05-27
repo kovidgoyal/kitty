@@ -178,7 +178,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
 }
 
 PyObject*
-create_fallback_face(PyObject *base_face, Cell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONTS_DATA_HANDLE fg UNUSED) {
+create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONTS_DATA_HANDLE fg UNUSED) {
     CTFace *self = (CTFace*)base_face;
     CTFontRef new_font;
     if (emoji_presentation) new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);

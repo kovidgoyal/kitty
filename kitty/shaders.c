@@ -183,7 +183,7 @@ create_cell_vao() {
 #define A(name, size, dtype, offset, stride) \
     add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
-#define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(Cell, offset)), sizeof(Cell))
+#define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(GPUCell, offset)), sizeof(GPUCell))
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
     A1(sprite_coords, 4, GL_UNSIGNED_SHORT, sprite_x);
@@ -267,7 +267,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     ensure_sprite_map(fonts_data);
 
     if (screen->scroll_changed || screen->is_dirty) {
-        sz = sizeof(Cell) * screen->lines * screen->columns;
+        sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, sz, fonts_data);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;

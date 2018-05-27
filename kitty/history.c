@@ -18,9 +18,10 @@ add_segment(HistoryBuf *self) {
     self->segments = PyMem_Realloc(self->segments, sizeof(HistoryBufSegment) * self->num_segments);
     if (self->segments == NULL) fatal("Out of memory allocating new history buffer segment");
     HistoryBufSegment *s = self->segments + self->num_segments - 1;
-    s->cells = PyMem_Calloc(self->xnum * SEGMENT_SIZE, sizeof(Cell));
+    s->cpu_cells = PyMem_Calloc(self->xnum * SEGMENT_SIZE, sizeof(CPUCell));
+    s->gpu_cells = PyMem_Calloc(self->xnum * SEGMENT_SIZE, sizeof(GPUCell));
     s->line_attrs = PyMem_Calloc(SEGMENT_SIZE, sizeof(line_attrs_type));
-    if (s->cells == NULL || s->line_attrs == NULL) fatal("Out of memory allocating new history buffer segment");
+    if (s->cpu_cells == NULL || s->gpu_cells == NULL || s->line_attrs == NULL) fatal("Out of memory allocating new history buffer segment");
 }
 
 static inline index_type
@@ -37,9 +38,14 @@ segment_for(HistoryBuf *self, index_type y) {
     return self->segments[seg_num].which + y * stride; \
 }
 
-static inline Cell*
-lineptr(HistoryBuf *self, index_type y) {
-    seg_ptr(cells, self->xnum);
+static inline CPUCell*
+cpu_lineptr(HistoryBuf *self, index_type y) {
+    seg_ptr(cpu_cells, self->xnum);
+}
+
+static inline GPUCell*
+gpu_lineptr(HistoryBuf *self, index_type y) {
+    seg_ptr(gpu_cells, self->xnum);
 }
 
 
@@ -64,12 +70,12 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     if (self != NULL) {
         self->xnum = xnum;
         self->ynum = ynum;
-        self->line = alloc_line();
         self->num_segments = 0;
         add_segment(self);
+        self->line = alloc_line();
         self->line->xnum = xnum;
         for(index_type y = 0; y < self->ynum; y++) {
-            clear_chars_in_line(lineptr(self, y), self->xnum, BLANK_CHAR);
+            clear_chars_in_line(cpu_lineptr(self, y), gpu_lineptr(self, y), self->xnum, BLANK_CHAR);
         }
     }
 
@@ -80,7 +86,8 @@ static void
 dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
     for (size_t i = 0; i < self->num_segments; i++) {
-        PyMem_Free(self->segments[i].cells);
+        PyMem_Free(self->segments[i].cpu_cells);
+        PyMem_Free(self->segments[i].gpu_cells);
         PyMem_Free(self->segments[i].line_attrs);
     }
     PyMem_Free(self->segments);
@@ -99,7 +106,8 @@ index_of(HistoryBuf *self, index_type lnum) {
 static inline void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
-    l->cells = lineptr(self, num);
+    l->cpu_cells = cpu_lineptr(self, num);
+    l->gpu_cells = gpu_lineptr(self, num);
     l->continued = *attrptr(self, num) & CONTINUED_MASK;
     l->has_dirty_text = *attrptr(self, num) & TEXT_DIRTY_MASK ? true : false;
 }
@@ -286,7 +294,8 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         // Fast path
         for (index_type i = 0; i < self->num_segments; i++) {
-            memcpy(other->segments[i].cells, self->segments[i].cells, SEGMENT_SIZE * self->xnum * sizeof(Cell));
+            memcpy(other->segments[i].cpu_cells, self->segments[i].cpu_cells, SEGMENT_SIZE * self->xnum * sizeof(CPUCell));
+            memcpy(other->segments[i].gpu_cells, self->segments[i].gpu_cells, SEGMENT_SIZE * self->xnum * sizeof(GPUCell));
             memcpy(other->segments[i].line_attrs, self->segments[i].line_attrs, SEGMENT_SIZE * sizeof(line_attrs_type));
         }
         other->count = self->count; other->start_of_data = self->start_of_data;

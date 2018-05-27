@@ -20,7 +20,8 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static void
 dealloc(Line* self) {
     if (self->needs_free) {
-        PyMem_Free(self->cells);
+        PyMem_Free(self->cpu_cells);
+        PyMem_Free(self->gpu_cells);
     }
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -29,13 +30,13 @@ unsigned int
 line_length(Line *self) {
     index_type last = self->xnum - 1;
     for (index_type i = 0; i < self->xnum; i++) {
-        if ((self->cells[last - i].ch) != BLANK_CHAR) return self->xnum - i;
+        if ((self->cpu_cells[last - i].ch) != BLANK_CHAR) return self->xnum - i;
     }
     return 0;
 }
 
 PyObject*
-cell_text(Cell *cell) {
+cell_text(CPUCell *cell) {
     PyObject *ans;
     unsigned num = 1;
     static Py_UCS4 buf[arraysz(cell->cc_idx) + 1];
@@ -59,7 +60,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     limit = MAX(2, limit);
     if (pos < limit) return 0;
     do {
-        char_type ch = self->cells[pos].ch;
+        char_type ch = self->cpu_cells[pos].ch;
         if (!is_url_char(ch)) return false;
         switch(state) {
             case ANY:
@@ -83,7 +84,7 @@ prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_
     if (prefix_len > at) return false;
     index_type p, i;
     for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
-        if ((self->cells[p].ch) != (unsigned char)prefix[i]) return false;
+        if ((self->cpu_cells[p].ch) != (unsigned char)prefix[i]) return false;
     }
     return i == prefix_len;
 }
@@ -108,7 +109,7 @@ static inline bool
 has_url_beyond(Line *self, index_type x) {
     if (self->xnum <= x + MIN_URL_LEN + 3) return false;
     for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
-        if (!is_url_char(self->cells[i].ch)) return false;
+        if (!is_url_char(self->cpu_cells[i].ch)) return false;
     }
     return true;
 }
@@ -134,9 +135,9 @@ index_type
 line_url_end_at(Line *self, index_type x, bool check_short) {
     index_type ans = x;
     if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
-    while (ans < self->xnum && is_url_char(self->cells[ans].ch)) ans++;
+    while (ans < self->xnum && is_url_char(self->cpu_cells[ans].ch)) ans++;
     if (ans) ans--;
-    while (ans > x && can_strip_from_end_of_url(self->cells[ans].ch)) ans--;
+    while (ans > x && can_strip_from_end_of_url(self->cpu_cells[ans].ch)) ans--;
     return ans;
 }
 
@@ -158,11 +159,11 @@ static PyObject*
 text_at(Line* self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
     if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    return cell_text(self->cells + xval);
+    return cell_text(self->cpu_cells + xval);
 }
 
 size_t
-cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
+cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) {
     size_t n = 1;
     buf[0] = cell->ch ? cell->ch : zero_char;
     if (include_cc) {
@@ -172,7 +173,7 @@ cell_as_unicode(Cell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_char) 
 }
 
 size_t
-cell_as_utf8(Cell *cell, bool include_cc, char *buf, char_type zero_char) {
+cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type zero_char) {
     size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
     if (include_cc) {
         for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) n += encode_utf8(codepoint_for_mark(cell->cc_idx[i]), buf + n);
@@ -188,13 +189,13 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
     static Py_UCS4 buf[4096];
     if (leading_char) buf[n++] = leading_char;
     char_type previous_width = 0;
-    for(index_type i = start; i < limit && n < arraysz(buf) - 2 - arraysz(self->cells->cc_idx); i++) {
-        char_type ch = self->cells[i].ch;
+    for(index_type i = start; i < limit && n < arraysz(buf) - 2 - arraysz(self->cpu_cells->cc_idx); i++) {
+        char_type ch = self->cpu_cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
         }
-        n += cell_as_unicode(self->cells + i, include_cc, buf + n, ' ');
-        previous_width = self->cells[i].attrs & WIDTH_MASK;
+        n += cell_as_unicode(self->cpu_cells + i, include_cc, buf + n, ' ');
+        previous_width = self->gpu_cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
@@ -209,7 +210,7 @@ sprite_at(Line* self, PyObject *x) {
 #define sprite_at_doc "[x] -> Return the sprite in the specified cell"
     unsigned long xval = PyLong_AsUnsignedLong(x);
     if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
-    Cell *c = self->cells + xval;
+    GPUCell *c = self->gpu_cells + xval;
     return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
 }
 
@@ -236,21 +237,21 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     Cursor *cursor = &c1, *prev_cursor = &c2, *t;
 
     for (index_type pos=0; pos < limit; pos++) {
-        char_type attrs = self->cells[pos].attrs, ch = self->cells[pos].ch;
+        char_type attrs = self->gpu_cells[pos].attrs, ch = self->cpu_cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
         }
         ATTRS_TO_CURSOR(attrs, cursor);
-        cursor->fg = self->cells[pos].fg; cursor->bg = self->cells[pos].bg;
-        cursor->decoration_fg = self->cells[pos].decoration_fg & COL_MASK;
+        cursor->fg = self->gpu_cells[pos].fg; cursor->bg = self->gpu_cells[pos].bg;
+        cursor->decoration_fg = self->gpu_cells[pos].decoration_fg & COL_MASK;
 
         const char *sgr = cursor_as_sgr(cursor, prev_cursor);
         t = prev_cursor; prev_cursor = cursor; cursor = t;
         if (*sgr) WRITE_SGR(sgr);
         WRITE_CH(ch);
-        for(unsigned c = 0; c < arraysz(self->cells[pos].cc_idx) && self->cells[pos].cc_idx[c]; c++) {
-            WRITE_CH(codepoint_for_mark(self->cells[pos].cc_idx[c]));
+        for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
+            WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
         }
         previous_width = attrs & WIDTH_MASK;
     }
@@ -293,13 +294,13 @@ width(Line *self, PyObject *val) {
 #define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
     if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    char_type attrs = self->cells[x].attrs;
+    char_type attrs = self->gpu_cells[x].attrs;
     return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
 }
 
 void
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
-    Cell *cell = self->cells + x;
+    CPUCell *cell = self->cpu_cells + x;
     if (!cell->ch) return;  // dont allow adding combining chars to a null cell
     for (unsigned i = 0; i < arraysz(cell->cc_idx); i++) {
         if (!cell->cc_idx[i]) { cell->cc_idx[i] = mark_for_codepoint(ch); return; }
@@ -349,12 +350,12 @@ set_text(Line* self, PyObject *args) {
     color_type dfg = cursor->decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
-        self->cells[i].ch = (PyUnicode_READ(kind, buf, offset));
-        self->cells[i].attrs = attrs;
-        self->cells[i].fg = fg;
-        self->cells[i].bg = bg;
-        self->cells[i].decoration_fg = dfg;
-        memset(self->cells[i].cc_idx, 0, sizeof(self->cells[i].cc_idx));
+        self->cpu_cells[i].ch = (PyUnicode_READ(kind, buf, offset));
+        self->gpu_cells[i].attrs = attrs;
+        self->gpu_cells[i].fg = fg;
+        self->gpu_cells[i].bg = bg;
+        self->gpu_cells[i].decoration_fg = dfg;
+        memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
     }
 
     Py_RETURN_NONE;
@@ -373,10 +374,10 @@ cursor_from(Line* self, PyObject *args) {
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->x = x; ans->y = y;
-    char_type attrs = self->cells[x].attrs;
+    char_type attrs = self->gpu_cells[x].attrs;
     ATTRS_TO_CURSOR(attrs, ans);
-    ans->fg = self->cells[x].fg; ans->bg = self->cells[x].bg;
-    ans->decoration_fg = self->cells[x].decoration_fg & COL_MASK;
+    ans->fg = self->gpu_cells[x].fg; ans->bg = self->gpu_cells[x].bg;
+    ans->decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
 
     return (PyObject*)ans;
 }
@@ -386,8 +387,8 @@ line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     attrs_type width = ch ? 1 : 0;
 #define PREFIX \
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
-        self->cells[i].ch = ch; memset(self->cells[i].cc_idx, 0, sizeof(self->cells[i].cc_idx)); \
-        self->cells[i].attrs = (self->cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
+        self->cpu_cells[i].ch = ch; memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx)); \
+        self->gpu_cells[i].attrs = (self->gpu_cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
     }
     if (CHAR_IS_BLANK(ch)) {
         PREFIX
@@ -415,16 +416,16 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
 
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
-            self->cells[i].ch = BLANK_CHAR;
-            memset(self->cells[i].cc_idx, 0, sizeof(self->cells[i].cc_idx));
-            self->cells[i].attrs = attrs;
-            clear_sprite_position(self->cells[i]);
+            self->cpu_cells[i].ch = BLANK_CHAR;
+            memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
+            self->gpu_cells[i].attrs = attrs;
+            clear_sprite_position(self->gpu_cells[i]);
         } else {
-            attrs_type w = self->cells[i].attrs & WIDTH_MASK;
-            self->cells[i].attrs = attrs | w;
+            attrs_type w = self->gpu_cells[i].attrs & WIDTH_MASK;
+            self->gpu_cells[i].attrs = attrs | w;
         }
-        self->cells[i].fg = fg; self->cells[i].bg = bg;
-        self->cells[i].decoration_fg = dfg;
+        self->gpu_cells[i].fg = fg; self->gpu_cells[i].bg = bg;
+        self->gpu_cells[i].decoration_fg = dfg;
     }
 }
 
@@ -444,11 +445,11 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
         COPY_SELF_CELL(i - num, i)
     }
     // Check if a wide character was split at the right edge
-    char_type w = (self->cells[self->xnum - 1].attrs) & WIDTH_MASK;
+    char_type w = (self->gpu_cells[self->xnum - 1].attrs) & WIDTH_MASK;
     if (w != 1) {
-        self->cells[self->xnum - 1].ch = BLANK_CHAR;
-        self->cells[self->xnum - 1].attrs = BLANK_CHAR ? 1 : 0;
-        clear_sprite_position(self->cells[self->xnum - 1]);
+        self->cpu_cells[self->xnum - 1].ch = BLANK_CHAR;
+        self->gpu_cells[self->xnum - 1].attrs = BLANK_CHAR ? 1 : 0;
+        clear_sprite_position(self->gpu_cells[self->xnum - 1]);
     }
 }
 
@@ -483,15 +484,15 @@ left_shift(Line *self, PyObject *args) {
 void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {
-        self->cells[at].attrs = (self->cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        self->gpu_cells[at].attrs = (self->gpu_cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     } else {
-        self->cells[at].attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
-        self->cells[at].fg = (cursor->fg & COL_MASK);
-        self->cells[at].bg = (cursor->bg & COL_MASK);
-        self->cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
+        self->gpu_cells[at].attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
+        self->gpu_cells[at].fg = (cursor->fg & COL_MASK);
+        self->gpu_cells[at].bg = (cursor->bg & COL_MASK);
+        self->gpu_cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
     }
-    self->cells[at].ch = ch;
-    memset(self->cells[at].cc_idx, 0, sizeof(self->cells[at].cc_idx));
+    self->cpu_cells[at].ch = ch;
+    memset(self->cpu_cells[at].cc_idx, 0, sizeof(self->cpu_cells[at].cc_idx));
 }
 
 static PyObject*
@@ -516,7 +517,7 @@ set_attribute(Line *self, PyObject *args) {
     unsigned int shift, val;
     if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
     if (shift < DECORATION_SHIFT || shift > DIM_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
-    set_attribute_on_line(self->cells, shift, val, self->xnum);
+    set_attribute_on_line(self->gpu_cells, shift, val, self->xnum);
     Py_RETURN_NONE;
 }
 
@@ -525,8 +526,9 @@ __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->xnum);
 }
 
-static int __eq__(Line *a, Line *b) {
-    return a->xnum == b->xnum && memcmp(a->cells, b->cells, sizeof(Cell) * a->xnum) == 0;
+static int
+__eq__(Line *a, Line *b) {
+    return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 && memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
 }
 
 // Boilerplate {{{

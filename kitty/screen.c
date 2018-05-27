@@ -280,9 +280,10 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
 }
 
 static inline void
-move_widened_char(Screen *self, Cell* cell, index_type xpos, index_type ypos) {
+move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
     self->cursor->x = xpos; self->cursor->y = ypos;
-    Cell src = *cell, *dest;
+    CPUCell src_cpu = *cpu_cell, *dest_cpu;
+    GPUCell src_gpu = *gpu_cell, *dest_gpu;
     line_clear_text(self->linebuf->line, xpos, 1, BLANK_CHAR);
 
     if (self->modes.mDECAWM) {  // overflow goes onto next line
@@ -290,14 +291,17 @@ move_widened_char(Screen *self, Cell* cell, index_type xpos, index_type ypos) {
         screen_linefeed(self);
         self->linebuf->line_attrs[self->cursor->y] |= CONTINUED_MASK;
         linebuf_init_line(self->linebuf, self->cursor->y);
-        dest = self->linebuf->line->cells;
+        dest_cpu = self->linebuf->line->cpu_cells;
+        dest_gpu = self->linebuf->line->gpu_cells;
         self->cursor->x = MIN(2, self->columns);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     } else {
-        dest = cell - 1;
+        dest_cpu = cpu_cell - 1;
+        dest_gpu = gpu_cell - 1;
         self->cursor->x = self->columns;
     }
-    *dest = src;
+    *dest_cpu = src_cpu;
+    *dest_gpu = src_gpu;
 }
 
 static inline void
@@ -320,10 +324,11 @@ draw_combining_char(Screen *self, char_type ch) {
         self->is_dirty = true;
         linebuf_mark_line_dirty(self->linebuf, ypos);
         if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
-            Cell *cell = self->linebuf->line->cells + xpos;
-            if ((cell->attrs & WIDTH_MASK) != 2 && cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cell->ch)) {
-                cell->attrs = (cell->attrs & !WIDTH_MASK) | 2;
-                if (xpos == self->columns - 1) move_widened_char(self, cell, xpos, ypos);
+            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
+            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
+            if ((gpu_cell->attrs & WIDTH_MASK) != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
+                gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 2;
+                if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
                 else self->cursor->x++;
             }
         }
@@ -409,7 +414,7 @@ select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count,
             num = MIN(num, self->columns - x);
             for (index_type y = region.top; y < MIN(region.bottom + 1, self->lines); y++) {
                 linebuf_init_line(self->linebuf, y);
-                apply_sgr_to_cells(self->linebuf->line->cells + x, num, params, count);
+                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
             }
         } else {
             index_type x, num;
@@ -418,7 +423,7 @@ select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count,
                 else if (y == region.bottom) { x = 0; num = MIN(region.right + 1, self->columns); }
                 else { x = 0; num = self->columns; }
                 linebuf_init_line(self->linebuf, y);
-                apply_sgr_to_cells(self->linebuf->line->cells + x, num, params, count);
+                apply_sgr_to_cells(self->linebuf->line->gpu_cells + x, num, params, count);
             }
         }
     } else cursor_from_sgr(self->cursor, params, count);
@@ -1280,8 +1285,8 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
 // Rendering {{{
 static inline void
 update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
-    size_t base = dest_y * line->xnum * sizeof(Cell);
-    memcpy(data + base, line->cells, line->xnum * sizeof(Cell));
+    size_t base = dest_y * line->xnum * sizeof(GPUCell);
+    memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
 }
 
 
@@ -1718,8 +1723,8 @@ screen_selection_range_for_line(Screen *self, index_type y, index_type *start, i
     if (y >= self->lines) { return false; }
     Line *line = visual_line_(self, y);
     index_type xlimit = line->xnum, xstart = 0;
-    while (xlimit > 0 && CHAR_IS_BLANK(line->cells[xlimit - 1].ch)) xlimit--;
-    while (xstart < xlimit && CHAR_IS_BLANK(line->cells[xstart].ch)) xstart++;
+    while (xlimit > 0 && CHAR_IS_BLANK(line->cpu_cells[xlimit - 1].ch)) xlimit--;
+    while (xstart < xlimit && CHAR_IS_BLANK(line->cpu_cells[xstart].ch)) xstart++;
     *start = xstart; *end = xlimit;
     return true;
 }
@@ -1738,7 +1743,7 @@ screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, inde
     index_type start, end;
     Line *line = visual_line_(self, *y1);
     *y2 = *y1;
-#define is_ok(x) (is_word_char((line->cells[x].ch)) || is_opt_word_char(line->cells[x].ch))
+#define is_ok(x) (is_word_char((line->cpu_cells[x].ch)) || is_opt_word_char(line->cpu_cells[x].ch))
     if (!is_ok(x)) {
         start = x; end = x + 1;
     } else {
