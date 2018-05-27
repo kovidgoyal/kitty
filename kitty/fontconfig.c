@@ -178,11 +178,16 @@ specialize_font_descriptor(PyObject *base_descriptor) {
     if (idx == NULL) { PyErr_SetString(PyExc_ValueError, "Base descriptor has no index"); return NULL; }
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
+    long face_idx = MAX(0, PyLong_AsLong(idx));
     AP(FcPatternAddString, FC_FILE, (const FcChar8*)PyUnicode_AsUTF8(p), "path");
-    AP(FcPatternAddInteger, FC_INDEX, PyLong_AsLong(idx), "index");
+    AP(FcPatternAddInteger, FC_INDEX, face_idx, "index");
     AP(FcPatternAddDouble, FC_SIZE, global_state.font_sz_in_pts, "size");
     AP(FcPatternAddDouble, FC_DPI, (global_state.logical_dpi_x + global_state.logical_dpi_y) / 2.0, "dpi");
     ans = _fc_match(pat);
+    if (face_idx > 0) {
+        // For some reason FcFontMatch sets the index to zero, so manually restore it.
+        PyDict_SetItemString(ans, "index", idx);
+    }
 end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ans;
