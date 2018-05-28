@@ -172,6 +172,7 @@ void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, co
 bool screen_open_url(Screen*);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
+void screen_report_size(Screen *, unsigned int which);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

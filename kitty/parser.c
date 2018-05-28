@@ -694,6 +694,22 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             }
             REPORT_ERROR("Unknown CSI s sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
             break;
+        case 't':
+            if (!start_modifier && !end_modifier && num_params == 1) {
+                switch(params[0]) {
+                    case 14:
+                    case 16:
+                    case 18:
+                        CALL_CSI_HANDLER1(screen_report_size, 0);
+                        break;
+                    default:
+                        REPORT_ERROR("Unknown CSI t sequences with parameter: '%u'", params[0]);
+                        break;
+                }
+                break;
+            }
+            REPORT_ERROR("Unknown CSI t sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
         case 'u':
             if (!start_modifier && !end_modifier && !num_params) {
                 REPORT_COMMAND(screen_restore_cursor);

@@ -1114,6 +1114,34 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
 }
 
 void
+screen_report_size(Screen *self, unsigned int which) {
+    char buf[32] = {0};
+    unsigned int code = 0;
+    unsigned int width = 0, height = 0;
+    switch(which) {
+        case 14:
+            code = 4;
+            width = self->cell_size.width * self->columns;
+            height = self->cell_size.height * self->lines;
+            break;
+        case 16:
+            code = 6;
+            width = self->cell_size.width;
+            height = self->cell_size.height;
+            break;
+        case 18:
+            code = 8;
+            width = self->columns;
+            height = self->lines;
+            break;
+    }
+    if (code) {
+        snprintf(buf, sizeof(buf), "%u;%u;%ut", code, height, width);
+        write_escape_code_to_child(self, CSI, buf);
+    }
+}
+
+void
 report_device_status(Screen *self, unsigned int which, bool private) {
     // We dont implement the private device status codes, since I haven't come
     // across any programs that use them

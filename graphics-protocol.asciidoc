@@ -56,6 +56,10 @@ print('number of columns: {}, number of rows: {}, screen width: {}, screen heigh
 Note that some terminals return `0` for the width and height values. Such terminals should be modified to return the correct values.
 Examples of terminals that return correct values: `kitty, xterm`
 
+You can also use the *CSI t* escape code to get the screen size. Send `<ESC>[14t` to *stdout* and kitty will reply on *stdin* with
+`<ESC>[4;<height>;<width>t` where *height* and *width* are the window size in pixels. This escape code is supported in many terminals,
+not just kitty.
+
 == The graphics escape code
 
 All graphics escape codes are of the form:
