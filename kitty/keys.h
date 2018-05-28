@@ -677,19 +677,19 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 7: // 1
                     return "\x01\x31";
                   case 8: // 2
-                    return "\x01\x32";
+                    return "\x01\x00";
                   case 9: // 3
-                    return "\x01\x33";
+                    return "\x01\x1b";
                   case 10: // 4
-                    return "\x01\x34";
+                    return "\x01\x1c";
                   case 11: // 5
-                    return "\x01\x35";
+                    return "\x01\x1d";
                   case 12: // 6
                     return "\x01\x1e";
                   case 13: // 7
-                    return "\x01\x37";
+                    return "\x01\x1f";
                   case 14: // 8
-                    return "\x01\x38";
+                    return "\x01\x7f";
                   case 15: // 9
                     return "\x01\x39";
                   case 16: // SEMICOLON
@@ -754,6 +754,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1c";
                   case 46: // RIGHT_BRACKET
                     return "\x01\x1d";
+                  case 47: // GRAVE_ACCENT
+                    return "\x01\x00";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -2302,19 +2304,19 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 7: // 1
                     return "\x01\x31";
                   case 8: // 2
-                    return "\x01\x32";
+                    return "\x01\x00";
                   case 9: // 3
-                    return "\x01\x33";
+                    return "\x01\x1b";
                   case 10: // 4
-                    return "\x01\x34";
+                    return "\x01\x1c";
                   case 11: // 5
-                    return "\x01\x35";
+                    return "\x01\x1d";
                   case 12: // 6
                     return "\x01\x1e";
                   case 13: // 7
-                    return "\x01\x37";
+                    return "\x01\x1f";
                   case 14: // 8
-                    return "\x01\x38";
+                    return "\x01\x7f";
                   case 15: // 9
                     return "\x01\x39";
                   case 16: // SEMICOLON
@@ -2379,6 +2381,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1c";
                   case 46: // RIGHT_BRACKET
                     return "\x01\x1d";
+                  case 47: // GRAVE_ACCENT
+                    return "\x01\x00";
                   case 50: // ESCAPE
                     return "\x01\x1b";
                   case 51: // ENTER
@@ -3936,19 +3940,19 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 7: // 1
                       return "\x01\x31";
                     case 8: // 2
-                      return "\x01\x32";
+                      return "\x01\x00";
                     case 9: // 3
-                      return "\x01\x33";
+                      return "\x01\x1b";
                     case 10: // 4
-                      return "\x01\x34";
+                      return "\x01\x1c";
                     case 11: // 5
-                      return "\x01\x35";
+                      return "\x01\x1d";
                     case 12: // 6
                       return "\x01\x1e";
                     case 13: // 7
-                      return "\x01\x37";
+                      return "\x01\x1f";
                     case 14: // 8
-                      return "\x01\x38";
+                      return "\x01\x7f";
                     case 15: // 9
                       return "\x01\x39";
                     case 16: // SEMICOLON
@@ -4013,6 +4017,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1c";
                     case 46: // RIGHT_BRACKET
                       return "\x01\x1d";
+                    case 47: // GRAVE_ACCENT
+                      return "\x01\x00";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER
@@ -5561,19 +5567,19 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 7: // 1
                       return "\x01\x31";
                     case 8: // 2
-                      return "\x01\x32";
+                      return "\x01\x00";
                     case 9: // 3
-                      return "\x01\x33";
+                      return "\x01\x1b";
                     case 10: // 4
-                      return "\x01\x34";
+                      return "\x01\x1c";
                     case 11: // 5
-                      return "\x01\x35";
+                      return "\x01\x1d";
                     case 12: // 6
                       return "\x01\x1e";
                     case 13: // 7
-                      return "\x01\x37";
+                      return "\x01\x1f";
                     case 14: // 8
-                      return "\x01\x38";
+                      return "\x01\x7f";
                     case 15: // 9
                       return "\x01\x39";
                     case 16: // SEMICOLON
@@ -5638,6 +5644,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1c";
                     case 46: // RIGHT_BRACKET
                       return "\x01\x1d";
+                    case 47: // GRAVE_ACCENT
+                      return "\x01\x00";
                     case 50: // ESCAPE
                       return "\x01\x1b";
                     case 51: // ENTER

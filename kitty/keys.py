@@ -107,9 +107,16 @@ control_codes.update({
     for i, k in
     enumerate(range(defines.GLFW_KEY_A, defines.GLFW_KEY_RIGHT_BRACKET + 1))
 })
-control_codes[defines.GLFW_KEY_6] = (30,)
-control_codes[defines.GLFW_KEY_SLASH] = (31,)
+control_codes[defines.GLFW_KEY_GRAVE_ACCENT] = (0,)
 control_codes[defines.GLFW_KEY_SPACE] = (0,)
+control_codes[defines.GLFW_KEY_2] = (0,)
+control_codes[defines.GLFW_KEY_3] = (27,)
+control_codes[defines.GLFW_KEY_4] = (28,)
+control_codes[defines.GLFW_KEY_5] = (29,)
+control_codes[defines.GLFW_KEY_6] = (30,)
+control_codes[defines.GLFW_KEY_7] = (31,)
+control_codes[defines.GLFW_KEY_SLASH] = (31,)
+control_codes[defines.GLFW_KEY_8] = (127,)
 
 rmkx_key_map = smkx_key_map.copy()
 rmkx_key_map.update({
