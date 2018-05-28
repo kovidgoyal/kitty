@@ -2,16 +2,17 @@
 :toc:
 :toc-placement!:
 // START_SHORTCUT_BLOCK
+:sc_change_font_size_all_0: pass:quotes[`ctrl+shift+backspace`]
+:sc_change_font_size_all_2_0: pass:quotes[`ctrl+shift+minus`]
+:sc_change_font_size_all_plus2_0: pass:quotes[`ctrl+shift+equal`]
 :sc_close_tab: pass:quotes[`ctrl+shift+q`]
 :sc_close_window: pass:quotes[`ctrl+shift+w`]
 :sc_copy_to_clipboard: pass:quotes[`ctrl+shift+c`]
-:sc_decrease_font_size: pass:quotes[`ctrl+shift+minus`]
 :sc_edit_config_file: pass:quotes[`ctrl+shift+f2`]
 :sc_eighth_window: pass:quotes[`ctrl+shift+8`]
 :sc_fifth_window: pass:quotes[`ctrl+shift+5`]
 :sc_first_window: pass:quotes[`ctrl+shift+1`]
 :sc_fourth_window: pass:quotes[`ctrl+shift+4`]
-:sc_increase_font_size: pass:quotes[`ctrl+shift+equal`]
 :sc_input_unicode_character: pass:quotes[`ctrl+shift+u`]
 :sc_kitten_hints: pass:quotes[`ctrl+shift+e`]
 :sc_kitten_hints_type_line_program: pass:quotes[`ctrl+shift+p → l`]
@@ -36,7 +37,6 @@
 :sc_paste_from_selection: pass:quotes[`ctrl+shift+s` or `shift+insert`]
 :sc_previous_tab: pass:quotes[`ctrl+shift+left`]
 :sc_previous_window: pass:quotes[`ctrl+shift+[`]
-:sc_restore_font_size: pass:quotes[`ctrl+shift+backspace`]
 :sc_scroll_end: pass:quotes[`ctrl+shift+end`]
 :sc_scroll_home: pass:quotes[`ctrl+shift+home`]
 :sc_scroll_line_down: pass:quotes[`ctrl+shift+down` or `ctrl+shift+j`]
@@ -260,15 +260,15 @@ windows are:
 |Copy to clipboard    | {sc_copy_to_clipboard}
 |Paste from clipboard | {sc_paste_from_clipboard}
 |Paste from selection | {sc_paste_from_selection}
-|Increase font size   | {sc_increase_font_size}
-|Decrease font size   | {sc_decrease_font_size}
-|Restore font size    | {sc_restore_font_size}
+|Increase font size   | {sc_change_font_size_all_plus2_0}
+|Decrease font size   | {sc_change_font_size_all_2_0}
+|Restore font size    | {sc_change_font_size_all_0}
 |Toggle fullscreen    | {sc_toggle_fullscreen}
 |Input unicode character | {sc_input_unicode_character}
-|Click URL using the keyboard | {sc_run_simple_kitten_text_url_hints}
+|Click URL using the keyboard | {sc_kitten_hints}
 |Pass current selection to program | {sc_pass_selection_to_program}
 |Edit kitty config file | {sc_edit_config_file}
-|Open a kitty shell | {sc_kitty_shell}
+|Open a kitty shell | {sc_kitty_shell_window}
 |Increase background opacity | {sc_set_background_opacity_plus0_1}
 |Decrease background opacity | {sc_set_background_opacity_0_1}
 |Full background opacity | {sc_set_background_opacity_1}
