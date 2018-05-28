@@ -9,7 +9,8 @@ from functools import lru_cache
 from gettext import gettext as _
 
 from kitty.config import cached_values_for
-from kitty.constants import config_dir, editor
+from kitty.constants import config_dir
+from kitty.utils import get_editor
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
     DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
@@ -426,7 +427,7 @@ class UnicodeInput(Handler):
             with open(favorites_path, 'wb') as f:
                 f.write(serialize_favorites(load_favorites()).encode('utf-8'))
         with self.suspend():
-            p = subprocess.Popen(editor + [favorites_path])
+            p = subprocess.Popen(get_editor() + [favorites_path])
             if p.wait() == 0:
                 load_favorites(refresh=True)
         self.init_terminal_state()

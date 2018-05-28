@@ -175,6 +175,8 @@ def _main():
             single_instance.socket.sendall(data)
             return
     opts = create_opts(args)
+    if opts.editor != '.':
+        os.environ['EDITOR'] = opts.editor
     init_graphics()
     try:
         with setup_profiling(args):

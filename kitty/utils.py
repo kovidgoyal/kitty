@@ -392,3 +392,8 @@ def read_with_timeout(more_needed, timeout=10, src=sys.stdin.buffer):
                     break
             else:
                 break
+
+
+def get_editor():
+    import shlex
+    return shlex.split(os.environ.get('EDITOR', 'vim'))

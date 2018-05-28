@@ -17,7 +17,7 @@ from .config import (
 )
 from .config_utils import to_cmdline
 from .constants import (
-    appname, config_dir, editor, set_boss, supports_primary_selection
+    appname, config_dir, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
@@ -32,7 +32,7 @@ from .rgb import Color, color_from_int
 from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
-    get_primary_selection, log_error, open_url, parse_address_spec,
+    get_editor, get_primary_selection, log_error, open_url, parse_address_spec,
     remove_socket_file, safe_print, set_primary_selection, single_instance,
     startup_notification_handler
 )
@@ -538,7 +538,7 @@ class Boss:
         confpath = prepare_config_file_for_editing()
         # On macOS vim fails to handle SIGWINCH if it occurs early, so add a
         # small delay.
-        cmd = ['kitty', '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + editor + [confpath]
+        cmd = ['kitty', '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor() + [confpath]
         self.new_os_window(*cmd)
 
     def get_output(self, source_window, num_lines=1):
