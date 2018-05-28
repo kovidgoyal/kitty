@@ -27,7 +27,7 @@ from .keys import keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
-    color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
+    color_as_int, get_primary_selection, load_shaders, open_cmd,
     open_url, parse_color_set, sanitize_title, set_primary_selection
 )
 
@@ -361,8 +361,7 @@ class Window:
             try:
                 text = standard_b64decode(text).decode('utf-8')
             except Exception:
-                log_error('Invalid data to write to clipboard received, ignoring')
-                return
+                text = ''
             if 's' in where or 'c' in where:
                 if 'write-clipboard' in self.opts.clipboard_control:
                     set_clipboard_string(text)
