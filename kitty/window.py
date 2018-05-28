@@ -364,7 +364,7 @@ class Window:
                 log_error('Invalid data to write to clipboard received, ignoring')
                 return
             if 's' in where or 'c' in where:
-                if 'write-clipboard' not in self.opts.clipboard_control:
+                if 'write-clipboard' in self.opts.clipboard_control:
                     set_clipboard_string(text)
             if 'p' in where:
                 if self.opts.copy_on_select:
