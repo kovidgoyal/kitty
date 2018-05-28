@@ -252,7 +252,7 @@ windows are:
 
 |===
 
-=== Miscellaneous
+== Other keyboard shortcuts
 
 |===
 |Action |Shortcut
