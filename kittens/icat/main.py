@@ -76,10 +76,10 @@ The amount of time (in seconds) to wait for a response form the terminal, when
 detecting image display support.
 
 
---print-screen-size
+--print-window-size
 type=bool-set
-Print out the screen size as |_ widthxheight| (in pixels) and quit. This is a
-convenience method to query the screen size if using kitty icat from a
+Print out the window size as |_ widthxheight| (in pixels) and quit. This is a
+convenience method to query the window size if using kitty icat from a
 scripting language that cannot make termios calls.
 '''
 
@@ -252,7 +252,7 @@ def main(args=sys.argv):
         ' Directories are scanned recursively for image files.')
     args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
 
-    if args.print_screen_size:
+    if args.print_window_size:
         print('{}x{}'.format(screen_size().width, screen_size().height))
         raise SystemExit(0)
 
