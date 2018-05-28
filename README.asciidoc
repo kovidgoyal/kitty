@@ -257,6 +257,9 @@ windows are:
 |===
 |Action |Shortcut
 
+|Copy to clipboard    | {sc_copy_to_clipboard}
+|Paste from clipboard | {sc_paste_from_clipboard}
+|Paste from selection | {sc_paste_from_selection}
 |Increase font size   | {sc_increase_font_size}
 |Decrease font size   | {sc_decrease_font_size}
 |Restore font size    | {sc_restore_font_size}
