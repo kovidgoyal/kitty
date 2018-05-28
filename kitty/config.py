@@ -389,6 +389,7 @@ type_map = {
     'close_on_child_death': to_bool,
     'window_border_width': positive_float,
     'window_margin_width': positive_float,
+    'tab_bar_margin_width': positive_float,
     'window_padding_width': positive_float,
     'wheel_scroll_multiplier': float,
     'visual_bell_duration': positive_float,

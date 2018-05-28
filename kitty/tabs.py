@@ -307,6 +307,7 @@ class TabBar:  # {{{
         self.os_window_id = os_window_id
         self.opts = opts
         self.num_tabs = 1
+        self.margin_width = pt_to_px(self.opts.tab_bar_margin_width, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.data_buffer_size = 0
         self.laid_out_once = False
@@ -353,12 +354,12 @@ class TabBar:  # {{{
             return
         self.cell_width = cell_width
         s = self.screen
-        viewport_width = tab_bar.width
+        viewport_width = tab_bar.width - 2 * self.margin_width
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)
         self.laid_out_once = True
-        margin = (viewport_width - ncells * cell_width) // 2
+        margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
         if margin > 0:
