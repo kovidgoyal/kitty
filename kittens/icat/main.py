@@ -256,7 +256,7 @@ def main(args=sys.argv):
         screen_size_function.ans = None
         with open('/dev/tty') as tty:
             ss = screen_size_function(tty)()
-        print('{}x{}'.format(ss.width, ss.height))
+        print('{}x{}'.format(ss.width, ss.height), end='')
         raise SystemExit(0)
 
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
