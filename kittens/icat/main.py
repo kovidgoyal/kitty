@@ -254,7 +254,7 @@ def main(args=sys.argv):
 
     if args.print_window_size:
         screen_size_function.ans = None
-        with open('/dev/tty', 'w') as tty:
+        with open('/dev/tty') as tty:
             ss = screen_size_function(tty)()
         print('{}x{}'.format(ss.width, ss.height))
         raise SystemExit(0)
