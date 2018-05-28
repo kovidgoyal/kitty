@@ -235,7 +235,15 @@ def write_to_clipboard(data, use_primary=False) -> str:
     if isinstance(data, str):
         data = data.encode('utf-8')
     from base64 import standard_b64encode
-    return '\x1b]52;{};{}\x07'.format('p' if use_primary else 'c', standard_b64encode(data).decode('ascii'))
+    fmt = 'p' if use_primary else 'c'
+
+    def esc(chunk):
+        return '\x1b]52;{};{}\x07'.format(fmt, chunk)
+    ans = esc('!')  # clear clipboard buffer
+    for chunk in (data[i:i+512] for i in range(0, len(data), 512)):
+        chunk = standard_b64encode(chunk).decode('ascii')
+        ans += esc(chunk)
+    return ans
 
 
 def request_from_clipboard(use_primary=False) -> str:

@@ -99,6 +99,7 @@ class Window:
         self.overlay_for = None
         self.child_title = appname
         self.id = add_window(tab.os_window_id, tab.id, self.title)
+        self.clipboard_control_buffers = {'p': '', 'c': ''}
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
@@ -362,15 +363,25 @@ class Window:
                 text = standard_b64decode(text).decode('utf-8')
             except Exception:
                 text = ''
+
+            def write(key, func):
+                if text:
+                    if len(self.clipboard_control_buffers[key]) > 1024*1024:
+                        self.clipboard_control_buffers[key] = ''
+                    self.clipboard_control_buffers[key] += text
+                else:
+                    self.clipboard_control_buffers[key] = ''
+                func(self.clipboard_control_buffers[key])
+
             if 's' in where or 'c' in where:
                 if 'write-clipboard' in self.opts.clipboard_control:
-                    set_clipboard_string(text)
+                    write('c', set_clipboard_string)
             if 'p' in where:
                 if self.opts.copy_on_select:
                     if 'write-clipboard' in self.opts.clipboard_control:
-                        set_clipboard_string(text)
+                        write('c', set_clipboard_string)
                 if 'write-primary' in self.opts.clipboard_control:
-                    set_primary_selection(text)
+                    write('p', set_primary_selection)
     # }}}
 
     def text_for_selection(self):
