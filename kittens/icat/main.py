@@ -15,7 +15,7 @@ from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
 from kitty.constants import appname
-from kitty.utils import fit_image, read_with_timeout
+from kitty.utils import fit_image, read_with_timeout, screen_size_function
 
 from ..tui.images import (
     ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify,
@@ -253,7 +253,10 @@ def main(args=sys.argv):
     args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
 
     if args.print_window_size:
-        print('{}x{}'.format(screen_size().width, screen_size().height))
+        screen_size_function.ans = None
+        with open('/dev/tty', 'w') as tty:
+            ss = screen_size_function(tty)()
+        print('{}x{}'.format(ss.width, ss.height))
         raise SystemExit(0)
 
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
