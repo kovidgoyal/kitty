@@ -326,7 +326,7 @@ browser.
 
 image::screenshots/hints_mode.png?raw=true[URL hints mode]
 
-Similarly, you can press {sc_run_kitten_text_hints_type_path_program} to
+Similarly, you can press {sc_kitten_hints_type_path_program} to
 select anything that looks like a path or filename and then insert it into the
 terminal, very useful for picking files from the output of a git or ls command and
 adding them to the command line for the next command.
