@@ -1,0 +1,45 @@
+|kitty| Performance
+===================
+
+The main goals for |kitty| performance are user perceived latency while typing
+and "smoothness" while scrolling as well as CPU usage. |kitty| tries hard to find
+an optimum balance for these. To that end it keeps a cache of each rendered
+glyph in video RAM so that font rendering is not a bottleneck.  Interaction
+with child programs takes place in a separate thread from rendering, to improve
+smoothness.
+
+There are two parameters you can tune to adjust the performance. ``repaint_delay``
+and ``input_delay``. These control the artificial delays introduced into the
+render loop to reduce CPU usage. See |kitty.conf| for details.
+See also the ``sync_to_monitor`` option to further decrease latency at the cost
+of some `tearing <https://en.wikipedia.org/wiki/Screen_tearing>`_ while scrolling.
+
+You can generate detailed per-function performance data using
+`gperftools <https://github.com/gperftools/gperftools>`_. Build |kitty| with
+`make profile` which will create an executable called `kitty-profile`.  Run
+that and perform the task you want to analyse, for example, scrolling a large
+file with `less`. After you quit, function call statistics will be printed to
+`stdout` and you can use tools like *kcachegrind* for more detailed analysis.
+
+Here are some CPU usage numbers for the task of scrolling a file continuously
+in less.  The CPU usage is for the terminal process and X together and is
+measured using htop.  The measurements are taken at the same font and window
+size for all terminals on a ``Intel(R) Core(TM) i7-4820K CPU @ 3.70GHz`` CPU
+with a ``Advanced Micro Devices, Inc. [AMD/ATI] Cape Verde XT [Radeon HD
+7770/8760 / R7 250X]`` GPU.
+
+==============   =========================
+Terminal         CPU usage (X + terminal)
+==============   =========================
+|kitty|          6 - 8%
+xterm            5 - 7% (but scrolling was extremely janky)
+termite          10 - 13%
+urxvt            12 - 14%
+gnome-terminal   15 - 17%
+konsole          29 - 31%
+==============   =========================
+
+
+As you can see, |kitty| uses much less CPU than all terminals, except xterm, but
+its scrolling "smoothness" is much better than that of xterm (at least to my,
+admittedly biased, eyes).

@@ -1,0 +1,26 @@
+/*
+ * custom.css
+ * Copyright (C) 2018 Kovid Goyal
+ *
+ * Distributed under terms of the MIT license.
+ */
+
+.float-left-img {
+    float: left;
+    margin-right: 1em;
+    margin-bottom: 1em;
+}
+
+a { 
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+#searchbox h3 {
+    display: none;
+}
+
+.major-features li {
+    margin-top: 0.75ex;
+    margin-bottom: 0.75ex;
+}

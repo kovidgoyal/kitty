@@ -1,0 +1,292 @@
+==========================================================
+kitty - the fast, featureful, GPU based, terminal emulator
+==========================================================
+
+.. container:: major-features
+
+    * Offloads rendering to the GPU for :doc:`lower system load <performance>` and
+      buttery smooth scrolling.  Uses threaded rendering to minimize input latency.
+
+    * Supports all modern terminal features: :doc:`graphics (images)
+      <graphics-protocol>`, unicode, true-color, OpenType ligatures, mouse
+      protocol, focus tracking, bracketed paste and so on.
+
+    * Supports tiling multiple terminal windows side by side in different
+      :ref:`layouts <layouts>` without needing to use an extra program like tmux
+
+    * Can be :doc:`controlled from scripts or the shell prompt <remote-control>`,
+      even over SSH.
+
+    * Has a framework for *kittens*, small terminal programs that can be used to
+      extend |kitty|'s functionality.  For example, they are used for
+      :doc:`Unicode input <kittens/unicode-input>`, :doc:`Hints <kittens/hints>` and
+      :doc:`Side-by-side diff <kittens/diff>`.
+
+    * Supports :ref:`startup sessions <sessions>` which allow you to specify
+      the window/tab layout, working directories and programs to run on startup.
+
+    * Cross-platform: |kitty| works on Linux and macOS, but because it uses only
+      OpenGL for rendering, it should be trivial to port to other platforms.
+
+    * Allows you to open :ref:`the scrollback buffer <scrollback>` in a
+      separate window using arbitrary programs of your choice. This is useful for
+      browsing the history comfortably in a pager or editor.
+
+
+.. figure:: screenshots/screenshot.png
+    :alt: Screenshot, showing three programs in the 'Tall' layout
+    :align: center
+
+    Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
+
+
+Quickstart
+--------------
+
+If you are on macOS, simply download and install the ``.dmg`` from the `releases
+page <https://github.com/kovidgoyal/kitty/releases>`_.
+
+If you are on Linux, install the |kitty| package if your distro provides it,
+otherwise follow the :doc:`Build from source instructions <build>`. |kitty|
+packages are available for: 
+`Debian <https://packages.debian.org/buster/kitty>`_,
+`openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
+`Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
+`NixOS <https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix>`_,
+`Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
+`Fedora <https://copr.fedorainfracloud.org/coprs/oleastre/kitty-terminal/>`_.
+
+
+.. contents::
+
+
+Design philosophy
+-------------------
+
+|kitty| is designed for power keyboard users. To that end all its controls
+work with the keyboard (although it fully supports mouse interactions as
+well). Its configuration is a simple, human editable, single file for
+easy reproducibility (I like to store configuration in source control).
+
+The code in |kitty| is designed to be simple, modular and hackable. It is
+written in a mix of C (for performance sensitive parts) and Python (for
+easy hackability of the UI). It does not depend on any large and complex
+UI toolkit, using only OpenGL for rendering everything.
+
+Finally, |kitty| is designed from the ground up to support all modern
+terminal features, such as unicode, true color, bold/italic fonts, text
+formatting, etc. It even extends existing text formatting escape codes,
+to add support for features not available elsewhere, such as colored and
+styled (curly) underlines. One of the design goals of |kitty| is to be
+easily extensible so that new features can be added in the future with
+relatively less effort.
+
+Tabs and Windows
+-------------------
+
+|kitty| is capable of running multiple programs organized into tabs and
+windows. The top level of organization is the *Tab*. Each tab consists
+of one or more *windows*. The windows can be arranged in multiple
+different layouts, like windows are organized in a tiling window
+manager. The keyboard controls (which are all customizable) for tabs and
+windows are:
+
+Scrolling
+~~~~~~~~~~~~~~
+
+========================    =======================
+Action                      Shortcut
+========================    =======================
+Scroll line up              |sc_scroll_line_up|
+Scroll line down            |sc_scroll_line_down|
+Scroll page up              |sc_scroll_page_up|
+Scroll page down            |sc_scroll_page_down|
+Scroll to top               |sc_scroll_home|
+Scroll to bottom            |sc_scroll_end|
+========================    =======================
+
+Tabs
+~~~~~~~~~~~
+
+========================    =======================
+Action                      Shortcut
+========================    =======================
+New tab                     |sc_new_tab|
+Close tab                   |sc_close_tab|
+Next tab                    |sc_next_tab|
+Previous tab                |sc_previous_tab|
+Next layout                 |sc_next_layout|
+Move tab forward            |sc_move_tab_forward|
+Move tab backward           |sc_move_tab_backward|
+Set tab title               |sc_set_tab_title|
+========================    =======================
+
+
+Windows
+~~~~~~~~~~~~~~~~~~
+
+========================    =======================
+Action                      Shortcut
+========================    =======================
+New window                  |sc_new_window|
+New OS window               |sc_new_os_window|
+Close window                |sc_close_window|
+Next window                 |sc_next_window|
+Previous window             |sc_previous_window|
+Move window forward         |sc_move_window_forward|
+Move window backward        |sc_move_window_backward|
+Move window to top          |sc_move_window_to_top|
+Focus specific window       |sc_first_window|, |sc_second_window| ... |sc_tenth_window| 
+                            (clockwise from the top-left)
+========================    =======================
+
+
+Other keyboard shortcuts
+----------------------------------
+
+==================================  =======================
+Action                              Shortcut
+==================================  =======================
+Copy to clipboard                   |sc_copy_to_clipboard|
+Paste from clipboard                |sc_paste_from_clipboard|
+Paste from selection                |sc_paste_from_selection|
+Increase font size                  |sc_change_font_size_all_plus2_0|
+Decrease font size                  |sc_change_font_size_all_2_0|
+Restore font size                   |sc_change_font_size_all_0|
+Toggle fullscreen                   |sc_toggle_fullscreen|
+Input unicode character             |sc_input_unicode_character|
+Click URL using the keyboard        |sc_kitten_hints|
+Pass current selection to program   |sc_pass_selection_to_program|
+Edit |kitty| config file            |sc_edit_config_file|
+Open a |kitty| shell                |sc_kitty_shell_window|
+Increase background opacity         |sc_set_background_opacity_plus0_1|
+Decrease background opacity         |sc_set_background_opacity_0_1|
+Full background opacity             |sc_set_background_opacity_1|
+Reset background opacity            |sc_set_background_opacity_default|
+==================================  =======================
+
+
+.. _layouts:
+
+Layouts
+----------
+
+Currently, there are five layouts available,
+
+* **Stack** -- Only a single maximized window is shown at a time
+* **Tall** -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right
+* **Fat** -- One window is shown full width on the top, the rest of the windows are shown side-by-side on the bottom
+* **Grid** -- All windows are shown in a grid
+* **Horizontal** -- All windows are shown side-by-side
+* **Vertical** -- All windows are shown one below the other
+
+You can switch between layouts using the |sc_next_layout| key combination. You can
+also create shortcuts to select particular layouts, and choose which layouts
+you want to enable/disable, see |kitty.conf| for examples.
+
+You can resize windows inside layouts. Press |sc_start_resizing_window| to
+enter resizing mode and follow the on-screen instructions.  In a given window
+layout only some operations may be possible for a particular window. For
+example, in the Tall layout you can make the first window wider/narrower, but
+not taller/shorter. Note that what you are resizing is actually not a window,
+but a row/column in the layout, all windows in that row/column will be resized.
+
+Some layouts take options to control their behavior. For example, the ``fat``
+and ``tall`` layouts accept the ``bias`` option to control how the available
+space is split up. To specify the option, in |kitty.conf| use::
+
+    enabled_layouts tall:bias=70
+
+This will make the tall window occupy ``70%`` of available width. ``bias`` can be
+any number between 10 and 90.
+
+Writing a new layout only requires about a hundred lines of code, so if there
+is some layout you want, take a look at `layout.py
+<https://github.com/kovidgoyal/kitty/blob/master/kitty/layout.py>`_  and submit
+a pull request!
+
+.. _sessions:
+
+Startup Sessions
+------------------
+
+You can control the tabs, window layout, working directory, startup
+programs, etc. by creating a "session" file and using the :option:`--session`
+command line flag. For example:
+
+.. code-block:: ini
+
+    # Set the window layout for the current tab
+    layout tall
+    # Set the working directory for windows in the current tab
+    cd ~
+    # Create a window and run the specified command in it
+    launch zsh
+    # Create a window with some environment variables set and run vim in it
+    launch env FOO=BAR vim
+    # Set the title for the next window
+    title Chat with x
+    launch irssi --profile x
+
+    # Create a new tab (the part after new_tab is the optional tab name which will
+    # be displayed in the tab bar, if omitted, the title of the active window will
+    # be used instead)
+    new_tab my tab
+    cd ~/somewhere
+    # Set the layouts allowed in this tab
+    enabled_layouts tall, stack
+    # Set the current layout
+    layout stack
+    launch zsh
+    # Make the current window the active (focused) window
+    focus
+    launch emacs
+
+
+Mouse features
+-------------------
+
+* You can also hold down :kbd:`ctrl+shift` and click on a URL to open it in a browser.
+* You can double click to select a word and triple click to select a line.
+* You can right click to extend a previous selection
+
+
+Font control
+-----------------
+
+|kitty| has extremely flexible and powerful font selection features. You can
+specify individual families for the regular, bold, italic and bold+italic
+fonts. You can even specify specific font families for specific ranges of
+unicode characters. This allows precise control over text rendering. It can
+come in handy for applications like powerline, without the need to use patched
+fonts. See the various font related configuration directives in |kitty.conf|.
+
+
+.. _scrollback:
+
+The scrollback buffer
+-----------------------
+
+|kitty| supports scrolling back to view history, just like most terminals. You
+can use either keyboard shortcuts or the mouse scroll wheel to do so.  However,
+|kitty| has an extra, neat feature. Sometimes you need to explore the
+scrollback buffer in more detail, maybe search for some text or refer to it
+side-by-side while typing in a follow-up command. |kitty| allows you to do this
+by pressing the |sc_show_scrollback| key-combination, which will open the
+scrollback buffer in your favorite pager program (which is ``less`` by default).
+Colors and text formatting are preserved. You can explore the scrollback buffer
+comfortably within the pager.
+
+
+Frequently Asked Questions 
+---------------------------------
+
+The list of Frequently Asked Questions (*FAQ*) is :doc:`available here <faq>`.
+
+
+.. toctree::
+    :hidden:
+    :glob:
+
+    *
+    kittens/*
