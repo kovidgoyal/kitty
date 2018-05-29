@@ -425,6 +425,7 @@ class TabManager:  # {{{
         self.os_window_id = os_window_id
         self.opts, self.args = opts, args
         self.tabs = []
+        self.active_tab_history = deque()
         self.tab_bar = TabBar(self.os_window_id, opts)
         self._active_tab_idx = 0
 
@@ -440,6 +441,9 @@ class TabManager:  # {{{
     def active_tab_idx(self, val):
         try:
             old_active_tab = self.tabs[self._active_tab_idx]
+            self.active_tab_history.append(old_active_tab.id)
+            if len(self.active_tab_history) > 64:
+                self.active_tab_history.popleft()
         except Exception:
             old_active_tab = None
         self._active_tab_idx = max(0, min(val, len(self.tabs) - 1))
@@ -563,7 +567,18 @@ class TabManager:  # {{{
 
     def remove(self, tab):
         self._remove_tab(tab)
-        self._set_active_tab(max(0, min(self.active_tab_idx, len(self.tabs) - 1)))
+        next_active_tab = -1
+        while self.active_tab_history and next_active_tab < 0:
+            tab_id = self.active_tab_history.pop()
+            if tab_id == tab.id:
+                continue
+            for idx, qtab in enumerate(self.tabs):
+                if qtab.id == tab_id:
+                    next_active_tab = idx
+                    break
+        if next_active_tab < 0:
+            next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
+        self._set_active_tab(next_active_tab)
         self.mark_tab_bar_dirty()
         tab.destroy()
 
