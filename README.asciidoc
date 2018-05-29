@@ -320,7 +320,7 @@ keys.
 == Hints
 
 kitty has a _hints mode_ to select and act on arbitrary text snippets currently
-visible on the screen.  For example, you can press {sc_run_kitten_text_hints}
+visible on the screen.  For example, you can press {sc_kitten_hints}
 to choose any URL visible on the screen and then open it using your system
 browser.
 
