@@ -1155,8 +1155,8 @@ finalize(void) {
     Py_CLEAR(prerender_function);
     Py_CLEAR(descriptor_for_idx);
     free_font_groups();
-    if (harfbuzz_buffer) hb_buffer_destroy(harfbuzz_buffer);
-    free(group_state.groups);
+    if (harfbuzz_buffer) { hb_buffer_destroy(harfbuzz_buffer); harfbuzz_buffer = NULL; }
+    free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
 }
 
 static PyObject*
@@ -1292,9 +1292,15 @@ create_test_font_group(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("II", fg->cell_width, fg->cell_height);
 }
 
+static PyObject*
+free_font_data(PyObject *self UNUSED, PyObject *args UNUSED) {
+    finalize();
+    Py_RETURN_NONE;
+}
 
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
+    METHODB(free_font_data, METH_NOARGS),
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
@@ -1309,10 +1315,6 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_fonts(PyObject *module) {
-    if (Py_AtExit(finalize) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the fonts module at exit handler");
-        return false;
-    }
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);

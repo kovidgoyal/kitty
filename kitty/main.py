@@ -15,8 +15,8 @@ from .constants import (
     appname, config_dir, glfw_path, is_macos, is_wayland, logo_data_file
 )
 from .fast_data_types import (
-    create_os_window, glfw_init, glfw_terminate, set_default_window_icon,
-    set_options
+    create_os_window, free_font_data, glfw_init, glfw_terminate,
+    set_default_window_icon, set_options
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
@@ -38,10 +38,7 @@ def init_graphics():
     return glfw_module
 
 
-def run_app(opts, args):
-    set_scale(opts.box_drawing_scale)
-    set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
-    set_font_family(opts)
+def _run_app(opts, args):
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
@@ -58,6 +55,16 @@ def run_app(opts, args):
             boss.child_monitor.main_loop()
         finally:
             boss.destroy()
+
+
+def run_app(opts, args):
+    set_scale(opts.box_drawing_scale)
+    set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
+    set_font_family(opts)
+    try:
+        _run_app(opts, args)
+    finally:
+        free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
 
 
 run_app.cached_values_name = 'main'
