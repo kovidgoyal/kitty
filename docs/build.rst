@@ -1,6 +1,11 @@
 Building kitty from source
 ==============================
 
+.. image:: https://travis-ci.org/kovidgoyal/kitty.svg?branch=master
+  :alt: Build status
+  :target: https://travis-ci.org/kovidgoyal/kitty
+
+
 |kitty| is designed to run from source, for easy hackability. Make sure
 the following dependencies are installed first.
 
