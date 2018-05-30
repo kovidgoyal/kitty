@@ -1,0 +1,7 @@
+{% if pagename != "support" %}
+<div id="support" style="text-align: center">
+    <form class="support-form" action="{{ pathto('support') }}" title="{{ _('Donate to support kitty development') }}">
+        <input type="submit" value="{{ _('Support kitty') }}">
+    </form>
+</div>
+{% endif %}

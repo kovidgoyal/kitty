@@ -118,6 +118,7 @@ html_static_path = ['_static', '../logo/kitty.png']
 html_context = {
     'css_files': ['_static/custom.css']
 }
+html_favicon = '../logo/kitty.png'
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -130,6 +131,7 @@ html_context = {
 html_sidebars = {
     '**': [
         'about.html',
+        'support.html',
         'searchbox.html',
         'localtoc.html',
         'relations.html',

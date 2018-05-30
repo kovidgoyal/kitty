@@ -27,7 +27,7 @@ Colored and styled underlines
 use in terminal editors such as vim and emacs to display red, wavy underlines
 under mis-spelled words and/or syntax errors. This is done by re-purposing some
 SGR escape codes that are not used in modern terminals (`CSI codes
-<https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes>`_)
+<https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_sequences>`_)
 
 To set the underline style::
 
@@ -98,7 +98,7 @@ and to leave *full mode*, use DECRST::
 
 The number ``2017`` above is not used for any existing modes, as far as I know.
 Client programs can query if the terminal emulator is in *full mode* by using
-the standard `DECRQM <http://vt100.net/docs/vt510-rm/DECRQM>`_ escape sequence.
+the standard `DECRQM <https://vt100.net/docs/vt510-rm/DECRQM.html>`_ escape sequence.
 
 The new mode works as follows:
 
@@ -141,6 +141,8 @@ For example::
 This encoding means each key event is represented by 8 or 9 printable ascii
 only bytes, for maximum robustness.
 
+
+.. _ext_styles:
 
 Setting text styles/colors in arbitrary regions of the screen
 ------------------------------------------------------------------

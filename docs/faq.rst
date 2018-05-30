@@ -53,8 +53,8 @@ it by adding the following to your vimrc::
 
     let &t_ut=''
 
+See :ref:`here <ext_styles>` for why |kitty| does not support background color erase.
 
-See `here <https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc#setting-text-styles-colors-in-arbitrary-regions-of-the-screen>`_ for why |kitty| does not support background color erase.
 
 I get errors about the terminal being unknown or opening the terminal failing when SSHing into a different computer?
 -----------------------------------------------------------------------------------------------------------------------

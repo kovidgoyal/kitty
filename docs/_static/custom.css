@@ -11,16 +11,56 @@
     margin-bottom: 1em;
 }
 
+.float-right-img { float: right; margin-left: 1em; margin-bottom: 1em }
+
+.half-with-img { max-width: 50% }
+
+.fit-img { max-width: 95% }
+
+div.body p, div.body dd, div.body li, div.body blockquote {
+    text-align: justify;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+a[href], input[type="submit"] { cursor: pointer; }
+
 a { 
     text-decoration: none !important;
     border-bottom: none !important;
 }
 
-#searchbox h3 {
-    display: none;
+body div.document {
+    margin-top: 1ex;
 }
 
 .major-features li {
     margin-top: 0.75ex;
     margin-bottom: 0.75ex;
 }
+
+.support-form input[type=submit] {
+    border-radius: 6px;
+    box-shadow: rgb(255, 246, 175) 0px 1px 0px 0px;
+    background: linear-gradient(rgb(255, 236, 100) 5%, rgb(255, 171, 35) 100%) rgb(255, 236, 100);
+    border: 1px solid rgb(255, 170, 34);
+    display: inline-block;
+    color: rgb(51, 51, 51);
+    font-family: Arial;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 6px 24px;
+    text-decoration: none;
+    text-shadow: rgb(255, 238, 102) 0px 1px 0px;
+}
+
+.support-form input[type=submit]:hover {
+    background: linear-gradient(rgb(255, 171, 35) 5%, rgb(255, 236, 100) 100%) rgb(255, 171, 35);
+}
+
+.support-form input[type=submit]:focus {
+    outline: 0;
+}
+
