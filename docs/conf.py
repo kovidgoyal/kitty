@@ -200,6 +200,8 @@ texinfo_documents = [
 ]
 
 
+# GitHub linking inlne roles {{{
+
 def issue_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     ' Link to a github issue '
     try:
@@ -232,8 +234,10 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'(commit:{short_id})', refuri=url, **options)
     return [node], []
+# }}}
 
 
+# Sidebar ToC {{{
 def create_toc(app, pagename):
     toctree = app.env.get_toc_for(pagename, app.builder)
     if toctree is not None:
@@ -251,6 +255,7 @@ def create_toc(app, pagename):
 def add_html_context(app, pagename, templatename, context, *args):
     if 'toc' in context:
         context['toc'] = create_toc(app, pagename) or context['toc']
+# }}}
 
 
 def setup(app):
