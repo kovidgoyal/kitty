@@ -242,7 +242,7 @@ Startup Sessions
 ------------------
 
 You can control the tabs, window layout, working directory, startup
-programs, etc. by creating a "session" file and using the :option:`--session`
+programs, etc. by creating a "session" file and using the :option:`kitty --session`
 command line flag. For example:
 
 .. code-block:: ini

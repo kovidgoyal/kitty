@@ -416,7 +416,7 @@ def seq_as_rst(seq, usage, message, appname):
             t = re.sub(r':$', '::', t, flags=re.MULTILINE)
             t = t.replace('::\n\n\t ', '::\n    \n        ')
             t = t.replace('\n\n\t ', '\n    \n')
-            t = re.sub(r'(--[a-zA-Z0-9-]+)', r':option:`\1` ', t)
+            t = re.sub(r'(--[a-zA-Z0-9-]+)', r':option:`{} \1` '.format(appname), t)
             t = re.sub('"(.+?)"', r'``\1``', t)
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:

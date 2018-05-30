@@ -267,7 +267,7 @@ def add_html_context(app, pagename, templatename, context, *args):
 def write_cli_docs():
     from kitty.cli import option_spec_as_rst
     with open('generated/cli-kitty.rst', 'w') as f:
-        f.write(option_spec_as_rst(appname='kitty'))
+        f.write(option_spec_as_rst(appname='kitty').replace('kitty --to', 'kitty @ --to'))
 
 # }}}
 
