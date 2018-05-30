@@ -46,19 +46,19 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
 MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form:
-|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline, num.
-You can use the |_ ls| command to get a list of windows. Note that for
+:italic:`field:regexp`. Where field can be one of: id, title, pid, cwd, cmdline, num.
+You can use the :italic:`ls` command to get a list of windows. Note that for
 numeric fields such as id, pid and num the expression is interpreted as a number,
 not a regular expression. The field num refers to the window position in the current tab,
 starting from zero and counting clockwise (this is the same as the order in which the
-windows are reported by the |_ ls| command). The window id of the current window
+windows are reported by the :italic:`ls` command). The window id of the current window
 is available as the KITTY_WINDOW_ID environment variable.
 '''
 MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form:
-|_ field:regexp|. Where field can be one of: id, title, pid, cwd, cmdline.
-You can use the |_ ls| command to get a list of tabs. Note that for
+:italic:`field:regexp`. Where field can be one of: id, title, pid, cwd, cmdline.
+You can use the :italic:`ls` command to get a list of tabs. Note that for
 numeric fields such as id and pid the expression is interpreted as a number,
 not a regular expression. When using title or id, first a matching tab is
 looked for and if not found a matching window is looked for, and the tab
@@ -70,10 +70,10 @@ for that window is used.
 @cmd(
     'List all tabs/windows',
     'List all windows. The list is returned as JSON tree. The top-level is a list of'
-    ' operating system {appname} windows. Each OS window has an |_ id| and a list'
-    ' of |_ tabs|. Each tab has its own |_ id|, a |_ title| and a list of |_ windows|.'
-    ' Each window has an |_ id|, |_ title|, |_ current working directory|, |_ process id (PID)| and'
-    ' |_ command-line| of the process running in the window.\n\n'
+    ' operating system {appname} windows. Each OS window has an :italic:`id` and a list'
+    ' of :italic:`tabs`. Each tab has its own :italic:`id`, a :italic:`title` and a list of :italic:`windows`.'
+    ' Each window has an :italic:`id`, :italic:`title`, :italic:`current working directory`, :italic:`process id (PID)` and'
+    ' :italic:`command-line` of the process running in the window.\n\n'
     'You can use these criteria to select windows/tabs for the other commands.'.format(appname=appname),
     argspec=''
 )
@@ -110,14 +110,14 @@ def set_font_size(boss, window, payload):
 @cmd(
     'Send arbitrary text to specified windows',
     'Send arbitrary text to specified windows. The text follows Python'
-    ' escaping rules. So you can use escapes like |_ \\x1b| to send control codes'
-    ' and |_ \\u21fa| to send unicode characters. If you use the |_ --match| option'
+    ' escaping rules. So you can use escapes like :italic:`\\x1b` to send control codes'
+    ' and :italic:`\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
     ' the text will be sent to all matched windows. By default, text is sent to'
     ' only the currently active window.',
     options_spec=MATCH_WINDOW_OPTION + '''\n
 --stdin
 type=bool-set
-Read the text to be sent from |_ stdin|. Note that in this case the text is sent as is,
+Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
 not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end reading.
 
 
@@ -202,7 +202,7 @@ def send_text(boss, window, payload):
 # set_window_title {{{
 @cmd(
     'Set the window title',
-    'Set the title for the specified window(s). If you use the |_ --match| option'
+    'Set the title for the specified window(s). If you use the :option:`kitty @ set-window-title --match` option'
     ' the title will be set for all matched windows. By default, only the window'
     ' in which the command is run is affected. If you do not specify a title, the'
     ' last title set by the child process running in the window will be used.',
@@ -229,7 +229,7 @@ def set_window_title(boss, window, payload):
 # set_tab_title {{{
 @cmd(
     'Set the tab title',
-    'Set the title for the specified tab(s). If you use the |_ --match| option'
+    'Set the title for the specified tab(s). If you use the :option:`kitty @ set-tab-title --match` option'
     ' the title will be set for all matched tabs. By default, only the tab'
     ' in which the command is run is affected. If you do not specify a title, the'
     ' title of the currently active window in the tab is used.',
@@ -297,8 +297,8 @@ The number of cells to change the size by, can be negative to decrease the size.
 type=choices
 choices=horizontal,vertical,reset
 default=horizontal
-The axis along which to resize. If |_ horizontal|, it will make the window wider or narrower by the specified increment.
-If |_ vertical|, it will make the window taller or shorter by the specified increment. The special value |_ reset| will
+The axis along which to resize. If :italic:`horizontal`, it will make the window wider or narrower by the specified increment.
+If :italic:`vertical`, it will make the window taller or shorter by the specified increment. The special value :italic:`reset` will
 reset the layout to its default configuration.
 
 
@@ -363,12 +363,12 @@ def close_tab(boss, window, payload):
 # new_window {{{
 @cmd(
     'Open new window',
-    'Open a new window in the specified tab. If you use the |_ --match| option'
+    'Open a new window in the specified tab. If you use the :option:`kitty @ new-window --match` option'
     ' the first matching tab is used. Otherwise the currently active tab is used.'
     ' Prints out the id of the newly opened window. Any command line arguments'
     ' are assumed to be the command line used to run in the new window, if none'
     ' are provided, the default shell is run. For example:\n'
-    '|_ kitty @ new-window --title Email mutt|',
+    ':italic:`kitty @ new-window --title Email mutt`',
     options_spec=MATCH_TAB_OPTION + '''\n
 --title
 The title for the new window. By default it will use the title set by the

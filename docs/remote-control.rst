@@ -102,7 +102,7 @@ instance of |kitty| using the :option:`--to` command line argument to ``kitty @`
 
 
 Note that is all you want to do is run a single |kitty| "daemon" and have subsequent
-|kitty| invocations appear as new top-level windows, you can use the simpler :option:`--single-instance`
+|kitty| invocations appear as new top-level windows, you can use the simpler :option:`kitty --single-instance`
 option, see ``kitty --help`` for that.
 
 The builtin kitty shell

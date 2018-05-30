@@ -87,13 +87,13 @@ all_commands = tuple(sorted(cmap))
 
 
 def parse_rc_args(args):
-    cmds = ('  |G {}|\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
+    cmds = ('  :green:`{}`\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
     msg = (
         'Control {appname} by sending it commands. Add'
-        ' |_ allow_remote_control yes| to kitty.conf for this'
-        ' to work.\n\n|T Commands|:\n{cmds}\n\n'
+        ' :italic:`allow_remote_control yes` to |kitty.conf| for this'
+        ' to work.\n\n:title:`Commands`:\n{cmds}\n\n'
         'You can get help for each individual command by using:\n'
-        '{appname} @ |_ command| -h'
+        '{appname} @ :italic:`command` -h'
     ).format(appname=appname, cmds='\n'.join(cmds))
 
     return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))

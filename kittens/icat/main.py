@@ -34,14 +34,14 @@ Horizontal alignment for the displayed image.
 --place
 Choose where on the screen to display the image. The image will
 be scaled to fit into the specified rectangle. The syntax for
-specifying rectanges is <|_ width|>x<|_ height|>@<|_ left|>x<|_ top|>. All measurements
-are in cells (i.e. cursor positions) with the origin |_ (0, 0)| at
+specifying rectanges is <:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>. All measurements
+are in cells (i.e. cursor positions) with the origin :italic:`(0, 0)` at
 the top-left corner of the screen.
 
 
 --scale-up
 type=bool-set
-When used in combination with |_ --place| it will cause images that
+When used in combination with :option:`--place` it will cause images that
 are smaller than the specified area to be scaled up to use as much
 of the specified area as possible.
 
@@ -56,8 +56,8 @@ type=choices
 choices=detect,file,stream
 default=detect
 Which mechanism to use to transfer images to the terminal. The default is to
-auto-detect. |_ file| means to use a temporary file and |_ stream| means to
-send the data via terminal escape codes. Note that if you use the |_ file|
+auto-detect. :italic:`file` means to use a temporary file and :italic:`stream` means to
+send the data via terminal escape codes. Note that if you use the :italic:`file`
 transfer mode and you are connecting over a remote session then image display
 will not work.
 
@@ -66,7 +66,7 @@ will not work.
 type=bool-set
 Detect support for image display in the terminal. If not supported, will exit
 with exit code 1, otherwise will exit with code 0 and print the supported
-transfer mode to stderr, which can be used with the |_ --transfer-mode| option.
+transfer mode to stderr, which can be used with the :option:`--transfer-mode` option.
 
 
 --detection-timeout
@@ -78,7 +78,7 @@ detecting image display support.
 
 --print-window-size
 type=bool-set
-Print out the window size as |_ widthxheight| (in pixels) and quit. This is a
+Print out the window size as :italic:`widthxheight` (in pixels) and quit. This is a
 convenience method to query the window size if using kitty icat from a
 scripting language that cannot make termios calls.
 '''

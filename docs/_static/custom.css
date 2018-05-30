@@ -92,6 +92,10 @@ div.sphinxsidebar {
     color: blue;
 }
 
+.env {
+    font-style: italic;
+}
+
 .italic {
     font-style: italic;
 }

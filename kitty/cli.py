@@ -19,29 +19,29 @@ sequence, which are merged. Use the special value NONE to not load a config
 file.
 
 If this option is not specified, config files are searched for in the order:
-"$XDG_CONFIG_HOME/{appname}/{conf_name}.conf", "~/.config/{appname}/{conf_name}.conf", {macos_confpath}
-"$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf". The first one that exists is used as the
+:file:`$XDG_CONFIG_HOME/{appname}/{conf_name}.conf`, :file:`~/.config/{appname}/{conf_name}.conf`, {macos_confpath}
+:file:`$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf`. The first one that exists is used as the
 config file.
 
-If the environment variable "KITTY_CONFIG_DIRECTORY" is specified, that
+If the environment variable :env:`KITTY_CONFIG_DIRECTORY` is specified, that
 directory is always used and the above searching does not happen.
 
-If "/etc/xdg/{appname}/{conf_name}.conf" exists it is merged before (i.e. with lower
+If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists it is merged before (i.e. with lower
 priority) than any user config files. It can be used to specify system-wide
 defaults for all users.
-'''.replace('{macos_confpath}', '~/Library/Preferences/{appname}/{conf_name}.conf, ' if is_macos else '')
+'''.replace('{macos_confpath}', ':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else '')
 
 OPTIONS = '''
 --class
 dest=cls
 default={appname}
 condition=not is_macos
-Set the class part of the |_ WM_CLASS| window property
+Set the class part of the :italic:`WM_CLASS` window property
 
 
 --name
 condition=not is_macos
-Set the name part of the |_ WM_CLASS| property (defaults to using the value from |_ --class|)
+Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
 
 
 --title
@@ -56,7 +56,7 @@ type=list
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.
-Syntax: |_ name=value|. For example: |_ -o font_size=20|
+Syntax: :italic:`name=value`. For example: :option:`kitty -o` font_size=20
 
 
 --directory -d
@@ -71,33 +71,33 @@ Detach from the controlling terminal, if any
 
 
 --session
-Path to a file containing the startup |_ session| (tabs, windows, layout, programs).
+Path to a file containing the startup :italic:`session` (tabs, windows, layout, programs).
 See the README file for details and an example.
 
 
 --single-instance -1
 type=bool-set
-If specified only a single instance of |_ {appname}| will run. New invocations will
-instead create a new top-level window in the existing |_ {appname}| instance. This
-allows |_ {appname}| to share a single sprite cache on the GPU and also reduces
-startup time. You can also have separate groups of |_ {appname}| instances by using the
-|_ --instance-group| option
+If specified only a single instance of :italic:`{appname}` will run. New invocations will
+instead create a new top-level window in the existing :italic:`{appname}` instance. This
+allows :italic:`{appname}` to share a single sprite cache on the GPU and also reduces
+startup time. You can also have separate groups of :italic:`{appname}` instances by using the
+:option:`kitty --instance-group` option
 
 
 --instance-group
-Used in combination with the |_ --single-instance| option. All |_ {appname}| invocations
-with the same |_ --instance-group| will result in new windows being created
-in the first |_ {appname}| instance within that group
+Used in combination with the :option:`kitty --single-instance` option. All :italic:`{appname}` invocations
+with the same :option:`kitty --instance-group` will result in new windows being created
+in the first :italic:`{appname}` instance within that group
 
 
 --listen-on
 Tell kitty to listen on the specified address for control
-messages. For example, |_ --listen-on=unix:/tmp/mykitty| or
-|_ --listen-on=tcp:localhost:12345|. On Linux systems, you can also use abstract
-UNIX sockets, not associated with a file, like this: |_ --listen-on=unix:@mykitty|.
-To control kitty, you can send it commands with |_ kitty @| using the |_ --to| option
+messages. For example, :option:`{appname} --listen-on` unix:/tmp/mykitty or
+:option:`{appname} --listen-on` tcp:localhost:12345. On Linux systems, you can also use abstract
+UNIX sockets, not associated with a file, like this: :option:`{appname} --listen-on` unix:@mykitty.
+To control kitty, you can send it commands with :italic:`kitty @` using the :option:`kitty @ --to` option
 to specify this address. Note that this option will be ignored, unless you set
-|_ allow_remote_control| to yes in |_ kitty.conf|
+:italic:`allow_remote_control` to yes in |kitty.conf|.
 
 
 # Debugging options
@@ -114,7 +114,7 @@ Output commands received from child process to stdout
 
 --replay-commands
 Replay previously dumped commands. Specify the path to a dump file previously created by --dump-commands. You
-can open a new kitty window to replay the commands with:
+can open a new kitty window to replay the commands with::
 
     kitty sh -c "kitty --replay-commands /path/to/dump/file; read"
 
@@ -125,7 +125,8 @@ Path to file in which to store the raw bytes received from the child process
 
 --debug-gl
 type=bool-set
-Debug OpenGL commands. This will cause all OpenGL calls to check for errors instead of ignoring them. Useful when debugging rendering problems
+Debug OpenGL commands. This will cause all OpenGL calls to check for errors
+instead of ignoring them. Useful when debugging rendering problems
 
 
 --debug-font-fallback
@@ -182,6 +183,19 @@ def title(x):
     return blue(bold(x))
 
 
+def option(x):
+    parts = map(bold, x.split())
+    return ' '.join(parts)
+
+
+def env(x):
+    return italic(x)
+
+
+def file(x):
+    return italic(x)
+
+
 def parse_option_spec(spec=OPTIONS):
     NORMAL, METADATA, HELP = 'NORMAL', 'METADATA', 'HELP'
     state = NORMAL
@@ -193,7 +207,7 @@ def parse_option_spec(spec=OPTIONS):
     current_cmd = None
 
     for line in lines:
-        line = line.strip()
+        line = line.rstrip()
         if state is NORMAL:
             if not line:
                 continue
@@ -220,10 +234,11 @@ def parse_option_spec(spec=OPTIONS):
                     current_cmd['choices'] = {x.strip() for x in current_cmd['choices'].split(',')}
         elif state is HELP:
             if line:
-                current_cmd['help'] += ' ' + line.lstrip()
+                spc = '' if current_cmd['help'].endswith('\n') else ' '
+                current_cmd['help'] += spc + line
             else:
                 if prev_line:
-                    current_cmd['help'] += '\n\n\t'
+                    current_cmd['help'] += '\n\n'
                 else:
                     state = NORMAL
                     (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
@@ -236,33 +251,17 @@ def parse_option_spec(spec=OPTIONS):
 
 
 def prettify(text):
+    role_map = globals()
 
     def sub(m):
-        t = m.group(2)
-        for ch in m.group(1):
-            t = {'C': cyan, '_': italic, '*': bold, 'G': green, 'T': title}[ch](t)
-        return t
+        role, text = m.group(1, 2)
+        return role_map[role](text)
 
-    text = re.sub(r'[|]([a-zA-Z_*]+?) (.+?)[|]', sub, text)
-    return text
+    text = re.sub(r':([a-z]+):`([^`]+)`', sub, text)
+    return text.replace('|kitty.conf|', italic('kitty.conf'))
 
 
 def prettify_rst(text):
-
-    def roled(role):
-        def f(x):
-            if x.startswith(':'):
-                return x
-            return ':{}:`{}`'.format(role, x.replace('`', r'\`'))
-        return f
-
-    def sub(m):
-        t = m.group(2)
-        for ch in m.group(1):
-            t = {'C': roled('cyan'), '_': roled('italic'), '*': roled('bold'), 'G': roled('green'), 'T': roled('title')}[ch](t)
-        return t
-
-    text = re.sub(r'[|]([a-zA-Z_*]+?) (.+?)[|]', sub, text)
     return text
 
 
@@ -307,6 +306,12 @@ def wrap(text, limit=80):
     return reversed(lines)
 
 
+default_msg = (
+        'Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program` to run inside :italic:`{appname}` as normal'
+        ' arguments following the :italic:`options`. For example: {appname} /bin/sh'
+    ).format(appname=appname)
+
+
 def print_help_for_seq(seq, usage, message, appname):
     from kitty.utils import screen_size_function
     screen_size = screen_size_function()
@@ -333,10 +338,7 @@ def print_help_for_seq(seq, usage, message, appname):
     optstring = '[options] ' if seq else ''
     a('{}: {} {}{}'.format(title('Usage'), bold(yellow(appname)), optstring, usage))
     a('')
-    message = message or (
-        'Run the |G {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
-        ' arguments following the |_ options|. For example: {appname} /bin/sh'
-    ).format(appname=appname)
+    message = message or default_msg
     wa(prettify(message))
     a('')
     if seq:
@@ -386,10 +388,7 @@ def seq_as_rst(seq, usage, message, appname):
     a('')
     a('  {} {}{}'.format(appname, optstring, usage))
     a('')
-    message = message or (
-        'Run the |G {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
-        ' arguments following the |_ options|. For example: {appname} /bin/sh'
-    ).format(appname=appname)
+    message = message or default_msg
     a(prettify_rst(message))
     a('')
     if seq:
@@ -413,11 +412,6 @@ def seq_as_rst(seq, usage, message, appname):
             defval = opt.get('default')
             t = help_text.replace('%default', str(defval)).strip()
             a('')
-            t = re.sub(r':$', '::', t, flags=re.MULTILINE)
-            t = t.replace('::\n\n\t ', '::\n    \n        ')
-            t = t.replace('\n\n\t ', '\n    \n')
-            t = re.sub(r'(--[a-zA-Z0-9-]+)', r':option:`{} \1` '.format(appname), t)
-            t = re.sub('"(.+?)"', r'``\1``', t)
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:
                 a(textwrap.indent('Default: {}'.format(defval), ' ' * 4))

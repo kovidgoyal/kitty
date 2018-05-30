@@ -91,6 +91,7 @@ rst_prolog = '''
 .. role:: bold
 .. role:: cyan
 .. role:: title
+.. role:: env
 
 ''' + create_shortcut_defs()
 

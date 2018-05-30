@@ -18,6 +18,6 @@ You can also display the current configuration by running ``kitty
 |kitty| looks for a config file in the OS config directories (usually
 :file:`~/.config/kitty/kitty.conf` and additionally
 :file:`~/Library/Preferences/kitty/kitty.conf` on macOS) but you can pass a
-specific path via the ``--config`` option or use the ``KITTY_CONFIG_DIRECTORY``
-environment variable. See the help for the :option:`--config` option in ``kitty
---help`` for full details. 
+specific path via the :option:`kitty --config` option or use the ``KITTY_CONFIG_DIRECTORY``
+environment variable. See the :option:`kitty --config` option 
+for full details. 

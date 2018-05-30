@@ -372,7 +372,7 @@ type=list
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.
-Syntax: |_ name=value|. For example: |_ -o background=gray|
+Syntax: :italic:`name=value`. For example: :italic:`-o background=gray`
 
 '''.format, config_help=CONFIG_HELP.format(conf_name='diff', appname=appname))
 
