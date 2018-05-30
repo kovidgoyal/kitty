@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 Controlling kitty from scripts or the shell
 ==============================================
 
@@ -29,7 +31,7 @@ Let's send some text to this new window::
     kitty @ send-text --match cmdline:cat Hello, World
 
 This will make ``Hello, World`` show up in the window running the ``cat`` program.
-The :option:`--match` option is very powerful, it allows selecting windows by their
+The :option:`kitty @ send-text --match` option is very powerful, it allows selecting windows by their
 titles, the command line of the program running in the window, the working
 directory of the program running in the window, etc.  See ``kitty @ send-text
 --help`` for details.
@@ -80,7 +82,7 @@ This outputs a tree of data in JSON format. The top level of the tree is all
 operating system kitty windows. Each OS window has an id and a list of tabs.
 Each tab has its own id, a title and a list of windows. Each window has an id,
 title, current working directory, process id (PID) and command-line of the
-process running in the window. You can use this information with :option:`--match`
+process running in the window. You can use this information with :option:`kitty @ focus-window --match`
 to control individual windows.
 
 As you can see, it is very easy to control |kitty| using the
@@ -94,9 +96,9 @@ extra steps. First start |kitty| as::
 
     kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty
 
-The :option:`--listen-on` option tells |kitty| to listen for control messages at the
+The :option:`kitty --listen-on` option tells |kitty| to listen for control messages at the
 specified path. See ``kitty --help`` for details. Now you can control this
-instance of |kitty| using the :option:`--to` command line argument to ``kitty @``. For example::
+instance of |kitty| using the :option:`kitty @ --to` command line argument to ``kitty @``. For example::
 
     kitty @ --to unix:/tmp/mykitty ls
 
@@ -115,3 +117,7 @@ shell with completion for |kitty| command names and options.
 You can even open the |kitty| shell inside a running |kitty| using a simple
 keyboard shortcut (|sc_kitty_shell_window| by default). This has the added
 advantage that you dont need to use ``allow_remote_control`` to make it work.
+
+
+.. include:: generated/cli-kitty-at.rst
+

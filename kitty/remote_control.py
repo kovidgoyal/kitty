@@ -33,7 +33,7 @@ def handle_cmd(boss, window, cmd):
 global_options_spec = partial('''\
 --to
 An address for the kitty instance to control. Corresponds to the address
-given to the kitty instance via the --listen-on option. If not specified,
+given to the kitty instance via the :option:`kitty --listen-on` option. If not specified,
 messages are sent to the controlling terminal for this process, i.e. they
 will only work if this process is run within an existing kitty window.
 '''.format, appname=appname)
@@ -84,18 +84,19 @@ def do_io(to, send, no_response):
 
 
 all_commands = tuple(sorted(cmap))
+cli_msg = (
+        'Control {appname} by sending it commands. Add'
+        ' :italic:`allow_remote_control yes` to |kitty.conf| for this'
+        ' to work.'
+).format(appname=appname)
 
 
 def parse_rc_args(args):
     cmds = ('  :green:`{}`\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
-    msg = (
-        'Control {appname} by sending it commands. Add'
-        ' :italic:`allow_remote_control yes` to |kitty.conf| for this'
-        ' to work.\n\n:title:`Commands`:\n{cmds}\n\n'
-        'You can get help for each individual command by using:\n'
-        '{appname} @ :italic:`command` -h'
-    ).format(appname=appname, cmds='\n'.join(cmds))
-
+    msg = cli_msg + (
+            '\n\n:title:`Commands`:\n{cmds}\n\n'
+            'You can get help for each individual command by using:\n'
+            '{appname} @ :italic:`command` -h').format(appname=appname, cmds='\n'.join(cmds))
     return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))
 
 

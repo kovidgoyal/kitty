@@ -8,6 +8,8 @@
 
 import subprocess
 from collections import defaultdict
+from functools import partial
+
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 
@@ -269,6 +271,20 @@ def write_cli_docs():
     from kitty.cli import option_spec_as_rst
     with open('generated/cli-kitty.rst', 'w') as f:
         f.write(option_spec_as_rst(appname='kitty').replace('kitty --to', 'kitty @ --to'))
+    as_rst = partial(option_spec_as_rst, heading_char='_')
+    from kitty.remote_control import global_options_spec, cli_msg, cmap, all_commands
+    with open('generated/cli-kitty-at.rst', 'w') as f:
+        p = partial(print, file=f)
+        p('kitty @\n' + '-' * 80)
+        p('.. program::', 'kitty @')
+        p('\n\n' + as_rst(
+            global_options_spec, message=cli_msg, usage='command ...', appname='kitty @'))
+        from kitty.cmds import cli_params_for
+        for cmd_name in all_commands:
+            func = cmap[cmd_name]
+            p('kitty @', func.name + '\n' + '-' * 120)
+            p('.. program::', 'kitty @', func.name)
+            p('\n\n' + as_rst(*cli_params_for(func)))
 
 # }}}
 

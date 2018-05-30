@@ -376,7 +376,7 @@ def print_help_for_seq(seq, usage, message, appname):
 print_help_for_seq.allow_pager = True
 
 
-def seq_as_rst(seq, usage, message, appname):
+def seq_as_rst(seq, usage, message, appname, heading_char='-'):
     import textwrap
     blocks = []
     a = blocks.append
@@ -393,7 +393,7 @@ def seq_as_rst(seq, usage, message, appname):
     a('')
     if seq:
         a('Options')
-        a('----------------')
+        a(heading_char * 30)
     for opt in seq:
         if isinstance(opt, str):
             a(opt)
@@ -558,11 +558,11 @@ def options_spec():
     return options_spec.ans
 
 
-def option_spec_as_rst(ospec=options_spec, usage=None, message=None, appname=None):
+def option_spec_as_rst(ospec=options_spec, usage=None, message=None, appname=None, heading_char='-'):
     options = parse_option_spec(ospec())
     seq, disabled = options
     oc = Options(seq, usage, message, appname)
-    return seq_as_rst(oc.seq, oc.usage, oc.message, oc.appname)
+    return seq_as_rst(oc.seq, oc.usage, oc.message, oc.appname, heading_char=heading_char)
 
 
 def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=None):

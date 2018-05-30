@@ -635,8 +635,12 @@ def set_background_opacity(boss, window, payload):
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 
+def cli_params_for(func):
+    return (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name)
+
+
 def parse_subcommand_cli(func, args):
-    opts, items = parse_args(args[1:], (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name))
+    opts, items = parse_args(args[1:], *cli_params_for(func))
     if func.args_count is not None and func.args_count != len(items):
         if func.args_count == 0:
             raise SystemExit('Unknown extra argument(s) supplied to {}'.format(func.name))
