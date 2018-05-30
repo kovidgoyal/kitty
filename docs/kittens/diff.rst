@@ -13,8 +13,11 @@ Major Features
 * Does recursive directory diffing
 
 
-.. image:: ../screenshots/diff.png
+.. figure:: ../screenshots/diff.png
    :alt: Screenshot, showing a sample diff
+   :align: center
+
+   Screenshot, showing a sample diff
 
 .. contents::
 

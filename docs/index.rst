@@ -9,7 +9,8 @@ kitty - the fast, featureful, GPU based, terminal emulator
 
     * Supports all modern terminal features: :doc:`graphics (images)
       <graphics-protocol>`, unicode, true-color, OpenType ligatures, mouse
-      protocol, focus tracking, bracketed paste and so on.
+      protocol, focus tracking, bracketed paste and several :doc:`new terminal
+      protocol extensions <protocol-extensions>`.
 
     * Supports tiling multiple terminal windows side by side in different
       :ref:`layouts <layouts>` without needing to use an extra program like tmux
@@ -17,7 +18,7 @@ kitty - the fast, featureful, GPU based, terminal emulator
     * Can be :doc:`controlled from scripts or the shell prompt <remote-control>`,
       even over SSH.
 
-    * Has a framework for *kittens*, small terminal programs that can be used to
+    * Has a framework for :ref:`kittens`, small terminal programs that can be used to
       extend |kitty|'s functionality.  For example, they are used for
       :doc:`Unicode input <kittens/unicode-input>`, :doc:`Hints <kittens/hints>` and
       :doc:`Side-by-side diff <kittens/diff>`.
@@ -204,6 +205,30 @@ Writing a new layout only requires about a hundred lines of code, so if there
 is some layout you want, take a look at `layout.py
 <https://github.com/kovidgoyal/kitty/blob/master/kitty/layout.py>`_  and submit
 a pull request!
+
+.. _kittens:
+
+Kittens
+------------------
+
+|kitty| has a framework for easily creating terminal programs that make use of
+its advanced features. These programs are called kittens. They are used both
+to add features to |kitty| itself and to create useful standalone programs.
+Some prominent kittens:
+
+:doc:`diff <kittens/diff>`
+    A fast, side-by-side diff for the terminal with syntax highlighting and
+    images 
+
+
+:doc:`Unicode Input <kittens/unicode-input>`
+    Easily input arbitrary unicode characters in |kitty| by name or hex code.
+
+
+:doc:`Hints <kittens/hints>`
+    Select and open/paste/insert arbitrary text snippets such as URLs,
+    filenames, words, lines, etc from the terminal screen.
+
 
 .. _sessions:
 
