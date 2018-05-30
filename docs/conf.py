@@ -234,6 +234,26 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     return [node], []
 
 
+def create_toc(app, pagename):
+    toctree = app.env.get_toc_for(pagename, app.builder)
+    if toctree is not None:
+        subtree = toctree[toctree.first_child_matching_class(nodes.list_item)]
+        bl = subtree.first_child_matching_class(nodes.bullet_list)
+        if bl is None:
+            return  # Empty ToC
+        subtree = subtree[bl]
+        # for li in subtree.traverse(nodes.list_item):
+        #     modify_li(li)
+        # subtree['ids'] = [ID]
+        return app.builder.render_partial(subtree)['fragment']
+
+
+def add_html_context(app, pagename, templatename, context, *args):
+    if 'toc' in context:
+        context['toc'] = create_toc(app, pagename) or context['toc']
+
+
 def setup(app):
     app.add_role('iss', issue_role)
     app.add_role('commit', commit_role)
+    app.connect('html-page-context', add_html_context)

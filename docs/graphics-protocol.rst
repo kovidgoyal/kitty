@@ -1,3 +1,5 @@
+:tocdepth: 3
+
 The terminal graphics protocol
 ==================================
 

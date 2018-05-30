@@ -64,3 +64,21 @@ body div.document {
     outline: 0;
 }
 
+
+div.sphinxsidebar {
+    font-size: inherit;
+    line-height: inherit;
+}
+
+#sidebartoc li {
+    margin-top: 0.75ex;
+    margin-bottom: 0.75ex;
+}
+
+#sidebartoc ul {
+    list-style: none !important;
+}
+
+#sidebartoc a[href]:hover {
+    color: red;
+}
