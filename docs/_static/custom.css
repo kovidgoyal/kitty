@@ -82,3 +82,25 @@ div.sphinxsidebar {
 #sidebartoc a[href]:hover {
     color: red;
 }
+
+
+.green {
+    color: green;
+}
+
+.cyan {
+    color: blue;
+}
+
+.italic {
+    font-style: italic;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.title {
+    font-size: larger;
+    font-weight: bold
+}

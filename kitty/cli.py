@@ -103,6 +103,7 @@ to specify this address. Note that this option will be ignored, unless you set
 # Debugging options
 
 --version -v
+type=bool-set
 The current {appname} version
 
 
@@ -246,6 +247,25 @@ def prettify(text):
     return text
 
 
+def prettify_rst(text):
+
+    def roled(role):
+        def f(x):
+            if x.startswith(':'):
+                return x
+            return ':{}:`{}`'.format(role, x.replace('`', r'\`'))
+        return f
+
+    def sub(m):
+        t = m.group(2)
+        for ch in m.group(1):
+            t = {'C': roled('cyan'), '_': roled('italic'), '*': roled('bold'), 'G': roled('green'), 'T': roled('title')}[ch](t)
+        return t
+
+    text = re.sub(r'[|]([a-zA-Z_*]+?) (.+?)[|]', sub, text)
+    return text
+
+
 def version(add_rev=False):
     rev = ''
     from . import fast_data_types
@@ -352,6 +372,61 @@ def print_help_for_seq(seq, usage, message, appname):
 
 
 print_help_for_seq.allow_pager = True
+
+
+def seq_as_rst(seq, usage, message, appname):
+    import textwrap
+    blocks = []
+    a = blocks.append
+
+    usage = '[program-to-run ...]' if usage is None else usage
+    optstring = '[options] ' if seq else ''
+    a('.. highlight:: sh')
+    a('.. code-block:: sh')
+    a('')
+    a('  {} {}{}'.format(appname, optstring, usage))
+    a('')
+    message = message or (
+        'Run the |G {appname}| terminal emulator. You can also specify the |_ program| to run inside |_ {appname}| as normal'
+        ' arguments following the |_ options|. For example: {appname} /bin/sh'
+    ).format(appname=appname)
+    a(prettify_rst(message))
+    a('')
+    if seq:
+        a('Options')
+        a('----------------')
+    for opt in seq:
+        if isinstance(opt, str):
+            a(opt)
+            a('~' * (len(opt) + 10))
+            continue
+        help_text = opt['help']
+        if help_text == '!':
+            continue  # hidden option
+        defn = '.. option:: '
+        if not opt.get('type', '').startswith('bool-'):
+            val_name = ' <{}>'.format(opt['dest'].upper())
+        else:
+            val_name = ''
+        a(defn + ', '.join(o + val_name for o in sorted(opt['aliases'])))
+        if opt.get('help'):
+            defval = opt.get('default')
+            t = help_text.replace('%default', str(defval)).strip()
+            a('')
+            t = re.sub(r':$', '::', t, flags=re.MULTILINE)
+            t = t.replace('::\n\n\t ', '::\n    \n        ')
+            t = t.replace('\n\n\t ', '\n    \n')
+            t = re.sub(r'(--[a-zA-Z0-9-]+)', r':option:`\1` ', t)
+            t = re.sub('"(.+?)"', r'``\1``', t)
+            a(textwrap.indent(prettify_rst(t), ' ' * 4))
+            if defval is not None:
+                a(textwrap.indent('Default: {}'.format(defval), ' ' * 4))
+            if 'choices' in opt:
+                a(textwrap.indent('Choices: {}'.format(', '.join(opt['choices'])), ' ' * 4))
+            a('')
+
+    text = '\n'.join(blocks)
+    return text
 
 
 def defval_for_opt(opt):
@@ -487,6 +562,13 @@ def options_spec():
 
         )
     return options_spec.ans
+
+
+def option_spec_as_rst(ospec=options_spec, usage=None, message=None, appname=None):
+    options = parse_option_spec(ospec())
+    seq, disabled = options
+    oc = Options(seq, usage, message, appname)
+    return seq_as_rst(oc.seq, oc.usage, oc.message, oc.appname)
 
 
 def parse_args(args=None, ospec=options_spec, usage=None, message=None, appname=None):

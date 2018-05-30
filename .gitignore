@@ -14,3 +14,4 @@ dev
 __pycache__
 glfw/wayland-*-client-protocol.[ch]
 docs/_build
+docs/generated

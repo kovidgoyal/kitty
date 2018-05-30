@@ -60,6 +60,10 @@ packages are available for:
 `Fedora <https://copr.fedorainfracloud.org/coprs/oleastre/kitty-terminal/>`_.
 
 
+See :doc:`Configuring kitty <conf>` for help on configuring kitty and
+:doc:`Invocation <invocation>` for the command line arguments kitty supports.
+
+
 .. contents::
 
 

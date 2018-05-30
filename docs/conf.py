@@ -78,7 +78,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'generated/cli-*']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -86,6 +86,11 @@ pygments_style = 'sphinx'
 rst_prolog = '''
 .. |kitty.conf| replace:: :doc:`kitty.conf </conf>`
 .. |kitty| replace:: *kitty*
+.. role:: green
+.. role:: italic
+.. role:: bold
+.. role:: cyan
+.. role:: title
 
 ''' + create_shortcut_defs()
 
@@ -258,7 +263,17 @@ def add_html_context(app, pagename, templatename, context, *args):
 # }}}
 
 
+# CLI docs {{{
+def write_cli_docs():
+    from kitty.cli import option_spec_as_rst
+    with open('generated/cli-kitty.rst', 'w') as f:
+        f.write(option_spec_as_rst(appname='kitty'))
+
+# }}}
+
+
 def setup(app):
+    write_cli_docs()
     app.add_role('iss', issue_role)
     app.add_role('commit', commit_role)
     app.connect('html-page-context', add_html_context)
