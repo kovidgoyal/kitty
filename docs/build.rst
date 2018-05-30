@@ -12,17 +12,22 @@ the following dependencies are installed first.
 Dependencies
 ----------------
 
-* python >= 3.5
-* harfbuzz >= 1.5.0
-* zlib
-* libpng
-* freetype (not needed on macOS)
-* fontconfig (not needed on macOS)
-* ImageMagick (optional, needed to use the ``kitty icat`` tool to display images in the terminal)
-* pygments (optional, need for syntax highlighting in ``kitty +kitten diff``)
-* gcc or clang (required only for building)
-* pkg-config (required only for building)
-* For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for ``xcursor``, ``xrandr``, ``libxi``, ``xinerama``, ``libgl1-mesa`` and ``xkbcommon-x11``, if they are not already installed by your distro.
+Run-time dependencies:
+
+    * python >= 3.5
+    * harfbuzz >= 1.5.0
+    * zlib
+    * libpng
+    * freetype (not needed on macOS)
+    * fontconfig (not needed on macOS)
+    * ImageMagick (optional, needed to use the ``kitty icat`` tool to display images in the terminal)
+    * pygments (optional, need for syntax highlighting in ``kitty +kitten diff``)
+
+Build-time dependencies:
+
+    * gcc or clang 
+    * pkg-config 
+    * For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for ``xcursor``, ``xrandr``, ``libxi``, ``xinerama``, ``libgl1-mesa`` and ``xkbcommon-x11``, if they are not already installed by your distro.
 
 Install and run from source
 ------------------------------
