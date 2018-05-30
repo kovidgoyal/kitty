@@ -25,7 +25,7 @@ version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
 appname = re.search(
     r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE).group(1)
 
-ALL_ACTIONS = 'build tag upload'.split()
+ALL_ACTIONS = 'build tag upload website'.split()
 
 
 def call(*cmd):
@@ -46,6 +46,10 @@ def run_tag(args):
     call('git push')
     call('git tag -s v{0} -m version-{0}'.format(version))
     call('git push origin v{0}'.format(version))
+
+
+def run_website(args):
+    call('docs/publish.py')
 
 
 class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
@@ -278,7 +282,7 @@ def run_upload(args):
 def require_git_master(branch='master'):
     b = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').strip()
     if b != branch:
-        raise SystemExit('You must be in the {} got branch'.format(branch))
+        raise SystemExit('You must be in the {} git branch'.format(branch))
 
 
 def main():
