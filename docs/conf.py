@@ -114,7 +114,6 @@ html_theme_options = {
     'show_powered_by': False,
     'fixed_sidebar': True,
     'sidebar_collapse': True,
-    'analytics_id': 'UA-20736318-2',
     'github_button': False,
     'github_banner': True,
     'github_user': 'kovidgoyal',
