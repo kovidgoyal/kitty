@@ -4,8 +4,12 @@ Unicode input
 You can input unicode characters by name, hex code, recently used and even an editable favorites list.
 Press |sc_input_unicode_character| to start the unicode input widget, shown below.
 
-.. image:: ../screenshots/unicode.png
+.. figure:: ../screenshots/unicode.png
     :alt: A screenshot of the unicode input widget
+    :align: center
+    :scale: 100%
+
+    A screenshot of the unicode input widget
 
 In *Code* mode, you enter a unicode character by typing in the hex code for the
 character and pressing enter, for example, type in ``2716`` and press enter to get

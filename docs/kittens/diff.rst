@@ -1,6 +1,8 @@
 kitty-diff - A side-by-side diff tool with syntax highlighting and images
 =============================================================================
 
+.. highlight:: sh
+
 Major Features
 -----------------
 
@@ -16,6 +18,7 @@ Major Features
 .. figure:: ../screenshots/diff.png
    :alt: Screenshot, showing a sample diff
    :align: center
+   :scale: 100%
 
    Screenshot, showing a sample diff
 
@@ -25,7 +28,7 @@ Major Features
 Installation
 ---------------
 
-Simply install `kitty <https://github.com/kovidgoyal/kitty>`_.  You also need
+Simply install :ref:`kitty <quickstart>`.  You also need
 to have either the `git <https://git-scm.com/>`_ program or the ``diff`` program
 installed. Additionally, for syntax highlighting to work,
 `pygments <http://pygments.org/>`_ must be installed (note that pygments is

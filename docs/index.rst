@@ -39,9 +39,12 @@ kitty - the fast, featureful, GPU based, terminal emulator
 .. figure:: screenshots/screenshot.png
     :alt: Screenshot, showing three programs in the 'Tall' layout
     :align: center
+    :scale: 100%
 
     Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
 
+
+.. _quickstart:
 
 Quickstart
 --------------

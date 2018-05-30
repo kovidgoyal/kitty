@@ -27,6 +27,12 @@ pre {
 
 a[href], input[type="submit"] { cursor: pointer; }
 
+img[style] {
+    /* Used for :scale: images to have them render properly but still popup when clicked */
+    width: auto !important;
+    height: auto !important;
+}
+
 a { 
     text-decoration: none !important;
     border-bottom: none !important;
