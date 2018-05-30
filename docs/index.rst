@@ -284,6 +284,11 @@ Frequently Asked Questions
 The list of Frequently Asked Questions (*FAQ*) is :doc:`available here <faq>`.
 
 
+Changelog
+------------------
+
+See :doc:`changelog`.
+
 .. toctree::
     :hidden:
     :glob:

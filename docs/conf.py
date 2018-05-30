@@ -6,7 +6,10 @@
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
+import subprocess
 from collections import defaultdict
+from docutils import nodes
+from docutils.parsers.rst.roles import set_classes
 
 
 def create_shortcut_defs():
@@ -197,5 +200,40 @@ texinfo_documents = [
 ]
 
 
+def issue_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    ' Link to a github issue '
+    try:
+        issue_num = int(text)
+        if issue_num <= 0:
+            raise ValueError
+    except ValueError:
+        msg = inliner.reporter.error(
+            'GitHub issue number must be a number greater than or equal to 1; '
+            '"%s" is invalid.' % text, line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
+    url = f'https://github.com/kovidgoyal/kitty/issues/{issue_num}'
+    set_classes(options)
+    node = nodes.reference(rawtext, f'#{issue_num}', refuri=url, **options)
+    return [node], []
+
+
+def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    ' Link to a github commit '
+    try:
+        commit_id = subprocess.check_output(f'git rev-list --max-count=1 --skip=# {text}'.split()).decode('utf-8').strip()
+    except Exception:
+        msg = inliner.reporter.error(
+            f'GitHub commit id "{text}" not recognized.', line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
+    url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
+    set_classes(options)
+    short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
+    node = nodes.reference(rawtext, f'(commit:{short_id})', refuri=url, **options)
+    return [node], []
+
+
 def setup(app):
-    pass
+    app.add_role('iss', issue_role)
+    app.add_role('commit', commit_role)
