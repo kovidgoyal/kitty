@@ -42,7 +42,7 @@ def main(args):
     server = args[1]
     terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
     sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
-    cmd = ['ssh', '-t', server, sh_script]
+    cmd = ['ssh'] + args[2:] + ['-t', server, sh_script]
     p = subprocess.Popen(cmd)
     raise SystemExit(p.wait())
 
