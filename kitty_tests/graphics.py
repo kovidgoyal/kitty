@@ -6,7 +6,7 @@ import os
 import tempfile
 import unittest
 import zlib
-from base64 import standard_b64encode
+from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
 
 from kitty.fast_data_types import (
@@ -205,6 +205,12 @@ class TestGraphics(BaseTest):
         sl(data, f=100, expecting_data=rgba_data)
 
         self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
+
+    def test_load_png_simple(self):
+        # 1x1 transparent PNG
+        png_data = standard_b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
+        s, g, l, sl = load_helpers(self)
+        sl(png_data, f=100, expecting_data=b'\x00\xff\xff\x7f')
 
     def test_image_put(self):
         cw, ch = 10, 20
