@@ -18,7 +18,6 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring-dev
                 - libxcb-xkb-dev
                 - libpng-dev
                 - python3-pil
@@ -40,7 +39,6 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring-dev
                 - libxcb-xkb-dev
                 - libpng-dev
                 - python3-pil
@@ -62,7 +60,6 @@ matrix:
                 - libxrandr-dev
                 - libxinerama-dev
                 - libxcursor-dev
-                - libunistring-dev
                 - libxcb-xkb-dev
                 - libpng-dev
                 - python3-pil
