@@ -1,18 +1,21 @@
-kitty-diff - A side-by-side diff tool with syntax highlighting and images
-=============================================================================
+kitty-diff - A fast side-by-side diff tool with syntax highlighting and images
+================================================================================
 
 .. highlight:: sh
 
 Major Features
 -----------------
 
-* Displays diffs side-by-side in the kitty terminal.
+.. container:: major-features
 
-* Does syntax highlighting of displayed diffs
+    * Displays diffs side-by-side in the kitty terminal
 
-* Displays images as well as text diffs, even over SSH
+    * Does syntax highlighting of the displayed diffs, asynchronously, for maximum
+      speed
 
-* Does recursive directory diffing
+    * Displays images as well as text diffs, even over SSH
+
+    * Does recursive directory diffing
 
 
 .. figure:: ../screenshots/diff.png
