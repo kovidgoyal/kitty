@@ -507,7 +507,7 @@ def build_asan_launcher(args):
     run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
 
 
-def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=False):
+def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=False, for_freeze=False):
     cflags = '-Wall -Werror -fpie'.split()
     cppflags = []
     libs = []
@@ -516,7 +516,7 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
         libs.append('-lprofiler')
     else:
         cflags.append('-O3')
-    if for_bundle:
+    if for_bundle or for_freeze:
         cppflags.append('-DFOR_BUNDLE')
         cppflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
     elif sh_launcher:
@@ -527,6 +527,8 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
+    if for_freeze:
+        ldflags += ['-Wl,-rpath,$ORIGIN/../lib']
     cmd = [env.cc] + cppflags + cflags + [
         'linux-launcher.c', '-o',
         os.path.join(launcher_dir, exe)
@@ -567,7 +569,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
     shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher)
+    build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher, args.for_freeze)
     if not is_macos:  # {{{ linux desktop gunk
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
@@ -668,7 +670,7 @@ def clean():
         os.unlink(x)
 
 
-def option_parser():
+def option_parser():  # {{{
     p = argparse.ArgumentParser()
     p.add_argument(
         'action',
@@ -717,11 +719,18 @@ def option_parser():
         help='Use the -pg compile flag to add profiling information'
     )
     p.add_argument(
+        '--for-freeze',
+        default=False,
+        action='store_true',
+        help='Internal use'
+    )
+    p.add_argument(
         '--libdir-name',
         default='lib',
         help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
     )
     return p
+# }}}
 
 
 def main():

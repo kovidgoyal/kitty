@@ -39,15 +39,28 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
     PyObject *ed = PyUnicode_FromWideChar(exe_dir, -1);
     wchar_t stdlib[PATH_MAX+1] = {0};
-    num = swprintf(stdlib, PATH_MAX, L"%ls/../Resources/Python/lib/python%s:%ls/../Resources/Python/lib/python%s/lib-dynload", exe_dir, PYVER, exe_dir, PYVER);
+#ifdef __APPLE__
+    const char *python_relpath = "../Resources/Python/lib";
+#else
+    const char *python_relpath = "../lib";
+#endif
+    num = swprintf(stdlib, PATH_MAX, L"%ls/%s/python%s:%ls/%s/python%s/lib-dynload:%ls/%s/python%s/site-packages",
+            exe_dir, python_relpath, PYVER,
+            exe_dir, python_relpath, PYVER,
+            exe_dir, python_relpath, PYVER
+    );
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python stdlib\n"); return 1; }
     Py_SetPath(stdlib);
+#ifdef __APPLE__
     num = swprintf(stdlib, PATH_MAX, L"%ls/../Frameworks/kitty", exe_dir);
+#else
+    num = swprintf(stdlib, PATH_MAX, L"%ls/../lib/kitty", exe_dir);
+#endif
     PyMem_RawFree(exe_dir);
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to kitty lib\n"); return 1; }
     Py_Initialize();
     PySys_SetArgvEx(argc - 1, argv + 1, 0);
-    PySys_SetObject("frozen", Py_True);   // dont care if this fails
+    PySys_SetObject("frozen", Py_True);
     if (ed) { PySys_SetObject("bundle_exe_dir", ed); Py_CLEAR(ed); }
     PyObject *kitty = PyUnicode_FromWideChar(stdlib, -1);
     if (kitty == NULL) { fprintf(stderr, "Failed to allocate python kitty lib object\n"); goto end; }
