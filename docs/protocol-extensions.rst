@@ -71,7 +71,7 @@ include:
 
 * No way to use modifiers other than ``Ctrl`` and ``Alt``
 
-* No way to use multiple modifier keys, other than, ``Shift+Alt``.
+* No way to reliably use multiple modifier keys, other than, ``Shift+Alt``.
 
 * No way to handle different types of keyboard events, such as press, release or repeat
 

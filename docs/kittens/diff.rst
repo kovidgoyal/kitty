@@ -89,9 +89,9 @@ Restore default context     ``=``
 Configuring kitty-diff
 ------------------------
 
-You can configure the colors used, keyboard shortcut, the diff implementation,
-the default lines of context, etc.  by creating a diff.conf in your kitty
-config folder. The default diff.conf is below.
+You can configure the colors used, keyboard shortcuts, the diff implementation,
+the default lines of context, etc.  by creating a diff.conf in your :ref:`kitty
+config folder <confloc>`. The default :file:`diff.conf` is below.
 
 .. literalinclude:: ../../kittens/diff/diff.conf
     :language: ini
@@ -126,13 +126,12 @@ Once again, creating an alias for this command is useful.
 Why does this work only in kitty?
 ----------------------------------------
 
-The diff kitten makes use of various features that are
-:doc:`kitty only </protocol-extensions>`,  such as the
-:doc:`kitty graphics protocol </graphics-protocol>`,
-the extended keyboard protocol, etc. It also leverages
-terminal program infrastructure I created for all of kitty's other kittens to
-reduce the amount of code needed (the entire implementation is under 2000 lines
-of code).
+The diff kitten makes use of various features that are :doc:`kitty only
+</protocol-extensions>`,  such as the :doc:`kitty graphics protocol
+</graphics-protocol>`, the :ref:`extended keyboard protocol
+<extended-key-protocol>`, etc. It also leverages terminal program
+infrastructure I created for all of kitty's other kittens to reduce the amount
+of code needed (the entire implementation is under 2000 lines of code).
 
 And fundamentally, it's kitty only because I wrote it for myself, and I am
 highly unlikely to use any other terminals :)

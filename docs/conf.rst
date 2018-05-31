@@ -15,6 +15,8 @@ You can also display the current configuration by running ``kitty
     :language: ini
 
 
+.. _confloc:
+
 |kitty| looks for a config file in the OS config directories (usually
 :file:`~/.config/kitty/kitty.conf` and additionally
 :file:`~/Library/Preferences/kitty/kitty.conf` on macOS) but you can pass a
