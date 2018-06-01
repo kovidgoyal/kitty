@@ -211,6 +211,8 @@ class Window:
         glfw_post_empty_event()
 
     def set_title(self, title):
+        if title:
+            title = sanitize_title(title)
         self.override_title = title or None
         self.title_updated()
 

@@ -206,11 +206,17 @@ def send_text(boss, window, payload):
     ' the title will be set for all matched windows. By default, only the window'
     ' in which the command is run is affected. If you do not specify a title, the'
     ' last title set by the child process running in the window will be used.',
-    options_spec=MATCH_WINDOW_OPTION,
+    options_spec='''
+--temporary
+type=bool-set
+By default, if you use :italic:`set-window-title` the title will be permanently changed
+and programs running in the window will not be able to change it again. If you
+want to allow other programs to change it afterwards, use this option.
+    ''' + '\n\n' + MATCH_WINDOW_OPTION,
     argspec='TITLE ...'
 )
 def cmd_set_window_title(global_opts, opts, args):
-    return {'title': ' '.join(args), 'match': opts.match}
+    return {'title': ' '.join(args), 'match': opts.match, 'temporary': opts.temporary}
 
 
 def set_window_title(boss, window, payload):
@@ -222,7 +228,12 @@ def set_window_title(boss, window, payload):
             raise MatchError(match)
     for window in windows:
         if window:
-            window.set_title(payload['title'])
+            if payload['temporary']:
+                window.override_title = None
+                window.title_changed(payload['title'])
+            else:
+                window.set_title(payload['title'])
+
 # }}}
 
 
