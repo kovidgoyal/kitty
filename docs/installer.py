@@ -160,7 +160,17 @@ def macos_install(dmg, dest='/Applications', launch=True):
 
 
 def linux_install(installer, dest=os.path.expanduser('~/.local'), launch=True):
-    raise NotImplementedError('TODO: Implement this')
+    dest = os.path.join(dest, 'kitty.app')
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
+    os.makedirs(dest)
+    print('Extracting tarball...')
+    run('tar', '-C', dest, '-xJof', installer)
+    print('kitty successfully installed to', dest)
+    kitty = os.path.join(dest, 'bin', 'kitty')
+    print('Use', kitty, 'to run kitty')
+    if launch:
+        run(kitty, '--detach')
 
 
 def main(dest=None, launch=True, installer=None):
@@ -189,6 +199,7 @@ def main(dest=None, launch=True, installer=None):
 
 
 def script_launch():
+    # To test: python3 -c "import runpy; runpy.run_path('installer.py', run_name='script_launch')"
     def path(x):
         return os.path.expandvars(os.path.expanduser(x))
 
@@ -228,3 +239,5 @@ if __name__ == '__main__' and from_file:
     main()
 elif __name__ == 'update_wrapper':
     update_intaller_wrapper()
+elif __name__ == 'script_launch':
+    script_launch()
