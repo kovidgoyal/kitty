@@ -19,8 +19,8 @@ rc=$?
 rm $tmp
 if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
 if [ -z "$USER" ]; then export USER=$(whoami); fi
+EXEC_CMD
 shell_name=$(basename $0)
-
 
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
@@ -34,15 +34,51 @@ case "dash" in
         exec $python -c "import os; os.execlp('$0', '-' '$shell_name')"
     ;;
 esac
+
 exec -a "-$shell_name" "$0"
 '''
 
 
+def parse_ssh_args(args):
+    boolean_ssh_args = {'-' + x for x in '46AaCfGgKkMNnqsTtVvXxYy'}
+    other_ssh_args = {'-' + x for x in 'bBcDeEFIJlLmOopQRSWw'}
+    ssh_args = []
+    server_args = []
+    expecting_option_val = False
+    for arg in args:
+        if server_args:
+            server_args.append(arg)
+            continue
+        if arg.startswith('-'):
+            if arg in boolean_ssh_args:
+                ssh_args.append(arg)
+                continue
+            if arg in other_ssh_args:
+                ssh_args.append(arg)
+                expecting_option_val = True
+                continue
+            raise SystemExit('Unknown option: {}'.format(args))
+        if expecting_option_val:
+            ssh_args.append(arg)
+            expecting_option_val = False
+            continue
+        server_args.append(arg)
+    if not server_args:
+        raise SystemExit('Must specify server to connect to')
+    return ssh_args, server_args
+
+
 def main(args):
-    server = args[1]
+    ssh_args, server_args = parse_ssh_args(args[1:])
     terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
     sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
-    cmd = ['ssh', '-t', server, sh_script]
+    if len(server_args) > 1:
+        command_to_execute = ["'{}'".format(c.replace("'", """'"'"'""")) for c in server_args[1:]]
+        command_to_execute = 'cmd=({}); exec "$cmd"'.format(' '.join(command_to_execute))
+    else:
+        command_to_execute = ''
+    sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
+    cmd = ['ssh'] + ssh_args + ['-t', server_args[0], sh_script] + server_args[1:]
     p = subprocess.Popen(cmd)
     raise SystemExit(p.wait())
 
