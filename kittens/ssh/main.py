@@ -49,10 +49,10 @@ def parse_ssh_args(args):
     expecting_option_val = False
     passthrough = False
     for arg in args:
-        if server_args:
+        if len(server_args) > 1:
             server_args.append(arg)
             continue
-        if arg.startswith('-'):
+        if arg.startswith('-') and not expecting_option_val:
             all_args = arg[1:]
             for i, arg in enumerate(all_args):
                 arg = '-' + arg
