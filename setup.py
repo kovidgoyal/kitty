@@ -36,7 +36,6 @@ version = tuple(
 )
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
-is_travis = os.environ.get('TRAVIS') == 'true'
 env = None
 
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
@@ -162,7 +161,7 @@ class Env:
         self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, ldpaths
 
     def copy(self):
-        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldflags))
+        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths))
 
 
 def init_env(
@@ -220,7 +219,8 @@ def init_env(
         cppflags.append('-DWITH_PROFILER')
         cflags.append('-g3')
         ldflags.append('-lprofiler')
-    return Env(cc, cppflags, cflags, ldflags)
+    ldpaths = []
+    return Env(cc, cppflags, cflags, ldflags, ldpaths=ldpaths)
 
 
 def kitty_env():
@@ -247,9 +247,6 @@ def kitty_env():
     ans.ldpaths += pylib + font_libs + gl_libs + libpng
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
-        if is_travis and 'SW' in os.environ:
-            cflags.append('-I{}/include'.format(os.environ['SW']))
-            ans.ldpaths.append('-L{}/lib'.format(os.environ['SW']))
     else:
         ans.ldpaths += ['-lrt']
         if '-ldl' not in ans.ldpaths:

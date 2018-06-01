@@ -4,6 +4,21 @@ matrix:
         - os: linux
           dist: trusty
           group: beta
+          language: python
+          sudo: false
+          env: USE_BUNDLE=1 SW=$HOME/sw PKG_CONFIG_PATH=$SW/lib/pkgconfig LD_LIBRARY_PATH=$SW/lib PYTHON=$SW/bin/python3
+          addons:
+            apt:
+              packages:
+                - libxi-dev
+                - libxrandr-dev
+                - libxinerama-dev
+                - libxcursor-dev
+                - libxcb-xkb-dev
+
+        - os: linux
+          dist: trusty
+          group: beta
           sudo: false
           env:
             - CC=gcc CFLAGS=-funsigned-char SANITIZE_ARG=--sanitize
@@ -92,21 +107,28 @@ install: |
             curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW;
         fi
     else
-        pushd /tmp
-        wget --no-check-certificate http://xkbcommon.org/download/libxkbcommon-0.6.1.tar.xz
-        tar xf libxkbcommon-0.6.1.tar.xz
-        cd libxkbcommon-0.6.1
-        ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static
-        make -j2
-        make install
-        wget https://github.com/behdad/harfbuzz/releases/download/1.6.3/harfbuzz-1.6.3.tar.bz2
-        tar xf harfbuzz-1.6.3.tar.bz2
-        cd harfbuzz-1.6.3
-        ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static --with-glib=no --with-gobject=no --with-cairo=no --with-fontconfig=no --with-icu=no --with-directwrite=no --with-freetype=yes
-        make -j2
-        make install
-        cd ..
-        popd
+        if [[ "$USE_BUNDLE" == "1" ]]; then
+            mkdir -p $SW;
+            curl https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz | tar xJ -C $SW;
+            find $SW -type f -name '*.pc' -exec sed -i "s,/sw/sw,$SW,g" {} \;;
+            find $SW -type f -name '_sysconfig*.py' -exec sed -i "s,/sw/sw,$SW,g" {} \;;
+        else
+            pushd /tmp
+            wget --no-check-certificate http://xkbcommon.org/download/libxkbcommon-0.6.1.tar.xz
+            tar xf libxkbcommon-0.6.1.tar.xz
+            cd libxkbcommon-0.6.1
+            ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static
+            make -j2
+            make install
+            wget https://github.com/behdad/harfbuzz/releases/download/1.6.3/harfbuzz-1.6.3.tar.bz2
+            tar xf harfbuzz-1.6.3.tar.bz2
+            cd harfbuzz-1.6.3
+            ./configure --prefix=$HOME/harfbuzz --disable-dependency-tracking --disable-static --with-glib=no --with-gobject=no --with-cairo=no --with-fontconfig=no --with-icu=no --with-directwrite=no --with-freetype=yes
+            make -j2
+            make install
+            cd ..
+            popd
+        fi
     fi
     pkg-config --cflags harfbuzz
     if [[ "$TRAVIS_OS_NAME" != 'osx' ]]; then
@@ -116,7 +138,7 @@ install: |
     set +e
 
 before_script:
-    - echo $LD_LIBRARY_PATH
+    - echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH PKG_CONFIG_PATH=$PKG_CONFIG_PATH
     - $PYTHON setup.py build --debug --verbose $SANITIZE_ARG;
 
 script:
