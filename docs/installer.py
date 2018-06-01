@@ -2,10 +2,18 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from __future__ import (
+    absolute_import, division, print_function, unicode_literals
+)
+
+import atexit
 import json
 import os
 import platform
 import re
+import shlex
+import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -28,7 +36,7 @@ if py3:
     def encode_for_subprocess(x):
         return x
 else:
-    from future_builtins import map  # noqa
+    from future_builtins import map
     # from urlparse import urlparse
     import urllib2 as urllib
 
@@ -36,6 +44,15 @@ else:
         if isinstance(x, unicode):
             x = x.encode('utf-8')
         return x
+
+
+def run(*args):
+    if len(args) == 1:
+        args = shlex.split(args[0])
+    args = list(map(encode_for_subprocess, args))
+    ret = subprocess.Popen(args).wait()
+    if ret != 0:
+        raise SystemExit(ret)
 
 
 class Reporter:  # {{{
@@ -50,6 +67,7 @@ class Reporter:  # {{{
         if percent - self.last_percent > 0.05:
             self.last_percent = percent
             print(report, end='')
+            sys.stdout.flush()
 # }}}
 
 
@@ -114,11 +132,35 @@ def download_installer(url, size):
     dest = os.path.join(cache, fname)
     if os.path.exists(dest) and os.path.getsize(dest) == size:
         print('Using previously downloaded', fname)
-        return open(dest, 'rb').read()
+        return dest
     if os.path.exists(dest):
         os.remove(dest)
-    raw = do_download(url, size, dest)
-    return raw
+    do_download(url, size, dest)
+    return dest
+
+
+def macos_install(dmg, dest='/Applications', launch=True):
+    mp = tempfile.mkdtemp()
+    atexit.register(shutil.rmtree, mp)
+    run('hdiutil', 'attach', dmg, '-mountpoint', mp)
+    try:
+        os.chdir(mp)
+        app = 'kitty.app'
+        d = os.path.join(dest, app)
+        if os.path.exists(d):
+            shutil.rmtree(d)
+        dest = os.path.join(dest, app)
+        run('ditto', '-v', app, dest)
+        print('Successfully installed kitty into', dest)
+        if launch:
+            run('open', dest)
+    finally:
+        os.chdir('/')
+        run('hdiutil', 'detach', mp)
+
+
+def linux_install(installer):
+    raise NotImplementedError('TODO: Implement this')
 
 
 def main():
@@ -129,7 +171,11 @@ def main():
             ' available for x86 systems. You will have to build from'
             ' source.')
     url, size = get_latest_release_data()
-    download_installer(url, size)
+    installer = download_installer(url, size)
+    if is_macos:
+        macos_install(installer)
+    else:
+        linux_install(installer)
 
 
 def update_intaller_wrapper():
