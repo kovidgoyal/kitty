@@ -53,16 +53,21 @@ def parse_ssh_args(args):
             server_args.append(arg)
             continue
         if arg.startswith('-'):
-            if arg in passthrough_args:
-                passthrough = True
-            if arg in boolean_ssh_args:
-                ssh_args.append(arg)
-                continue
-            if arg in other_ssh_args:
-                ssh_args.append(arg)
-                expecting_option_val = True
-                continue
-            raise SystemExit('Unknown option: {}'.format(args))
+            all_args = arg[1:]
+            for i, arg in enumerate(all_args):
+                arg = '-' + arg
+                if arg in passthrough_args:
+                    passthrough = True
+                if arg in boolean_ssh_args:
+                    ssh_args.append(arg)
+                    continue
+                if arg in other_ssh_args:
+                    if i != len(all_args) - 1:
+                        raise SystemExit('Option {} cannot occur in the middle'.format(arg))
+                    ssh_args.append(arg)
+                    expecting_option_val = True
+                    continue
+                raise SystemExit('Unknown option: {}'.format(arg))
         if expecting_option_val:
             ssh_args.append(arg)
             expecting_option_val = False
