@@ -25,6 +25,10 @@ pre {
     white-space: pre-wrap;
 }
 
+pre.pre {
+    white-space: pre;
+}
+
 a[href], input[type="submit"] { cursor: pointer; }
 
 img[style] {
