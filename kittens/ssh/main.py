@@ -68,6 +68,7 @@ def parse_ssh_args(args):
                     expecting_option_val = True
                     continue
                 raise SystemExit('Unknown option: {}'.format(arg))
+            continue
         if expecting_option_val:
             ssh_args.append(arg)
             expecting_option_val = False
