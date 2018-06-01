@@ -30,14 +30,12 @@ except NameError:
 if py3:
     unicode = str
     raw_input = input
-    # from urllib.parse import urlparse
     import urllib.request as urllib
 
     def encode_for_subprocess(x):
         return x
 else:
     from future_builtins import map
-    # from urlparse import urlparse
     import urllib2 as urllib
 
     def encode_for_subprocess(x):
