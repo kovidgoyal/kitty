@@ -159,23 +159,56 @@ def macos_install(dmg, dest='/Applications', launch=True):
         run('hdiutil', 'detach', mp)
 
 
-def linux_install(installer):
+def linux_install(installer, dest=os.path.expanduser('~/.local'), launch=True):
     raise NotImplementedError('TODO: Implement this')
 
 
-def main():
+def main(dest=None, launch=True, installer=None):
+    if not dest:
+        if is_macos:
+            dest = '/Applications'
+        else:
+            dest = os.path.expanduser('~/.local')
     machine = os.uname()[4]
     if machine and machine.lower().startswith('arm'):
         raise SystemExit(
             'You are running on an ARM system. The kitty binaries are only'
             ' available for x86 systems. You will have to build from'
             ' source.')
-    url, size = get_latest_release_data()
-    installer = download_installer(url, size)
-    if is_macos:
-        macos_install(installer)
+    if not installer:
+        url, size = get_latest_release_data()
+        installer = download_installer(url, size)
     else:
-        linux_install(installer)
+        installer = os.path.abspath(installer)
+        if not os.access(installer, os.R_OK):
+            raise SystemExit('Could not read from: {}'.format(installer))
+    if is_macos:
+        macos_install(installer, dest=dest, launch=launch)
+    else:
+        linux_install(installer, dest=dest, launch=launch)
+
+
+def script_launch():
+    def path(x):
+        return os.path.expandvars(os.path.expanduser(x))
+
+    def to_bool(x):
+        return x.lower() in {'y', 'yes', '1', 'true'}
+
+    type_map = {x: path for x in 'dest installer'.split()}
+    type_map['launch'] = to_bool
+    kwargs = {}
+
+    for arg in sys.argv[1:]:
+        if arg:
+            m = re.match('([a-z_]+)=(.+)', arg)
+            if m is None:
+                raise SystemExit('Unrecognized command line argument: ' + arg)
+            k = m.group(1)
+            if k not in type_map:
+                raise SystemExit('Unrecognized command line argument: ' + arg)
+            kwargs[k] = type_map[k](m.group(2))
+    main(**kwargs)
 
 
 def update_intaller_wrapper():
