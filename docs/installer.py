@@ -223,9 +223,9 @@ def script_launch():
 
 
 def update_intaller_wrapper():
-    # To run: python3 -c "import runpy; runpy.run_path('installer.py', run_name='update_wrapper')"
+    # To run: python3 -c "import runpy; runpy.run_path('installer.py', run_name='update_wrapper')" installer.sh
     src = open(__file__, 'rb').read().decode('utf-8')
-    wrapper = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'installer.sh')
+    wrapper = sys.argv[-1]
     with open(wrapper, 'r+b') as f:
         raw = f.read().decode('utf-8')
         nraw = re.sub(r'^# HEREDOC_START.+^# HEREDOC_END', lambda m: '# HEREDOC_START\n{}\n# HEREDOC_END'.format(src), raw, flags=re.MULTILINE | re.DOTALL)
