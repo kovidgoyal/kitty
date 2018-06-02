@@ -53,6 +53,7 @@ only use this if you are running a program that does not set titles.
 type=list
 {config_help}
 
+
 --override -o
 type=list
 Override individual configuration options, can be specified multiple times.
@@ -92,9 +93,9 @@ in the first :italic:`{appname}` instance within that group
 
 --listen-on
 Tell kitty to listen on the specified address for control
-messages. For example, :option:`{appname} --listen-on` unix:/tmp/mykitty or
-:option:`{appname} --listen-on` tcp:localhost:12345. On Linux systems, you can also use abstract
-UNIX sockets, not associated with a file, like this: :option:`{appname} --listen-on` unix:@mykitty.
+messages. For example, :option:`{appname} --listen-on`=unix:/tmp/mykitty or
+:option:`{appname} --listen-on`=tcp:localhost:12345. On Linux systems, you can also use abstract
+UNIX sockets, not associated with a file, like this: :option:`{appname} --listen-on`=unix:@mykitty.
 To control kitty, you can send it commands with :italic:`kitty @` using the :option:`kitty @ --to` option
 to specify this address. Note that this option will be ignored, unless you set
 :italic:`allow_remote_control` to yes in |kitty.conf|.
