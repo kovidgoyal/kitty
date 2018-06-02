@@ -12,7 +12,7 @@ aliases = {'url_hints': 'hints'}
 
 
 def resolved_kitten(k):
-    return aliases.get(k, k)
+    return aliases.get(k, k).replace('-', '_')
 
 
 def import_kitten_main_module(config_dir, kitten):

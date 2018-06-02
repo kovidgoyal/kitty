@@ -239,6 +239,10 @@ Some prominent kittens:
     filenames, words, lines, etc from the terminal screen.
 
 
+:doc:`Panel <kittens/panel>`
+    Draw a GPU accelerated dock panel on your desktop showing the output
+    from an arbitrary terminal program.
+
 .. _sessions:
 
 Startup Sessions
