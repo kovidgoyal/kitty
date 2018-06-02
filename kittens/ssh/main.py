@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import subprocess
 import sys
 
@@ -40,9 +41,22 @@ exec -a "-$shell_name" "$0"
 '''
 
 
+def get_ssh_cli():
+    other_ssh_args, boolean_ssh_args = [], []
+    raw = subprocess.Popen(['ssh'], stderr=subprocess.PIPE).stderr.read().decode('utf-8')
+    for m in re.finditer(r'\[(.+?)\]', raw):
+        q = m.group(1)
+        if len(q) < 2 or q[0] != '-':
+            continue
+        if ' ' in q:
+            other_ssh_args.append(q[1])
+        else:
+            boolean_ssh_args.extend(q[1:])
+    return set('-' + x for x in boolean_ssh_args), set('-' + x for x in other_ssh_args)
+
+
 def parse_ssh_args(args):
-    boolean_ssh_args = {'-' + x for x in '46AaCfGgKkMNnqsTtVvXxYy'}
-    other_ssh_args = {'-' + x for x in 'bBcDeEFIJlLmOopQRSWw'}
+    boolean_ssh_args, other_ssh_args = get_ssh_cli()
     passthrough_args = {'-' + x for x in 'Nnf'}
     ssh_args = []
     server_args = []
