@@ -122,6 +122,11 @@ Now to use kitty-diff to view git diffs, you can simply do::
 
 Once again, creating an alias for this command is useful.
 
+Command Line Interface
+-------------------------
+
+.. include:: /generated/cli-kitten-diff.rst
+
 
 Why does this work only in kitty?
 ----------------------------------------

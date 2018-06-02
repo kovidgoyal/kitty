@@ -383,12 +383,13 @@ def showwarning(message, category, filename, lineno, file=None, line=None):
 
 
 showwarning.warnings = []
+help_text = 'Show a side-by-side diff of the specified files/directories'
+usage = 'file_or_directory_left file_or_directory_right'
 
 
 def main(args):
     warnings.showwarning = showwarning
-    msg = 'Show a side-by-side diff of the specified files/directories'
-    args, items = parse_args(args[1:], OPTIONS, 'file_or_directory file_or_directory', msg, 'kitty +kitten diff')
+    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten diff')
     if len(items) != 2:
         raise SystemExit('You must specify exactly two files/directories to compare')
     left, right = items
@@ -414,3 +415,7 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = OPTIONS
+    sys.cli_docs['help_text'] = help_text
