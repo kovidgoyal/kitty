@@ -5,8 +5,8 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "keys.h"
 #include "state.h"
+#include "keys.h"
 #include "screen.h"
 #include "glfw-wrapper.h"
 #include "control-codes.h"

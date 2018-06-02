@@ -1,7 +1,7 @@
 
-#include <dlfcn.h>
 #include "data-types.h"
 #include "glfw-wrapper.h"
+#include <dlfcn.h>
 
 static void* handle = NULL;
 
