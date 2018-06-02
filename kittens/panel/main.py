@@ -42,11 +42,12 @@ Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font
 
 
 args = None
+help_text = 'Use a command line program to draw a GPU accelerated panel on your X11 desktop'
+usage = 'program-to-run'
 
 
 def parse_panel_args(args):
-    msg = 'Use a command line program to draw a GPU accelerated panel on your X11 desktop'
-    return parse_args(args, OPTIONS, 'program-to-run', msg, 'panel')
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel')
 
 
 def call_xprop(*cmd, silent=False):
@@ -141,3 +142,7 @@ def main(sys_args):
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = OPTIONS
+    sys.cli_docs['help_text'] = help_text

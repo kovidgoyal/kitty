@@ -284,6 +284,16 @@ def write_cli_docs():
             p('kitty @', func.name + '\n' + '-' * 120)
             p('.. program::', 'kitty @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
+    from kittens.runner import all_kitten_names, get_kitten_cli_docs
+    for kitten in all_kitten_names():
+        data = get_kitten_cli_docs(kitten)
+        if data:
+            with open(f'generated/cli-kitten-{kitten}.rst', 'w') as f:
+                p = partial(print, file=f)
+                p('.. program::', f'kitty +kitten {kitten}')
+                p('\n\n' + option_spec_as_rst(
+                    data['options'], message=data['help_text'], usage=data['usage'], appname=f'kitty +kitten {kitten}',
+                    heading_char='^'))
 
 # }}}
 

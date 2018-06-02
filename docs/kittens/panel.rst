@@ -35,3 +35,9 @@ This will show ``Hello, world.`` at the top edge of your screen for five
 seconds. Here the terminal program we are running is ``sh`` with a script to
 print out ``Hello, world!``. You can make the terminal program as complex as
 you like, as demonstrated in the screenshot above.
+
+
+Command Line Interface
+-------------------------
+
+.. include:: ../generated/cli-kitten-panel.rst

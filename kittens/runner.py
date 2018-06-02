@@ -80,11 +80,34 @@ def deserialize(output):
         return json.loads(rest[:int(sz)])
 
 
-def run_kitten(kitten):
+def run_kitten(kitten, run_name='__main__'):
     import runpy
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
-    runpy.run_module('kittens.{}.main'.format(kitten), run_name='__main__')
+    runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
+
+
+def all_kitten_names():
+    ans = getattr(all_kitten_names, 'ans', None)
+    if ans is None:
+        n = []
+        import glob
+        base = os.path.dirname(os.path.abspath(__file__))
+        for x in glob.glob(os.path.join(base, '*', '__init__.py')):
+            q = os.path.basename(os.path.dirname(x))
+            if q != 'tui':
+                n.append(q)
+        all_kitten_names.ans = ans = frozenset(n)
+    return ans
+
+
+def get_kitten_cli_docs(kitten):
+    sys.cli_docs = {}
+    run_kitten(kitten, run_name='__doc__')
+    ans = sys.cli_docs
+    del sys.cli_docs
+    if 'help_text' in ans and 'usage' in ans and 'options' in ans:
+        return ans
 
 
 def main():
