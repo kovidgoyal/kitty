@@ -189,8 +189,15 @@ def title(x):
 
 
 def option(x):
+    idx = x.find('-')
+    if idx > -1:
+        x = x[idx:]
     parts = map(bold, x.split())
     return ' '.join(parts)
+
+
+def code(x):
+    return x
 
 
 def env(x):
@@ -267,7 +274,7 @@ def prettify(text):
 
 
 def prettify_rst(text):
-    return text
+    return re.sub(r':([a-z]+):`([^`]+)`(=[^\s.]+)', r':\1:`\2`:code:`\3`', text)
 
 
 def version(add_rev=False):
@@ -419,9 +426,9 @@ def seq_as_rst(seq, usage, message, appname, heading_char='-'):
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:
-                a(textwrap.indent('Default: {}'.format(defval), ' ' * 4))
+                a(textwrap.indent('Default: :code:`{}`'.format(defval), ' ' * 4))
             if 'choices' in opt:
-                a(textwrap.indent('Choices: {}'.format(', '.join(opt['choices'])), ' ' * 4))
+                a(textwrap.indent('Choices: :code:`{}`'.format(', '.join(opt['choices'])), ' ' * 4))
             a('')
 
     text = '\n'.join(blocks)

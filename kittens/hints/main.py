@@ -6,7 +6,7 @@ import os
 import re
 import string
 import sys
-from functools import lru_cache, partial
+from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat
 
@@ -303,12 +303,12 @@ def run(args, text):
 
 
 # CLI {{{
-OPTIONS = partial(r'''
+OPTIONS = r'''
 --program
 default=default
 What program to use to open matched text. Defaults to the default open program
-for the operating system.  Use a value of - to paste the match into the
-terminal window instead. A value of @ will copy the match to the clipboard.
+for the operating system.  Use a value of :file:`-` to paste the match into the
+terminal window instead. A value of :file:`@` will copy the match to the clipboard.
 
 
 --type
@@ -319,9 +319,10 @@ The type of text to search for.
 
 --regex
 default=(?m)^\s*(.+)\s*$
-The regular expression to use when --type=regex.  If you specify a group in the
-regular expression only the group will be matched. This allow you to match text
-ignoring a prefix/suffix, as needed. The default expression matches lines.
+The regular expression to use when :option:`kitty +kitten hints --type`=regex.
+If you specify a group in the regular expression only the group
+will be matched. This allow you to match text ignoring a prefix/suffix, as
+needed. The default expression matches lines.
 
 
 --url-prefixes
@@ -339,12 +340,13 @@ Defaults to the select_by_word_characters setting from kitty.conf.
 default=3
 type=int
 The minimum number of characters to consider a match.
-'''.format, ','.join(sorted(URL_PREFIXES)))
+'''.format(','.join(sorted(URL_PREFIXES))).format
+help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
+usage = ''
 
 
 def parse_hints_args(args):
-    msg = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
-    return parse_args(args, OPTIONS, '', msg, 'hints')
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints')
 
 
 def main(args):
@@ -395,4 +397,8 @@ if __name__ == '__main__':
     ans = main(sys.argv)
     if ans:
         print(ans)
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = OPTIONS
+    sys.cli_docs['help_text'] = help_text
 # }}}

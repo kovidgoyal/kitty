@@ -19,8 +19,9 @@ terminal, very useful for picking files from the output of a ``git`` or ``ls`` c
 adding them to the command line for the next command.
 
 The hints kitten is very powerful to see more detailed help on its various
-options and modes of operation, use::
+options and modes of operation, see below.
 
-    kitty +kitten hints --help
+Command Line Interface
+-------------------------
 
-
+.. include:: ../generated/cli-kitten-hints.rst
