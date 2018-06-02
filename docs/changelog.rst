@@ -3,6 +3,53 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.11.0 [future]
+------------------------------
+
+- :doc:`Pre-compiled binaries <binary>` with all bundled dependencies for Linux
+
+- A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops showing the output from
+  arbitrary terminal programs. 
+
+- Reduce data sent to the GPU per render by 30% (:commit:`8dea5b3`)
+
+- Implement changing the font size for individual top level (OS) windows
+  (:iss:`408`)
+
+- ssh kitten: Support all SSH options. It can now be aliased directly to ssh for convenience. (:pull:`591`)
+
+- kitty icat: Add :option:`kitty +kitten icat --print-window-size` to easily
+  detect the window size in pixels from scripting languages (:iss:`581`)
+
+- Allow specifying initial window size in number of cells in addition to pixels
+  (:iss:`436`)
+
+- Add a setting to control the margins to the left and right of the tab-bar
+  (:iss:`584`)
+
+- When closing a tab switch to the last active tab instead of the right-most
+  tab (:iss:`585`)
+
+- Wayland: Fix kitty not starting when using wl_roots based compositors
+  (:iss:`157`)
+
+- Wayland: Fix mouse wheel/touchpad scrolling in opposite direction to other apps (:iss:`594`)
+
+- Add a config option to set the EDITOR kitty uses (:iss:`580`)
+
+- Add an option to @set-window-title to make the title change non-permanent
+  (:iss:`592`)
+
+- Add support for the CSI t escape code to query window and cell sizes
+  (:iss:`581`)
+
+- Linux: Fix fonts not being correctly read from TrueType Collection
+  (.ttc) files (:iss:`577`)
+
+- :doc:`hints kitten <kittens/hints>`: Fix a regression that caused some blank lines to be not
+  be displayed.
+
+
 0.10.1 [2018-05-24]
 ------------------------------
 
@@ -40,7 +87,7 @@ Changelog
 - Implement support for the SGR *faint* escape code to make text blend
   into the background (:iss:`446`).
 
-- Make the hints kitten a little smarter :commit:`ad1109b`
+- Make the hints kitten a little smarter (:commit:`ad1109b`)
   so that URLs that stretch over multiple lines are detected. Also improve
   detection of surrounding brackets/quotes.
 
@@ -52,7 +99,7 @@ Changelog
 
 - Expand environment variables in config file include directives
 
-- Allow programs running in kitty to read/write from the clipboard :commit:`889ca77`.
+- Allow programs running in kitty to read/write from the clipboard (:commit:`889ca77`).
   By default only writing is allowed. This feature is supported in many
   terminals, search for `OSC 52 clipboard` to find out more about using it.
 

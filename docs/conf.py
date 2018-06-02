@@ -209,7 +209,7 @@ texinfo_documents = [
 
 # GitHub linking inlne roles {{{
 
-def issue_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+def num_role(which, name, rawtext, text, lineno, inliner, options={}, content=[]):
     ' Link to a github issue '
     try:
         issue_num = int(text)
@@ -221,7 +221,7 @@ def issue_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
             '"%s" is invalid.' % text, line=lineno)
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
-    url = f'https://github.com/kovidgoyal/kitty/issues/{issue_num}'
+    url = f'https://github.com/kovidgoyal/kitty/{which}/{issue_num}'
     set_classes(options)
     node = nodes.reference(rawtext, f'#{issue_num}', refuri=url, **options)
     return [node], []
@@ -239,7 +239,7 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
     set_classes(options)
     short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
-    node = nodes.reference(rawtext, f'(commit:{short_id})', refuri=url, **options)
+    node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
 # }}}
 
@@ -300,6 +300,7 @@ def write_cli_docs():
 
 def setup(app):
     write_cli_docs()
-    app.add_role('iss', issue_role)
+    app.add_role('iss', partial(num_role, 'issues'))
+    app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
     app.connect('html-page-context', add_html_context)
