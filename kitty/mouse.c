@@ -416,6 +416,9 @@ mouse_event(int button, int modifiers) {
 
 void
 scroll_event(double UNUSED xoffset, double yoffset) {
+    // glfw inverts the y-axis when reporting scroll events under wayland
+    // Until this is fixed in upstream, invert y ourselves.
+    if (global_state.is_wayland) yoffset *= -1;
     int s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
     if (s == 0) return;
     bool upwards = s > 0;
