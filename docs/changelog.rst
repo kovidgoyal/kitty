@@ -7,6 +7,7 @@ Changelog
 ------------------------------
 
 - :doc:`Pre-compiled binaries <binary>` with all bundled dependencies for Linux
+  (:iss:`595`)
 
 - A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops showing the output from
   arbitrary terminal programs. 
