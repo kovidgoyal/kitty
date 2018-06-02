@@ -16,11 +16,10 @@ from .fast_data_types import (
 )
 from .layout import create_layout_object_for, evict_cached_layouts
 from .session import resolved_shell
-from .tab_bar import TabBar
+from .tab_bar import TabBar, TabBarData
 from .utils import log_error
 from .window import Window
 
-TabbarData = namedtuple('TabbarData', 'title is_active is_last needs_attention')
 SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for env')
 
 
@@ -474,7 +473,7 @@ class TabManager:  # {{{
                 if w.needs_attention:
                     needs_attention = True
                     break
-            ans.append(TabbarData(title, t is at, t is self.tabs[-1], needs_attention))
+            ans.append(TabBarData(title, t is at, t is self.tabs[-1], needs_attention))
         return ans
 
     def activate_tab_at(self, x):

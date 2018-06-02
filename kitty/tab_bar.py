@@ -2,14 +2,19 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from collections import namedtuple
+
 from .config import build_ansi_color_table
 from .constants import WindowGeometry
 from .fast_data_types import (
-    DECAWM, Screen, cell_size_for_window, pt_to_px, viewport_for_window, set_tab_bar_render_data
+    DECAWM, Screen, cell_size_for_window, pt_to_px, set_tab_bar_render_data,
+    viewport_for_window
 )
 from .layout import Rect
 from .utils import color_as_int
 from .window import calculate_gl_geometry
+
+TabBarData = namedtuple('TabBarData', 'title is_active is_last needs_attention')
 
 
 class TabBar:
