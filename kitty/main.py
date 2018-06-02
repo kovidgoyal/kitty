@@ -31,10 +31,14 @@ def load_all_shaders(semi_transparent=0):
     load_borders_program()
 
 
-def init_graphics():
+def init_graphics(debug_keyboard=False):
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland else 'x11')
+    if debug_keyboard:
+        os.environ['GLFW_DEBUG_KEYBOARD'] = '1'
     if not glfw_init(glfw_path(glfw_module)):
         raise SystemExit('GLFW initialization failed')
+    if debug_keyboard:
+        os.environ.pop('GLFW_DEBUG_KEYBOARD')
     return glfw_module
 
 
@@ -184,7 +188,7 @@ def _main():
     opts = create_opts(args)
     if opts.editor != '.':
         os.environ['EDITOR'] = opts.editor
-    init_graphics()
+    init_graphics(args.debug_keyboard)
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies

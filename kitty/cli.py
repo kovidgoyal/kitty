@@ -129,6 +129,11 @@ Debug OpenGL commands. This will cause all OpenGL calls to check for errors
 instead of ignoring them. Useful when debugging rendering problems
 
 
+--debug-keyboard
+type=bool-set
+This option will cause kitty to print out what key events as they are received
+
+
 --debug-font-fallback
 type=bool-set
 Print out information about the selection of fallback fonts for characters not present in the main font.
