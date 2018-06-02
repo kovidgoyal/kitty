@@ -225,6 +225,10 @@ its advanced features. These programs are called kittens. They are used both
 to add features to |kitty| itself and to create useful standalone programs.
 Some prominent kittens:
 
+:doc:`icat <kittens/icat>`
+    Display images in the terminal
+
+
 :doc:`diff <kittens/diff>`
     A fast, side-by-side diff for the terminal with syntax highlighting and
     images 

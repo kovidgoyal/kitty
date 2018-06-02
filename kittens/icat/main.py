@@ -245,12 +245,16 @@ def parse_place(raw):
         return namedtuple('Place', 'width height left top')(w, h, l, t)
 
 
-def main(args=sys.argv):
-    msg = (
+help_text = (
         'A cat like utility to display images in the terminal.'
         ' You can specify multiple image files and/or directories.'
-        ' Directories are scanned recursively for image files.')
-    args, items = parse_args(args[1:], options_spec, 'image-file ...', msg, '{} icat'.format(appname))
+        ' Directories are scanned recursively for image files.'
+)
+usage = 'image-file ...'
+
+
+def main(args=sys.argv):
+    args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname))
 
     if args.print_window_size:
         screen_size_function.ans = None
@@ -320,3 +324,7 @@ def main(args=sys.argv):
 
 if __name__ == '__main__':
     main()
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = options_spec
+    sys.cli_docs['help_text'] = help_text
