@@ -6,7 +6,7 @@
 from gettext import gettext as _
 
 from .conf.definition import option_func
-from .conf.utils import positive_float, to_color
+from .conf.utils import positive_float, positive_int, to_cmdline, to_color
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 
 MINIMUM_FONT_SIZE = 4
@@ -59,6 +59,10 @@ o, g, all_groups = option_func(all_options, {
 
     'cursor': [
         _('Cursor customization'),
+    ],
+
+    'scrollback': [
+        _('Scrollback'),
     ],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
@@ -141,4 +145,20 @@ seconds of keyboard inactivity. Set to zero to never stop blinking.
 '''))
 o('cursor_stop_blinking_after', 15.0, option_type=positive_float)
 
+# }}}
+
+g('scrollback')  # {{{
+
+o('scrollback_lines', 2000, _('Scrollback size'), option_type=positive_int, long_text=_('''
+Number of lines of history to keep in memory for scrolling back. Memory is allocated
+on demand.'''))
+
+o('scrollback_pager', 'less +G -R', _('Scrollback pager'), option_type=to_cmdline, long_text=_('''
+Program with which to view scrollback in a new window. The scrollback buffer is
+passed as STDIN to this program. If you change it, make sure the program you
+use can handle ANSI escape sequences for colors and text formatting.'''))
+
+o('wheel_scroll_multiplier', 5.0, _('Wheel/touchpad scrolling'), long_text=_('''
+Wheel scroll multiplier (modify the amount scrolled by the mouse wheel). Use
+negative numbers to change scroll direction.'''))
 # }}}

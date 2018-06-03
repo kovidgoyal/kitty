@@ -337,8 +337,6 @@ url_style.map = dict(
 
 type_map = {
     'allow_remote_control': to_bool,
-    'scrollback_lines': positive_int,
-    'scrollback_pager': to_cmdline,
     'open_url_with': to_cmdline,
     'focus_follows_mouse': to_bool,
     'open_url_modifiers': to_modifiers,
@@ -351,7 +349,6 @@ type_map = {
     'window_margin_width': positive_float,
     'tab_bar_margin_width': positive_float,
     'window_padding_width': positive_float,
-    'wheel_scroll_multiplier': float,
     'visual_bell_duration': positive_float,
     'enable_audio_bell': to_bool,
     'click_interval': positive_float,
