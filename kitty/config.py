@@ -10,7 +10,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from . import fast_data_types as defines
-from .config_utils import (
+from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, positive_float, positive_int, python_string, to_bool,
     to_cmdline, to_color, unit_float

@@ -11,11 +11,11 @@ from gettext import gettext as _
 from weakref import WeakValueDictionary
 
 from .cli import create_opts, parse_args
+from .conf.utils import to_cmdline
 from .config import (
     MINIMUM_FONT_SIZE, initial_window_size_func,
     prepare_config_file_for_editing
 )
-from .config_utils import to_cmdline
 from .constants import (
     appname, config_dir, set_boss, supports_primary_selection
 )

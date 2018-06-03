@@ -4,7 +4,7 @@
 
 import os
 
-from kitty.config_utils import (
+from kitty.conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, parse_kittens_key, python_string, resolve_config,
     to_color

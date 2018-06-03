@@ -151,7 +151,7 @@ def base64_encode(
 
 def command_for_open(program='default'):
     if isinstance(program, str):
-        from .config_utils import to_cmdline
+        from .conf.utils import to_cmdline
         program = to_cmdline(program)
     if program == ['default']:
         cmd = ['open'] if is_macos else ['xdg-open']

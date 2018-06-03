@@ -7,8 +7,8 @@ import os
 import re
 import shlex
 
-from .rgb import to_color as as_color
-from .utils import log_error
+from ..rgb import to_color as as_color
+from ..utils import log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 
@@ -78,7 +78,7 @@ def _parse(lines, type_map, special_handling, ans, all_keys):
     if name:
         base_path_for_includes = os.path.dirname(os.path.abspath(name))
     else:
-        from .constants import config_dir
+        from ..constants import config_dir
         base_path_for_includes = config_dir
     for line in lines:
         parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes)
@@ -188,7 +188,7 @@ def key_func():
 
 
 def parse_kittens_shortcut(sc):
-    from kitty.key_encoding import config_key_map, config_mod_map, text_match
+    from ..key_encoding import config_key_map, config_mod_map, text_match
     if sc.endswith('+'):
         parts = list(filter(None, sc.rstrip('+').split('+') + ['+']))
     else:

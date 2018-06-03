@@ -8,7 +8,7 @@ import sys
 from collections import deque
 
 from .config import defaults, load_config
-from .config_utils import resolve_config
+from .conf.utils import resolve_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 
 CONFIG_HELP = '''\
