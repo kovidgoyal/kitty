@@ -346,9 +346,9 @@ Key      Value                 Default    Description
 **Keys for image transmission**
 -----------------------------------------------------------
 ``f``    Positive integer.     ``32``     The format in which the image data is sent.
-         ``(24, 32, 100)``.  
+         ``(24, 32, 100)``.
 ``t``    Single character.     ``d``      The transmission medium used.
-         ``(d, f, t, s)``. 
+         ``(d, f, t, s)``.
 ``s``    Positive integer.     ``0``      The width of the image being sent.
 ``v``    Positive integer.     ``0``      The height of the image being sent.
 ``S``    Positive integer.     ``0``      The size of data to read from a file.
@@ -356,7 +356,7 @@ Key      Value                 Default    Description
 ``i``    Positive integer.
          ``(0 - 4294967295)``  ``0``      The image id
 ``o``    Single character.     ``null``   The type of data compression.
-         ``only z``  
+         ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.
 **Keys for image display**
 -----------------------------------------------------------
@@ -374,7 +374,7 @@ Key      Value                 Default    Description
 ``d``    Single character.     ``a``      What to delete.
          ``(a, A, c, C, p,
          P, q, Q, x, X, y,
-         Y, z, Z)``. 
+         Y, z, Z)``.
 =======  ====================  =========  =================
 
 

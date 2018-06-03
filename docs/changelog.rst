@@ -10,7 +10,7 @@ Changelog
   (:iss:`595`)
 
 - A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops showing the output from
-  arbitrary terminal programs. 
+  arbitrary terminal programs.
 
 - Reduce data sent to the GPU per render by 30% (:commit:`8dea5b3`)
 
@@ -72,7 +72,7 @@ Changelog
   be disabled for all OS windows in a kitty instance after the first window
   (:iss:`571`)
 
-- Fix Ctrl+Alt+Space not working in normal and application keyboard modes 
+- Fix Ctrl+Alt+Space not working in normal and application keyboard modes
   (:iss:`562`)
 
 
@@ -117,10 +117,10 @@ Changelog
   Arabic is never going to be perfect, but now it is at least readable.
 
 - Fix Ctrl+backspace acting as plain backspace in normal and application
-  keyboard modes (:iss:`538`). 
+  keyboard modes (:iss:`538`).
 
 - Have the paste_from_selection action paste from the clipboard on platforms
-  that do not have a primary selection such as Wayland and macOS 
+  that do not have a primary selection such as Wayland and macOS
   (:iss:`529`)
 
 - Fix cursor_stop_blinking_after=0 not working (:iss:`530`)
@@ -172,7 +172,7 @@ Changelog
 - Fix Shift+function key not working
 
 - Support the F13 to F25 function keys
-  
+
 - Don't fail to start if the user deletes the hintstyle key from their
   fontconfig configuration.
 
@@ -191,7 +191,7 @@ Changelog
 
 - Ignore -e if it is specified on the command line. This is for compatibility
   with broken software that assumes terminals should run with an -e option to
-  execute commands instead of just passing the commands as arguments. 
+  execute commands instead of just passing the commands as arguments.
 
 
 0.9.0 [2018-04-15]
@@ -284,11 +284,11 @@ Changelog
 
 - Add configurable keyboard shortcuts to switch to a specific layout
 
-- Add a keyboard shortcut to edit the kitty config file easily 
+- Add a keyboard shortcut to edit the kitty config file easily
 
 - macOS: Fix restoring of window size not correct on Retina screens
 
-- macOS: Add a facility to specify command line arguments when running kitty from the GUI 
+- macOS: Add a facility to specify command line arguments when running kitty from the GUI
 
 - Add a focus-tab remote command
 
@@ -321,7 +321,7 @@ Changelog
 
 - Wayland: Add support for window decorations provided by the Wayland shell
 
-- macOS: Fix URL hints not working 
+- macOS: Fix URL hints not working
 
 - macOS: Fix shell not starting in login mode on some computers
 
@@ -398,7 +398,7 @@ Changelog
 
 - Add "Horizontal" and "Vertical" window layouts
 
-- Sessions: Allow setting titles and working directories for individual windows 
+- Sessions: Allow setting titles and working directories for individual windows
 
 - Option to copy to clipboard on mouse select
 
@@ -435,7 +435,7 @@ Changelog
 
 - Add an option to fade the text in inactive windows
 
-- Add new actions to open windows/tabs/etc. with the working directory set to 
+- Add new actions to open windows/tabs/etc. with the working directory set to
   the working directory of the current window.
 
 - Automatically adjust cell size when DPI changes, for example when kitty is
@@ -500,7 +500,7 @@ Changelog
 
 - Add an option to control the underline style for URL highlighting on hover
 
-- X11: Set the WINDOWID environment variable 
+- X11: Set the WINDOWID environment variable
 
 - Fix middle and right buttons swapped when sending mouse events to child
   processes
@@ -565,7 +565,7 @@ Changelog
 
 - Fix a regression in 0.4.0 that broke custom key mappings
 
-- Fix a regression in 0.4.0 that broke support for non-QWERTY keyboard layouts 
+- Fix a regression in 0.4.0 that broke support for non-QWERTY keyboard layouts
 
 - Avoid using threads to reap zombie child processes. Also prevent kitty from
   hanging if the open program hangs when clicking on a URL.
@@ -579,7 +579,7 @@ Changelog
   ssh connections and files/shared memory (when available) for better
   performance. The drawing primitives support alpha blending and z-index.
   Images can be drawn both above and below text. See :doc:`graphics-protocol`.
-  for details. 
+  for details.
 
 - Refactor kitty's internals to make it even faster and more efficient. The CPU
   usage of kitty + X server while doing intensive tasks such as scrolling a

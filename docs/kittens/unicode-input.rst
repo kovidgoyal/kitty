@@ -19,4 +19,4 @@ typing a leading period and then the two character index and pressing Enter.
 In *Name* mode you instead type words from the character name and use the arrow
 keys/tab to select the character from the displayed matches. You can also type
 a leading period and the index for the match if you dont like to use arrow
-keys. 
+keys.

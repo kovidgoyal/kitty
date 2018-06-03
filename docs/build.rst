@@ -25,8 +25,8 @@ Run-time dependencies:
 
 Build-time dependencies:
 
-    * gcc or clang 
-    * pkg-config 
+    * gcc or clang
+    * pkg-config
     * For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for:
       ``libxcursor-dev``, ``libxrandr-dev``, ``libxi-dev``, ``libxinerama-dev``, ``libgl1-mesa-dev`` and ``libxkbcommon-x11-dev``,
       if they are not already installed by your distro.

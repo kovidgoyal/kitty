@@ -10,7 +10,7 @@ It supports all image types supported by `ImageMagick
 <https://www.imagemagick.org>`_. It even works over SSH. For details, see
 the :doc:`kitty graphics protocol </graphics-protocol>`.
 
-.. note:: 
+.. note::
 
     `ImageMagick <https://www.imagemagick.org>`_ must be installed for ``icat`` to
     work.

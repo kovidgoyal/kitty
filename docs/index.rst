@@ -54,7 +54,7 @@ page <https://github.com/kovidgoyal/kitty/releases>`_.
 
 If you are on Linux, install the |kitty| package if your distro provides it,
 otherwise follow the :doc:`Build from source instructions <build>`. |kitty|
-packages are available for: 
+packages are available for:
 `Debian <https://packages.debian.org/buster/kitty>`_,
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
@@ -146,7 +146,7 @@ Previous window             |sc_previous_window|
 Move window forward         |sc_move_window_forward|
 Move window backward        |sc_move_window_backward|
 Move window to top          |sc_move_window_to_top|
-Focus specific window       |sc_first_window|, |sc_second_window| ... |sc_tenth_window| 
+Focus specific window       |sc_first_window|, |sc_second_window| ... |sc_tenth_window|
                             (clockwise from the top-left)
 ========================    =======================
 
@@ -231,7 +231,7 @@ Some prominent kittens:
 
 :doc:`diff <kittens/diff>`
     A fast, side-by-side diff for the terminal with syntax highlighting and
-    images 
+    images
 
 
 :doc:`Unicode Input <kittens/unicode-input>`
@@ -320,7 +320,7 @@ Colors and text formatting are preserved. You can explore the scrollback buffer
 comfortably within the pager.
 
 
-Frequently Asked Questions 
+Frequently Asked Questions
 ---------------------------------
 
 The list of Frequently Asked Questions (*FAQ*) is :doc:`available here <faq>`.

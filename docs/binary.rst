@@ -12,11 +12,11 @@ the following simple command:
     :class: pre
 
     |ins|
-    
+
 
 The binaries will be installed in the standard location for your OS,
 :file:`/Applications/kitty.app` on macOS and :file:`~/.local/kitty.app` on
-Linux. The installer only touches files in that directory. 
+Linux. The installer only touches files in that directory.
 
 
 Customizing the installation

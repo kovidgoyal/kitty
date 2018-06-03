@@ -14,7 +14,7 @@ extern int pthread_setname_np(const char *name);
 #elif defined(__FreeBSD__)
 // Function has a different name on FreeBSD
 void pthread_set_name_np(pthread_t tid, const char *name);
-#else 
+#else
 // Need _GNU_SOURCE for pthread_setname_np on linux and that causes other issues on systems with old glibc
 extern int pthread_setname_np(pthread_t, const char *name);
 #endif
