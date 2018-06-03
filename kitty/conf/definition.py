@@ -104,7 +104,7 @@ def render_group(a, group):
 
 
 def as_conf_file(all_options):
-    ans = []
+    ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
     current_group = None
     all_options = list(all_options)
@@ -115,7 +115,7 @@ def as_conf_file(all_options):
             if current_group:
                 if current_group.end_text:
                     a(''), a(current_group.end_text)
-                a('# }}}')
+                a('# }}}'), a('')
 
             current_group = opt.group
             render_group(a, current_group)
