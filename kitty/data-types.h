@@ -7,13 +7,12 @@
 
 #pragma once
 
-
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <poll.h>
 #include <pthread.h>
-#define PY_SSIZE_T_CLEAN
-#include <Python.h>
 // Required minimum OpenGL version
 #define OPENGL_REQUIRED_VERSION_MAJOR 3
 #define OPENGL_REQUIRED_VERSION_MINOR 3

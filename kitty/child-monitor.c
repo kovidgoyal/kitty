@@ -5,8 +5,8 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "threading.h"
 #include "state.h"
+#include "threading.h"
 #include "screen.h"
 #include "fonts.h"
 #include <termios.h>

@@ -113,8 +113,7 @@
       "posix_thread.h", 
       "glx_context.h", 
       "egl_context.h", 
-      "osmesa_context.h", 
-      "linux_joystick.h"
+      "osmesa_context.h"
     ], 
     "sources": [
       "x11_init.c", 
@@ -125,8 +124,7 @@
       "posix_thread.c", 
       "glx_context.c", 
       "egl_context.c", 
-      "osmesa_context.c", 
-      "linux_joystick.c"
+      "osmesa_context.c"
     ]
   }
 }
