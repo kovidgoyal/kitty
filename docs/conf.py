@@ -13,6 +13,7 @@ from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
+from sphinx.roles import XRefRole
 
 
 def create_shortcut_defs():
@@ -310,6 +311,10 @@ def render_group(a, group):
         a('')
 
 
+def conf_label(ref_prefix, name):
+    return 'conf-{}-{}'.format(ref_prefix, name)
+
+
 def render_conf(ref_prefix, all_options):
     from kitty.conf.definition import merged_opts
     ans = []
@@ -326,7 +331,7 @@ def render_conf(ref_prefix, all_options):
             render_group(a, current_group)
         mopts = list(merged_opts(all_options, opt, i))
         for mo in mopts:
-            a('.. _conf_{}_{}:'.format(ref_prefix, mo.name))
+            a('.. _{}:'.format(conf_label(ref_prefix, mo.name)))
             a('')
         a(opt.short_text)
         a('_' * (len(opt.short_text) + 20))
@@ -349,6 +354,18 @@ def write_conf_docs():
     with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
         print('.. highlight:: ini\n', file=f)
         f.write(render_conf('kitty', all_options.values()))
+
+
+class ConfRole(XRefRole):
+
+    def process_link(self, env, refnode, has_explicit_title, title, target):
+        title, target = XRefRole.process_link(self, env, refnode, has_explicit_title, title, target)
+        module, conf_name = target.partition('.')[::2]
+        if not conf_name:
+            module, conf_name = 'kitty', module
+        target = conf_label(module, conf_name)
+        return title, target
+
 # }}}
 
 
@@ -362,4 +379,5 @@ def setup(app):
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
+    app.add_role('conf', ConfRole(warn_dangling=True, innernodeclass=nodes.inline))
     app.connect('html-page-context', add_html_context)
