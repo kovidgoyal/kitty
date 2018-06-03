@@ -10,23 +10,18 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from . import fast_data_types as defines
+from .conf.definition import as_conf_file
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, positive_float, positive_int, python_string, to_bool,
     to_cmdline, to_color, unit_float
 )
+from .config_data import all_options
 from .constants import cache_dir, defconf
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import color_as_int, color_from_int
 from .utils import log_error
-
-MINIMUM_FONT_SIZE = 4
-
-
-def to_font_size(x):
-    return max(MINIMUM_FONT_SIZE, float(x))
-
 
 cshapes = {
     'block': CURSOR_BLOCK,
@@ -378,7 +373,6 @@ type_map = {
     'scrollback_lines': positive_int,
     'scrollback_pager': to_cmdline,
     'open_url_with': to_cmdline,
-    'font_size': to_font_size,
     'focus_follows_mouse': to_bool,
     'cursor_shape': to_cursor_shape,
     'open_url_modifiers': to_modifiers,
@@ -587,15 +581,12 @@ def initial_window_size_func(opts, cached_values):
 
 
 def commented_out_default_config():
-    with open(default_config_path, encoding='utf-8', errors='replace') as f:
-        config = f.read()
-    lines = []
-    for line in config.splitlines():
-        if line.strip() and not line.startswith('#'):
+    ans = []
+    for line in as_conf_file(all_options.values()):
+        if line and line[0] != '#':
             line = '# ' + line
-        lines.append(line)
-    config = '\n'.join(lines)
-    return config
+        ans.append(line)
+    return '\n'.join(ans)
 
 
 def prepare_config_file_for_editing():
@@ -605,7 +596,7 @@ def prepare_config_file_for_editing():
             os.makedirs(d)
         except FileExistsError:
             pass
-        with open(defconf, 'w') as f:
+        with open(defconf, 'w', encoding='utf-8') as f:
             f.write(commented_out_default_config())
     return defconf
 

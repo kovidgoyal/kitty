@@ -6,6 +6,7 @@
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
+import os
 import subprocess
 from collections import defaultdict
 from functools import partial
@@ -80,7 +81,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'generated/cli-*']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'generated/cli-*', 'generated/conf-*']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -298,8 +299,66 @@ def write_cli_docs():
 # }}}
 
 
+# config file docs {{{
+
+def render_group(a, group):
+    a(group.short_text)
+    a('^' * (len(group.short_text) + 20))
+    a('')
+    if group.start_text:
+        a(group.start_text)
+        a('')
+
+
+def render_conf(ref_prefix, all_options):
+    from kitty.conf.definition import merged_opts
+    ans = []
+    a = ans.append
+    current_group = None
+    all_options = list(all_options)
+    for i, opt in enumerate(all_options):
+        if not opt.short_text:
+            continue
+        if opt.group is not current_group:
+            if current_group and current_group.end_text:
+                a(''), a(current_group.end_text)
+            current_group = opt.group
+            render_group(a, current_group)
+        mopts = list(merged_opts(all_options, opt, i))
+        for mo in mopts:
+            a('.. _conf_{}_{}:'.format(ref_prefix, mo.name))
+            a('')
+        a(opt.short_text)
+        a('_' * (len(opt.short_text) + 20))
+        a('')
+        a('.. code-block:: ini')
+        a('')
+        sz = max(len(x.name) for x in mopts)
+        for mo in mopts:
+            a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
+        a('')
+        if opt.long_text:
+            a(opt.long_text)
+            a('')
+
+    return '\n'.join(ans)
+
+
+def write_conf_docs():
+    from kitty.config_data import all_options
+    with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
+        print('.. highlight:: ini\n', file=f)
+        f.write(render_conf('kitty', all_options.values()))
+# }}}
+
+
 def setup(app):
+    try:
+        os.mkdir('generated')
+    except FileExistsError:
+        pass
     write_cli_docs()
+    write_conf_docs()
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
