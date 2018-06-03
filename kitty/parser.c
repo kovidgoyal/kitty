@@ -13,7 +13,7 @@
 extern PyTypeObject Screen_Type;
 
 // utils {{{
-static uint64_t pow10[] = {
+static uint64_t pow10_array[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
@@ -26,9 +26,9 @@ utoi(uint32_t *buf, unsigned int sz) {
         if (*p == '0') { p++; sz--; }
         else break;
     }
-    if (sz < sizeof(pow10)/sizeof(pow10[0])) {
+    if (sz < sizeof(pow10_array)/sizeof(pow10_array[0])) {
         for (int i = sz-1, j=0; i >= 0; i--, j++) {
-            ans += (p[i] - '0') * pow10[j];
+            ans += (p[i] - '0') * pow10_array[j];
         }
     }
     return ans;

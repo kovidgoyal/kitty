@@ -43,7 +43,12 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
     else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
     sinfo = json.load(open(os.path.join(base, 'source-info.json')))
-    ans.sources = sinfo['common']['sources'] + sinfo[module]['sources']
+    module_sources = list(sinfo[module]['sources'])
+    if module in ('x11', 'wayland'):
+        remove = 'linux_joystick.c' if is_bsd else 'null_joystick.c'
+        module_sources.remove(remove)
+
+    ans.sources = sinfo['common']['sources'] + module_sources
     ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
 
     if module in ('x11', 'wayland'):
@@ -107,13 +112,13 @@ def collect_source_information():
         'common': dict(extract_sources('common')),
         'wayland_protocols': wayland_protocols,
     }
-    joystick = 'null' if is_bsd else 'linux'
     for group in 'cocoa win32 x11 wayland osmesa'.split():
         m = re.search('_GLFW_' + group.upper(), raw)
         ans[group] = dict(extract_sources('glfw', m.start()))
         if group in ('x11', 'wayland'):
-            ans[group]['headers'].append('{}_joystick.h'.format(joystick))
-            ans[group]['sources'].append('{}_joystick.c'.format(joystick))
+            for joystick in ('linux', 'null'):
+                ans[group]['headers'].append('{}_joystick.h'.format(joystick))
+                ans[group]['sources'].append('{}_joystick.c'.format(joystick))
         if group == 'wayland':
             ans[group]['protocols'] = p = []
             for m in re.finditer(r'WAYLAND_PROTOCOLS_PKGDATADIR\}/(.+?)"?$', raw, flags=re.M):
@@ -224,9 +229,9 @@ const char* load_glfw(const char* path);
         f.write(header)
 
     code = '''
-#include <dlfcn.h>
 #include "data-types.h"
 #include "glfw-wrapper.h"
+#include <dlfcn.h>
 
 static void* handle = NULL;
 
