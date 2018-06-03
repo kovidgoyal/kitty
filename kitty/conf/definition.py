@@ -96,7 +96,7 @@ def render_block(text):
 
 
 def render_group(a, group):
-    a('# ' + group.short_text + ' {{{')
+    a('# ' + group.short_text + ' {{''{')
     a('')
     if group.start_text:
         a(render_block(group.start_text))
@@ -115,16 +115,13 @@ def as_conf_file(all_options):
             if current_group:
                 if current_group.end_text:
                     a(''), a(current_group.end_text)
-                a('# }}}'), a('')
+                a('# }}''}'), a('')
 
             current_group = opt.group
             render_group(a, current_group)
         mopts = list(merged_opts(all_options, opt, i))
-        a(render_block(opt.short_text))
+        a(render_block(opt.long_text or opt.short_text))
         a('')
-        if opt.long_text:
-            a(render_block(opt.long_text))
-            a('')
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
             prefix = '' if mo.add_to_default else '# '
@@ -133,5 +130,5 @@ def as_conf_file(all_options):
     if current_group:
         if current_group.end_text:
             a(''), a(current_group.end_text)
-        a('# }}}')
+        a('# }}''}')
     return ans

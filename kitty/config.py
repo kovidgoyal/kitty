@@ -21,25 +21,7 @@ from .constants import cache_dir, defconf
 from .layout import all_layouts
 from .rgb import color_as_int, color_from_int
 from .utils import log_error
-
-
-mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER', '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
-
-
-def parse_mods(parts, sc):
-
-    def map_mod(m):
-        return mod_map.get(m, m)
-
-    mods = 0
-    for m in parts:
-        try:
-            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
-        except AttributeError:
-            log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
-            return
-
-    return mods
+from .config_data import to_modifiers, parse_mods
 
 
 named_keys = {
@@ -266,10 +248,6 @@ def parse_send_text(val, key_definitions):
     return parse_key(key_str, key_definitions)
 
 
-def to_modifiers(val):
-    return parse_mods(val.split('+'), val) or 0
-
-
 def uniq(vals, result_type=list):
     seen = set()
     seen_add = seen.add
@@ -321,25 +299,15 @@ def tab_bar_edge(x):
     return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
 
 
-def url_style(x):
-    return url_style.map.get(x, url_style.map['curly'])
-
-
 def window_size(val):
     val = val.lower()
     unit = 'cells' if val.endswith('c') else 'px'
     return positive_int(val.rstrip('c')), unit
 
 
-url_style.map = dict(
-    ((v, i) for i, v in enumerate('none single double curly'.split()))
-)
-
 type_map = {
     'allow_remote_control': to_bool,
-    'open_url_with': to_cmdline,
     'focus_follows_mouse': to_bool,
-    'open_url_modifiers': to_modifiers,
     'rectangle_select_modifiers': to_modifiers,
     'repaint_delay': positive_int,
     'input_delay': positive_int,
@@ -368,8 +336,6 @@ type_map = {
     'active_tab_font_style': tab_font_style,
     'inactive_tab_font_style': tab_font_style,
     'inactive_text_alpha': unit_float,
-    'url_style': url_style,
-    'copy_on_select': to_bool,
     'window_alert_on_bell': to_bool,
     'tab_bar_edge': tab_bar_edge,
     'bell_on_tab': to_bool,
@@ -382,7 +348,7 @@ type_map = {
 
 for name in (
     'foreground background active_border_color inactive_border_color'
-    ' selection_foreground selection_background url_color bell_border_color'
+    ' selection_foreground selection_background bell_border_color'
 ).split():
     type_map[name] = to_color
 for i in range(256):

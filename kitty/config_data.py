@@ -5,10 +5,13 @@
 
 from gettext import gettext as _
 
+from . import fast_data_types as defines
 from .conf.definition import option_func
 from .conf.utils import positive_float, positive_int, to_cmdline, to_color
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from .utils import log_error
 
+# Utils  {{{
 MINIMUM_FONT_SIZE = 4
 
 
@@ -47,6 +50,38 @@ def to_cursor_shape(x):
         )
 
 
+def url_style(x):
+    return url_style.map.get(x, url_style.map['curly'])
+
+
+url_style.map = dict(
+    ((v, i) for i, v in enumerate('none single double curly'.split()))
+)
+
+mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
+           '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
+
+
+def parse_mods(parts, sc):
+
+    def map_mod(m):
+        return mod_map.get(m, m)
+
+    mods = 0
+    for m in parts:
+        try:
+            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
+        except AttributeError:
+            log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
+            return
+
+    return mods
+
+
+def to_modifiers(val):
+    return parse_mods(val.split('+'), val) or 0
+
+
 all_options = {}
 
 
@@ -64,9 +99,13 @@ o, g, all_groups = option_func(all_options, {
     'scrollback': [
         _('Scrollback'),
     ],
+
+    'mouse': [
+        _('Mouse'),
+    ],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
-
+# }}}
 
 g('fonts')  # {{{
 
@@ -161,4 +200,30 @@ use can handle ANSI escape sequences for colors and text formatting.'''))
 o('wheel_scroll_multiplier', 5.0, _('Wheel/touchpad scrolling'), long_text=_('''
 Wheel scroll multiplier (modify the amount scrolled by the mouse wheel). Use
 negative numbers to change scroll direction.'''))
+# }}}
+
+g('mouse')  # {{{
+
+o('url_color', '#0087BD', _('URL hover highlight'), option_type=to_color, long_text=_('''
+The color and style for highlighting URLs on mouse-over.
+:code:`url_style` can be one of: none, single, double, curly'''))
+
+o('url_style', 'curly', option_type=url_style)
+
+o('open_url_modifiers', 'kitty_mod', _('Click URL modifiers'), option_type=to_modifiers, long_text=_('''
+The modifier keys to press when clicking with the
+mouse on URLs to open the URL'''))
+
+o('open_url_with', 'default', _('Open URL with'), option_type=to_cmdline, long_text=_('''
+The program with which to open URLs that are clicked on.
+The special value :code:`default` means to use the
+operating system's default URL handler.'''))
+
+o('copy_on_select', False, _('Copy on select'), long_text=_('''
+Copy to clipboard on select. With this enabled, simply selecting text with
+the mouse will cause the text to be copied to clipboard. Useful on platforms
+such as macOS/Wayland that do not have the concept of primary selections. Note
+that this is a security risk, as all programs, including websites open in your
+browser can read the contents of the clipboard.'''))
+
 # }}}
