@@ -112,7 +112,6 @@ g('fonts')  # {{{
 o(
     'font_family',
     'monospace',
-    _('Font family'),
     long_text=_('''
 You can specify different fonts for the bold/italic/bold-italic variants.
 By default they are derived automatically, by the OSes font system. Setting
@@ -129,9 +128,9 @@ o('bold_font', 'auto')
 o('italic_font', 'auto')
 o('bold_italic_font', 'auto')
 
-o('font_size', 11.0, _('Font size (in pts)'), option_type=to_font_size)
+o('font_size', 11.0, long_text=_('Font size (in pts)'), option_type=to_font_size)
 
-o('adjust_line_height', 0, _('Adjust cell dimensions'), option_type=adjust_line_height, long_text=_('''
+o('adjust_line_height', 0, option_type=adjust_line_height, long_text=_('''
 Change the size of each character cell kitty renders. You can use either numbers,
 which are interpreted as pixels or percentages (number followed by %), which
 are interpreted as percentages of the unmodified values. You can use negative
@@ -143,7 +142,6 @@ o('adjust_column_width', 0, option_type=adjust_line_height)
 o(
     '+symbol_map',
     'U+E0A0-U+E0A2,U+E0B0-U+E0B3 PowerlineSymbols',
-    _('Font character mapping'),
     add_to_default=False,
     long_text=_('''
 Map the specified unicode codepoints to a particular font. Useful if you need
@@ -160,7 +158,6 @@ Syntax is::
 o(
     'box_drawing_scale',
     '0.001, 1, 1.5, 2',
-    _('Box drawing line thickness'),
     option_type=box_drawing_scale,
     long_text=_('''
 Change the sizes of the lines used for the box drawing unicode characters
@@ -173,10 +170,10 @@ and very thick lines.
 
 g('cursor')  # {{{
 
-o('cursor', '#cccccc', _('Cursor color'), option_type=to_color)
-o('cursor_shape', 'block', _('Cursor shape'), option_type=to_cursor_shape, long_text=_(
+o('cursor', '#cccccc', _('Default cursor color'), option_type=to_color)
+o('cursor_shape', 'block', option_type=to_cursor_shape, long_text=_(
     'The cursor shape can be one of (block, beam, underline)'))
-o('cursor_blink_interval', 0.5, _('Cursor blink'), option_type=positive_float, long_text=_('''
+o('cursor_blink_interval', 0.5, option_type=positive_float, long_text=_('''
 The interval (in seconds) at which to blink the cursor. Set to zero to disable
 blinking. Note that numbers smaller than :conf:`repaint_delay` will be limited
 to :conf:`repaint_delay`. Stop blinking cursor after the specified number of
@@ -188,38 +185,38 @@ o('cursor_stop_blinking_after', 15.0, option_type=positive_float)
 
 g('scrollback')  # {{{
 
-o('scrollback_lines', 2000, _('Scrollback size'), option_type=positive_int, long_text=_('''
+o('scrollback_lines', 2000, option_type=positive_int, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
 on demand.'''))
 
-o('scrollback_pager', 'less +G -R', _('Scrollback pager'), option_type=to_cmdline, long_text=_('''
+o('scrollback_pager', 'less +G -R', option_type=to_cmdline, long_text=_('''
 Program with which to view scrollback in a new window. The scrollback buffer is
 passed as STDIN to this program. If you change it, make sure the program you
 use can handle ANSI escape sequences for colors and text formatting.'''))
 
-o('wheel_scroll_multiplier', 5.0, _('Wheel/touchpad scrolling'), long_text=_('''
-Wheel scroll multiplier (modify the amount scrolled by the mouse wheel). Use
+o('wheel_scroll_multiplier', 5.0, long_text=_('''
+Modify the amount scrolled by the mouse wheel or touchpad. Use
 negative numbers to change scroll direction.'''))
 # }}}
 
 g('mouse')  # {{{
 
-o('url_color', '#0087BD', _('URL hover highlight'), option_type=to_color, long_text=_('''
+o('url_color', '#0087BD', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
 
 o('url_style', 'curly', option_type=url_style)
 
-o('open_url_modifiers', 'kitty_mod', _('Click URL modifiers'), option_type=to_modifiers, long_text=_('''
+o('open_url_modifiers', 'kitty_mod', option_type=to_modifiers, long_text=_('''
 The modifier keys to press when clicking with the
 mouse on URLs to open the URL'''))
 
-o('open_url_with', 'default', _('Open URL with'), option_type=to_cmdline, long_text=_('''
+o('open_url_with', 'default', option_type=to_cmdline, long_text=_('''
 The program with which to open URLs that are clicked on.
 The special value :code:`default` means to use the
 operating system's default URL handler.'''))
 
-o('copy_on_select', False, _('Copy on select'), long_text=_('''
+o('copy_on_select', False, long_text=_('''
 Copy to clipboard on select. With this enabled, simply selecting text with
 the mouse will cause the text to be copied to clipboard. Useful on platforms
 such as macOS/Wayland that do not have the concept of primary selections. Note

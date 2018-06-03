@@ -23,10 +23,10 @@ class Group:
 
 class Option:
 
-    __slots__ = 'name', 'group', 'short_text', 'long_text', 'option_type', 'defval_as_string', 'defval', 'add_to_default'
+    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'defval', 'add_to_default'
 
-    def __init__(self, name, group, defval, option_type, short_text, long_text, add_to_default):
-        self.name, self.group, self.short_text = name, group, short_text
+    def __init__(self, name, group, defval, option_type, long_text, add_to_default):
+        self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
         self.defval_as_string, self.defval = defval, option_type(defval)
         self.add_to_default = add_to_default
@@ -37,7 +37,6 @@ def option(
         group,
         name,
         defval,
-        short_text='',
         long_text='',
         option_type=to_string,
         add_to_default=True
@@ -60,7 +59,7 @@ def option(
     key = name
     if is_multiple:
         key = name + ' ' + defval.partition(' ')[0]
-    ans = Option(name, group[0], defval, option_type, short_text, long_text, add_to_default)
+    ans = Option(name, group[0], defval, option_type, long_text, add_to_default)
     all_options[key] = ans
     return ans
 
@@ -79,7 +78,7 @@ def merged_opts(all_options, opt, i):
     yield opt
     for k in range(i + 1, len(all_options)):
         q = all_options[k]
-        if not q.short_text:
+        if not q.long_text:
             yield q
         else:
             break
@@ -109,7 +108,7 @@ def as_conf_file(all_options):
     current_group = None
     all_options = list(all_options)
     for i, opt in enumerate(all_options):
-        if not opt.short_text:
+        if not opt.long_text:
             continue
         if opt.group is not current_group:
             if current_group:
@@ -120,12 +119,12 @@ def as_conf_file(all_options):
             current_group = opt.group
             render_group(a, current_group)
         mopts = list(merged_opts(all_options, opt, i))
-        a(render_block(opt.long_text or opt.short_text))
-        a('')
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
             prefix = '' if mo.add_to_default else '# '
             a(('{}{:%ds} {}' % sz).format(prefix, mo.name, mo.defval_as_string))
+        a('')
+        a(render_block(opt.long_text))
         a('')
     if current_group:
         if current_group.end_text:

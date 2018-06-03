@@ -322,7 +322,7 @@ def render_conf(ref_prefix, all_options):
     current_group = None
     all_options = list(all_options)
     for i, opt in enumerate(all_options):
-        if not opt.short_text:
+        if not opt.long_text:
             continue
         if opt.group is not current_group:
             if current_group and current_group.end_text:
@@ -333,9 +333,6 @@ def render_conf(ref_prefix, all_options):
         for mo in mopts:
             a('.. _{}:'.format(conf_label(ref_prefix, mo.name)))
             a('')
-        a(opt.short_text)
-        a('_' * (len(opt.short_text) + 20))
-        a('')
         a('.. code-block:: ini')
         a('')
         sz = max(len(x.name) for x in mopts)
@@ -343,7 +340,7 @@ def render_conf(ref_prefix, all_options):
             a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
         a('')
         if opt.long_text:
-            a(opt.long_text)
+            a(opt.long_text, '    ')
             a('')
 
     return '\n'.join(ans)
