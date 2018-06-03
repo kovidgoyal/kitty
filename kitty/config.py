@@ -18,27 +18,9 @@ from .conf.utils import (
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
-from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import color_as_int, color_from_int
 from .utils import log_error
-
-cshapes = {
-    'block': CURSOR_BLOCK,
-    'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE
-}
-
-
-def to_cursor_shape(x):
-    try:
-        return cshapes[x.lower()]
-    except KeyError:
-        raise ValueError(
-            'Invalid cursor shape: {} allowed values are {}'.format(
-                x, ', '.join(cshapes)
-            )
-        )
 
 
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER', '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
@@ -308,12 +290,6 @@ def to_layout_names(raw):
     return uniq(ans)
 
 
-def adjust_line_height(x):
-    if x.endswith('%'):
-        return float(x[:-1].strip()) / 100.0
-    return int(x)
-
-
 def macos_titlebar_color(x):
     x = x.strip('"')
     if x == 'system':
@@ -321,13 +297,6 @@ def macos_titlebar_color(x):
     if x == 'background':
         return 1
     return (color_as_int(to_color(x)) << 8) | 2
-
-
-def box_drawing_scale(x):
-    ans = tuple(float(x.strip()) for x in x.split(','))
-    if len(ans) != 4:
-        raise ValueError('Invalid box_drawing scale, must have four entries')
-    return ans
 
 
 def tab_separator(x):
@@ -368,13 +337,10 @@ url_style.map = dict(
 
 type_map = {
     'allow_remote_control': to_bool,
-    'adjust_line_height': adjust_line_height,
-    'adjust_column_width': adjust_line_height,
     'scrollback_lines': positive_int,
     'scrollback_pager': to_cmdline,
     'open_url_with': to_cmdline,
     'focus_follows_mouse': to_bool,
-    'cursor_shape': to_cursor_shape,
     'open_url_modifiers': to_modifiers,
     'rectangle_select_modifiers': to_modifiers,
     'repaint_delay': positive_int,
@@ -390,8 +356,6 @@ type_map = {
     'enable_audio_bell': to_bool,
     'click_interval': positive_float,
     'mouse_hide_wait': positive_float,
-    'cursor_blink_interval': positive_float,
-    'cursor_stop_blinking_after': positive_float,
     'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,
     'initial_window_width': window_size,
@@ -400,7 +364,6 @@ type_map = {
     'macos_hide_from_tasks': to_bool,
     'macos_option_as_alt': to_bool,
     'macos_titlebar_color': macos_titlebar_color,
-    'box_drawing_scale': box_drawing_scale,
     'dynamic_background_opacity': to_bool,
     'background_opacity': unit_float,
     'dim_opacity': unit_float,
@@ -421,7 +384,7 @@ type_map = {
 }
 
 for name in (
-    'foreground background cursor active_border_color inactive_border_color'
+    'foreground background active_border_color inactive_border_color'
     ' selection_foreground selection_background url_color bell_border_color'
 ).split():
     type_map[name] = to_color
