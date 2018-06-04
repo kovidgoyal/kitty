@@ -13,7 +13,6 @@ from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
-from sphinx.roles import XRefRole
 
 
 def create_shortcut_defs():
@@ -23,7 +22,8 @@ def create_shortcut_defs():
         if line.startswith('map '):
             _, sc, name = line.split(maxsplit=2)
             sc = sc.replace('kitty_mod', 'ctrl+shift')
-            name = name.rstrip().replace(' ', '_').replace('-', '_').replace('+', 'plus').replace('.', '_').replace('___', '_').replace('__', '_').strip('_')
+            name = name.rstrip().replace(' ', '_').replace('-', '_').replace('+',
+                                                                             'plus').replace('.', '_').replace('___', '_').replace('__', '_').strip('_')
             defns[name].append(':kbd:`' + sc.replace('>', ' → ') + '`')
 
     defns = [
@@ -82,7 +82,8 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'generated/cli-*', 'generated/conf-*']
+exclude_patterns = ['_build', 'Thumbs.db',
+                    '.DS_Store', 'generated/cli-*', 'generated/conf-*']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -271,7 +272,8 @@ def add_html_context(app, pagename, templatename, context, *args):
 def write_cli_docs():
     from kitty.cli import option_spec_as_rst
     with open('generated/cli-kitty.rst', 'w') as f:
-        f.write(option_spec_as_rst(appname='kitty').replace('kitty --to', 'kitty @ --to'))
+        f.write(option_spec_as_rst(appname='kitty').replace(
+            'kitty --to', 'kitty @ --to'))
     as_rst = partial(option_spec_as_rst, heading_char='_')
     from kitty.remote_control import global_options_spec, cli_msg, cmap, all_commands
     with open('generated/cli-kitty-at.rst', 'w') as f:
@@ -311,13 +313,9 @@ def render_group(a, group):
         a('')
 
 
-def conf_label(ref_prefix, name):
-    return 'conf-{}-{}'.format(ref_prefix, name)
-
-
 def render_conf(ref_prefix, all_options):
     from kitty.conf.definition import merged_opts
-    ans = []
+    ans = ['.. default-domain:: conf', '']
     a = ans.append
     current_group = None
     all_options = list(all_options)
@@ -330,9 +328,7 @@ def render_conf(ref_prefix, all_options):
             current_group = opt.group
             render_group(a, current_group)
         mopts = list(merged_opts(all_options, opt, i))
-        for mo in mopts:
-            a('.. _{}:'.format(conf_label(ref_prefix, mo.name)))
-            a('')
+        a('.. opt:: ' + ', '.join(mo.name for mo in mopts))
         a('.. code-block:: ini')
         a('')
         sz = max(len(x.name) for x in mopts)
@@ -353,16 +349,6 @@ def write_conf_docs():
         f.write(render_conf('kitty', all_options.values()))
 
 
-class ConfRole(XRefRole):
-
-    def process_link(self, env, refnode, has_explicit_title, title, target):
-        title, target = XRefRole.process_link(self, env, refnode, has_explicit_title, title, target)
-        module, conf_name = target.partition('.')[::2]
-        if not conf_name:
-            module, conf_name = 'kitty', module
-        target = conf_label(module, conf_name)
-        return title, target
-
 # }}}
 
 
@@ -376,5 +362,9 @@ def setup(app):
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
-    app.add_role('conf', ConfRole(warn_dangling=True, innernodeclass=nodes.inline))
     app.connect('html-page-context', add_html_context)
+
+    app.add_object_type(
+        'opt', 'opt',
+        indextemplate="pair: %s; Config Setting"
+    )

@@ -171,8 +171,8 @@ o('cursor_shape', 'block', option_type=to_cursor_shape, long_text=_(
     'The cursor shape can be one of (block, beam, underline)'))
 o('cursor_blink_interval', 0.5, option_type=positive_float, long_text=_('''
 The interval (in seconds) at which to blink the cursor. Set to zero to disable
-blinking. Note that numbers smaller than :conf:`repaint_delay` will be limited
-to :conf:`repaint_delay`. Stop blinking cursor after the specified number of
+blinking. Note that numbers smaller than :opt:`repaint_delay` will be limited
+to :opt:`repaint_delay`. Stop blinking cursor after the specified number of
 seconds of keyboard inactivity. Set to zero to never stop blinking.
 '''))
 o('cursor_stop_blinking_after', 15.0, option_type=positive_float)
@@ -249,7 +249,7 @@ o('repaint_delay', 10, option_type=positive_int, long_text=_('''
 Delay (in milliseconds) between screen updates. Decreasing it, increases
 frames-per-second (FPS) at the cost of more CPU usage. The default value
 yields ~100 FPS which is more than sufficient for most uses. Note that to
-actually achieve 100 FPS you have to either set :conf:`sync_to_monitor` to no
+actually achieve 100 FPS you have to either set :opt:`sync_to_monitor` to no
 or use a monitor with a high refresh rate.'''))
 
 o('input_delay', 3, option_type=positive_int, long_text=_('''
