@@ -368,3 +368,5 @@ def setup(app):
         'opt', 'opt',
         indextemplate="pair: %s; Config Setting"
     )
+    # Warn about opt references that could not be resolved
+    app.registry.domain_roles['std']['opt'].warn_dangling = True
