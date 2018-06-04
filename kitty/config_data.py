@@ -12,6 +12,7 @@ from .conf.utils import (
 )
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
+from .rgb import color_as_sharp, color_from_int
 from .utils import log_error
 
 # Utils  {{{
@@ -136,6 +137,7 @@ The 16 terminal colors. There are 8 basic colors, each color has a dull and
 bright version. You can also set the remaining colors from the 256 color table
 as color16 to color256.''')
     ],
+    'advanced': [_('Advanced')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -472,5 +474,57 @@ o('color14', '#14ffff', option_type=to_color)
 
 o('color7', '#dddddd', long_text=_('white'), option_type=to_color)
 o('color15', '#ffffff', option_type=to_color)
+
+dfctl = defines.default_color_table()
+for i in range(16, 256):
+    k = 'color{}'.format(i)
+    o(k, color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_default=False)
+
+# }}}
+
+g('advanced')  # {{{
+o('shell', '.', long_text=_('''
+The shell program to execute. The default value of . means
+to use whatever shell is set as the default shell for the current user.
+Note that on macOS if you change this, you might need to add :code:`--login` to
+ensure that the shell starts in interactive mode and reads its startup rc files.'''))
+
+o('editor', '.', long_text=_('''
+The console editor to use when editing the kitty config file or similar tasks.
+A value of . means to use the environment variable EDITOR. Note that this
+environment variable has to be set not just in your shell startup scripts but
+system-wide, otherwise kitty will not see it.
+'''))
+
+o('close_on_child_death', False, long_text=_('''
+Close the window when the child process (shell) exits. If no (the default), the
+terminal will remain open when the child exits as long as there are still
+processes outputting to the terminal (for example disowned or backgrounded
+processes). If yes, the window will close as soon as the child process exits.
+Note that setting it to yes means that any background processes still using the
+terminal can fail silently because their stdout/stderr/stdin no longer work.
+'''))
+
+o('allow_remote_control', False, long_text=_('''
+Allow other programs to control kitty. If you turn this on other programs can
+control all aspects of kitty, including sending text to kitty windows,
+opening new windows, closing windows, reading the content of windows, etc.
+Note that this even works over ssh connections.
+'''))
+
+o('clipboard_control', 'write-clipboard write-primary', option_type=lambda x: frozenset(x.lower().split()), long_text=_('''
+Allow programs running in kitty to read and write from the clipboard. You can
+control exactly which actions are allowed. The set of possible actions is:
+write-clipboard read-clipboard write-primary read-primary
+The default is to allow writing to the clipboard and primary selection. Note
+that enabling the read functionality is a security risk as it means that any
+program, even one running on a remote server via SSH can read your clipboard.
+'''))
+
+o('term', 'xterm-kitty', long_text=_('''
+The value of the TERM environment variable to set. Changing this can break
+many terminal programs, only change it if you know what you are doing, not
+because you read some advice on Stack Overflow to change it.
+'''))
 
 # }}}

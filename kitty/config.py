@@ -18,7 +18,7 @@ from .conf.utils import (
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
-from .rgb import color_as_int, color_from_int
+from .rgb import color_as_int
 from .utils import log_error
 from .config_data import to_modifiers, parse_mods
 
@@ -273,7 +273,6 @@ type_map = {
     'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
-    'clipboard_control': lambda x: frozenset(x.lower().split()),
 }
 
 for i in range(256):
@@ -318,11 +317,6 @@ def parse_config(lines, check_keys=True):
 
 def parse_defaults(lines, check_keys=False):
     ans = parse_config(lines, check_keys)
-    dfctl = defines.default_color_table()
-
-    for i in range(16, 256):
-        k = 'color{}'.format(i)
-        ans.setdefault(k, color_from_int(dfctl[i]))
     return ans
 
 

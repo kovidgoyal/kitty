@@ -361,7 +361,7 @@ def render_conf(conf_name, all_options):
     current_group = None
     all_options = list(all_options)
     for i, opt in enumerate(all_options):
-        if not opt.long_text:
+        if not opt.long_text or not opt.add_to_default:
             continue
         if opt.group is not current_group:
             if current_group and current_group.end_text:

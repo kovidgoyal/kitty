@@ -23,12 +23,12 @@ class Group:
 
 class Option:
 
-    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'defval', 'add_to_default'
+    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default'
 
     def __init__(self, name, group, defval, option_type, long_text, add_to_default):
         self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
-        self.defval_as_string, self.defval = defval, option_type(defval)
+        self.defval_as_string = defval
         self.add_to_default = add_to_default
 
 
@@ -78,7 +78,7 @@ def merged_opts(all_options, opt, i):
     yield opt
     for k in range(i + 1, len(all_options)):
         q = all_options[k]
-        if not q.long_text:
+        if not q.long_text and q.add_to_default:
             yield q
         else:
             break
