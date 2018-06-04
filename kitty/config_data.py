@@ -12,7 +12,7 @@ from .conf.utils import (
 )
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .rgb import color_as_sharp, color_from_int
+from .rgb import color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
 
 # Utils  {{{
@@ -138,6 +138,7 @@ bright version. You can also set the remaining colors from the 256 color table
 as color16 to color256.''')
     ],
     'advanced': [_('Advanced')],
+    'os': [_('OS specific tweaks')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -526,5 +527,45 @@ The value of the TERM environment variable to set. Changing this can break
 many terminal programs, only change it if you know what you are doing, not
 because you read some advice on Stack Overflow to change it.
 '''))
+
+# }}}
+
+g('os')  # {{{
+
+
+def macos_titlebar_color(x):
+    x = x.strip('"')
+    if x == 'system':
+        return 0
+    if x == 'background':
+        return 1
+    return (color_as_int(to_color(x)) << 8) | 2
+
+
+o('macos_titlebar_color', 'system', option_type=macos_titlebar_color, long_text=_('''
+Change the color of the kitty window's titlebar on macOS. A value of :code:`system`
+means to use the default system color, a value of :code:`background` means to use
+the background color of the currently active window and finally you can use
+an arbitrary color, such as :code:`#12af59` or :code:`red`. WARNING: This option works by
+using a hack, as there is no proper Cocoa API for it. It sets the background
+color of the entire window and makes the titlebar transparent. As such it is
+incompatible with :opt:`background_opacity`. If you want to use both, you are
+probably better off just hiding the titlebar with :opt:`macos_hide_titlebar`.
+'''))
+
+o('macos_hide_titlebar', False, long_text=_('''
+# Hide the kitty window's title bar on macOS.'''))
+
+o('macos_option_as_alt', True, long_text=_('''
+Use the option key as an alt key. With this set to no, kitty will use
+the macOS native :kbd:`Option+Key` = unicode character behavior. This will
+break any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you
+can use the macOS unicode input technique.
+'''))
+
+o('macos_hide_from_tasks', False, long_text=_('''
+Hide the kitty window from running tasks (:kbd:`Option+Tab`) on macOS.
+'''))
+
 
 # }}}

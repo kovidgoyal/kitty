@@ -14,11 +14,10 @@ from .conf.definition import as_conf_file
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, positive_int, python_string, to_bool,
-    to_cmdline, to_color
+    to_cmdline
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
-from .rgb import color_as_int
 from .utils import log_error
 from .config_data import to_modifiers, parse_mods
 
@@ -247,15 +246,6 @@ def parse_send_text(val, key_definitions):
     return parse_key(key_str, key_definitions)
 
 
-def macos_titlebar_color(x):
-    x = x.strip('"')
-    if x == 'system':
-        return 0
-    if x == 'background':
-        return 1
-    return (color_as_int(to_color(x)) << 8) | 2
-
-
 type_map = {
     'allow_remote_control': to_bool,
     'focus_follows_mouse': to_bool,
@@ -267,16 +257,12 @@ type_map = {
     'macos_hide_titlebar': to_bool,
     'macos_hide_from_tasks': to_bool,
     'macos_option_as_alt': to_bool,
-    'macos_titlebar_color': macos_titlebar_color,
     'dynamic_background_opacity': to_bool,
     'window_alert_on_bell': to_bool,
     'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
 }
-
-for i in range(256):
-    type_map['color{}'.format(i)] = to_color
 
 
 def special_handling(key, val, ans):
