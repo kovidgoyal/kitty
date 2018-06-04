@@ -92,17 +92,13 @@ o, g, all_groups = option_func(all_options, {
           'font faces and even specify special fonts for particular characters.')
     ],
 
-    'cursor': [
-        _('Cursor customization'),
-    ],
+    'cursor': [_('Cursor customization'), ],
 
-    'scrollback': [
-        _('Scrollback'),
-    ],
+    'scrollback': [_('Scrollback'), ],
 
-    'mouse': [
-        _('Mouse'),
-    ],
+    'mouse': [_('Mouse'), ],
+
+    'performance': [_('Performance tuning')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -243,5 +239,31 @@ of the mouse not being used. Set to zero to disable mouse cursor hiding.'''))
 o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
 moving the mouse around'''))
+
+# }}}
+
+
+g('performance')  # {{{
+
+o('repaint_delay', 10, option_type=positive_int, long_text=_('''
+Delay (in milliseconds) between screen updates. Decreasing it, increases
+frames-per-second (FPS) at the cost of more CPU usage. The default value
+yields ~100 FPS which is more than sufficient for most uses. Note that to
+actually achieve 100 FPS you have to either set :conf:`sync_to_monitor` to no
+or use a monitor with a high refresh rate.'''))
+
+o('input_delay', 3, option_type=positive_int, long_text=_('''
+Delay (in milliseconds) before input from the program running in the terminal
+is processed. Note that decreasing it will increase responsiveness, but also
+increase CPU usage and might cause flicker in full screen programs that
+redraw the entire screen on each loop, because kitty is so fast that partial
+screen updates will be drawn.'''))
+
+o('sync_to_monitor', True, long_text=_('''
+Sync screen updates to the refresh rate of the monitor. This prevents
+tearing (https://en.wikipedia.org/wiki/Screen_tearing) when scrolling. However,
+it limits the rendering speed to the refresh rate of your monitor. With a
+very high speed mouse/high keyboard repeat rate, you may notice some slight input latency.
+If so, set this to no.'''))
 
 # }}}

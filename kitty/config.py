@@ -308,7 +308,6 @@ def window_size(val):
 type_map = {
     'allow_remote_control': to_bool,
     'focus_follows_mouse': to_bool,
-    'repaint_delay': positive_int,
     'input_delay': positive_int,
     'sync_to_monitor': to_bool,
     'close_on_child_death': to_bool,
