@@ -115,7 +115,7 @@ def to_layout_names(raw):
 all_options = {}
 
 
-o, g, all_groups = option_func(all_options, {
+o, k, g, all_groups = option_func(all_options, {
     'fonts': [
         _('Fonts'),
         _('kitty has very powerful font management. You can configure individual\n'
@@ -168,6 +168,7 @@ For example::
     map ctrl+f>2 set_font_size 20
 ''')
     ],
+    'shortcuts.clipboard': [_('Clipboard')],
 })
 # }}}
 
@@ -506,8 +507,7 @@ o('color15', '#ffffff', option_type=to_color)
 
 dfctl = defines.default_color_table()
 for i in range(16, 256):
-    k = 'color{}'.format(i)
-    o(k, color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_docs=False)
+    o('color{}'.format(i), color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_docs=False)
 
 # }}}
 
@@ -608,6 +608,21 @@ shortcuts.'''))
 o('clear_all_shortcuts', False, long_text=_('''
 You can have kitty remove all shortcut definition seen up to this point. Useful, for
 instance, to remove the default shortcuts.'''))
+
+g('shortcuts.clipboard')  # {{{
+k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'))
+k('paste_from_clipboard', 'kitty_mod+v', 'paste_from_clipboard', _('Paste from clipboard'))
+k('paste_from_selection', 'kitty_mod+s', 'paste_from_selection', _('Paste from selection'))
+k('paste_from_selection', 'shift+insert', 'paste_from_selection', _('Paste from selection'))
+k('pass_selection_to_program', 'kitty_mod+o', 'pass_selection_to_program', _('Pass selection to program'), long_text=_('''
+You can also pass the contents of the current selection to any program using
+pass_selection_to_program. By default, the system's open program is used, but
+you can specify your own, for example::
+
+    map kitty_mod+o      pass_selection_to_program firefox
+'''))
+
+# }}}
 # }}}
 
-type_map = {o.name: o.option_type for o in all_options.values()}
+type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}
