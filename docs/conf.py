@@ -318,16 +318,6 @@ def link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     return [node], []
 
 
-def render_group(a, group):
-    a(group.short_text)
-    heading_level = '+' if '.' in group.name else '^'
-    a(heading_level * (len(group.short_text) + 20))
-    a('')
-    if group.start_text:
-        a(group.start_text)
-        a('')
-
-
 def expand_opt_references(conf_name, text):
     conf_name += '.'
 
@@ -342,6 +332,7 @@ def expand_opt_references(conf_name, text):
 
 
 opt_aliases = {}
+shortcut_slugs = {}
 
 
 def parse_opt_node(env, sig, signode):
@@ -366,20 +357,45 @@ def parse_opt_node(env, sig, signode):
     return firstname
 
 
+def parse_shortcut_node(env, sig, signode):
+    """Transform a shortcut description into RST nodes."""
+    conf_name, text = sig.split('.', 1)
+    signode += addnodes.desc_name(text, text)
+    return sig
+
+
 def render_conf(conf_name, all_options):
-    from kitty.conf.definition import merged_opts
+    from kitty.conf.definition import merged_opts, Option
     ans = ['.. default-domain:: conf', '']
     a = ans.append
     current_group = None
     all_options = list(all_options)
-    for i, opt in enumerate(all_options):
-        if not opt.long_text or not opt.add_to_docs:
-            continue
-        if opt.group is not current_group:
+    kitty_mod = 'kitty_mod'
+
+    def render_group(group):
+        a(group.short_text)
+        heading_level = '+' if '.' in group.name else '^'
+        a(heading_level * (len(group.short_text) + 20))
+        a('')
+        if group.start_text:
+            a(group.start_text)
+            a('')
+
+    def handle_group(new_group, new_group_is_shortcut=False):
+        nonlocal current_group
+        if new_group is not current_group:
             if current_group and current_group.end_text:
                 a(''), a(current_group.end_text)
-            current_group = opt.group
-            render_group(a, current_group)
+            current_group = new_group
+            render_group(current_group)
+
+    def handle_option(i, opt):
+        nonlocal kitty_mod
+        if not opt.long_text or not opt.add_to_docs:
+            return
+        handle_group(opt.group)
+        if opt.name == 'kitty_mod':
+            kitty_mod = opt.defval_as_string
         mopts = list(merged_opts(all_options, opt, i))
         a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
         a('.. code-block:: ini')
@@ -392,6 +408,27 @@ def render_conf(conf_name, all_options):
             a(expand_opt_references(conf_name, opt.long_text))
             a('')
 
+    def handle_shortcuts(shortcuts):
+        sc = shortcuts[0]
+        handle_group(sc.group, True)
+        sc_text = f'{conf_name}.{sc.short_text}'
+        a('.. shortcut:: ' + sc_text)
+        a('.. parsed-literal::')
+        a('')
+        shortcut_slugs[f'{conf_name}.{sc.name}'] = (sc_text, sc.key.replace('kitty_mod', kitty_mod))
+        for x in shortcuts:
+            a('    map :green:`{}` {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
+        a('')
+        if sc.long_text:
+            a(expand_opt_references(conf_name, sc.long_text))
+            a('')
+
+    for i, opt in enumerate(all_options):
+        if isinstance(opt, Option):
+            handle_option(i, opt)
+        else:
+            handle_shortcuts(opt)
+
     return '\n'.join(ans)
 
 
@@ -401,6 +438,15 @@ def process_opt_link(env, refnode, has_explicit_title, title, target):
         conf_name, opt = 'kitty', conf_name
     full_name = conf_name + '.' + opt
     return title, opt_aliases.get(full_name, full_name)
+
+
+def process_shortcut_link(env, refnode, has_explicit_title, title, target):
+    conf_name, slug = target.partition('.')[::2]
+    if not slug:
+        conf_name, slug = 'kitty', conf_name
+    full_name = conf_name + '.' + slug
+    target, title = shortcut_slugs[full_name]
+    return title, target
 
 
 def write_conf_docs(app):
@@ -413,6 +459,15 @@ def write_conf_docs(app):
     opt_role = app.registry.domain_roles['std']['opt']
     opt_role.warn_dangling = True
     opt_role.process_link = process_opt_link
+
+    app.add_object_type(
+        'shortcut', 'sc',
+        indextemplate="pair: %s; Keyboard Shortcut",
+        parse_node=parse_shortcut_node,
+    )
+    sc_role = app.registry.domain_roles['std']['sc']
+    sc_role.warn_dangling = True
+    sc_role.process_link = process_shortcut_link
 
     from kitty.config_data import all_options
     with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
