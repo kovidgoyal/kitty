@@ -315,7 +315,6 @@ type_map = {
     'window_margin_width': positive_float,
     'tab_bar_margin_width': positive_float,
     'window_padding_width': positive_float,
-    'visual_bell_duration': positive_float,
     'enable_audio_bell': to_bool,
     'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,

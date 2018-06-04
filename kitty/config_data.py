@@ -93,12 +93,10 @@ o, g, all_groups = option_func(all_options, {
     ],
 
     'cursor': [_('Cursor customization'), ],
-
     'scrollback': [_('Scrollback'), ],
-
     'mouse': [_('Mouse'), ],
-
     'performance': [_('Performance tuning')],
+    'bell': [_('Terminal bell')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -265,5 +263,24 @@ tearing (https://en.wikipedia.org/wiki/Screen_tearing) when scrolling. However,
 it limits the rendering speed to the refresh rate of your monitor. With a
 very high speed mouse/high keyboard repeat rate, you may notice some slight input latency.
 If so, set this to no.'''))
+
+# }}}
+
+g('bell')  # {{{
+
+o('enable_audio_bell', True, long_text=_('''
+Enable/disable the audio bell. Useful in environments that require silence.'''))
+
+o('visual_bell_duration', 0.0, option_type=positive_float, long_text=_('''
+Visual bell duration. Flash the screen when a bell occurs for the specified number of
+seconds. Set to zero to disable.'''))
+
+o('window_alert_on_bell', True, long_text=_('''
+Request window attention on bell.
+Makes the dock icon bounce on macOS or the taskbar flash on linux.'''))
+
+o('bell_on_tab', True, long_text=_('''
+Show a bell symbol on the tab if a bell occurs in one of the windows in the
+tab and the window is not the currently focused window'''))
 
 # }}}
