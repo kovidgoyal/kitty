@@ -244,6 +244,8 @@ def functions_for(args):
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
+    elif args.type == 'sha1':
+        pattern = '[0-9a-f]{7,40}'
     elif args.type == 'word':
         chars = args.word_characters
         if chars is None:
@@ -313,7 +315,7 @@ terminal window instead. A value of :file:`@` will copy the match to the clipboa
 
 --type
 default=url
-choices=url,regex,path,line,word
+choices=url,regex,path,line,sha1,word
 The type of text to search for.
 
 
@@ -331,7 +333,7 @@ Comma separated list of recognized URL prefixes.
 
 
 --word-characters
-Characters to consider as part of a word. In addition, all characters marked as
+Csha1,haracters to consider as part of a word. In addition, all characters marked as
 alpha-numeric in the unicode database will be considered as word characters.
 Defaults to the select_by_word_characters setting from kitty.conf.
 
