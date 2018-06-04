@@ -23,13 +23,14 @@ class Group:
 
 class Option:
 
-    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default'
+    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs'
 
-    def __init__(self, name, group, defval, option_type, long_text, add_to_default):
+    def __init__(self, name, group, defval, option_type, long_text, add_to_default, add_to_docs):
         self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
         self.defval_as_string = defval
         self.add_to_default = add_to_default
+        self.add_to_docs = add_to_docs
 
 
 def option(
@@ -39,7 +40,8 @@ def option(
         defval,
         long_text='',
         option_type=to_string,
-        add_to_default=True
+        add_to_default=True,
+        add_to_docs=True
 ):
     is_multiple = name.startswith('+')
     if is_multiple:
@@ -59,7 +61,7 @@ def option(
     key = name
     if is_multiple:
         key = name + ' ' + defval.partition(' ')[0]
-    ans = Option(name, group[0], defval, option_type, long_text, add_to_default)
+    ans = Option(name, group[0], defval, option_type, long_text, add_to_default, add_to_docs)
     all_options[key] = ans
     return ans
 
@@ -78,7 +80,7 @@ def merged_opts(all_options, opt, i):
     yield opt
     for k in range(i + 1, len(all_options)):
         q = all_options[k]
-        if not q.long_text and q.add_to_default:
+        if not q.long_text and q.add_to_docs:
             yield q
         else:
             break
@@ -109,7 +111,7 @@ def as_conf_file(all_options):
     current_group = None
     all_options = list(all_options)
     for i, opt in enumerate(all_options):
-        if not opt.long_text:
+        if not opt.long_text or not opt.add_to_docs:
             continue
         if opt.group is not current_group:
             if current_group:

@@ -135,7 +135,7 @@ o, g, all_groups = option_func(all_options, {
         _('''\
 The 16 terminal colors. There are 8 basic colors, each color has a dull and
 bright version. You can also set the remaining colors from the 256 color table
-as color16 to color256.''')
+as color16 to color255.''')
     ],
     'advanced': [_('Advanced')],
     'os': [_('OS specific tweaks')],
@@ -507,7 +507,7 @@ o('color15', '#ffffff', option_type=to_color)
 dfctl = defines.default_color_table()
 for i in range(16, 256):
     k = 'color{}'.format(i)
-    o(k, color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_default=False)
+    o(k, color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_docs=False)
 
 # }}}
 
@@ -598,7 +598,7 @@ Hide the kitty window from running tasks (:kbd:`Option+Tab`) on macOS.
 
 # }}}
 
-g('shortcuts')  # {{
+g('shortcuts')  # {{{
 
 o('kitty_mod', 'ctrl+shift', option_type=to_modifiers, long_text=_('''
 The value of :code:`kitty_mod` is used as the modifier for all default shortcuts, you
