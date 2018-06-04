@@ -13,12 +13,11 @@ from . import fast_data_types as defines
 from .conf.definition import as_conf_file
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
-    parse_config_base, positive_float, positive_int, python_string, to_bool,
+    parse_config_base, positive_int, python_string, to_bool,
     to_cmdline, to_color, unit_float
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
-from .layout import all_layouts
 from .rgb import color_as_int, color_from_int
 from .utils import log_error
 from .config_data import to_modifiers, parse_mods
@@ -248,26 +247,6 @@ def parse_send_text(val, key_definitions):
     return parse_key(key_str, key_definitions)
 
 
-def uniq(vals, result_type=list):
-    seen = set()
-    seen_add = seen.add
-    return result_type(x for x in vals if x not in seen and not seen_add(x))
-
-
-def to_layout_names(raw):
-    parts = [x.strip().lower() for x in raw.split(',')]
-    ans = []
-    for p in parts:
-        if p == '*':
-            ans.extend(sorted(all_layouts))
-            continue
-        name = p.partition(':')[0]
-        if name not in all_layouts:
-            raise ValueError('The window layout {} is unknown'.format(p))
-        ans.append(p)
-    return uniq(ans)
-
-
 def macos_titlebar_color(x):
     x = x.strip('"')
     if x == 'system':
@@ -277,49 +256,14 @@ def macos_titlebar_color(x):
     return (color_as_int(to_color(x)) << 8) | 2
 
 
-def tab_separator(x):
-    for q in '\'"':
-        if x.startswith(q) and x.endswith(q):
-            x = x[1:-1]
-            break
-    if not x.strip():
-        x = ('\xa0' * len(x)) if x else defaults.tab_separator
-    return x
-
-
-def tab_font_style(x):
-    return {
-        'bold-italic': (True, True),
-        'bold': (True, False),
-        'italic': (False, True)
-    }.get(x.lower().replace('_', '-'), (False, False))
-
-
-def tab_bar_edge(x):
-    return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
-
-
-def window_size(val):
-    val = val.lower()
-    unit = 'cells' if val.endswith('c') else 'px'
-    return positive_int(val.rstrip('c')), unit
-
-
 type_map = {
     'allow_remote_control': to_bool,
     'focus_follows_mouse': to_bool,
     'input_delay': positive_int,
     'sync_to_monitor': to_bool,
     'close_on_child_death': to_bool,
-    'window_border_width': positive_float,
-    'window_margin_width': positive_float,
-    'tab_bar_margin_width': positive_float,
-    'window_padding_width': positive_float,
     'enable_audio_bell': to_bool,
-    'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,
-    'initial_window_width': window_size,
-    'initial_window_height': window_size,
     'macos_hide_titlebar': to_bool,
     'macos_hide_from_tasks': to_bool,
     'macos_option_as_alt': to_bool,
@@ -327,23 +271,16 @@ type_map = {
     'dynamic_background_opacity': to_bool,
     'background_opacity': unit_float,
     'dim_opacity': unit_float,
-    'tab_separator': tab_separator,
-    'active_tab_font_style': tab_font_style,
-    'inactive_tab_font_style': tab_font_style,
-    'inactive_text_alpha': unit_float,
     'window_alert_on_bell': to_bool,
-    'tab_bar_edge': tab_bar_edge,
     'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
     'clear_all_shortcuts': to_bool,
     'clipboard_control': lambda x: frozenset(x.lower().split()),
-    'window_resize_step_cells': int,
-    'window_resize_step_lines': int,
 }
 
 for name in (
-    'foreground background active_border_color inactive_border_color'
-    ' selection_foreground selection_background bell_border_color'
+    'foreground background '
+    ' selection_foreground selection_background '
 ).split():
     type_map[name] = to_color
 for i in range(256):

@@ -4,7 +4,7 @@
 
 import shlex
 
-from .config import to_layout_names
+from .config_data import to_layout_names
 from .constants import shell_path
 from .layout import all_layouts
 

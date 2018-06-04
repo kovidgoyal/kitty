@@ -7,8 +7,11 @@ from gettext import gettext as _
 
 from . import fast_data_types as defines
 from .conf.definition import option_func
-from .conf.utils import positive_float, positive_int, to_cmdline, to_color
+from .conf.utils import (
+    positive_float, positive_int, to_cmdline, to_color, unit_float
+)
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from .layout import all_layouts
 from .utils import log_error
 
 # Utils  {{{
@@ -82,6 +85,32 @@ def to_modifiers(val):
     return parse_mods(val.split('+'), val) or 0
 
 
+def window_size(val):
+    val = val.lower()
+    unit = 'cells' if val.endswith('c') else 'px'
+    return positive_int(val.rstrip('c')), unit
+
+
+def uniq(vals, result_type=list):
+    seen = set()
+    seen_add = seen.add
+    return result_type(x for x in vals if x not in seen and not seen_add(x))
+
+
+def to_layout_names(raw):
+    parts = [x.strip().lower() for x in raw.split(',')]
+    ans = []
+    for p in parts:
+        if p == '*':
+            ans.extend(sorted(all_layouts))
+            continue
+        name = p.partition(':')[0]
+        if name not in all_layouts:
+            raise ValueError('The window layout {} is unknown'.format(p))
+        ans.append(p)
+    return uniq(ans)
+
+
 all_options = {}
 
 
@@ -97,6 +126,8 @@ o, g, all_groups = option_func(all_options, {
     'mouse': [_('Mouse'), ],
     'performance': [_('Performance tuning')],
     'bell': [_('Terminal bell')],
+    'window': [_('Window layout')],
+    'tabbar': [_('Tab bar')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -240,7 +271,6 @@ moving the mouse around'''))
 
 # }}}
 
-
 g('performance')  # {{{
 
 o('repaint_delay', 10, option_type=positive_int, long_text=_('''
@@ -282,5 +312,99 @@ Makes the dock icon bounce on macOS or the taskbar flash on linux.'''))
 o('bell_on_tab', True, long_text=_('''
 Show a bell symbol on the tab if a bell occurs in one of the windows in the
 tab and the window is not the currently focused window'''))
+
+# }}}
+
+g('window')  # {{{
+o('remember_window_size', True, long_text=_('''
+If enabled, the window size will be remembered so that new instances of kitty
+will have the same size as the previous instance. If disabled, the window will
+initially have size configured by initial_window_width/height, in pixels. You
+can use a suffix of "c" on the width/height values to have them interpreted as
+number of cells instead of pixels.
+'''))
+o('initial_window_width', '640', option_type=window_size)
+o('initial_window_height', '400', option_type=window_size)
+
+o('enabled_layouts', '*', option_type=to_layout_names, long_text=_('''
+The enabled window layouts. A comma separated list of layout names. The special
+value :code:`*` means all layouts. The first listed layout will be used as the
+startup layout. For a list of available layouts, see the :ref:`layouts`.
+'''))
+
+o('window_resize_step_cells', 2, option_type=positive_int, long_text=_('''
+The step size (in units of cell width/cell height) to use when resizing
+windows. The cells value is used for horizontal resizing and the lines value
+for vertical resizing.
+'''))
+o('window_resize_step_lines', 2, option_type=positive_int)
+
+o('window_border_width', 1.0, option_type=positive_float, long_text=_('''
+The width (in pts) of window borders. Will be rounded to the nearest number of pixels based on screen resolution.
+Note that borders are displayed only when more than one window is visible. They are meant to separate multiple windows.'''))
+
+o('window_margin_width', 0.0, option_type=positive_float, long_text=_('''
+The window margin (in pts) (blank area outside the border)'''))
+
+o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
+The window padding (in pts) (blank area between the text and the window border)'''))
+
+o('active_border_color', '#00ff00', option_type=to_color, long_text=_('''
+The color for the border of the active window'''))
+
+o('inactive_border_color', '#cccccc', option_type=to_color, long_text=_('''
+The color for the border of inactive windows'''))
+
+o('bell_border_color', '#ff5a00', option_type=to_color, long_text=_('''
+The color for the border of inactive windows in which a bell has occurred'''))
+
+o('inactive_text_alpha', 1.0, option_type=unit_float, long_text=_('''
+Fade the text in inactive windows by the specified amount (a number between
+zero and one, with zero being fully faded).
+'''))
+# }}}
+
+g('tabbar')   # {{{
+default_tab_separator = ' ┇'
+
+
+def tab_separator(x):
+    for q in '\'"':
+        if x.startswith(q) and x.endswith(q):
+            x = x[1:-1]
+            break
+    if not x.strip():
+        x = ('\xa0' * len(x)) if x else default_tab_separator
+    return x
+
+
+def tab_bar_edge(x):
+    return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
+
+
+def tab_font_style(x):
+    return {
+        'bold-italic': (True, True),
+        'bold': (True, False),
+        'italic': (False, True)
+    }.get(x.lower().replace('_', '-'), (False, False))
+
+
+o('tab_bar_edge', 'bottom', option_type=tab_bar_edge, long_text=_('''
+Which edge to show the tab bar on, top or bottom'''))
+
+o('tab_bar_margin_width', 0.0, option_type=positive_float, long_text=_('''
+The margin to the left and right of the tab bar (in pts)'''))
+
+o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separator, long_text=_('''
+The separator between tabs in the tab bar'''))
+
+o('active_tab_foreground', '#000', option_type=to_color, long_text=_('''
+Tab bar colors and styles'''))
+o('active_tab_background', '#eee', option_type=to_color)
+o('active_tab_font_style', 'bold-italic', option_type=tab_font_style)
+o('inactive_tab_foreground', '#444', option_type=to_color)
+o('inactive_tab_background', '#999', option_type=to_color)
+o('inactive_tab_font_style', 'normal', option_type=tab_font_style)
 
 # }}}
