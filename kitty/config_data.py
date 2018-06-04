@@ -223,4 +223,25 @@ such as macOS/Wayland that do not have the concept of primary selections. Note
 that this is a security risk, as all programs, including websites open in your
 browser can read the contents of the clipboard.'''))
 
+o('rectangle_select_modifiers', 'ctrl+alt', option_type=to_modifiers, long_text=_('''
+The modifiers to use rectangular selection (i.e. to select text in a
+rectangular block with the mouse)'''))
+
+o('select_by_word_characters', ':@-./_~?&=%+#', long_text=_('''
+Characters considered part of a word when double clicking. In addition to these characters
+any character that is marked as an alpha-numeric character in the unicode
+database will be matched.'''))
+
+o('click_interval', 0.5, option_type=positive_float, long_text=_('''
+The interval between successive clicks to detect
+double/triple clicks (in seconds)'''))
+
+o('mouse_hide_wait', 3.0, option_type=positive_float, long_text=_('''
+Hide mouse cursor after the specified number of seconds
+of the mouse not being used. Set to zero to disable mouse cursor hiding.'''))
+
+o('focus_follows_mouse', False, long_text=_('''
+Set the active window to the window under the mouse when
+moving the mouse around'''))
+
 # }}}

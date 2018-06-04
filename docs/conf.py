@@ -340,7 +340,7 @@ def render_conf(ref_prefix, all_options):
             a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
         a('')
         if opt.long_text:
-            a(opt.long_text, '    ')
+            a(opt.long_text)
             a('')
 
     return '\n'.join(ans)

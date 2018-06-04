@@ -308,7 +308,6 @@ def window_size(val):
 type_map = {
     'allow_remote_control': to_bool,
     'focus_follows_mouse': to_bool,
-    'rectangle_select_modifiers': to_modifiers,
     'repaint_delay': positive_int,
     'input_delay': positive_int,
     'sync_to_monitor': to_bool,
@@ -319,8 +318,6 @@ type_map = {
     'window_padding_width': positive_float,
     'visual_bell_duration': positive_float,
     'enable_audio_bell': to_bool,
-    'click_interval': positive_float,
-    'mouse_hide_wait': positive_float,
     'enabled_layouts': to_layout_names,
     'remember_window_size': to_bool,
     'initial_window_width': window_size,
