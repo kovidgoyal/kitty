@@ -19,49 +19,6 @@ from .utils import log_error
 MINIMUM_FONT_SIZE = 4
 
 
-def to_font_size(x):
-    return max(MINIMUM_FONT_SIZE, float(x))
-
-
-def adjust_line_height(x):
-    if x.endswith('%'):
-        return float(x[:-1].strip()) / 100.0
-    return int(x)
-
-
-def box_drawing_scale(x):
-    ans = tuple(float(x.strip()) for x in x.split(','))
-    if len(ans) != 4:
-        raise ValueError('Invalid box_drawing scale, must have four entries')
-    return ans
-
-
-cshapes = {
-    'block': CURSOR_BLOCK,
-    'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE
-}
-
-
-def to_cursor_shape(x):
-    try:
-        return cshapes[x.lower()]
-    except KeyError:
-        raise ValueError(
-            'Invalid cursor shape: {} allowed values are {}'.format(
-                x, ', '.join(cshapes)
-            )
-        )
-
-
-def url_style(x):
-    return url_style.map.get(x, url_style.map['curly'])
-
-
-url_style.map = dict(
-    ((v, i) for i, v in enumerate('none single double curly'.split()))
-)
-
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
 
@@ -86,30 +43,10 @@ def to_modifiers(val):
     return parse_mods(val.split('+'), val) or 0
 
 
-def window_size(val):
-    val = val.lower()
-    unit = 'cells' if val.endswith('c') else 'px'
-    return positive_int(val.rstrip('c')), unit
-
-
 def uniq(vals, result_type=list):
     seen = set()
     seen_add = seen.add
     return result_type(x for x in vals if x not in seen and not seen_add(x))
-
-
-def to_layout_names(raw):
-    parts = [x.strip().lower() for x in raw.split(',')]
-    ans = []
-    for p in parts:
-        if p == '*':
-            ans.extend(sorted(all_layouts))
-            continue
-        name = p.partition(':')[0]
-        if name not in all_layouts:
-            raise ValueError('The window layout {} is unknown'.format(p))
-        ans.append(p)
-    return uniq(ans)
 
 
 all_options = {}
@@ -170,6 +107,18 @@ For example::
     ],
     'shortcuts.clipboard': [_('Clipboard')],
     'shortcuts.scrolling': [_('Scrolling')],
+    'shortcuts.window': [_('Window management')],
+    'shortcuts.tab': [
+            _('Tab management'), '',
+            _('''\
+You can also create shortcuts to go to specific tabs, with 1 being the first tab::
+
+    map ctrl+alt+1          goto_tab 1
+    map ctrl+alt+2          goto_tab 2
+
+Just as with :code:`new_window` above, you can also pass the name of arbitrary
+commands to run when using new_tab and use :code:`new_tab_with_cwd`.
+''')],
 })
 # }}}
 
@@ -194,7 +143,19 @@ o('bold_font', 'auto')
 o('italic_font', 'auto')
 o('bold_italic_font', 'auto')
 
+
+def to_font_size(x):
+    return max(MINIMUM_FONT_SIZE, float(x))
+
+
 o('font_size', 11.0, long_text=_('Font size (in pts)'), option_type=to_font_size)
+
+
+def adjust_line_height(x):
+    if x.endswith('%'):
+        return float(x[:-1].strip()) / 100.0
+    return int(x)
+
 
 o('adjust_line_height', 0, option_type=adjust_line_height, long_text=_('''
 Change the size of each character cell kitty renders. You can use either numbers,
@@ -221,6 +182,14 @@ Syntax is::
 
 '''))
 
+
+def box_drawing_scale(x):
+    ans = tuple(float(x.strip()) for x in x.split(','))
+    if len(ans) != 4:
+        raise ValueError('Invalid box_drawing scale, must have four entries')
+    return ans
+
+
 o(
     'box_drawing_scale',
     '0.001, 1, 1.5, 2',
@@ -235,6 +204,24 @@ and very thick lines.
 # }}}
 
 g('cursor')  # {{{
+
+cshapes = {
+    'block': CURSOR_BLOCK,
+    'beam': CURSOR_BEAM,
+    'underline': CURSOR_UNDERLINE
+}
+
+
+def to_cursor_shape(x):
+    try:
+        return cshapes[x.lower()]
+    except KeyError:
+        raise ValueError(
+            'Invalid cursor shape: {} allowed values are {}'.format(
+                x, ', '.join(cshapes)
+            )
+        )
+
 
 o('cursor', '#cccccc', _('Default cursor color'), option_type=to_color)
 o('cursor_shape', 'block', option_type=to_cursor_shape, long_text=_(
@@ -270,6 +257,16 @@ g('mouse')  # {{{
 o('url_color', '#0087BD', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
+
+
+def url_style(x):
+    return url_style.map.get(x, url_style.map['curly'])
+
+
+url_style.map = dict(
+    ((v, i) for i, v in enumerate('none single double curly'.split()))
+)
+
 
 o('url_style', 'curly', option_type=url_style)
 
@@ -364,8 +361,31 @@ initially have size configured by initial_window_width/height, in pixels. You
 can use a suffix of "c" on the width/height values to have them interpreted as
 number of cells instead of pixels.
 '''))
+
+
+def window_size(val):
+    val = val.lower()
+    unit = 'cells' if val.endswith('c') else 'px'
+    return positive_int(val.rstrip('c')), unit
+
+
 o('initial_window_width', '640', option_type=window_size)
 o('initial_window_height', '400', option_type=window_size)
+
+
+def to_layout_names(raw):
+    parts = [x.strip().lower() for x in raw.split(',')]
+    ans = []
+    for p in parts:
+        if p == '*':
+            ans.extend(sorted(all_layouts))
+            continue
+        name = p.partition(':')[0]
+        if name not in all_layouts:
+            raise ValueError('The window layout {} is unknown'.format(p))
+        ans.append(p)
+    return uniq(ans)
+
 
 o('enabled_layouts', '*', option_type=to_layout_names, long_text=_('''
 The enabled window layouts. A comma separated list of layout names. The special
@@ -621,9 +641,15 @@ You can also pass the contents of the current selection to any program using
 you can specify your own, for example::
 
     map kitty_mod+o pass_selection_to_program firefox
+
+You can pass the current selection to a terminal program running in a new kitty
+window, by using the @selection placeholder::
+
+    map kitty_mod+y      new_window less @selection
 '''))
 
 # }}}
+
 g('shortcuts.scrolling')  # {{{
 k('scroll_line_up', 'kitty_mod+up', 'scroll_line_up', _('Scroll line up'))
 k('scroll_line_up', 'kitty_mod+k', 'scroll_line_up')
@@ -633,8 +659,60 @@ k('scroll_page_up', 'kitty_mod+page_up', 'scroll_page_up', _('Scroll page up'))
 k('scroll_page_down', 'kitty_mod+page_down', 'scroll_page_down', _('Scroll page down'))
 k('scroll_home', 'kitty_mod+home', 'scroll_home', _('Scroll to top'))
 k('scroll_end', 'kitty_mod+end', 'scroll_end', _('Scroll to bottom'))
-k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'))
+k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'), long_text=_('''
+You can send the contents of the current screen + history buffer as stdin to an arbitrary program using
+the placeholders @text (which is the plain text) and @ansi (which includes text styling escape codes).
+For only the current screen, use @screen or @ansi_screen.
+For example, the following command opens the scrollback buffer in less in a new window::
+
+    map kitty_mod+y      new_window @ansi less +G -R
+'''))
+
+
 # }}}
+
+g('shortcuts.window')  # {{{
+k('new_window', 'kitty_mod+enter', 'new_window', _(''), long_text=_('''
+You can open a new window running an arbitrary program, for example::
+
+    map kitty_mod+y      new_window mutt
+
+You can open a new window with the current working directory set to the
+working directory of the current window using::
+
+    map ctrl+alt+enter    new_window_with_cwd
+'''))
+k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
+k('close_window', 'kitty_mod+w', 'close_window', _('Close window'))
+k('next_window', 'kitty_mod+]', 'next_window', _('Next window'))
+k('previous_window', 'kitty_mod+[', 'previous_window', _('Previous window'))
+k('move_window_forward', 'kitty_mod+f', 'move_window_forward', _('Move window forward'))
+k('move_window_backward', 'kitty_mod+b', 'move_window_backward', _('Move window backward'))
+k('move_window_to_top', 'kitty_mod+`', 'move_window_to_top', _('Move window to top'))
+k('start_resizing_window', 'kitty_mod+r', 'start_resizing_window', _('Start resizing window'))
+k('first_window', 'kitty_mod+1', 'first_window', _('First window'))
+k('second_window', 'kitty_mod+2', 'second_window', _('Second window'))
+k('third_window', 'kitty_mod+3', 'third_window', _('Third window'))
+k('fourth_window', 'kitty_mod+4', 'fourth_window', _('Fourth window'))
+k('fifth_window', 'kitty_mod+5', 'fifth_window', _('Fifth window'))
+k('sixth_window', 'kitty_mod+6', 'sixth_window', _('Sixth window'))
+k('seventh_window', 'kitty_mod+7', 'seventh_window', _('Seventh window'))
+k('eighth_window', 'kitty_mod+8', 'eighth_window', _('Eight window'))
+k('ninth_window', 'kitty_mod+9', 'ninth_window', _('Ninth window'))
+k('tenth_window', 'kitty_mod+0', 'tenth_window', _('Tenth window'))
+# }}}
+
+g('shortcuts.tab')  # {{{
+k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
+k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
+k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
+k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
+k('next_layout', 'kitty_mod+l', 'next_layout', _('Next layout'))
+k('move_tab_forward', 'kitty_mod+.', 'move_tab_forward', _('Move tab forward'))
+k('move_tab_backward', 'kitty_mod+,', 'move_tab_backward', _('Move tab backward'))
+k('set_tab_title', 'kitty_mod+alt+t', 'set_tab_title', _('Set tab title'))
+# }}}
+
 # }}}
 
 type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}

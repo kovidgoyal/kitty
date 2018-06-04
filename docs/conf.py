@@ -381,11 +381,15 @@ def render_conf(conf_name, all_options):
             a(group.start_text)
             a('')
 
+    def handle_group_end(group):
+        if group.end_text:
+            a(''), a(current_group.end_text)
+
     def handle_group(new_group, new_group_is_shortcut=False):
         nonlocal current_group
         if new_group is not current_group:
-            if current_group and current_group.end_text:
-                a(''), a(current_group.end_text)
+            if current_group:
+                handle_group_end(current_group)
             current_group = new_group
             render_group(current_group)
 
@@ -429,6 +433,8 @@ def render_conf(conf_name, all_options):
         else:
             handle_shortcuts(opt)
 
+    if current_group:
+        handle_group_end(current_group)
     return '\n'.join(ans)
 
 

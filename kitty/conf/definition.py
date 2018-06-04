@@ -146,7 +146,7 @@ def as_conf_file(all_options):
     def handle_group_end(group, new_group_name='', new_group_is_shortcut=False):
         nonlocal num_open_folds
         if group.end_text:
-            a(''), a(group.end_text)
+            a(''), a(render_block(group.end_text))
         is_subgroup = new_group_name.startswith(group.name + '.')
         if not is_subgroup and num_open_folds > 0:
             a('# }}''}'), a('')
