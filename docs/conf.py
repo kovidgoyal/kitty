@@ -7,12 +7,14 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import os
+import re
 import subprocess
 from collections import defaultdict
 from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
+from sphinx import addnodes
 
 
 def create_shortcut_defs():
@@ -313,7 +315,41 @@ def render_group(a, group):
         a('')
 
 
-def render_conf(ref_prefix, all_options):
+def expand_opt_references(conf_name, text):
+    conf_name += '.'
+
+    def expand(m):
+        ref = m.group(1)
+        if '<' not in ref and '.' not in ref:
+            full_ref = conf_name + ref
+            return ':opt:`{} <{}>`'.format(ref, full_ref)
+        return m.group()
+
+    return re.sub(r':opt:`(.+?)`', expand, text)
+
+
+def parse_opt_node(env, sig, signode):
+    """Transform an option description into RST nodes."""
+    count = 0
+    firstname = ''
+    for potential_option in sig.split(', '):
+        optname = potential_option.strip()
+        if count:
+            signode += addnodes.desc_addname(', ', ', ')
+        text = optname.split('.', 1)[-1]
+        signode += addnodes.desc_name(text, text)
+        if not count:
+            firstname = optname
+            signode['allnames'] = [optname]
+        else:
+            signode['allnames'].append(optname)
+        count += 1
+    if not firstname:
+        raise ValueError('{} is not a valid opt'.format(sig))
+    return firstname
+
+
+def render_conf(conf_name, all_options):
     from kitty.conf.definition import merged_opts
     ans = ['.. default-domain:: conf', '']
     a = ans.append
@@ -328,7 +364,7 @@ def render_conf(ref_prefix, all_options):
             current_group = opt.group
             render_group(a, current_group)
         mopts = list(merged_opts(all_options, opt, i))
-        a('.. opt:: ' + ', '.join(mo.name for mo in mopts))
+        a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
         a('.. code-block:: ini')
         a('')
         sz = max(len(x.name) for x in mopts)
@@ -336,13 +372,30 @@ def render_conf(ref_prefix, all_options):
             a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
         a('')
         if opt.long_text:
-            a(opt.long_text)
+            a(expand_opt_references(conf_name, opt.long_text))
             a('')
 
     return '\n'.join(ans)
 
 
-def write_conf_docs():
+def process_opt_link(env, refnode, has_explicit_title, title, target):
+    conf_name, opt = target.partition('.')[::2]
+    if not opt:
+        conf_name, opt = 'kitty', conf_name
+    return title, conf_name + '.' + opt
+
+
+def write_conf_docs(app):
+    app.add_object_type(
+        'opt', 'opt',
+        indextemplate="pair: %s; Config Setting",
+        parse_node=parse_opt_node,
+    )
+    # Warn about opt references that could not be resolved
+    opt_role = app.registry.domain_roles['std']['opt']
+    opt_role.warn_dangling = True
+    opt_role.process_link = process_opt_link
+
     from kitty.config_data import all_options
     with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
         print('.. highlight:: ini\n', file=f)
@@ -358,15 +411,8 @@ def setup(app):
     except FileExistsError:
         pass
     write_cli_docs()
-    write_conf_docs()
+    write_conf_docs(app)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
     app.connect('html-page-context', add_html_context)
-
-    app.add_object_type(
-        'opt', 'opt',
-        indextemplate="pair: %s; Config Setting"
-    )
-    # Warn about opt references that could not be resolved
-    app.registry.domain_roles['std']['opt'].warn_dangling = True
