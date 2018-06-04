@@ -169,6 +169,7 @@ For example::
 ''')
     ],
     'shortcuts.clipboard': [_('Clipboard')],
+    'shortcuts.scrolling': [_('Scrolling')],
 })
 # }}}
 
@@ -622,6 +623,17 @@ you can specify your own, for example::
     map kitty_mod+o pass_selection_to_program firefox
 '''))
 
+# }}}
+g('shortcuts.scrolling')  # {{{
+k('scroll_line_up', 'kitty_mod+up', 'scroll_line_up', _('Scroll line up'))
+k('scroll_line_up', 'kitty_mod+k', 'scroll_line_up')
+k('scroll_line_down', 'kitty_mod+down', 'scroll_line_down', _('Scroll line down'))
+k('scroll_line_down', 'kitty_mod+j', 'scroll_line_down')
+k('scroll_page_up', 'kitty_mod+page_up', 'scroll_page_up', _('Scroll page up'))
+k('scroll_page_down', 'kitty_mod+page_down', 'scroll_page_down', _('Scroll page down'))
+k('scroll_home', 'kitty_mod+home', 'scroll_home', _('Scroll to top'))
+k('scroll_end', 'kitty_mod+end', 'scroll_end', _('Scroll to bottom'))
+k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'))
 # }}}
 # }}}
 

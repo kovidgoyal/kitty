@@ -83,7 +83,7 @@ def shortcut(
     action_name,
     key,
     action_def,
-    short_text,
+    short_text='',
     long_text='',
     add_to_default=True,
     add_to_docs=True
