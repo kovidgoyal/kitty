@@ -14,7 +14,7 @@ from .conf.definition import as_conf_file
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, positive_int, python_string, to_bool,
-    to_cmdline, to_color, unit_float
+    to_cmdline, to_color
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
@@ -269,8 +269,6 @@ type_map = {
     'macos_option_as_alt': to_bool,
     'macos_titlebar_color': macos_titlebar_color,
     'dynamic_background_opacity': to_bool,
-    'background_opacity': unit_float,
-    'dim_opacity': unit_float,
     'window_alert_on_bell': to_bool,
     'bell_on_tab': to_bool,
     'kitty_mod': to_modifiers,
@@ -278,16 +276,8 @@ type_map = {
     'clipboard_control': lambda x: frozenset(x.lower().split()),
 }
 
-for name in (
-    'foreground background '
-    ' selection_foreground selection_background '
-).split():
-    type_map[name] = to_color
 for i in range(256):
     type_map['color{}'.format(i)] = to_color
-for a in ('active', 'inactive'):
-    for b in ('foreground', 'background'):
-        type_map['%s_tab_%s' % (a, b)] = to_color
 
 
 def special_handling(key, val, ans):

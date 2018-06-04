@@ -128,6 +128,7 @@ o, g, all_groups = option_func(all_options, {
     'bell': [_('Terminal bell')],
     'window': [_('Window layout')],
     'tabbar': [_('Tab bar')],
+    'colors': [_('Color scheme')],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -407,4 +408,36 @@ o('inactive_tab_foreground', '#444', option_type=to_color)
 o('inactive_tab_background', '#999', option_type=to_color)
 o('inactive_tab_font_style', 'normal', option_type=tab_font_style)
 
+# }}}
+
+g('colors')  # {{{
+
+o('foreground',       '#dddddd', option_type=to_color, long_text=_('''
+The foreground and background colors'''))
+o('background',       '#000000', option_type=to_color)
+
+o('background_opacity', 1.0, option_type=unit_float, long_text=_('''
+The opacity of the background. A number between 0 and 1, where 1 is opaque and
+0 is fully transparent.  This will only work if supported by the OS (for
+instance, when using a compositor under X11). Note that it only sets the
+default background color's opacity. This is so that things like the status bar
+in vim, powerline prompts, etc. still look good.  But it means that if you use
+a color theme with a background color in your editor, it will not be rendered
+as transparent.  Instead you should change the default background color in your
+kitty config and not use a background color in the editor color scheme. Or use
+the escape codes to set the terminals default colors in a shell script to
+launch your editor.  Be aware that using a value less than 1.0 is a (possibly
+significant) performance hit.  If you want to dynamically change transparency
+of windows set dynamic_background_opacity to yes (this is off by default as it
+has a performance cost)
+'''))
+o('dynamic_background_opacity', False)
+
+o('dim_opacity', 0.75, option_type=unit_float, long_text=_('''
+How much to dim text that has the DIM/FAINT attribute set. One means no dimming and
+zero means fully dimmed (i.e. invisible).'''))
+
+o('selection_foreground', '#000000', option_type=to_color, long_text=_('''
+The foreground and background for text selected with the mouse'''))
+o('selection_background', '#FFFACD', option_type=to_color)
 # }}}
