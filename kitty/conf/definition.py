@@ -95,7 +95,8 @@ def render_block(text):
 
 
 def render_group(a, group):
-    a('# ' + group.short_text + ' {{''{')
+    if '.' not in group.name:
+        a('# ' + group.short_text + ' {{''{')
     a('')
     if group.start_text:
         a(render_block(group.start_text))
@@ -114,7 +115,8 @@ def as_conf_file(all_options):
             if current_group:
                 if current_group.end_text:
                     a(''), a(current_group.end_text)
-                a('# }}''}'), a('')
+                if '.' not in opt.group.name:
+                    a('# }}''}'), a('')
 
             current_group = opt.group
             render_group(a, current_group)

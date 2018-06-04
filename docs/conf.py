@@ -308,7 +308,8 @@ def write_cli_docs():
 
 def render_group(a, group):
     a(group.short_text)
-    a('^' * (len(group.short_text) + 20))
+    heading_level = '+' if '.' in group.name else '^'
+    a(heading_level * (len(group.short_text) + 20))
     a('')
     if group.start_text:
         a(group.start_text)

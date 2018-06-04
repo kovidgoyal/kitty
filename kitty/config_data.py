@@ -129,6 +129,13 @@ o, g, all_groups = option_func(all_options, {
     'window': [_('Window layout')],
     'tabbar': [_('Tab bar')],
     'colors': [_('Color scheme')],
+    'colors.table': [
+        _('The color table'),
+        _('''\
+The 16 terminal colors. There are 8 basic colors, each color has a dull and
+bright version. You can also set the remaining colors from the 256 color table
+as color16 to color256.''')
+    ],
 })
 type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
@@ -440,4 +447,30 @@ zero means fully dimmed (i.e. invisible).'''))
 o('selection_foreground', '#000000', option_type=to_color, long_text=_('''
 The foreground and background for text selected with the mouse'''))
 o('selection_background', '#FFFACD', option_type=to_color)
+
+g('colors.table')
+o('color0', '#000000', long_text=_('black'), option_type=to_color)
+o('color8', '#767676', option_type=to_color)
+
+o('color1', '#cc0403', long_text=_('red'), option_type=to_color)
+o('color9', '#f2201f', option_type=to_color)
+
+o('color2', '#19cb00', long_text=_('green'), option_type=to_color)
+o('color10', '#23fd00', option_type=to_color)
+
+o('color3', '#cecb00', long_text=_('yellow'), option_type=to_color)
+o('color11', '#fffd00', option_type=to_color)
+
+o('color4', '#0d73cc', long_text=_('blue'), option_type=to_color)
+o('color12', '#1a8fff', option_type=to_color)
+
+o('color5', '#cb1ed1', long_text=_('magenta'), option_type=to_color)
+o('color13', '#fd28ff', option_type=to_color)
+
+o('color6', '#0dcdcd', long_text=_('cyan'), option_type=to_color)
+o('color14', '#14ffff', option_type=to_color)
+
+o('color7', '#dddddd', long_text=_('white'), option_type=to_color)
+o('color15', '#ffffff', option_type=to_color)
+
 # }}}
