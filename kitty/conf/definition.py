@@ -136,7 +136,7 @@ def as_conf_file(all_options):
     def render_group(group, is_shortcut):
         nonlocal num_open_folds
         if is_shortcut or '.' not in group.name:
-            a('# ' + group.short_text + ' {{''{')
+            a('#: ' + group.short_text + ' {{''{')
             num_open_folds += 1
         a('')
         if group.start_text:
@@ -149,7 +149,7 @@ def as_conf_file(all_options):
             a(''), a(render_block(group.end_text))
         is_subgroup = new_group_name.startswith(group.name + '.')
         if not is_subgroup and num_open_folds > 0:
-            a('# }}''}'), a('')
+            a('#: }}''}'), a('')
             num_open_folds -= 1
 
     def handle_group(new_group, is_shortcut=False):

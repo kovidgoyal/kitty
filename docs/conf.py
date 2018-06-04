@@ -373,6 +373,7 @@ def render_conf(conf_name, all_options):
     kitty_mod = 'kitty_mod'
 
     def render_group(group):
+        a('')
         a(group.short_text)
         heading_level = '+' if '.' in group.name else '^'
         a(heading_level * (len(group.short_text) + 20))

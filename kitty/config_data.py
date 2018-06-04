@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-
+# Utils  {{{
 from gettext import gettext as _
 
 from . import fast_data_types as defines
@@ -15,7 +15,7 @@ from .layout import all_layouts
 from .rgb import color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
 
-# Utils  {{{
+
 MINIMUM_FONT_SIZE = 4
 
 
@@ -47,6 +47,9 @@ def uniq(vals, result_type=list):
     seen = set()
     seen_add = seen.add
     return result_type(x for x in vals if x not in seen and not seen_add(x))
+# }}}
+
+# Groups {{{
 
 
 all_options = {}
@@ -118,6 +121,27 @@ You can also create shortcuts to go to specific tabs, with 1 being the first tab
 
 Just as with :code:`new_window` above, you can also pass the name of arbitrary
 commands to run when using new_tab and use :code:`new_tab_with_cwd`.
+''')],
+    'shortcuts.layout': [
+            _('Layout management'), '',
+            _('''\
+You can also create shortcuts to switch to specific layouts::
+
+    map ctrl+alt+t          goto_layout tall
+    map ctrl+alt+s          goto_layout stack
+''')],
+    'shortcuts.fonts': [
+        _('Font sizes'), _('''\
+You can change the font size for all top-level kitty windows at a time
+or only the current one.
+'''), _('''\
+To setup shortcuts for specific font sizes::
+
+    map kitty_mod+f6     change_font_size all 10.0
+
+To setup shortcuts to change only the current window's font size::
+
+    map kitty_mod+f6     change_font_size current 10.0
 ''')],
 })
 # }}}
@@ -707,12 +731,21 @@ k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
 k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
 k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
 k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
-k('next_layout', 'kitty_mod+l', 'next_layout', _('Next layout'))
 k('move_tab_forward', 'kitty_mod+.', 'move_tab_forward', _('Move tab forward'))
 k('move_tab_backward', 'kitty_mod+,', 'move_tab_backward', _('Move tab backward'))
 k('set_tab_title', 'kitty_mod+alt+t', 'set_tab_title', _('Set tab title'))
 # }}}
 
+g('shortcuts.layout')  # {{{
+k('next_layout', 'kitty_mod+l', 'next_layout', _('Next layout'))
+# }}}
+
+
+g('shortcuts.fonts')  # {{{
+k('increase_font_size', 'kitty_mod+equal', 'change_font_size all +2.0', _('Increase font size'))
+k('decrease_font_size', 'kitty_mod+minus', 'change_font_size all -2.0', _('Decrease font size'))
+k('reset_font_size', 'kitty_mod+backspace', 'change_font_size all 0', _('Reset font size'))
+# }}}
 # }}}
 
 type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}
