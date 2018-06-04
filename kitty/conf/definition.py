@@ -163,7 +163,8 @@ def as_conf_file(all_options):
     def handle_shortcut(shortcuts):
         handle_group(shortcuts[0].group, True)
         for sc in shortcuts:
-            a('map {} {}'.format(sc.key, sc.action_def))
+            if sc.add_to_default:
+                a('map {} {}'.format(sc.key, sc.action_def))
             if sc.long_text:
                 a(''), a(render_block(sc.long_text.strip())), a('')
 

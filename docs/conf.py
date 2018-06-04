@@ -418,11 +418,14 @@ def render_conf(conf_name, all_options):
         handle_group(sc.group, True)
         sc_text = f'{conf_name}.{sc.short_text}'
         a('.. shortcut:: ' + sc_text)
-        a('.. parsed-literal::')
-        a('')
+        shortcuts = [s for s in shortcuts if s.add_to_default]
         shortcut_slugs[f'{conf_name}.{sc.name}'] = (sc_text, sc.key.replace('kitty_mod', kitty_mod))
-        for x in shortcuts:
-            a('    map :green:`{}` {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
+        if shortcuts:
+            a('.. parsed-literal::')
+            a('')
+            for x in shortcuts:
+                if x.add_to_default:
+                    a('    map :green:`{}` {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
         a('')
         if sc.long_text:
             a(expand_opt_references(conf_name, sc.long_text))

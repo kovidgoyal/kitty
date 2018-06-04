@@ -110,6 +110,7 @@ For example::
     ],
     'shortcuts.clipboard': [_('Clipboard')],
     'shortcuts.scrolling': [_('Scrolling')],
+    'shortcuts.misc': [_('Miscellaneous')],
     'shortcuts.window': [_('Window management')],
     'shortcuts.tab': [
             _('Tab management'), '',
@@ -774,6 +775,41 @@ output of things like: ls -1'''))
 k('insert_selected_word', 'kitty_mod+p>w', 'kitten hints --type word --program -', _('Insert selected word'), long_text=_('''
 Select words and insert into terminal.'''))
 
+# }}}
+
+g('shortcuts.misc')  # {{{
+k('toggle_fullscreen', 'kitty_mod+f11', 'toggle_fullscreen', _('Toggle fullscreen'))
+k('input_unicode_character', 'kitty_mod+u', 'input_unicode_character', _('Unicode input'))
+k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
+k('kitty_shell', 'kitty_mod+escape', 'kitty_shell window', _('Open the kitty command shell'), long_text=_('''
+# Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
+k('set_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1', _('Increase background opacity'))
+k('set_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
+k('set_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
+k('set_background_opacity', 'kitty_mod+a>d', 'set_background_opacity default', _('Reset background opacity'))
+k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
+  add_to_default=False, long_text=_('''
+You can tell kitty to send arbitrary (UTF-8) encoded text to
+the client program when pressing specified shortcut keys. For example::
+
+    map ctrl+alt+a send_text all Special text
+
+This will send "Special text" when you press the :kbd:`ctrl+alt+a` key
+combination.  The text to be sent is a python string literal so you can use
+escapes like :code:`\\x1b` to send control codes or :code:`\\u21fb` to send
+unicode characters (or you can just input the unicode characters directly as
+UTF-8 text). The first argument to :code:`send_text` is the keyboard modes in which to
+activate the shortcut. The possible values are :code:`normal` or :code:`application` or :code:`kitty`
+or a comma separated combination of them.  The special keyword :code:`all` means all
+modes. The modes :code:`normal` and :code:`application` refer to the DECCKM cursor key mode for
+terminals, and :code:`kitty` refers to the special kitty extended keyboard protocol.
+
+Another example, that outputs a word and then moves the cursor to the start of
+the line (same as pressing the Home key)::
+
+    map ctrl+alt+a send_text normal Word\\x1b[H
+    map ctrl+alt+a send_text application Word\\x1bOH
+'''))
 # }}}
 # }}}
 
