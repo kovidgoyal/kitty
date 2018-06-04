@@ -599,10 +599,15 @@ Hide the kitty window from running tasks (:kbd:`Option+Tab`) on macOS.
 # }}}
 
 g('shortcuts')  # {{
+
 o('kitty_mod', 'ctrl+shift', option_type=to_modifiers, long_text=_('''
 The value of :code:`kitty_mod` is used as the modifier for all default shortcuts, you
 can change it in your kitty.conf to change the modifiers for all the default
 shortcuts.'''))
+
+o('clear_all_shortcuts', False, long_text=_('''
+You can have kitty remove all shortcut definition seen up to this point. Useful, for
+instance, to remove the default shortcuts.'''))
 # }}}
 
 type_map = {o.name: o.option_type for o in all_options.values()}
