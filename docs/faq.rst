@@ -66,8 +66,9 @@ terminfo files to the server::
     kitty +kitten ssh myserver
 
 If for some reason that does not work (typically because the server is using a
-very limited shell), you can use the following one-liner instead (it is slower
-as it needs to ssh into the server twice, but will work with most servers)::
+a non POSIX compliant shell), you can use the following one-liner instead (it
+is slower as it needs to ssh into the server twice, but will work with most
+servers)::
 
     infocmp xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 
