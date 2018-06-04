@@ -2,7 +2,7 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+SPHINXOPTS    = -T
 SPHINXBUILD   = kitty +launch /usr/bin/sphinx-build
 SPHINXPROJ    = kitty
 SOURCEDIR     = .
