@@ -139,8 +139,36 @@ as color16 to color256.''')
     ],
     'advanced': [_('Advanced')],
     'os': [_('OS specific tweaks')],
+    'shortcuts': [
+        _('Keyboard shortcuts'),
+        _('''\
+For a list of key names, see: :link:`GLFW keys <http://www.glfw.org/docs/latest/group__keys.html>`
+For a list of modifier names, see: :link:`GLFW mods <http://www.glfw.org/docs/latest/group__mods.html>`
+
+You can use the special action :code:`no_op` to unmap a keyboard shortcut that is
+assigned in the default configuration.
+
+You can combine multiple actions to be triggered by a single shortcut, using the
+syntax below::
+
+    map key combine <separator> action1 <separator> action2 <separator> action3 ...
+
+For example::
+
+    map kitty_mod+e combine : new_window : next_layout
+
+this will create a new window and switch to the next available layout
+
+You can use multi-key shortcuts using the syntax shown below::
+
+    map key1>key2>key3 action
+
+For example::
+
+    map ctrl+f>2 set_font_size 20
+''')
+    ],
 })
-type_map = {o.name: o.option_type for o in all_options.values()}
 # }}}
 
 g('fonts')  # {{{
@@ -569,3 +597,12 @@ Hide the kitty window from running tasks (:kbd:`Option+Tab`) on macOS.
 
 
 # }}}
+
+g('shortcuts')  # {{
+o('kitty_mod', 'ctrl+shift', option_type=to_modifiers, long_text=_('''
+The value of :code:`kitty_mod` is used as the modifier for all default shortcuts, you
+can change it in your kitty.conf to change the modifiers for all the default
+shortcuts.'''))
+# }}}
+
+type_map = {o.name: o.option_type for o in all_options.values()}

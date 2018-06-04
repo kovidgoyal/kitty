@@ -85,7 +85,7 @@ def merged_opts(all_options, opt, i):
 
 
 def remove_markup(text):
-    return re.sub(r':(.+?):`(.+?)`', r'\2', text, flags=re.DOTALL)
+    return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', r'\2', text, flags=re.DOTALL)
 
 
 def render_block(text):

@@ -13,13 +13,13 @@ from . import fast_data_types as defines
 from .conf.definition import as_conf_file
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
-    parse_config_base, positive_int, python_string, to_bool,
+    parse_config_base, python_string, to_bool,
     to_cmdline
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf
 from .utils import log_error
-from .config_data import to_modifiers, parse_mods
+from .config_data import parse_mods, type_map
 
 
 named_keys = {
@@ -244,25 +244,6 @@ def parse_send_text(val, key_definitions):
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
     return parse_key(key_str, key_definitions)
-
-
-type_map = {
-    'allow_remote_control': to_bool,
-    'focus_follows_mouse': to_bool,
-    'input_delay': positive_int,
-    'sync_to_monitor': to_bool,
-    'close_on_child_death': to_bool,
-    'enable_audio_bell': to_bool,
-    'remember_window_size': to_bool,
-    'macos_hide_titlebar': to_bool,
-    'macos_hide_from_tasks': to_bool,
-    'macos_option_as_alt': to_bool,
-    'dynamic_background_opacity': to_bool,
-    'window_alert_on_bell': to_bool,
-    'bell_on_tab': to_bool,
-    'kitty_mod': to_modifiers,
-    'clear_all_shortcuts': to_bool,
-}
 
 
 def special_handling(key, val, ans):

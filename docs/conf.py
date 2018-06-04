@@ -306,6 +306,18 @@ def write_cli_docs():
 
 # config file docs {{{
 
+def link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    m = re.match(r'(.+)\s+<(.+?)>', text)
+    if m is None:
+        msg = inliner.reporter.error(f'link "{text}" not recognized', line=lineno)
+        prb = inliner.problematic(rawtext, rawtext, msg)
+        return [prb], [msg]
+    text, url = m.group(1, 2)
+    set_classes(options)
+    node = nodes.reference(rawtext, text, refuri=url, **options)
+    return [node], []
+
+
 def render_group(a, group):
     a(group.short_text)
     heading_level = '+' if '.' in group.name else '^'
@@ -417,6 +429,7 @@ def setup(app):
         pass
     write_cli_docs()
     write_conf_docs(app)
+    app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
