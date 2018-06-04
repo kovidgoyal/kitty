@@ -328,6 +328,9 @@ def expand_opt_references(conf_name, text):
     return re.sub(r':opt:`(.+?)`', expand, text)
 
 
+opt_aliases = {}
+
+
 def parse_opt_node(env, sig, signode):
     """Transform an option description into RST nodes."""
     count = 0
@@ -343,6 +346,7 @@ def parse_opt_node(env, sig, signode):
             signode['allnames'] = [optname]
         else:
             signode['allnames'].append(optname)
+            opt_aliases[optname] = firstname
         count += 1
     if not firstname:
         raise ValueError('{} is not a valid opt'.format(sig))
@@ -382,7 +386,8 @@ def process_opt_link(env, refnode, has_explicit_title, title, target):
     conf_name, opt = target.partition('.')[::2]
     if not opt:
         conf_name, opt = 'kitty', conf_name
-    return title, conf_name + '.' + opt
+    full_name = conf_name + '.' + opt
+    return title, opt_aliases.get(full_name, full_name)
 
 
 def write_conf_docs(app):
@@ -400,7 +405,6 @@ def write_conf_docs(app):
     with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
         print('.. highlight:: ini\n', file=f)
         f.write(render_conf('kitty', all_options.values()))
-
 
 # }}}
 
