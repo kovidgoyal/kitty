@@ -143,6 +143,14 @@ To setup shortcuts to change only the current window's font size::
 
     map kitty_mod+f6     change_font_size current 10.0
 ''')],
+    'shortcuts.selection': [
+            _('Select and act on visible text'), _('''\
+Use the hints kitten to select text and either pass it to an external program or
+insert it into the terminal or copy it to the clipboard.
+'''), _('''
+The hints kitten has many more modes of operation that you can map to different
+shortcuts. For a full description see :doc:`kittens/hints`.''')],
+
 })
 # }}}
 
@@ -740,11 +748,32 @@ g('shortcuts.layout')  # {{{
 k('next_layout', 'kitty_mod+l', 'next_layout', _('Next layout'))
 # }}}
 
-
 g('shortcuts.fonts')  # {{{
 k('increase_font_size', 'kitty_mod+equal', 'change_font_size all +2.0', _('Increase font size'))
 k('decrease_font_size', 'kitty_mod+minus', 'change_font_size all -2.0', _('Decrease font size'))
 k('reset_font_size', 'kitty_mod+backspace', 'change_font_size all 0', _('Reset font size'))
+# }}}
+
+g('shortcuts.selection')   # {{{
+k('open_url', 'kitty_mod+e', 'kitten hints', _('Open URL'), _('''
+Open a currently visible URL using the keyboard. The program used to open the
+URL is specified in :opt:`open_url_with`.'''))
+
+
+k('insert_selected_path', 'kitty_mod+p>f', 'kitten hints --type path --program -', _('Insert selected path'), long_text=_('''
+Select a path/filename and insert it into the terminal. Useful, for instance to
+run git commands on a filename output from a previous git command.'''))
+
+k('open_selected_path', 'kitty_mod+p>shift+f', 'kitten hints --type path', _('Open selected path'), long_text=_('''
+Select a path/filename and open it with the default open program.'''))
+
+k('insert_selected_line', 'kitty_mod+p>l', 'kitten hints --type line --program -', _('Insert selected line'), long_text=_('''
+Select a line of text and insert it into the terminal. Use for the
+output of things like: ls -1'''))
+
+k('insert_selected_word', 'kitty_mod+p>w', 'kitten hints --type word --program -', _('Insert selected word'), long_text=_('''
+Select words and insert into terminal.'''))
+
 # }}}
 # }}}
 

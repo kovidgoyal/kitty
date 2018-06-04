@@ -165,10 +165,7 @@ def as_conf_file(all_options):
         for sc in shortcuts:
             a('map {} {}'.format(sc.key, sc.action_def))
             if sc.long_text:
-                a('')
-                for line in sc.long_text.strip().splitlines():
-                    a('#: ' + line)
-                a('')
+                a(''), a(render_block(sc.long_text.strip())), a('')
 
     def handle_option(opt):
         if not opt.long_text or not opt.add_to_docs:
