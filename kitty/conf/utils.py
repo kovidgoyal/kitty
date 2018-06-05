@@ -164,9 +164,8 @@ def load_config(Options, defaults, parse_config, merge_configs, *paths, override
     return Options(ans)
 
 
-def init_config(defaults_path, parse_config):
-    with open(defaults_path, encoding='utf-8', errors='replace') as f:
-        defaults = parse_config(f, check_keys=False)
+def init_config(default_config_lines, parse_config):
+    defaults = parse_config(default_config_lines, check_keys=False)
     Options = create_options_class(defaults.keys())
     defaults = Options(defaults)
     return Options, defaults

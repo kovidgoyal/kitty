@@ -10,17 +10,14 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from . import fast_data_types as defines
-from .conf.definition import as_conf_file
+from .conf.definition import as_conf_file, config_lines
 from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
-    parse_config_base, python_string, to_bool,
-    to_cmdline
+    parse_config_base, python_string, to_bool, to_cmdline
 )
-from .config_data import all_options
+from .config_data import all_options, parse_mods, type_map
 from .constants import cache_dir, defconf
 from .utils import log_error
-from .config_data import parse_mods, type_map
-
 
 named_keys = {
     "'": 'APOSTROPHE',
@@ -264,9 +261,6 @@ def special_handling(key, val, ans):
 
 
 defaults = None
-default_config_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'kitty.conf'
-)
 
 
 def parse_config(lines, check_keys=True):
@@ -287,7 +281,7 @@ def parse_defaults(lines, check_keys=False):
     return ans
 
 
-Options, defaults = init_config(default_config_path, parse_defaults)
+Options, defaults = init_config(config_lines(all_options), parse_defaults)
 actions = frozenset(all_key_actions) | frozenset(
     'run_simple_kitten combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()

@@ -23,7 +23,7 @@ class Group:
 
 class Option:
 
-    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs'
+    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs', 'line'
 
     def __init__(self, name, group, defval, option_type, long_text, add_to_default, add_to_docs):
         self.name, self.group = name, group
@@ -31,17 +31,19 @@ class Option:
         self.defval_as_string = defval
         self.add_to_default = add_to_default
         self.add_to_docs = add_to_docs
+        self.line = self.name + ' ' + self.defval_as_string
 
 
 class Shortcut:
 
-    __slots__ = 'name', 'group', 'key', 'action_def', 'short_text', 'long_text', 'add_to_default', 'add_to_docs'
+    __slots__ = 'name', 'group', 'key', 'action_def', 'short_text', 'long_text', 'add_to_default', 'add_to_docs', 'line'
 
     def __init__(self, name, group, key, action_def, short_text, long_text, add_to_default, add_to_docs):
         self.name, self.group, self.key, self.action_def = name, group, key, action_def
         self.short_text, self.long_text = short_text, long_text
         self.add_to_default = add_to_default
         self.add_to_docs = add_to_docs
+        self.line = 'map ' + self.key + ' ' + self.action_def
 
 
 def option(
@@ -193,3 +195,14 @@ def as_conf_file(all_options):
             a('# }}''}')
             num_open_folds -= 1
     return ans
+
+
+def config_lines(all_options):
+    for opt in all_options.values():
+        if isinstance(opt, Option):
+            if opt.add_to_default:
+                yield opt.line
+        else:
+            for sc in opt:
+                if sc.add_to_default:
+                    yield sc.line

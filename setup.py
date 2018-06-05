@@ -552,7 +552,7 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
         return [
             x for x in entries
             if '.' in x and x.rpartition('.')[2] not in
-            ('py', 'so', 'conf', 'glsl')
+            ('py', 'so', 'glsl')
         ]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
