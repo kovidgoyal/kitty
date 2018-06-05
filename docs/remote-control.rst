@@ -16,8 +16,8 @@ Start by running |kitty| as::
 
     kitty -o allow_remote_control=yes --window-layout tall
 
-In order for control to work, ``allow_remote_control`` must be enabled in
-|kitty.conf|. Here we turn it on explicitly at the command line.
+In order for control to work, :opt:`allow_remote_control` must be enabled in
+:file:`kitty.conf`. Here we turn it on explicitly at the command line.
 
 Now, in the new |kitty| window, enter the command::
 

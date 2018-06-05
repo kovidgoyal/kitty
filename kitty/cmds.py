@@ -607,7 +607,7 @@ def set_colors(boss, window, payload):
 @cmd(
     'Set the background_opacity',
     'Set the background opacity for the specified windows. This will only work if you have turned on'
-    ' dynamic_background_opacity in kitty.conf. The background opacity affects all kitty windows in a'
+    ' :opt:`dynamic_background_opacity` in :file:`kitty.conf`. The background opacity affects all kitty windows in a'
     ' single os_window. For example: kitty @ set-background-opacity 0.5',
     options_spec='''\
 --all -a

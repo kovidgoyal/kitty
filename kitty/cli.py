@@ -98,7 +98,7 @@ messages. For example, :option:`{appname} --listen-on`=unix:/tmp/mykitty or
 UNIX sockets, not associated with a file, like this: :option:`{appname} --listen-on`=unix:@mykitty.
 To control kitty, you can send it commands with :italic:`kitty @` using the :option:`kitty @ --to` option
 to specify this address. Note that this option will be ignored, unless you set
-:italic:`allow_remote_control` to yes in |kitty.conf|.
+:opt:`allow_remote_control` to yes in :file:`kitty.conf`.
 
 
 # Debugging options
@@ -189,6 +189,10 @@ def title(x):
     return blue(bold(x))
 
 
+def opt(text):
+    return text
+
+
 def option(x):
     idx = x.find('-')
     if idx > -1:
@@ -271,7 +275,7 @@ def prettify(text):
         return role_map[role](text)
 
     text = re.sub(r':([a-z]+):`([^`]+)`', sub, text)
-    return text.replace('|kitty.conf|', italic('kitty.conf'))
+    return text
 
 
 def prettify_rst(text):

@@ -85,8 +85,8 @@ def do_io(to, send, no_response):
 
 all_commands = tuple(sorted(cmap))
 cli_msg = (
-        'Control {appname} by sending it commands. Add'
-        ' :italic:`allow_remote_control yes` to |kitty.conf| for this'
+        'Control {appname} by sending it commands. Set the'
+        ' :opt:`allow_remote_control` option to yes in :file:`kitty.conf` for this'
         ' to work.'
 ).format(appname=appname)
 

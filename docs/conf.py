@@ -17,6 +17,7 @@ from sphinx import addnodes
 from sphinx.util.logging import getLogger
 
 
+# config {{{
 # -- Project information -----------------------------------------------------
 
 project = 'kitty'
@@ -74,7 +75,6 @@ exclude_patterns = ['_build', 'Thumbs.db',
 pygments_style = 'sphinx'
 
 rst_prolog = '''
-.. |kitty.conf| replace:: :doc:`kitty.conf </conf>`
 .. |kitty| replace:: *kitty*
 .. role:: green
 .. role:: italic
@@ -193,6 +193,7 @@ texinfo_documents = [
      author, 'kitty', 'One line description of project.',
      'Miscellaneous'),
 ]
+# }}}
 
 
 # GitHub linking inlne roles {{{
@@ -356,6 +357,8 @@ def render_conf(conf_name, all_options):
     kitty_mod = 'kitty_mod'
 
     def render_group(group):
+        a('')
+        a(f'.. _conf-{conf_name}-{group.name}:')
         a('')
         a(group.short_text)
         heading_level = '+' if '.' in group.name else '^'

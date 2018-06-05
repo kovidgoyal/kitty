@@ -192,7 +192,7 @@ Currently, there are five layouts available,
 
 You can switch between layouts using the :sc:`next_layout` key combination. You can
 also create shortcuts to select particular layouts, and choose which layouts
-you want to enable/disable, see |kitty.conf| for examples.
+you want to enable/disable, see :ref:`conf-kitty-shortcuts.layout` for examples.
 
 You can resize windows inside layouts. Press :sc:`start_resizing_window` to
 enter resizing mode and follow the on-screen instructions.  In a given window
@@ -203,7 +203,7 @@ but a row/column in the layout, all windows in that row/column will be resized.
 
 Some layouts take options to control their behavior. For example, the ``fat``
 and ``tall`` layouts accept the ``bias`` option to control how the available
-space is split up. To specify the option, in |kitty.conf| use::
+space is split up. To specify the option, in :opt:`kitty.conf <enabled_layouts>` use::
 
     enabled_layouts tall:bias=70
 
@@ -301,7 +301,8 @@ specify individual families for the regular, bold, italic and bold+italic
 fonts. You can even specify specific font families for specific ranges of
 unicode characters. This allows precise control over text rendering. It can
 come in handy for applications like powerline, without the need to use patched
-fonts. See the various font related configuration directives in |kitty.conf|.
+fonts. See the various font related configuration directives in
+:ref:`conf-kitty-fonts`.
 
 
 .. _scrollback:
