@@ -775,6 +775,10 @@ output of things like: ls -1'''))
 k('insert_selected_word', 'kitty_mod+p>w', 'kitten hints --type word --program -', _('Insert selected word'), long_text=_('''
 Select words and insert into terminal.'''))
 
+k('insert_selected_hash', 'kitty_mod+p>h', 'kitten hints --type hash --program -', _('Insert selected hash'), long_text=_('''
+Select something that looks like a hash and insert it into the terminal.
+Useful with git, which uses sha1 hashes to identify commits'''))
+
 # }}}
 
 g('shortcuts.misc')  # {{{

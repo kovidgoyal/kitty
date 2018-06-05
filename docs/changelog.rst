@@ -22,8 +22,8 @@ Changelog
 - icat kitten: Add :option:`kitty +kitten icat --print-window-size` to easily
   detect the window size in pixels from scripting languages (:iss:`581`)
 
-- hints kitten: Allow selecting hashes from the terminal useful for git
-  commits. (:pull:`604`)
+- hints kitten: Allow selecting hashes from the terminal with
+  :sc:`insert_selected_hash` useful for git commits. (:pull:`604`)
 
 - Allow specifying initial window size in number of cells in addition to pixels
   (:iss:`436`)
