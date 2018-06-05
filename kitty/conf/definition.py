@@ -149,7 +149,11 @@ def wrapped_block(lines):
         )
     for block, indent_size in iter_blocks(lines):
         if indent_size > 0:
-            yield from iter(block)
+            for line in block:
+                if not line:
+                    yield line
+                else:
+                    yield '#: ' + line
         else:
             for line in wrapper.wrap('\n'.join(block)):
                 yield line
