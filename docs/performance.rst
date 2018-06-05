@@ -10,7 +10,7 @@ smoothness.
 
 There are two parameters you can tune to adjust the performance. ``repaint_delay``
 and ``input_delay``. These control the artificial delays introduced into the
-render loop to reduce CPU usage. See |kitty.conf| for details.
+render loop to reduce CPU usage. See :ref:`conf-kitty-performance` for details.
 See also the ``sync_to_monitor`` option to further decrease latency at the cost
 of some `tearing <https://en.wikipedia.org/wiki/Screen_tearing>`_ while scrolling.
 

@@ -2,7 +2,7 @@ Unicode input
 ================
 
 You can input unicode characters by name, hex code, recently used and even an editable favorites list.
-Press |sc_input_unicode_character| to start the unicode input widget, shown below.
+Press :sc:`input_unicode_character` to start the unicode input widget, shown below.
 
 .. figure:: ../screenshots/unicode.png
     :alt: A screenshot of the unicode input widget
