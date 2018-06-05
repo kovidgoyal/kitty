@@ -419,3 +419,6 @@ elif __name__ == '__doc__':
     sys.cli_docs['usage'] = usage
     sys.cli_docs['options'] = OPTIONS
     sys.cli_docs['help_text'] = help_text
+elif __name__ == '__conf__':
+    from .config import all_options
+    sys.all_options = all_options

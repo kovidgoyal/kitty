@@ -5,17 +5,16 @@
 import os
 
 from kitty.conf.utils import (
-    init_config, key_func, load_config as _load_config, merge_dicts,
-    parse_config_base, parse_kittens_key, python_string, resolve_config,
-    to_color
+    init_config as _init_config, key_func, load_config as _load_config, merge_dicts,
+    parse_config_base, parse_kittens_key, resolve_config
 )
+from kitty.conf.definition import config_lines
 from kitty.constants import config_dir
 from kitty.rgb import color_as_sgr
 
+from .config_data import type_map, all_options
+
 defaults = None
-default_config_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), 'diff.conf'
-)
 
 formats = {
     'title': '',
@@ -39,26 +38,6 @@ def set_formats(opts):
     formats['added_highlight'] = '48' + color_as_sgr(opts.highlight_added_bg)
 
 
-def syntax_aliases(raw):
-    ans = {}
-    for x in raw.split():
-        a, b = x.partition(':')[::2]
-        if a and b:
-            ans[a.lower()] = b
-    return ans
-
-
-type_map = {
-    'syntax_aliases': syntax_aliases,
-    'num_context_lines': int,
-    'replace_tab_by': python_string,
-}
-
-for name in (
-    'foreground background title_fg title_bg margin_bg margin_fg removed_bg removed_margin_bg added_bg added_margin_bg filler_bg hunk_bg hunk_margin_bg'
-    ' highlight_removed_bg highlight_added_bg'
-).split():
-    type_map[name] = to_color
 func_with_args, args_funcs = key_func()
 
 
@@ -125,7 +104,7 @@ def parse_defaults(lines, check_keys=False):
     return parse_config(lines, check_keys)
 
 
-Options, defaults = init_config(default_config_path, parse_defaults)
+Options, defaults = _init_config(config_lines(all_options), parse_defaults)
 
 
 def load_config(*paths, overrides=None):

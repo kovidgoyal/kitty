@@ -86,16 +86,16 @@ Restore default context     ``=``
 
 
 
-Configuring kitty-diff
+Configuration
 ------------------------
 
 You can configure the colors used, keyboard shortcuts, the diff implementation,
-the default lines of context, etc.  by creating a diff.conf in your :ref:`kitty
-config folder <confloc>`. The default :file:`diff.conf` is below.
+the default lines of context, etc.  by creating a :file:`diff.conf` file in
+your :ref:`kitty config folder <confloc>`. See below for the supported
+configuration directives.
 
-.. literalinclude:: ../../kittens/diff/diff.conf
-    :language: ini
 
+.. include:: /generated/conf-kitten-diff.rst
 
 
 Integrating with git

@@ -255,7 +255,7 @@ def add_html_context(app, pagename, templatename, context, *args):
 
 
 # CLI docs {{{
-def write_cli_docs():
+def write_cli_docs(all_kitten_names):
     from kitty.cli import option_spec_as_rst
     with open('generated/cli-kitty.rst', 'w') as f:
         f.write(option_spec_as_rst(appname='kitty').replace(
@@ -274,8 +274,8 @@ def write_cli_docs():
             p('kitty @', func.name + '\n' + '-' * 120)
             p('.. program::', 'kitty @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))
-    from kittens.runner import all_kitten_names, get_kitten_cli_docs
-    for kitten in all_kitten_names():
+    from kittens.runner import get_kitten_cli_docs
+    for kitten in all_kitten_names:
         data = get_kitten_cli_docs(kitten)
         if data:
             with open(f'generated/cli-kitten-{kitten}.rst', 'w') as f:
@@ -448,7 +448,7 @@ def process_shortcut_link(env, refnode, has_explicit_title, title, target):
     return title, target
 
 
-def write_conf_docs(app):
+def write_conf_docs(app, all_kitten_names):
     app.add_object_type(
         'opt', 'opt',
         indextemplate="pair: %s; Config Setting",
@@ -473,6 +473,13 @@ def write_conf_docs(app):
         print('.. highlight:: ini\n', file=f)
         f.write(render_conf('kitty', all_options.values()))
 
+    from kittens.runner import get_kitten_conf_docs
+    for kitten in all_kitten_names:
+        all_options = get_kitten_conf_docs(kitten)
+        if all_options:
+            with open(f'generated/conf-kitten-{kitten}.rst', 'w', encoding='utf-8') as f:
+                print('.. highlight:: ini\n', file=f)
+                f.write(render_conf(kitten, all_options.values()))
 # }}}
 
 
@@ -481,8 +488,10 @@ def setup(app):
         os.mkdir('generated')
     except FileExistsError:
         pass
-    write_cli_docs()
-    write_conf_docs(app)
+    from kittens.runner import all_kitten_names
+    all_kitten_names = all_kitten_names()
+    write_cli_docs(all_kitten_names)
+    write_conf_docs(app, all_kitten_names)
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))

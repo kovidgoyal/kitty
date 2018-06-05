@@ -110,6 +110,14 @@ def get_kitten_cli_docs(kitten):
         return ans
 
 
+def get_kitten_conf_docs(kitten):
+    sys.all_options = None
+    run_kitten(kitten, run_name='__conf__')
+    ans = sys.all_options
+    del sys.all_options
+    return ans
+
+
 def main():
     try:
         args = sys.argv[1:]
