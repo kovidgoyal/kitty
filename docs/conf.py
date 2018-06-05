@@ -13,6 +13,8 @@ from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
+from pygments.lexer import RegexLexer, bygroups
+from pygments.token import Comment, Keyword, Literal, Name, String, Whitespace, Number
 from sphinx import addnodes
 from sphinx.util.logging import getLogger
 
@@ -290,6 +292,57 @@ def write_cli_docs(all_kitten_names):
 
 # config file docs {{{
 
+class ConfLexer(RegexLexer):
+    name = 'Conf'
+    aliases = ['conf']
+    filenames = ['*.conf']
+
+    tokens = {
+        'root': [
+            (r'#.*?$', Comment.Single),
+            (r'(include)(\s+)(.+?)$', bygroups(Comment.Preproc, Whitespace, Name.Namespace)),
+            (r'(map)(\s+)(\S+)(\s+)', bygroups(
+                Keyword.Declaration, Whitespace, String, Whitespace), 'action'),
+            (r'(symbol_map)(\s+)(\S+)(\s+)(.+?)$', bygroups(
+                Keyword.Declaration, Whitespace, String, Whitespace, Literal)),
+            (r'([a-zA-Z_0-9]+)(\s+)', bygroups(
+                Name.Variable, Whitespace), 'args'),
+        ],
+        'action': [
+            (r'[a-z_0-9]+$', Name.Function, 'root'),
+            (r'[a-z_0-9]+', Name.Function, 'args'),
+        ],
+        'args': [
+            (r'\s+', Whitespace, 'args'),
+            (r'\b(yes|no)\b$', Number.Bin, 'root'),
+            (r'\b(yes|no)\b', Number.Bin, 'args'),
+            (r'[+-]?[0-9]+\s*$', Number.Integer, 'root'),
+            (r'[+-]?[0-9.]+\s*$', Number.Float, 'root'),
+            (r'[+-]?[0-9]+', Number.Integer, 'args'),
+            (r'[+-]?[0-9.]+', Number.Float, 'args'),
+            (r'#[a-fA-F0-9]{3,6}\s*$', String, 'root'),
+            (r'#[a-fA-F0-9]{3,6}\s*', String, 'args'),
+            (r'.+', String, 'root'),
+        ],
+    }
+
+
+class SessionLexer(RegexLexer):
+    name = 'Session'
+    aliases = ['session']
+    filenames = ['*.session']
+
+    tokens = {
+        'root': [
+            (r'#.*?$', Comment.Single),
+            (r'[a-z][a-z0-9_]+', Name.Function, 'args'),
+        ],
+        'args': [
+            (r'.*?$', Literal, 'root'),
+        ]
+    }
+
+
 def link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     m = re.match(r'(.+)\s+<(.+?)>', text)
     if m is None:
@@ -389,7 +442,7 @@ def render_conf(conf_name, all_options):
             kitty_mod = opt.defval_as_string
         mopts = list(merged_opts(all_options, opt, i))
         a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
-        a('.. code-block:: ini')
+        a('.. code-block:: conf')
         a('')
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
@@ -407,11 +460,11 @@ def render_conf(conf_name, all_options):
         shortcuts = [s for s in shortcuts if s.add_to_default]
         shortcut_slugs[f'{conf_name}.{sc.name}'] = (sc_text, sc.key.replace('kitty_mod', kitty_mod))
         if shortcuts:
-            a('.. parsed-literal::')
+            a('.. code-block:: conf')
             a('')
             for x in shortcuts:
                 if x.add_to_default:
-                    a('    map :green:`{}` {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
+                    a('    map {} {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
         a('')
         if sc.long_text:
             a(expand_opt_references(conf_name, sc.long_text))
@@ -449,6 +502,7 @@ def process_shortcut_link(env, refnode, has_explicit_title, title, target):
 
 
 def write_conf_docs(app, all_kitten_names):
+    app.add_lexer('conf', ConfLexer())
     app.add_object_type(
         'opt', 'opt',
         indextemplate="pair: %s; Config Setting",
@@ -470,7 +524,7 @@ def write_conf_docs(app, all_kitten_names):
 
     from kitty.config_data import all_options
     with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
-        print('.. highlight:: ini\n', file=f)
+        print('.. highlight:: conf\n', file=f)
         f.write(render_conf('kitty', all_options.values()))
 
     from kittens.runner import get_kitten_conf_docs
@@ -478,7 +532,7 @@ def write_conf_docs(app, all_kitten_names):
         all_options = get_kitten_conf_docs(kitten)
         if all_options:
             with open(f'generated/conf-kitten-{kitten}.rst', 'w', encoding='utf-8') as f:
-                print('.. highlight:: ini\n', file=f)
+                print('.. highlight:: conf\n', file=f)
                 f.write(render_conf(kitten, all_options.values()))
 # }}}
 
@@ -492,6 +546,7 @@ def setup(app):
     all_kitten_names = all_kitten_names()
     write_cli_docs(all_kitten_names)
     write_conf_docs(app, all_kitten_names)
+    app.add_lexer('session', SessionLexer())
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))

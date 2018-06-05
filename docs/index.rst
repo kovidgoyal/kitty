@@ -256,7 +256,7 @@ You can control the tabs, window layout, working directory, startup
 programs, etc. by creating a "session" file and using the :option:`kitty --session`
 command line flag. For example:
 
-.. code-block:: ini
+.. code-block:: session
 
     # Set the window layout for the current tab
     layout tall
@@ -264,15 +264,16 @@ command line flag. For example:
     cd ~
     # Create a window and run the specified command in it
     launch zsh
-    # Create a window with some environment variables set and run vim in it
+    # Create a window with some environment variables set and run
+    # vim in it
     launch env FOO=BAR vim
     # Set the title for the next window
     title Chat with x
     launch irssi --profile x
 
-    # Create a new tab (the part after new_tab is the optional tab name which will
-    # be displayed in the tab bar, if omitted, the title of the active window will
-    # be used instead)
+    # Create a new tab (the part after new_tab is the optional tab
+    # name which will be displayed in the tab bar, if omitted, the
+    # title of the active window will be used instead)
     new_tab my tab
     cd ~/somewhere
     # Set the layouts allowed in this tab

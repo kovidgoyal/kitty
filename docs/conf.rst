@@ -3,7 +3,7 @@
 Configuring kitty
 ===============================
 
-.. highlight:: ini
+.. highlight:: conf
 
 |kitty| is highly customizable, everything from keyboard shortcuts, to painting
 frames-per-second. See below for an overview of all customization
