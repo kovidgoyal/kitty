@@ -9,30 +9,12 @@
 import os
 import re
 import subprocess
-from collections import defaultdict
 from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 from sphinx import addnodes
-
-
-def create_shortcut_defs():
-    defns = defaultdict(list)
-
-    for line in open('../kitty/kitty.conf'):
-        if line.startswith('map '):
-            _, sc, name = line.split(maxsplit=2)
-            sc = sc.replace('kitty_mod', 'ctrl+shift')
-            name = name.rstrip().replace(' ', '_').replace('-', '_').replace('+',
-                                                                             'plus').replace('.', '_').replace('___', '_').replace('__', '_').strip('_')
-            defns[name].append(':kbd:`' + sc.replace('>', ' → ') + '`')
-
-    defns = [
-        '.. |sc_{}| replace:: {}'.format(name, ' or '.join(defns[name]))
-        for name in sorted(defns)
-    ]
-    return '\n'.join(defns)
+from sphinx.util.logging import getLogger
 
 
 # -- Project information -----------------------------------------------------
@@ -45,6 +27,7 @@ author = 'Kovid Goyal'
 version = ''
 # The full version, including alpha/beta/rc tags
 release = ''
+logger = getLogger(__name__)
 
 
 # -- General configuration ---------------------------------------------------
@@ -100,7 +83,7 @@ rst_prolog = '''
 .. role:: title
 .. role:: env
 
-''' + create_shortcut_defs()
+'''
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -455,7 +438,10 @@ def process_shortcut_link(env, refnode, has_explicit_title, title, target):
     if not slug:
         conf_name, slug = 'kitty', conf_name
     full_name = conf_name + '.' + slug
-    target, title = shortcut_slugs[full_name]
+    try:
+        target, title = shortcut_slugs[full_name]
+    except KeyError:
+        logger.warning('Unknown shortcut: {}'.format(target), location=refnode)
     return title, target
 
 

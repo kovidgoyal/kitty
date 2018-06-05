@@ -107,12 +107,12 @@ Scrolling
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-Scroll line up              |sc_scroll_line_up|
-Scroll line down            |sc_scroll_line_down|
-Scroll page up              |sc_scroll_page_up|
-Scroll page down            |sc_scroll_page_down|
-Scroll to top               |sc_scroll_home|
-Scroll to bottom            |sc_scroll_end|
+Scroll line up              :sc:`scroll_line_up`
+Scroll line down            :sc:`scroll_line_down`
+Scroll page up              :sc:`scroll_page_up`
+Scroll page down            :sc:`scroll_page_down`
+Scroll to top               :sc:`scroll_home`
+Scroll to bottom            :sc:`scroll_end`
 ========================    =======================
 
 Tabs
@@ -121,14 +121,14 @@ Tabs
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-New tab                     |sc_new_tab|
-Close tab                   |sc_close_tab|
-Next tab                    |sc_next_tab|
-Previous tab                |sc_previous_tab|
-Next layout                 |sc_next_layout|
-Move tab forward            |sc_move_tab_forward|
-Move tab backward           |sc_move_tab_backward|
-Set tab title               |sc_set_tab_title|
+New tab                     :sc:`new_tab`
+Close tab                   :sc:`close_tab`
+Next tab                    :sc:`next_tab`
+Previous tab                :sc:`previous_tab`
+Next layout                 :sc:`next_layout`
+Move tab forward            :sc:`move_tab_forward`
+Move tab backward           :sc:`move_tab_backward`
+Set tab title               :sc:`set_tab_title`
 ========================    =======================
 
 
@@ -138,15 +138,15 @@ Windows
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-New window                  |sc_new_window|
-New OS window               |sc_new_os_window|
-Close window                |sc_close_window|
-Next window                 |sc_next_window|
-Previous window             |sc_previous_window|
-Move window forward         |sc_move_window_forward|
-Move window backward        |sc_move_window_backward|
-Move window to top          |sc_move_window_to_top|
-Focus specific window       |sc_first_window|, |sc_second_window| ... |sc_tenth_window|
+New window                  :sc:`new_window`
+New OS window               :sc:`new_os_window`
+Close window                :sc:`close_window`
+Next window                 :sc:`next_window`
+Previous window             :sc:`previous_window`
+Move window forward         :sc:`move_window_forward`
+Move window backward        :sc:`move_window_backward`
+Move window to top          :sc:`move_window_to_top`
+Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`tenth_window`
                             (clockwise from the top-left)
 ========================    =======================
 
@@ -157,22 +157,22 @@ Other keyboard shortcuts
 ==================================  =======================
 Action                              Shortcut
 ==================================  =======================
-Copy to clipboard                   |sc_copy_to_clipboard|
-Paste from clipboard                |sc_paste_from_clipboard|
-Paste from selection                |sc_paste_from_selection|
-Increase font size                  |sc_change_font_size_all_plus2_0|
-Decrease font size                  |sc_change_font_size_all_2_0|
-Restore font size                   |sc_change_font_size_all_0|
-Toggle fullscreen                   |sc_toggle_fullscreen|
-Input unicode character             |sc_input_unicode_character|
-Click URL using the keyboard        |sc_kitten_hints|
-Pass current selection to program   |sc_pass_selection_to_program|
-Edit |kitty| config file            |sc_edit_config_file|
-Open a |kitty| shell                |sc_kitty_shell_window|
-Increase background opacity         |sc_set_background_opacity_plus0_1|
-Decrease background opacity         |sc_set_background_opacity_0_1|
-Full background opacity             |sc_set_background_opacity_1|
-Reset background opacity            |sc_set_background_opacity_default|
+Copy to clipboard                   :sc:`copy_to_clipboard`
+Paste from clipboard                :sc:`paste_from_clipboard`
+Paste from selection                :sc:`paste_from_selection`
+Increase font size                  :sc:`increase_font_size`
+Decrease font size                  :sc:`decrease_font_size`
+Restore font size                   :sc:`reset_font_size`
+Toggle fullscreen                   :sc:`toggle_fullscreen`
+Input unicode character             :sc:`input_unicode_character`
+Click URL using the keyboard        :sc:`open_url`
+Pass current selection to program   :sc:`pass_selection_to_program`
+Edit |kitty| config file            :sc:`edit_config_file`
+Open a |kitty| shell                :sc:`kitty_shell`
+Increase background opacity         :sc:`increase_background_opacity`
+Decrease background opacity         :sc:`decrease_background_opacity`
+Full background opacity             :sc:`full_background_opacity`
+Reset background opacity            :sc:`reset_background_opacity`
 ==================================  =======================
 
 
@@ -190,11 +190,11 @@ Currently, there are five layouts available,
 * **Horizontal** -- All windows are shown side-by-side
 * **Vertical** -- All windows are shown one below the other
 
-You can switch between layouts using the |sc_next_layout| key combination. You can
+You can switch between layouts using the :sc:`next_layout` key combination. You can
 also create shortcuts to select particular layouts, and choose which layouts
 you want to enable/disable, see |kitty.conf| for examples.
 
-You can resize windows inside layouts. Press |sc_start_resizing_window| to
+You can resize windows inside layouts. Press :sc:`start_resizing_window` to
 enter resizing mode and follow the on-screen instructions.  In a given window
 layout only some operations may be possible for a particular window. For
 example, in the Tall layout you can make the first window wider/narrower, but
@@ -314,7 +314,7 @@ can use either keyboard shortcuts or the mouse scroll wheel to do so.  However,
 |kitty| has an extra, neat feature. Sometimes you need to explore the
 scrollback buffer in more detail, maybe search for some text or refer to it
 side-by-side while typing in a follow-up command. |kitty| allows you to do this
-by pressing the |sc_show_scrollback| key-combination, which will open the
+by pressing the :sc:`show_scrollback` key-combination, which will open the
 scrollback buffer in your favorite pager program (which is ``less`` by default).
 Colors and text formatting are preserved. You can explore the scrollback buffer
 comfortably within the pager.

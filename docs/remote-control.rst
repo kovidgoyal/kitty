@@ -115,9 +115,8 @@ shell. Run ``kitty @`` with no arguments and you will be dropped into the |kitty
 shell with completion for |kitty| command names and options.
 
 You can even open the |kitty| shell inside a running |kitty| using a simple
-keyboard shortcut (|sc_kitty_shell_window| by default). This has the added
+keyboard shortcut (:sc:`kitty_shell` by default). This has the added
 advantage that you dont need to use ``allow_remote_control`` to make it work.
 
 
 .. include:: generated/cli-kitty-at.rst
-

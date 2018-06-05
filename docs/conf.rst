@@ -9,7 +9,7 @@ Configuring kitty
 frames-per-second. See below for an overview of all customization
 possibilities.
 
-You can open the config file within kitty by pressing |sc_edit_config_file|.
+You can open the config file within kitty by pressing :sc:`edit_config_file`.
 You can also display the current configuration by running ``kitty
 --debug-config``.
 

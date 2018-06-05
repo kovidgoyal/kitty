@@ -760,7 +760,6 @@ k('open_url', 'kitty_mod+e', 'kitten hints', _('Open URL'), _('''
 Open a currently visible URL using the keyboard. The program used to open the
 URL is specified in :opt:`open_url_with`.'''))
 
-
 k('insert_selected_path', 'kitty_mod+p>f', 'kitten hints --type path --program -', _('Insert selected path'), long_text=_('''
 Select a path/filename and insert it into the terminal. Useful, for instance to
 run git commands on a filename output from a previous git command.'''))
@@ -787,10 +786,10 @@ k('input_unicode_character', 'kitty_mod+u', 'input_unicode_character', _('Unicod
 k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
 k('kitty_shell', 'kitty_mod+escape', 'kitty_shell window', _('Open the kitty command shell'), long_text=_('''
 # Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
-k('set_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1', _('Increase background opacity'))
-k('set_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
-k('set_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
-k('set_background_opacity', 'kitty_mod+a>d', 'set_background_opacity default', _('Reset background opacity'))
+k('increase_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1', _('Increase background opacity'))
+k('decrease_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
+k('full_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
+k('reset_background_opacity', 'kitty_mod+a>d', 'set_background_opacity default', _('Reset background opacity'))
 k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
   add_to_default=False, long_text=_('''
 You can tell kitty to send arbitrary (UTF-8) encoded text to
