@@ -140,3 +140,11 @@ of code needed (the entire implementation is under 2000 lines of code).
 
 And fundamentally, it's kitty only because I wrote it for myself, and I am
 highly unlikely to use any other terminals :)
+
+
+Sample diff.conf
+-----------------
+
+Below is a sample :file:`diff.conf` with all default settings.
+
+.. include:: /generated/conf-kitten-diff-literal.rst

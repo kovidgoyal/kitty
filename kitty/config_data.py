@@ -636,7 +636,7 @@ probably better off just hiding the titlebar with :opt:`macos_hide_titlebar`.
 '''))
 
 o('macos_hide_titlebar', False, long_text=_('''
-# Hide the kitty window's title bar on macOS.'''))
+Hide the kitty window's title bar on macOS.'''))
 
 o('macos_option_as_alt', True, long_text=_('''
 Use the option key as an alt key. With this set to no, kitty will use

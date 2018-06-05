@@ -30,3 +30,11 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 
 
 .. include:: /generated/conf-kitty.rst
+
+
+Sample kitty.conf
+^^^^^^^^^^^^^^^^^^^^^
+
+Below is a sample :file:`kitty.conf` with all default settings.
+
+.. include:: /generated/conf-kitty-literal.rst

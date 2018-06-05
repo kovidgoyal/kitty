@@ -70,8 +70,10 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db',
-                    '.DS_Store', 'generated/cli-*', 'generated/conf-*']
+exclude_patterns = [
+    '_build', 'Thumbs.db', '.DS_Store',
+    'generated/cli-*.rst', 'generated/conf-*.rst'
+]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -300,6 +302,8 @@ class ConfLexer(RegexLexer):
     tokens = {
         'root': [
             (r'#.*?$', Comment.Single),
+            (r'\s+$', Whitespace),
+            (r'\s+', Whitespace),
             (r'(include)(\s+)(.+?)$', bygroups(Comment.Preproc, Whitespace, Name.Namespace)),
             (r'(map)(\s+)(\S+)(\s+)', bygroups(
                 Keyword.Declaration, Whitespace, String, Whitespace), 'action'),
@@ -522,18 +526,27 @@ def write_conf_docs(app, all_kitten_names):
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
 
+    def generate(all_options, name='kitty'):
+        from kitty.conf.definition import as_conf_file
+        from textwrap import indent
+        with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
+            print('.. highlight:: conf\n', file=f)
+            f.write(render_conf(name, all_options.values()))
+
+        with open(f'generated/conf-{name}-literal.rst', 'w', encoding='utf-8') as f:
+            print('.. code-block:: conf\n', file=f)
+            text = '\n'.join(as_conf_file(all_options.values()))
+            text = indent(text, '    ', lambda l: True)
+            print(text, file=f)
+
     from kitty.config_data import all_options
-    with open('generated/conf-kitty.rst', 'w', encoding='utf-8') as f:
-        print('.. highlight:: conf\n', file=f)
-        f.write(render_conf('kitty', all_options.values()))
+    generate(all_options)
 
     from kittens.runner import get_kitten_conf_docs
     for kitten in all_kitten_names:
         all_options = get_kitten_conf_docs(kitten)
         if all_options:
-            with open(f'generated/conf-kitten-{kitten}.rst', 'w', encoding='utf-8') as f:
-                print('.. highlight:: conf\n', file=f)
-                f.write(render_conf(kitten, all_options.values()))
+            generate(all_options, f'kitten-{kitten}')
 # }}}
 
 
