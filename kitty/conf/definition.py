@@ -201,10 +201,9 @@ def as_conf_file(all_options):
 
     def handle_shortcut(shortcuts):
         handle_group(shortcuts[0].group, True)
-        sz = max(len(sc.key) for sc in shortcuts)
         for sc in shortcuts:
             if sc.add_to_default:
-                a('map {} {}'.format(sc.key.ljust(sz), sc.action_def))
+                a('map {} {}'.format(sc.key, sc.action_def))
             if sc.long_text:
                 a(''), a(render_block(sc.long_text.strip())), a('')
 
@@ -232,6 +231,29 @@ def as_conf_file(all_options):
         while num_open_folds > 0:
             a('# }}''}')
             num_open_folds -= 1
+
+    map_groups = []
+    start = count = None
+    for i, line in enumerate(ans):
+        if line.startswith('map '):
+            if start is None:
+                start = i
+                count = 1
+            else:
+                count += 1
+        else:
+            if start is not None:
+                map_groups.append((start, count))
+                start = None
+    for start, count in map_groups:
+        r = range(start, start + count)
+        sz = max(len(ans[i].split(' ', 3)[1]) for i in r)
+        for i in r:
+            line = ans[i]
+            parts = line.split(' ', 3)
+            parts[1] = parts[1].ljust(sz)
+            ans[i] = ' '.join(parts)
+
     return ans
 
 
