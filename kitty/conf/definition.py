@@ -122,10 +122,43 @@ def remove_markup(text):
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', r'\2', text, flags=re.DOTALL)
 
 
+def iter_blocks(lines):
+    current_block = []
+    prev_indent = 0
+    for line in lines:
+        indent_size = len(line) - len(line.lstrip())
+        if indent_size != prev_indent or not line:
+            if current_block:
+                yield current_block, prev_indent
+            current_block = []
+        prev_indent = indent_size
+        if not line:
+            yield [''], 100
+        else:
+            current_block.append(line)
+    if current_block:
+        yield current_block, indent_size
+
+
+def wrapped_block(lines):
+    wrapper = getattr(wrapped_block, 'wrapper', None)
+    if wrapper is None:
+        import textwrap
+        wrapper = wrapped_block.wrapper = textwrap.TextWrapper(
+            initial_indent='#: ', subsequent_indent='#: ', width=70, break_long_words=False
+        )
+    for block, indent_size in iter_blocks(lines):
+        if indent_size > 0:
+            yield from iter(block)
+        else:
+            for line in wrapper.wrap('\n'.join(block)):
+                yield line
+
+
 def render_block(text):
     text = remove_markup(text)
     lines = text.splitlines()
-    return '\n'.join('#: ' + line for line in lines)
+    return '\n'.join(wrapped_block(lines))
 
 
 def as_conf_file(all_options):
@@ -164,9 +197,10 @@ def as_conf_file(all_options):
 
     def handle_shortcut(shortcuts):
         handle_group(shortcuts[0].group, True)
+        sz = max(len(sc.key) for sc in shortcuts)
         for sc in shortcuts:
             if sc.add_to_default:
-                a('map {} {}'.format(sc.key, sc.action_def))
+                a('map {} {}'.format(sc.key.ljust(sz), sc.action_def))
             if sc.long_text:
                 a(''), a(render_block(sc.long_text.strip())), a('')
 
@@ -178,7 +212,7 @@ def as_conf_file(all_options):
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
             prefix = '' if mo.add_to_default else '# '
-            a(('{}{:%ds} {}' % sz).format(prefix, mo.name, mo.defval_as_string))
+            a('{}{} {}'.format(prefix, mo.name.ljust(sz), mo.defval_as_string))
         a('')
         a(render_block(opt.long_text))
         a('')

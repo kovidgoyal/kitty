@@ -117,8 +117,8 @@ For example::
             _('''\
 You can also create shortcuts to go to specific tabs, with 1 being the first tab::
 
-    map ctrl+alt+1          goto_tab 1
-    map ctrl+alt+2          goto_tab 2
+    map ctrl+alt+1 goto_tab 1
+    map ctrl+alt+2 goto_tab 2
 
 Just as with :code:`new_window` above, you can also pass the name of arbitrary
 commands to run when using new_tab and use :code:`new_tab_with_cwd`.
@@ -128,8 +128,8 @@ commands to run when using new_tab and use :code:`new_tab_with_cwd`.
             _('''\
 You can also create shortcuts to switch to specific layouts::
 
-    map ctrl+alt+t          goto_layout tall
-    map ctrl+alt+s          goto_layout stack
+    map ctrl+alt+t goto_layout tall
+    map ctrl+alt+s goto_layout stack
 ''')],
     'shortcuts.fonts': [
         _('Font sizes'), _('''\
@@ -138,11 +138,11 @@ or only the current one.
 '''), _('''\
 To setup shortcuts for specific font sizes::
 
-    map kitty_mod+f6     change_font_size all 10.0
+    map kitty_mod+f6 change_font_size all 10.0
 
 To setup shortcuts to change only the current window's font size::
 
-    map kitty_mod+f6     change_font_size current 10.0
+    map kitty_mod+f6 change_font_size current 10.0
 ''')],
     'shortcuts.selection': [
             _('Select and act on visible text'), _('''\
@@ -678,7 +678,7 @@ you can specify your own, for example::
 You can pass the current selection to a terminal program running in a new kitty
 window, by using the @selection placeholder::
 
-    map kitty_mod+y      new_window less @selection
+    map kitty_mod+y new_window less @selection
 '''))
 
 # }}}
@@ -698,7 +698,7 @@ the placeholders @text (which is the plain text) and @ansi (which includes text 
 For only the current screen, use @screen or @ansi_screen.
 For example, the following command opens the scrollback buffer in less in a new window::
 
-    map kitty_mod+y      new_window @ansi less +G -R
+    map kitty_mod+y new_window @ansi less +G -R
 '''))
 
 
@@ -785,7 +785,7 @@ k('toggle_fullscreen', 'kitty_mod+f11', 'toggle_fullscreen', _('Toggle fullscree
 k('input_unicode_character', 'kitty_mod+u', 'input_unicode_character', _('Unicode input'))
 k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
 k('kitty_shell', 'kitty_mod+escape', 'kitty_shell window', _('Open the kitty command shell'), long_text=_('''
-# Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
+Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
 k('increase_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1', _('Increase background opacity'))
 k('decrease_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
 k('full_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
