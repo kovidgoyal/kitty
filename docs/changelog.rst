@@ -19,8 +19,11 @@ Changelog
 
 - ssh kitten: Support all SSH options. It can now be aliased directly to ssh for convenience. (:pull:`591`)
 
-- kitty icat: Add :option:`kitty +kitten icat --print-window-size` to easily
+- icat kitten: Add :option:`kitty +kitten icat --print-window-size` to easily
   detect the window size in pixels from scripting languages (:iss:`581`)
+
+- hints kitten: Allow selecting hashes from the terminal useful for git
+  commits. (:pull:`604`)
 
 - Allow specifying initial window size in number of cells in addition to pixels
   (:iss:`436`)

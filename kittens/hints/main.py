@@ -244,6 +244,8 @@ def functions_for(args):
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
+    elif args.type == 'hash':
+        pattern = '[0-9a-f]{7,128}'
     elif args.type == 'word':
         chars = args.word_characters
         if chars is None:
@@ -313,7 +315,7 @@ terminal window instead. A value of :file:`@` will copy the match to the clipboa
 
 --type
 default=url
-choices=url,regex,path,line,word
+choices=url,regex,path,line,hash,word
 The type of text to search for.
 
 
