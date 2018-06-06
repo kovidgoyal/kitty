@@ -473,7 +473,7 @@ class TabManager:  # {{{
                 if w.needs_attention:
                     needs_attention = True
                     break
-            ans.append(TabBarData(title, t is at, t is self.tabs[-1], needs_attention))
+            ans.append(TabBarData(title, t is at, needs_attention))
         return ans
 
     def activate_tab_at(self, x):

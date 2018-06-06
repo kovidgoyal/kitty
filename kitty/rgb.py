@@ -8,6 +8,18 @@ from collections import namedtuple
 Color = namedtuple('Color', 'red green blue')
 
 
+def alpha_blend_channel(top_color, bottom_color, alpha):
+    return int(alpha * top_color + (1 - alpha) * bottom_color)
+
+
+def alpha_blend(top_color, bottom_color, alpha):
+    return Color(
+            alpha_blend_channel(top_color.red, bottom_color.red, alpha),
+            alpha_blend_channel(top_color.green, bottom_color.green, alpha),
+            alpha_blend_channel(top_color.blue, bottom_color.blue, alpha)
+    )
+
+
 def parse_single_color(c):
     if len(c) == 1:
         c += c

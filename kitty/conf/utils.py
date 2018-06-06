@@ -43,6 +43,18 @@ def python_string(text):
     return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
 
 
+def choices(*choices):
+    defval = choices[0]
+    choices = frozenset(choices)
+
+    def choice(x):
+        x = x.lower()
+        if x not in choices:
+            x = defval
+        return x
+    return choice
+
+
 def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes):
     line = line.strip()
     if not line or line.startswith('#'):

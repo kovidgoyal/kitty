@@ -6,18 +6,23 @@ Changelog
 0.11.0 [future]
 ------------------------------
 
+- A new tab bar style "fade" in which each tabs edges fade into the background.
+  See :opt:`tab_bar_style` and :opt:`tab_fade` for details. The old look can be
+  restored by setting tab_bar_style to "separator".
+
 - :doc:`Pre-compiled binaries <binary>` with all bundled dependencies for Linux
   (:iss:`595`)
 
-- A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops showing the output from
-  arbitrary terminal programs.
+- A :doc:`new kitten <kittens/panel>` to create dock panels on X11 desktops
+  showing the output from arbitrary terminal programs.
 
 - Reduce data sent to the GPU per render by 30% (:commit:`8dea5b3`)
 
 - Implement changing the font size for individual top level (OS) windows
   (:iss:`408`)
 
-- ssh kitten: Support all SSH options. It can now be aliased directly to ssh for convenience. (:pull:`591`)
+- ssh kitten: Support all SSH options. It can now be aliased directly to ssh
+  for convenience. (:pull:`591`)
 
 - icat kitten: Add :option:`kitty +kitten icat --print-window-size` to easily
   detect the window size in pixels from scripting languages (:iss:`581`)

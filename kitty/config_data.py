@@ -8,13 +8,12 @@ from gettext import gettext as _
 from . import fast_data_types as defines
 from .conf.definition import option_func
 from .conf.utils import (
-    positive_float, positive_int, to_cmdline, to_color, unit_float
+    choices, positive_float, positive_int, to_cmdline, to_color, unit_float
 )
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
-
 
 MINIMUM_FONT_SIZE = 4
 
@@ -490,8 +489,27 @@ Which edge to show the tab bar on, top or bottom'''))
 o('tab_bar_margin_width', 0.0, option_type=positive_float, long_text=_('''
 The margin to the left and right of the tab bar (in pts)'''))
 
+o('tab_bar_style', 'fade', option_type=choices('fade', 'separator'), long_text=_('''
+The tab bar style, can be one of: :code:`fade` or :code:`separator`. In the fade style,
+each tab's edges fade into the background color, in the separator style, tabs are
+separated by a configurable separator.
+'''))
+
+
+def tab_fade(x):
+    return tuple(map(unit_float, x.split()))
+
+
+o('tab_fade', '0.25 0.5 0.75 1', option_type=tab_fade, long_text=_('''
+Control how each tab fades into the background when using :code:`fade` for the
+:opt:`tab_bar_style`. Each number is an alpha (between zero and one) that controls
+how much the corresponding cell fades into the background, with zero being no fade
+and one being full fade. You can change the number of cells used by adding/removing
+entries to this list.
+'''))
+
 o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separator, long_text=_('''
-The separator between tabs in the tab bar'''))
+The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
 
 o('active_tab_foreground', '#000', option_type=to_color, long_text=_('''
 Tab bar colors and styles'''))

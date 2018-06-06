@@ -13,20 +13,29 @@ from .fast_data_types import (
 from .layout import Rect
 from .utils import color_as_int
 from .window import calculate_gl_geometry
+from .rgb import alpha_blend
 
-TabBarData = namedtuple('TabBarData', 'title is_active is_last needs_attention')
-DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg')
+TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
+DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg alpha active_bg inactive_bg default_bg')
 
 
-def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
-    if draw_data.leading_spaces:
-        screen.draw(' ' * draw_data.leading_spaces)
+def as_rgb(x):
+    return (x << 8) | 2
+
+
+def draw_title(draw_data, screen, tab):
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
     screen.draw(tab.title)
+
+
+def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
+    if draw_data.leading_spaces:
+        screen.draw(' ' * draw_data.leading_spaces)
+    draw_title(draw_data, screen, tab)
     if draw_data.trailing_spaces:
         screen.draw(' ' * draw_data.trailing_spaces)
     extra = screen.cursor.x - before - max_title_length
@@ -37,6 +46,33 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
     screen.cursor.bold = screen.cursor.italic = False
     screen.cursor.fg = screen.cursor.bg = 0
     screen.draw(draw_data.sep)
+    return end
+
+
+def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length):
+    tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+    fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
+    for bg in fade_colors:
+        screen.cursor.bg = bg
+        screen.draw(' ')
+    draw_title(draw_data, screen, tab)
+    extra = screen.cursor.x - before - max_title_length
+    if extra > 0:
+        screen.cursor.x = before
+        draw_title(draw_data, screen, tab)
+        extra = screen.cursor.x - before - max_title_length
+        if extra > 0:
+            screen.cursor.x -= extra + 1
+            screen.draw('…')
+    for bg in reversed(fade_colors):
+        if extra >= 0:
+            break
+        extra += 1
+        screen.cursor.bg = bg
+        screen.draw(' ')
+    end = screen.cursor.x
+    screen.cursor.bg = as_rgb(color_as_int(draw_data.default_bg))
+    screen.draw(' ')
     return end
 
 
@@ -70,13 +106,15 @@ class TabBar:
         self.active_font_style = opts.active_tab_font_style
         self.inactive_font_style = opts.inactive_tab_font_style
 
-        def as_rgb(x):
-            return (x << 8) | 2
-
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
         self.bell_fg = as_rgb(0xff0000)
-        self.draw_data = DrawData(self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg)
+        self.draw_data = DrawData(
+            self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg,
+            self.opts.tab_fade, self.opts.active_tab_background, self.opts.inactive_tab_background,
+            self.opts.background
+        )
+        self.draw_func = draw_tab_with_separator if self.opts.tab_bar_style == 'separator' else draw_tab_with_fade
 
     def patch_colors(self, spec):
         if 'active_tab_foreground' in spec:
@@ -117,15 +155,16 @@ class TabBar:
         s.erase_in_line(2, False)
         max_title_length = (self.screen_geometry.xnum // max(1, len(data))) - 1
         cr = []
+        last_tab = data[-1] if data else None
 
         for t in data:
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            end = draw_tab_with_separator(self, s, t, before, max_title_length)
+            end = self.draw_func(self.draw_data, s, t, before, max_title_length)
             cr.append((before, end))
-            if s.cursor.x > s.columns - max_title_length and not t.is_last:
+            if s.cursor.x > s.columns - max_title_length and t is not last_tab:
                 s.draw('…')
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
