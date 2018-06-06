@@ -11,7 +11,8 @@ kitty - the fast, featureful, GPU based, terminal emulator
 
     * Supports all modern terminal features: :doc:`graphics (images)
       <graphics-protocol>`, unicode, true-color, OpenType ligatures, mouse
-      protocol, focus tracking, bracketed paste and several :doc:`new terminal
+      protocol, focus tracking, `bracketed paste
+      <https://cirw.in/blog/bracketed-paste>`_ and several :doc:`new terminal
       protocol extensions <protocol-extensions>`.
 
     * Supports tiling multiple terminal windows side by side in different
@@ -49,12 +50,11 @@ kitty - the fast, featureful, GPU based, terminal emulator
 Quickstart
 --------------
 
-If you are on macOS, simply download and install the ``.dmg`` from the `releases
-page <https://github.com/kovidgoyal/kitty/releases>`_.
+Pre-built binaries of |kitty| are available for both macOS and Linux.
+See the :doc:`binary install instructions </binary>`.
 
-If you are on Linux, install the |kitty| package if your distro provides it,
-otherwise follow the :doc:`Build from source instructions <build>`. |kitty|
-packages are available for:
+If you are on Linux, you can also use your distribution's |kitty| package.
+|kitty| packages are available for:
 `Debian <https://packages.debian.org/buster/kitty>`_,
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
@@ -62,9 +62,8 @@ packages are available for:
 `Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
 `Fedora <https://copr.fedorainfracloud.org/coprs/oleastre/kitty-terminal/>`_.
 
-
-See :doc:`Configuring kitty <conf>` for help on configuring kitty and
-:doc:`Invocation <invocation>` for the command line arguments kitty supports.
+See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
+:doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
 
 
 .. contents::

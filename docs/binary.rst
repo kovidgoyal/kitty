@@ -19,6 +19,17 @@ The binaries will be installed in the standard location for your OS,
 Linux. The installer only touches files in that directory.
 
 
+Manually installing
+---------------------
+
+If something goes wrong or you simply do not want to run the installer, you can
+manually download and install |kitty| from the `GitHub releases page
+<https://github.com/kovidgoyal/kitty/releases>`_. If you are on macOS, download
+the :file:`.dmg` and install as normal. If you are on Linux, download the tarball
+and extract it into a directory. The |kitty| executable will be in the
+:file:`bin` sub-directory.
+
+
 Customizing the installation
 --------------------------------
 
@@ -46,17 +57,6 @@ Customizing the installation
 
      |ins| \\
          installer=/path/to/dmg or tarball
-
-
-Manually installing
----------------------
-
-If something goes wrong or you simply do not want to run the installer, you can
-manually download and install |kitty| from the `GitHub releases page
-<https://github.com/kovidgoyal/kitty/releases>`_. If you are on macOS, download
-the :file:`.dmg` and install as normal. If you are on Linux, download the tarball
-and extract it into a directory. The |kitty| executable will be in the
-:file:`bin` sub-directory.
 
 
 Building from source
