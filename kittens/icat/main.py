@@ -264,10 +264,8 @@ def main(args=sys.argv):
         print('{}x{}'.format(ss.width, ss.height), end='')
         raise SystemExit(0)
 
-    if not sys.stdout.isatty() or not sys.stdin.isatty():
-        raise SystemExit(
-            'Must be run in a terminal, stdout and/or stdin is currently not a terminal'
-        )
+    if not sys.stdout.isatty():
+        sys.stdout = open('/dev/tty', 'w')
     screen_size = screen_size_function()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:
