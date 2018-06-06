@@ -190,4 +190,8 @@ FONTS_DATA_HANDLE load_fonts_data(double, double, double);
 void send_prerendered_sprites_for_window(OSWindow *w);
 #ifdef __APPLE__
 void get_cocoa_key_equivalent(int, int, unsigned short*, int*);
+typedef enum {
+    PREFERENCES_WINDOW = 1, NEW_OS_WINDOW = 2
+} CocoaPendingAction;
+void set_cocoa_pending_action(CocoaPendingAction action);
 #endif

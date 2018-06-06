@@ -65,12 +65,12 @@ find_app_name(void) {
 
 - (void) show_preferences              : (id)sender {
     (void)sender;
-    call_boss(edit_config_file, NULL);
+    set_cocoa_pending_action(PREFERENCES_WINDOW);
 }
 
 - (void) new_os_window              : (id)sender {
     (void)sender;
-    call_boss(new_os_window, NULL);
+    set_cocoa_pending_action(NEW_OS_WINDOW);
 }
 
 

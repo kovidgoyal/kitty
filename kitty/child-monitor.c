@@ -751,6 +751,18 @@ process_pending_closes(ChildMonitor *self) {
     return has_open_windows;
 }
 
+#ifdef __APPLE__
+// If we create new OS windows during wait_events(), using global menu actions
+// via the mouse causes a crash because of the way autorelease pools work in
+// glfw/cocoa. So we use a flag instead.
+static unsigned int cocoa_pending_actions = 0;
+
+void
+set_cocoa_pending_action(CocoaPendingAction action) {
+    cocoa_pending_actions |= action;
+}
+#endif
+
 static PyObject*
 main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
@@ -761,6 +773,13 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         if (global_state.has_pending_resizes) process_pending_resizes(now);
         render(now);
         wait_for_events();
+#ifdef __APPLE__
+        if (cocoa_pending_actions) {
+            if (cocoa_pending_actions & PREFERENCES_WINDOW) { call_boss(edit_config_file, NULL); }
+            if (cocoa_pending_actions & NEW_OS_WINDOW) { call_boss(new_os_window, NULL); }
+            cocoa_pending_actions = 0;
+        }
+#endif
         parse_input(self);
         if (global_state.close_all_windows) close_all_windows();
         has_open_windows = process_pending_closes(self);
