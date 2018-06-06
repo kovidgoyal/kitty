@@ -18,11 +18,11 @@ from kitty.constants import appname
 from kitty.utils import fit_image, read_with_timeout, screen_size_function
 
 from ..tui.images import (
-    ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify,
-    screen_size
+    ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify
 )
 from ..tui.operations import clear_images_on_screen, serialize_gr_command
 
+screen_size = None
 OPTIONS = '''\
 --align
 type=choices
@@ -254,6 +254,7 @@ usage = 'image-file ...'
 
 
 def main(args=sys.argv):
+    global screen_size
     args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname))
 
     if args.print_window_size:
@@ -263,11 +264,12 @@ def main(args=sys.argv):
         print('{}x{}'.format(ss.width, ss.height), end='')
         raise SystemExit(0)
 
-    signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if not sys.stdout.isatty() or not sys.stdin.isatty():
         raise SystemExit(
             'Must be run in a terminal, stdout and/or stdin is currently not a terminal'
         )
+    screen_size = screen_size_function()
+    signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:
         if args.detect_support:
             raise SystemExit(1)
