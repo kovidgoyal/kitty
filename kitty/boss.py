@@ -75,7 +75,7 @@ class DumpCommands:  # {{{
 
 class Boss:
 
-    def __init__(self, os_window_id, opts, args, cached_values):
+    def __init__(self, os_window_id, opts, args, cached_values, new_os_window_trigger):
         self.window_id_map = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.pending_sequences = None
@@ -96,6 +96,9 @@ class Boss:
         set_boss(self)
         self.opts, self.args = opts, args
         startup_session = create_session(opts, args)
+        self.keymap = self.opts.keymap.copy()
+        if new_os_window_trigger is not None:
+            self.keymap.pop(new_os_window_trigger, None)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
@@ -411,7 +414,7 @@ class Boss:
 
     def dispatch_special_key(self, key, scancode, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        key_action = get_shortcut(self.opts.keymap, mods, key, scancode)
+        key_action = get_shortcut(self.keymap, mods, key, scancode)
         if key_action is None:
             sequences = get_shortcut(self.opts.sequence_map, mods, key, scancode)
             if sequences:

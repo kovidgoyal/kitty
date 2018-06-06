@@ -799,6 +799,12 @@ set_smallest_allowed_resize(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#ifdef __APPLE__
+void
+get_cocoa_key_equivalent(int key, int mods, unsigned short *cocoa_key, int *cocoa_mods) {
+    glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, cocoa_mods);
+}
+#endif
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {

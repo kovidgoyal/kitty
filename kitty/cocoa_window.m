@@ -68,6 +68,12 @@ find_app_name(void) {
     call_boss(edit_config_file, NULL);
 }
 
+- (void) new_os_window              : (id)sender {
+    (void)sender;
+    call_boss(new_os_window, NULL);
+}
+
+
 + (GlobalMenuTarget *) shared_instance
 {
     static GlobalMenuTarget *sharedGlobalMenuTarget = nil;
@@ -80,6 +86,20 @@ find_app_name(void) {
 }
 
 @end
+
+static unichar new_window_key = 0;
+static NSEventModifierFlags new_window_mods = 0;
+
+static PyObject*
+cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
+    int mods, key;
+    if (!PyArg_ParseTuple(args, "ii", &mods, &key)) return NULL;
+    int nwm;
+    get_cocoa_key_equivalent(key, mods, &new_window_key, &nwm);
+    new_window_mods = nwm;
+    if (new_window_key) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 
 void
 cocoa_create_global_menu(void) {
@@ -97,9 +117,19 @@ cocoa_create_global_menu(void) {
                        action:@selector(orderFrontStandardAboutPanel:)
                        keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
-    NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","];
+    NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","], *new_os_window_menu_item = NULL;
     [preferences_menu_item setTarget:global_menu_target];
     [appMenu addItem:preferences_menu_item];
+    if (new_window_key) {
+        NSString *s = [NSString stringWithCharacters:&new_window_key length:1];
+        new_os_window_menu_item = [[NSMenuItem alloc] initWithTitle:@"New OS window" action:@selector(new_os_window:) keyEquivalent:s];
+        [new_os_window_menu_item setKeyEquivalentModifierMask:new_window_mods];
+        [new_os_window_menu_item setTarget:global_menu_target];
+        [appMenu addItem:new_os_window_menu_item];
+        [s release];
+    }
+
+
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
                 keyEquivalent:@"h"];
@@ -150,6 +180,9 @@ cocoa_create_global_menu(void) {
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
     [preferences_menu_item release];
+    if (new_os_window_menu_item) {
+        [new_os_window_menu_item release];
+    }
 
     [bar release];
 }
@@ -239,6 +272,7 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
+    {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

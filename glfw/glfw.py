@@ -202,6 +202,7 @@ def generate_wrappers(glfw_header, glfw_native_header):
     void* glfwGetCocoaWindow(GLFWwindow* window)
     uint32_t glfwGetCocoaMonitor(GLFWmonitor* monitor)
     GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow* window, GLFWcocoatextinputfilterfun callback)
+    void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, void* cocoa_key, void* cocoa_mods)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)
     void glfwSetX11SelectionString(const char* string)

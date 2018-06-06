@@ -44,6 +44,9 @@ Changelog
 
 - Wayland: Fix mouse wheel/touchpad scrolling in opposite direction to other apps (:iss:`594`)
 
+- macOS: Fix the new OS window keyboard shortcut (:sc:`new_os_window`) not
+  working if no kitty window currently has focus. (:iss:`524`)
+
 - Add a config option to set the EDITOR kitty uses (:iss:`580`)
 
 - Add an option to @set-window-title to make the title change non-permanent

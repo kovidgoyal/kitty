@@ -1836,6 +1836,10 @@ typedef GLFWcocoatextinputfilterfun (*glfwSetCocoaTextInputFilter_func)(GLFWwind
 glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
 #define glfwSetCocoaTextInputFilter glfwSetCocoaTextInputFilter_impl
 
+typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, void*, void*);
+glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
+#define glfwGetCocoaKeyEquivalent glfwGetCocoaKeyEquivalent_impl
+
 typedef void* (*glfwGetX11Display_func)();
 glfwGetX11Display_func glfwGetX11Display_impl;
 #define glfwGetX11Display glfwGetX11Display_impl

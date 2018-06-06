@@ -43,6 +43,15 @@ def init_graphics(debug_keyboard=False):
 
 
 def _run_app(opts, args):
+    new_os_window_trigger = None
+    if is_macos:
+        for k, v in opts.keymap.items():
+            if v.func == 'new_os_window':
+                new_os_window_trigger = k
+                from .fast_data_types import cocoa_set_new_window_trigger
+                if not cocoa_set_new_window_trigger(*new_os_window_trigger):
+                    new_os_window_trigger = None
+
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
@@ -53,7 +62,7 @@ def _run_app(opts, args):
         if not is_wayland and not is_macos:  # no window icons on wayland
             with open(logo_data_file, 'rb') as f:
                 set_default_window_icon(f.read(), 256, 256)
-        boss = Boss(window_id, opts, args, cached_values)
+        boss = Boss(window_id, opts, args, cached_values, new_os_window_trigger)
         boss.start()
         try:
             boss.child_monitor.main_loop()
