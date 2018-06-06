@@ -15,6 +15,29 @@ from .utils import color_as_int
 from .window import calculate_gl_geometry
 
 TabBarData = namedtuple('TabBarData', 'title is_active is_last needs_attention')
+DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg')
+
+
+def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
+    if draw_data.leading_spaces:
+        screen.draw(' ' * draw_data.leading_spaces)
+    if tab.needs_attention and draw_data.bell_on_tab:
+        fg = screen.cursor.fg
+        screen.cursor.fg = draw_data.bell_fg
+        screen.draw('🔔 ')
+        screen.cursor.fg = fg
+    screen.draw(tab.title)
+    if draw_data.trailing_spaces:
+        screen.draw(' ' * draw_data.trailing_spaces)
+    extra = screen.cursor.x - before - max_title_length
+    if extra > 0:
+        screen.cursor.x -= extra + 1
+        screen.draw('…')
+    end = screen.cursor.x
+    screen.cursor.bold = screen.cursor.italic = False
+    screen.cursor.fg = screen.cursor.bg = 0
+    screen.draw(draw_data.sep)
+    return end
 
 
 class TabBar:
@@ -53,6 +76,7 @@ class TabBar:
         self.active_bg = as_rgb(color_as_int(opts.active_tab_background))
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
         self.bell_fg = as_rgb(0xff0000)
+        self.draw_data = DrawData(self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg)
 
     def patch_colors(self, spec):
         if 'active_tab_foreground' in spec:
@@ -96,26 +120,11 @@ class TabBar:
 
         for t in data:
             s.cursor.bg = self.active_bg if t.is_active else 0
-            s.cursor.fg = fg = self.active_fg if t.is_active else 0
+            s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            if self.leading_spaces:
-                s.draw(' ' * self.leading_spaces)
-            if t.needs_attention and self.opts.bell_on_tab:
-                s.cursor.fg = self.bell_fg
-                s.draw('🔔 ')
-                s.cursor.fg = fg
-            s.draw(t.title)
-            if self.trailing_spaces:
-                s.draw(' ' * self.trailing_spaces)
-            extra = s.cursor.x - before - max_title_length
-            if extra > 0:
-                s.cursor.x -= extra + 1
-                s.draw('…')
-            cr.append((before, s.cursor.x))
-            s.cursor.bold = s.cursor.italic = False
-            s.cursor.fg = s.cursor.bg = 0
-            s.draw(self.sep)
+            end = draw_tab_with_separator(self, s, t, before, max_title_length)
+            cr.append((before, end))
             if s.cursor.x > s.columns - max_title_length and not t.is_last:
                 s.draw('…')
                 break
