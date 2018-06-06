@@ -27,8 +27,6 @@ from kitty.utils import screen_size_function
 from .handler import Handler
 from .operations import init_state, reset_state
 
-screen_size = screen_size_function()
-
 
 def debug(*a, **kw):
     from base64 import standard_b64encode
@@ -156,6 +154,7 @@ class Loop:
                  sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
         self.input_fd = sys.stdin.fileno() if input_fd is None else input_fd
         self.output_fd = sys.stdout.fileno() if output_fd is None else output_fd
+        self._get_screen_size = screen_size_function(self.output_fd)
         self.wakeup_read_fd, self.wakeup_write_fd = safe_pipe()
         # For some reason on macOS the DefaultSelector fails when input_fd is
         # open('/dev/tty')
@@ -320,8 +319,8 @@ class Loop:
     def _wakeup_ready(self, handler):
         data = os.read(self.wakeup_read_fd, 1024)
         if b'r' in data:
-            screen_size.changed = True
-            handler.on_resize(screen_size())
+            self._get_screen_size.changed = True
+            handler.on_resize(self._get_screen_size())
         if b't' in data:
             handler.on_term()
         if b'i' in data:
@@ -386,7 +385,7 @@ class Loop:
                 image_manager = handler.image_manager_class(handler)
             keep_going = True
             try:
-                handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, debug, image_manager)
+                handler._initialize(self._get_screen_size(), self.quit, self.wakeup, self.start_job, debug, image_manager)
                 with handler:
                     while keep_going:
                         has_data_to_write = bool(handler.write_buf)
@@ -415,7 +414,7 @@ class Loop:
         handler = UnhandledException(tb)
         handler.write_buf = []
         handler._term_manager = term_manager
-        handler._initialize(screen_size(), self.quit, self.wakeup, self.start_job, debug)
+        handler._initialize(self._get_screen_size(), self.quit, self.wakeup, self.start_job, debug)
         with handler:
             while True:
                 has_data_to_write = bool(handler.write_buf)

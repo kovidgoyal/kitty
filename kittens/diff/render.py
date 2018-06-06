@@ -9,7 +9,7 @@ from math import ceil
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
-from ..tui.images import can_display_images, screen_size
+from ..tui.images import can_display_images
 from .collect import (
     Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
     path_name_map, sanitize
@@ -371,12 +371,11 @@ def rename_lines(path, other_path, args, columns, margin_size):
 
 class Image:
 
-    def __init__(self, image_id, width, height, margin_size):
+    def __init__(self, image_id, width, height, margin_size, screen_size):
         self.image_id = image_id
         self.width, self.height = width, height
-        ss = screen_size()
-        self.rows = int(ceil(self.height / ss.cell_height))
-        self.columns = int(ceil(self.width / ss.cell_width))
+        self.rows = int(ceil(self.height / screen_size.cell_height))
+        self.columns = int(ceil(self.width / screen_size.cell_width))
         self.margin_size = margin_size
 
 
@@ -400,7 +399,7 @@ def render_image(path, is_left, available_cols, margin_size, image_manager):
         lnum += 1
 
     try:
-        image_id, width, height = image_manager.send_image(path, available_cols - margin_size, screen_size().rows - 2)
+        image_id, width, height = image_manager.send_image(path, available_cols - margin_size, image_manager.screen_size.rows - 2)
     except Exception as e:
         yield from yield_split(_('Failed to render image, with error:'))
         yield from yield_split(' '.join(str(e).splitlines()))
@@ -409,7 +408,7 @@ def render_image(path, is_left, available_cols, margin_size, image_manager):
             width, height, human_readable(len(data_for_path(path))))
     yield from yield_split(meta)
     bg_line = m + fmt(' ' * available_cols)
-    img = Image(image_id, width, height, margin_size)
+    img = Image(image_id, width, height, margin_size, image_manager.screen_size)
     for r in range(img.rows):
         yield bg_line, Reference(path, LineRef(lnum)), ImagePlacement(img, r)
         lnum += 1

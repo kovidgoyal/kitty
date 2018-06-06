@@ -9,7 +9,7 @@ from base64 import standard_b64encode
 from collections import defaultdict, deque
 from itertools import count
 
-from kitty.utils import fit_image, screen_size_function
+from kitty.utils import fit_image
 
 from .operations import cursor
 
@@ -18,7 +18,6 @@ try:
     codecs.lookup(fsenc)
 except Exception:
     fsenc = 'utf-8'
-screen_size = screen_size_function()
 
 
 class ImageData:
@@ -123,6 +122,10 @@ class ImageManager:
     def next_image_id(self):
         return next(self.image_id_counter) + 2
 
+    @property
+    def screen_size(self):
+        return self.handler.screen_size
+
     def __enter__(self):
         import tempfile
         self.tdir = tempfile.mkdtemp(prefix='kitten-images-')
@@ -190,7 +193,7 @@ class ImageManager:
                 self.failed_images[path] = e
                 raise
         m = self.image_data[path]
-        ss = screen_size()
+        ss = self.screen_size
         if max_cols is None:
             max_cols = ss.cols
         if max_rows is None:
