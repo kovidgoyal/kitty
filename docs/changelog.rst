@@ -6,9 +6,9 @@ Changelog
 0.11.0 [future]
 ------------------------------
 
-- A new tab bar style "fade" in which each tabs edges fade into the background.
+- A new tab bar style "fade" in which each tab's edges fade into the background.
   See :opt:`tab_bar_style` and :opt:`tab_fade` for details. The old look can be
-  restored by setting tab_bar_style to "separator".
+  restored by setting :opt:`tab_bar_style` to :code:`separator`.
 
 - :doc:`Pre-compiled binaries <binary>` with all bundled dependencies for Linux
   (:iss:`595`)
