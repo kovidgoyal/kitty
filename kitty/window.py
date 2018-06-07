@@ -403,7 +403,7 @@ class Window:
         f(lines.append, as_ansi, add_wrap_markers)
         if add_history:
             h = []
-            self.screen.historybuf.as_text(h.append, as_ansi)
+            self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
             lines = h + lines
         return ''.join(lines)
 
