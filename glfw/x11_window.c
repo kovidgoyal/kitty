@@ -30,8 +30,6 @@
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
 
-#include <sys/select.h>
-
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,50 +48,67 @@
 
 #define _GLFW_XDND_VERSION 5
 
+static inline void
+drainFd(int fd) {
+    static char drain_buf[64];
+    while(1) {
+        ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
+        if (len < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        break;
+    }
+}
 
-// Wait for data to arrive using select
+
+// Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
 //
 static GLFWbool waitForEvent(double* timeout)
 {
-    fd_set fds;
-    const int fd = ConnectionNumber(_glfw.x11.display);
-    int count = fd + 1;
+    nfds_t count = 2;
 
 #if defined(__linux__)
-    if (_glfw.linjs.inotify > fd)
-        count = _glfw.linjs.inotify + 1;
+    if (_glfw.linjs.inotify > 0)
+    {
+        count = 3;
+        _glfw.x11.eventLoopData.fds[2].fd = _glfw.linjs.inotify;
+    }
 #endif
     for (;;)
     {
-        FD_ZERO(&fds);
-        FD_SET(fd, &fds);
-#if defined(__linux__)
-        if (_glfw.linjs.inotify > 0)
-            FD_SET(_glfw.linjs.inotify, &fds);
-#endif
-
+        for (nfds_t i = 0; i < count; i++) _glfw.x11.eventLoopData.fds[i].revents = 0;
         if (timeout)
         {
-            const long seconds = (long) *timeout;
-            const long microseconds = (long) ((*timeout - seconds) * 1e6);
-            struct timeval tv = { seconds, microseconds };
+            const int milliseconds = (int) ((*timeout) * 1000);
             const uint64_t base = _glfwPlatformGetTimerValue();
-
-            const int result = select(count, &fds, NULL, NULL, &tv);
-            const int error = errno;
-
+            const int result = poll(_glfw.x11.eventLoopData.fds, count, milliseconds);
             *timeout -= (_glfwPlatformGetTimerValue() - base) /
                 (double) _glfwPlatformGetTimerFrequency();
 
             if (result > 0)
+            {
+                if (_glfw.x11.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
                 return GLFW_TRUE;
-            if ((result == -1 && error == EINTR) || *timeout <= 0.0)
+            }
+            if (result == 0)
                 return GLFW_FALSE;
+            if (*timeout > 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            return GLFW_FALSE;
         }
-        else if (select(count, &fds, NULL, NULL, NULL) != -1 || errno != EINTR)
-            return GLFW_TRUE;
+        else {
+            const int result = poll(_glfw.x11.eventLoopData.fds, count, -1);
+            if (result > 0)
+            {
+                if (_glfw.x11.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
+                return GLFW_TRUE;
+            }
+            if (result == 0)
+                return GLFW_FALSE;
+            if (errno != EINTR && errno != EAGAIN) return GLFW_FALSE;
+        }
     }
 }
 
@@ -2597,6 +2612,11 @@ void _glfwPlatformPostEmptyEvent(void)
 
     XSendEvent(_glfw.x11.display, _glfw.x11.helperWindowHandle, False, 0, &event);
     XFlush(_glfw.x11.display);
+    while(1)
+    {
+        if (write(_glfw.x11.eventLoopData.wakeupFds[1], "w", 1) >= 0 || errno != EINTR)
+            break;
+    }
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)

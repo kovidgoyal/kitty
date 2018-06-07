@@ -29,6 +29,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <dlfcn.h>
+#include <poll.h>
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -377,6 +378,11 @@ typedef struct _GLFWlibraryX11
         PFN_XRenderQueryVersion QueryVersion;
         PFN_XRenderFindVisualFormat FindVisualFormat;
     } xrender;
+
+    struct {
+        struct pollfd fds[3];
+        int wakeupFds[2];
+    } eventLoopData;
 
 } _GLFWlibraryX11;
 

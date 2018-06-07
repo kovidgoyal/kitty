@@ -34,6 +34,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <locale.h>
+#include <fcntl.h>
 
 
 // Check whether the specified atom is supported
@@ -589,6 +590,23 @@ Cursor _glfwCreateCursorX11(const GLFWimage* image, int xhot, int yhot)
     return cursor;
 }
 
+static inline GLFWbool
+selfPipe(int fds[2]) {
+    int flags;
+    flags = pipe(fds);
+    if (flags != 0) return GLFW_FALSE;
+    for (int i = 0; i < 2; i++) {
+        flags = fcntl(fds[i], F_GETFD);
+        if (flags == -1) {  return GLFW_FALSE; }
+        if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return GLFW_FALSE; }
+        flags = fcntl(fds[i], F_GETFL);
+        if (flags == -1) { return GLFW_FALSE; }
+        if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return GLFW_FALSE; }
+    }
+    return GLFW_TRUE;
+}
+
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
@@ -598,6 +616,13 @@ int _glfwPlatformInit(void)
 {
     XInitThreads();
     XrmInitialize();
+
+    if (!selfPipe(_glfw.x11.eventLoopData.wakeupFds))
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                "X11: failed to create self pipe");
+        return GLFW_FALSE;
+    }
 
     _glfw.x11.display = XOpenDisplay(NULL);
     if (!_glfw.x11.display)
@@ -616,6 +641,12 @@ int _glfwPlatformInit(void)
 
         return GLFW_FALSE;
     }
+
+    _glfw.x11.eventLoopData.fds[0].fd = _glfw.x11.eventLoopData.wakeupFds[0];
+    _glfw.x11.eventLoopData.fds[1].fd = ConnectionNumber(_glfw.x11.display);
+    _glfw.x11.eventLoopData.fds[0].events = POLLIN;
+    _glfw.x11.eventLoopData.fds[1].events = POLLIN;
+    _glfw.x11.eventLoopData.fds[2].events = POLLIN;
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
     _glfw.x11.root = RootWindow(_glfw.x11.display, _glfw.x11.screen);
@@ -668,6 +699,17 @@ void _glfwPlatformTerminate(void)
     {
         XCloseDisplay(_glfw.x11.display);
         _glfw.x11.display = NULL;
+        if (_glfw.x11.eventLoopData.wakeupFds[0] > 0)
+        {
+            close(_glfw.x11.eventLoopData.wakeupFds[0]);
+            _glfw.x11.eventLoopData.wakeupFds[0] = -1;
+        }
+        if (_glfw.x11.eventLoopData.wakeupFds[1] > 0)
+        {
+            _glfw.x11.eventLoopData.wakeupFds[1] = -1;
+            close(_glfw.x11.eventLoopData.wakeupFds[1]);
+        }
+        _glfw.x11.eventLoopData.fds[0].fd = -1;
     }
 
     if (_glfw.x11.xcursor.handle)
