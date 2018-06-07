@@ -114,12 +114,14 @@ self_pipe(int fds[2]) {
     int flags;
     flags = pipe(fds);
     if (flags != 0) return false;
-    flags = fcntl(fds[0], F_GETFD);
-    if (flags == -1) {  return false; }
-    if (fcntl(fds[0], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
-    flags = fcntl(fds[0], F_GETFL);
-    if (flags == -1) { return false; }
-    if (fcntl(fds[0], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
+    for (int i = 0; i < 2; i++) {
+        flags = fcntl(fds[i], F_GETFD);
+        if (flags == -1) {  return false; }
+        if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
+        flags = fcntl(fds[i], F_GETFL);
+        if (flags == -1) { return false; }
+        if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
+    }
     return true;
 }
 
