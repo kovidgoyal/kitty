@@ -323,10 +323,12 @@ def wrap(text, limit=80):
     return reversed(lines)
 
 
-default_msg = (
-        'Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program` to run inside :italic:`{appname}` as normal'
-        ' arguments following the :italic:`options`. For example: {appname} /bin/sh'
-    ).format(appname=appname)
+default_msg = ('''\
+Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program`
+to run inside :italic:`{appname}` as normal arguments following the :italic:`options`.
+For example: {appname} /bin/sh
+
+For comprehensive documentation for kitty, please visit: https://sw.kovidgoyal.net/kitty''').format(appname=appname)
 
 
 def print_help_for_seq(seq, usage, message, appname):
