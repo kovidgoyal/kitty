@@ -16,7 +16,7 @@ from .constants import (
 )
 from .fast_data_types import (
     create_os_window, free_font_data, glfw_init, glfw_terminate,
-    set_default_window_icon, set_options
+    set_default_window_icon, set_options, GLFW_MOD_SUPER
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
@@ -42,16 +42,29 @@ def init_graphics(debug_keyboard=False):
     return glfw_module
 
 
-def _run_app(opts, args):
+def prefer_cmd_shortcuts(x):
+    return x[0] == GLFW_MOD_SUPER
+
+
+def get_new_os_window_trigger(opts):
     new_os_window_trigger = None
     if is_macos:
+        new_os_window_shortcuts = []
         for k, v in opts.keymap.items():
             if v.func == 'new_os_window':
-                new_os_window_trigger = k
-                from .fast_data_types import cocoa_set_new_window_trigger
-                if not cocoa_set_new_window_trigger(*new_os_window_trigger):
-                    new_os_window_trigger = None
+                new_os_window_shortcuts.append(k)
+        if new_os_window_shortcuts:
+            from .fast_data_types import cocoa_set_new_window_trigger
+            new_os_window_shortcuts.sort(key=prefer_cmd_shortcuts, reverse=True)
+            for candidate in new_os_window_shortcuts:
+                if cocoa_set_new_window_trigger(*candidate):
+                    new_os_window_trigger = candidate
+                    break
+    return new_os_window_trigger
 
+
+def _run_app(opts, args):
+    new_os_window_trigger = get_new_os_window_trigger(opts)
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(

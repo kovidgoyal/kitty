@@ -138,7 +138,7 @@ Windows
 Action                      Shortcut
 ========================    =======================
 New window                  :sc:`new_window`
-New OS window               :sc:`new_os_window`
+New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
 Close window                :sc:`close_window`
 Next window                 :sc:`next_window`
 Previous window             :sc:`previous_window`
@@ -156,8 +156,8 @@ Other keyboard shortcuts
 ==================================  =======================
 Action                              Shortcut
 ==================================  =======================
-Copy to clipboard                   :sc:`copy_to_clipboard`
-Paste from clipboard                :sc:`paste_from_clipboard`
+Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
+Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
 Increase font size                  :sc:`increase_font_size`
 Decrease font size                  :sc:`decrease_font_size`

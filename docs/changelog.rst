@@ -50,6 +50,9 @@ Changelog
 - macOS: Keep kitty running even when the last window is closed. This is in
   line with how applications are supposed to behave on macOS (:iss:`543`)
 
+- macOS: Add macOS standard shortcuts for copy, paste and new OS window
+  (⌘+C, ⌘+V, ⌘+N)
+
 - Add a config option (:opt:`editor`) to set the EDITOR kitty uses (:iss:`580`)
 
 - Add a config option (:opt:`x11_hide_window_decorations`) to hide window

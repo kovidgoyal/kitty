@@ -10,6 +10,7 @@ from .conf.definition import option_func
 from .conf.utils import (
     choices, positive_float, positive_int, to_cmdline, to_color, unit_float
 )
+from .constants import is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import color_as_int, color_as_sharp, color_from_int
@@ -690,6 +691,9 @@ You can have kitty remove all shortcut definition seen up to this point. Useful,
 instance, to remove the default shortcuts.'''))
 
 g('shortcuts.clipboard')  # {{{
+if is_macos:
+    k('copy_to_clipboard', 'cmd+c', 'copy_to_clipboard', _('Copy to clipboard'), add_to_docs=False)
+    k('paste_from_clipboard', 'cmd+v', 'paste_from_clipboard', _('Paste from clipboard'), add_to_docs=False)
 k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'))
 k('paste_from_clipboard', 'kitty_mod+v', 'paste_from_clipboard', _('Paste from clipboard'))
 k('paste_from_selection', 'kitty_mod+s', 'paste_from_selection', _('Paste from selection'))
@@ -741,6 +745,8 @@ working directory of the current window using::
 
     map ctrl+alt+enter    new_window_with_cwd
 '''))
+if is_macos:
+    k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'))
 k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
 k('close_window', 'kitty_mod+w', 'close_window', _('Close window'))
 k('next_window', 'kitty_mod+]', 'next_window', _('Next window'))
