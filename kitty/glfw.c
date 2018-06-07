@@ -394,6 +394,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // The temp window is used to get the DPI.
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
+    if (temp_window == NULL) { fatal("Failed to create GLFW temp window!"); }
     double dpi_x, dpi_y;
     get_window_dpi(temp_window, &dpi_x, &dpi_y);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, dpi_x, dpi_y);
