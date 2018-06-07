@@ -21,6 +21,10 @@ Changelog
 - Implement changing the font size for individual top level (OS) windows
   (:iss:`408`)
 
+- When viewing the scrollback in less using :sc:`show_scrollback` and kitty
+  is currently scrolled, position the scrollback in less to match kitty's
+  scroll position. (:iss:`148`)
+
 - ssh kitten: Support all SSH options. It can now be aliased directly to ssh
   for convenience. (:pull:`591`)
 

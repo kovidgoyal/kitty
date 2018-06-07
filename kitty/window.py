@@ -418,7 +418,12 @@ class Window:
     # actions {{{
 
     def show_scrollback(self):
-        get_boss().display_scrollback(self, self.as_text(as_ansi=True, add_history=True).encode('utf-8'))
+        data = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
+        data = data.replace('\r\n', '\n').replace('\r', '\n')
+        lines = data.count('\n')
+        input_line_number = (lines - (self.screen.lines - 1) - self.screen.scrolled_by)
+        cmd = [x.replace('INPUT_LINE_NUMBER', str(input_line_number)) for x in self.opts.scrollback_pager]
+        get_boss().display_scrollback(self, data, cmd)
 
     def paste(self, text):
         if text and not self.destroyed:

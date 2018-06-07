@@ -275,10 +275,12 @@ o('scrollback_lines', 2000, option_type=positive_int, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
 on demand.'''))
 
-o('scrollback_pager', 'less +G -R', option_type=to_cmdline, long_text=_('''
+o('scrollback_pager', 'less --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER', option_type=to_cmdline, long_text=_('''
 Program with which to view scrollback in a new window. The scrollback buffer is
 passed as STDIN to this program. If you change it, make sure the program you
-use can handle ANSI escape sequences for colors and text formatting.'''))
+use can handle ANSI escape sequences for colors and text formatting.
+INPUT_LINE_NUMBER in the command line above will be replaced by an integer
+representing which line should be at the top of the screen.'''))
 
 o('wheel_scroll_multiplier', 5.0, long_text=_('''
 Modify the amount scrolled by the mouse wheel or touchpad. Use

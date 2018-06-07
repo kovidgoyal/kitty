@@ -528,12 +528,12 @@ class Boss:
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
             self.window_id_map.pop(window_id, None)
 
-    def display_scrollback(self, window, data):
+    def display_scrollback(self, window, data, cmd):
         tab = self.active_tab
         if tab is not None and window.overlay_for is None:
             tab.new_special_window(
                 SpecialWindow(
-                    self.opts.scrollback_pager, data, _('History'), overlay_for=window.id))
+                    cmd, data, _('History'), overlay_for=window.id))
 
     def edit_config_file(self, *a):
         confpath = prepare_config_file_for_editing()
