@@ -47,7 +47,10 @@ Changelog
 - macOS: Fix the new OS window keyboard shortcut (:sc:`new_os_window`) not
   working if no kitty window currently has focus. (:iss:`524`)
 
-- Add a config option to set the EDITOR kitty uses (:iss:`580`)
+- Add a config option (:opt:`editor`) to set the EDITOR kitty uses (:iss:`580`)
+
+- Add a config option (:opt:`x11_hide_window_decorations`) to hide window
+  decorations under X11/Wayland (:iss:`607`)
 
 - Add an option to @set-window-title to make the title change non-permanent
   (:iss:`592`)

@@ -385,6 +385,7 @@ PYWRAP1(set_options) {
     S(window_alert_on_bell, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
+    S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
 
     PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");

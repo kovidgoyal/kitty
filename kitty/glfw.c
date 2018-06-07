@@ -378,6 +378,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifndef __APPLE__
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
+    if (OPT(x11_hide_window_decorations)) {
+        glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);
+    }
 #endif
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {
