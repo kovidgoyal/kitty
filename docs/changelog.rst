@@ -73,6 +73,8 @@ Changelog
 - Linux: Fix fonts not being correctly read from TrueType Collection
   (.ttc) files (:iss:`577`)
 
+- Fix :opt:`inactive_text_alpha` also applying to the tab bar (:iss:`612`)
+
 - :doc:`hints kitten <kittens/hints>`: Fix a regression that caused some blank lines to be not
   be displayed.
 
