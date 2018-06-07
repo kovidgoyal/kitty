@@ -38,6 +38,7 @@ typedef void* id;
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,int);
+typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {

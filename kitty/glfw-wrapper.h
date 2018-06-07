@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
+typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
+
 
 
 /*! @name GLFW version macros
@@ -1835,6 +1837,10 @@ glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
 typedef GLFWcocoatextinputfilterfun (*glfwSetCocoaTextInputFilter_func)(GLFWwindow*, GLFWcocoatextinputfilterfun);
 glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
 #define glfwSetCocoaTextInputFilter glfwSetCocoaTextInputFilter_impl
+
+typedef GLFWapplicationshouldhandlereopenfun (*glfwSetApplicationShouldHandleReopen_func)(GLFWapplicationshouldhandlereopenfun);
+glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHandleReopen_impl;
+#define glfwSetApplicationShouldHandleReopen glfwSetApplicationShouldHandleReopen_impl
 
 typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, void*, void*);
 glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;

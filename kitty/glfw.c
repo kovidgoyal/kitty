@@ -331,6 +331,15 @@ filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
     return ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) ? 1 : 0;
 }
 static GLFWwindow *application_quit_canary = NULL;
+
+static int
+on_application_reopen(int has_visible_windows) {
+    if (has_visible_windows) return true;
+    set_cocoa_pending_action(NEW_OS_WINDOW);
+    // Without unjam wait_for_events() blocks until the next event
+    unjam_event_loop();
+    return false;
+}
 #endif
 
 void
@@ -372,6 +381,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
         if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
+        glfwSetApplicationShouldHandleReopen(on_application_reopen);
 #endif
 
     }

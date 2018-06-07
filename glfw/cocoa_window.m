@@ -482,6 +482,15 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     return NSTerminateCancel;
 }
 
+static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag
+{
+    if (!handle_reopen_callback) return YES;
+    if (handle_reopen_callback(flag)) return YES;
+    return NO;
+}
+
 - (void)applicationDidChangeScreenParameters:(NSNotification *) notification
 {
     _GLFWwindow* window;
@@ -2086,6 +2095,12 @@ GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *hand
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     GLFWcocoatextinputfilterfun previous = window->ns.textInputFilterCallback;
     window->ns.textInputFilterCallback = callback;
+    return previous;
+}
+
+GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
+    GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
+    handle_reopen_callback = callback;
     return previous;
 }
 
