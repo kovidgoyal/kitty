@@ -749,7 +749,9 @@ process_pending_closes(ChildMonitor *self) {
         } else has_open_windows = true;
     }
 #ifdef __APPLE__
-    if (!has_open_windows && !application_quit_requested()) has_open_windows = true;
+    if (!OPT(macos_quit_when_last_window_closed)) {
+        if (!has_open_windows && !application_quit_requested()) has_open_windows = true;
+    }
 #endif
     return has_open_windows;
 }
