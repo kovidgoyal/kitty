@@ -330,6 +330,7 @@ static int
 filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
     return ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) ? 1 : 0;
 }
+static GLFWwindow *application_quit_canary = NULL;
 #endif
 
 void
@@ -393,8 +394,17 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // creation, which causes a resize event and all the associated processing.
     // The temp window is used to get the DPI.
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, global_state.num_os_windows ? global_state.os_windows[0].handle : NULL);
+    GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
+#ifdef __APPLE__
+    if (is_first_window && !application_quit_canary) {
+        application_quit_canary = glfwCreateWindow(100, 200, "quit_canary", NULL, NULL);
+    }
+    if (!common_context) common_context = application_quit_canary;
+#endif
+
+    GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
     if (temp_window == NULL) { fatal("Failed to create GLFW temp window!"); }
+
     double dpi_x, dpi_y;
     get_window_dpi(temp_window, &dpi_x, &dpi_y);
     FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, dpi_x, dpi_y);
@@ -512,6 +522,13 @@ destroy_os_window(OSWindow *w) {
     }
 #endif
 }
+
+#ifdef __APPLE__
+bool
+application_quit_requested() {
+    return !application_quit_canary || glfwWindowShouldClose(application_quit_canary);
+}
+#endif
 
 // Global functions {{{
 static void

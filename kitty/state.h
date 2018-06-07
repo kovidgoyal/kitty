@@ -194,4 +194,5 @@ typedef enum {
     PREFERENCES_WINDOW = 1, NEW_OS_WINDOW = 2
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action);
+bool application_quit_requested();
 #endif

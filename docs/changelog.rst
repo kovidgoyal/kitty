@@ -47,6 +47,9 @@ Changelog
 - macOS: Fix the new OS window keyboard shortcut (:sc:`new_os_window`) not
   working if no kitty window currently has focus. (:iss:`524`)
 
+- macOS: Keep kitty running even when the last window is closed. This is in
+  line with how applications are supposed to behave on macOS (:iss:`543`)
+
 - Add a config option (:opt:`editor`) to set the EDITOR kitty uses (:iss:`580`)
 
 - Add a config option (:opt:`x11_hide_window_decorations`) to hide window
