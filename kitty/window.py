@@ -97,7 +97,8 @@ class Window:
         self.override_title = override_title
         self.overlay_window_id = None
         self.overlay_for = None
-        self.child_title = appname
+        self.default_title = child.argv[0] or appname
+        self.child_title = self.default_title
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
         if not self.id:
@@ -230,7 +231,7 @@ class Window:
                 self.screen.send_escape_code_to_child(CSI, 'O')
 
     def title_changed(self, new_title):
-        self.child_title = sanitize_title(new_title or appname)
+        self.child_title = sanitize_title(new_title or self.default_title)
         if self.override_title is None:
             self.title_updated()
 
