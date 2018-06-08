@@ -10,6 +10,7 @@ import os
 import pprint
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -18,6 +19,8 @@ import requests
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 build_path = os.path.abspath('../build-kitty')
+docs_dir = os.path.abspath('docs')
+publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
 raw = open('kitty/constants.py').read()
 nv = re.search(
     r'^version\s+=\s+\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
@@ -25,13 +28,13 @@ version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
 appname = re.search(
     r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE).group(1)
 
-ALL_ACTIONS = 'build tag upload website'.split()
+ALL_ACTIONS = 'man html build tag upload website'.split()
 
 
-def call(*cmd):
+def call(*cmd, cwd=None):
     if len(cmd) == 1:
         cmd = shlex.split(cmd[0])
-    ret = subprocess.Popen(cmd).wait()
+    ret = subprocess.Popen(cmd, cwd=cwd).wait()
     if ret != 0:
         raise SystemExit(ret)
 
@@ -50,8 +53,27 @@ def run_tag(args):
     call('git push origin v{0}'.format(version))
 
 
+def run_man(args):
+    call('make man', cwd=docs_dir)
+
+
+def run_html(args):
+    call('make html', cwd=docs_dir)
+
+
 def run_website(args):
-    call('docs/publish.py')
+    if os.path.exists(publish_dir):
+        shutil.rmtree(publish_dir)
+    shutil.copytree(os.path.join(docs_dir, '_build', 'html'), publish_dir)
+    shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
+    installer = os.path.join(docs_dir, 'installer.py')
+    subprocess.check_call([
+        'python3', '-c', f"import runpy; runpy.run_path('{installer}', run_name='update_wrapper')",
+        os.path.join(publish_dir, 'installer.sh')])
+    os.chdir(os.path.dirname(publish_dir))
+    subprocess.check_call(['git', 'add', 'kitty'])
+    subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
+    subprocess.check_call(['git', 'push'])
 
 
 class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
@@ -296,7 +318,7 @@ def main():
         '--only',
         default=False,
         action='store_true',
-        help='Only run the specified action')
+        help='Only run the specified action, by default the specified action and all sub-sequent actions are run')
     parser.add_argument(
         'action',
         default='build',

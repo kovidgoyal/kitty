@@ -9,15 +9,19 @@
 import os
 import re
 import subprocess
+import sys
 from functools import partial
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
 from pygments.lexer import RegexLexer, bygroups
-from pygments.token import Comment, Keyword, Literal, Name, String, Whitespace, Number
+from pygments.token import (
+    Comment, Keyword, Literal, Name, Number, String, Whitespace
+)
 from sphinx import addnodes
 from sphinx.util.logging import getLogger
 
+from kitty.constants import str_version
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -25,11 +29,12 @@ from sphinx.util.logging import getLogger
 project = 'kitty'
 copyright = '2018, Kovid Goyal'
 author = 'Kovid Goyal'
+building_man_pages = 'man' in sys.argv
 
 # The short X.Y version
-version = ''
+version = str_version
 # The full version, including alpha/beta/rc tags
-release = ''
+release = str_version
 logger = getLogger(__name__)
 
 
@@ -142,47 +147,12 @@ html_sidebars = {
 html_show_sourcelink = False
 
 
-# -- Options for HTMLHelp output ---------------------------------------------
-
-# Output file base name for HTML help builder.
-htmlhelp_basename = 'kittydoc'
-
-
-# -- Options for LaTeX output ------------------------------------------------
-
-latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    # 'papersize': 'letterpaper',
-
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    # 'pointsize': '10pt',
-
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
-}
-
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (master_doc, 'kitty.tex', 'kitty Documentation',
-     'Kovid Goyal', 'manual'),
-]
-
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'kitty', 'kitty Documentation',
+    ('invocation', 'kitty', 'kitty Documentation',
      [author], 1)
 ]
 
@@ -194,7 +164,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kitty', 'kitty Documentation',
-     author, 'kitty', 'One line description of project.',
+     author, 'kitty', 'A cross-platform, fast, feature full, GPU based terminal emulator',
      'Miscellaneous'),
 ]
 # }}}
