@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 import requests
@@ -28,7 +29,7 @@ version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
 appname = re.search(
     r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE).group(1)
 
-ALL_ACTIONS = 'man html build tag upload website'.split()
+ALL_ACTIONS = 'man html build tag sdist upload website'.split()
 
 
 def call(*cmd, cwd=None):
@@ -74,6 +75,24 @@ def run_website(args):
     subprocess.check_call(['git', 'add', 'kitty'])
     subprocess.check_call(['git', 'commit', '-m', 'kitty website updates'])
     subprocess.check_call(['git', 'push'])
+
+
+def run_sdist(args):
+    with tempfile.TemporaryDirectory() as tdir:
+        base = os.path.join(tdir, f'kitty-{version}')
+        os.mkdir(base)
+        subprocess.check_call('git archive HEAD | tar -x -C ' + base, shell=True)
+        dest = os.path.join(base, 'docs', '_build')
+        os.mkdir(dest)
+        for x in 'html man'.split():
+            shutil.copytree(os.path.join(docs_dir, '_build', x), os.path.join(dest, x))
+        dest = os.path.abspath(os.path.join('build', f'kitty-{version}.tar'))
+        subprocess.check_call(['tar', '-cf', dest, os.path.basename(base)], cwd=tdir)
+        try:
+            os.remove(dest + '.xz')
+        except FileNotFoundError:
+            pass
+        subprocess.check_call(['xz', '-9', dest])
 
 
 class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
@@ -297,6 +316,7 @@ def run_upload(args):
             'osx/dist/kitty-{}.dmg': 'macOS dmg',
         }.items()
     }
+    files[f'build/kitty-{version}.tar.xz'] = 'Source code'
     for f in files:
         if not os.path.exists(f):
             raise SystemExit('The installer {} does not exist'.format(f))
