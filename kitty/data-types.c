@@ -21,7 +21,6 @@
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
-#include <termios.h>
 
 /* To millisecond (10^-3) */
 #define SEC_TO_MS 1000
