@@ -34,7 +34,7 @@ app: rendered_logo
 	python3 setup.py kitty.app $(VVAL)
 
 man:
-	$(MAKE) -C docs man
+	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs man
 
 html:
-	$(MAKE) -C docs html
+	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs html

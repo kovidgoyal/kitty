@@ -55,11 +55,11 @@ def run_tag(args):
 
 
 def run_man(args):
-    call('make man', cwd=docs_dir)
+    call('make FAIL_WARN=-W man', cwd=docs_dir)
 
 
 def run_html(args):
-    call('make html', cwd=docs_dir)
+    call('make FAIL_WARN=-W html', cwd=docs_dir)
 
 
 def run_website(args):

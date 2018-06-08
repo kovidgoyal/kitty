@@ -2,8 +2,8 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    = -T -W
-SPHINXBUILD   = kitty +launch /usr/bin/sphinx-build
+SPHINXOPTS    = -T $(FAIL_WARN)
+SPHINXBUILD   = python3 .. +launch $(shell which sphinx-build)
 SPHINXPROJ    = kitty
 SOURCEDIR     = .
 BUILDDIR      = _build
@@ -17,4 +17,4 @@ help:
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
