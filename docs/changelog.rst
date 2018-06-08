@@ -78,6 +78,8 @@ Changelog
 - :doc:`hints kitten <kittens/hints>`: Fix a regression that caused some blank lines to be not
   be displayed.
 
+- Linux: Include a man page and the HTML docs when building the linux-package
+
 
 0.10.1 [2018-05-24]
 ------------------------------

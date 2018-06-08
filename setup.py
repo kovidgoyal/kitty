@@ -533,7 +533,42 @@ def build_linux_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=F
     run_tool(cmd)
 
 
-def package(args, for_bundle=False, sh_launcher=False):  # {{{
+# Packaging {{{
+
+
+def copy_man_pages(ddir):
+    mandir = os.path.join(ddir, 'share', 'man')
+    safe_makedirs(mandir)
+    try:
+        shutil.rmtree(os.path.join(mandir, 'man1'))
+    except FileNotFoundError:
+        pass
+    src = 'docs/_build/man'
+    if not os.path.exists(src):
+        raise SystemExit('''\
+The kitty man page is missing. If you are building from git then run: make docs
+(needs the sphinx documentation system to be installed)
+''')
+    shutil.copytree(src, os.path.join(mandir, 'man1'))
+
+
+def copy_html_docs(ddir):
+    htmldir = os.path.join(ddir, 'share', 'doc', appname, 'html')
+    safe_makedirs(os.path.dirname(htmldir))
+    try:
+        shutil.rmtree(htmldir)
+    except FileNotFoundError:
+        pass
+    src = 'docs/_build/html'
+    if not os.path.exists(src):
+        raise SystemExit('''\
+The kitty html docs are missing. If you are building from git then run: make html
+(needs the sphinx documentation system to be installed)
+''')
+    shutil.copytree(src, htmldir)
+
+
+def package(args, for_bundle=False, sh_launcher=False):
     ddir = args.prefix
     if for_bundle or sh_launcher:
         args.libdir_name = 'lib'
@@ -568,6 +603,8 @@ def package(args, for_bundle=False, sh_launcher=False):  # {{{
     safe_makedirs(launcher_dir)
     build_linux_launcher(args, launcher_dir, for_bundle, sh_launcher, args.for_freeze)
     if not is_macos:  # {{{ linux desktop gunk
+        copy_man_pages(ddir)
+        copy_html_docs(ddir)
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
         safe_makedirs(icdir)
         shutil.copy2('logo/kitty.png', icdir)
@@ -581,7 +618,7 @@ Version=1.0
 Type=Application
 Name=kitty
 GenericName=Terminal emulator
-Comment=A modern, hackable, featureful, OpenGL based terminal emulator
+Comment=A fast, feature full, GPU based terminal emulator
 TryExec=kitty
 Exec=kitty
 Icon=kitty
