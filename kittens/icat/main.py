@@ -15,7 +15,7 @@ from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
 from kitty.constants import appname
-from kitty.utils import fit_image, read_with_timeout, screen_size_function
+from kitty.utils import TTYIO, fit_image, screen_size_function
 
 from ..tui.images import (
     ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify
@@ -229,7 +229,8 @@ def detect_support(wait_for=10, silent=False):
             f.write(b'abcd'), f.flush()
             write_gr_cmd(dict(a='q', s=1, v=1, i=1), standard_b64encode(b'abcd'))
             write_gr_cmd(dict(a='q', s=1, v=1, i=2, t='f'), standard_b64encode(f.name.encode(fsenc)))
-            read_with_timeout(more_needed, timeout=wait_for)
+            with TTYIO() as io:
+                io.recv(more_needed, timeout=float(wait_for))
     finally:
         if not silent:
             sys.stdout.buffer.write(b'\033[J'), sys.stdout.flush()
