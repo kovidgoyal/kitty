@@ -11,8 +11,6 @@
 #include <unistd.h>
 #undef _DARWIN_C_SOURCE
 #endif
-#define _DEFAULT_SOURCE
-#include <termios.h>
 #include "data-types.h"
 #include "control-codes.h"
 #include "modes.h"
@@ -23,6 +21,7 @@
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
+#include <termios.h>
 
 /* To millisecond (10^-3) */
 #define SEC_TO_MS 1000
