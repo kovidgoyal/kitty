@@ -7,7 +7,6 @@ import readline
 import shlex
 import sys
 import traceback
-import types
 from functools import lru_cache
 
 from .cli import (
@@ -134,11 +133,6 @@ def run_cmd(global_opts, cmd, func, opts, items):
         'cmd': cmd,
         'version': version,
     }
-    if func.no_response and isinstance(payload, types.GeneratorType):
-        for item in payload:
-            send['payload'] = item
-            do_io(global_opts.to, send, func.no_response)
-        return
     if payload is not None:
         send['payload'] = payload
     response = do_io(global_opts.to, send, func.no_response)

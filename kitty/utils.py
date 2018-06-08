@@ -10,14 +10,14 @@ import os
 import re
 import string
 import sys
-from contextlib import contextmanager
 from time import monotonic
 
 from .constants import (
     appname, is_macos, is_wayland, supports_primary_selection
 )
 from .fast_data_types import (
-    GLSL_VERSION, log_error_string, redirect_std_streams, x11_display
+    GLSL_VERSION, close_tty, log_error_string, open_tty, redirect_std_streams,
+    x11_display
 )
 from .rgb import Color, to_color
 
@@ -362,45 +362,35 @@ def write_all(fd, data):
         data = data[n:]
 
 
-def make_fd_non_blocking(fd):
-    oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)
-    return oldfl
+class TTYIO:
 
+    def __enter__(self):
+        self.tty_fd, self.original_termios = open_tty()
+        return self
 
-@contextmanager
-def non_blocking_read(src=sys.stdin, disable_echo=False):
-    import termios
-    import tty
-    import fcntl
-    fd = src.fileno()
-    if src.isatty():
-        old = termios.tcgetattr(fd)
-        tty.setraw(fd)
-        if disable_echo:
-            new = list(old)
-            new[3] |= termios.ECHO
-            termios.tcsetattr(fd, termios.TCSANOW, new)
-    oldfl = make_fd_non_blocking(fd)
-    yield fd
-    if src.isatty():
-        termios.tcsetattr(fd, termios.TCSADRAIN, old)
-    fcntl.fcntl(fd, fcntl.F_SETFL, oldfl)
+    def __exit__(self, *a):
+        close_tty(self.tty_fd, self.original_termios)
 
+    def send(self, data):
+        if isinstance(data, (str, bytes)):
+            write_all(self.tty_fd, data)
+        else:
+            for chunk in data:
+                write_all(self.tty_fd, chunk)
 
-def read_with_timeout(more_needed, timeout=10, src=sys.stdin.buffer):
-    import select
-    start_time = monotonic()
-    with non_blocking_read(src) as fd:
+    def recv(self, more_needed, timeout):
+        from io import DEFAULT_BUFFER_SIZE
+        import select
+        fd = self.tty_fd
+        start_time = monotonic()
         while timeout > monotonic() - start_time:
             rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
-            if rd:
-                data = src.read()
-                if not data:
-                    break  # eof
-                if not more_needed(data):
-                    break
-            else:
+            if not rd:
+                break
+            data = os.read(fd, DEFAULT_BUFFER_SIZE)
+            if not data:
+                break  # eof
+            if not more_needed(data):
                 break
 
 

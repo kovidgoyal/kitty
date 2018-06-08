@@ -3,18 +3,14 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-import os
 import re
 import sys
-import types
 from functools import partial
-from io import DEFAULT_BUFFER_SIZE
 
 from .cli import emph, parse_args
 from .cmds import cmap, parse_subcommand_cli
 from .constants import appname, version
-from .fast_data_types import close_tty, open_tty
-from .utils import parse_address_spec, write_all
+from .utils import TTYIO, parse_address_spec
 
 
 def handle_cmd(boss, window, cmd):
@@ -66,7 +62,14 @@ class SocketIO:
     def send(self, data):
         import socket
         with self.socket.makefile('wb') as out:
-            out.write(data)
+            if isinstance(data, bytes):
+                out.write(data)
+            else:
+                for chunk in data:
+                    if isinstance(chunk, str):
+                        chunk = chunk.encode('utf-8')
+                    out.write(chunk)
+                    out.flush()
         self.socket.shutdown(socket.SHUT_WR)
 
     def recv(self, more_needed, timeout):
@@ -78,41 +81,23 @@ class SocketIO:
         more_needed(data)
 
 
-class TTYIO:
-
-    def __enter__(self):
-        self.tty_fd, self.original_termios = open_tty()
-
-    def __exit__(self, *a):
-        close_tty(self.tty_fd, self.original_termios)
-
-    def send(self, data):
-        write_all(self.tty_fd, data)
-
-    def recv(self, more_needed, timeout):
-        import select
-        from time import monotonic
-        fd = self.tty_fd
-        start_time = monotonic()
-        while timeout > monotonic() - start_time:
-            rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
-            if rd:
-                data = os.read(fd, DEFAULT_BUFFER_SIZE)
-                if not data:
-                    break  # eof
-                if not more_needed(data):
-                    break
-            else:
-                break
-
-
 def do_io(to, send, no_response):
-    send = encode_send(send)
+    payload = send.get('payload')
+    if payload is None or isinstance(payload, (str, bytes)):
+        send_data = encode_send(send)
+    else:
+        def send_generator():
+            for chunk in payload:
+                send['payload'] = chunk
+                yield encode_send(send)
+        send_data = send_generator()
+
     io = SocketIO(to) if to else TTYIO()
     with io:
-        io.send(send)
+        io.send(send_data)
         if no_response:
             return {'ok': True}
+
         dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
 
         received = b''
@@ -168,11 +153,6 @@ def main(args):
         'cmd': cmd,
         'version': version,
     }
-    if func.no_response and isinstance(payload, types.GeneratorType):
-        for item in payload:
-            send['payload'] = item
-            do_io(global_opts.to, send, func.no_response)
-        return
     if payload is not None:
         send['payload'] = payload
     response = do_io(global_opts.to, send, func.no_response)
