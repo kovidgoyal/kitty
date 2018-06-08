@@ -735,6 +735,7 @@ handleEvents(double timeout)
     dispatchPendingKeyRepeats();
     timeout = adjustTimeoutForKeyRepeat(timeout);
     GLFWbool read_ok = GLFW_FALSE;
+    for (nfds_t i = 0; i < 2; i++) _glfw.wl.eventLoopData.fds[i].revents = 0;
 
     if (timeout >= 0) {
         const int result = pollWithTimeout(_glfw.wl.eventLoopData.fds, 2, timeout);
