@@ -3,15 +3,18 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import re
 import sys
 import types
 from functools import partial
+from io import DEFAULT_BUFFER_SIZE
 
 from .cli import emph, parse_args
-from .constants import appname, version
-from .utils import parse_address_spec, read_with_timeout
 from .cmds import cmap, parse_subcommand_cli
+from .constants import appname, version
+from .fast_data_types import close_tty, open_tty
+from .utils import parse_address_spec, write_all
 
 
 def handle_cmd(boss, window, cmd):
@@ -44,39 +47,85 @@ def encode_send(send):
     return b'\x1bP' + send + b'\x1b\\'
 
 
+class SocketIO:
+
+    def __init__(self, to):
+        self.family, self.address = parse_address_spec(to)[:2]
+
+    def __enter__(self):
+        import socket
+        self.socket = socket.socket(self.family)
+        self.socket.setblocking(True)
+        self.socket.connect(self.address)
+
+    def __exit__(self, *a):
+        import socket
+        self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
+
+    def send(self, data):
+        import socket
+        with self.socket.makefile('wb') as out:
+            out.write(data)
+        self.socket.shutdown(socket.SHUT_WR)
+
+    def recv(self, more_needed, timeout):
+        # We dont bother with more_needed since the server will close the
+        # connection after transmission
+        self.socket.settimeout(timeout)
+        with self.socket.makefile('rb') as src:
+            data = src.read()
+        more_needed(data)
+
+
+class TTYIO:
+
+    def __enter__(self):
+        self.tty_fd, self.original_termios = open_tty()
+
+    def __exit__(self, *a):
+        close_tty(self.tty_fd, self.original_termios)
+
+    def send(self, data):
+        write_all(self.tty_fd, data)
+
+    def recv(self, more_needed, timeout):
+        import select
+        from time import monotonic
+        fd = self.tty_fd
+        start_time = monotonic()
+        while timeout > monotonic() - start_time:
+            rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
+            if rd:
+                data = os.read(fd, DEFAULT_BUFFER_SIZE)
+                if not data:
+                    break  # eof
+                if not more_needed(data):
+                    break
+            else:
+                break
+
+
 def do_io(to, send, no_response):
-    import socket
     send = encode_send(send)
-    if to:
-        family, address = parse_address_spec(to)[:2]
-        s = socket.socket(family)
-        s.connect(address)
-        out = s.makefile('wb')
-    else:
-        out = open('/dev/tty', 'wb')
-    with out:
-        out.write(send)
-    if to:
-        s.shutdown(socket.SHUT_WR)
-    if no_response:
-        return {'ok': True}
+    io = SocketIO(to) if to else TTYIO()
+    with io:
+        io.send(send)
+        if no_response:
+            return {'ok': True}
+        dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
 
-    received = b''
-    dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
-    match = None
+        received = b''
+        match = None
 
-    def more_needed(data):
-        nonlocal received, match
-        received += data
-        match = dcs.search(received)
-        return match is None
+        def more_needed(data):
+            nonlocal received, match
+            received += data
+            match = dcs.search(received)
+            return match is None
 
-    if to:
-        src = s.makefile('rb')
-    else:
-        src = open('/dev/tty', 'rb')
-    with src:
-        read_with_timeout(more_needed, src=src)
+        io.recv(more_needed, timeout=10)
+
     if match is None:
         raise SystemExit('Failed to receive response from ' + appname)
     response = json.loads(match.group(1).decode('ascii'))

@@ -80,6 +80,9 @@ Changelog
 
 - Linux: Include a man page and the HTML docs when building the linux-package
 
+- Remote control: Fix kitty @ sometimes failing to read the response from
+  kitty. (:iss:`614`)
+
 
 0.10.1 [2018-05-24]
 ------------------------------

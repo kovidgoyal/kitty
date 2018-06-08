@@ -11,12 +11,15 @@
 #include <unistd.h>
 #undef _DARWIN_C_SOURCE
 #endif
+#define _DEFAULT_SOURCE
+#include <termios.h>
 #include "data-types.h"
 #include "control-codes.h"
 #include "modes.h"
 #include <stddef.h>
 #include <termios.h>
 #include <signal.h>
+#include <fcntl.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -103,7 +106,34 @@ stop_profiler(PyObject UNUSED *self) {
 }
 #endif
 
+static PyObject*
+open_tty(PyObject *self UNUSED, PyObject *args UNUSED) {
+    int fd = open("/dev/tty", O_RDWR | O_NONBLOCK | O_CLOEXEC | O_NOCTTY);
+    struct termios *termios_p = calloc(1, sizeof(struct termios));
+    if (!termios_p) return PyErr_NoMemory();
+    if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    struct termios raw_termios = *termios_p;
+    cfmakeraw(&raw_termios);
+    raw_termios.c_cc[VMIN] = 0; raw_termios.c_cc[VTIME] = 0;
+    if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
+}
+
+static PyObject*
+close_tty(PyObject *self UNUSED, PyObject *args) {
+    PyObject *tp;
+    int fd;
+    if (!PyArg_ParseTuple(args, "iO!", &fd, &PyLong_Type, &tp)) return NULL;
+    struct termios *termios_p = PyLong_AsVoidPtr(tp);
+    tcsetattr(fd, TCSAFLUSH, termios_p);
+    free(termios_p);
+    close(fd);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
+    {"open_tty", open_tty, METH_NOARGS, ""},
+    {"close_tty", close_tty, METH_VARARGS, ""},
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},

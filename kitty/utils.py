@@ -352,6 +352,16 @@ def parse_address_spec(spec):
     return family, address, socket_path
 
 
+def write_all(fd, data):
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    while data:
+        n = os.write(fd, data)
+        if not n:
+            break
+        data = data[n:]
+
+
 def make_fd_non_blocking(fd):
     oldfl = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, oldfl | os.O_NONBLOCK)

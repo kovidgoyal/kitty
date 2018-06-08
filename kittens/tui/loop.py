@@ -22,7 +22,7 @@ from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
     decode_key_event, enter_key
 )
-from kitty.utils import screen_size_function
+from kitty.utils import screen_size_function, write_all
 
 from .handler import Handler
 from .operations import init_state, reset_state
@@ -39,16 +39,6 @@ def debug(*a, **kw):
     fobj.write(text)
     if hasattr(fobj, 'flush'):
         fobj.flush()
-
-
-def write_all(fd, data):
-    if isinstance(data, str):
-        data = data.encode('utf-8')
-    while data:
-        n = os.write(fd, data)
-        if not n:
-            break
-        data = data[n:]
 
 
 class TermManager:
