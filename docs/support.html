@@ -1,0 +1,69 @@
+<style>
+.support-button {
+    border-radius: 6px;
+    box-shadow: rgb(255, 246, 175) 0px 1px 0px 0px;
+    display: inline-block;
+    cursor: pointer;
+    color: rgb(51, 51, 51);
+    font-size: inherit;
+    font-family: Arial;
+    font-weight: bold;
+    padding: 8px 24px;
+    text-decoration: none;
+}
+
+.support-button:hover {
+    transform: scale(1.5);
+}
+
+.support-button {
+    outline: 0;
+}
+.support-button:visited {
+    color: rgb(51, 51, 51);
+    outline: 0;
+}
+
+#support-buttons > div {
+    margin-top: 3ex;
+    text-align: center;
+}
+
+#paypal input[type=submit] {
+    background: linear-gradient(rgb(255, 236, 100) 5%, rgb(255, 171, 35) 100%) rgb(255, 236, 100);
+    border: 1px solid rgb(255, 171, 35);
+}
+
+#liberapay a {
+    background: linear-gradient(rgb(92, 184, 92) 5%, rgb(62, 142, 62) 100%) rgb(92, 184, 92);
+    border: 1px solid rgb(62, 142, 62);
+    color: rgb(51, 51, 51);
+}
+
+#patreon a {
+    background: linear-gradient(rgb(11, 100, 163) 5%, rgb(5, 45, 73) 100%) rgb(11, 100, 163);
+    border: 1px solid rgb(5, 45, 73);
+    color: #eee;
+}
+</style>
+
+<div id="support-buttons">
+<div id="patreon">
+    <a class="support-button" href="https://www.patreon.com/bePatron?u=917933">Patronage via Patreon</a>
+</div>
+
+<div>
+    <form id="paypal" action="https://www.paypal.com/cgi-bin/webscr" method="post" title="Contribute to support calibre development">
+        <input type="hidden" name="cmd" value="_s-xclick" />
+        <input type="hidden" name="hosted_button_id" value="FEELASHWEL5HS" />
+        <input class="support-button" type="submit" name="submit" value="One time support via PayPal" />
+        <img alt="" border="0" src="https://www.paypalobjects.com/en_GB/i/scr/pixel.gif" width="1" height="1" />
+    </form>
+</div>
+
+<div id="liberapay">
+    <a class="support-button" href="https://liberapay.com/kovidgoyal/donate">Patronage via Liberapay</a>
+</div>
+
+</div>
+
