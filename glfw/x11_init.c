@@ -25,6 +25,7 @@
 //
 //========================================================================
 
+#define _GNU_SOURCE
 #include "internal.h"
 
 #include <X11/Xresource.h>
@@ -590,24 +591,6 @@ Cursor _glfwCreateCursorX11(const GLFWimage* image, int xhot, int yhot)
     return cursor;
 }
 
-static inline GLFWbool
-selfPipe(int fds[2]) {
-    int flags;
-    flags = pipe(fds);
-    if (flags != 0) return GLFW_FALSE;
-    for (int i = 0; i < 2; i++) {
-        flags = fcntl(fds[i], F_GETFD);
-        if (flags == -1) {  return GLFW_FALSE; }
-        if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return GLFW_FALSE; }
-        flags = fcntl(fds[i], F_GETFL);
-        if (flags == -1) { return GLFW_FALSE; }
-        if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return GLFW_FALSE; }
-    }
-    return GLFW_TRUE;
-}
-
-
-
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
@@ -617,7 +600,7 @@ int _glfwPlatformInit(void)
     XInitThreads();
     XrmInitialize();
 
-    if (!selfPipe(_glfw.x11.eventLoopData.wakeupFds))
+    if (pipe2(_glfw.x11.eventLoopData.wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                 "X11: failed to create self pipe");
@@ -706,8 +689,8 @@ void _glfwPlatformTerminate(void)
         }
         if (_glfw.x11.eventLoopData.wakeupFds[1] > 0)
         {
-            _glfw.x11.eventLoopData.wakeupFds[1] = -1;
             close(_glfw.x11.eventLoopData.wakeupFds[1]);
+            _glfw.x11.eventLoopData.wakeupFds[1] = -1;
         }
         _glfw.x11.eventLoopData.fds[0].fd = -1;
     }

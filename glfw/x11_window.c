@@ -25,6 +25,7 @@
 //
 //========================================================================
 
+#define _GNU_SOURCE
 #include "internal.h"
 
 #include <X11/cursorfont.h>
@@ -51,16 +52,12 @@
 static inline void
 drainFd(int fd) {
     static char drain_buf[64];
-    while(1) {
-        ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
-        if (len < 0) {
-            if (errno == EINTR) continue;
-            break;
-        }
-        break;
-    }
+    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
 }
 
+#ifdef __NetBSD__
+#define ppoll pollts
+#endif
 
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
@@ -82,9 +79,11 @@ static GLFWbool waitForEvent(double* timeout)
         for (nfds_t i = 0; i < count; i++) _glfw.x11.eventLoopData.fds[i].revents = 0;
         if (timeout)
         {
-            const int milliseconds = (int) ((*timeout) * 1000);
+            const long seconds = (long) *timeout;
+            const long nanoseconds = (long) ((*timeout - seconds) * 1e9);
+            struct timespec tv = { seconds, nanoseconds };
             const uint64_t base = _glfwPlatformGetTimerValue();
-            const int result = poll(_glfw.x11.eventLoopData.fds, count, milliseconds);
+            const int result = ppoll(_glfw.x11.eventLoopData.fds, count, &tv, NULL);
             *timeout -= (_glfwPlatformGetTimerValue() - base) /
                 (double) _glfwPlatformGetTimerFrequency();
 
@@ -2612,11 +2611,7 @@ void _glfwPlatformPostEmptyEvent(void)
 
     XSendEvent(_glfw.x11.display, _glfw.x11.helperWindowHandle, False, 0, &event);
     XFlush(_glfw.x11.display);
-    while(1)
-    {
-        if (write(_glfw.x11.eventLoopData.wakeupFds[1], "w", 1) >= 0 || errno != EINTR)
-            break;
-    }
+    while (write(_glfw.x11.eventLoopData.wakeupFds[1], "w", 1) < 0 && errno == EINTR);
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)

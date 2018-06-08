@@ -700,21 +700,30 @@ dispatchPendingKeyRepeats() {
     }
 }
 
-static int
-adjustTimeoutForKeyRepeat(int timeout) {
+static double
+adjustTimeoutForKeyRepeat(double timeout) {
     if (_glfw.wl.keyRepeatInfo.nextRepeatAt <= 0 || _glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return timeout;
     double now = glfwGetTime();
-    if (timeout < 0 || now + timeout / 1000. > _glfw.wl.keyRepeatInfo.nextRepeatAt) {
-        timeout = _glfw.wl.keyRepeatInfo.nextRepeatAt <= now ? 0 : ( (_glfw.wl.keyRepeatInfo.nextRepeatAt - now) * 1000 + 1 );
+    if (timeout < 0 || now + timeout > _glfw.wl.keyRepeatInfo.nextRepeatAt) {
+        timeout = _glfw.wl.keyRepeatInfo.nextRepeatAt <= now ? 0 : ( (_glfw.wl.keyRepeatInfo.nextRepeatAt - now) + 0.001 );
     }
     return timeout;
 }
 
+#ifdef __NetBSD__
+#define ppoll pollts
+#endif
+
+static inline void
+drainFd(int fd) {
+    static char drain_buf[64];
+    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
+}
+
 static void
-handleEvents(int timeout)
+handleEvents(double timeout)
 {
     struct wl_display* display = _glfw.wl.display;
-    struct pollfd pfd = { wl_display_get_fd(display), POLLIN };
 
     while (wl_display_prepare_read(display) != 0)
         wl_display_dispatch_pending(display);
@@ -736,19 +745,27 @@ handleEvents(int timeout)
 
     dispatchPendingKeyRepeats();
     timeout = adjustTimeoutForKeyRepeat(timeout);
+    GLFWbool read_ok = GLFW_FALSE;
 
-    if (poll(&pfd, 1, timeout) > 0)
-    {
-        if (pfd.revents & POLLIN)
+    if (timeout >= 0) {
+        const long seconds = (long) timeout;
+        const long nanoseconds = (long) ((timeout - seconds) * 1e9);
+        struct timespec tv = { seconds, nanoseconds };
+        const int result = ppoll(_glfw.wl.eventLoopData.fds, 2, &tv, NULL);
+        if (result > 0)
         {
-            wl_display_read_events(display);
-            wl_display_dispatch_pending(display);
+            if (_glfw.wl.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
+            read_ok = _glfw.wl.eventLoopData.fds[1].revents && POLLIN;
         }
-        else
-        {
-            wl_display_cancel_read(display);
+    } else {
+        if (poll(_glfw.wl.eventLoopData.fds, 2, -1) > 0) {
+            if (_glfw.wl.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
+            read_ok = _glfw.wl.eventLoopData.fds[1].revents && POLLIN;
         }
-
+    }
+    if (read_ok) {
+        wl_display_read_events(display);
+        wl_display_dispatch_pending(display);
     }
     else
     {
@@ -1206,12 +1223,13 @@ void _glfwPlatformWaitEvents(void)
 
 void _glfwPlatformWaitEventsTimeout(double timeout)
 {
-    handleEvents((int) (timeout * 1e3));
+    handleEvents(timeout);
 }
 
 void _glfwPlatformPostEmptyEvent(void)
 {
     wl_display_sync(_glfw.wl.display);
+    while (write(_glfw.wl.eventLoopData.wakeupFds[1], "w", 1) < 0 && errno == EINTR);
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)

@@ -26,6 +26,7 @@
 
 #include <wayland-client.h>
 #include <dlfcn.h>
+#include <poll.h>
 
 typedef VkFlags VkWaylandSurfaceCreateFlagsKHR;
 
@@ -227,6 +228,11 @@ typedef struct _GLFWlibraryWayland
         PFN_wl_egl_window_destroy window_destroy;
         PFN_wl_egl_window_resize window_resize;
     } egl;
+
+    struct {
+        struct pollfd fds[2];
+        int wakeupFds[2];
+    } eventLoopData;
 
 } _GLFWlibraryWayland;
 
