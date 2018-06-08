@@ -98,13 +98,13 @@ def collect_source_information():
 
     def extract_sources(group, start_pos=0):
         for which in 'HEADERS SOURCES'.split():
-            yield which.lower(), filter(
+            yield which.lower(), list(filter(
                 lambda x: x[0] not in '"$',
                 re.search(
                     r'{0}_{1}\s+([^)]+?)[)]'.format(group, which),
                     raw[start_pos:]
                 ).group(1).strip().split()
-            )
+            ))
 
     wayland_protocols = re.search(r'WaylandProtocols\s+(\S+)\s+', mraw).group(1)
     wayland_protocols = list(map(int, wayland_protocols.split('.')))
