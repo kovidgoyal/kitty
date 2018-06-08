@@ -111,6 +111,7 @@ handle_signal(int sig_num) {
 
 static inline bool
 self_pipe(int fds[2]) {
+#ifdef __APPLE__
     int flags;
     flags = pipe(fds);
     if (flags != 0) return false;
@@ -123,6 +124,9 @@ self_pipe(int fds[2]) {
         if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
     }
     return true;
+#else
+    return pipe2(fds, O_CLOEXEC | O_NONBLOCK) == 0;
+#endif
 }
 
 
