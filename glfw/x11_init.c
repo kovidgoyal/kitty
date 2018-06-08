@@ -27,6 +27,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "backend_utils.h"
 
 #include <X11/Xresource.h>
 
@@ -625,10 +626,7 @@ int _glfwPlatformInit(void)
         return GLFW_FALSE;
     }
 
-    _glfw.x11.eventLoopData.fds[0].fd = _glfw.x11.eventLoopData.wakeupFds[0];
-    _glfw.x11.eventLoopData.fds[1].fd = ConnectionNumber(_glfw.x11.display);
-    _glfw.x11.eventLoopData.fds[0].events = POLLIN;
-    _glfw.x11.eventLoopData.fds[1].events = POLLIN;
+    initPollData(_glfw.x11.eventLoopData.fds, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
     _glfw.x11.eventLoopData.fds[2].events = POLLIN;
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
@@ -682,16 +680,6 @@ void _glfwPlatformTerminate(void)
     {
         XCloseDisplay(_glfw.x11.display);
         _glfw.x11.display = NULL;
-        if (_glfw.x11.eventLoopData.wakeupFds[0] > 0)
-        {
-            close(_glfw.x11.eventLoopData.wakeupFds[0]);
-            _glfw.x11.eventLoopData.wakeupFds[0] = -1;
-        }
-        if (_glfw.x11.eventLoopData.wakeupFds[1] > 0)
-        {
-            close(_glfw.x11.eventLoopData.wakeupFds[1]);
-            _glfw.x11.eventLoopData.wakeupFds[1] = -1;
-        }
         _glfw.x11.eventLoopData.fds[0].fd = -1;
     }
 
@@ -739,6 +727,7 @@ void _glfwPlatformTerminate(void)
 #if defined(__linux__)
     _glfwTerminateJoysticksLinux();
 #endif
+    closeFds(_glfw.x11.eventLoopData.wakeupFds, sizeof(_glfw.x11.eventLoopData.wakeupFds)/sizeof(_glfw.x11.eventLoopData.wakeupFds[0]));
 }
 
 const char* _glfwPlatformGetVersionString(void)

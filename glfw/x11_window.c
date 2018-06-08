@@ -27,6 +27,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "backend_utils.h"
 
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
@@ -49,16 +50,6 @@
 
 #define _GLFW_XDND_VERSION 5
 
-static inline void
-drainFd(int fd) {
-    static char drain_buf[64];
-    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
-}
-
-#ifdef __NetBSD__
-#define ppoll pollts
-#endif
-
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
@@ -79,17 +70,14 @@ static GLFWbool waitForEvent(double* timeout)
         for (nfds_t i = 0; i < count; i++) _glfw.x11.eventLoopData.fds[i].revents = 0;
         if (timeout)
         {
-            const long seconds = (long) *timeout;
-            const long nanoseconds = (long) ((*timeout - seconds) * 1e9);
-            struct timespec tv = { seconds, nanoseconds };
             const uint64_t base = _glfwPlatformGetTimerValue();
-            const int result = ppoll(_glfw.x11.eventLoopData.fds, count, &tv, NULL);
+            const int result = pollWithTimeout(_glfw.x11.eventLoopData.fds, count, *timeout);
             *timeout -= (_glfwPlatformGetTimerValue() - base) /
                 (double) _glfwPlatformGetTimerFrequency();
 
             if (result > 0)
             {
-                if (_glfw.x11.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
+                if (_glfw.x11.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
                 return GLFW_TRUE;
             }
             if (result == 0)
@@ -101,7 +89,7 @@ static GLFWbool waitForEvent(double* timeout)
             const int result = poll(_glfw.x11.eventLoopData.fds, count, -1);
             if (result > 0)
             {
-                if (_glfw.x11.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
+                if (_glfw.x11.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
                 return GLFW_TRUE;
             }
             if (result == 0)

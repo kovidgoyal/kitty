@@ -27,15 +27,14 @@
 #define _GNU_SOURCE
 
 #include "internal.h"
+#include "backend_utils.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <poll.h>
 
 
 static void handlePing(void* data,
@@ -710,16 +709,6 @@ adjustTimeoutForKeyRepeat(double timeout) {
     return timeout;
 }
 
-#ifdef __NetBSD__
-#define ppoll pollts
-#endif
-
-static inline void
-drainFd(int fd) {
-    static char drain_buf[64];
-    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
-}
-
 static void
 handleEvents(double timeout)
 {
@@ -748,19 +737,16 @@ handleEvents(double timeout)
     GLFWbool read_ok = GLFW_FALSE;
 
     if (timeout >= 0) {
-        const long seconds = (long) timeout;
-        const long nanoseconds = (long) ((timeout - seconds) * 1e9);
-        struct timespec tv = { seconds, nanoseconds };
-        const int result = ppoll(_glfw.wl.eventLoopData.fds, 2, &tv, NULL);
+        const int result = pollWithTimeout(_glfw.wl.eventLoopData.fds, 2, timeout);
         if (result > 0)
         {
-            if (_glfw.wl.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
-            read_ok = _glfw.wl.eventLoopData.fds[1].revents && POLLIN;
+            if (_glfw.wl.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
+            read_ok = _glfw.wl.eventLoopData.fds[1].revents & POLLIN;
         }
     } else {
         if (poll(_glfw.wl.eventLoopData.fds, 2, -1) > 0) {
-            if (_glfw.wl.eventLoopData.fds[0].revents && POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
-            read_ok = _glfw.wl.eventLoopData.fds[1].revents && POLLIN;
+            if (_glfw.wl.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
+            read_ok = _glfw.wl.eventLoopData.fds[1].revents & POLLIN;
         }
     }
     if (read_ok) {

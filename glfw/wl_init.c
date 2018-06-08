@@ -26,6 +26,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "backend_utils.h"
 
 #include <assert.h>
 #include <linux/input.h>
@@ -663,10 +664,7 @@ int _glfwPlatformInit(void)
                         "Wayland: Failed to connect to display");
         return GLFW_FALSE;
     }
-    _glfw.wl.eventLoopData.fds[0].fd = _glfw.wl.eventLoopData.wakeupFds[0];
-    _glfw.wl.eventLoopData.fds[1].fd = wl_display_get_fd(_glfw.wl.display);
-    _glfw.wl.eventLoopData.fds[0].events = POLLIN;
-    _glfw.wl.eventLoopData.fds[1].events = POLLIN;
+    initPollData(_glfw.wl.eventLoopData.fds, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
@@ -704,17 +702,6 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
-    if (_glfw.wl.eventLoopData.wakeupFds[0] > 0)
-    {
-        close(_glfw.wl.eventLoopData.wakeupFds[0]);
-        _glfw.wl.eventLoopData.wakeupFds[0] = -1;
-    }
-    if (_glfw.wl.eventLoopData.wakeupFds[1] > 0)
-    {
-        close(_glfw.wl.eventLoopData.wakeupFds[1]);
-        _glfw.wl.eventLoopData.wakeupFds[1] = -1;
-    }
-
 #ifdef __linux__
     _glfwTerminateJoysticksLinux();
 #endif
@@ -768,6 +755,7 @@ void _glfwPlatformTerminate(void)
         wl_display_flush(_glfw.wl.display);
         wl_display_disconnect(_glfw.wl.display);
     }
+    closeFds(_glfw.wl.eventLoopData.wakeupFds, sizeof(_glfw.wl.eventLoopData.wakeupFds)/sizeof(_glfw.wl.eventLoopData.wakeupFds[0]));
 }
 
 const char* _glfwPlatformGetVersionString(void)
