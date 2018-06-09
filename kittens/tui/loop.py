@@ -415,4 +415,3 @@ class Loop:
                             write_ready(handler, fd)
                     else:
                         wakeup_ready(handler, fd)
-                    key.data(handler)
