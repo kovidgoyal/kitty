@@ -101,6 +101,14 @@ def all_kitten_names():
     return ans
 
 
+def list_kittens():
+    print('You must specify the name of a kitten to run')
+    print('Choose from:')
+    print()
+    for kitten in all_kitten_names():
+        print(kitten)
+
+
 def get_kitten_cli_docs(kitten):
     sys.cli_docs = {}
     run_kitten(kitten, run_name='__doc__')

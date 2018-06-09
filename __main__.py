@@ -33,7 +33,12 @@ def launch(args):
 
 
 def run_kitten(args):
-    kitten = args[1]
+    try:
+        kitten = args[1]
+    except IndexError:
+        from kittens.runner import list_kittens
+        list_kittens()
+        raise SystemExit(1)
     sys.argv = args[1:]
     from kittens.runner import run_kitten
     run_kitten(kitten)
