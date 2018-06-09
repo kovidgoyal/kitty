@@ -5,6 +5,7 @@
 import json
 import re
 import sys
+import types
 from functools import partial
 
 from .cli import emph, parse_args
@@ -83,7 +84,7 @@ class SocketIO:
 
 def do_io(to, send, no_response):
     payload = send.get('payload')
-    if payload is None or isinstance(payload, (str, bytes)):
+    if not isinstance(payload, types.GeneratorType):
         send_data = encode_send(send)
     else:
         def send_generator():
