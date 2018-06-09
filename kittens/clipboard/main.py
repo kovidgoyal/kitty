@@ -45,15 +45,19 @@ type=bool-set
 Use the primary selection rather than the clipboard on systems that support it,
 such as X11.
 '''.format
+help_text = '''\
+Read or write to the system clipboard.
+
+To set the clipboard text, pipe in the new text on stdin. Use the
+:option:`--get-clipboard` option to output the current clipboard contents to
+:file:`stdout`. Note that you must enable reading of clipboard in
+:file:`kitty.conf` first.
+'''
+usage = ''
 
 
 def main(args):
-    msg = '''\
-Read or write to the system clipboard.
-
-To set the clipboard text, pipe in the new text on stdin. Use the --get-clipboard option \
-to output the current clipboard contents to stdout. Note that you must enable reading of clipboard in kitty.conf first. '''
-    args, items = parse_args(args[1:], OPTIONS, '', msg, 'clipboard')
+    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten clipboard')
     if items:
         raise SystemExit('Unrecognized extra command line arguments')
     data = None
@@ -74,3 +78,7 @@ to output the current clipboard contents to stdout. Note that you must enable re
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = OPTIONS
+    sys.cli_docs['help_text'] = help_text

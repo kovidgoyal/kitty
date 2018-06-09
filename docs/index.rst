@@ -246,6 +246,10 @@ Some prominent kittens:
     Draw a GPU accelerated dock panel on your desktop showing the output
     from an arbitrary terminal program.
 
+:doc:`Clipboard <kittens/clipboard>`
+    Copy/paste to the clipboard from shell scripts, even over SSH.
+
+
 .. _sessions:
 
 Startup Sessions
