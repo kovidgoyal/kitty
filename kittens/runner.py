@@ -84,7 +84,10 @@ def run_kitten(kitten, run_name='__main__'):
     import runpy
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
-    runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
+    try:
+        runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
+    except ImportError:
+        raise SystemExit('No kitten named {}'.format(kitten))
 
 
 def all_kitten_names():
