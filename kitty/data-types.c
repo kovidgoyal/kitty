@@ -108,7 +108,7 @@ static inline bool
 put_tty_in_raw_mode(int fd, const struct termios* termios_p) {
     struct termios raw_termios = *termios_p;
     cfmakeraw(&raw_termios);
-    raw_termios.c_cc[VMIN] = 0; raw_termios.c_cc[VTIME] = 0;
+    raw_termios.c_cc[VMIN] = 1; raw_termios.c_cc[VTIME] = 0;
     if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { PyErr_SetFromErrno(PyExc_OSError); return false; }
     return true;
 }

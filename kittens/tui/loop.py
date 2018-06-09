@@ -275,7 +275,10 @@ class Loop:
             handler.write_buf[self.iov_limit - 1] = b''.join(handler.write_buf[self.iov_limit - 1:])
             del handler.write_buf[self.iov_limit:]
         sizes = tuple(map(len, handler.write_buf))
-        written = os.writev(fd, handler.write_buf)
+        try:
+            written = os.writev(fd, handler.write_buf)
+        except BlockingIOError:
+            return
         if not written:
             raise EOFError('The output stream is closed')
         if written >= sum(sizes):
