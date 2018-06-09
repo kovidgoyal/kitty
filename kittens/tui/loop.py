@@ -396,6 +396,8 @@ class Loop:
         handler.write_buf = []
         handler._term_manager = term_manager
         handler._initialize(self._get_screen_size(), self.quit, self.wakeup, self.start_job, debug)
+        tty_fd = term_manager.tty_fd
+        read_ready, write_ready, wakeup_ready = self._read_ready, self._write_ready, self._wakeup_ready
         with handler:
             while True:
                 has_data_to_write = bool(handler.write_buf)
@@ -404,6 +406,13 @@ class Loop:
                 if has_data_to_write != waiting_for_write:
                     waiting_for_write = has_data_to_write
                     self._modify_output_selector(term_manager.tty_fd, waiting_for_write)
-                events = select()
-                for key, mask in events:
+                for key, mask in select():
+                    fd = key.fd
+                    if fd == tty_fd:
+                        if mask & selectors.EVENT_READ:
+                            read_ready(handler, fd)
+                        if mask & selectors.EVENT_WRITE:
+                            write_ready(handler, fd)
+                    else:
+                        wakeup_ready(handler, fd)
                     key.data(handler)
