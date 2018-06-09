@@ -104,33 +104,60 @@ stop_profiler(PyObject UNUSED *self) {
 }
 #endif
 
+static inline bool
+put_tty_in_raw_mode(int fd, const struct termios* termios_p) {
+    struct termios raw_termios = *termios_p;
+    cfmakeraw(&raw_termios);
+    raw_termios.c_cc[VMIN] = 0; raw_termios.c_cc[VTIME] = 0;
+    if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { PyErr_SetFromErrno(PyExc_OSError); return false; }
+    return true;
+}
+
 static PyObject*
 open_tty(PyObject *self UNUSED, PyObject *args UNUSED) {
     int fd = open("/dev/tty", O_RDWR | O_NONBLOCK | O_CLOEXEC | O_NOCTTY);
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();
     if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    struct termios raw_termios = *termios_p;
-    cfmakeraw(&raw_termios);
-    raw_termios.c_cc[VMIN] = 0; raw_termios.c_cc[VTIME] = 0;
-    if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    if (!put_tty_in_raw_mode(fd, termios_p)) { free(termios_p); return NULL; }
     return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
 }
 
+#define TTY_ARGS \
+    PyObject *tp; int fd; \
+    if (!PyArg_ParseTuple(args, "iO!", &fd, &PyLong_Type, &tp)) return NULL; \
+    struct termios *termios_p = PyLong_AsVoidPtr(tp);
+
+static PyObject*
+normal_tty(PyObject *self UNUSED, PyObject *args) {
+    TTY_ARGS
+    if (tcsetattr(fd, TCSAFLUSH, termios_p) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+raw_tty(PyObject *self UNUSED, PyObject *args) {
+    TTY_ARGS
+    if (!put_tty_in_raw_mode(fd, termios_p)) return NULL;
+    Py_RETURN_NONE;
+}
+
+
 static PyObject*
 close_tty(PyObject *self UNUSED, PyObject *args) {
-    PyObject *tp;
-    int fd;
-    if (!PyArg_ParseTuple(args, "iO!", &fd, &PyLong_Type, &tp)) return NULL;
-    struct termios *termios_p = PyLong_AsVoidPtr(tp);
-    tcsetattr(fd, TCSAFLUSH, termios_p);
+    TTY_ARGS
+    tcsetattr(fd, TCSAFLUSH, termios_p);  // deliberately ignore failure
     free(termios_p);
     close(fd);
     Py_RETURN_NONE;
 }
 
+#undef TTY_ARGS
+
 static PyMethodDef module_methods[] = {
     {"open_tty", open_tty, METH_NOARGS, ""},
+    {"normal_tty", normal_tty, METH_VARARGS, ""},
+    {"raw_tty", raw_tty, METH_VARARGS, ""},
     {"close_tty", close_tty, METH_VARARGS, ""},
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {"thread_write", (PyCFunction)cm_thread_write, METH_VARARGS, ""},

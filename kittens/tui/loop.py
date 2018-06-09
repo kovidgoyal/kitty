@@ -3,21 +3,21 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import codecs
-import fcntl
 import io
 import os
 import re
 import selectors
 import signal
 import sys
-import termios
-import tty
 from collections import namedtuple
 from contextlib import closing, contextmanager
 from functools import partial
 from queue import Empty, Queue
 
-from kitty.fast_data_types import parse_input_from_terminal, safe_pipe
+from kitty.fast_data_types import (
+    close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty,
+    safe_pipe
+)
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
     decode_key_event, enter_key
@@ -43,28 +43,19 @@ def debug(*a, **kw):
 
 class TermManager:
 
-    def __init__(self, input_fd, output_fd):
-        self.input_fd = input_fd
-        self.output_fd = output_fd
-        self.original_fl = fcntl.fcntl(self.input_fd, fcntl.F_GETFL)
+    def __init__(self):
         self.extra_finalize = None
-        self.isatty = os.isatty(self.input_fd)
-        if self.isatty:
-            self.original_termios = termios.tcgetattr(self.input_fd)
 
-    def set_state_for_loop(self):
-        write_all(self.output_fd, init_state())
-        fcntl.fcntl(self.input_fd, fcntl.F_SETFL, self.original_fl | os.O_NONBLOCK)
-        if self.isatty:
-            tty.setraw(self.input_fd)
+    def set_state_for_loop(self, set_raw=True):
+        if set_raw:
+            raw_tty(self.tty_fd, self.original_termios)
+        write_all(self.tty_fd, init_state())
 
     def reset_state_to_original(self):
-        if self.isatty:
-            termios.tcsetattr(self.input_fd, termios.TCSADRAIN, self.original_termios)
-        fcntl.fcntl(self.input_fd, fcntl.F_SETFL, self.original_fl)
+        normal_tty(self.tty_fd, self.original_termios)
         if self.extra_finalize:
-            write_all(self.output_fd, self.extra_finalize)
-        write_all(self.output_fd, reset_state())
+            write_all(self.tty_fd, self.extra_finalize)
+        write_all(self.tty_fd, reset_state())
 
     @contextmanager
     def suspend(self):
@@ -73,11 +64,14 @@ class TermManager:
         self.set_state_for_loop()
 
     def __enter__(self):
-        self.set_state_for_loop()
+        self.tty_fd, self.original_termios = open_tty()
+        self.set_state_for_loop(set_raw=False)
         return self
 
     def __exit__(self, *a):
         self.reset_state_to_original()
+        close_tty(self.tty_fd, self.original_termios)
+        del self.tty_fd, self.original_termios
 
 
 LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
@@ -140,20 +134,13 @@ class UnhandledException(Handler):
 
 class Loop:
 
-    def __init__(self, input_fd=None, output_fd=None,
+    def __init__(self,
                  sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
-        self.input_fd = sys.stdin.fileno() if input_fd is None else input_fd
-        self.output_fd = sys.stdout.fileno() if output_fd is None else output_fd
-        self._get_screen_size = screen_size_function(self.output_fd)
         self.wakeup_read_fd, self.wakeup_write_fd = safe_pipe()
-        # For some reason on macOS the DefaultSelector fails when input_fd is
+        # For some reason on macOS the DefaultSelector fails when tty_fd is
         # open('/dev/tty')
         self.sel = s = selectors.PollSelector()
-        s.register(self.input_fd, selectors.EVENT_READ, self._read_ready)
-        s.register(
-            self.wakeup_read_fd, selectors.EVENT_READ, self._wakeup_ready
-        )
-        s.register(self.output_fd, selectors.EVENT_WRITE, self._write_ready)
+        s.register(self.wakeup_read_fd, selectors.EVENT_READ)
         self.return_code = 0
         self.read_allowed = True
         self.read_buf = ''
@@ -187,11 +174,11 @@ class Loop:
         self.jobs_queue.put(entry)
         self._wakeup_write(b'j')
 
-    def _read_ready(self, handler):
+    def _read_ready(self, handler, fd):
         if not self.read_allowed:
             return
         try:
-            data = os.read(self.input_fd, io.DEFAULT_BUFFER_SIZE)
+            data = os.read(fd, io.DEFAULT_BUFFER_SIZE)
         except BlockingIOError:
             return
         if not data:
@@ -283,12 +270,12 @@ class Loop:
             if self.handler.image_manager is not None:
                 self.handler.image_manager.handle_response(apc)
 
-    def _write_ready(self, handler):
+    def _write_ready(self, handler, fd):
         if len(handler.write_buf) > self.iov_limit:
             handler.write_buf[self.iov_limit - 1] = b''.join(handler.write_buf[self.iov_limit - 1:])
             del handler.write_buf[self.iov_limit:]
         sizes = tuple(map(len, handler.write_buf))
-        written = os.writev(self.output_fd, handler.write_buf)
+        written = os.writev(fd, handler.write_buf)
         if not written:
             raise EOFError('The output stream is closed')
         if written >= sum(sizes):
@@ -306,8 +293,8 @@ class Loop:
                 break
             del handler.write_buf[:consumed]
 
-    def _wakeup_ready(self, handler):
-        data = os.read(self.wakeup_read_fd, 1024)
+    def _wakeup_ready(self, handler, fd):
+        data = os.read(fd, 1024)
         if b'r' in data:
             self._get_screen_size.changed = True
             handler.on_resize(self._get_screen_size())
@@ -348,23 +335,19 @@ class Loop:
     def wakeup(self):
         self._wakeup_write(b'1')
 
-    def _modify_output_selector(self, waiting_for_write):
+    def _modify_output_selector(self, tty_fd, waiting_for_write):
+        events = selectors.EVENT_READ
         if waiting_for_write:
-            try:
-                self.sel.register(self.output_fd, selectors.EVENT_WRITE, self._write_ready)
-            except KeyError:
-                pass
-        else:
-            try:
-                self.sel.unregister(self.output_fd)
-            except KeyError:
-                pass
+            events |= selectors.EVENT_WRITE
+        self.sel.modify(tty_fd, events)
 
     def loop(self, handler):
         select = self.sel.select
         tb = None
         waiting_for_write = True
-        with closing(self.sel), TermManager(self.input_fd, self.output_fd) as term_manager:
+        with closing(self.sel), TermManager() as term_manager:
+            self.sel.register(term_manager.tty_fd, selectors.EVENT_READ | selectors.EVENT_WRITE)
+            self._get_screen_size = screen_size_function(term_manager.tty_fd)
             signal.signal(signal.SIGWINCH, self._on_sigwinch)
             signal.signal(signal.SIGTERM, self._on_sigterm)
             signal.signal(signal.SIGINT, self._on_sigint)
@@ -374,6 +357,8 @@ class Loop:
             if handler.image_manager_class is not None:
                 image_manager = handler.image_manager_class(handler)
             keep_going = True
+            read_ready, write_ready, wakeup_ready = self._read_ready, self._write_ready, self._wakeup_ready
+            tty_fd = term_manager.tty_fd
             try:
                 handler._initialize(self._get_screen_size(), self.quit, self.wakeup, self.start_job, debug, image_manager)
                 with handler:
@@ -383,10 +368,16 @@ class Loop:
                             break
                         if has_data_to_write != waiting_for_write:
                             waiting_for_write = has_data_to_write
-                            self._modify_output_selector(waiting_for_write)
-                        events = select()
-                        for key, mask in events:
-                            key.data(handler)
+                            self._modify_output_selector(tty_fd, waiting_for_write)
+                        for key, mask in select():
+                            fd = key.fd
+                            if fd == tty_fd:
+                                if mask & selectors.EVENT_READ:
+                                    read_ready(handler, fd)
+                                if mask & selectors.EVENT_WRITE:
+                                    write_ready(handler, fd)
+                            else:
+                                wakeup_ready(handler, fd)
             except Exception:
                 import traceback
                 tb = traceback.format_exc()
@@ -412,7 +403,7 @@ class Loop:
                     break
                 if has_data_to_write != waiting_for_write:
                     waiting_for_write = has_data_to_write
-                    self._modify_output_selector(waiting_for_write)
+                    self._modify_output_selector(term_manager.tty_fd, waiting_for_write)
                 events = select()
                 for key, mask in events:
                     key.data(handler)
