@@ -132,7 +132,7 @@ instead of ignoring them. Useful when debugging rendering problems
 
 --debug-keyboard
 type=bool-set
-This option will cause kitty to print out what key events as they are received
+This option will cause kitty to print out key events as they are received
 
 
 --debug-font-fallback
