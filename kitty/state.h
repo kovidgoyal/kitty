@@ -134,6 +134,9 @@ typedef struct {
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;
+    Window *drag_start_window;
+    bool drag_start_in_tab_bar;
+    int drag_start_window_idx;
     bool close_all_windows;
     bool is_wayland;
     bool debug_gl, debug_font_fallback;

@@ -143,6 +143,7 @@ remove_window_inner(Tab *tab, id_type id) {
 
 static inline void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
+    global_state.drag_start_window = NULL;
     WITH_TAB(os_window_id, tab_id);
         make_os_window_context_current(osw);
         remove_window_inner(tab, id);
@@ -151,6 +152,7 @@ remove_window(id_type os_window_id, id_type tab_id, id_type id) {
 
 static inline void
 destroy_tab(Tab *tab) {
+    global_state.drag_start_window = NULL;
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[i - 1].id);
     remove_vao(tab->border_rects.vao_idx);
     free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
