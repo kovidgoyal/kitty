@@ -79,8 +79,12 @@ installs the terminfo file and :file:`kitty` that installs the main program.
 This allows users to install the terminfo file on servers into which they ssh,
 without needing to install all of kitty.
 
-You also need :file:`tic` to compile the terminfo files, it is usually found in
-the development package of :file:`ncurses`.
+.. note::
+        You need a couple of extra dependencies to build linux-package.
+        :file:`tic` to compile terminfo files, usually found in the
+        development package of :file:`ncurses`. Also, :file:`sphinx-build`
+        from the `Sphinx documentation generator
+        <http://www.sphinx-doc.org/>`_.
 
 This applies to creating packages for kitty for macOS package managers such as
 brew or MacPorts as well.
