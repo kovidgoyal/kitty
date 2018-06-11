@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import sys
 import weakref
 from collections import deque
@@ -27,8 +28,8 @@ from .keys import keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
-    color_as_int, get_primary_selection, load_shaders, open_cmd,
-    open_url, parse_color_set, sanitize_title, set_primary_selection
+    color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
+    parse_color_set, sanitize_title, set_primary_selection
 )
 
 
@@ -97,7 +98,7 @@ class Window:
         self.override_title = override_title
         self.overlay_window_id = None
         self.overlay_for = None
-        self.default_title = child.argv[0] or appname
+        self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
