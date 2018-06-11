@@ -445,7 +445,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         if (text[0]) { debug("%s: %s ", text_type, text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
-    if (glfw_keycode == GLFW_KEY_UNKNOWN) {
+    if (glfw_keycode == GLFW_KEY_UNKNOWN && !text[0]) {
         int num_default_syms = xkb_state_key_get_syms(xkb->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
             glfw_sym = default_syms[0];
