@@ -652,6 +652,18 @@ PYWRAP1(set_boss) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(patch_global_colors) {
+#define P(name) { \
+    PyObject *val = PyDict_GetItemString(args, #name); \
+    if (val) { \
+		global_state.opts.name = PyLong_AsLong(val); \
+	} \
+}
+    P(url_color); P(active_border_color); P(inactive_border_color); P(bell_border_color); P(background);
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.boss);
     free(global_state.os_windows); global_state.os_windows = NULL;
@@ -705,6 +717,7 @@ static PyMethodDef module_methods[] = {
     MW(global_font_size, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
+    MW(patch_global_colors, METH_O),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

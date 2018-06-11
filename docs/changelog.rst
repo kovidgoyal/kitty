@@ -83,6 +83,9 @@ Changelog
 - Remote control: Fix kitty @ sometimes failing to read the response from
   kitty. (:iss:`614`)
 
+- Fix `kitty @ set-colors` not working with the window border colors.
+  (:iss:`623`)
+
 
 0.10.1 [2018-05-24]
 ------------------------------

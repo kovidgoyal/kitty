@@ -21,8 +21,8 @@ from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
     create_os_window, current_os_window, destroy_global_data,
     get_clipboard_string, glfw_post_empty_event, global_font_size,
-    mark_os_window_for_close, os_window_font_size, set_clipboard_string,
-    set_in_sequence_mode, toggle_fullscreen
+    mark_os_window_for_close, os_window_font_size, patch_global_colors,
+    set_clipboard_string, set_in_sequence_mode, toggle_fullscreen
 )
 from .keys import get_shortcut, shortcut_matches
 from .remote_control import handle_cmd
@@ -792,5 +792,6 @@ class Boss:
             for k, v in spec.items():
                 if hasattr(self.opts, k):
                     setattr(self.opts, k, color_from_int(v))
+        patch_global_colors(spec)
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
