@@ -35,8 +35,10 @@
 typedef struct {
     struct xkb_context*     context;
     struct xkb_keymap*      keymap;
+    struct xkb_keymap*      default_keymap;
     struct xkb_state*       state;
     struct xkb_state*       clean_state;
+    struct xkb_state*       default_state;
     struct xkb_compose_state* composeState;
 
     xkb_mod_index_t         controlIdx;

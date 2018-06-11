@@ -181,6 +181,10 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
         xkb_keymap_unref(xkb->keymap);
         xkb->keymap = NULL;
     }
+    if (xkb->default_keymap) {
+        xkb_keymap_unref(xkb->default_keymap);
+        xkb->default_keymap = NULL;
+    }
     if (xkb->state) {
         xkb_state_unref(xkb->state);
         xkb->state = NULL;
@@ -188,6 +192,10 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
     if (xkb->clean_state) {
         xkb_state_unref(xkb->clean_state);
         xkb->clean_state = NULL;
+    }
+    if (xkb->default_state) {
+        xkb_state_unref(xkb->default_state);
+        xkb->default_state = NULL;
     }
     if (xkb->context) {
         xkb_context_unref(xkb->context);
@@ -271,6 +279,21 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
         }
         xkb->modifiers = 0;
         xkb->activeUnknownModifiers = 0;
+    }
+    if (!xkb->default_keymap && xkb->context) {
+        // The system default keymap, can be overridden by the XKB_DEFAULT_RULES
+        // env var, see
+        // https://xkbcommon.org/doc/current/structxkb__rule__names.html
+        static struct xkb_rule_names default_rule_names = {0};
+        xkb->default_keymap = xkb_keymap_new_from_names(xkb->context, &default_rule_names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        if (xkb->default_keymap) {
+            xkb->default_state = xkb_state_new(keymap);
+            if (!xkb->default_state) {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create default XKB state, fallback key processing is unavailable");
+            }
+        } else {
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create default XKB keymap, fallback key processing is unavailable");
+        }
     }
     return ok;
 }
@@ -379,7 +402,7 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
 
 void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
-    const xkb_keysym_t *syms, *clean_syms;
+    const xkb_keysym_t *syms, *clean_syms, *default_syms;
     xkb_keysym_t glfw_sym;
     xkb_keycode_t code_for_sym = scancode;
 #ifdef _GLFW_WAYLAND
@@ -422,6 +445,15 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         if (text[0]) { debug("%s: %s ", text_type, text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
-    debug("%sglfw_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
+    if (glfw_keycode == GLFW_KEY_UNKNOWN) {
+        int num_default_syms = xkb_state_key_get_syms(xkb->default_state, code_for_sym, &default_syms);
+        if (num_default_syms > 0) {
+            glfw_sym = default_syms[0];
+            glfw_keycode = glfw_key_for_sym(glfw_sym);
+        }
+        debug("%sglfw_fallback_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
+    } else {
+        debug("%sglfw_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
+    }
     _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, xkb->modifiers, text, 0);
 }

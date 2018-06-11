@@ -70,6 +70,10 @@ Changelog
 - Add support for the CSI t escape code to query window and cell sizes
   (:iss:`581`)
 
+- Linux: When using layouts that map the keys to non-ascii characters,
+  map shortcuts using the ascii equivalents, from the default layout.
+  (:iss:`606`)
+
 - Linux: Fix fonts not being correctly read from TrueType Collection
   (.ttc) files (:iss:`577`)
 
