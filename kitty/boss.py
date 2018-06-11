@@ -792,6 +792,9 @@ class Boss:
             for k, v in spec.items():
                 if hasattr(self.opts, k):
                     setattr(self.opts, k, color_from_int(v))
-        patch_global_colors(spec)
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
+        if not configured:
+            spec = spec.copy()
+            spec.pop('background', None)
+        patch_global_colors(spec)
