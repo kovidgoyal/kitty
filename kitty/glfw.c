@@ -20,6 +20,8 @@ extern void cocoa_set_titlebar_color(void *w, color_type color);
 static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
 static bool event_loop_blocking_with_no_timeout = false;
 
+static void set_os_window_dpi(OSWindow *w);
+
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h;
@@ -28,7 +30,10 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
-    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio);
+    double xdpi = window->logical_dpi_x, ydpi = window->logical_dpi_y;
+    set_os_window_dpi(window);
+    bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
+
     window->viewport_size_dirty = true;
     window->has_pending_resizes = false;
     window->viewport_width = MAX(window->viewport_width, 100);
@@ -320,7 +325,7 @@ get_window_dpi(GLFWwindow *w, double *x, double *y) {
     *y = yscale * factor;
 }
 
-void
+static void
 set_os_window_dpi(OSWindow *w) {
     get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }

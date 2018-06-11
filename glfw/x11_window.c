@@ -1144,6 +1144,24 @@ static void releaseMonitor(_GLFWwindow* window)
     }
 }
 
+static void onConfigChange()
+{
+    float xscale, yscale;
+    _glfwGetSystemContentScaleX11(&xscale, &yscale, GLFW_TRUE);
+
+    if (xscale != _glfw.x11.contentScaleX || yscale != _glfw.x11.contentScaleY)
+    {
+        _GLFWwindow* window = _glfw.windowListHead;
+        _glfw.x11.contentScaleX = xscale;
+        _glfw.x11.contentScaleY = yscale;
+        while (window)
+        {
+            _glfwInputWindowContentScale(window, xscale, yscale);
+            window = window->next;
+        }
+    }
+}
+
 // Process the specified X event
 //
 static void processEvent(XEvent *event)
@@ -1159,6 +1177,14 @@ static void processEvent(XEvent *event)
             _glfwPollMonitorsX11();
             return;
         }
+    }
+
+    if (event->type == PropertyNotify &&
+        event->xproperty.window == _glfw.x11.root &&
+        event->xproperty.atom == _glfw.x11.RESOURCE_MANAGER)
+    {
+        onConfigChange();
+        return;
     }
 
     if (event->type == GenericEvent)
