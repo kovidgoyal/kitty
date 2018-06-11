@@ -38,3 +38,5 @@ man:
 
 html:
 	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs html
+
+docs: man html
