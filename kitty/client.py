@@ -86,6 +86,10 @@ def screen_erase_in_line(how, private):
     write(CSI + ('?' if private else '') + str(how) + 'K')
 
 
+def screen_delete_lines(num):
+    write(CSI + str(num) + 'M')
+
+
 def screen_cursor_up2(count):
     write(CSI + '%dA' % count)
 
