@@ -86,6 +86,9 @@ Changelog
 - Fix `kitty @ set-colors` not working with the window border colors.
   (:iss:`623`)
 
+- Fix a regression in 0.10 that caused incorrect rendering of the status bar in
+  irssi when used inside screen. (:iss:`621`)
+
 
 0.10.1 [2018-05-24]
 ------------------------------

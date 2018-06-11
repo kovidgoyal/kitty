@@ -464,7 +464,7 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
 
 static inline bool
 cursor_within_margins(Screen *self) {
-    return self->margin_top <= self->cursor->y && self->cursor->y >= self->margin_bottom;
+    return self->margin_top <= self->cursor->y && self->cursor->y <= self->margin_bottom;
 }
 
 void
