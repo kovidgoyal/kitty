@@ -543,7 +543,7 @@ def copy_man_pages(ddir):
         shutil.rmtree(os.path.join(mandir, 'man1'))
     except FileNotFoundError:
         pass
-    src = 'docs/_build/man'
+    src = os.path.join(base, 'docs/_build/man')
     if not os.path.exists(src):
         raise SystemExit('''\
 The kitty man page is missing. If you are building from git then run:
@@ -560,7 +560,7 @@ def copy_html_docs(ddir):
         shutil.rmtree(htmldir)
     except FileNotFoundError:
         pass
-    src = 'docs/_build/html'
+    src = os.path.join(base, 'docs/_build/html')
     if not os.path.exists(src):
         raise SystemExit('''\
 The kitty html docs are missing. If you are building from git then run:
@@ -790,7 +790,7 @@ def main():
         )
     elif args.action == 'linux-package':
         build(args, native_optimizations=False)
-        if not os.path.exists(os.path.join('docs/_build/html/index.html')):
+        if not os.path.exists(os.path.join(base, 'docs/_build/html')):
             run_tool(['make', 'docs'])
         package(args)
     elif args.action == 'osx-bundle':
