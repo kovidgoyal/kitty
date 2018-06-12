@@ -81,6 +81,7 @@ class Boss:
         self.pending_sequences = None
         self.cached_values = cached_values
         self.os_window_map = {}
+        self.os_window_death_actions = {}
         self.cursor_blinking = True
         self.shutting_down = False
         talk_fd = getattr(single_instance, 'socket', None)
@@ -239,7 +240,9 @@ class Boss:
                 if not os.path.isabs(args.directory):
                     args.directory = os.path.join(msg['cwd'], args.directory)
                 session = create_session(opts, args, respect_cwd=True)
-                self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
+                os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
+                if msg.get('notify_on_os_window_death'):
+                    self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, msg['notify_on_os_window_death'])
             else:
                 log_error('Unknown message received from peer, ignoring')
 
@@ -527,6 +530,20 @@ class Boss:
             tm.destroy()
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):
             self.window_id_map.pop(window_id, None)
+        action = self.os_window_death_actions.pop(os_window_id, None)
+        if action is not None:
+            action()
+
+    def notify_on_os_window_death(self, address):
+        import socket
+        s = socket.socket(family=socket.AF_UNIX)
+        try:
+            s.connect(address)
+            s.sendall(b'c')
+            s.shutdown(socket.SHUT_RDWR)
+            s.close()
+        except Exception:
+            pass
 
     def display_scrollback(self, window, data, cmd):
         tab = self.active_tab

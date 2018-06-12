@@ -91,6 +91,14 @@ with the same :option:`kitty --instance-group` will result in new windows being 
 in the first :italic:`{appname}` instance within that group
 
 
+--wait-for-single-instance-window-close
+type=bool-set
+Normally, when using :option:`--single-instance`, :talic:`{appname}` will open a new window in an existing
+instance and quit immediately. With this option, it will not quit till the newly opened
+window is closed. Note that if no previous instance is found, then :italic:`{appname}` will wait anyway,
+regardless of this option.
+
+
 --listen-on
 Tell kitty to listen on the specified address for control
 messages. For example, :option:`{appname} --listen-on`=unix:/tmp/mykitty or

@@ -266,8 +266,7 @@ def remove_socket_file(s, path=None):
             pass
 
 
-def single_instance_unix(name):
-    import socket
+def unix_socket_paths(name, ext='.lock'):
     import tempfile
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
@@ -276,34 +275,39 @@ def single_instance_unix(name):
         candidates = [user_cache_dir(), '/Library/Caches']
     for loc in candidates:
         if os.access(loc, os.W_OK | os.R_OK | os.X_OK):
-            filename = ('.' if loc == home else '') + name + '.lock'
-            path = os.path.join(loc, filename)
-            socket_path = path.rpartition('.')[0] + '.sock'
-            fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC | os.O_CLOEXEC)
-            try:
-                fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except EnvironmentError as err:
-                if err.errno in (errno.EAGAIN, errno.EACCES):
-                    # Client
-                    s = socket.socket(family=socket.AF_UNIX)
-                    s.connect(socket_path)
-                    single_instance.socket = s
-                    return False
-                raise
-            s = socket.socket(family=socket.AF_UNIX)
-            try:
+            filename = ('.' if loc == home else '') + name + ext
+            yield os.path.join(loc, filename)
+
+
+def single_instance_unix(name):
+    import socket
+    for path in unix_socket_paths(name):
+        socket_path = path.rpartition('.')[0] + '.sock'
+        fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC | os.O_CLOEXEC)
+        try:
+            fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except EnvironmentError as err:
+            if err.errno in (errno.EAGAIN, errno.EACCES):
+                # Client
+                s = socket.socket(family=socket.AF_UNIX)
+                s.connect(socket_path)
+                single_instance.socket = s
+                return False
+            raise
+        s = socket.socket(family=socket.AF_UNIX)
+        try:
+            s.bind(socket_path)
+        except EnvironmentError as err:
+            if err.errno in (errno.EADDRINUSE, errno.EEXIST):
+                os.unlink(socket_path)
                 s.bind(socket_path)
-            except EnvironmentError as err:
-                if err.errno in (errno.EADDRINUSE, errno.EEXIST):
-                    os.unlink(socket_path)
-                    s.bind(socket_path)
-                else:
-                    raise
-            single_instance.socket = s  # prevent garbage collection from closing the socket
-            atexit.register(remove_socket_file, s, socket_path)
-            s.listen()
-            s.set_inheritable(False)
-            return True
+            else:
+                raise
+        single_instance.socket = s  # prevent garbage collection from closing the socket
+        atexit.register(remove_socket_file, s, socket_path)
+        s.listen()
+        s.set_inheritable(False)
+        return True
 
 
 def single_instance(group_id=None):

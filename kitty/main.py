@@ -15,15 +15,47 @@ from .constants import (
     appname, config_dir, glfw_path, is_macos, is_wayland, logo_data_file
 )
 from .fast_data_types import (
-    create_os_window, free_font_data, glfw_init, glfw_terminate,
-    set_default_window_icon, set_options, GLFW_MOD_SUPER
+    GLFW_MOD_SUPER, create_os_window, free_font_data, glfw_init,
+    glfw_terminate, set_default_window_icon, set_options
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .utils import (
-    detach, log_error, single_instance, startup_notification_handler
+    detach, log_error, single_instance, startup_notification_handler,
+    unix_socket_paths
 )
 from .window import load_shader_programs
+
+
+def talk_to_instance(args):
+    import json
+    import socket
+    data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
+            'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
+            'cwd': os.getcwd()}
+    notify_socket = None
+    if args.wait_for_single_instance_window_close:
+        address = '\0{}-os-window-close-notify-{}-{}'.format(appname, os.getpid(), os.geteuid())
+        notify_socket = socket.socket(family=socket.AF_UNIX)
+        try:
+            notify_socket.bind(address)
+        except FileNotFoundError:
+            for address in unix_socket_paths(address[1:], ext='.sock'):
+                notify_socket.bind(address)
+                break
+        data['notify_on_os_window_death'] = address
+        notify_socket.listen()
+
+    data = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    single_instance.socket.sendall(data)
+    single_instance.socket.shutdown(socket.SHUT_RDWR)
+    single_instance.socket.close()
+
+    if args.wait_for_single_instance_window_close:
+        conn = notify_socket.accept()[0]
+        conn.recv(1)
+        conn.shutdown(socket.SHUT_RDWR)
+        conn.close()
 
 
 def load_all_shaders(semi_transparent=0):
@@ -200,12 +232,7 @@ def _main():
     if args.single_instance:
         is_first = single_instance(args.instance_group)
         if not is_first:
-            import json
-            data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
-                    'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
-                    'cwd': os.getcwd()}
-            data = json.dumps(data, ensure_ascii=False).encode('utf-8')
-            single_instance.socket.sendall(data)
+            talk_to_instance(args)
             return
     opts = create_opts(args)
     if opts.editor != '.':
