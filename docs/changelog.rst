@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.11.0 [future]
+0.11.0 [2018-06-12]
 ------------------------------
 
 - A new tab bar style "fade" in which each tab's edges fade into the background.
