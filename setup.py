@@ -546,7 +546,8 @@ def copy_man_pages(ddir):
     src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit('''\
-The kitty man page is missing. If you are building from git then run: make docs
+The kitty man page is missing. If you are building from git then run:
+make && make docs
 (needs the sphinx documentation system to be installed)
 ''')
     shutil.copytree(src, os.path.join(mandir, 'man1'))
@@ -562,7 +563,8 @@ def copy_html_docs(ddir):
     src = 'docs/_build/html'
     if not os.path.exists(src):
         raise SystemExit('''\
-The kitty html docs are missing. If you are building from git then run: make html
+The kitty html docs are missing. If you are building from git then run:
+make && make docs
 (needs the sphinx documentation system to be installed)
 ''')
     shutil.copytree(src, htmldir)
@@ -788,8 +790,6 @@ def main():
         )
     elif args.action == 'linux-package':
         build(args, native_optimizations=False)
-        if not args.for_freeze:
-            run_tool(['make', 'docs'])
         package(args)
     elif args.action == 'osx-bundle':
         build(args, native_optimizations=False)
