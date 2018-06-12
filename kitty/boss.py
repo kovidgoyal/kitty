@@ -540,7 +540,10 @@ class Boss:
         try:
             s.connect(address)
             s.sendall(b'c')
-            s.shutdown(socket.SHUT_RDWR)
+            try:
+                s.shutdown(socket.SHUT_RDWR)
+            except EnvironmentError:
+                pass
             s.close()
         except Exception:
             pass
