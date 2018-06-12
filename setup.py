@@ -788,7 +788,8 @@ def main():
         )
     elif args.action == 'linux-package':
         build(args, native_optimizations=False)
-        run_tool(['make', 'docs'])
+        if not args.for_freeze:
+            run_tool(['make', 'docs'])
         package(args)
     elif args.action == 'osx-bundle':
         build(args, native_optimizations=False)
