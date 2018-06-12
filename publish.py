@@ -311,9 +311,9 @@ def run_upload(args):
     files = {
         os.path.join(build_path, 'build', f.format(version)): desc
         for f, desc in {
-            'linux/64/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
-            'linux/32/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
             'osx/dist/kitty-{}.dmg': 'macOS dmg',
+            'linux/64/sw/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
+            'linux/32/sw/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
         }.items()
     }
     files[f'build/kitty-{version}.tar.xz'] = 'Source code'
