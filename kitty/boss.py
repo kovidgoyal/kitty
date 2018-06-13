@@ -319,7 +319,7 @@ class Boss:
 
     def decrease_font_size(self):  # legacy
         cfs = global_font_size()
-        self.set_font_size(cfs - self.opts.font_size_delta)
+        self.set_font_size(max(MINIMUM_FONT_SIZE, cfs - 2.0))
 
     def restore_font_size(self):  # legacy
         self.set_font_size(self.opts.font_size)
