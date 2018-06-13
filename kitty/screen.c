@@ -112,6 +112,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
+    historybuf_clear(self->historybuf);
     grman_clear(self->grman, false, self->cell_size);
     self->modes = empty_modes;
 #define R(name) self->color_profile->overridden.name = 0
