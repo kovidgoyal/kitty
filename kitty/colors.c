@@ -108,8 +108,8 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         v = PyDict_GetItemString(spec, key);
         if (v) {
             color_type color = PyLong_AsUnsignedLong(v);
-            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
-                self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i);
+            for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
+                self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
                 self->color_table[i] = color;
                 if (change_configured) self->orig_color_table[i] = color;
                 self->dirty = true;
