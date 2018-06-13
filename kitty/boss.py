@@ -314,10 +314,12 @@ class Boss:
                 tm.resize()
 
     def increase_font_size(self):  # legacy
-        self.set_font_size(min(self.opts.font_size * 5, self.current_font_size + 2.0))
+        cfs = global_font_size()
+        self.set_font_size(min(self.opts.font_size * 5, cfs + 2.0))
 
     def decrease_font_size(self):  # legacy
-        self.set_font_size(self.current_font_size - self.opts.font_size_delta)
+        cfs = global_font_size()
+        self.set_font_size(cfs - self.opts.font_size_delta)
 
     def restore_font_size(self):  # legacy
         self.set_font_size(self.opts.font_size)
