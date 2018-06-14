@@ -400,7 +400,7 @@ def gen_wcwidth():
         add(p, 'East Asian double width', doublewidth, 2)
         add(p, 'Emoji Presentation', emoji_categories['Emoji_Presentation'], 2)
 
-        add(p, 'Not assigned in the unicode character database', not_assigned, -1)
+        add(p, 'Not assigned in the unicode character database', not_assigned, -4)
 
         p('\t\tdefault: return 1;')
         p('\t}')
