@@ -1,7 +1,7 @@
 #pragma once
 #include "data-types.h"
-#define VS15 1275
-#define VS16 1276
+#define VS15 1280
+#define VS16 1281
 
 bool is_combining_char(char_type ch);
 bool is_ignored_char(char_type ch);

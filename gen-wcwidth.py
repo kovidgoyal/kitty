@@ -15,6 +15,12 @@ from urllib.request import urlopen
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+non_characters = frozenset(range(0xfffe, 0x10ffff, 0x10000))
+non_characters |= frozenset(range(0xffff, 0x10ffff + 1, 0x10000))
+non_characters |= frozenset(range(0xfdd0, 0xfdf0))
+if len(non_characters) != 66:
+    raise SystemExit('non_characters table incorrect')
+
 
 def get_data(fname, folder='UCD'):
     url = f'https://www.unicode.org/Public/{folder}/latest/{fname}'
@@ -189,11 +195,12 @@ def gen_emoji():
         p('\treturn false;\n}')
 
 
-def category_test(name, p, classes, comment, static=False):
+def category_test(name, p, classes, comment, static=False, extra_chars=frozenset()):
     static = 'static inline ' if static else ''
     chars = set()
     for c in classes:
         chars |= class_maps[c]
+    chars |= extra_chars
     p(f'{static}bool\n{name}(char_type code) {{')
     p(f'\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
     p('\tswitch(code) {')
@@ -245,7 +252,7 @@ def gen_ucd():
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
         category_test('is_combining_char', p, {c for c in class_maps if c.startswith('M')}, 'M category (marks)')
-        category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters (Cc Cf Cs)')
+        category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters and non-characters', extra_chars=non_characters)
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, cz, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
@@ -258,7 +265,7 @@ def gen_ucd():
         p('combining_type mark_for_codepoint(char_type c) {')
         rmap = codepoint_to_mark_map(p, mark_map)
         p('}\n')
-        if rmap[0xfe0e] != 1275:
+        if rmap[0xfe0e] != 1280:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
