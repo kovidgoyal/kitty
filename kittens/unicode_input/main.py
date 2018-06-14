@@ -14,9 +14,10 @@ from kitty.utils import get_editor
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import (
     DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
-    backspace_key, enter_key
+    enter_key
 )
 
+from ..tui.line_edit import LineEdit
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import (
@@ -247,8 +248,8 @@ class UnicodeInput(Handler):
 
     def __init__(self, cached_values):
         self.cached_values = cached_values
+        self.line_edit = LineEdit()
         self.recent = list(self.cached_values.get('recent', DEFAULT_SET))
-        self.current_input = ''
         self.current_char = None
         self.prompt_template = '{}> '
         self.last_updated_code_point_at = None
@@ -269,9 +270,9 @@ class UnicodeInput(Handler):
             codepoints = load_favorites()
             q = self.mode, tuple(codepoints)
         elif self.mode is NAME:
-            q = self.mode, self.current_input
+            q = self.mode, self.line_edit.current_input
             if q != self.last_updated_code_point_at:
-                words = self.current_input.split()
+                words = self.line_edit.current_input.split()
                 words = [w for w in words if w != INDEX_CHAR]
                 index_words = [i for i, w in enumerate(words) if i > 0 and is_index(w)]
                 if index_words:
@@ -291,10 +292,10 @@ class UnicodeInput(Handler):
         self.current_char = None
         if self.mode is HEX:
             try:
-                if self.current_input.startswith(INDEX_CHAR) and len(self.current_input) > 1:
-                    self.current_char = chr(self.table.codepoint_at_hint(self.current_input[1:]))
+                if self.line_edit.current_input.startswith(INDEX_CHAR) and len(self.line_edit.current_input) > 1:
+                    self.current_char = chr(self.table.codepoint_at_hint(self.line_edit.current_input[1:]))
                 else:
-                    code = int(self.current_input, 16)
+                    code = int(self.line_edit.current_input, 16)
                     self.current_char = chr(code)
             except Exception:
                 pass
@@ -304,8 +305,8 @@ class UnicodeInput(Handler):
                 self.current_char = chr(cc)
         else:
             try:
-                if self.current_input:
-                    self.current_char = chr(self.table.codepoint_at_hint(self.current_input.lstrip(INDEX_CHAR)))
+                if self.line_edit.current_input:
+                    self.current_char = chr(self.table.codepoint_at_hint(self.line_edit.current_input.lstrip(INDEX_CHAR)))
             except Exception:
                 pass
         if self.current_char is not None:
@@ -366,8 +367,7 @@ class UnicodeInput(Handler):
             writeln(_('Enter the hex code for the character'))
         else:
             writeln(_('Enter the index for the character you want from the list below'))
-        self.write(self.prompt)
-        self.write(self.current_input)
+        self.line_edit.write(self.write, self.prompt)
         with cursor(self.write):
             writeln()
             writeln(self.choice_line)
@@ -385,14 +385,34 @@ class UnicodeInput(Handler):
         self.draw_screen()
 
     def on_text(self, text, in_bracketed_paste):
-        self.current_input += text
+        self.line_edit.on_text(text, in_bracketed_paste)
         self.refresh()
 
     def on_key(self, key_event):
-        if key_event is backspace_key:
-            self.current_input = self.current_input[:-1]
+        if self.mode is NAME and key_event.type is not RELEASE and not key_event.mods:
+            if key_event.key is TAB:
+                if key_event.mods == SHIFT:
+                    self.table.move_current(cols=-1), self.refresh()
+                elif not key_event.mods:
+                    self.table.move_current(cols=1), self.refresh()
+                return
+            elif key_event.key is LEFT and not key_event.mods:
+                self.table.move_current(cols=-1), self.refresh()
+                return
+            elif key_event.key is RIGHT and not key_event.mods:
+                self.table.move_current(cols=1), self.refresh()
+                return
+            elif key_event.key is UP and not key_event.mods:
+                self.table.move_current(rows=-1), self.refresh()
+                return
+            elif key_event.key is DOWN and not key_event.mods:
+                self.table.move_current(rows=1), self.refresh()
+                return
+
+        if self.line_edit.on_key(key_event):
             self.refresh()
-        elif key_event is enter_key:
+            return
+        if key_event is enter_key:
             self.quit_loop(0)
         elif key_event.type is RELEASE and not key_event.mods:
             if key_event.key is ESCAPE:
@@ -407,20 +427,6 @@ class UnicodeInput(Handler):
                 self.switch_mode(FAVORITES)
             elif key_event.key is F12 and self.mode is FAVORITES:
                 self.edit_favorites()
-        elif self.mode is NAME:
-            if key_event.key is TAB:
-                if key_event.mods == SHIFT:
-                    self.table.move_current(cols=-1), self.refresh()
-                elif not key_event.mods:
-                    self.table.move_current(cols=1), self.refresh()
-            elif key_event.key is LEFT and not key_event.mods:
-                self.table.move_current(cols=-1), self.refresh()
-            elif key_event.key is RIGHT and not key_event.mods:
-                self.table.move_current(cols=1), self.refresh()
-            elif key_event.key is UP and not key_event.mods:
-                self.table.move_current(rows=-1), self.refresh()
-            elif key_event.key is DOWN and not key_event.mods:
-                self.table.move_current(rows=1), self.refresh()
 
     def edit_favorites(self):
         if not os.path.exists(favorites_path):
@@ -437,7 +443,7 @@ class UnicodeInput(Handler):
         if mode is not self.mode:
             self.mode = mode
             self.cached_values['mode'] = mode
-            self.current_input = ''
+            self.line_edit.clear()
             self.current_char = None
             self.choice_line = ''
             self.refresh()
