@@ -399,11 +399,9 @@ def main(args):
     opts = init_config(args)
     set_diff_command(opts.diff_cmd)
     lines_for_path.replace_tab_by = opts.replace_tab_by
-    # Ensure the kitten works even when stdin/stdout are redirected
-    if not sys.stdin.isatty():
-        sys.stdin = open('/dev/tty')
-    if not sys.stdout.isatty():
-        sys.stdout = open('/dev/tty', 'w')
+    for f in left, right:
+        if not os.path.exists(f):
+            raise SystemExit('{} does not exist'.format(f))
 
     loop = Loop()
     handler = DiffHandler(args, opts, left, right)
