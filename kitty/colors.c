@@ -220,6 +220,21 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
     self->dirty = false;
 }
 
+void
+colorprofile_push_dynamic_colors(ColorProfile *self) {
+    if (self->dynamic_color_stack_idx >= arraysz(self->dynamic_color_stack)) {
+        memmove(self->dynamic_color_stack, self->dynamic_color_stack + 1, sizeof(self->dynamic_color_stack) - sizeof(self->dynamic_color_stack[0]));
+        self->dynamic_color_stack_idx = arraysz(self->dynamic_color_stack) - 1;
+    }
+    self->dynamic_color_stack[self->dynamic_color_stack_idx++] = self->overridden;
+}
+
+void
+colorprofile_pop_dynamic_colors(ColorProfile *self) {
+    if (!self->dynamic_color_stack_idx) return;
+    self->overridden = self->dynamic_color_stack[--(self->dynamic_color_stack_idx)];
+}
+
 static PyObject*
 color_table_address(ColorProfile *self, PyObject *a UNUSED) {
 #define color_table_address_doc "Pointer address to start of color table"

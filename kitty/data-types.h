@@ -211,6 +211,8 @@ typedef struct {
     bool dirty;
     uint32_t color_table[256];
     uint32_t orig_color_table[256];
+    DynamicColor dynamic_color_stack[10];
+    size_t dynamic_color_stack_idx;
     DynamicColor configured, overridden;
 } ColorProfile;
 
@@ -275,6 +277,8 @@ bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
+void colorprofile_push_dynamic_colors(ColorProfile*);
+void colorprofile_pop_dynamic_colors(ColorProfile*);
 
 void set_mouse_cursor(MouseShape);
 void mouse_event(int, int);

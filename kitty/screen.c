@@ -1265,6 +1265,16 @@ screen_handle_cmd(Screen *self, PyObject *cmd) {
 }
 
 void
+screen_push_dynamic_colors(Screen *self) {
+    colorprofile_push_dynamic_colors(self->color_profile);
+}
+
+void
+screen_pop_dynamic_colors(Screen *self) {
+    colorprofile_pop_dynamic_colors(self->color_profile);
+}
+
+void
 screen_handle_print(Screen *self, PyObject *msg) {
     CALLBACK("handle_remote_print", "O", msg);
 }
