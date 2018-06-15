@@ -227,20 +227,21 @@ def alternate_screen(f=None):
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
 
 
-def set_default_colors(fg=None, bg=None, cursor=None) -> str:
+def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=None) -> str:
     ans = ''
-    if fg is None:
-        ans += '\x1b]110\x1b\\'
-    else:
-        ans += '\x1b]10;{}\x1b\\'.format(color_as_sharp(fg if isinstance(fg, Color) else to_color(fg)))
-    if cursor is None:
-        ans += '\x1b]112\x1b\\'
-    else:
-        ans += '\x1b]12;{}\x1b\\'.format(color_as_sharp(cursor if isinstance(cursor, Color) else to_color(cursor)))
-    if bg is None:
-        ans += '\x1b]111\x1b\\'
-    else:
-        ans += '\x1b]11;{}\x1b\\'.format(color_as_sharp(bg if isinstance(bg, Color) else to_color(bg)))
+
+    def item(which, num):
+        nonlocal ans
+        if item is None:
+            ans += '\x1b]1{}\x1b\\'.format(num)
+        else:
+            ans += '\x1b]{};{}\x1b\\'.format(num, color_as_sharp(which if isinstance(which, Color) else to_color(which)))
+
+    item(fg, 10)
+    item(bg, 11)
+    item(cursor, 12)
+    item(select_bg, 17)
+    item(select_fg, 19)
     return ans
 
 

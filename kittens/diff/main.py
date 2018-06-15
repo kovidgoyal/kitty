@@ -205,8 +205,16 @@ class DiffHandler(Handler):
     def init_terminal_state(self):
         self.cmd.set_line_wrapping(False)
         self.cmd.set_window_title(main.title)
-        self.cmd.set_default_colors(self.opts.foreground, self.opts.background, self.opts.foreground)
+        self.cmd.set_default_colors(
+            fg=self.opts.foreground, bg=self.opts.background,
+            cursor=self.opts.foreground, select_fg=self.opts.select_fg,
+            select_bg=self.opts.select_bg)
         self.cmd.set_cursor_shape('bar')
+
+    def finalize(self):
+        self.cmd.set_default_colors()
+        self.cmd.set_cursor_visible(True)
+        self.cmd.set_scrolling_region()
 
     def initialize(self):
         self.init_terminal_state()
@@ -216,10 +224,6 @@ class DiffHandler(Handler):
 
     def enforce_cursor_state(self):
         self.cmd.set_cursor_visible(self.state > DIFFED)
-
-    def finalize(self):
-        self.cmd.set_cursor_visible(True)
-        self.cmd.set_scrolling_region()
 
     def draw_lines(self, num, offset=0):
         offset += self.scroll_pos

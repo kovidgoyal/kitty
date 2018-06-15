@@ -83,8 +83,10 @@ c('filler_bg', '#fafbfc', long_text=_('Filler (empty) line background'))
 c('hunk_margin_bg', '#dbedff', long_text=_('Hunk header colors'))
 c('hunk_bg', '#f1f8ff')
 
-c('search_bg', '#444', long_text=_('Search highlighting'))
+c('search_bg', '#444', long_text=_('Highlighting'))
 c('search_fg', 'white')
+c('select_bg', '#B4D5FE')
+c('select_fg', 'black')
 
 g('shortcuts')
 k('quit', 'q', 'quit', _('Quit'))
