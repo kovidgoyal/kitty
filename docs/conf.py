@@ -245,6 +245,7 @@ def write_cli_docs(all_kitten_names):
         from kitty.cmds import cli_params_for
         for cmd_name in all_commands:
             func = cmap[cmd_name]
+            p(f'.. _at_{func.name}:\n')
             p('kitty @', func.name + '\n' + '-' * 120)
             p('.. program::', 'kitty @', func.name)
             p('\n\n' + as_rst(*cli_params_for(func)))

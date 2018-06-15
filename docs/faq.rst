@@ -83,7 +83,7 @@ How do I change the colors in a running kitty instance?
 You can either use the
 `OSC terminal escape codes <http://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands>`_
 to set colors or you can enable :doc:`remote control <remote-control>`
-for |kitty| and use ``kitty @ set-colors --help``.
+for |kitty| and use :ref:`at_set-colors`.
 
 
 How do I specify command line options for kitty on macOS?
