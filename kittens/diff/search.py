@@ -17,6 +17,7 @@ class Search:
 
     def __init__(self, opts, query, is_regex, is_backward):
         self.matches = {}
+        self.count = 0
         self.style = styled('|', fg=opts.search_fg, bg=opts.search_bg).split('|', 1)[0]
         if not is_regex:
             query = re.escape(query)
@@ -27,6 +28,7 @@ class Search:
 
     def __call__(self, diff_lines, margin_size, cols):
         self.matches = {}
+        self.count = 0
         half_width = cols // 2
         strip_pat = re.compile('\033[[].*?m')
         right_offset = half_width + 1 + margin_size
@@ -40,6 +42,7 @@ class Search:
                 for m in find(which):
                     before = which[:m.start()]
                     matches.append((wcswidth(before) + offset, m.group()))
+                    self.count += 1
 
             add(left, margin_size)
             add(right, right_offset)
@@ -51,7 +54,7 @@ class Search:
         return i in self.matches
 
     def __len__(self):
-        return len(self.matches)
+        return self.count
 
     def highlight_line(self, write, line_num):
         highlights = self.matches.get(line_num)
