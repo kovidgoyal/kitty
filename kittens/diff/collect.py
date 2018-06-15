@@ -116,13 +116,9 @@ def collect_files(collection, left, right):
 sanitize_pat = re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
 
 
-def sanitize_sub(m):
-    return '<{:x}>'.format(ord(m.group()[0]))
-
-
 def sanitize(text):
     ntext = text.replace('\r\n', '⏎\n')
-    return sanitize_pat.sub(sanitize_sub, ntext)
+    return sanitize_pat.sub('░', ntext)
 
 
 @lru_cache(maxsize=1024)
