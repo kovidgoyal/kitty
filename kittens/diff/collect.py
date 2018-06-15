@@ -121,7 +121,8 @@ def sanitize_sub(m):
 
 
 def sanitize(text):
-    return sanitize_pat.sub(sanitize_sub, text)
+    ntext = text.replace('\r\n', '⏎\n')
+    return sanitize_pat.sub(sanitize_sub, ntext)
 
 
 @lru_cache(maxsize=1024)
