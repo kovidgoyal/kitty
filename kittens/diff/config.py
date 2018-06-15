@@ -52,7 +52,7 @@ def parse_scroll_by(func, rest):
 @func_with_args('scroll_to')
 def parse_scroll_to(func, rest):
     rest = rest.lower()
-    if rest not in {'start', 'end', 'next-change', 'prev-change', 'next-page', 'prev-page'}:
+    if rest not in {'start', 'end', 'next-change', 'prev-change', 'next-page', 'prev-page', 'next-match', 'prev-match'}:
         rest = 'start'
     return func, rest
 
@@ -67,6 +67,14 @@ def parse_change_context(func, rest):
     except Exception:
         amount = 5
     return func, amount
+
+
+@func_with_args('start_search')
+def parse_start_search(func, rest):
+    rest = rest.lower().split()
+    is_regex = rest and rest[0] == 'regex'
+    is_backward = len(rest) > 1 and rest[1] == 'backward'
+    return func, (is_regex, is_backward)
 
 
 def special_handling(key, val, ans):

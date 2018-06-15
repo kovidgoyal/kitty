@@ -11,18 +11,21 @@ from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, appname, parse_args
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import RELEASE
+from kitty.key_encoding import ESCAPE, RELEASE, enter_key
 
 from ..tui.handler import Handler
 from ..tui.images import ImageManager
+from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
 from ..tui.operations import styled
 from .collect import (
-    create_collection, data_for_path, lines_for_path, set_highlight_data
+    create_collection, data_for_path, lines_for_path, sanitize,
+    set_highlight_data
 )
 from .config import init_config
 from .patch import Differ, set_diff_command
 from .render import ImageSupportWarning, LineRef, render_diff
+from .search import BadRegex, Search
 
 try:
     from .highlight import initialize_highlighter, highlight_collection
@@ -30,7 +33,7 @@ except ImportError:
     initialize_highlighter = None
 
 
-INITIALIZING, COLLECTED, DIFFED = range(3)
+INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
 
 
 def generate_diff(collection, context):
@@ -51,6 +54,10 @@ class DiffHandler(Handler):
 
     def __init__(self, args, opts, left, right):
         self.state = INITIALIZING
+        self.message = ''
+        self.current_search_is_regex = True
+        self.current_search = None
+        self.line_edit = LineEdit()
         self.opts = opts
         self.left, self.right = left, right
         self.report_traceback_on_exit = None
@@ -76,6 +83,8 @@ class DiffHandler(Handler):
                 where = args[0]
                 if 'change' in where:
                     return self.scroll_to_next_change(backwards='prev' in where)
+                if 'match' in where:
+                    return self.scroll_to_next_match(backwards='prev' in where)
                 if 'page' in where:
                     amt = self.num_lines * (1 if 'next' in where else -1)
                 else:
@@ -91,6 +100,9 @@ class DiffHandler(Handler):
                 else:
                     new_ctx += to
                 return self.change_context_count(new_ctx)
+            if func == 'start_search':
+                self.start_search(*args)
+                return
 
     def create_collection(self):
         self.start_job('collect', create_collection, self.left, self.right)
@@ -107,10 +119,13 @@ class DiffHandler(Handler):
 
     def render_diff(self):
         self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols, self.image_manager))
+        self.margin_size = render_diff.margin_size
         self.ref_path_map = defaultdict(list)
         for i, l in enumerate(self.diff_lines):
             self.ref_path_map[l.ref.path].append((i, l.ref))
         self.max_scroll_pos = len(self.diff_lines) - self.num_lines
+        if self.current_search is not None:
+            self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols)
 
     @property
     def current_position(self):
@@ -152,6 +167,18 @@ class DiffHandler(Handler):
                 return
         self.cmd.bell()
 
+    def scroll_to_next_match(self, backwards=False):
+        if self.current_search is not None:
+            if backwards:
+                r = range(self.scroll_pos - 1, -1, -1)
+            else:
+                r = range(self.scroll_pos + 1, len(self.diff_lines))
+            for i in r:
+                if i in self.current_search:
+                    self.scroll_lines(i - self.scroll_pos)
+                    return
+        self.cmd.bell()
+
     def set_scrolling_region(self):
         self.cmd.set_scrolling_region(self.screen_size, 0, self.num_lines - 2)
 
@@ -178,7 +205,8 @@ class DiffHandler(Handler):
     def init_terminal_state(self):
         self.cmd.set_line_wrapping(False)
         self.cmd.set_window_title(main.title)
-        self.cmd.set_default_colors(self.opts.foreground, self.opts.background)
+        self.cmd.set_default_colors(self.opts.foreground, self.opts.background, self.opts.foreground)
+        self.cmd.set_cursor_shape('bar')
 
     def initialize(self):
         self.init_terminal_state()
@@ -191,7 +219,6 @@ class DiffHandler(Handler):
 
     def finalize(self):
         self.cmd.set_cursor_visible(True)
-        self.cmd.set_default_colors()
         self.cmd.set_scrolling_region()
 
     def draw_lines(self, num, offset=0):
@@ -208,6 +235,8 @@ class DiffHandler(Handler):
                 if line.image_data is not None:
                     image_involved = True
             self.write('\r\x1b[K' + text + '\x1b[0m')
+            if self.current_search is not None:
+                self.current_search.highlight_line(self.write, lpos)
             if i < num - 1:
                 self.write('\n')
         if image_involved:
@@ -262,19 +291,25 @@ class DiffHandler(Handler):
     def draw_status_line(self):
         if self.state < DIFFED:
             return
+        self.enforce_cursor_state()
         self.cmd.set_cursor_position(0, self.num_lines)
         self.cmd.clear_to_eol()
-        scroll_frac = styled('{:.0%}'.format(self.scroll_pos / (self.max_scroll_pos or 1)), fg=self.opts.margin_fg)
-        counts = '{}{}{}'.format(
-                styled(str(self.added_count), fg=self.opts.highlight_added_bg),
-                styled(',', fg=self.opts.margin_fg),
-                styled(str(self.removed_count), fg=self.opts.highlight_removed_bg)
-        )
-        suffix = counts + '  ' + scroll_frac
-        prefix = styled(':', fg=self.opts.margin_fg)
-        filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
-        text = '{}{}{}'.format(prefix, ' ' * filler, suffix)
-        self.write(text)
+        if self.state is COMMAND:
+            self.line_edit.write(self.write)
+        elif self.state is MESSAGE:
+            self.write(self.message)
+        else:
+            scroll_frac = styled('{:.0%}'.format(self.scroll_pos / (self.max_scroll_pos or 1)), fg=self.opts.margin_fg)
+            counts = '{}{}{}'.format(
+                    styled(str(self.added_count), fg=self.opts.highlight_added_bg),
+                    styled(',', fg=self.opts.margin_fg),
+                    styled(str(self.removed_count), fg=self.opts.highlight_removed_bg)
+            )
+            suffix = counts + '  ' + scroll_frac
+            prefix = styled(':', fg=self.opts.margin_fg)
+            filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
+            text = '{}{}{}'.format(prefix, ' ' * filler, suffix)
+            self.write(text)
 
     def change_context_count(self, new_ctx):
         new_ctx = max(0, new_ctx)
@@ -285,14 +320,69 @@ class DiffHandler(Handler):
             self.restore_position = self.current_position
             self.draw_screen()
 
+    def start_search(self, is_regex, is_backward):
+        if self.state != DIFFED:
+            self.cmd.bell()
+            return
+        self.state = COMMAND
+        self.line_edit.clear()
+        self.line_edit.add_text('?' if is_backward else '/')
+        self.current_search_is_regex = is_regex
+        self.draw_status_line()
+
+    def do_search(self):
+        self.current_search = None
+        query = self.line_edit.current_input
+        if len(query) < 2:
+            return
+        try:
+            self.current_search = Search(self.opts, query[1:], self.current_search_is_regex, query[0] == '?')
+        except BadRegex:
+            self.state = MESSAGE
+            self.message = sanitize(_('Bad regex: {}').format(query))
+            self.cmd.bell()
+        else:
+            if not self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols):
+                self.state = MESSAGE
+                self.message = sanitize(_('No matches found'))
+                self.cmd.bell()
+
     def on_text(self, text, in_bracketed_paste=False):
+        if self.state is COMMAND:
+            self.line_edit.on_text(text, in_bracketed_paste)
+            self.draw_status_line()
+            return
+        if self.state is MESSAGE:
+            self.state = DIFFED
+            return
         action = self.shortcut_action(text)
         if action is not None:
             return self.perform_action(action)
 
     def on_key(self, key_event):
+        if self.state is MESSAGE:
+            if key_event.type is not RELEASE:
+                self.state = DIFFED
+            return
+        if self.state is COMMAND:
+            if self.line_edit.on_key(key_event):
+                if not self.line_edit.current_input:
+                    self.state = DIFFED
+                self.draw_status_line()
+                return
         if key_event.type is RELEASE:
             return
+        if self.state is COMMAND:
+            if key_event.key is ESCAPE:
+                self.state = DIFFED
+                self.draw_status_line()
+                return
+            if key_event is enter_key:
+                self.state = DIFFED
+                self.do_search()
+                self.line_edit.clear()
+                self.draw_screen()
+                return
         action = self.shortcut_action(key_event)
         if action is not None:
             return self.perform_action(action)

@@ -67,21 +67,25 @@ Keyboard controls
 =========================   ===========================
 Action                      Shortcut
 =========================   ===========================
-Quit                        ``q, Ctrl+c``
-Scroll line up              ``k, up``
-Scroll line down            ``j, down``
-Scroll page up              ``PgUp``
-Scroll page down            ``PgDn``
-Scroll to top               ``Home``
-Scroll to bottom            ``End``
-Scroll to next page         ``Space, PgDn``
-Scroll to previous page     ``PgUp``
-Scroll to next change       ``n``
-Scroll to previous change   ``p``
-Increase lines of context   ``+``
-Decrease lines of context   ``-``
-All lines of context        ``a``
-Restore default context     ``=``
+Quit                        :kbd:`q, Ctrl+c`
+Scroll line up              :kbd:`k, up`
+Scroll line down            :kbd:`j, down`
+Scroll page up              :kbd:`PgUp`
+Scroll page down            :kbd:`PgDn`
+Scroll to top               :kbd:`Home`
+Scroll to bottom            :kbd:`End`
+Scroll to next page         :kbd:`Space, PgDn`
+Scroll to previous page     :kbd:`PgUp`
+Scroll to next change       :kbd:`n`
+Scroll to previous change   :kbd:`p`
+Increase lines of context   :kbd:`+`
+Decrease lines of context   :kbd:`-`
+All lines of context        :kbd:`a`
+Restore default context     :kbd:`=`
+Search forwards             :kbd:`/`
+Search backwards            :kbd:`?`
+Scroll to next match        :kbd:`>, .`
+Scroll to previous match    :kbd:`<, ,`
 =========================   ===========================
 
 

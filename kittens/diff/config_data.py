@@ -83,6 +83,8 @@ c('filler_bg', '#fafbfc', long_text=_('Filler (empty) line background'))
 c('hunk_margin_bg', '#dbedff', long_text=_('Hunk header colors'))
 c('hunk_bg', '#f1f8ff')
 
+c('search_bg', '#444', long_text=_('Search highlighting'))
+c('search_fg', 'white')
 
 g('shortcuts')
 k('quit', 'q', 'quit', _('Quit'))
@@ -107,5 +109,12 @@ k('all_context', 'a', 'change_context all', _('Show all context'))
 k('default_context', '=', 'change_context default', _('Show default context'))
 k('increase_context', '+', 'change_context 5', _('Increase context'))
 k('decrease_context', '-', 'change_context -5', _('Decrease context'))
+
+k('search_forward', '/', 'start_search regex forward', _('Search forward'))
+k('search_backward', '?', 'start_search regex backward', _('Search backward'))
+k('next_match', '.', 'scroll_to next-match', _('Scroll to next search match'))
+k('prev_match', ',', 'scroll_to prev-match', _('Scroll to previous search match'))
+k('next_match', '>', 'scroll_to next-match', _('Scroll to next search match'))
+k('prev_match', '<', 'scroll_to prev-match', _('Scroll to previous search match'))
 
 type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}

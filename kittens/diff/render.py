@@ -447,7 +447,7 @@ def render_diff(collection, diff_map, args, columns, image_manager):
             if patch is not None:
                 largest_line_number = max(largest_line_number, patch.largest_line_number)
 
-    margin_size = max(3, len(str(largest_line_number)) + 1)
+    margin_size = render_diff.margin_size = max(3, len(str(largest_line_number)) + 1)
     last_item_num = len(collection) - 1
 
     for i, (path, item_type, other_path) in enumerate(collection):

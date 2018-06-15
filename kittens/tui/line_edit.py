@@ -30,13 +30,16 @@ class LineEdit:
         write(self.current_input)
         write('\r\x1b[{}C'.format(self.cursor_pos + wcswidth(prompt)))
 
-    def on_text(self, text, in_bracketed_paste):
+    def add_text(self, text):
         if self.current_input:
             x = truncate_point_for_length(self.current_input, self.cursor_pos) if self.cursor_pos else 0
             self.current_input = self.current_input[:x] + text + self.current_input[x:]
         else:
             self.current_input = text
         self.cursor_pos += wcswidth(text)
+
+    def on_text(self, text, in_bracketed_paste):
+        self.add_text(text)
 
     def backspace(self, num=1):
         before, after = self.split_at_cursor()

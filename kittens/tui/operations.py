@@ -78,6 +78,13 @@ def set_cursor_position(x, y) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 
+def set_cursor_shape(shape='block', blink=True) -> str:
+    val = {'block': 1, 'underline': 3, 'bar': 5}.get(shape, 1)
+    if not blink:
+        val += 1
+    return '\033[{} q'.format(val)
+
+
 def set_scrolling_region(screen_size=None, top=None, bottom=None) -> str:
     if screen_size is None:
         return '\033[r'
@@ -220,12 +227,16 @@ def alternate_screen(f=None):
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
 
 
-def set_default_colors(fg=None, bg=None) -> str:
+def set_default_colors(fg=None, bg=None, cursor=None) -> str:
     ans = ''
     if fg is None:
         ans += '\x1b]110\x1b\\'
     else:
         ans += '\x1b]10;{}\x1b\\'.format(color_as_sharp(fg if isinstance(fg, Color) else to_color(fg)))
+    if cursor is None:
+        ans += '\x1b]112\x1b\\'
+    else:
+        ans += '\x1b]12;{}\x1b\\'.format(color_as_sharp(cursor if isinstance(cursor, Color) else to_color(cursor)))
     if bg is None:
         ans += '\x1b]111\x1b\\'
     else:
