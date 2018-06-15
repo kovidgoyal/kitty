@@ -344,6 +344,14 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             case 52:
                 DISPATCH_OSC(clipboard_control);
                 break;
+            case 30001:
+                REPORT_COMMAND(screen_push_dynamic_colors);
+                screen_push_dynamic_colors(screen);
+                break;
+            case 30101:
+                REPORT_COMMAND(screen_pop_dynamic_colors);
+                screen_pop_dynamic_colors(screen);
+                break;
             default:
                 REPORT_ERROR("Unknown OSC code: %u", code);
                 break;
@@ -767,16 +775,6 @@ startswith(const uint32_t *string, size_t sz, const char *prefix) {
     return true;
 }
 
-static inline bool
-is_equal(const uint32_t *string, size_t sz, const char *prefix) {
-    size_t l = strlen(prefix);
-    if (sz != l) return false;
-    for (size_t i = 0; i < l; i++) {
-        if (string[i] != (unsigned char)prefix[i]) return false;
-    }
-    return true;
-}
-
 static inline void
 dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
@@ -804,12 +802,6 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     Py_DECREF(cmd);
                 } else PyErr_Clear();
 #undef CMD_PREFIX
-            } else if (is_equal(screen->parser_buf + 1, screen->parser_buf_pos - 1, "kitty-push-dynamic-colors")) {
-                REPORT_COMMAND(screen_push_dynamic_colors);
-                screen_push_dynamic_colors(screen);
-            } else if (is_equal(screen->parser_buf + 1, screen->parser_buf_pos - 1, "kitty-pop-dynamic-colors")) {
-                REPORT_COMMAND(screen_pop_dynamic_colors);
-                screen_pop_dynamic_colors(screen);
 #define PRINT_PREFIX "kitty-print|"
             } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, PRINT_PREFIX)) {
                 PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + sizeof(PRINT_PREFIX), screen->parser_buf_pos - sizeof(PRINT_PREFIX));

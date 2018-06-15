@@ -193,7 +193,7 @@ def init_state(alternate_screen=True):
         reset_mode('FOCUS_TRACKING') + reset_mode('MOUSE_UTF8_MODE') +
         reset_mode('MOUSE_SGR_MODE') + reset_mode('MOUSE_UTF8_MODE') +
         set_mode('BRACKETED_PASTE') + set_mode('EXTENDED_KEYBOARD') +
-        '\033P@kitty-push-dynamic-colors\033\\' +
+        '\033]30001\033\\' +
         '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
@@ -208,7 +208,7 @@ def reset_state(normal_screen=True):
         ans += reset_mode('ALTERNATE_SCREEN')
     ans += RESTORE_PRIVATE_MODE_VALUES
     ans += RESTORE_CURSOR
-    ans += '\033P@kitty-pop-dynamic-colors\033\\'
+    ans += '\033]30101\033\\'
     return ans
 
 

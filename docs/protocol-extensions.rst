@@ -165,3 +165,22 @@ For example, to set the background color to blue in a
 rectangular region of the screen from (3, 4) to (10, 11), you use::
 
     <ESC>[2*x<ESC>[4;3;11;10;44$r<ESC>[*x
+
+
+Saving and restoring the default foreground/background/selection/cursor colors
+---------------------------------------------------------------------------------
+
+It is often useful for a full screen application that has its own color themes
+to set the default foreground, background, selection and cursor colors. This
+allows for various performance optimizations when drawing the screen. The
+problem is that if the user previously used the escape codes to change these
+colors herself, then running the full screen application will overwrite her
+changes even after it exits. To avoid this, kitty introduces a new pair of
+*OSC* escape codes to push and pop the current color values from a stack::
+
+    <ESC>]30001<ESC>\  # push onto stack
+    <ESC>]30101<ESC>\  # pop from stack
+
+These escape codes save/restore the so called *dynamic colors*, default
+background, default foreground, selection background, selection foreground and
+cursor color.
