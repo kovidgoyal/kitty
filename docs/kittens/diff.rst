@@ -89,19 +89,6 @@ Scroll to previous match    :kbd:`<, ,`
 =========================   ===========================
 
 
-
-Configuration
-------------------------
-
-You can configure the colors used, keyboard shortcuts, the diff implementation,
-the default lines of context, etc.  by creating a :file:`diff.conf` file in
-your :ref:`kitty config folder <confloc>`. See below for the supported
-configuration directives.
-
-
-.. include:: /generated/conf-kitten-diff.rst
-
-
 Integrating with git
 -----------------------
 
@@ -126,11 +113,6 @@ Now to use kitty-diff to view git diffs, you can simply do::
 
 Once again, creating an alias for this command is useful.
 
-Command Line Interface
--------------------------
-
-.. include:: /generated/cli-kitten-diff.rst
-
 
 Why does this work only in kitty?
 ----------------------------------------
@@ -144,6 +126,26 @@ of code needed (the entire implementation is under 2000 lines of code).
 
 And fundamentally, it's kitty only because I wrote it for myself, and I am
 highly unlikely to use any other terminals :)
+
+
+
+Configuration
+------------------------
+
+You can configure the colors used, keyboard shortcuts, the diff implementation,
+the default lines of context, etc.  by creating a :file:`diff.conf` file in
+your :ref:`kitty config folder <confloc>`. See below for the supported
+configuration directives.
+
+
+.. include:: /generated/conf-kitten-diff.rst
+
+
+Command Line Interface
+-------------------------
+
+.. include:: /generated/cli-kitten-diff.rst
+
 
 
 Sample diff.conf
