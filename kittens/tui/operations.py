@@ -232,7 +232,7 @@ def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=
 
     def item(which, num):
         nonlocal ans
-        if item is None:
+        if which is None:
             ans += '\x1b]1{}\x1b\\'.format(num)
         else:
             ans += '\x1b]{};{}\x1b\\'.format(num, color_as_sharp(which if isinstance(which, Color) else to_color(which)))
