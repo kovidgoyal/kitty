@@ -170,11 +170,11 @@ rectangular region of the screen from (3, 4) to (10, 11), you use::
 Saving and restoring the default foreground/background/selection/cursor colors
 ---------------------------------------------------------------------------------
 
-It is often useful for a full screen application that has its own color themes
+It is often useful for a full screen application with its own color themes
 to set the default foreground, background, selection and cursor colors. This
 allows for various performance optimizations when drawing the screen. The
 problem is that if the user previously used the escape codes to change these
-colors herself, then running the full screen application will overwrite her
+colors herself, then running the full screen application will lose her
 changes even after it exits. To avoid this, kitty introduces a new pair of
 *OSC* escape codes to push and pop the current color values from a stack::
 
