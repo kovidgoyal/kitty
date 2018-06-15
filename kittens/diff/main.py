@@ -390,6 +390,10 @@ class DiffHandler(Handler):
                 self.line_edit.clear()
                 self.draw_screen()
                 return
+        if self.state >= DIFFED and self.current_search is not None and key_event.key is ESCAPE:
+            self.current_search = None
+            self.draw_screen()
+            return
         action = self.shortcut_action(key_event)
         if action is not None:
             return self.perform_action(action)

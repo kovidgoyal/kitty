@@ -67,7 +67,7 @@ Keyboard controls
 =========================   ===========================
 Action                      Shortcut
 =========================   ===========================
-Quit                        :kbd:`q, Ctrl+c`
+Quit                        :kbd:`q, Ctrl+c, Esc`
 Scroll line up              :kbd:`k, up`
 Scroll line down            :kbd:`j, down`
 Scroll page up              :kbd:`PgUp`
@@ -84,6 +84,7 @@ All lines of context        :kbd:`a`
 Restore default context     :kbd:`=`
 Search forwards             :kbd:`/`
 Search backwards            :kbd:`?`
+Clear search                :kbd:`Esc`
 Scroll to next match        :kbd:`>, .`
 Scroll to previous match    :kbd:`<, ,`
 =========================   ===========================
