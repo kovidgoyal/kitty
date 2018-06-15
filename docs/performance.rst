@@ -43,3 +43,17 @@ konsole          29 - 31%
 As you can see, |kitty| uses much less CPU than all terminals, except xterm, but
 its scrolling "smoothness" is much better than that of xterm (at least to my,
 admittedly biased, eyes).
+
+
+.. _perf-cat:
+
+.. note::
+
+    Some people have asked why kitty does not perform better than terminal XXX in
+    the test of sinking large amounts of data, such as catting a large text
+    file. The answer is because this is not a goal for kitty. kitty
+    deliberately throttles input parsing and output rendering to minimize
+    resource usage while still being able to sink output faster than any real
+    world program can produce it. Reducing CPU usage, and hence battery drain
+    while achieving instant response times and smooth scrolling to a human eye
+    is a far more important goal.
