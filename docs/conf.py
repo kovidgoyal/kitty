@@ -115,6 +115,9 @@ html_theme_options = {
     'github_banner': True,
     'github_user': 'kovidgoyal',
     'github_repo': 'kitty',
+    # increase contrast of link color with text color
+    'link': '#00587d',
+    'link_hover': 'green',
 }
 
 
