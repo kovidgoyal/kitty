@@ -9,7 +9,8 @@ from collections import defaultdict
 from functools import partial
 from gettext import gettext as _
 
-from kitty.cli import CONFIG_HELP, appname, parse_args
+from kitty.cli import CONFIG_HELP, parse_args
+from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import ESCAPE, RELEASE, enter_key
 
