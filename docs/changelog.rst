@@ -3,6 +3,34 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.11.1 [future]
+------------------------------
+
+- diff kitten: Implement searching for text in the diff (:iss:`574`)
+
+- Add an option :opt:`startup_session` to :file:`kitty.conf` to specify a
+  default startup session (:iss:`641`)
+
+- Add a command line option :option:`kitty --wait-for-single-instance-window-close`
+  to make :option:`kitty --single-instance` wait for the closing of the newly opened
+  window before quitting (:iss:`630`)
+
+- diff kitten: Allow theming the selection background/foreground as well
+
+- diff kitten: Display CRLF line endings using the unicode return symbol
+  instead of <d> as it is less intrusive (:iss:`638`)
+
+- diff kitten: Fix default foreground/background colors not being restored when
+  kitten quits (:iss:`637`)
+
+- Fix :option:`kitty @ set-colors --all` not working when more than one window
+  present (:iss:`632`)
+
+- Fix a regression that broke the legacy increase/decrease_font_size actions
+
+- Clear scrollback on reset (:iss:`631`)
+
+
 0.11.0 [2018-06-12]
 ------------------------------
 
