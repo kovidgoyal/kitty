@@ -500,35 +500,30 @@ def write_conf_docs(app, all_kitten_names):
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
 
-    def generate(all_options, name='kitty'):
+    def generate_default_config(all_options, name):
         from kitty.conf.definition import as_conf_file
-        from textwrap import indent
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
             print('.. highlight:: conf\n', file=f)
             f.write(render_conf(name, all_options.values()))
 
-        with open(f'generated/conf-{name}-literal.rst', 'w', encoding='utf-8') as f:
-            print('.. code-block:: conf\n', file=f)
+        conf_name = re.sub(r'^kitten-', '', name) + '.conf'
+        with open(f'generated/conf/{conf_name}', 'w', encoding='utf-8') as f:
             text = '\n'.join(as_conf_file(all_options.values()))
-            text = indent(text, '    ', lambda l: True)
             print(text, file=f)
 
     from kitty.config_data import all_options
-    generate(all_options)
+    generate_default_config(all_options, 'kitty')
 
     from kittens.runner import get_kitten_conf_docs
     for kitten in all_kitten_names:
         all_options = get_kitten_conf_docs(kitten)
         if all_options:
-            generate(all_options, f'kitten-{kitten}')
+            generate_default_config(all_options, f'kitten-{kitten}')
 # }}}
 
 
 def setup(app):
-    try:
-        os.mkdir('generated')
-    except FileExistsError:
-        pass
+    os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
     all_kitten_names = all_kitten_names()
     write_cli_docs(all_kitten_names)
