@@ -250,6 +250,13 @@ Some prominent kittens:
     Copy/paste to the clipboard from shell scripts, even over SSH.
 
 
+Configuring kitty
+-------------------
+
+|kitty| is highly configurable, everything from keyboard shortcuts to
+painting frames-per-second. For details and a sample :file:`kitty.conf`,
+see the :doc:`configuration docs <conf>`.
+
 .. _sessions:
 
 Startup Sessions
