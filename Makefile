@@ -39,4 +39,7 @@ man:
 html:
 	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs html
 
+linkcheck:
+	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs linkcheck
+
 docs: man html
