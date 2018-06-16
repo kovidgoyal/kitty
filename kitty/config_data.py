@@ -616,6 +616,12 @@ opening new windows, closing windows, reading the content of windows, etc.
 Note that this even works over ssh connections.
 '''))
 
+o('startup_session', 'none', option_type=lambda x: (None if x.lower() == 'none' else x), long_text=_('''
+Path to a session file to use for all kitty instances. Can be overridden
+by using the :option:`--startup-session` command line option for individual
+instances. See :ref:`sessions` in the kitty documentation for details.
+'''))
+
 o('clipboard_control', 'write-clipboard write-primary', option_type=lambda x: frozenset(x.lower().split()), long_text=_('''
 Allow programs running in kitty to read and write from the clipboard. You can
 control exactly which actions are allowed. The set of possible actions is:

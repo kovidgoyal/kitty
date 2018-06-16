@@ -96,7 +96,7 @@ class Boss:
         )
         set_boss(self)
         self.opts, self.args = opts, args
-        startup_session = create_session(opts, args)
+        startup_session = create_session(opts, args, default_session=opts.startup_session)
         self.keymap = self.opts.keymap.copy()
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
