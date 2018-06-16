@@ -1,7 +1,7 @@
 :tocdepth: 2
 
 ==========================================================
-kitty - the fast, featureful, GPU based, terminal emulator
+kitty - the fast, featureful, GPU based terminal emulator
 ==========================================================
 
 .. container:: major-features
