@@ -235,7 +235,7 @@ class Loop:
                     self.handler.on_eot()
                 else:
                     self.handler.on_text(chunk, self.in_bracketed_paste)
-            else:
+            elif chunk:
                 self.handler.on_text(chunk, self.in_bracketed_paste)
 
     def _on_dcs(self, dcs):
