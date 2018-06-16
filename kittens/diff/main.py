@@ -223,7 +223,7 @@ class DiffHandler(Handler):
         self.create_collection()
 
     def enforce_cursor_state(self):
-        self.cmd.set_cursor_visible(self.state > DIFFED)
+        self.cmd.set_cursor_visible(self.state == COMMAND)
 
     def draw_lines(self, num, offset=0):
         offset += self.scroll_pos
@@ -301,7 +301,7 @@ class DiffHandler(Handler):
         if self.state is COMMAND:
             self.line_edit.write(self.write)
         elif self.state is MESSAGE:
-            self.write(self.message)
+            self.cmd.styled(self.message, reverse=True)
         else:
             sp = '{:.0%}'.format(self.scroll_pos/self.max_scroll_pos) if self.scroll_pos and self.max_scroll_pos else '0%'
             scroll_frac = styled(sp, fg=self.opts.margin_fg)
@@ -347,7 +347,7 @@ class DiffHandler(Handler):
             self.current_search = Search(self.opts, query[1:], self.current_search_is_regex, query[0] == '?')
         except BadRegex:
             self.state = MESSAGE
-            self.message = sanitize(_('Bad regex: {}').format(query))
+            self.message = sanitize(_('Bad regex: {}').format(query[1:]))
             self.cmd.bell()
         else:
             if not self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols):
@@ -362,6 +362,7 @@ class DiffHandler(Handler):
             return
         if self.state is MESSAGE:
             self.state = DIFFED
+            self.draw_status_line()
             return
         action = self.shortcut_action(text)
         if action is not None:
@@ -371,6 +372,7 @@ class DiffHandler(Handler):
         if self.state is MESSAGE:
             if key_event.type is not RELEASE:
                 self.state = DIFFED
+                self.draw_status_line()
             return
         if self.state is COMMAND:
             if self.line_edit.on_key(key_event):
