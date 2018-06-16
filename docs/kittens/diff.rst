@@ -152,7 +152,6 @@ Command Line Interface
 Sample diff.conf
 -----------------
 
-Below is a sample :download:`diff.conf </generated/conf/diff.conf>` with all default settings.
-
-.. literalinclude:: /generated/conf/diff.conf
-   :language: conf
+You can download a sample :file:`diff.conf` file with all default settings and
+comments describing each setting by clicking: :download:`sample diff.conf
+</generated/conf/diff.conf>`.
