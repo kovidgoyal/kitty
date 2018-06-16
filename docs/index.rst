@@ -262,9 +262,10 @@ see the :doc:`configuration docs <conf>`.
 Startup Sessions
 ------------------
 
-You can control the tabs, window layout, working directory, startup
-programs, etc. by creating a "session" file and using the :option:`kitty --session`
-command line flag. For example:
+You can control the tabs, window layout, working directory, startup programs,
+etc. by creating a "session" file and using the :option:`kitty --session`
+command line flag or the :opt:`startup_session` option in :file:`kitty.conf`.
+For example:
 
 .. code-block:: session
 

@@ -618,7 +618,7 @@ Note that this even works over ssh connections.
 
 o('startup_session', 'none', option_type=lambda x: (None if x.lower() == 'none' else x), long_text=_('''
 Path to a session file to use for all kitty instances. Can be overridden
-by using the :option:`--startup-session` command line option for individual
+by using the :option:`kitty --session` command line option for individual
 instances. See :ref:`sessions` in the kitty documentation for details.
 '''))
 
