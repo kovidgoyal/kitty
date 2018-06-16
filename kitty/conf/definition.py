@@ -145,7 +145,7 @@ def wrapped_block(lines):
     if wrapper is None:
         import textwrap
         wrapper = wrapped_block.wrapper = textwrap.TextWrapper(
-            initial_indent='#: ', subsequent_indent='#: ', width=70, break_long_words=False
+            initial_indent='# ', subsequent_indent='# ', width=70, break_long_words=False
         )
     for block, indent_size in iter_blocks(lines):
         if indent_size > 0:
@@ -153,7 +153,7 @@ def wrapped_block(lines):
                 if not line:
                     yield line
                 else:
-                    yield '#: ' + line
+                    yield '# ' + line
         else:
             for line in wrapper.wrap('\n'.join(block)):
                 yield line
@@ -175,7 +175,7 @@ def as_conf_file(all_options):
     def render_group(group, is_shortcut):
         nonlocal num_open_folds
         if is_shortcut or '.' not in group.name:
-            a('#: ' + group.short_text + ' {{''{')
+            a('# ' + group.short_text + ' {{''{')
             num_open_folds += 1
         a('')
         if group.start_text:
@@ -188,7 +188,7 @@ def as_conf_file(all_options):
             a(''), a(render_block(group.end_text))
         is_subgroup = new_group_name.startswith(group.name + '.')
         if not is_subgroup and num_open_folds > 0:
-            a('#: }}''}'), a('')
+            a('# }}''}'), a('')
             num_open_folds -= 1
 
     def handle_group(new_group, is_shortcut=False):
@@ -211,13 +211,12 @@ def as_conf_file(all_options):
         if not opt.long_text or not opt.add_to_docs:
             return
         handle_group(opt.group)
+        a(render_block(opt.long_text))
         mopts = list(merged_opts(all_options, opt, i))
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
             prefix = '' if mo.add_to_default else '# '
             a('{}{} {}'.format(prefix, mo.name.ljust(sz), mo.defval_as_string))
-        a('')
-        a(render_block(opt.long_text))
         a('')
 
     for i, opt in enumerate(all_options):
