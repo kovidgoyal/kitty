@@ -118,5 +118,7 @@ k('next_match', '.', 'scroll_to next-match', _('Scroll to next search match'))
 k('prev_match', ',', 'scroll_to prev-match', _('Scroll to previous search match'))
 k('next_match', '>', 'scroll_to next-match', _('Scroll to next search match'))
 k('prev_match', '<', 'scroll_to prev-match', _('Scroll to previous search match'))
+k('search_forward_simple', 'f', 'start_search substring forward', _('Search forward (no regex)'))
+k('search_backward_simple', 'b', 'start_search substring backward', _('Search backward (no regex)'))
 
 type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}
