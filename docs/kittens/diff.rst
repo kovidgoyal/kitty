@@ -152,6 +152,7 @@ Command Line Interface
 Sample diff.conf
 -----------------
 
-Below is a sample :file:`diff.conf` with all default settings.
+Below is a sample :download:`diff.conf </generated/conf/diff.conf>` with all default settings.
 
-.. include:: /generated/conf-kitten-diff-literal.rst
+.. literalinclude:: /generated/conf/diff.conf
+   :language: conf

@@ -35,6 +35,7 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 Sample kitty.conf
 ^^^^^^^^^^^^^^^^^^^^^
 
-Below is a sample :file:`kitty.conf` with all default settings.
+Below is a sample :download:`kitty.conf </generated/conf/kitty.conf>` with all default settings.
 
-.. include:: /generated/conf-kitty-literal.rst
+.. literalinclude:: /generated/conf/kitty.conf
+   :language: conf
