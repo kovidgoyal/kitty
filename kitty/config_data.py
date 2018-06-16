@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 # Utils  {{{
+import os
 from gettext import gettext as _
 
 from . import fast_data_types as defines
@@ -616,10 +617,20 @@ opening new windows, closing windows, reading the content of windows, etc.
 Note that this even works over ssh connections.
 '''))
 
-o('startup_session', 'none', option_type=lambda x: (None if x.lower() == 'none' else x), long_text=_('''
+
+def startup_session(x):
+    if x.lower() == 'none':
+        return
+    x = os.path.expanduser(x)
+    return os.path.expandvars(x)
+
+
+o('startup_session', 'none', option_type=startup_session, long_text=_('''
 Path to a session file to use for all kitty instances. Can be overridden
 by using the :option:`kitty --session` command line option for individual
-instances. See :ref:`sessions` in the kitty documentation for details.
+instances. See :ref:`sessions` in the kitty documentation for details. Note
+that relative paths are interpreted with respect to the working directory
+of the kitty process. Environment variables in the path are expanded.
 '''))
 
 o('clipboard_control', 'write-clipboard write-primary', option_type=lambda x: frozenset(x.lower().split()), long_text=_('''
