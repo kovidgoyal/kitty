@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.11.1 [future]
+0.11.1 [2018-06-17]
 ------------------------------
 
 - diff kitten: Implement searching for text in the diff (:iss:`574`)
