@@ -382,8 +382,7 @@ class TTYIO:
             for chunk in data:
                 write_all(self.tty_fd, chunk)
 
-    def recv(self, more_needed, timeout):
-        from io import DEFAULT_BUFFER_SIZE
+    def recv(self, more_needed, timeout, sz=1):
         import select
         fd = self.tty_fd
         start_time = monotonic()
@@ -391,7 +390,7 @@ class TTYIO:
             rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
             if not rd:
                 break
-            data = os.read(fd, DEFAULT_BUFFER_SIZE)
+            data = os.read(fd, sz)
             if not data:
                 break  # eof
             if not more_needed(data):
