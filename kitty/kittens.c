@@ -73,6 +73,8 @@ read_response(int fd, double timeout, char buf[CMD_BUF_SZ], size_t *pos, PyObjec
                 break;
             case TRAILING_ESC:
                 if (ch == '\\') return append_buf(buf, pos, ans);
+                if (!add_char(buf, pos, 0x1b, ans)) return false;
+                if (!add_char(buf, pos, ch, ans)) return false;
                 state = BODY;
                 break;
         }
