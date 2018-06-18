@@ -7,6 +7,92 @@
 
 #include "data-types.h"
 
+#define CMD_BUF_SZ 2048
+
+
+static inline bool
+append_buf(char buf[CMD_BUF_SZ], size_t *pos, PyObject *ans) {
+    if (*pos) {
+        PyObject *bytes = PyBytes_FromStringAndSize(buf, *pos);
+        if (!bytes) { PyErr_NoMemory(); return false; }
+        int ret = PyList_Append(ans, bytes);
+        Py_CLEAR(bytes);
+        if (ret != 0) return false;
+        *pos = 0;
+    }
+    return true;
+}
+
+static inline bool
+add_char(char buf[CMD_BUF_SZ], size_t *pos, char ch, PyObject *ans) {
+    if (*pos >= CMD_BUF_SZ) {
+        if (!append_buf(buf, pos, ans)) return false;
+    }
+    buf[*pos] = ch;
+    *pos += 1;
+    return true;
+}
+
+static inline bool
+read_response(int fd, double timeout, char buf[CMD_BUF_SZ], size_t *pos, PyObject *ans) {
+    enum ReadState {START, STARTING_ESC, P, AT, K, I, T, T2, Y, HYPHEN, C, M, BODY, TRAILING_ESC};
+    enum ReadState state = START;
+    char ch;
+    double end_time = monotonic() + timeout;
+    while(monotonic() <= end_time) {
+        ssize_t len = read(fd, &ch, 1);
+        if (len == 0) continue;
+        if (len < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            PyErr_SetFromErrno(PyExc_OSError);
+            return false;
+            continue;
+        }
+        end_time = monotonic() + timeout;
+        switch(state) {
+            case START:
+                if (ch == 0x1b) state = STARTING_ESC;
+                break;
+#define CASE(curr, q, next) case curr: state = ch == q ? next : START; break;
+            CASE(STARTING_ESC, 'P', P);
+            CASE(P, '@', AT);
+            CASE(AT, 'k', K);
+            CASE(K, 'i', I);
+            CASE(I, 't', T);
+            CASE(T, 't', T2);
+            CASE(T2, 'y', Y);
+            CASE(Y, '-', HYPHEN);
+            CASE(HYPHEN, 'c', C);
+            CASE(C, 'm', M);
+            CASE(M, 'd', BODY);
+            case BODY:
+                if (ch == 0x1b) { state = TRAILING_ESC; }
+                else {
+                    if (!add_char(buf, pos, ch, ans)) return false;
+                }
+                break;
+            case TRAILING_ESC:
+                if (ch == '\\') return append_buf(buf, pos, ans);
+                state = BODY;
+                break;
+        }
+    }
+    PyErr_SetString(PyExc_TimeoutError, "Timed out while waiting to read cmd response");
+    return false;
+}
+
+static PyObject*
+read_command_response(PyObject *self UNUSED, PyObject *args) {
+    double timeout;
+    int fd;
+    PyObject *ans;
+    if (!PyArg_ParseTuple(args, "idO!", &fd, &timeout, &PyList_Type, &ans)) return NULL;
+    static char buf[CMD_BUF_SZ];
+    size_t pos = 0;
+    if (!read_response(fd, timeout, buf, &pos, ans)) return NULL;
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     enum State { NORMAL, ESC, CSI, ST, ESC_ST };
@@ -105,6 +191,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
 
 static PyMethodDef module_methods[] = {
     METHODB(parse_input_from_terminal, METH_VARARGS),
+    METHODB(read_command_response, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

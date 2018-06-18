@@ -11,6 +11,7 @@ from functools import partial
 from .cli import emph, parse_args
 from .cmds import cmap, parse_subcommand_cli
 from .constants import appname, version
+from .fast_data_types import read_command_response
 from .utils import TTYIO, parse_address_spec
 
 
@@ -73,13 +74,23 @@ class SocketIO:
                     out.flush()
         self.socket.shutdown(socket.SHUT_WR)
 
-    def recv(self, more_needed, timeout):
-        # We dont bother with more_needed since the server will close the
-        # connection after transmission
+    def recv(self, timeout):
+        dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
         self.socket.settimeout(timeout)
         with self.socket.makefile('rb') as src:
             data = src.read()
-        more_needed(data)
+        m = dcs.search(data)
+        if m is None:
+            raise TimeoutError('Timed out while waiting to read cmd response')
+        return m.group(1)
+
+
+class RCIO(TTYIO):
+
+    def recv(self, timeout):
+        ans = []
+        read_command_response(self.tty_fd, timeout, ans)
+        return b''.join(ans)
 
 
 def do_io(to, send, no_response):
@@ -93,28 +104,14 @@ def do_io(to, send, no_response):
                 yield encode_send(send)
         send_data = send_generator()
 
-    io = SocketIO(to) if to else TTYIO()
+    io = SocketIO(to) if to else RCIO()
     with io:
         io.send(send_data)
         if no_response:
             return {'ok': True}
+        received = io.recv(timeout=10)
 
-        dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
-
-        received = b''
-        match = None
-
-        def more_needed(data):
-            nonlocal received, match
-            received += data
-            match = dcs.search(received)
-            return match is None
-
-        io.recv(more_needed, timeout=10)
-
-    if match is None:
-        raise SystemExit('Failed to receive response from ' + appname)
-    response = json.loads(match.group(1).decode('ascii'))
+    response = json.loads(received.decode('ascii'))
     return response
 
 
