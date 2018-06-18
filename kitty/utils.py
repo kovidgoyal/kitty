@@ -369,7 +369,7 @@ def write_all(fd, data):
 class TTYIO:
 
     def __enter__(self):
-        self.tty_fd, self.original_termios = open_tty()
+        self.tty_fd, self.original_termios = open_tty(True)
         return self
 
     def __exit__(self, *a):
@@ -383,17 +383,13 @@ class TTYIO:
                 write_all(self.tty_fd, chunk)
 
     def recv(self, more_needed, timeout, sz=1):
-        import select
         fd = self.tty_fd
         start_time = monotonic()
         while timeout > monotonic() - start_time:
-            rd = select.select([fd], [], [], max(0, timeout - (monotonic() - start_time)))[0]
-            if not rd:
-                break
+            # will block for 0.1 secs waiting for data because we have set
+            # VMIN=0 VTIME=1 in termios
             data = os.read(fd, sz)
-            if not data:
-                break  # eof
-            if not more_needed(data):
+            if data and not more_needed(data):
                 break
 
 

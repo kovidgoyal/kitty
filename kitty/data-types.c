@@ -105,21 +105,29 @@ stop_profiler(PyObject UNUSED *self) {
 #endif
 
 static inline bool
-put_tty_in_raw_mode(int fd, const struct termios* termios_p) {
+put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_timeout) {
     struct termios raw_termios = *termios_p;
     cfmakeraw(&raw_termios);
-    raw_termios.c_cc[VMIN] = 1; raw_termios.c_cc[VTIME] = 0;
+    if (read_with_timeout) {
+        raw_termios.c_cc[VMIN] = 0; raw_termios.c_cc[VTIME] = 1;
+    } else {
+        raw_termios.c_cc[VMIN] = 1; raw_termios.c_cc[VTIME] = 0;
+    }
     if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { PyErr_SetFromErrno(PyExc_OSError); return false; }
     return true;
 }
 
 static PyObject*
-open_tty(PyObject *self UNUSED, PyObject *args UNUSED) {
-    int fd = open("/dev/tty", O_RDWR | O_NONBLOCK | O_CLOEXEC | O_NOCTTY);
+open_tty(PyObject *self UNUSED, PyObject *args) {
+    int read_with_timeout = 0;
+    if (!PyArg_ParseTuple(args, "|p", &read_with_timeout)) return NULL;
+    int flags = O_RDWR | O_CLOEXEC | O_NOCTTY;
+    if (!read_with_timeout) flags |= O_NONBLOCK;
+    int fd = open("/dev/tty", flags);
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();
     if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    if (!put_tty_in_raw_mode(fd, termios_p)) { free(termios_p); return NULL; }
+    if (!put_tty_in_raw_mode(fd, termios_p, read_with_timeout != 0)) { free(termios_p); return NULL; }
     return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
 }
 
@@ -138,7 +146,7 @@ normal_tty(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 raw_tty(PyObject *self UNUSED, PyObject *args) {
     TTY_ARGS
-    if (!put_tty_in_raw_mode(fd, termios_p)) return NULL;
+    if (!put_tty_in_raw_mode(fd, termios_p, false)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -155,7 +163,7 @@ close_tty(PyObject *self UNUSED, PyObject *args) {
 #undef TTY_ARGS
 
 static PyMethodDef module_methods[] = {
-    {"open_tty", open_tty, METH_NOARGS, ""},
+    {"open_tty", open_tty, METH_VARARGS, ""},
     {"normal_tty", normal_tty, METH_VARARGS, ""},
     {"raw_tty", raw_tty, METH_VARARGS, ""},
     {"close_tty", close_tty, METH_VARARGS, ""},
