@@ -8,6 +8,8 @@ from kitty.fast_data_types import wcswidth
 
 from ..tui.operations import styled
 
+strip_pat = re.compile('\033[[].*?m')
+
 
 class BadRegex(ValueError):
     pass
@@ -30,7 +32,6 @@ class Search:
         self.matches = {}
         self.count = 0
         half_width = cols // 2
-        strip_pat = re.compile('\033[[].*?m')
         right_offset = half_width + 1 + margin_size
         find = self.pat.finditer
         for i, line in enumerate(diff_lines):

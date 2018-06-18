@@ -14,6 +14,8 @@ from .constants import appname, version
 from .fast_data_types import read_command_response
 from .utils import TTYIO, parse_address_spec
 
+dcs_pat = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
+
 
 def handle_cmd(boss, window, cmd):
     cmd = json.loads(cmd)
@@ -75,11 +77,10 @@ class SocketIO:
         self.socket.shutdown(socket.SHUT_WR)
 
     def recv(self, timeout):
-        dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
         self.socket.settimeout(timeout)
         with self.socket.makefile('rb') as src:
             data = src.read()
-        m = dcs.search(data)
+        m = dcs_pat.search(data)
         if m is None:
             raise TimeoutError('Timed out while waiting to read cmd response')
         return m.group(1)
