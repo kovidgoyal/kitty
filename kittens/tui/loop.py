@@ -155,10 +155,14 @@ class UnhandledException(Handler):
         self.quit_loop(1)
 
 
+ebs_pat = re.compile('([\177\r\x03\x04])')
+sanitize_ibp_pat = re.compile(
+    '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]')
+
+
 class Loop:
 
-    def __init__(self,
-                 sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
+    def __init__(self, sanitize_bracketed_paste=True):
         self.wakeup_read_fd, self.wakeup_write_fd = safe_pipe()
         # For some reason on macOS the DefaultSelector fails when tty_fd is
         # open('/dev/tty')
@@ -173,11 +177,12 @@ class Loop:
         except Exception:
             self.iov_limit = 255
         self.parse_input_from_terminal = partial(parse_input_from_terminal, self._on_text, self._on_dcs, self._on_csi, self._on_osc, self._on_pm, self._on_apc)
-        self.ebs_pat = re.compile('([\177\r\x03\x04])')
         self.in_bracketed_paste = False
-        self.sanitize_bracketed_paste = bool(sanitize_bracketed_paste)
-        if self.sanitize_bracketed_paste:
+        if sanitize_bracketed_paste is True:
+            self.sanitize_ibp_pat = sanitize_ibp_pat
+        elif sanitize_bracketed_paste:
             self.sanitize_ibp_pat = re.compile(sanitize_bracketed_paste)
+        self.sanitize_bracketed_paste = bool(sanitize_bracketed_paste)
         self.jobs_queue = Queue()
 
     def start_job(self, job_id, func, *args, **kw):
@@ -223,7 +228,7 @@ class Loop:
         if self.in_bracketed_paste and self.sanitize_bracketed_paste:
             text = self.sanitize_ibp_pat.sub('', text)
 
-        for chunk in self.ebs_pat.split(text):
+        for chunk in ebs_pat.split(text):
             if len(chunk) == 1:
                 if chunk == '\r':
                     self.handler.on_key(enter_key)
