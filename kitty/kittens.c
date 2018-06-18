@@ -34,7 +34,9 @@ add_char(char buf[CMD_BUF_SZ], size_t *pos, char ch, PyObject *ans) {
 }
 
 static inline bool
-read_response(int fd, double timeout, char buf[CMD_BUF_SZ], size_t *pos, PyObject *ans) {
+read_response(int fd, double timeout, PyObject *ans) {
+    static char buf[CMD_BUF_SZ];
+    size_t pos = 0;
     enum ReadState {START, STARTING_ESC, P, AT, K, I, T, T2, Y, HYPHEN, C, M, BODY, TRAILING_ESC};
     enum ReadState state = START;
     char ch;
@@ -68,13 +70,13 @@ read_response(int fd, double timeout, char buf[CMD_BUF_SZ], size_t *pos, PyObjec
             case BODY:
                 if (ch == 0x1b) { state = TRAILING_ESC; }
                 else {
-                    if (!add_char(buf, pos, ch, ans)) return false;
+                    if (!add_char(buf, &pos, ch, ans)) return false;
                 }
                 break;
             case TRAILING_ESC:
-                if (ch == '\\') return append_buf(buf, pos, ans);
-                if (!add_char(buf, pos, 0x1b, ans)) return false;
-                if (!add_char(buf, pos, ch, ans)) return false;
+                if (ch == '\\') return append_buf(buf, &pos, ans);
+                if (!add_char(buf, &pos, 0x1b, ans)) return false;
+                if (!add_char(buf, &pos, ch, ans)) return false;
                 state = BODY;
                 break;
         }
@@ -89,9 +91,7 @@ read_command_response(PyObject *self UNUSED, PyObject *args) {
     int fd;
     PyObject *ans;
     if (!PyArg_ParseTuple(args, "idO!", &fd, &timeout, &PyList_Type, &ans)) return NULL;
-    static char buf[CMD_BUF_SZ];
-    size_t pos = 0;
-    if (!read_response(fd, timeout, buf, &pos, ans)) return NULL;
+    if (!read_response(fd, timeout, ans)) return NULL;
     Py_RETURN_NONE;
 }
 
