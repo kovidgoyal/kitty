@@ -72,8 +72,8 @@ class Reporter:  # {{{
 def get_latest_release_data():
     print('Checking for latest release on GitHub...')
     req = urllib.Request('https://api.github.com/repos/kovidgoyal/kitty/releases/latest', headers={'Accept': 'application/vnd.github.v3+json'})
-    res = urllib.urlopen(req)
-    data = json.load(res)
+    res = urllib.urlopen(req).read().decode('utf-8')
+    data = json.loads(res)
     html_url = data['html_url'].replace('/tag/', '/download/').rstrip('/')
     for asset in data.get('assets', ()):
         name = asset['name']
