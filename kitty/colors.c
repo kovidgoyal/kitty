@@ -151,6 +151,37 @@ colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
 
 
 static PyObject*
+as_dict(ColorProfile *self, PyObject *args UNUSED) {
+#define as_dict_doc "Return all colors as a dictionary of color_name to integer (names are the same as used in kitty.conf)"
+    PyObject *ans = PyDict_New();
+    if (ans == NULL) return PyErr_NoMemory();
+    for (unsigned i = 0; i < arraysz(self->color_table); i++) {
+        static char buf[32] = {0};
+        snprintf(buf, sizeof(buf) - 1, "color%u", i);
+        PyObject *val = PyLong_FromUnsignedLong(self->color_table[i]);
+        if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); }
+        int ret = PyDict_SetItemString(ans, buf, val);
+        Py_CLEAR(val);
+        if (ret != 0) { Py_CLEAR(ans); return NULL; }
+    }
+#define D(attr, name) { \
+    color_type c = colorprofile_to_color(self, self->overridden.attr, 0xffffffff); \
+    if (c != 0xffffffff) { \
+        PyObject *val = PyLong_FromUnsignedLong(c); \
+        if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); } \
+        int ret = PyDict_SetItemString(ans, #name, val); \
+        Py_CLEAR(val); \
+        if (ret != 0) { Py_CLEAR(ans); return NULL; } \
+    }}
+    D(default_fg, foreground); D(default_bg, background);
+    D(cursor_color, cursor); D(highlight_fg, selection_foreground);
+    D(highlight_bg, selection_background);
+
+#undef D
+    return ans;
+}
+
+static PyObject*
 as_color(ColorProfile *self, PyObject *val) {
 #define as_color_doc "Convert the specified terminal color into an (r, g, b) tuple based on the current profile values"
     if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "val must be an int"); return NULL; }
@@ -275,6 +306,7 @@ static PyMemberDef members[] = {
 static PyMethodDef methods[] = {
     METHOD(update_ansi_color_table, METH_O)
     METHOD(reset_color_table, METH_NOARGS)
+    METHOD(as_dict, METH_NOARGS)
     METHOD(color_table_address, METH_NOARGS)
     METHOD(as_color, METH_O)
     METHOD(reset_color, METH_O)

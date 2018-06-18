@@ -133,6 +133,10 @@ class Window:
             cwd=self.child.current_cwd or self.child.cwd, cmdline=self.child.cmdline
         )
 
+    @property
+    def current_colors(self):
+        return self.screen.color_profile.as_dict()
+
     def matches(self, field, pat):
         if field == 'id':
             return pat.pattern == str(self.id)

@@ -397,6 +397,17 @@ class TTYIO:
                 break
 
 
+def natsort_ints(iterable):
+
+    def convert(text):
+        return int(text) if text.isdigit() else text
+
+    def alphanum_key(key):
+        return tuple(map(convert, re.split(r'(\d+)', key)))
+
+    return sorted(iterable, key=alphanum_key)
+
+
 def get_editor():
     import shlex
     return shlex.split(os.environ.get('EDITOR', 'vim'))

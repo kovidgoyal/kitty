@@ -10,6 +10,7 @@ from .cli import parse_args
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
 from .tabs import SpecialWindow
+from .utils import natsort_ints
 
 
 class MatchError(ValueError):
@@ -604,6 +605,38 @@ def set_colors(boss, window, payload):
         if default_bg_changed:
             boss.default_bg_changed_for(w.id)
         w.refresh()
+# }}}
+
+
+# get_colors {{{
+@cmd(
+    'Get terminal colors',
+    'Get the terminal colors for the specified window (defaults to active window). Colors will be output to stdout in the same syntax as used for kitty.conf',
+    options_spec='''\
+--configured -c
+type=bool-set
+Instead of outputting the colors for the specified window, output the currently
+configured colors.
+
+''' + '\n\n' + MATCH_WINDOW_OPTION
+)
+def cmd_get_colors(global_opts, opts, args):
+    return {'configured': opts.configured, 'match': opts.match}
+
+
+def get_colors(boss, window, payload):
+    from .rgb import Color, color_as_sharp, color_from_int
+    ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
+    if not payload['configured']:
+        windows = (window or boss.active_window,)
+        if payload['match']:
+            windows = tuple(boss.match_windows(payload['match']))
+            if not windows:
+                raise MatchError(payload['match'])
+        ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})
+    all_keys = natsort_ints(ans)
+    maxlen = max(map(len, all_keys))
+    return '\n'.join(('{:%ds} {}' % maxlen).format(key, color_as_sharp(ans[key])) for key in all_keys)
 # }}}
 
 
