@@ -10,6 +10,10 @@ from kitty.fast_data_types import (
     fc_list, fc_match,
 )
 
+# TODO: how to log info (for font_family=auto)?
+# TODO: Only with args.debug_font_fallback or a new option?
+from ..utils import log_error
+
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
             (False, True): 'italic_font',
@@ -67,16 +71,22 @@ def find_best_match(family, bold=False, italic=False, monospaced=True):
 
 
 def resolve_family(f, main_family, bold, italic):
-    if (bold or italic) and f == 'auto':
-        f = main_family
-    return f
+    return main_family if (bold or italic) and f == 'auto' else f
 
 
 def get_font_files(opts):
     ans = {}
     for (bold, italic), attr in attr_map.items():
-        rf = resolve_family(getattr(opts, attr), opts.font_family, bold, italic)
+        f = getattr(opts, attr)
+        rf = resolve_family(f, opts.font_family, bold, italic)
         font = find_best_match(rf, bold, italic)
+        if rf != font['family']:
+            if f != 'auto':
+                # Unexpected substitution.
+                log_error('Using %s for %s=%s.' % (font['family'], attr, f))
+            elif attr == 'font_family':
+                # Info about auto-selection for font_family=auto.
+                log_error('Using %s for %s=%s.' % (font['family'], attr, f))
         key = {(False, False): 'medium',
                (True, False): 'bold',
                (False, True): 'italic',
