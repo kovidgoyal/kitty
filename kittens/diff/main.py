@@ -168,12 +168,13 @@ class DiffHandler(Handler):
                 return
         self.cmd.bell()
 
-    def scroll_to_next_match(self, backwards=False):
+    def scroll_to_next_match(self, backwards=False, include_current=False):
         if self.current_search is not None:
+            offset = 0 if include_current else 1
             if backwards:
-                r = range(self.scroll_pos - 1, -1, -1)
+                r = range(self.scroll_pos - offset, -1, -1)
             else:
-                r = range(self.scroll_pos + 1, len(self.diff_lines))
+                r = range(self.scroll_pos + offset, len(self.diff_lines))
             for i in r:
                 if i in self.current_search:
                     self.scroll_lines(i - self.scroll_pos)
@@ -351,7 +352,9 @@ class DiffHandler(Handler):
             self.message = sanitize(_('Bad regex: {}').format(query[1:]))
             self.cmd.bell()
         else:
-            if not self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols):
+            if self.current_search(self.diff_lines, self.margin_size, self.screen_size.cols):
+                self.scroll_to_next_match(include_current=True)
+            else:
                 self.state = MESSAGE
                 self.message = sanitize(_('No matches found'))
                 self.cmd.bell()
