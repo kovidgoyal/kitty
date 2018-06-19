@@ -39,7 +39,7 @@ def safe_print(*a, **k):
 
 def log_error(*a, **k):
     try:
-        msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '\n')
+        msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '')
         log_error_string(msg.replace('\0', ''))
     except Exception:
         pass
