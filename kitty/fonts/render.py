@@ -15,6 +15,7 @@ from kitty.fast_data_types import (
     test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
+from kitty.utils import log_error
 
 if is_macos:
     from .core_text import get_font_files, font_for_family
@@ -42,7 +43,26 @@ def descriptor_for_idx(idx):
     return current_faces[idx]
 
 
-def set_font_family(opts=None, override_font_size=None):
+def dump_faces(ftypes, indices):
+    def face_str(f):
+        f = f[0]
+        if is_macos:
+            return f
+        return '{}:{}'.format(f['path'], f['index'])
+
+    log_error('Preloaded font faces:')
+    log_error('normal face:', face_str(current_faces[0]))
+    for ftype in ftypes:
+        if indices[ftype]:
+            log_error(ftype, 'face:', face_str(current_faces[indices[ftype]]))
+    si_faces = current_faces[max(indices.values())+1:]
+    if si_faces:
+        log_error('Symbol map faces:')
+        for face in si_faces:
+            log_error(face_str(face))
+
+
+def set_font_family(opts=None, override_font_size=None, debug_font_matching=False):
     global current_faces
     opts = opts or defaults
     sz = override_font_size or opts.font_size
@@ -57,6 +77,8 @@ def set_font_family(opts=None, override_font_size=None):
     before = len(current_faces)
     sm = create_symbol_map(opts)
     num_symbol_fonts = len(current_faces) - before
+    if debug_font_matching:
+        dump_faces(ftypes, indices)
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,

@@ -124,7 +124,7 @@ def _run_app(opts, args):
 def run_app(opts, args):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
-    set_font_family(opts)
+    set_font_family(opts, debug_font_matching=args.debug_font_fallback)
     try:
         _run_app(opts, args)
     finally:
