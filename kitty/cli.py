@@ -44,7 +44,7 @@ condition=not is_macos
 Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
 
 
---title
+--title -T
 Set the window title. This will override any title set by the program running inside kitty. So
 only use this if you are running a program that does not set titles.
 
