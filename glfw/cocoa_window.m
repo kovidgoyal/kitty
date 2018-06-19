@@ -45,6 +45,7 @@
  #define NSEventModifierFlagShift NSShiftKeyMask
  #define NSEventModifierFlagCapsLock NSAlphaShiftKeyMask
  #define NSEventModifierFlagDeviceIndependentFlagsMask NSDeviceIndependentModifierFlagsMask
+ #define NSEventModifierFlagNumericPad NSNumericPadKeyMask
  #define NSEventMaskAny NSAnyEventMask
  #define NSEventTypeApplicationDefined NSApplicationDefined
  #define NSEventTypeKeyUp NSKeyUp
