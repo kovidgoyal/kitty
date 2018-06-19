@@ -515,6 +515,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 void
 destroy_os_window(OSWindow *w) {
     if (w->handle) {
+        // Ensure mouse cursor is visible and reset to default shape, needed on macOS
+        show_mouse_cursor(w->handle);
+        glfwSetCursor(w->handle, NULL);
         glfwDestroyWindow(w->handle);
         if (current_os_window_ctx == w->handle) current_os_window_ctx = NULL;
     }
