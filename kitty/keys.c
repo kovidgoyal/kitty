@@ -117,13 +117,10 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
         bool special = false;
-        if (qkey != UINT8_MAX) {
-            qkey = SPECIAL_INDEX(qkey);
-            special = needs_special_handling[qkey];
-        }
-        /* printf("key: %s mods: %d special: %d\n", key_name(lkey), mods, special); */
+
+        special = needs_special_sym_handling[SPECIAL_SYM_INDEX(text, mods)];
         if (special) {
-            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", key, scancode, action, mods);
+            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key_sym", "iiiis", key, scancode, action, mods, text);
             if (ret == NULL) { PyErr_Print(); }
             else {
                 bool consumed = ret == Py_True;
@@ -131,9 +128,14 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
                 if (consumed) return;
             }
         }
-        special = needs_special_sym_handling[SPECIAL_SYM_INDEX(text, mods)];
+
+        if (qkey != UINT8_MAX) {
+            qkey = SPECIAL_INDEX(qkey);
+            special = needs_special_handling[qkey];
+        }
+        /* printf("key: %s mods: %d special: %d\n", key_name(lkey), mods, special); */
         if (special) {
-            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key_sym", "iiiis", key, scancode, action, mods, text);
+            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", key, scancode, action, mods);
             if (ret == NULL) { PyErr_Print(); }
             else {
                 bool consumed = ret == Py_True;

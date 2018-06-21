@@ -34,6 +34,7 @@ named_keys = {
 
 named_syms = {
     "space": " ",
+    "plus": "+"
 }
 
 
