@@ -438,7 +438,26 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
             else glfw_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
-            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & xkb->modifiers) == 0) xkb_state_key_get_utf8(xkb->state, code_for_sym, text, sizeof(text));
+
+            //if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & xkb->modifiers) == 0)
+            #define XKB_MOD_SHIFT 1
+            #define XKB_MOD_CONTROL 4
+
+            // if Shift and Control are pressed, we want to ignore Control for the evaluation of the text-symbol
+            xkb_mod_mask_t mods_depressed = xkb_state_serialize_mods(xkb->state, XKB_STATE_MODS_DEPRESSED);
+            if((mods_depressed & XKB_MOD_SHIFT) && (mods_depressed & XKB_MOD_CONTROL)) {
+                xkb_mod_mask_t mods_latched = xkb_state_serialize_mods(xkb->state, XKB_STATE_MODS_LATCHED);
+                xkb_mod_mask_t mods_locked = xkb_state_serialize_mods(xkb->state, XKB_STATE_MODS_LOCKED);
+                xkb_layout_index_t layout_depressed = xkb_state_serialize_layout(xkb->state, XKB_STATE_LAYOUT_DEPRESSED);
+                xkb_layout_index_t layout_latched = xkb_state_serialize_layout(xkb->state, XKB_STATE_LAYOUT_LATCHED);
+                xkb_layout_index_t layout_locked = xkb_state_serialize_layout(xkb->state, XKB_STATE_LAYOUT_LOCKED);
+                xkb_state_update_mask(xkb->state, mods_depressed & ~XKB_MOD_CONTROL, mods_latched, mods_locked, layout_depressed, layout_latched, layout_locked);
+                xkb_state_key_get_utf8(xkb->state, code_for_sym, text, sizeof(text));
+                xkb_state_update_mask(xkb->state, mods_depressed, mods_latched, mods_locked, layout_depressed, layout_latched, layout_locked);
+            }
+            else {
+                xkb_state_key_get_utf8(xkb->state, code_for_sym, text, sizeof(text));
+            }
             text_type = "text";
         }
         if ((1 <= text[0] && text[0] <= 31) || text[0] == 127) text[0] = 0;  // dont send text for ascii control codes
@@ -451,9 +470,10 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             glfw_sym = default_syms[0];
             glfw_keycode = glfw_key_for_sym(glfw_sym);
         }
-        debug("%sglfw_fallback_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
+        debug("%sglfw_fallback_key: %s ", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
     } else {
-        debug("%sglfw_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
+        debug("%sglfw_key: %s ", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
     }
+    debug("text: '%s'\n", text);
     _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, xkb->modifiers, text, 0);
 }

@@ -32,14 +32,21 @@ named_keys = {
     '`': 'GRAVE_ACCENT'
 }
 
+named_syms = {
+    "space": " ",
+}
 
-def parse_shortcut(sc):
+def parse_shortcut(sc, is_sym):
     parts = sc.split('+')
     mods = parse_mods(parts[:-1], sc)
     if mods is None:
         return None, None
-    key = parts[-1].upper()
-    key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
+    key = parts[-1]
+    if is_sym:
+        key = named_syms.get(key, key)
+    else:
+        key = key.upper()
+        key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     if key is not None:
         return mods, key
     return mods, None
@@ -140,18 +147,19 @@ sequence_sep = '>'
 
 class KeyDefinition:
 
-    def __init__(self, is_sequence, action, mods, key, rest=()):
+    def __init__(self, is_sequence, action, mods, key, rest=(), is_sym=False):
         self.is_sequence = is_sequence
         self.action = action
         self.trigger = mods, key
         self.rest = rest
+        self.is_sym = is_sym
 
     def resolve(self, kitty_mod):
         self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1]
         self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), key) for mods, key in self.rest)
 
 
-def parse_key(val, key_definitions):
+def parse_key(val, key_definitions, is_sym=False):
     sc, action = val.partition(' ')[::2]
     sc, action = sc.strip().strip(sequence_sep), action.strip()
     if not sc or not action:
@@ -161,7 +169,7 @@ def parse_key(val, key_definitions):
         trigger = None
         rest = []
         for part in sc.split(sequence_sep):
-            mods, key = parse_shortcut(part)
+            mods, key = parse_shortcut(part, is_sym)
             if key is None:
                 if mods is not None:
                     log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
@@ -172,7 +180,7 @@ def parse_key(val, key_definitions):
                 rest.append((mods, key))
         rest = tuple(rest)
     else:
-        mods, key = parse_shortcut(sc)
+        mods, key = parse_shortcut(sc, is_sym)
         if key is None:
             if mods is not None:
                 log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
@@ -186,9 +194,9 @@ def parse_key(val, key_definitions):
         if paction is not None:
             all_key_actions.add(paction.func)
             if is_sequence:
-                key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], rest))
+                key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], rest, is_sym=is_sym))
             else:
-                key_definitions.append(KeyDefinition(False, paction, mods, key))
+                key_definitions.append(KeyDefinition(False, paction, mods, key, is_sym=is_sym))
 
 
 def parse_symbol_map(val):
@@ -247,6 +255,9 @@ def special_handling(key, val, ans):
     if key == 'map':
         parse_key(val, ans['key_definitions'])
         return True
+    if key == 'mapsym':
+        parse_key(val, ans['key_definitions'], is_sym=True)
+        return True
     if key == 'symbol_map':
         ans['symbol_map'].update(parse_symbol_map(val))
         return True
@@ -264,7 +275,7 @@ defaults = None
 
 
 def parse_config(lines, check_keys=True):
-    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': []}
+    ans = {'symbol_map': {}, 'keymap': {}, 'keymap_sym': {}, 'sequence_map': {}, 'sequence_map_sym':{}, 'key_definitions': []}
     parse_config_base(
         lines,
         defaults,
@@ -414,27 +425,37 @@ def finalize_keys(opts):
     for d in defns:
         d.resolve(opts.kitty_mod)
     keymap = {}
+    keymap_sym = {}
     sequence_map = {}
+    sequence_map_sym = {}
 
     for defn in defns:
+        if defn.is_sym:
+            km = keymap_sym
+            sm = sequence_map_sym
+        else:
+            km = keymap
+            sm = sequence_map
         is_no_op = defn.action.func in no_op_actions
         if defn.is_sequence:
-            keymap.pop(defn.trigger, None)
-            s = sequence_map.setdefault(defn.trigger, {})
+            km.pop(defn.trigger, None)
+            s = sm.setdefault(defn.trigger, {})
             if is_no_op:
                 s.pop(defn.rest, None)
                 if not s:
-                    del sequence_map[defn.trigger]
+                    del sm[defn.trigger]
             else:
                 s[defn.rest] = defn.action
         else:
-            sequence_map.pop(defn.trigger, None)
+            sm.pop(defn.trigger, None)
             if is_no_op:
-                keymap.pop(defn.trigger, None)
+                km.pop(defn.trigger, None)
             else:
-                keymap[defn.trigger] = defn.action
+                km[defn.trigger] = defn.action
     opts.keymap = keymap
+    opts.keymap_sym = keymap_sym
     opts.sequence_map = sequence_map
+    opts.sequence_map_sym = sequence_map_sym
 
 
 def load_config(*paths, overrides=None):
