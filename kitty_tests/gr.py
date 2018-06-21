@@ -49,24 +49,24 @@ def display_png_file(path):
 
 
 def main():
+    photo = sys.argv[-1]
+    base = os.path.dirname(os.path.abspath(__file__))
+    if not photo.lower().endswith('.png'):
+        raise SystemExit('Must specify a PNG file to display')
     clear_screen()
     display(b'\xdd\xdd\xdd\xff', 1, 1, 0, 0, -10, 40, 20)
-    display(open('logo/kitty.rgba', 'rb').read(), 256, 256, 0, 5, -9)
+    display(open(os.path.join(base, '../logo/kitty.rgba'), 'rb').read(), 256, 256, 0, 5, -9)
     display(b'\0\0\0\xaa', 1, 1, 0, 7, -8, 40, 3)
     move_cursor(5, 8)
     print('kitty is \033[3m\033[32mawesome\033[m!')
     move_cursor(0, 21)
-    print('Lenna...')
-    display_png_file('kitty_tests/Lenna.png')
+    print('Photo...')
+    display_png_file(photo)
     try:
-        try:
-            raw_input()
-        except NameError:
-            input()
+        input()
     except (EOFError, KeyboardInterrupt):
         pass
 
 
 if __name__ == '__main__':
-    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
     main()
