@@ -36,6 +36,7 @@ named_syms = {
     "space": " ",
 }
 
+
 def parse_shortcut(sc, is_sym):
     parts = sc.split('+')
     mods = parse_mods(parts[:-1], sc)
@@ -275,7 +276,7 @@ defaults = None
 
 
 def parse_config(lines, check_keys=True):
-    ans = {'symbol_map': {}, 'keymap': {}, 'keymap_sym': {}, 'sequence_map': {}, 'sequence_map_sym':{}, 'key_definitions': []}
+    ans = {'symbol_map': {}, 'keymap': {}, 'keymap_sym': {}, 'sequence_map': {}, 'sequence_map_sym': {}, 'key_definitions': []}
     parse_config_base(
         lines,
         defaults,
