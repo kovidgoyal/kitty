@@ -92,7 +92,8 @@ On Linux you can also use XKB key names to bind keys that are not supported by
 GLFW. See :link:`XKB keys
 <https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h>`
 for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
-prefix.
+prefix. Note that you should only use an XKB key name for keys that are not present
+in the list of GLFW keys.
 
 You can use the special action :code:`no_op` to unmap a keyboard shortcut that is
 assigned in the default configuration.
