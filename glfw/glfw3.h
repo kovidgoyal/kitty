@@ -1057,6 +1057,7 @@ extern "C" {
 /*! @addtogroup init
  *  @{ */
 #define GLFW_JOYSTICK_HAT_BUTTONS   0x00050001
+#define GLFW_DEBUG_KEYBOARD         0x00050002
 
 #define GLFW_COCOA_CHDIR_RESOURCES  0x00051001
 #define GLFW_COCOA_MENUBAR          0x00051002

@@ -51,6 +51,7 @@ static GLFWerrorfun _glfwErrorCallback;
 static _GLFWinitconfig _glfwInitHints =
 {
     GLFW_TRUE,      // hat buttons
+    GLFW_FALSE,     // debug keyboard
     {
         GLFW_TRUE,  // macOS menu bar
         GLFW_TRUE   // macOS bundle chdir
@@ -255,6 +256,9 @@ GLFWAPI void glfwInitHint(int hint, int value)
         case GLFW_JOYSTICK_HAT_BUTTONS:
             _glfwInitHints.hatButtons = value;
             return;
+        case GLFW_DEBUG_KEYBOARD:
+            _glfwInitHints.debugKeyboard = value;
+            return;
         case GLFW_COCOA_CHDIR_RESOURCES:
             _glfwInitHints.ns.chdir = value;
             return;
@@ -311,4 +315,3 @@ GLFWAPI GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cbfun)
     _GLFW_SWAP_POINTERS(_glfwErrorCallback, cbfun);
     return cbfun;
 }
-

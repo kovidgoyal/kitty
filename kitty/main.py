@@ -71,12 +71,8 @@ def load_all_shaders(semi_transparent=0):
 
 def init_glfw(debug_keyboard=False):
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland else 'x11')
-    if debug_keyboard:
-        os.environ['GLFW_DEBUG_KEYBOARD'] = '1'
-    if not glfw_init(glfw_path(glfw_module)):
+    if not glfw_init(glfw_path(glfw_module), debug_keyboard):
         raise SystemExit('GLFW initialization failed')
-    if debug_keyboard:
-        os.environ.pop('GLFW_DEBUG_KEYBOARD')
     return glfw_module
 
 

@@ -121,7 +121,6 @@ typedef struct _GLFWlibraryNS
 
     char                keyName[64];
     char                text[256];
-    GLFWbool            debug_keyboard;
     short int           keycodes[256];
     short int           scancodes[GLFW_KEY_LAST + 1];
     char*               clipboardString;

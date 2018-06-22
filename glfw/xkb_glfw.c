@@ -30,8 +30,7 @@
 #include "internal.h"
 #include "xkb_glfw.h"
 
-static GLFWbool debug_keyboard = GLFW_FALSE;
-#define debug(...) if (debug_keyboard) printf(__VA_ARGS__);
+#define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
 #define map_key(key) { \
     switch(key) { \
@@ -206,7 +205,6 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
 GLFWbool
 glfw_xkb_create_context(_GLFWXKBData *xkb) {
     xkb->context = xkb_context_new(0);
-    debug_keyboard = getenv("GLFW_DEBUG_KEYBOARD") != NULL;
     if (!xkb->context)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,

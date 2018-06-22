@@ -242,6 +242,7 @@ struct _GLFWerror
 struct _GLFWinitconfig
 {
     GLFWbool      hatButtons;
+    GLFWbool      debugKeyboard;
     struct {
         GLFWbool  menubar;
         GLFWbool  chdir;

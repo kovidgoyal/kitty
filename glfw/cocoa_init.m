@@ -69,7 +69,6 @@ static void changeToResourcesDirectory(void)
 static void createKeyTables(void)
 {
     int scancode;
-    _glfw.ns.debug_keyboard = getenv("GLFW_DEBUG_KEYBOARD") != NULL;
 
     memset(_glfw.ns.keycodes, -1, sizeof(_glfw.ns.keycodes));
     memset(_glfw.ns.scancodes, -1, sizeof(_glfw.ns.scancodes));

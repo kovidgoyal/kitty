@@ -558,10 +558,12 @@ error_callback(int error, const char* description) {
 PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
-    if (!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    int debug_keyboard = 0;
+    if (!PyArg_ParseTuple(args, "s|p", &path, &debug_keyboard)) return NULL;
     const char* err = load_glfw(path);
     if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);
+    glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
 #ifdef __APPLE__
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
     glfwInitHint(GLFW_COCOA_MENUBAR, 0);

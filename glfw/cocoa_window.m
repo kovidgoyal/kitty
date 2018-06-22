@@ -209,7 +209,7 @@ static int translateFlags(NSUInteger flags)
     return mods;
 }
 
-#define debug_key(...) if (_glfw.ns.debug_keyboard) NSLog(__VA_ARGS__)
+#define debug_key(...) if (_glfw.hints.init.debugKeyboard) NSLog(__VA_ARGS__)
 
 static inline const char*
 format_mods(int mods) {
