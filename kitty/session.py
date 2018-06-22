@@ -124,6 +124,8 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
     ans.tabs[-1].layout = current_layout
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
+        if args.hold:
+            cmd = ['kitty', '+hold'] + cmd
         from kitty.tabs import SpecialWindow
         k = {'cwd_from': cwd_from}
         if respect_cwd:

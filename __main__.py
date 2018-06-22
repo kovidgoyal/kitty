@@ -26,6 +26,13 @@ def runpy(args):
     exec(args[1])
 
 
+def hold(args):
+    import subprocess
+    ret = subprocess.Popen(args[1:]).wait()
+    sys.stdin.read()
+    raise SystemExit(ret)
+
+
 def launch(args):
     import runpy
     sys.argv = args[1:]
@@ -61,6 +68,7 @@ entry_points = {
     '+': namespaced,
 }
 namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
+namespaced_entry_points['hold'] = hold
 
 
 def setup_openssl_environment():

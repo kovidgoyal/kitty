@@ -76,6 +76,12 @@ Path to a file containing the startup :italic:`session` (tabs, windows, layout, 
 See the README file for details and an example.
 
 
+--hold
+type=bool-set
+Remain open after child process exits. Note that this only affects the first
+window. You can quit by either using the close window shortcut or :kbd:`Ctrl+d`.
+
+
 --single-instance -1
 type=bool-set
 If specified only a single instance of :italic:`{appname}` will run. New invocations will
@@ -210,6 +216,10 @@ def option(x):
 
 
 def code(x):
+    return x
+
+
+def kbd(x):
     return x
 
 
