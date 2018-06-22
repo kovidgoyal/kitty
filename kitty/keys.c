@@ -81,6 +81,26 @@ is_ascii_control_char(char c) {
     return c == 0 || (1 <= c && c <= 31) || c == 127;
 }
 
+// Indexing in the needs_special_sym_handling_tab does not necessarily have to be
+// unique. Python will take care of false positives in dispatch_special_key_sym
+#define SPECIAL_SYM_HANDLING_TAB_SIZE (128*16)
+static bool needs_special_sym_handling[SPECIAL_SYM_HANDLING_TAB_SIZE] = {0};
+static inline uint64_t SPECIAL_SYM_INDEX(const char* sym_text, int mods) {
+    uint64_t t = 0;
+    for(const char* c = sym_text; *c; c++)
+    {
+        t <<= 8;
+        t += *c;
+    }
+    return ((t << 8) + mods) % SPECIAL_SYM_HANDLING_TAB_SIZE;
+}
+
+void
+set_special_key_sym_combo(const char* sym_text, int mods) {
+    uint64_t t = SPECIAL_SYM_INDEX(sym_text, mods);
+    needs_special_sym_handling[t] = true;
+}
+
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
@@ -89,7 +109,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
         if (
             action != GLFW_RELEASE &&
             key != GLFW_KEY_LEFT_SHIFT && key != GLFW_KEY_RIGHT_SHIFT && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_RIGHT_ALT && key != GLFW_KEY_LEFT_CONTROL && key != GLFW_KEY_RIGHT_CONTROL
-        ) call_boss(process_sequence, "iiii", key, scancode, action, mods);
+        ) call_boss(process_sequence, "iiiis", key, scancode, action, mods, text);
         return;
     }
     Screen *screen = w->render_data.screen;
@@ -97,6 +117,18 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
         bool special = false;
+
+        special = needs_special_sym_handling[SPECIAL_SYM_INDEX(text, mods)];
+        if (special) {
+            PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key_sym", "iiiis", key, scancode, action, mods, text);
+            if (ret == NULL) { PyErr_Print(); }
+            else {
+                bool consumed = ret == Py_True;
+                Py_DECREF(ret);
+                if (consumed) return;
+            }
+        }
+
         if (qkey != UINT8_MAX) {
             qkey = SPECIAL_INDEX(qkey);
             special = needs_special_handling[qkey];

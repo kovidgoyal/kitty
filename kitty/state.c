@@ -330,6 +330,16 @@ set_special_keys(PyObject *dict) {
     }}
 }
 
+static inline void
+set_special_keys_sym(PyObject *dict) {
+    dict_iter(dict) {
+        if (!PyTuple_Check(key)) { PyErr_SetString(PyExc_TypeError, "dict keys for special keys must be tuples"); return; }
+        int mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 0));
+        const char* sym_text = PyUnicode_AS_DATA(PyTuple_GET_ITEM(key, 1));
+        set_special_key_sym_combo(sym_text, mods);
+    }}
+}
+
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
 }
@@ -400,6 +410,11 @@ PYWRAP1(set_options) {
     GA(keymap); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
     GA(sequence_map); set_special_keys(ret);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+
+    GA(keymap_sym); set_special_keys_sym(ret);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    GA(sequence_map_sym); set_special_keys_sym(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
 #define read_adjust(name) { \

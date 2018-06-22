@@ -98,8 +98,10 @@ class Boss:
         self.opts, self.args = opts, args
         startup_session = create_session(opts, args, default_session=opts.startup_session)
         self.keymap = self.opts.keymap.copy()
+        self.keymap_sym = self.opts.keymap_sym.copy()
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
+            self.keymap_sym.pop(new_os_window_trigger, None)
         self.add_os_window(startup_session, os_window_id=os_window_id)
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
@@ -430,14 +432,27 @@ class Boss:
             self.current_key_press_info = key, scancode, action, mods
             return self.dispatch_action(key_action)
 
-    def process_sequence(self, key, scancode, action, mods):
+    def dispatch_special_key_sym(self, key, scancode, action, mods, text):
+        # Handles shortcuts, return True if the key was consumed
+        key_action = get_shortcut(self.keymap_sym, mods, text, scancode)
+        if key_action is None:
+            sequences = get_shortcut(self.opts.sequence_map_sym, mods, text, scancode)
+            if sequences:
+                self.pending_sequences = sequences
+                set_in_sequence_mode(True)
+                return True
+        else:
+            self.current_key_press_info = key, scancode, action, mods
+            return self.dispatch_action(key_action)
+
+    def process_sequence(self, key, scancode, action, mods, text):
         if not self.pending_sequences:
             set_in_sequence_mode(False)
 
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
-            if shortcut_matches(seq[0], mods, key, scancode):
+            if shortcut_matches(seq[0], mods, key, scancode) or shortcut_matches(seq[0], mods, text, scancode):
                 seq = seq[1:]
                 if seq:
                     remaining[seq] = key_action
