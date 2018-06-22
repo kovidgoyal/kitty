@@ -223,6 +223,7 @@ def _main():
     args, rest = parse_args(args=args)
     args.args = rest
     if args.debug_config:
+        init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
         create_opts(args, debug_config=True)
         return
     if getattr(args, 'detach', False):
