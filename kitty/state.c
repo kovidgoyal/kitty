@@ -325,8 +325,9 @@ set_special_keys(PyObject *dict) {
     dict_iter(dict) {
         if (!PyTuple_Check(key)) { PyErr_SetString(PyExc_TypeError, "dict keys for special keys must be tuples"); return; }
         int mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 0));
-        int glfw_key = PyLong_AsLong(PyTuple_GET_ITEM(key, 1));
-        set_special_key_combo(glfw_key, mods);
+        bool is_native = PyTuple_GET_ITEM(key, 1) == Py_True;
+        int glfw_key = PyLong_AsLong(PyTuple_GET_ITEM(key, 2));
+        set_special_key_combo(glfw_key, mods, is_native);
     }}
 }
 

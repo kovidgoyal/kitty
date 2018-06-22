@@ -40,9 +40,11 @@ def parse_shortcut(sc):
         return None, None
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
-    if key is not None:
-        return mods, key
-    return mods, None
+    is_native = False
+    if key is None:
+        key = defines.key_for_native_key_name(parts[-1])
+        is_native = key is not None
+    return mods, is_native, key
 
 
 KeyAction = namedtuple('KeyAction', 'func args')
@@ -140,15 +142,15 @@ sequence_sep = '>'
 
 class KeyDefinition:
 
-    def __init__(self, is_sequence, action, mods, key, rest=()):
+    def __init__(self, is_sequence, action, mods, is_native, key, rest=()):
         self.is_sequence = is_sequence
         self.action = action
-        self.trigger = mods, key
+        self.trigger = mods, is_native, key
         self.rest = rest
 
     def resolve(self, kitty_mod):
-        self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1]
-        self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), key) for mods, key in self.rest)
+        self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1], self.trigger[2]
+        self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), is_native, key) for mods, is_native, key in self.rest)
 
 
 def parse_key(val, key_definitions):
@@ -161,18 +163,18 @@ def parse_key(val, key_definitions):
         trigger = None
         rest = []
         for part in sc.split(sequence_sep):
-            mods, key = parse_shortcut(part)
+            mods, is_native, key = parse_shortcut(part)
             if key is None:
                 if mods is not None:
                     log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
                 return
             if trigger is None:
-                trigger = mods, key
+                trigger = mods, is_native, key
             else:
-                rest.append((mods, key))
+                rest.append((mods, is_native, key))
         rest = tuple(rest)
     else:
-        mods, key = parse_shortcut(sc)
+        mods, is_native, key = parse_shortcut(sc)
         if key is None:
             if mods is not None:
                 log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
@@ -186,9 +188,9 @@ def parse_key(val, key_definitions):
         if paction is not None:
             all_key_actions.add(paction.func)
             if is_sequence:
-                key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], rest))
+                key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
             else:
-                key_definitions.append(KeyDefinition(False, paction, mods, key))
+                key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
 
 
 def parse_symbol_map(val):

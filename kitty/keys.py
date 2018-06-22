@@ -8,6 +8,7 @@ from . import fast_data_types as defines
 from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes
 from .utils import base64_encode
+from .constants import is_macos
 
 
 def modify_key_bytes(keybytes, amt):
@@ -271,11 +272,17 @@ def interpret_key_event(key, scancode, mods, window, action):
 
 
 def get_shortcut(keymap, mods, key, scancode):
-    return keymap.get((mods & 0b1111, key))
+    mods &= 0b1111
+    ans = keymap.get((mods, False, key))
+    if ans is None and not is_macos:
+        ans = keymap.get((mods, True, scancode))
+    return ans
 
 
 def shortcut_matches(s, mods, key, scancode):
-    return s[0] & 0b1111 == mods & 0b1111 and s[1] == key
+    mods &= 0b1111
+    q = scancode if s[1] else key
+    return s[0] & 0b1111 == mods & 0b1111 and s[2] == q
 
 
 def generate_key_table():

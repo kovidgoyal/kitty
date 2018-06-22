@@ -26,12 +26,26 @@ key_to_bytes(int glfw_key, bool smkx, bool extended, int mods, int action) {
 #define SPECIAL_INDEX(key) ((key & 0x7f) | ( (mods & 0xF) << 7))
 #define IS_ALT_MODS(mods) (mods == GLFW_MOD_ALT || mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))
 
+typedef struct { int mods, scancode; } NativeKey;
+static NativeKey *native_special_keys = NULL;
+static size_t native_special_keys_capacity = 0, native_special_keys_count = 0;
+
 void
-set_special_key_combo(int glfw_key, int mods) {
-    uint16_t key = key_map[glfw_key];
-    if (key != UINT8_MAX) {
-        key = SPECIAL_INDEX(key);
-        needs_special_handling[key] = true;
+set_special_key_combo(int glfw_key, int mods, bool is_native) {
+    if (is_native) {
+        if (native_special_keys_count >= native_special_keys_capacity) {
+            native_special_keys_capacity = MAX(128, 2 * native_special_keys_capacity);
+            native_special_keys = realloc(native_special_keys, sizeof(native_special_keys[0]) * native_special_keys_capacity);
+            if (native_special_keys == NULL) fatal("Out of memory");
+        }
+        native_special_keys[native_special_keys_count].mods = mods;
+        native_special_keys[native_special_keys_count++].scancode = glfw_key;
+    } else {
+        uint16_t key = key_map[glfw_key];
+        if (key != UINT8_MAX) {
+            key = SPECIAL_INDEX(key);
+            needs_special_handling[key] = true;
+        }
     }
 }
 
@@ -81,6 +95,24 @@ is_ascii_control_char(char c) {
     return c == 0 || (1 <= c && c <= 31) || c == 127;
 }
 
+static inline bool
+check_if_special(int key, int mods, int scancode) {
+    uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
+    bool special = false;
+    if (qkey != UINT8_MAX) {
+        qkey = SPECIAL_INDEX(qkey);
+        special = needs_special_handling[qkey];
+    }
+#ifdef __APPLE__
+    (void)scancode;
+#else
+        for (size_t i = 0; !special && i < native_special_keys_count; i++) {
+            if (scancode == native_special_keys[i].scancode && mods == native_special_keys[i].mods) special = true;
+        }
+#endif
+    return special;
+}
+
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
     Window *w = active_window();
@@ -95,14 +127,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     Screen *screen = w->render_data.screen;
     bool has_text = text && !is_ascii_control_char(text[0]);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        uint16_t qkey = (0 <= key && key < (ssize_t)arraysz(key_map)) ? key_map[key] : UINT8_MAX;
-        bool special = false;
-        if (qkey != UINT8_MAX) {
-            qkey = SPECIAL_INDEX(qkey);
-            special = needs_special_handling[qkey];
-        }
-        /* printf("key: %s mods: %d special: %d\n", key_name(lkey), mods, special); */
-        if (special) {
+        if (check_if_special(key, mods, scancode)) {
             PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", key, scancode, action, mods);
             if (ret == NULL) { PyErr_Print(); }
             else {
@@ -149,13 +174,38 @@ PYWRAP1(key_to_bytes) {
     return Py_BuildValue("y#", ans + 1, *ans);
 }
 
+PYWRAP1(key_for_native_key_name) {
+    const char *name;
+    int case_sensitive = 0;
+    PA("s|p", &name, case_sensitive);
+#ifdef __APPLE__
+    Py_RETURN_NONE;
+#else
+    if (glfwGetXKBScancode) {  // if this function is called before GLFW is initialized glfwGetXKBScancode will be NULL
+        int scancode = glfwGetXKBScancode(name, case_sensitive);
+        if (scancode) return Py_BuildValue("i", scancode);
+    }
+    Py_RETURN_NONE;
+#endif
+}
+
 static PyMethodDef module_methods[] = {
     M(key_to_bytes, METH_VARARGS),
+    M(key_for_native_key_name, METH_VARARGS),
     {0}
 };
+
+void
+finalize(void) {
+    free(native_special_keys);
+}
 
 bool
 init_keys(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (Py_AtExit(finalize) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the keys at exit handler");
+        return false;
+    }
     return true;
 }

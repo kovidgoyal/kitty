@@ -69,7 +69,7 @@ def load_all_shaders(semi_transparent=0):
     load_borders_program()
 
 
-def init_graphics(debug_keyboard=False):
+def init_glfw(debug_keyboard=False):
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland else 'x11')
     if debug_keyboard:
         os.environ['GLFW_DEBUG_KEYBOARD'] = '1'
@@ -95,7 +95,7 @@ def get_new_os_window_trigger(opts):
             from .fast_data_types import cocoa_set_new_window_trigger
             new_os_window_shortcuts.sort(key=prefer_cmd_shortcuts, reverse=True)
             for candidate in new_os_window_shortcuts:
-                if cocoa_set_new_window_trigger(*candidate):
+                if cocoa_set_new_window_trigger(candidate[0], candidate[2]):
                     new_os_window_trigger = candidate
                     break
     return new_os_window_trigger
@@ -240,10 +240,10 @@ def _main():
         if not is_first:
             talk_to_instance(args)
             return
+    init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
     opts = create_opts(args)
     if opts.editor != '.':
         os.environ['EDITOR'] = opts.editor
-    init_graphics(args.debug_keyboard)
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies

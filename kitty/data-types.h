@@ -286,7 +286,7 @@ void focus_in_event();
 void wakeup_io_loop(bool);
 void scroll_event(double, double);
 void fake_scroll(int, bool);
-void set_special_key_combo(int glfw_key, int mods);
+void set_special_key_combo(int glfw_key, int mods, bool is_native);
 void on_key_input(int key, int scancode, int action, int mods, const char*, int);
 void request_window_attention(id_type, bool);
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);

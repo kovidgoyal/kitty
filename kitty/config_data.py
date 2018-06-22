@@ -83,8 +83,16 @@ as color16 to color255.''')
     'shortcuts': [
         _('Keyboard shortcuts'),
         _('''\
-For a list of key names, see: :link:`GLFW keys <http://www.glfw.org/docs/latest/group__keys.html>`
-For a list of modifier names, see: :link:`GLFW mods <http://www.glfw.org/docs/latest/group__mods.html>`
+For a list of key names, see: :link:`GLFW keys
+<http://www.glfw.org/docs/latest/group__keys.html>`. The name to use is the part
+after the :code:`GLFW_KEY_` prefix. For a list of modifier names, see:
+:link:`GLFW mods <http://www.glfw.org/docs/latest/group__mods.html>`
+
+On Linux you can also use XKB key names to bind keys that are not supported by
+GLFW. See :link:`XKB keys
+<https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h>`
+for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
+prefix.
 
 You can use the special action :code:`no_op` to unmap a keyboard shortcut that is
 assigned in the default configuration.
