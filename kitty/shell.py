@@ -84,8 +84,10 @@ class Completer:
             return self.matches[state]
 
     def __enter__(self):
-        if os.path.exists(self.history_path):
+        try:
             readline.read_history_file(self.history_path)
+        except Exception:
+            pass
         readline.set_completer(self.complete)
         delims = readline.get_completer_delims()
         readline.set_completer_delims(delims.replace('-', ''))
