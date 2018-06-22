@@ -208,6 +208,7 @@ def generate_wrappers(glfw_header, glfw_native_header):
     int32_t glfwGetX11Window(GLFWwindow* window)
     void glfwSetX11SelectionString(const char* string)
     const char* glfwGetX11SelectionString(void)
+    int glfwGetXKBScancode(const char* key_name, int case_sensitive)
 '''.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))

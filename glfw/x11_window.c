@@ -2937,3 +2937,7 @@ GLFWAPI const char* glfwGetX11SelectionString(void)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return getSelectionString(_glfw.x11.PRIMARY);
 }
+
+GLFWAPI int glfwGetXKBScancode(const char* keyName, GLFWbool caseSensitive) {
+    return glfw_xkb_keysym_from_name(keyName, caseSensitive);
+}

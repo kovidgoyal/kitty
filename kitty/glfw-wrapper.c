@@ -371,6 +371,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetX11SelectionString_impl) = dlsym(handle, "glfwGetX11SelectionString");
 
+    *(void **) (&glfwGetXKBScancode_impl) = dlsym(handle, "glfwGetXKBScancode");
+
     return NULL;
 }
 

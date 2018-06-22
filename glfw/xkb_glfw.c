@@ -361,6 +361,10 @@ glfw_xkb_keysym_name(xkb_keysym_t sym) {
     return name;
 }
 
+int
+glfw_xkb_keysym_from_name(const char *name, GLFWbool case_sensitive) {
+    return (int)xkb_keysym_from_name(name, case_sensitive ? XKB_KEYSYM_NO_FLAGS : XKB_KEYSYM_CASE_INSENSITIVE);
+}
 
 static inline const char*
 format_mods(unsigned int mods) {

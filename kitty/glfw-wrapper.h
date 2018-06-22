@@ -1862,4 +1862,8 @@ typedef const char* (*glfwGetX11SelectionString_func)();
 glfwGetX11SelectionString_func glfwGetX11SelectionString_impl;
 #define glfwGetX11SelectionString glfwGetX11SelectionString_impl
 
+typedef int (*glfwGetXKBScancode_func)(const char*, int);
+glfwGetXKBScancode_func glfwGetXKBScancode_impl;
+#define glfwGetXKBScancode glfwGetXKBScancode_impl
+
 const char* load_glfw(const char* path);

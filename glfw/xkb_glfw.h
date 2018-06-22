@@ -83,3 +83,4 @@ GLFWbool glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode);
 const char* glfw_xkb_keysym_name(xkb_keysym_t sym);
 xkb_keysym_t glfw_xkb_sym_for_key(int key);
 void glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action);
+int glfw_xkb_keysym_from_name(const char *name, GLFWbool case_sensitive);
