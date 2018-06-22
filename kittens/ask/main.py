@@ -50,8 +50,10 @@ class HistoryCompleter:
 
     def __enter__(self):
         if self.history_path:
-            if os.path.exists(self.history_path):
+            try:
                 readline.read_history_file(self.history_path)
+            except Exception:
+                pass
             readline.set_completer(self.complete)
         return self
 
