@@ -21,6 +21,22 @@ ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
 WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
 
 
+def kitty_exe():
+    ans = getattr(kitty_exe, 'ans', None)
+    if ans is None:
+        rpath = getattr(sys, 'bundle_exe_dir', None)
+        items = frozenset(os.environ['PATH'].split(os.pathsep))
+        if not rpath:
+            for candidate in items:
+                if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
+                    rpath = candidate
+                    break
+            else:
+                rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
+        ans = kitty_exe.ans = os.path.join(rpath, 'kitty')
+    return ans
+
+
 def _get_config_dir():
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))

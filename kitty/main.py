@@ -12,7 +12,8 @@ from .boss import Boss
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
-    appname, config_dir, glfw_path, is_macos, is_wayland, logo_data_file
+    appname, config_dir, glfw_path, is_macos, is_wayland, kitty_exe,
+    logo_data_file
 )
 from .fast_data_types import (
     GLFW_MOD_SUPER, create_os_window, free_font_data, glfw_init,
@@ -199,14 +200,8 @@ def _main():
             print('Failed to set locale with no LANG, ignoring', file=sys.stderr)
 
     # Ensure kitty is in PATH
-    rpath = getattr(sys, 'bundle_exe_dir', None)
+    rpath = os.path.dirname(kitty_exe())
     items = frozenset(os.environ['PATH'].split(os.pathsep))
-    if not rpath:
-        for candidate in items:
-            if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
-                break
-        else:
-            rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
     if rpath and rpath not in items:
         os.environ['PATH'] += os.pathsep + rpath
 

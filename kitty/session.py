@@ -5,7 +5,7 @@
 import shlex
 
 from .config_data import to_layout_names
-from .constants import shell_path
+from .constants import shell_path, kitty_exe
 from .layout import all_layouts
 from .utils import log_error
 
@@ -125,7 +125,7 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         if args.hold:
-            cmd = ['kitty', '+hold'] + cmd
+            cmd = [kitty_exe(), '+hold'] + cmd
         from kitty.tabs import SpecialWindow
         k = {'cwd_from': cwd_from}
         if respect_cwd:

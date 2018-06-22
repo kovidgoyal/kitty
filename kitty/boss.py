@@ -15,7 +15,7 @@ from .conf.utils import to_cmdline
 from .config import initial_window_size_func, prepare_config_file_for_editing
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    appname, config_dir, set_boss, supports_primary_selection
+    appname, config_dir, kitty_exe, set_boss, supports_primary_selection
 )
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
@@ -561,7 +561,7 @@ class Boss:
         confpath = prepare_config_file_for_editing()
         # On macOS vim fails to handle SIGWINCH if it occurs early, so add a
         # small delay.
-        cmd = ['kitty', '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor() + [confpath]
+        cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor() + [confpath]
         self.new_os_window(*cmd)
 
     def get_output(self, source_window, num_lines=1):
@@ -600,7 +600,7 @@ class Boss:
             copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with')}
             overlay_window = tab.new_special_window(
                 SpecialWindow(
-                    ['kitty', '+runpy', 'from kittens.runner import main; main()'] + args,
+                    [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + args,
                     stdin=data,
                     env={
                         'KITTY_COMMON_OPTS': json.dumps(copts),
@@ -647,7 +647,7 @@ class Boss:
                     break
 
     def kitty_shell(self, window_type):
-        cmd = ['kitty', '@']
+        cmd = [kitty_exe(), '@']
         if window_type == 'tab':
             window = self._new_tab(cmd).active_window
         elif window_type == 'os_window':
