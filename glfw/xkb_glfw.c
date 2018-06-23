@@ -447,15 +447,20 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         if (text[0]) { debug("%s: %s ", text_type, text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
+    GLFWbool is_fallback = GLFW_FALSE;
     if (glfw_keycode == GLFW_KEY_UNKNOWN && !text[0]) {
         int num_default_syms = xkb_state_key_get_syms(xkb->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
             glfw_sym = default_syms[0];
             glfw_keycode = glfw_key_for_sym(glfw_sym);
+            is_fallback = GLFW_TRUE;
         }
-        debug("%sglfw_fallback_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
-    } else {
-        debug("%sglfw_key: %s\n", format_mods(xkb->modifiers), _glfwGetKeyName(glfw_keycode));
     }
+    debug(
+        "%s%s: %s xkb_key_name: %s\n",
+        format_mods(xkb->modifiers),
+        is_fallback ? "glfw_fallback_key" : "glfw_key", _glfwGetKeyName(glfw_keycode),
+        glfw_xkb_keysym_name(glfw_sym)
+    );
     _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, xkb->modifiers, text, 0);
 }
