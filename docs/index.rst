@@ -30,7 +30,7 @@ kitty - the fast, featureful, GPU based terminal emulator
       the window/tab layout, working directories and programs to run on startup.
 
     * Cross-platform: |kitty| works on Linux and macOS, but because it uses only
-      OpenGL for rendering, it should be trivial to port to other platforms.
+      OpenGL for rendering, it should be trivial to port to other Unix-like platforms.
 
     * Allows you to open :ref:`the scrollback buffer <scrollback>` in a
       separate window using arbitrary programs of your choice. This is useful for
