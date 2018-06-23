@@ -164,7 +164,7 @@ static void pointerHandleMotion(void* data,
                                 wl_fixed_t sy)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    const char* cursorName;
+    const char* cursorName = NULL;
 
     if (!window)
         return;
