@@ -530,7 +530,7 @@ def get_text(boss, window, payload):
     if payload['extent'] == 'selection':
         ans = window.text_for_selection()
     else:
-        ans = window.as_text(as_ansi=bool(payload['ansi']), add_history=True)
+        ans = window.as_text(as_ansi=bool(payload['ansi']), add_history=payload['extent'] == 'all')
     return ans
 # }}}
 
