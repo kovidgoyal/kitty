@@ -5,7 +5,7 @@ See :ref:`extended-key-protocol` for more information and `this table in JSON
 format <https://github.com/kovidgoyal/kitty/blob/master/key_encoding.json>`_.
 
 =====================   ======================
-Name                    Encoded representation (base64)
+Name                    Encoded representation
 0                       ``G``
 1                       ``H``
 2                       ``I``
@@ -126,4 +126,3 @@ X                       ``p``
 Y                       ``q``
 Z                       ``r``
 =====================   ======================
-
