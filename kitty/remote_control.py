@@ -58,7 +58,10 @@ class SocketIO:
 
     def __exit__(self, *a):
         import socket
-        self.socket.shutdown(socket.SHUT_RDWR)
+        try:
+            self.socket.shutdown(socket.SHUT_RDWR)
+        except EnvironmentError:
+            pass  # on some OSes such as macOS the socket is already closed at this point
         self.socket.close()
 
     def send(self, data):
