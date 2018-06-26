@@ -83,6 +83,7 @@ class Child:
         if stdin is not None:
             os.close(stdin_read_fd)
             fast_data_types.thread_write(stdin_write_fd, stdin)
+        fcntl.fcntl(self.child_fd, fcntl.F_SETFL, fcntl.fcntl(self.child_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
         return pid
 
     @property
