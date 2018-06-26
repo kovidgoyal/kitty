@@ -60,7 +60,7 @@ just ``kitty``.
 Note for Linux/macOS packagers
 ----------------------------------
 
-The released |kitty| source code is available as a :file:`.tar.xz` tarball from
+The released |kitty| source code is available as a `tarball`_ from
 `the GitHub releases page <https://github.com/kovidgoyal/kitty/releases>`_.
 
 While |kitty| does use python, it is not a traditional python package, so please

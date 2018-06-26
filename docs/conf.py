@@ -85,6 +85,8 @@ pygments_style = 'sphinx'
 
 rst_prolog = '''
 .. |kitty| replace:: *kitty*
+.. |version| replace:: VERSION
+.. _tarball: https://github.com/kovidgoyal/kitty/releases/download/vVERSION/kitty-VERSION.tar.xz
 .. role:: green
 .. role:: italic
 .. role:: bold
@@ -92,7 +94,7 @@ rst_prolog = '''
 .. role:: title
 .. role:: env
 
-'''
+'''.replace('VERSION', str_version)
 
 
 # -- Options for HTML output -------------------------------------------------
