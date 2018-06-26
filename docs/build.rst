@@ -60,24 +60,27 @@ just ``kitty``.
 Note for Linux/macOS packagers
 ----------------------------------
 
-While kitty does use python, it is not a traditional python package, so please
+The released |kitty| source code is available as a :file:`.tar.xz` tarball from
+`the GitHub releases page <https://github.com/kovidgoyal/kitty/releases>`_.
+
+While |kitty| does use python, it is not a traditional python package, so please
 do not install it in site-packages.
 Instead run::
 
     python3 setup.py linux-package
 
-This will install kitty into the directory :file:`linux-package`. You can run kitty
+This will install |kitty| into the directory :file:`linux-package`. You can run |kitty|
 with :file:`linux-package/bin/kitty`.  All the files needed to run kitty will be in
 :file:`linux-package/lib/kitty`. The terminfo file will be installed into
 :file:`linux-package/share/terminfo`. Simply copy these files into :file:`/usr` to install
-kitty. In other words, :file:`linux-package` is the staging area into which kitty is
+|kitty|. In other words, :file:`linux-package` is the staging area into which |kitty| is
 installed. You can choose a different staging area, by passing the ``--prefix``
 argument to :file:`setup.py`.
 
-You should probably split kitty into two packages, :file:`kitty-terminfo` that
+You should probably split |kitty| into two packages, :file:`kitty-terminfo` that
 installs the terminfo file and :file:`kitty` that installs the main program.
 This allows users to install the terminfo file on servers into which they ssh,
-without needing to install all of kitty.
+without needing to install all of |kitty|.
 
 .. note::
         You need a couple of extra dependencies to build linux-package.
@@ -87,5 +90,5 @@ without needing to install all of kitty.
         need :file:`sphinx-build` from the `Sphinx documentation generator
         <http://www.sphinx-doc.org/>`_.
 
-This applies to creating packages for kitty for macOS package managers such as
+This applies to creating packages for |kitty| for macOS package managers such as
 brew or MacPorts as well.
