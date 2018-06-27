@@ -76,8 +76,11 @@ def launch(args):
 def deserialize(output):
     import json
     if output.startswith('OK: '):
-        prefix, sz, rest = output.split(' ', 2)
-        return json.loads(rest[:int(sz)])
+        try:
+            prefix, sz, rest = output.split(' ', 2)
+            return json.loads(rest[:int(sz)])
+        except Exception:
+            raise ValueError('Failed to parse kitten output: {!r}'.format(output))
 
 
 def run_kitten(kitten, run_name='__main__'):
