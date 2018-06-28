@@ -3,6 +3,34 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.11.2 [future]
+------------------------------
+
+- Linux: Allow using XKB key names to bind shortcuts to keys not supported by GLFW (:pull:`665`)
+
+- kitty shell: Ignore failure to read readline history file. Happens if the
+  user migrates their kitty cache directory between systems with incompatible
+  readline implementations.
+
+- macOS: Fix an error in remote control when using --listen-on (:iss:`679`)
+
+- Fix pasting large amounts of text very slow (:iss:`682`)
+
+- Add a :option:`kitty --hold` command line option to stay open after the child process exits (:iss:`667`)
+
+- diff kitten: When triggering a search scroll to the first match automatically
+
+- :option:`kitty --debug-font-fallback` also prints out what basic fonts were matched
+
+- When closing a kitty window reset the mouse cursor to its default shape and ensure it is visible (:iss:`655`).
+
+- Remote control: Speed-up reading of command responses
+
+- Linux installer: Fix installer failing on systems with python < 3.5
+
+- Support "-T" as an alias for "--title" (:pull:`659`)
+
+
 0.11.1 [2018-06-17]
 ------------------------------
 
