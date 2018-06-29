@@ -228,19 +228,28 @@ def parse_kittens_shortcut(sc):
 
 
 def parse_kittens_func_args(action, args_funcs):
-    parts = action.split(' ', 1)
+    parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
         return func, ()
     rest = parts[1]
-    parser = args_funcs.get(func)
-    if parser is not None:
-        try:
-            func, args = parser(func, rest)
-        except Exception:
-            raise ValueError('Unknown key action: {}'.format(action))
+
+    try:
+        parser = args_funcs[func]
+    except KeyError:
+        raise KeyError(
+            "Couldn't get valid key from {}. Check if input action: "
+            "{} is valid".format(parts, action)
+        )
+
+    try:
+        func, args = parser(func, rest)
+    except Exception:
+        raise ValueError('Unknown key action: {}'.format(action))
+
     if not isinstance(args, (list, tuple)):
         args = (args,)
+
     return func, tuple(args)
 
 
