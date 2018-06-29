@@ -14,6 +14,9 @@ Changelog
 
 - macOS: Fix an error in remote control when using --listen-on (:iss:`679`)
 
+- hints kitten: Add a :option:`kitty +kitten hints --multiple` option to select
+  multiple items (:iss:`687`)
+
 - Fix pasting large amounts of text very slow (:iss:`682`)
 
 - Add a :option:`kitty --hold` command line option to stay open after the child process exits (:iss:`667`)
