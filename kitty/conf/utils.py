@@ -236,11 +236,11 @@ def parse_kittens_func_args(action, args_funcs):
 
     try:
         parser = args_funcs[func]
-    except KeyError:
+    except KeyError as e:
         raise KeyError(
-            "Couldn't get valid key from {}. Check if input action: "
-            "{} is valid".format(parts, action)
-        )
+            'Unknown action: {}. Check if map action: '
+            '{} is valid'.format(func, action)
+        ) from e
 
     try:
         func, args = parser(func, rest)
