@@ -452,6 +452,10 @@ Note that borders are displayed only when more than one window is visible. They 
 o('window_margin_width', 0.0, option_type=positive_float, long_text=_('''
 The window margin (in pts) (blank area outside the border)'''))
 
+o('single_window_margin_width', -1000.0, option_type=float, long_text=_('''
+The window margin (in pts) to use when only a single window is visible.
+Negative values will cause the value of :opt:`window_margin_width` to be used instead.'''))
+
 o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
 The window padding (in pts) (blank area between the text and the window border)'''))
 

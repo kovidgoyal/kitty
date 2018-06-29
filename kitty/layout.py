@@ -158,13 +158,14 @@ class Layout:  # {{{
     needs_window_borders = True
     only_active_window_visible = False
 
-    def __init__(self, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts=''):
+    def __init__(self, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
         self.swap_windows_in_os_window = partial(swap_windows, os_window_id, tab_id)
         self.border_width = border_width
         self.margin_width = margin_width
+        self.single_window_margin_width = single_window_margin_width
         self.padding_width = padding_width
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
@@ -336,7 +337,8 @@ class Layout:  # {{{
 
     # Utils {{{
     def layout_single_window(self, w):
-        wg = layout_single_window(self.margin_width, self.padding_width)
+        mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
+        wg = layout_single_window(mw, self.padding_width)
         w.set_geometry(0, wg)
         self.blank_rects = blank_rects_for_window(w)
 
@@ -373,7 +375,8 @@ class Stack(Layout):  # {{{
     only_active_window_visible = True
 
     def do_layout(self, windows, active_window_idx):
-        wg = layout_single_window(self.margin_width, self.padding_width)
+        mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
+        wg = layout_single_window(mw, self.padding_width)
         for i, w in enumerate(windows):
             w.set_geometry(i, wg)
             if w.is_visible_in_layout:
@@ -671,12 +674,13 @@ class Horizontal(Vertical):
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
 
 
-def create_layout_object_for(name, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts=''):
-    key = name, os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts
+def create_layout_object_for(name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
+    key = name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts
     ans = create_layout_object_for.cache.get(key)
     if ans is None:
         name, layout_opts = name.partition(':')[::2]
-        ans = create_layout_object_for.cache[key] = all_layouts[name](os_window_id, tab_id, margin_width, padding_width, border_width, layout_opts)
+        ans = create_layout_object_for.cache[key] = all_layouts[name](
+            os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts)
     return ans
 
 

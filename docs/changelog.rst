@@ -19,6 +19,9 @@ Changelog
 
 - Fix pasting large amounts of text very slow (:iss:`682`)
 
+- Add an option :opt:`single_window_margin_width` to allow different margins
+  when only a single window is visible in the layout (:iss:`688`)
+
 - Add a :option:`kitty --hold` command line option to stay open after the child process exits (:iss:`667`)
 
 - diff kitten: When triggering a search scroll to the first match automatically

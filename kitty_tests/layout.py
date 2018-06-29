@@ -27,7 +27,7 @@ def create_layout(cls, opts=None, border_width=2):
     if opts is None:
         opts = defaults
     mw, pw = map(pt_to_px, (opts.window_margin_width, opts.window_padding_width))
-    ans = cls(1, 1, mw, pw, border_width)
+    ans = cls(1, 1, mw, mw, pw, border_width)
     ans.set_active_window_in_os_window = lambda idx: None
     ans.swap_windows_in_os_window = lambda a, b: None
     return ans

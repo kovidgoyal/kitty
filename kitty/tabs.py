@@ -37,8 +37,9 @@ class Tab:  # {{{
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
-        self.margin_width, self.padding_width = pt_to_px(
-                self.opts.window_margin_width, self.os_window_id), pt_to_px(self.opts.window_padding_width, self.os_window_id)
+        self.margin_width, self.padding_width, self.single_window_margin_width = map(
+            lambda x: pt_to_px(getattr(self.opts, x), self.os_window_id), (
+                'window_margin_width', 'window_padding_width', 'single_window_margin_width'))
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts, pt_to_px(self.opts.window_border_width, self.os_window_id), self.padding_width)
@@ -139,7 +140,10 @@ class Tab:  # {{{
                 w.change_titlebar_color()
 
     def create_layout_object(self, name):
-        return create_layout_object_for(name, self.os_window_id, self.id, self.margin_width, self.padding_width, self.borders.border_width)
+        return create_layout_object_for(
+            name, self.os_window_id, self.id, self.margin_width,
+            self.single_window_margin_width, self.padding_width,
+            self.borders.border_width)
 
     def next_layout(self):
         if len(self.enabled_layouts) > 1:
