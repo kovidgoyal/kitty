@@ -17,7 +17,13 @@ serialize_string_tuple(PyObject *src) {
     Py_ssize_t sz = PyTuple_GET_SIZE(src);
     char **ans = calloc(sz + 1, sizeof(char*));
     if (!ans) fatal("Out of memory");
-    for (Py_ssize_t i = 0; i < sz; i++) ans[i] = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
+    for (Py_ssize_t i = 0; i < sz; i++) {
+        const char *pysrc = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
+        size_t len = strlen(pysrc);
+        ans[i] = calloc(len + 1, sizeof(char));
+        if (ans[i] == NULL) fatal("Out of memory");
+        memcpy(ans[i], pysrc, len);
+    }
     return ans;
 }
 
