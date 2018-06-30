@@ -1674,7 +1674,7 @@ static PyObject*
 _select_graphic_rendition(Screen *self, PyObject *args) {
     unsigned int params[256] = {0};
     for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, i)); }
-    select_graphic_rendition(self, params, PyList_GET_SIZE(args), NULL);
+    select_graphic_rendition(self, params, PyTuple_GET_SIZE(args), NULL);
     Py_RETURN_NONE;
 }
 
