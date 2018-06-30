@@ -48,7 +48,6 @@ read_response(int fd, double timeout, PyObject *ans) {
             if (errno == EINTR || errno == EAGAIN) continue;
             PyErr_SetFromErrno(PyExc_OSError);
             return false;
-            continue;
         }
         end_time = monotonic() + timeout;
         switch(state) {
