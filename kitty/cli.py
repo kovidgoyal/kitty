@@ -7,9 +7,10 @@ import re
 import sys
 from collections import deque
 
-from .config import defaults, load_config
 from .conf.utils import resolve_config
+from .config import defaults, load_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
+from .fast_data_types import GLFW_KEY_UNKNOWN, glfw_get_key_name
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
@@ -630,7 +631,7 @@ def print_shortcut(key_sequence, action):
                 names.append(name)
         if key:
             if is_native:
-                names.append('<native key 0x{:x}>'.format(key))
+                names.append(glfw_get_key_name(GLFW_KEY_UNKNOWN, key))
             else:
                 names.append(krmap[key])
         keys.append('+'.join(names))
