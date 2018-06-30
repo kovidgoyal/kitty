@@ -624,7 +624,7 @@ def print_shortcut(key_sequence, action):
     keys = []
     for key in key_sequence:
         names = []
-        mods, key = key
+        mods, is_native, key = key
         for name, val in mmap.items():
             if mods & val:
                 names.append(name)

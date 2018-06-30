@@ -37,7 +37,7 @@ def parse_shortcut(sc):
     parts = sc.split('+')
     mods = parse_mods(parts[:-1], sc)
     if mods is None:
-        return None, None
+        return None, None, None
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     is_native = False
