@@ -629,7 +629,10 @@ def print_shortcut(key_sequence, action):
             if mods & val:
                 names.append(name)
         if key:
-            names.append(krmap[key])
+            if is_native:
+                names.append('<native key 0x{:x}>'.format(key))
+            else:
+                names.append(krmap[key])
         keys.append('+'.join(names))
 
     print('\t', ' > '.join(keys), action)
