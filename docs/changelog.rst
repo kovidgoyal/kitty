@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.11.2 [future]
+0.11.2 [2018-07-01]
 ------------------------------
 
 - Linux: Allow using XKB key names to bind shortcuts to keys not supported by GLFW (:pull:`665`)
@@ -35,6 +35,9 @@ Changelog
 - Linux installer: Fix installer failing on systems with python < 3.5
 
 - Support "-T" as an alias for "--title" (:pull:`659`)
+
+- Fix a regression in the previous release that broke using :option:`kitty
+  --debug-config` with custom key mappings (:iss:`695`)
 
 
 0.11.1 [2018-06-17]
