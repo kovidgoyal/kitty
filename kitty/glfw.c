@@ -8,7 +8,7 @@
 #include "fonts.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
-extern bool cocoa_make_window_resizable(void *w);
+extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -492,10 +492,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetWindowFocusCallback(glfw_window, window_focus_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
 #ifdef __APPLE__
-    if (OPT(macos_hide_titlebar)) {
-        if (glfwGetCocoaWindow) { if (!cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window))) { PyErr_Print(); } }
-        else log_error("Failed to load glfwGetCocoaWindow");
-    }
+    if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
+    else log_error("Failed to load glfwGetCocoaWindow");
 #endif
     double now = monotonic();
     w->is_focused = true;

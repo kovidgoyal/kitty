@@ -715,7 +715,10 @@ kitty will stay running, even with no open windows, as is the expected
 behavior on macOS.
 '''))
 
-
+o('macos_window_resizable', True, long_text=_('''
+Disable this if you want kitty top-level (OS) windows to not be resizable
+on macOS.
+'''))
 # }}}
 
 g('shortcuts')  # {{{

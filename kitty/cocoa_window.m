@@ -202,14 +202,19 @@ cocoa_update_title(PyObject *pytitle) {
 }
 
 bool
-cocoa_make_window_resizable(void *w) {
+cocoa_make_window_resizable(void *w, bool resizable) {
     NSWindow *window = (NSWindow*)w;
 
     @try {
-        [window setStyleMask:
-            [window styleMask] | NSWindowStyleMaskResizable];
+        if (resizable) {
+            [window setStyleMask:
+                [window styleMask] | NSWindowStyleMaskResizable];
+        } else {
+            [window setStyleMask:
+                [window styleMask] & ~NSWindowStyleMaskResizable];
+        }
     } @catch (NSException *e) {
-        return PyErr_Format(PyExc_ValueError, "Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
+        log_error("Failed to set style mask: %s: %s", [[e name] UTF8String], [[e reason] UTF8String]);
         return false;
     }
     return true;

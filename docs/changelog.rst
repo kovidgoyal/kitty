@@ -3,6 +3,13 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.11.3 [future]
+------------------------------
+
+- macOS: Add an option :opt:`macos_window_resizable` to control if kitty
+  top-level windows are resizable using the mouse or not (:iss:`698`)
+
+
 0.11.2 [2018-07-01]
 ------------------------------
 

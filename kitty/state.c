@@ -387,6 +387,7 @@ PYWRAP1(set_options) {
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_hide_titlebar, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
+    S(macos_window_resizable, PyObject_IsTrue);
     S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
 
