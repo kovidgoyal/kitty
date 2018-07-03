@@ -58,7 +58,10 @@ def _get_config_dir():
 
     candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
     ans = os.path.join(candidate, appname)
-    os.makedirs(ans, exist_ok=True)
+    try:
+        os.makedirs(ans, exist_ok=True)
+    except FileExistsError:
+        raise SystemExit('A file {} already exists. It must be a directory, not a file.'.format(ans))
     return ans
 
 
