@@ -9,6 +9,14 @@ from .fast_data_types import (
     BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program
 )
 from .utils import load_shaders
+try:
+    from enum import IntFlag
+except Exception:
+    from enum import IntEnum as IntFlag
+
+
+class BorderColor(IntFlag):
+    default_bg, active, inactive, window_bg, bell = ((1 << i) for i in range(5))
 
 
 def vertical_edge(os_window_id, tab_id, color, width, top, bottom, left):
@@ -52,9 +60,9 @@ class Borders:
         extra_blank_rects,
         draw_window_borders=True
     ):
-        add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, 1)
+        add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
         for br in chain(current_layout.blank_rects, extra_blank_rects):
-            add_borders_rect(self.os_window_id, self.tab_id, *br, 1)
+            add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
         bw, pw = self.border_width, self.padding_width
         fw = bw + pw
 
@@ -63,7 +71,7 @@ class Borders:
                 g = w.geometry
                 if bw > 0 and draw_window_borders:
                     # Draw the border rectangles
-                    color = 2 if w is active_window else (16 if w.needs_attention else 4)
+                    color = BorderColor.active if w is active_window else (BorderColor.bell if w.needs_attention else BorderColor.inactive)
                     border(
                         self.os_window_id, self.tab_id,
                         color, bw, g.left - fw, g.top - fw, g.right + fw,
@@ -74,6 +82,6 @@ class Borders:
                     color = w.screen.color_profile.default_bg
                     border(
                         self.os_window_id, self.tab_id,
-                        (color << 8) | 8, pw, g.left - pw, g.top - pw, g.right + pw,
+                        (color << 8) | BorderColor.window_bg, pw, g.left - pw, g.top - pw, g.right + pw,
                         g.bottom + pw
                     )
