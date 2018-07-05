@@ -332,6 +332,9 @@ class Layout:  # {{{
             windows = all_windows
         self.update_visibility(all_windows, active_window, overlaid_windows)
         self.blank_rects = []
+        for w in all_windows:
+            w.border_widths.reset(self.border_width)
+            w.neighbors.reset()
         self.do_layout(windows, active_window_idx)
         return idx_for_id(active_window.id, all_windows)
 
@@ -435,6 +438,15 @@ class Tall(Layout):  # {{{
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
             return self.layout_single_window(windows[0])
+        # setup neighbors
+        if len(windows) == 2:
+            windows[0].neighbors.right = windows[1]
+            windows[1].neighbors.left = windows[0]
+        else:
+            num = len(windows)
+            for i in range(1, num - 1):
+                windows[i].neighbors.bottom = windows[i+1]
+                windows[i+1].neighbors.top = windows[i]
         xlayout = self.xlayout(2, bias=self.main_bias)
         xstart, xnum = next(xlayout)
         ystart, ynum = next(self.vlayout(1))
@@ -464,6 +476,15 @@ class Fat(Tall):  # {{{
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
             return self.layout_single_window(windows[0])
+        # setup neighbors
+        if len(windows) == 2:
+            windows[0].neighbors.bottom = windows[1]
+            windows[1].neighbors.top = windows[0]
+        else:
+            num = len(windows)
+            for i in range(1, num - 1):
+                windows[i].neighbors.right = windows[i+1]
+                windows[i+1].neighbors.left = windows[i]
         xstart, xnum = next(self.xlayout(1))
         ylayout = self.ylayout(2, bias=self.main_bias)
         ystart, ynum = next(ylayout)
@@ -597,8 +618,33 @@ class Grid(Layout):  # {{{
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
+        self.setup_neighbors(special_rows, nrows, win_col_map)
 
-class Vertical(Layout):
+    def setup_neighbors(self, special_rows, nrows, win_col_map):
+        ncols = len(win_col_map)
+
+        def vertical_neighbors(windows):
+            for i in range(0, len(windows) - 1):
+                windows[i].neighbors.bottom = windows[i+1]
+                windows[i+1].neighbors.top = windows[i]
+
+        if ncols <= 1:
+            vertical_neighbors(win_col_map[0])
+        else:
+            if special_rows != nrows:
+                win_col_map = [cm for cm in win_col_map if len(cm) == nrows]
+                ncols = len(win_col_map)
+            for i, col_windows in enumerate(win_col_map):
+                vertical_neighbors(col_windows)
+                if i < ncols - 1:
+                    next_col = win_col_map[i + 1]
+                    for w, neighbor in zip(col_windows, next_col):
+                        w.neighbors.right = neighbor
+                        neighbor.neighbors.left = w
+# }}}
+
+
+class Vertical(Layout):  # {{{
 
     name = 'vertical'
     main_is_horizontal = False
@@ -629,6 +675,11 @@ class Vertical(Layout):
         window_count = len(windows)
         if window_count == 1:
             return self.layout_single_window(windows[0])
+        # setup neighbors
+        num = len(windows)
+        for i in range(num - 1):
+            windows[i].neighbors.bottom = windows[i+1]
+            windows[i + 1].neighbors.top = windows[i]
 
         xlayout = self.xlayout(1)
         xstart, xnum = next(xlayout)
@@ -640,9 +691,10 @@ class Vertical(Layout):
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
+# }}}
 
 
-class Horizontal(Vertical):
+class Horizontal(Vertical):  # {{{
 
     name = 'horizontal'
     main_is_horizontal = True
@@ -652,6 +704,11 @@ class Horizontal(Vertical):
         window_count = len(windows)
         if window_count == 1:
             return self.layout_single_window(windows[0])
+        # setup neighbors
+        num = len(windows)
+        for i in range(num - 1):
+            windows[i].neighbors.right = windows[i+1]
+            windows[i + 1].neighbors.left = windows[i]
 
         xlayout = self.variable_layout(window_count, self.biased_map)
         ylayout = self.ylayout(1)
