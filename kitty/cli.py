@@ -454,7 +454,7 @@ def seq_as_rst(seq, usage, message, appname, heading_char='-'):
             if defval is not None:
                 a(textwrap.indent('Default: :code:`{}`'.format(defval), ' ' * 4))
             if 'choices' in opt:
-                a(textwrap.indent('Choices: :code:`{}`'.format(', '.join(opt['choices'])), ' ' * 4))
+                a(textwrap.indent('Choices: :code:`{}`'.format(', '.join(sorted(opt['choices']))), ' ' * 4))
             a('')
 
     text = '\n'.join(blocks)
