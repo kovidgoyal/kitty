@@ -16,6 +16,7 @@ except Exception:
 
 
 class BorderColor(IntFlag):
+    # See the border vertex shader for how these flags become actual colors
     default_bg, active, inactive, window_bg, bell = ((1 << i) for i in range(5))
 
 
