@@ -22,26 +22,25 @@ def idx_for_id(win_id, windows):
             return i
 
 
-def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_length=0, margin_length=0, padding_length=0, left_align=False, bias=None):
+def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align=False, bias=None):
+    number_of_windows = len(decoration_pairs)
     number_of_cells = length // cell_length
-    border_length += padding_length
-    space_needed_for_border = number_of_windows * 2 * border_length
-    space_needed_for_padding = number_of_windows * 2 * margin_length
-    space_needed = space_needed_for_padding + space_needed_for_border
+    space_needed_for_decorations = sum(map(sum, decoration_pairs))
     extra = length - number_of_cells * cell_length
-    while extra < space_needed:
+    while extra < space_needed_for_decorations:
         number_of_cells -= 1
         extra = length - number_of_cells * cell_length
     cells_per_window = number_of_cells // number_of_windows
-    extra -= space_needed
+    extra -= space_needed_for_decorations
     pos = start_at
     if not left_align:
         pos += extra // 2
-    pos += border_length + margin_length
 
-    def calc_window_length(cells_in_window):
+    def calc_window_geom(i, cells_in_window):
+        nonlocal pos
+        pos += decoration_pairs[i][0]
         inner_length = cells_in_window * cell_length
-        return 2 * (border_length + margin_length) + inner_length
+        return inner_length + decoration_pairs[i][1]
 
     if bias is not None and number_of_windows > 1 and len(bias) == number_of_windows and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]
@@ -51,21 +50,15 @@ def layout_dimension(start_at, length, cell_length, number_of_windows=1, border_
                 break
             cells_map[mini] += 1
             cells_map[maxi] -= 1
+    else:
+        cells_map = list(repeat(cells_per_window, number_of_windows))
 
-        extra = number_of_cells - sum(cells_map)
-        if extra:
-            cells_map[-1] += extra
-        for cells_per_window in cells_map:
-            window_length = calc_window_length(cells_per_window)
-            yield pos, cells_per_window
-            pos += window_length
-        return
-
-    window_length = calc_window_length(cells_per_window)
-    extra = number_of_cells - (cells_per_window * number_of_windows)
-    while number_of_windows > 0:
-        number_of_windows -= 1
-        yield pos, cells_per_window + (extra if number_of_windows == 0 else 0)
+    extra = number_of_cells - sum(cells_map)
+    if extra > 0:
+        cells_map[-1] += extra
+    for i, cells_per_window in enumerate(cells_map):
+        window_length = calc_window_geom(i, cells_per_window)
+        yield pos, cells_per_window
         pos += window_length
 
 
@@ -83,9 +76,9 @@ def window_geometry(xstart, xnum, ystart, ynum):
     return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
 
 
-def layout_single_window(margin_length, padding_length):
-    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, margin_length=margin_length, padding_length=padding_length))
-    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, margin_length=margin_length, padding_length=padding_length))
+def layout_single_window(xdecoration_pairs, ydecoration_pairs):
+    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, xdecoration_pairs))
+    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, ydecoration_pairs))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
@@ -341,19 +334,20 @@ class Layout:  # {{{
     # Utils {{{
     def layout_single_window(self, w):
         mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
-        wg = layout_single_window(mw, self.padding_width)
+        decoration_pairs = ((self.padding_width + mw, self.padding_width + mw),)
+        wg = layout_single_window(decoration_pairs, decoration_pairs)
         w.set_geometry(0, wg)
         self.blank_rects = blank_rects_for_window(w)
 
     def xlayout(self, num, bias=None):
-        return layout_dimension(
-            central.left, central.width, cell_width, num, self.border_width,
-            margin_length=self.margin_width, padding_length=self.padding_width, bias=bias)
+        decoration = self.margin_width + self.border_width + self.padding_width
+        decoration_pairs = tuple(repeat((decoration, decoration), num))
+        return layout_dimension(central.left, central.width, cell_width, decoration_pairs, bias=bias)
 
     def ylayout(self, num, left_align=True, bias=None):
-        return layout_dimension(
-            central.top, central.height, cell_height, num, self.border_width, left_align=left_align,
-            margin_length=self.margin_width, padding_length=self.padding_width, bias=bias)
+        decoration = self.margin_width + self.border_width + self.padding_width
+        decoration_pairs = tuple(repeat((decoration, decoration), num))
+        return layout_dimension(central.top, central.height, cell_height, decoration_pairs, bias=bias)
 
     def simple_blank_rects(self, first_window, last_window):
         br = self.blank_rects
@@ -379,7 +373,8 @@ class Stack(Layout):  # {{{
 
     def do_layout(self, windows, active_window_idx):
         mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
-        wg = layout_single_window(mw, self.padding_width)
+        decoration_pairs = ((mw + self.padding_width, mw + self.padding_width),)
+        wg = layout_single_window(decoration_pairs, decoration_pairs)
         for i, w in enumerate(windows):
             w.set_geometry(i, wg)
             if w.is_visible_in_layout:
