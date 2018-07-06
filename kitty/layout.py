@@ -16,6 +16,7 @@ central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
 all_borders = True, True, True, True
 no_borders = False, False, False, False
+draw_minimal_borders = False
 
 
 def idx_for_id(win_id, windows):
@@ -26,6 +27,11 @@ def idx_for_id(win_id, windows):
 
 def window_needs_borders(window, active_window):
     return window is active_window or window.needs_attention
+
+
+def set_draw_minimal_borders(opts):
+    global draw_minimal_borders
+    draw_minimal_borders = opts.draw_minimal_borders and opts.window_margin_width == 0
 
 
 def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align=False, bias=None):
@@ -367,7 +373,10 @@ class Layout:  # {{{
         raise NotImplementedError()
 
     def resolve_borders(self, windows, active_window):
-        yield from self.do_resolve_borders(windows, active_window)
+        if draw_minimal_borders:
+            yield from self.do_resolve_borders(windows, active_window)
+        else:
+            yield from Layout.do_resolve_borders(self, windows, active_window)
 
     def do_resolve_borders(self, windows, active_window):
         for w in windows:
@@ -461,6 +470,26 @@ class Tall(Layout):  # {{{
         # left bottom blank rect
         self.bottom_blank_rect(windows[0])
 
+    def do_resolve_borders(self, windows, active_window):
+        only_bottom_border = False, False, False, True
+        last_i = len(windows) - 1
+        for i, w in enumerate(windows):
+            if window_needs_borders(w, active_window):
+                yield all_borders
+                continue
+            if i == 0:
+                if last_i == 1 and window_needs_borders(windows[1], active_window):
+                    yield no_borders
+                else:
+                    yield False, False, True, False
+                continue
+            if i == last_i:
+                yield no_borders
+                break
+            if active_window is windows[i+1] or windows[i+1].needs_attention:
+                yield no_borders
+            else:
+                yield only_bottom_border
 # }}}
 
 
