@@ -1764,7 +1764,7 @@ screen_selection_range_for_line(Screen *self, index_type y, index_type *start, i
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && CHAR_IS_BLANK(line->cpu_cells[xlimit - 1].ch)) xlimit--;
     while (xstart < xlimit && CHAR_IS_BLANK(line->cpu_cells[xstart].ch)) xstart++;
-    *start = xstart; *end = xlimit - 1;
+    *start = xstart; *end = xlimit > 0 ? xlimit - 1 : 0;
     return true;
 }
 
