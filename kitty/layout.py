@@ -487,7 +487,7 @@ class Tall(Layout):  # {{{
             if i == last_i:
                 yield no_borders
                 break
-            if active_window is windows[i+1] or windows[i+1].needs_attention:
+            if window_needs_borders(windows[i+1], active_window):
                 yield no_borders
             else:
                 yield self.only_between_border
@@ -646,6 +646,7 @@ class Vertical(Layout):  # {{{
     name = 'vertical'
     main_is_horizontal = False
     vlayout = Layout.ylayout
+    only_between_border = False, False, False, True
 
     def variable_layout(self, num_windows, biased_map):
         return self.vlayout(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows else None)
@@ -683,6 +684,20 @@ class Vertical(Layout):  # {{{
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
+
+    def do_resolve_borders(self, windows, active_window):
+        last_i = len(windows) - 1
+        for i, w in enumerate(windows):
+            if window_needs_borders(w, active_window):
+                yield all_borders
+                continue
+            if i == last_i:
+                yield no_borders
+                break
+            if window_needs_borders(windows[i+1], active_window):
+                yield no_borders
+            else:
+                yield self.only_between_border
 # }}}
 
 
@@ -691,6 +706,7 @@ class Horizontal(Vertical):  # {{{
     name = 'horizontal'
     main_is_horizontal = True
     vlayout = Layout.xlayout
+    only_between_border = False, False, True, False
 
     def do_layout(self, windows, active_window_idx):
         window_count = len(windows)
