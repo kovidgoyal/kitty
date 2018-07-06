@@ -119,6 +119,14 @@ contains_mouse(Window *w, OSWindow *os_window) {
     return (w->visible && window_left(w, os_window) <= x && x <= window_right(w, os_window) && window_top(w, os_window) <= y && y <= window_bottom(w, os_window));
 }
 
+static inline double
+distance_to_window(Window *w, OSWindow *os_window) {
+    double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
+    double cx = (window_left(w, os_window) + window_right(w, os_window)) / 2.0;
+    double cy = (window_top(w, os_window) + window_bottom(w, os_window)) / 2.0;
+    return (x - cx) * (x - cx) + (y - cy) * (y - cy);
+}
+
 static bool clamp_to_window = false;
 
 static inline bool
@@ -414,7 +422,21 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
         }
     }
     return NULL;
+}
 
+static inline Window*
+closest_window_for_event(unsigned int *window_idx) {
+    Window *ans = NULL;
+    double closest_distance = UINT_MAX;
+    if (global_state.callback_os_window->num_tabs > 0) {
+        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+        for (unsigned int i = 0; i < t->num_windows; i++) {
+            Window *w = t->windows + i;
+            double d = distance_to_window(w, global_state.callback_os_window);
+            if (d < closest_distance) { ans = w; closest_distance = d; *window_idx = i; }
+        }
+    }
+    return ans;
 }
 
 void
@@ -453,6 +475,14 @@ mouse_event(int button, int modifiers) {
         handle_tab_bar_mouse(button, modifiers);
     } else if(w) {
         handle_event(w, button, modifiers, window_idx);
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
+        // initial click, clamp it to the closest window
+        w = closest_window_for_event(&window_idx);
+        if (w) {
+            clamp_to_window = true;
+            handle_event(w, button, modifiers, window_idx);
+            clamp_to_window = false;
+        }
     }
     if (mouse_cursor_shape != old_cursor) {
         set_mouse_cursor(mouse_cursor_shape);

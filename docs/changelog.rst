@@ -15,6 +15,10 @@ Changelog
 - When dragging to select with the mouse "grab" the mouse so that if it strays
   into neighboring windows, the selection is still updated (:pull:`624`)
 
+- When clicking in the margin/border area of a window map the click to the
+  nearest cell in the window. Avoids selection with the mouse failing when
+  starting the selection just outside the window.
+
 
 0.11.2 [2018-07-01]
 ------------------------------
