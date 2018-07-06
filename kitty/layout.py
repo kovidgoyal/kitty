@@ -25,10 +25,6 @@ def idx_for_id(win_id, windows):
             return i
 
 
-def window_needs_borders(window, active_window):
-    return window is active_window or window.needs_attention
-
-
 def set_draw_minimal_borders(opts):
     global draw_minimal_borders
     draw_minimal_borders = opts.draw_minimal_borders and opts.window_margin_width == 0
@@ -374,11 +370,12 @@ class Layout:  # {{{
 
     def resolve_borders(self, windows, active_window):
         if draw_minimal_borders:
-            yield from self.do_resolve_borders(windows, active_window)
+            needs_borders_map = {w: (w is active_window or w.needs_attention) for w in windows}
+            yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
-            yield from Layout.do_resolve_borders(self, windows, active_window)
+            yield from Layout.minimal_borders(self, windows, active_window, None)
 
-    def do_resolve_borders(self, windows, active_window):
+    def minimal_borders(self, windows, active_window, needs_borders_map):
         for w in windows:
             yield all_borders
 # }}}
@@ -472,14 +469,14 @@ class Tall(Layout):  # {{{
         # left bottom blank rect
         self.bottom_blank_rect(windows[0])
 
-    def do_resolve_borders(self, windows, active_window):
+    def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
-            if window_needs_borders(w, active_window):
+            if needs_borders_map[w]:
                 yield all_borders
                 continue
             if i == 0:
-                if last_i == 1 and window_needs_borders(windows[1], active_window):
+                if last_i == 1 and needs_borders_map[windows[1]]:
                     yield no_borders
                 else:
                     yield self.only_main_border
@@ -487,7 +484,7 @@ class Tall(Layout):  # {{{
             if i == last_i:
                 yield no_borders
                 break
-            if window_needs_borders(windows[i+1], active_window):
+            if needs_borders_map[windows[i+1]]:
                 yield no_borders
             else:
                 yield self.only_between_border
@@ -685,16 +682,16 @@ class Vertical(Layout):  # {{{
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
 
-    def do_resolve_borders(self, windows, active_window):
+    def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
-            if window_needs_borders(w, active_window):
+            if needs_borders_map[w]:
                 yield all_borders
                 continue
             if i == last_i:
                 yield no_borders
                 break
-            if window_needs_borders(windows[i+1], active_window):
+            if needs_borders_map[windows[i+1]]:
                 yield no_borders
             else:
                 yield self.only_between_border
