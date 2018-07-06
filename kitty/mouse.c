@@ -350,10 +350,18 @@ HANDLER(handle_button_event) {
     }
 }
 
+static inline int
+currently_pressed_button() {
+    for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) {
+        if (global_state.callback_os_window->mouse_button_pressed[i]) return i;
+    }
+    return -1;
+}
+
 HANDLER(handle_event) {
     switch(button) {
         case -1:
-            for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.callback_os_window->mouse_button_pressed[i]) { button = i; break; } }
+            button = currently_pressed_button();
             handle_move_event(w, button, modifiers, window_idx);
             break;
         case GLFW_MOUSE_BUTTON_LEFT:
@@ -429,7 +437,7 @@ mouse_event(int button, int modifiers) {
     if (button == -1 && global_state.active_drag_in_window) {  // drag move
         w = window_for_id(global_state.active_drag_in_window);
         if (w) {
-            for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) { if (global_state.callback_os_window->mouse_button_pressed[i]) { button = i; break; } }
+            button = currently_pressed_button();
             if (button == GLFW_MOUSE_BUTTON_LEFT) {
                 clamp_to_window = true;
                 handle_move_event(w, button, modifiers, window_idx);
