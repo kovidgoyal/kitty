@@ -19,6 +19,8 @@ Changelog
   nearest cell in the window. Avoids selection with the mouse failing when
   starting the selection just outside the window.
 
+- When drag-scrolling stop the scroll when the mouse button is released.
+
 
 0.11.2 [2018-07-01]
 ------------------------------

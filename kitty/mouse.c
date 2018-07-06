@@ -162,6 +162,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     if (from_button) {
         if (is_release) {
             global_state.active_drag_in_window = 0;
+            w->last_drag_scroll_at = 0;
             if (screen->selection.in_progress)
                 screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
         }
