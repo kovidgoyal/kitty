@@ -8,7 +8,6 @@ import sys
 import weakref
 from collections import deque
 from enum import IntEnum
-from operator import attrgetter
 
 from .child import cwd_of_process
 from .config import build_ansi_color_table
@@ -36,45 +35,6 @@ from .utils import (
 
 class DynamicColor(IntEnum):
     default_fg, default_bg, cursor_color, highlight_fg, highlight_bg = range(1, 6)
-
-
-def _none():
-    pass
-
-
-def neighbor_property(which):
-    getter = attrgetter(which)
-
-    def fget(self):
-        return getter(self)()
-
-    def fset(self, window):
-        setattr(self, which, (_none if window is None else weakref.ref(window)))
-    return property(fget=fget, fset=fset)
-
-
-class Neighbors:
-
-    __slots__ = '_left', '_top', '_right', '_bottom'
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self._left = self._top = self._right = self._bottom = _none
-
-    left, top, right, bottom = map(neighbor_property, __slots__)
-
-
-class Widths:
-
-    __slots__ = 'left', 'top', 'right', 'bottom'
-
-    def __init__(self, val=0):
-        self.reset(val)
-
-    def reset(self, val=0):
-        self.left = self.top = self.right = self.bottom = val
 
 
 DYNAMIC_COLOR_CODES = {
@@ -134,8 +94,6 @@ class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
         self.action_on_close = None
-        self.border_widths = Widths()
-        self.neighbors = Neighbors()
         self.needs_attention = False
         self.override_title = override_title
         self.overlay_window_id = None
