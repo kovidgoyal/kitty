@@ -12,6 +12,9 @@ Changelog
 - Fix triple-click to select line not working when the entire line is filled
   (:iss:`703`)
 
+- When dragging to select with the mouse "grab" the mouse so that if it strays
+  into neighboring windows, the selection is still updated (:pull:`624`)
+
 
 0.11.2 [2018-07-01]
 ------------------------------

@@ -141,6 +141,7 @@ typedef struct {
     bool in_sequence_mode;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
+    id_type active_drag_in_window;
 } GlobalState;
 
 extern GlobalState global_state;
