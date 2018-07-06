@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from functools import partial
 from itertools import chain
 
 from .fast_data_types import (
@@ -30,23 +29,19 @@ def horizontal_edge(os_window_id, tab_id, color, height, left, right, top):
     add_borders_rect(os_window_id, tab_id, left, top, right, top + height, color)
 
 
-def edge(func, os_window_id, tab_id, color, sz, a, b):
-    return partial(func, os_window_id, tab_id, color, sz, a, b)
-
-
 def border(os_window_id, tab_id, color, widths, geometry, base_width=0):
     left = geometry.left - (widths.left + base_width)
     top = geometry.top - (widths.top + base_width)
     right = geometry.right + (widths.right + base_width)
     bottom = geometry.bottom + (widths.bottom + base_width)
     if widths.top > 0:
-        edge(horizontal_edge, os_window_id, tab_id, color, widths.top, left, right)(top)
+        horizontal_edge(os_window_id, tab_id, color, widths.top, left, right, top)
     if widths.bottom > 0:
-        edge(horizontal_edge, os_window_id, tab_id, color, widths.bottom, left, right)(geometry.bottom + base_width)
+        horizontal_edge(os_window_id, tab_id, color, widths.bottom, left, right, geometry.bottom + base_width)
     if widths.left > 0:
-        edge(vertical_edge, os_window_id, tab_id, color, widths.left, top, bottom)(left)
+        vertical_edge(os_window_id, tab_id, color, widths.left, top, bottom, left)
     if widths.right > 0:
-        edge(vertical_edge, os_window_id, tab_id, color, widths.right, top, bottom)(geometry.right + base_width)
+        vertical_edge(os_window_id, tab_id, color, widths.right, top, bottom, geometry.right + base_width)
 
 
 def load_borders_program():
