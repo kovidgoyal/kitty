@@ -202,6 +202,7 @@ push_focus_history(OSWindow *w) {
 
 static void
 window_focus_callback(GLFWwindow *w, int focused) {
+    global_state.drag_start_window = NULL;
     if (!set_callback_window(w)) return;
     global_state.callback_os_window->is_focused = focused ? true : false;
     if (focused) {

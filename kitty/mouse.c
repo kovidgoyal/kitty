@@ -128,6 +128,10 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, OSWindow *os_window) {
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
     double left = window_left(w, os_window), top = window_top(w, os_window), right = window_right(w, os_window), bottom = window_bottom(w, os_window);
+	if (global_state.drag_start_window) {
+		mouse_x = MIN(MAX(mouse_x, left), right);
+		mouse_y = MIN(MAX(mouse_y, top), bottom);
+	}
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
     if (mouse_x >= g->right) qx = screen->columns - 1;
     else if (mouse_x >= g->left) qx = (unsigned int)((double)(mouse_x - g->left) / os_window->fonts_data->cell_width);
@@ -232,7 +236,9 @@ HANDLER(handle_move_event) {
             call_boss(switch_focus_to, "I", window_idx);
         }
     }
-    if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
+    if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) {
+		return;
+	}
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y;
@@ -373,7 +379,18 @@ mouse_in_region(Region *r) {
 }
 
 static inline Window*
-window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
+window_for_event(int button, unsigned int *window_idx, bool *in_tab_bar) {
+	bool is_press = button >= 0 && global_state.callback_os_window->mouse_button_pressed[button];
+	bool is_release = button >= 0 && !global_state.callback_os_window->mouse_button_pressed[button];
+
+	if (is_release || button >= 1)
+		global_state.drag_start_window = NULL;
+	if (global_state.drag_start_window) {
+		*in_tab_bar = global_state.drag_start_in_tab_bar;
+		*window_idx = global_state.drag_start_window_idx;
+		return global_state.drag_start_window;
+	}
+
     Region central, tab_bar;
 	os_window_regions(global_state.callback_os_window, &central, &tab_bar);
 	*in_tab_bar = mouse_in_region(&tab_bar);
@@ -381,6 +398,11 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i, global_state.callback_os_window) && t->windows[i].render_data.screen) {
+				if (is_press && button == 0) {
+					global_state.drag_start_window_idx = i;
+					global_state.drag_start_window = t->windows + i;
+					global_state.drag_start_in_tab_bar = *in_tab_bar;
+				}
                 *window_idx = i; return t->windows + i;
             }
         }
@@ -396,7 +418,7 @@ focus_in_event() {
     unsigned int window_idx = 0;
     mouse_cursor_shape = BEAM;
     set_mouse_cursor(BEAM);
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(-1, &window_idx, &in_tab_bar);
     if (w && w->render_data.screen) screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
 }
 
@@ -405,7 +427,7 @@ mouse_event(int button, int modifiers) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
     unsigned int window_idx = 0;
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(button, &window_idx, &in_tab_bar);
     if (in_tab_bar) {
         mouse_cursor_shape = HAND;
         handle_tab_bar_mouse(button, modifiers);
@@ -427,7 +449,7 @@ scroll_event(double UNUSED xoffset, double yoffset) {
     bool upwards = s > 0;
     bool in_tab_bar;
     unsigned int window_idx = 0;
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(-1, &window_idx, &in_tab_bar);
     if (w) {
         Screen *screen = w->render_data.screen;
         if (screen->linebuf == screen->main_linebuf) {
