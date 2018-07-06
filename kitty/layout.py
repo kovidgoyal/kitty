@@ -406,6 +406,8 @@ class Tall(Layout):  # {{{
     name = 'tall'
     vlayout = Layout.ylayout
     main_is_horizontal = True
+    only_between_border = False, False, False, True
+    only_main_border = False, False, True, False
 
     def remove_all_biases(self):
         self.main_bias = list(self.layout_opts['bias'])
@@ -471,7 +473,6 @@ class Tall(Layout):  # {{{
         self.bottom_blank_rect(windows[0])
 
     def do_resolve_borders(self, windows, active_window):
-        only_bottom_border = False, False, False, True
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
             if window_needs_borders(w, active_window):
@@ -481,7 +482,7 @@ class Tall(Layout):  # {{{
                 if last_i == 1 and window_needs_borders(windows[1], active_window):
                     yield no_borders
                 else:
-                    yield False, False, True, False
+                    yield self.only_main_border
                 continue
             if i == last_i:
                 yield no_borders
@@ -489,7 +490,7 @@ class Tall(Layout):  # {{{
             if active_window is windows[i+1] or windows[i+1].needs_attention:
                 yield no_borders
             else:
-                yield only_bottom_border
+                yield self.only_between_border
 # }}}
 
 
@@ -498,6 +499,8 @@ class Fat(Tall):  # {{{
     name = 'fat'
     vlayout = Layout.xlayout
     main_is_horizontal = False
+    only_between_border = False, False, True, False
+    only_main_border = False, False, False, True
 
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
