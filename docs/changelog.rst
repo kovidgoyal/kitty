@@ -9,6 +9,9 @@ Changelog
 - macOS: Add an option :opt:`macos_window_resizable` to control if kitty
   top-level windows are resizable using the mouse or not (:iss:`698`)
 
+- Fix triple-click to select line not working when the entire line is filled
+  (:iss:`703`)
+
 
 0.11.2 [2018-07-01]
 ------------------------------
