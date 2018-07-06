@@ -94,6 +94,7 @@ class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None):
         self.action_on_close = None
+        self.layout_data = None
         self.needs_attention = False
         self.override_title = override_title
         self.overlay_window_id = None

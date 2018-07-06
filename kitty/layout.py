@@ -370,7 +370,7 @@ class Layout:  # {{{
 
     def resolve_borders(self, windows, active_window):
         if draw_minimal_borders:
-            needs_borders_map = {w: (w is active_window or w.needs_attention) for w in windows}
+            needs_borders_map = {w.id: (w is active_window or w.needs_attention) for w in windows}
             yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
             yield from Layout.minimal_borders(self, windows, active_window, None)
@@ -472,11 +472,11 @@ class Tall(Layout):  # {{{
     def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
-            if needs_borders_map[w]:
+            if needs_borders_map[w.id]:
                 yield all_borders
                 continue
             if i == 0:
-                if last_i == 1 and needs_borders_map[windows[1]]:
+                if last_i == 1 and needs_borders_map[windows[1].id]:
                     yield no_borders
                 else:
                     yield self.only_main_border
@@ -484,7 +484,7 @@ class Tall(Layout):  # {{{
             if i == last_i:
                 yield no_borders
                 break
-            if needs_borders_map[windows[i+1]]:
+            if needs_borders_map[windows[i+1].id]:
                 yield no_borders
             else:
                 yield self.only_between_border
@@ -614,6 +614,9 @@ class Grid(Layout):  # {{{
         if n == 1:
             return self.layout_single_window(windows[0])
         ncols, nrows, special_rows, special_col = self.calc_grid_size(n)
+        layout_data = n, ncols, nrows, special_rows, special_col
+        for w in windows:
+            w.layout_data = layout_data
 
         win_col_map = []
 
@@ -635,6 +638,48 @@ class Grid(Layout):  # {{{
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
+    def minimal_borders(self, windows, active_window, needs_borders_map):
+        try:
+            n, ncols, nrows, special_rows, special_col = windows[0].layout_data
+        except Exception:
+            n = -1
+        if n != len(windows):
+            # Something bad happened
+            yield from Layout.minimal_borders(self, windows, active_window, needs_borders_map)
+            return
+        blank_row = [None for i in range(ncols)]
+        matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
+        wi = iter(windows)
+        pos_map = {}
+        col_counts = []
+        for col in range(ncols):
+            rows = special_rows if col == special_col else nrows
+            for row in range(rows):
+                matrix[row][col] = wid = next(wi).id
+                pos_map[wid] = row, col
+            col_counts.append(rows)
+
+        for w in windows:
+            wid = w.id
+            if needs_borders_map[wid]:
+                yield all_borders
+                continue
+            row, col = pos_map[wid]
+            if col + 1 < ncols:
+                next_col_has_different_count = col_counts[col + 1] != col_counts[col]
+                right_neighbor_id = matrix[row][col+1]
+            else:
+                right_neighbor_id = None
+                next_col_has_different_count = False
+            try:
+                bottom_neighbor_id = matrix[row+1][col]
+            except IndexError:
+                bottom_neighbor_id = None
+            yield (
+                False, False,
+                (right_neighbor_id is not None and not needs_borders_map[right_neighbor_id]) or next_col_has_different_count,
+                bottom_neighbor_id is not None and not needs_borders_map[bottom_neighbor_id]
+            )
 # }}}
 
 
@@ -685,13 +730,13 @@ class Vertical(Layout):  # {{{
     def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
-            if needs_borders_map[w]:
+            if needs_borders_map[w.id]:
                 yield all_borders
                 continue
             if i == last_i:
                 yield no_borders
                 break
-            if needs_borders_map[windows[i+1]]:
+            if needs_borders_map[windows[i+1].id]:
                 yield no_borders
             else:
                 yield self.only_between_border
