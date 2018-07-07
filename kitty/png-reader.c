@@ -1,0 +1,126 @@
+/*
+ * png-reader.c
+ * Copyright (C) 2018 Kovid Goyal <kovid at kovidgoyal.net>
+ *
+ * Distributed under terms of the GPL3 license.
+ */
+
+#include "png-reader.h"
+
+
+struct fake_file { const uint8_t *buf; size_t sz, cur; };
+
+static void
+read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
+    struct fake_file *f = png_get_io_ptr(png);
+    if (f) {
+        size_t amt = MIN(length, f->sz - f->cur);
+        memcpy(out, f->buf + f->cur, amt);
+        f->cur += amt;
+    }
+}
+
+struct custom_error_handler {
+    jmp_buf jb;
+    png_error_handler_func err_handler;
+};
+
+static void
+read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
+    struct custom_error_handler *eh;
+    eh = png_get_error_ptr(png_ptr);
+    if (eh == NULL) fatal("read_png_error_handler: could not retrieve error handler");
+    if(eh->err_handler) eh->err_handler("EBADPNG", msg);
+    longjmp(eh->jb, 1);
+}
+
+static void
+read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp UNUSED msg) {
+    // ignore warnings
+}
+
+#define ABRT(code, msg) { if(d->err_handler) d->err_handler(#code, msg); goto err; }
+
+void
+inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
+    struct fake_file f = {.buf = buf, .sz = bufsz};
+    png_structp png = NULL;
+    png_infop info = NULL;
+    struct custom_error_handler eh = {.err_handler = d->err_handler};
+    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &eh, read_png_error_handler, read_png_warn_handler);
+    if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
+    info = png_create_info_struct(png);
+    if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
+
+    if (setjmp(eh.jb)) goto err;
+
+    png_set_read_fn(png, &f, read_png_from_buffer);
+    png_read_info(png, info);
+    png_byte color_type, bit_depth;
+    d->width      = png_get_image_width(png, info);
+    d->height     = png_get_image_height(png, info);
+    color_type = png_get_color_type(png, info);
+    bit_depth  = png_get_bit_depth(png, info);
+
+    // Ensure we get RGBA data out of libpng
+    if (bit_depth == 16) png_set_strip_16(png);
+    if (color_type == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) png_set_expand_gray_1_2_4_to_8(png);
+
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
+
+    // These color_type don't have an alpha channel then fill it with 0xff.
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+
+    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+    png_read_update_info(png, info);
+
+    int rowbytes = png_get_rowbytes(png, info);
+    d->sz = rowbytes * d->height * sizeof(png_byte);
+    d->decompressed = malloc(d->sz + 16);
+    if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
+    d->row_pointers = malloc(d->height * sizeof(png_bytep));
+    if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
+    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes;
+    png_read_image(png, d->row_pointers);
+
+    d->ok = true;
+err:
+    if (png) png_destroy_read_struct(&png, info ? &info : NULL, NULL);
+    return;
+}
+
+static void
+png_error_handler(const char *code, const char *msg) {
+    PyErr_Format(PyExc_ValueError, "[%s] %s", code, msg);
+}
+
+static PyObject*
+load_png_data(PyObject *self UNUSED, PyObject *args) {
+    Py_ssize_t sz;
+    const char *data;
+    if (!PyArg_ParseTuple(args, "s#", &data, &sz)) return NULL;
+    png_read_data d = {.err_handler=png_error_handler};
+    inflate_png_inner(&d, (const uint8_t*)data, sz);
+    PyObject *ans = NULL;
+    if (d.ok && !PyErr_Occurred()) {
+        ans = PyBytes_FromStringAndSize((const char*)d.decompressed, d.sz);
+    } else {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "Unknown error while reading PNG data");
+    }
+    free(d.decompressed);
+    free(d.row_pointers);
+    return ans;
+}
+
+static PyMethodDef module_methods[] = {
+    METHODB(load_png_data, METH_VARARGS),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
+bool
+init_png_reader(PyObject *module) {
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return true;
+}

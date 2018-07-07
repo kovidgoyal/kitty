@@ -1679,7 +1679,7 @@ typedef void (*glfwSetCursorPos_func)(GLFWwindow*, double, double);
 glfwSetCursorPos_func glfwSetCursorPos_impl;
 #define glfwSetCursorPos glfwSetCursorPos_impl
 
-typedef GLFWcursor* (*glfwCreateCursor_func)(const GLFWimage*, int, int);
+typedef GLFWcursor* (*glfwCreateCursor_func)(const GLFWimage*, int, int, int);
 glfwCreateCursor_func glfwCreateCursor_impl;
 #define glfwCreateCursor glfwCreateCursor_impl
 

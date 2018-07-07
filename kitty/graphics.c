@@ -15,8 +15,8 @@
 #include <stdlib.h>
 
 #include <zlib.h>
-#include <png.h>
 #include <structmember.h>
+#include "png-reader.h"
 PyTypeObject GraphicsManager_Type;
 
 #define STORAGE_LIMIT (320 * (1024 * 1024))
@@ -227,87 +227,14 @@ err:
     return ok;
 }
 
-struct fake_file { uint8_t *buf; size_t sz, cur; };
-
 static void
-read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
-    struct fake_file *f = png_get_io_ptr(png);
-    if (f) {
-        size_t amt = MIN(length, f->sz - f->cur);
-        memcpy(out, f->buf + f->cur, amt);
-        f->cur += amt;
-    }
-}
-
-static void
-read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
-    jmp_buf *jb;
-    set_add_response("EBADPNG", msg);
-    jb = png_get_error_ptr(png_ptr);
-    if (jb == NULL) fatal("read_png_error_handler: could not retrieve jmp_buf");
-    longjmp(*jb, 1);
-}
-
-static void
-read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp UNUSED msg) {
-    // ignore warnings
-}
-
-struct png_jmp_data { uint8_t *decompressed; bool ok; png_bytep *row_pointers; int width, height; size_t sz; };
-
-static void
-inflate_png_inner(struct png_jmp_data *d, uint8_t *buf, size_t bufsz) {
-    struct fake_file f = {.buf = buf, .sz = bufsz};
-    png_structp png = NULL;
-    png_infop info = NULL;
-    jmp_buf jb;
-    png = png_create_read_struct(PNG_LIBPNG_VER_STRING, &jb, read_png_error_handler, read_png_warn_handler);
-    if (!png) ABRT(ENOMEM, "Failed to create PNG read structure");
-    info = png_create_info_struct(png);
-    if (!info) ABRT(ENOMEM, "Failed to create PNG info structure");
-
-    if (setjmp(jb)) goto err;
-
-    png_set_read_fn(png, &f, read_png_from_buffer);
-    png_read_info(png, info);
-    png_byte color_type, bit_depth;
-    d->width      = png_get_image_width(png, info);
-    d->height     = png_get_image_height(png, info);
-    color_type = png_get_color_type(png, info);
-    bit_depth  = png_get_bit_depth(png, info);
-
-    // Ensure we get RGBA data out of libpng
-    if (bit_depth == 16) png_set_strip_16(png);
-    if (color_type == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
-    // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
-    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) png_set_expand_gray_1_2_4_to_8(png);
-
-    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
-
-    // These color_type don't have an alpha channel then fill it with 0xff.
-    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
-
-    if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
-    png_read_update_info(png, info);
-
-    int rowbytes = png_get_rowbytes(png, info);
-    d->sz = rowbytes * d->height * sizeof(png_byte);
-    d->decompressed = malloc(d->sz + 16);
-    if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
-    d->row_pointers = malloc(d->height * sizeof(png_bytep));
-    if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
-    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes;
-    png_read_image(png, d->row_pointers);
-
-    d->ok = true;
-err:
-    if (png) png_destroy_read_struct(&png, info ? &info : NULL, NULL);
-    return;
+png_error_handler(const char *code, const char *msg) {
+    set_add_response(code, "%s", msg);
 }
 
 static inline bool
 inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
-    struct png_jmp_data d = {0};
+    png_read_data d = {.err_handler=png_error_handler};
     inflate_png_inner(&d, buf, bufsz);
     if (d.ok) {
         free_load_data(&img->load_data);

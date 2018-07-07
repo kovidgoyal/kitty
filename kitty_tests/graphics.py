@@ -10,7 +10,7 @@ from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
 
 from kitty.fast_data_types import (
-    parse_bytes, set_send_to_gpu, shm_unlink, shm_write
+    load_png_data, parse_bytes, set_send_to_gpu, shm_unlink, shm_write
 )
 
 from . import BaseTest
@@ -209,8 +209,12 @@ class TestGraphics(BaseTest):
     def test_load_png_simple(self):
         # 1x1 transparent PNG
         png_data = standard_b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
+        expected = b'\x00\xff\xff\x7f'
+        self.ae(load_png_data(png_data), expected)
         s, g, l, sl = load_helpers(self)
-        sl(png_data, f=100, expecting_data=b'\x00\xff\xff\x7f')
+        sl(png_data, f=100, expecting_data=expected)
+        # test error handling for loading bad png data
+        self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, b'dsfsdfsfsfd')
 
     def test_image_put(self):
         cw, ch = 10, 20
