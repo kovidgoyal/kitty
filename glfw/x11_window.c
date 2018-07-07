@@ -2684,7 +2684,7 @@ int _glfwPlatformGetKeyScancode(int key)
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
-                              int xhot, int yhot)
+                              int xhot, int yhot, int count)
 {
     cursor->x11.handle = _glfwCreateCursorX11(image, xhot, yhot);
     if (!cursor->x11.handle)

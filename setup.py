@@ -584,6 +584,8 @@ def package(args, for_bundle=False, sh_launcher=False):
         subprocess.check_call(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'])
     shutil.copy2('__main__.py', libdir)
     shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
 
     def src_ignore(parent, entries):
         return [

@@ -1257,7 +1257,7 @@ int _glfwPlatformGetKeyScancode(int key)
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
-                              int xhot, int yhot)
+                              int xhot, int yhot, int count)
 {
     cursor->wl.buffer = createShmBuffer(image);
     cursor->wl.width = image->width;

@@ -15,6 +15,9 @@ Changelog
 - macOS: Add an option :opt:`macos_window_resizable` to control if kitty
   top-level windows are resizable using the mouse or not (:iss:`698`)
 
+- macOS: Use a custom mouse cursor that shows up well on both light and dark backgrounds
+  (:iss:`359`)
+
 - Fix triple-click to select line not working when the entire line is filled
   (:iss:`703`)
 

@@ -1886,44 +1886,44 @@ int _glfwPlatformGetKeyScancode(int key)
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
-                              int xhot, int yhot)
+                              int xhot, int yhot, int count)
 {
     NSImage* native;
     NSBitmapImageRep* rep;
 
     if (!initializeAppKit())
         return GLFW_FALSE;
-
-    rep = [[NSBitmapImageRep alloc]
-        initWithBitmapDataPlanes:NULL
-                      pixelsWide:image->width
-                      pixelsHigh:image->height
-                   bitsPerSample:8
-                 samplesPerPixel:4
-                        hasAlpha:YES
-                        isPlanar:NO
-                  colorSpaceName:NSCalibratedRGBColorSpace
-                    bitmapFormat:NSAlphaNonpremultipliedBitmapFormat
-                     bytesPerRow:image->width * 4
-                    bitsPerPixel:32];
-
-    if (rep == nil)
+    native = [[NSImage alloc] initWithSize:NSMakeSize(image->width, image->height)];
+    if (native == nil)
         return GLFW_FALSE;
 
-    memcpy([rep bitmapData], image->pixels, image->width * image->height * 4);
+    for (int i = 0; i < count; i++) {
+        const GLFWimage *src = image + i;
+        rep = [[NSBitmapImageRep alloc]
+            initWithBitmapDataPlanes:NULL
+                        pixelsWide:src->width
+                        pixelsHigh:src->height
+                    bitsPerSample:8
+                    samplesPerPixel:4
+                            hasAlpha:YES
+                            isPlanar:NO
+                    colorSpaceName:NSCalibratedRGBColorSpace
+                        bitmapFormat:NSAlphaNonpremultipliedBitmapFormat
+                        bytesPerRow:src->width * 4
+                        bitsPerPixel:32];
+        if (rep == nil)
+            return GLFW_FALSE;
 
-    native = [[NSImage alloc] initWithSize:NSMakeSize(image->width, image->height)];
-    [native addRepresentation:rep];
+        memcpy([rep bitmapData], src->pixels, src->width * src->height * 4);
+        [native addRepresentation:rep];
+        [rep release];
+    }
 
     cursor->ns.object = [[NSCursor alloc] initWithImage:native
                                                 hotSpot:NSMakePoint(xhot, yhot)];
-
     [native release];
-    [rep release];
-
     if (cursor->ns.object == nil)
         return GLFW_FALSE;
-
     return GLFW_TRUE;
 }
 

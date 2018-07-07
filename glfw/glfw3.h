@@ -4123,6 +4123,7 @@ GLFWAPI void glfwSetCursorPos(GLFWwindow* window, double xpos, double ypos);
  *  @param[in] image The desired cursor image.
  *  @param[in] xhot The desired x-coordinate, in pixels, of the cursor hotspot.
  *  @param[in] yhot The desired y-coordinate, in pixels, of the cursor hotspot.
+ *  @param[in] count The number of images. Used on Cocoa for retina cursors. The first image should be the 1:1 scale image.
  *  @return The handle of the created cursor, or `NULL` if an
  *  [error](@ref error_handling) occurred.
  *
@@ -4138,11 +4139,11 @@ GLFWAPI void glfwSetCursorPos(GLFWwindow* window, double xpos, double ypos);
  *  @sa @ref glfwDestroyCursor
  *  @sa @ref glfwCreateStandardCursor
  *
- *  @since Added in version 3.1.
+ *  @since Added in version 3.1. Changed in 4.0 to add the count parameter.
  *
  *  @ingroup input
  */
-GLFWAPI GLFWcursor* glfwCreateCursor(const GLFWimage* image, int xhot, int yhot);
+GLFWAPI GLFWcursor* glfwCreateCursor(const GLFWimage* image, int xhot, int yhot, int count);
 
 /*! @brief Creates a cursor with a standard shape.
  *

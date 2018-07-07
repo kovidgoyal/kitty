@@ -456,8 +456,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
 #define CC(dest, shape) {\
-    dest##_cursor = glfwCreateStandardCursor(GLFW_##shape##_CURSOR); \
-    if (dest##_cursor == NULL) { log_error("Failed to create the %s mouse cursor, using default cursor.", #shape); }}
+    if (!dest##_cursor) { \
+        dest##_cursor = glfwCreateStandardCursor(GLFW_##shape##_CURSOR); \
+        if (dest##_cursor == NULL) { log_error("Failed to create the %s mouse cursor, using default cursor.", #shape); } \
+}}
     CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
 #undef CC
         is_first_window = false;
@@ -839,6 +841,39 @@ set_smallest_allowed_resize(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
+    int shape;
+    int x=0, y=0;
+    Py_ssize_t sz;
+    PyObject *images;
+    if (!PyArg_ParseTuple(args, "iO!|ii", &shape, &PyTuple_Type, &images, &x, &y)) return NULL;
+    static GLFWimage gimages[16] = {{0}};
+    size_t count = MIN((size_t)PyTuple_GET_SIZE(images), arraysz(gimages));
+    for (size_t i = 0; i < count; i++) {
+        if (!PyArg_ParseTuple(PyTuple_GET_ITEM(images, i), "s#ii", &gimages[i].pixels, &sz, &gimages[i].width, &gimages[i].height)) return NULL;
+        if (gimages[i].width * gimages[i].height * 4 != sz) {
+            PyErr_SetString(PyExc_ValueError, "The image data size does not match its width and height");
+            return NULL;
+        }
+    }
+#define CASE(which, dest) {\
+    case which: \
+        standard_cursor = glfwCreateCursor(gimages, x, y, count); \
+        if (standard_cursor == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create custom cursor"); return NULL; } \
+        break; \
+}
+    switch(shape) {
+        CASE(GLFW_IBEAM_CURSOR, standard_cursor);
+        CASE(GLFW_HAND_CURSOR, click_cursor);
+        CASE(GLFW_ARROW_CURSOR, arrow_cursor);
+        default:
+            PyErr_SetString(PyExc_ValueError, "Unknown cursor shape");
+            return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 #ifdef __APPLE__
 void
 get_cocoa_key_equivalent(int key, int mods, unsigned short *cocoa_key, int *cocoa_mods) {
@@ -848,6 +883,7 @@ get_cocoa_key_equivalent(int key, int mods, unsigned short *cocoa_key, int *coco
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
+    METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(set_smallest_allowed_resize, METH_VARARGS),
     METHODB(create_os_window, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
@@ -891,6 +927,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);
     ADDC(GLFW_TRUE); ADDC(GLFW_FALSE);
+    ADDC(GLFW_IBEAM_CURSOR); ADDC(GLFW_HAND_CURSOR); ADDC(GLFW_ARROW_CURSOR);
 
 // --- Keys --------------------------------------------------------------------
 

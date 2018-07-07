@@ -12,12 +12,13 @@ from .boss import Boss
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
-    appname, config_dir, glfw_path, is_macos, is_wayland, kitty_exe,
-    logo_data_file
+    appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
+    is_wayland, kitty_exe, logo_data_file
 )
 from .fast_data_types import (
-    GLFW_MOD_SUPER, create_os_window, free_font_data, glfw_init,
-    glfw_terminate, set_default_window_icon, set_options
+    GLFW_IBEAM_CURSOR, GLFW_MOD_SUPER, create_os_window, free_font_data,
+    glfw_init, glfw_terminate, load_png_data, set_custom_cursor,
+    set_default_window_icon, set_options
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
@@ -26,6 +27,21 @@ from .utils import (
     unix_socket_paths
 )
 from .window import load_shader_programs
+
+
+def set_custom_ibeam_cursor():
+    with open(beam_cursor_data_file, 'rb') as f:
+        data = f.read()
+    rgba_data, width, height = load_png_data(data)
+    c2x = os.path.splitext(beam_cursor_data_file)
+    with open(c2x[0] + '@2x' + c2x[1], 'rb') as f:
+        data = f.read()
+    rgba_data2, width2, height2 = load_png_data(data)
+    images = (rgba_data, width, height), (rgba_data2, width2, height2)
+    try:
+        set_custom_cursor(GLFW_IBEAM_CURSOR, images, 4, 8)
+    except Exception as e:
+        log_error('Failed to set custom beam cursor with error: {}'.format(e))
 
 
 def talk_to_instance(args):
@@ -100,6 +116,8 @@ def get_new_os_window_trigger(opts):
 
 def _run_app(opts, args):
     new_os_window_trigger = get_new_os_window_trigger(opts)
+    if is_macos:
+        set_custom_ibeam_cursor()
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
