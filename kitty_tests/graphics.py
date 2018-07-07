@@ -210,7 +210,7 @@ class TestGraphics(BaseTest):
         # 1x1 transparent PNG
         png_data = standard_b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
         expected = b'\x00\xff\xff\x7f'
-        self.ae(load_png_data(png_data), expected)
+        self.ae(load_png_data(png_data), (expected, 1, 1))
         s, g, l, sl = load_helpers(self)
         sl(png_data, f=100, expecting_data=expected)
         # test error handling for loading bad png data

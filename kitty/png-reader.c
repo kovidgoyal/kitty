@@ -105,7 +105,7 @@ load_png_data(PyObject *self UNUSED, PyObject *args) {
     inflate_png_inner(&d, (const uint8_t*)data, sz);
     PyObject *ans = NULL;
     if (d.ok && !PyErr_Occurred()) {
-        ans = PyBytes_FromStringAndSize((const char*)d.decompressed, d.sz);
+        ans = Py_BuildValue("y#ii", d.decompressed, (int)d.sz, d.width, d.height);
     } else {
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "Unknown error while reading PNG data");
     }
