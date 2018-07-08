@@ -976,7 +976,12 @@ write_to_child(int fd, Screen *screen) {
             written = screen->write_buf_used;
         }
     }
-    screen->write_buf_used -= written;
+    if (written) {
+        screen->write_buf_used -= written;
+        if (screen->write_buf_used) {
+            memmove(screen->write_buf, screen->write_buf + written, screen->write_buf_used);
+        }
+    }
     screen_mutex(unlock, write);
 }
 

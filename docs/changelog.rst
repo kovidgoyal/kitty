@@ -30,6 +30,9 @@ Changelog
 
 - When drag-scrolling stop the scroll when the mouse button is released.
 
+- Fix a regression in the previous release that caused pasting large amounts
+  of text to be duplicated (:iss:`709`)
+
 
 0.11.2 [2018-07-01]
 ------------------------------
