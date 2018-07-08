@@ -32,6 +32,8 @@
 #include <xkbcommon/xkbcommon-x11.h>
 #endif
 
+#include "ibus_glfw.h"
+
 typedef struct {
     struct xkb_context*     context;
     struct xkb_keymap*      keymap;
@@ -56,6 +58,7 @@ typedef struct {
     xkb_mod_mask_t          activeUnknownModifiers;
     unsigned int            modifiers;
     xkb_mod_index_t         unknownModifiers[256];
+    _GLFWIBUSData           ibus;
 
 #ifdef _GLFW_X11
     int32_t                 keyboard_device_id;
@@ -76,7 +79,7 @@ GLFWbool glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb);
 #endif
 
 void glfw_xkb_release(_GLFWXKBData *xkb);
-GLFWbool glfw_xkb_create_context(_GLFWXKBData *xkb);
+GLFWbool glfw_xkb_create_context(_GLFWXKBData *xkb, _GLFWDBUSData *dbus);
 GLFWbool glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str);
 void glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_layout_index_t base_group, xkb_layout_index_t latched_group, xkb_layout_index_t locked_group);
 GLFWbool glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode);

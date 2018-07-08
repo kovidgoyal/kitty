@@ -208,6 +208,7 @@ typedef struct _GLFWlibraryWayland
         _GLFWwindow*            keyboardFocus;
     } keyRepeatInfo;
     _GLFWXKBData                xkb;
+    _GLFWDBUSData               dbus;
 
     _GLFWwindow*                pointerFocus;
     _GLFWwindow*                keyboardFocus;

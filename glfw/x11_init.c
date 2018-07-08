@@ -378,7 +378,7 @@ static GLFWbool initExtensions(void)
     }
 
     if (!glfw_xkb_set_x11_events_mask()) return GLFW_FALSE;
-    if (!glfw_xkb_create_context(&_glfw.x11.xkb)) return GLFW_FALSE;
+    if (!glfw_xkb_create_context(&_glfw.x11.xkb, &_glfw.x11.dbus)) return GLFW_FALSE;
     if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return GLFW_FALSE;
     if (!glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL)) return GLFW_FALSE;
 
@@ -689,6 +689,7 @@ void _glfwPlatformTerminate(void)
     }
 
     glfw_xkb_release(&_glfw.x11.xkb);
+    glfw_dbus_terminate(&_glfw.x11.dbus);
     free(_glfw.x11.primarySelectionString);
     free(_glfw.x11.clipboardString);
 

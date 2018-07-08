@@ -315,6 +315,7 @@ typedef struct _GLFWlibraryX11
     } randr;
 
     _GLFWXKBData xkb;
+    _GLFWDBUSData dbus;
 
     struct {
         int         count;

@@ -55,7 +55,7 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':
-        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb'.split():
+        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
@@ -73,7 +73,7 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         for p in ans.wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
             ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
-        for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon'.split():
+        for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
