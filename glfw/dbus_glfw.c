@@ -124,6 +124,10 @@ glfw_dbus_terminate(_GLFWDBUSData *dbus) {
         dbus_connection_unref(dbus->session_conn);
         dbus->session_conn = NULL;
     }
+    if (dbus_data) {
+        dbus_data->eld = NULL;
+        dbus_data = NULL;
+    }
 }
 
 void
