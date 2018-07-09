@@ -60,6 +60,7 @@ static void
 handleEvents(double timeout) {
     int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
     if (display_read_ok) _glfwDispatchX11Events();
+    glfw_ibus_dispatch(&_glfw.x11.xkb.ibus);
 }
 
 static GLFWbool

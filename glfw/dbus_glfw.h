@@ -31,7 +31,6 @@
 #include "backend_utils.h"
 
 typedef struct {
-    DBusConnection *session_conn;
     EventLoopData* eld;
 } _GLFWDBUSData;
 
@@ -43,3 +42,4 @@ void glfw_dbus_close_connection(DBusConnection *conn);
 GLFWbool glfw_dbus_call_void_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 GLFWbool
 glfw_dbus_call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
+void glfw_dbus_dispatch(DBusConnection *);

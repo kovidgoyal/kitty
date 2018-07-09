@@ -137,8 +137,9 @@ glfw_dbus_connect_to(const char *path, const char* err_msg) {
         report_error(&err, err_msg);
         return NULL;
     }
-    dbus_error_free(&err);
+    dbus_connection_set_exit_on_disconnect(ans, FALSE);
     dbus_connection_flush(ans);
+    dbus_error_free(&err);
     if (!dbus_bus_register(ans, &err)) {
         report_error(&err, err_msg);
         return NULL;
@@ -160,12 +161,12 @@ glfw_dbus_connect_to(const char *path, const char* err_msg) {
 }
 
 void
+glfw_dbus_dispatch(DBusConnection *conn) {
+    while(dbus_connection_dispatch(conn) == DBUS_DISPATCH_DATA_REMAINS);
+}
+
+void
 glfw_dbus_terminate(_GLFWDBUSData *dbus) {
-    if (dbus->session_conn) {
-        dbus_connection_close(dbus->session_conn);
-        dbus_connection_unref(dbus->session_conn);
-        dbus->session_conn = NULL;
-    }
     if (dbus_data) {
         dbus_data->eld = NULL;
         dbus_data = NULL;

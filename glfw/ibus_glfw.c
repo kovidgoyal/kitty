@@ -230,6 +230,10 @@ check_connection(_GLFWIBUSData *ibus) {
 }
 
 
+void
+glfw_ibus_dispatch(_GLFWIBUSData *ibus) {
+    if (ibus->conn) glfw_dbus_dispatch(ibus->conn);
+}
 // }}}
 
 static void
