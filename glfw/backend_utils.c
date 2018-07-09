@@ -12,10 +12,24 @@
 #include <string.h>
 #include <errno.h>
 #include <float.h>
+#include <time.h>
 
 #ifdef __NetBSD__
 #define ppoll pollts
 #endif
+
+static inline double
+monotonic() {
+    struct timespec ts = {0};
+#ifdef CLOCK_HIGHRES
+	clock_gettime(CLOCK_HIGHRES, &ts);
+#elif CLOCK_MONOTONIC_RAW
+	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
+	return (((double)ts.tv_nsec) / 1e9) + (double)ts.tv_sec;
+}
 
 void
 update_fds(EventLoopData *eld) {
@@ -73,7 +87,6 @@ toggleWatch(EventLoopData *eld, id_type watch_id, int enabled) {
 }
 
 static id_type timer_counter = 0;
-extern double glfwGetTime(void);
 
 static int
 compare_timers(const void *a_, const void *b_) {
@@ -91,7 +104,7 @@ addTimer(EventLoopData *eld, double interval, int enabled, timer_callback_func c
     if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) return 0;
     Timer *t = eld->timers + eld->timers_count++;
     t->interval = interval;
-    t->trigger_at = enabled ? glfwGetTime() + interval : DBL_MAX;
+    t->trigger_at = enabled ? monotonic() + interval : DBL_MAX;
     t->callback = cb;
     t->callback_data = cb_data;
     t->id = ++timer_counter;
@@ -108,7 +121,7 @@ void
 toggleTimer(EventLoopData *eld, id_type timer_id, int enabled) {
     for (nfds_t i = 0; i < eld->timers_count; i++) {
         if (eld->timers[i].id == timer_id) {
-            double trigger_at = enabled ? (glfwGetTime() + eld->timers[i].interval) : DBL_MAX;
+            double trigger_at = enabled ? (monotonic() + eld->timers[i].interval) : DBL_MAX;
             if (trigger_at != eld->timers[i].trigger_at) {
                 eld->timers[i].trigger_at = trigger_at;
                 update_timers(eld);
@@ -133,7 +146,7 @@ double
 prepareForPoll(EventLoopData *eld, double timeout) {
     for (nfds_t i = 0; i < eld->fds_count; i++) eld->fds[i].revents = 0;
     if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return timeout;
-    double now = glfwGetTime(), next_repeat_at = eld->timers[0].trigger_at;
+    double now = monotonic(), next_repeat_at = eld->timers[0].trigger_at;
     if (timeout < 0 || now + timeout > next_repeat_at) {
         timeout = next_repeat_at <= now ? 0 : next_repeat_at - now;
     }
@@ -165,7 +178,7 @@ dispatchTimers(EventLoopData *eld) {
     if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return 0;
     static struct { timer_callback_func func; id_type id; void* data; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
     unsigned num_dispatches = 0;
-    double now = glfwGetTime();
+    double now = monotonic();
     for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at < DBL_MAX; i++) {
         if (eld->timers[i].trigger_at <= now) {
             eld->timers[i].trigger_at = now + eld->timers[i].interval;
@@ -201,7 +214,7 @@ pollForEvents(EventLoopData *eld, double timeout) {
     int read_ok = 0;
     timeout = prepareForPoll(eld, timeout);
     int result;
-    double end_time = glfwGetTime() + timeout;
+    double end_time = monotonic() + timeout;
 
     while(1) {
         if (timeout >= 0) {
@@ -212,7 +225,7 @@ pollForEvents(EventLoopData *eld, double timeout) {
                 read_ok = eld->watches[0].ready;
                 break;
             }
-            timeout = end_time - glfwGetTime();
+            timeout = end_time - monotonic();
             if (timeout <= 0) break;
             if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
             break;
