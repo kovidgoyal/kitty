@@ -30,8 +30,10 @@
 #include "dbus_glfw.h"
 
 typedef struct {
-    GLFWbool ok;
+    GLFWbool ok, inited;
+    time_t address_file_mtime;
     DBusConnection *conn;
+    const char *input_ctx_path, *address_file_name, *address;
 } _GLFWIBUSData;
 
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus, _GLFWDBUSData *dbus);
