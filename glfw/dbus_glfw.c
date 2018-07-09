@@ -27,6 +27,7 @@
 
 #include "internal.h"
 #include "dbus_glfw.h"
+#include <stdlib.h>
 
 static inline void
 report_error(DBusError *err, const char *fmt, ...) {
@@ -71,18 +72,24 @@ events_for_watch(DBusWatch *watch) {
 
 static dbus_bool_t
 add_dbus_watch(DBusWatch *watch, void *data) {
-    if (addWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch)) return TRUE;
-    return FALSE;
+    id_type watch_id = addWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch);
+    if (!watch_id) return FALSE;
+    id_type *idp = malloc(sizeof(id_type));
+    if (!idp) return FALSE;
+    dbus_watch_set_data(watch, idp, free);
+    return TRUE;
 }
 
 static void
 remove_dbus_watch(DBusWatch *watch, void *data) {
-    removeWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch));
+    id_type *idp = dbus_watch_get_data(watch);
+    if (idp) removeWatch(dbus_data->eld, *idp);
 }
 
 static void
 toggle_dbus_watch(DBusWatch *watch, void *data) {
-    toggleWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch));
+    id_type *idp = dbus_watch_get_data(watch);
+    if (idp) toggleWatch(dbus_data->eld, *idp, dbus_watch_get_enabled(watch));
 }
 
 DBusConnection*

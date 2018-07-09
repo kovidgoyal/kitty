@@ -29,11 +29,13 @@
 #include <unistd.h>
 
 typedef void(*watch_callback_func)(int, int, void*);
+typedef unsigned long long id_type;
 
 typedef struct {
     int fd, events, enabled, ready;
     watch_callback_func callback;
     void *callback_data;
+    id_type id;
 } Watch;
 
 typedef struct {
@@ -44,9 +46,9 @@ typedef struct {
 } EventLoopData;
 
 
-int addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
-void removeWatch(EventLoopData *eld, int fd, int events);
-void toggleWatch(EventLoopData *eld, int fd, int events, int enabled);
+id_type addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
+void removeWatch(EventLoopData *eld, id_type watch_id);
+void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);
 void prepareForPoll(EventLoopData *eld);
 int pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout);
 void dispatchEvents(EventLoopData *eld);
