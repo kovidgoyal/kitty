@@ -641,6 +641,7 @@ int _glfwPlatformInit(void)
     }
 
     initPollData(&_glfw.x11.eventLoopData, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
+    glfw_dbus_init(&_glfw.x11.dbus, &_glfw.x11.eventLoopData);
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
     _glfw.x11.root = RootWindow(_glfw.x11.display, _glfw.x11.screen);

@@ -28,21 +28,22 @@ update_fds(EventLoopData *eld) {
     }
 }
 
-void
+int
 addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
-    removeWatch(eld, fd);
-    if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) return;
+    removeWatch(eld, fd, events);
+    if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) return 0;
     Watch *w = eld->watches + eld->watches_count++;
     w->fd = fd; w->events = events; w->enabled = enabled;
     w->callback = cb;
     w->callback_data = cb_data;
     update_fds(eld);
+    return 1;
 }
 
 void
-removeWatch(EventLoopData *eld, int fd) {
+removeWatch(EventLoopData *eld, int fd, int events) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
-        if (eld->watches[i].fd == fd) {
+        if (eld->watches[i].fd == fd && eld->watches[i].events == events) {
             eld->watches_count--;
             if (i < eld->watches_count) {
                 memmove(eld->watches + i, eld->watches + i + 1, sizeof(eld->watches[0]) * (eld->watches_count - i));
@@ -54,9 +55,9 @@ removeWatch(EventLoopData *eld, int fd) {
 }
 
 void
-toggleWatch(EventLoopData *eld, int fd, int enabled) {
+toggleWatch(EventLoopData *eld, int fd, int events, int enabled) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
-        if (eld->watches[i].fd == fd) {
+        if (eld->watches[i].fd == fd && eld->watches[i].events == events) {
             if (eld->watches[i].enabled != enabled) {
                 eld->watches[i].enabled = enabled;
                 update_fds(eld);

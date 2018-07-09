@@ -44,9 +44,9 @@ typedef struct {
 } EventLoopData;
 
 
-void addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
-void removeWatch(EventLoopData *eld, int fd);
-void toggleWatch(EventLoopData *eld, int fd, int enabled);
+int addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
+void removeWatch(EventLoopData *eld, int fd, int events);
+void toggleWatch(EventLoopData *eld, int fd, int events, int enabled);
 void prepareForPoll(EventLoopData *eld);
 int pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout);
 void dispatchEvents(EventLoopData *eld);

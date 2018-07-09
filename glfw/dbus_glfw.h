@@ -28,13 +28,15 @@
 #pragma once
 
 #include <dbus/dbus.h>
+#include "backend_utils.h"
 
 typedef struct {
     DBusConnection *session_conn;
+    EventLoopData* eld;
 } _GLFWDBUSData;
 
 
-GLFWbool glfw_dbus_init(_GLFWDBUSData *dbus);
+GLFWbool glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld);
 void glfw_dbus_terminate(_GLFWDBUSData *dbus);
 DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg);
 void glfw_dbus_close_connection(DBusConnection *conn);

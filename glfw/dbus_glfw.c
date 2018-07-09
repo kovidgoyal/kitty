@@ -40,9 +40,49 @@ report_error(DBusError *err, const char *fmt, ...) {
     dbus_error_free(err);
 }
 
+static _GLFWDBUSData *dbus_data = NULL;
+
 GLFWbool
-glfw_dbus_init(_GLFWDBUSData *dbus) {
+glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld) {
+    dbus->eld = eld;
+    dbus_data = dbus;
     return GLFW_TRUE;
+}
+
+static void
+on_dbus_watch_ready(int fd, int events, void *data) {
+    DBusWatch *watch = (DBusWatch*)data;
+    unsigned int flags = 0;
+    if (events & POLLERR) flags |= DBUS_WATCH_ERROR;
+    if (events & POLLHUP) flags |= DBUS_WATCH_HANGUP;
+    if (events & POLLIN) flags |= DBUS_WATCH_READABLE;
+    if (events & POLLOUT) flags |= DBUS_WATCH_WRITABLE;
+    dbus_watch_handle(watch, flags);
+}
+
+static inline int
+events_for_watch(DBusWatch *watch) {
+    int events = 0;
+    unsigned int flags = dbus_watch_get_flags(watch);
+    if (flags & DBUS_WATCH_READABLE) events |= POLLIN;
+    if (flags & DBUS_WATCH_WRITABLE) events |= POLLOUT;
+    return events;
+}
+
+static dbus_bool_t
+add_dbus_watch(DBusWatch *watch, void *data) {
+    if (addWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch)) return TRUE;
+    return FALSE;
+}
+
+static void
+remove_dbus_watch(DBusWatch *watch, void *data) {
+    removeWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch));
+}
+
+static void
+toggle_dbus_watch(DBusWatch *watch, void *data) {
+    toggleWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch));
 }
 
 DBusConnection*
@@ -61,6 +101,12 @@ glfw_dbus_connect_to(const char *path, const char* err_msg) {
         return NULL;
     }
     dbus_connection_flush(ans);
+    if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, NULL, NULL)) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", path);
+        dbus_connection_close(ans);
+        dbus_connection_unref(ans);
+        return NULL;
+    }
     return ans;
 }
 

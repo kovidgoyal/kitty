@@ -665,6 +665,7 @@ int _glfwPlatformInit(void)
         return GLFW_FALSE;
     }
     initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
+    glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
