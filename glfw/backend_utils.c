@@ -179,14 +179,12 @@ dispatchTimers(EventLoopData *eld) {
     static struct { timer_callback_func func; id_type id; void* data; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
     unsigned num_dispatches = 0;
     double now = monotonic();
-    for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at < DBL_MAX; i++) {
-        if (eld->timers[i].trigger_at <= now) {
-            eld->timers[i].trigger_at = now + eld->timers[i].interval;
-            dispatches[num_dispatches].func = eld->timers[i].callback;
-            dispatches[num_dispatches].id = eld->timers[i].id;
-            dispatches[num_dispatches].data = eld->timers[i].callback_data;
-            num_dispatches++;
-        }
+    for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at <= now; i++) {
+        eld->timers[i].trigger_at = now + eld->timers[i].interval;
+        dispatches[num_dispatches].func = eld->timers[i].callback;
+        dispatches[num_dispatches].id = eld->timers[i].id;
+        dispatches[num_dispatches].data = eld->timers[i].callback_data;
+        num_dispatches++;
     }
     // we dispatch separately so that the callbacks can modify timers
     for (unsigned i = 0; i < num_dispatches; i++) {
