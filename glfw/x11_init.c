@@ -640,8 +640,7 @@ int _glfwPlatformInit(void)
         return GLFW_FALSE;
     }
 
-    initPollData(_glfw.x11.eventLoopData.fds, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
-    _glfw.x11.eventLoopData.fds[2].events = POLLIN;
+    initPollData(&_glfw.x11.eventLoopData, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
     _glfw.x11.root = RootWindow(_glfw.x11.display, _glfw.x11.screen);
@@ -660,6 +659,8 @@ int _glfwPlatformInit(void)
 #if defined(__linux__)
     if (!_glfwInitJoysticksLinux())
         return GLFW_FALSE;
+    if (_glfw.linjs.inotify > 0)
+        addWatch(&_glfw.x11.eventLoopData, _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
 #endif
 
     _glfwInitTimerPOSIX();

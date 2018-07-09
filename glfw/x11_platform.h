@@ -53,6 +53,7 @@
 
 // The libxkb library is used for improved keyboard support
 #include "xkb_glfw.h"
+#include "backend_utils.h"
 
 typedef XRRCrtcGamma* (* PFN_XRRAllocGamma)(int);
 typedef void (* PFN_XRRFreeCrtcInfo)(XRRCrtcInfo*);
@@ -383,10 +384,7 @@ typedef struct _GLFWlibraryX11
         PFN_XRenderFindVisualFormat FindVisualFormat;
     } xrender;
 
-    struct {
-        struct pollfd fds[3];
-        int wakeupFds[2];
-    } eventLoopData;
+    EventLoopData eventLoopData;
 
 } _GLFWlibraryX11;
 

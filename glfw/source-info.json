@@ -84,6 +84,7 @@
       "ibus_glfw.c",
       "egl_context.c",
       "osmesa_context.c",
+      "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c"
     ]
@@ -139,6 +140,7 @@
       "glx_context.c",
       "egl_context.c",
       "osmesa_context.c",
+      "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c"
     ]

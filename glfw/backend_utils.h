@@ -25,42 +25,30 @@
 //========================================================================
 
 #pragma once
-#include <unistd.h>
 #include <poll.h>
-#include <errno.h>
+#include <unistd.h>
 
-#ifdef __NetBSD__
-#define ppoll pollts
-#endif
+typedef void(*watch_callback_func)(int, int, void*);
 
-static inline void
-drainFd(int fd) {
-    static char drain_buf[64];
-    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
-}
+typedef struct {
+    int fd, events, enabled, ready;
+    watch_callback_func callback;
+    void *callback_data;
+} Watch;
+
+typedef struct {
+    struct pollfd fds[32];
+    int wakeupFds[2];
+    nfds_t watches_count, fds_count;
+    Watch watches[32];
+} EventLoopData;
 
 
-static inline int
-pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout) {
-    const long seconds = (long) timeout;
-    const long nanoseconds = (long) ((timeout - seconds) * 1e9);
-    struct timespec tv = { seconds, nanoseconds };
-    return ppoll(fds, nfds, &tv, NULL);
-}
-
-static inline void
-initPollData(struct pollfd *fds, int wakeup_fd, int display_fd) {
-    fds[0].fd = wakeup_fd; fds[1].fd = display_fd;
-    fds[0].events = POLLIN; fds[1].events = POLLIN;
-}
-
-static inline void
-closeFds(int *fds, size_t count) {
-    while(count--) {
-        if (*fds > 0) {
-            close(*fds);
-            *fds = -1;
-        }
-        fds++;
-    }
-}
+void addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
+void removeWatch(EventLoopData *eld, int fd);
+void toggleWatch(EventLoopData *eld, int fd, int enabled);
+void prepareForPoll(EventLoopData *eld);
+int pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout);
+void dispatchEvents(EventLoopData *eld);
+void closeFds(int *fds, size_t count);
+void initPollData(EventLoopData *eld, int wakeup_fd, int display_fd);

@@ -49,6 +49,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #else
 #include "null_joystick.h"
 #endif
+#include "backend_utils.h"
 #include "xkb_glfw.h"
 #include "egl_context.h"
 #include "osmesa_context.h"
@@ -230,10 +231,7 @@ typedef struct _GLFWlibraryWayland
         PFN_wl_egl_window_resize window_resize;
     } egl;
 
-    struct {
-        struct pollfd fds[2];
-        int wakeupFds[2];
-    } eventLoopData;
+    EventLoopData eventLoopData;
 
 } _GLFWlibraryWayland;
 

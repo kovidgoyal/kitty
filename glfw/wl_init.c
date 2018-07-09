@@ -664,7 +664,7 @@ int _glfwPlatformInit(void)
                         "Wayland: Failed to connect to display");
         return GLFW_FALSE;
     }
-    initPollData(_glfw.wl.eventLoopData.fds, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
+    initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);

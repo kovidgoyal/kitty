@@ -283,7 +283,6 @@ def main():
     for src in files_to_copy:
         shutil.copy2(src, '.')
     shutil.copy2(glfw_header, '.')
-    patch_in_file('internal.h', lambda x: x.replace('../include/GLFW/', ''))
     patch_in_file('cocoa_window.m', lambda x: re.sub(
         r'[(]void[)]loadMainMenu.+?}', '(void)loadMainMenu\n{ // removed by Kovid as it generated compiler warnings \n}\n', x, flags=re.DOTALL))
     json.dump(

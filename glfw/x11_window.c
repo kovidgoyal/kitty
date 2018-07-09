@@ -56,18 +56,11 @@
 //
 static GLFWbool waitForEvent(double* timeout)
 {
-    nfds_t count = 2;
+    nfds_t count = _glfw.x11.eventLoopData.fds_count;
 
-#if defined(__linux__)
-    if (_glfw.linjs.inotify > 0)
-    {
-        count = 3;
-        _glfw.x11.eventLoopData.fds[2].fd = _glfw.linjs.inotify;
-    }
-#endif
     for (;;)
     {
-        for (nfds_t i = 0; i < count; i++) _glfw.x11.eventLoopData.fds[i].revents = 0;
+        prepareForPoll(&_glfw.x11.eventLoopData);
         if (timeout)
         {
             const uint64_t base = _glfwPlatformGetTimerValue();
@@ -75,9 +68,8 @@ static GLFWbool waitForEvent(double* timeout)
             *timeout -= (_glfwPlatformGetTimerValue() - base) /
                 (double) _glfwPlatformGetTimerFrequency();
 
-            if (result > 0)
-            {
-                if (_glfw.x11.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
+            if (result > 0) {
+                dispatchEvents(&_glfw.x11.eventLoopData);
                 return GLFW_TRUE;
             }
             if (result == 0)
@@ -87,9 +79,8 @@ static GLFWbool waitForEvent(double* timeout)
         }
         else {
             const int result = poll(_glfw.x11.eventLoopData.fds, count, -1);
-            if (result > 0)
-            {
-                if (_glfw.x11.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.x11.eventLoopData.fds[0].fd);
+            if (result > 0) {
+                dispatchEvents(&_glfw.x11.eventLoopData);
                 return GLFW_TRUE;
             }
             if (result == 0)

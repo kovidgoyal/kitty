@@ -735,19 +735,18 @@ handleEvents(double timeout)
     dispatchPendingKeyRepeats();
     timeout = adjustTimeoutForKeyRepeat(timeout);
     GLFWbool read_ok = GLFW_FALSE;
-    for (nfds_t i = 0; i < 2; i++) _glfw.wl.eventLoopData.fds[i].revents = 0;
+    prepareForPoll(&_glfw.wl.eventLoopData);
 
     if (timeout >= 0) {
-        const int result = pollWithTimeout(_glfw.wl.eventLoopData.fds, 2, timeout);
-        if (result > 0)
-        {
-            if (_glfw.wl.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
-            read_ok = _glfw.wl.eventLoopData.fds[1].revents & POLLIN;
+        const int result = pollWithTimeout(_glfw.wl.eventLoopData.fds, _glfw.wl.eventLoopData.fds_count, timeout);
+        if (result > 0) {
+            dispatchEvents(&_glfw.wl.eventLoopData);
+            read_ok = _glfw.wl.eventLoopData.watches[0].ready;
         }
     } else {
-        if (poll(_glfw.wl.eventLoopData.fds, 2, -1) > 0) {
-            if (_glfw.wl.eventLoopData.fds[0].revents & POLLIN) drainFd(_glfw.wl.eventLoopData.fds[0].fd);
-            read_ok = _glfw.wl.eventLoopData.fds[1].revents & POLLIN;
+        if (poll(_glfw.wl.eventLoopData.fds, _glfw.wl.eventLoopData.fds_count, -1) > 0) {
+            dispatchEvents(&_glfw.wl.eventLoopData);
+            read_ok = _glfw.wl.eventLoopData.watches[0].ready;
         }
     }
     if (read_ok) {
