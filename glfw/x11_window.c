@@ -54,38 +54,31 @@
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
 //
-static GLFWbool waitForEvent(double* timeout)
-{
-    nfds_t count = _glfw.x11.eventLoopData.fds_count;
+void _glfwDispatchX11Events(void);
 
-    for (;;)
-    {
-        prepareForPoll(&_glfw.x11.eventLoopData);
-        if (timeout)
-        {
-            const uint64_t base = _glfwPlatformGetTimerValue();
-            const int result = pollWithTimeout(_glfw.x11.eventLoopData.fds, count, *timeout);
-            *timeout -= (_glfwPlatformGetTimerValue() - base) /
-                (double) _glfwPlatformGetTimerFrequency();
+static void
+handleEvents(double timeout) {
+    int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
+    if (display_read_ok) _glfwDispatchX11Events();
+}
 
-            if (result > 0) {
-                dispatchEvents(&_glfw.x11.eventLoopData);
-                return GLFW_TRUE;
-            }
-            if (result == 0)
-                return GLFW_FALSE;
-            if (*timeout > 0 && (errno == EINTR || errno == EAGAIN)) continue;
+static GLFWbool
+waitForX11Event(double timeout) {
+    // returns true iff there is X11 data waiting to be read, does not run watches and timers
+    double end_time = glfwGetTime() + timeout;
+    while(GLFW_TRUE) {
+        if (timeout >= 0) {
+            const int result = pollWithTimeout(_glfw.x11.eventLoopData.fds, 1, timeout);
+            if (result > 0) return GLFW_TRUE;
+            timeout = end_time - glfwGetTime();
+            if (timeout <= 0) return GLFW_FALSE;
+            if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
             return GLFW_FALSE;
-        }
-        else {
-            const int result = poll(_glfw.x11.eventLoopData.fds, count, -1);
-            if (result > 0) {
-                dispatchEvents(&_glfw.x11.eventLoopData);
-                return GLFW_TRUE;
-            }
-            if (result == 0)
-                return GLFW_FALSE;
-            if (errno != EINTR && errno != EAGAIN) return GLFW_FALSE;
+        } else {
+            const int result = poll(_glfw.x11.eventLoopData.fds, 1, -1);
+            if (result > 0) return GLFW_TRUE;
+            if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            return GLFW_FALSE;
         }
     }
 }
@@ -96,14 +89,13 @@ static GLFWbool waitForEvent(double* timeout)
 static GLFWbool waitForVisibilityNotify(_GLFWwindow* window)
 {
     XEvent dummy;
-    double timeout = 0.1;
 
     while (!XCheckTypedWindowEvent(_glfw.x11.display,
                                    window->x11.handle,
                                    VisibilityNotify,
                                    &dummy))
     {
-        if (!waitForEvent(&timeout))
+        if (!waitForX11Event(0.1))
             return GLFW_FALSE;
     }
 
@@ -975,7 +967,7 @@ static const char* getSelectionString(Atom selection)
                                        SelectionNotify,
                                        &notification))
         {
-            waitForEvent(NULL);
+            waitForX11Event(-1);
         }
 
         if (notification.xselection.property == None)
@@ -1011,7 +1003,7 @@ static const char* getSelectionString(Atom selection)
                                       isSelPropNewValueNotify,
                                       (XPointer) &notification))
                 {
-                    waitForEvent(NULL);
+                    waitForX11Event(-1);
                 }
 
                 XFree(data);
@@ -1843,7 +1835,7 @@ void _glfwPushSelectionToManagerX11(void)
             }
         }
 
-        waitForEvent(NULL);
+        waitForX11Event(-1);
     }
 }
 
@@ -2133,7 +2125,6 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
         _glfw.x11.NET_REQUEST_FRAME_EXTENTS)
     {
         XEvent event;
-        double timeout = 0.5;
 
         // Ensure _NET_FRAME_EXTENTS is set, allowing glfwGetWindowFrameSize to
         // function before the window is mapped
@@ -2150,7 +2141,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                               isFrameExtentsEvent,
                               (XPointer) window))
         {
-            if (!waitForEvent(&timeout))
+            if (!waitForX11Event(0.5))
             {
                 _glfwInputError(GLFW_PLATFORM_ERROR,
                                 "X11: The window manager has a broken _NET_REQUEST_FRAME_EXTENTS implementation; please report this issue");
@@ -2551,8 +2542,7 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
                     PropModeReplace, (unsigned char*) &value, 1);
 }
 
-void _glfwPlatformPollEvents(void)
-{
+void _glfwDispatchX11Events(void) {
     _GLFWwindow* window;
 
 #if defined(__linux__)
@@ -2585,23 +2575,19 @@ void _glfwPlatformPollEvents(void)
     XFlush(_glfw.x11.display);
 }
 
+void _glfwPlatformPollEvents(void)
+{
+    handleEvents(0);
+}
+
 void _glfwPlatformWaitEvents(void)
 {
-    while (!XPending(_glfw.x11.display))
-        waitForEvent(NULL);
-
-    _glfwPlatformPollEvents();
+    handleEvents(-1);
 }
 
 void _glfwPlatformWaitEventsTimeout(double timeout)
 {
-    while (!XPending(_glfw.x11.display))
-    {
-        if (!waitForEvent(&timeout))
-            break;
-    }
-
-    _glfwPlatformPollEvents();
+    handleEvents(timeout);
 }
 
 void _glfwPlatformPostEmptyEvent(void)

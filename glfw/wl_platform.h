@@ -205,7 +205,7 @@ typedef struct _GLFWlibraryWayland
     int32_t                     keyboardRepeatDelay;
     struct {
         uint32_t                key;
-        double                  nextRepeatAt;
+        id_type                 keyRepeatTimer;
         _GLFWwindow*            keyboardFocus;
     } keyRepeatInfo;
     _GLFWXKBData                xkb;

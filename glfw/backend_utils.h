@@ -28,8 +28,9 @@
 #include <poll.h>
 #include <unistd.h>
 
-typedef void(*watch_callback_func)(int, int, void*);
 typedef unsigned long long id_type;
+typedef void(*watch_callback_func)(int, int, void*);
+typedef void(*timer_callback_func)(id_type, void*);
 
 typedef struct {
     int fd, events, enabled, ready;
@@ -39,18 +40,32 @@ typedef struct {
 } Watch;
 
 typedef struct {
+    id_type id;
+    double interval, trigger_at;
+    timer_callback_func callback;
+    void *callback_data;
+} Timer;
+
+
+typedef struct {
     struct pollfd fds[32];
     int wakeupFds[2];
-    nfds_t watches_count, fds_count;
+    nfds_t watches_count, fds_count, timers_count;
     Watch watches[32];
+    Timer timers[128];
 } EventLoopData;
 
 
 id_type addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
 void removeWatch(EventLoopData *eld, id_type watch_id);
 void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);
-void prepareForPoll(EventLoopData *eld);
+id_type addTimer(EventLoopData *eld, double interval, int enabled, timer_callback_func cb, void *cb_data);
+void removeTimer(EventLoopData *eld, id_type timer_id);
+void toggleTimer(EventLoopData *eld, id_type timer_id, int enabled);
+void changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval);
+double prepareForPoll(EventLoopData *eld, double timeout);
 int pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout);
-void dispatchEvents(EventLoopData *eld);
+int pollForEvents(EventLoopData *eld, double timeout);
+unsigned dispatchTimers(EventLoopData *eld);
 void closeFds(int *fds, size_t count);
 void initPollData(EventLoopData *eld, int wakeup_fd, int display_fd);
