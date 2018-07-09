@@ -36,3 +36,5 @@ typedef struct {
 
 GLFWbool glfw_dbus_init(_GLFWDBUSData *dbus);
 void glfw_dbus_terminate(_GLFWDBUSData *dbus);
+DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg);
+void glfw_dbus_close_connection(DBusConnection *conn);

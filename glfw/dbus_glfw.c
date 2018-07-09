@@ -50,6 +50,17 @@ glfw_dbus_init(_GLFWDBUSData *dbus) {
     return GLFW_TRUE;
 }
 
+DBusConnection*
+glfw_dbus_connect_to(const char *path, const char* err_msg) {
+    DBusError err;
+    dbus_error_init(&err);
+    DBusConnection *ans = dbus_connection_open_private(path, &err);
+    if (!ans) {
+        report_error(&err, err_msg);
+    }
+    return ans;
+}
+
 void
 glfw_dbus_terminate(_GLFWDBUSData *dbus) {
     if (dbus->session_conn) {
@@ -57,4 +68,10 @@ glfw_dbus_terminate(_GLFWDBUSData *dbus) {
         dbus_connection_unref(dbus->session_conn);
         dbus->session_conn = NULL;
     }
+}
+
+void
+glfw_dbus_close_connection(DBusConnection *conn) {
+    dbus_connection_close(conn);
+    dbus_connection_unref(conn);
 }

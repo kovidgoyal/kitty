@@ -31,6 +31,8 @@
 #include "internal.h"
 #include "ibus_glfw.h"
 
+#define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
+
 static inline GLFWbool
 has_env_var(const char *name, const char *val) {
     const char *q = getenv(name);
@@ -128,4 +130,17 @@ glfw_connect_to_ibus(_GLFWIBUSData *ibus, _GLFWDBUSData *dbus) {
     if (!address_file_name) return;
     const char *address = read_ibus_address(address_file_name);
     if (!address) return;
+    ibus->conn = glfw_dbus_connect_to(address, "Failed to connect to the IBUS daemon, with error");
+    if (!ibus->conn) return;
+    ibus->ok = GLFW_TRUE;
+    debug("Connected to IBUS daemon for IME input management\n");
+}
+
+void
+glfw_ibus_terminate(_GLFWIBUSData *ibus) {
+    if (ibus->conn) {
+        glfw_dbus_close_connection(ibus->conn);
+        ibus->conn = NULL;
+    }
+    ibus->ok = GLFW_FALSE;
 }

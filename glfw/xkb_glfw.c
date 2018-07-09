@@ -200,6 +200,7 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
         xkb_context_unref(xkb->context);
         xkb->context = NULL;
     }
+    glfw_ibus_terminate(&xkb->ibus);
 }
 
 GLFWbool
