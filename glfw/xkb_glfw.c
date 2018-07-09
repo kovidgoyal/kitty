@@ -204,7 +204,7 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
 }
 
 GLFWbool
-glfw_xkb_create_context(_GLFWXKBData *xkb, _GLFWDBUSData *dbus) {
+glfw_xkb_create_context(_GLFWXKBData *xkb) {
     xkb->context = xkb_context_new(0);
     if (!xkb->context)
     {
@@ -212,7 +212,7 @@ glfw_xkb_create_context(_GLFWXKBData *xkb, _GLFWDBUSData *dbus) {
                         "Failed to initialize XKB context");
         return GLFW_FALSE;
     }
-    glfw_connect_to_ibus(&xkb->ibus, dbus);
+    glfw_connect_to_ibus(&xkb->ibus);
     return GLFW_TRUE;
 }
 

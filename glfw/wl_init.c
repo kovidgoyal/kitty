@@ -669,7 +669,7 @@ int _glfwPlatformInit(void)
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
 
-    if (!glfw_xkb_create_context(&_glfw.wl.xkb, &_glfw.wl.dbus)) return GLFW_FALSE;
+    if (!glfw_xkb_create_context(&_glfw.wl.xkb)) return GLFW_FALSE;
 
     // Sync so we got all registry objects
     wl_display_roundtrip(_glfw.wl.display);

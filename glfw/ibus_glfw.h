@@ -36,6 +36,6 @@ typedef struct {
     const char *input_ctx_path, *address_file_name, *address;
 } _GLFWIBUSData;
 
-void glfw_connect_to_ibus(_GLFWIBUSData *ibus, _GLFWDBUSData *dbus);
+void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);

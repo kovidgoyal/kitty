@@ -193,12 +193,9 @@ setup_connection(_GLFWIBUSData *ibus) {
 
 
 void
-glfw_connect_to_ibus(_GLFWIBUSData *ibus, _GLFWDBUSData *dbus) {
+glfw_connect_to_ibus(_GLFWIBUSData *ibus) {
     if (ibus->inited) return;
     if (!has_env_var("XMODIFIERS", "@im=ibus") && !has_env_var("GTK_IM_MODULE", "ibus") && !has_env_var("QT_IM_MODULE", "ibus")) return;
-    if (!glfw_dbus_init(dbus)) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Cannot connect to IBUS as connection to DBUS session bus failed");
-    }
     ibus->inited = GLFW_TRUE;
     setup_connection(ibus);
 }

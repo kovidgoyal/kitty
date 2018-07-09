@@ -42,15 +42,6 @@ report_error(DBusError *err, const char *fmt, ...) {
 
 GLFWbool
 glfw_dbus_init(_GLFWDBUSData *dbus) {
-    DBusError err;
-    if (!dbus->session_conn) {
-        dbus_error_init(&err);
-        dbus->session_conn = dbus_bus_get_private(DBUS_BUS_SESSION, &err);
-        if (dbus_error_is_set(&err)) {
-            report_error(&err, "Failed to connect to DBUS session bus");
-            return GLFW_FALSE;
-        }
-    }
     return GLFW_TRUE;
 }
 
