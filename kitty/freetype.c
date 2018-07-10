@@ -175,7 +175,7 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
         if (!missing_ok) { PyErr_SetString(PyExc_KeyError, "font descriptor is missing the key: " #key); return NULL; } \
     } else key = conv(t); \
 }
-    char *path = NULL;
+    const char *path = NULL;
     long index = 0;
     bool hinting = false;
     long hint_style = 0;
