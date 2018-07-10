@@ -18,6 +18,9 @@ Changelog
 - macOS: Use a custom mouse cursor that shows up well on both light and dark backgrounds
   (:iss:`359`)
 
+- macOS: Workaround for switching from fullscreen to windowed mode with the
+  titlebar hidden causing window resizing to not work. (:iss:`711`)
+
 - Fix triple-click to select line not working when the entire line is filled
   (:iss:`703`)
 
