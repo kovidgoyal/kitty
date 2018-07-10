@@ -10,7 +10,7 @@ Changelog
   that separate the inactive window from a neighbor. Note that setting
   a non-zero window margin overrides this and causes all borders to be drawn.
   The old behavior of drawing all borders can be restored via the
-  :opt:`draw_minimal_borders` setting in kitty.conf.
+  :opt:`draw_minimal_borders` setting in kitty.conf. (:iss:`699`)
 
 - macOS: Add an option :opt:`macos_window_resizable` to control if kitty
   top-level windows are resizable using the mouse or not (:iss:`698`)
