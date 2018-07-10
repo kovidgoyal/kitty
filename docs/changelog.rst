@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.11.3 [future]
+0.11.3 [2018-07-10]
 ------------------------------
 
 - Draw only the minimum borders needed for inactive windows. That is only the borders
