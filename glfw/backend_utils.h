@@ -37,6 +37,7 @@ typedef struct {
     watch_callback_func callback;
     void *callback_data;
     id_type id;
+    const char *name;
 } Watch;
 
 typedef struct {
@@ -44,6 +45,7 @@ typedef struct {
     double interval, trigger_at;
     timer_callback_func callback;
     void *callback_data;
+    const char *name;
 } Timer;
 
 
@@ -56,10 +58,10 @@ typedef struct {
 } EventLoopData;
 
 
-id_type addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
+id_type addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
 void removeWatch(EventLoopData *eld, id_type watch_id);
 void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);
-id_type addTimer(EventLoopData *eld, double interval, int enabled, timer_callback_func cb, void *cb_data);
+id_type addTimer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data);
 void removeTimer(EventLoopData *eld, id_type timer_id);
 void toggleTimer(EventLoopData *eld, id_type timer_id, int enabled);
 void changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval);

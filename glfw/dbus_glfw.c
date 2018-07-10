@@ -28,6 +28,7 @@
 #include "internal.h"
 #include "dbus_glfw.h"
 #include <stdlib.h>
+#include <string.h>
 
 static inline void
 report_error(DBusError *err, const char *fmt, ...) {
@@ -72,7 +73,7 @@ events_for_watch(DBusWatch *watch) {
 
 static dbus_bool_t
 add_dbus_watch(DBusWatch *watch, void *data) {
-    id_type watch_id = addWatch(dbus_data->eld, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch);
+    id_type watch_id = addWatch(dbus_data->eld, data, dbus_watch_get_unix_fd(watch), events_for_watch(watch), dbus_watch_get_enabled(watch), on_dbus_watch_ready, watch);
     if (!watch_id) return FALSE;
     id_type *idp = malloc(sizeof(id_type));
     if (!idp) return FALSE;
@@ -105,7 +106,7 @@ add_dbus_timeout(DBusTimeout *timeout, void *data) {
     int enabled = dbus_timeout_get_enabled(timeout) ? 1 : 0;
     double interval = ((double)dbus_timeout_get_interval(timeout)) / 1000.0;
     if (interval < 0) return FALSE;
-    id_type timer_id = addTimer(dbus_data->eld, interval, enabled, on_dbus_timer_ready, timeout);
+    id_type timer_id = addTimer(dbus_data->eld, data, interval, enabled, on_dbus_timer_ready, timeout);
     if (!timer_id) return FALSE;
     id_type *idp = malloc(sizeof(id_type));
     if (!idp) return FALSE;
@@ -129,7 +130,7 @@ toggle_dbus_timeout(DBusTimeout *timeout, void *data) {
 
 
 DBusConnection*
-glfw_dbus_connect_to(const char *path, const char* err_msg) {
+glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name) {
     DBusError err;
     dbus_error_init(&err);
     DBusConnection *ans = dbus_connection_open_private(path, &err);
@@ -145,13 +146,13 @@ glfw_dbus_connect_to(const char *path, const char* err_msg) {
         return NULL;
     }
     dbus_connection_flush(ans);
-    if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, NULL, NULL)) {
+    if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, (void*)name, NULL)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", path);
         dbus_connection_close(ans);
         dbus_connection_unref(ans);
         return NULL;
     }
-    if (!dbus_connection_set_timeout_functions(ans, add_dbus_timeout, remove_dbus_timeout, toggle_dbus_timeout, NULL, NULL)) {
+    if (!dbus_connection_set_timeout_functions(ans, add_dbus_timeout, remove_dbus_timeout, toggle_dbus_timeout, (void*)name, NULL)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS timeout functions on connection to: %s", path);
         dbus_connection_close(ans);
         dbus_connection_unref(ans);

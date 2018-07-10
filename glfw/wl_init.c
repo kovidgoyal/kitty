@@ -679,7 +679,7 @@ int _glfwPlatformInit(void)
     }
     initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
     glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
-    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, 0.5, 0, dispatchPendingKeyRepeats, NULL);
+    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-keyrepeat", 0.5, 0, dispatchPendingKeyRepeats, NULL);
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);

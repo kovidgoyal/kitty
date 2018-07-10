@@ -44,9 +44,10 @@ update_fds(EventLoopData *eld) {
 static id_type watch_counter = 0;
 
 id_type
-addWatch(EventLoopData *eld, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
+addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
     if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) return 0;
     Watch *w = eld->watches + eld->watches_count++;
+    w->name = name;
     w->fd = fd; w->events = events; w->enabled = enabled;
     w->callback = cb;
     w->callback_data = cb_data;
@@ -97,10 +98,11 @@ update_timers(EventLoopData *eld) {
 }
 
 id_type
-addTimer(EventLoopData *eld, double interval, int enabled, timer_callback_func cb, void *cb_data) {
+addTimer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data) {
     if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) return 0;
     Timer *t = eld->timers + eld->timers_count++;
     t->interval = interval;
+    t->name = name;
     t->trigger_at = enabled ? monotonic() + interval : DBL_MAX;
     t->callback = cb;
     t->callback_data = cb_data;
@@ -199,8 +201,8 @@ drain_wakeup_fd(int fd, int events, void* data) {
 
 void
 initPollData(EventLoopData *eld, int wakeup_fd, int display_fd) {
-    addWatch(eld, display_fd, POLLIN, 1, NULL, NULL);
-    addWatch(eld, wakeup_fd, POLLIN, 1, drain_wakeup_fd, NULL);
+    addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL);
+    addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, drain_wakeup_fd, NULL);
 }
 
 

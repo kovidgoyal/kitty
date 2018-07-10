@@ -186,7 +186,7 @@ setup_connection(_GLFWIBUSData *ibus) {
         ibus->conn = NULL;
     }
     debug("Connecting to IBUS daemon @ %s for IME input management\n", ibus->address);
-    ibus->conn = glfw_dbus_connect_to(ibus->address, "Failed to connect to the IBUS daemon, with error");
+    ibus->conn = glfw_dbus_connect_to(ibus->address, "Failed to connect to the IBUS daemon, with error", "ibus");
     if (!ibus->conn) return GLFW_FALSE;
     free((void*)ibus->input_ctx_path); ibus->input_ctx_path = NULL;
     if (!glfw_dbus_call_method_with_reply(

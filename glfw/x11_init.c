@@ -661,7 +661,7 @@ int _glfwPlatformInit(void)
     if (!_glfwInitJoysticksLinux())
         return GLFW_FALSE;
     if (_glfw.linjs.inotify > 0)
-        addWatch(&_glfw.x11.eventLoopData, _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
+        addWatch(&_glfw.x11.eventLoopData, "joystick", _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
 #endif
 
     _glfwInitTimerPOSIX();
