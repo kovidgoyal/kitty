@@ -166,10 +166,10 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     ibus->input_ctx_path = strdup(path);
     enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
     if (!glfw_dbus_call_void_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
+    ibus->ok = GLFW_TRUE;
     glfw_ibus_set_focused(ibus, GLFW_FALSE);
     set_cursor_geometry(ibus, 0, 0, 0, 0);
     debug("Connected to IBUS daemon for IME input management\n");
-    ibus->ok = GLFW_TRUE;
 }
 
 GLFWbool
@@ -230,12 +230,12 @@ static GLFWbool
 check_connection(_GLFWIBUSData *ibus) {
     if (!ibus->inited) return GLFW_FALSE;
     if (ibus->conn && dbus_connection_get_is_connected(ibus->conn)) {
-        return GLFW_TRUE;
+        return ibus->ok;
     }
     struct stat s;
     if (stat(ibus->address_file_name, &s) != 0 || s.st_mtime != ibus->address_file_mtime) {
         if (!read_ibus_address(ibus)) return GLFW_FALSE;
-        return setup_connection(ibus);
+        setup_connection(ibus);
     }
     return GLFW_FALSE;
 }
