@@ -211,45 +211,93 @@ glfw_dbus_call_void_method(DBusConnection *conn, const char *node, const char *p
     return retval;
 }
 
-static GLFWbool
-call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, va_list ap) {
-    GLFWbool retval = GLFW_FALSE;
+GLFWbool
+glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...) {
+    DBusError err;
+    dbus_error_init(&err);
+    va_list ap;
+    va_start(ap, failmsg);
+    int firstarg = va_arg(ap, int);
+    GLFWbool ret = dbus_message_get_args_valist(msg, &err, firstarg, ap) ? GLFW_TRUE : GLFW_FALSE;
+    va_end(ap);
+    if (!ret) report_error(&err, failmsg);
+    return ret;
+}
 
-    if (conn) {
-        DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
-        if (msg) {
-            int firstarg = va_arg(ap, int);
-            if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_append_args_valist(msg, firstarg, ap)) {
-                DBusError err;
-                dbus_error_init(&err);
-                DBusMessage *reply = dbus_connection_send_with_reply_and_block(conn, msg, 300, &err);
-                if (reply) {
-                    firstarg = va_arg(ap, int);
-                    dbus_error_free(&err);
-                    if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_get_args_valist(reply, &err, firstarg, ap)) {
-                        retval = GLFW_TRUE;
-                    } else {
-                        report_error(&err, "Failed to get reply args from DBUS method: %s on node: %s and interface: %s", method, node, interface);
-                    }
-                    dbus_message_unref(reply);
-                } else {
-                    report_error(&err, "Failed to call DBUS method: %s on node: %s and interface: %s", method, node, interface);
-                }
-            }
-            dbus_message_unref(msg);
-        }
+typedef struct {
+    dbus_pending_callback callback;
+    void *user_data;
+} MethodResponse;
+
+static const char*
+format_message_error(DBusError *err) {
+    static char buf[1024];
+    snprintf(buf, sizeof(buf), "[%s] %s", err->name ? err->name : "", err->message);
+    return buf;
+}
+
+static void
+method_reply_received(DBusPendingCall *pending, void *user_data) {
+    MethodResponse *res = (MethodResponse*)user_data;
+    DBusMessage *msg = dbus_pending_call_steal_reply(pending);
+    if (msg) {
+        DBusError err;
+        dbus_error_init(&err);
+        if (dbus_set_error_from_message(&err, msg)) res->callback(NULL, format_message_error(&err), res->user_data);
+        else res->callback(msg, NULL, res->user_data);
+        dbus_message_unref(msg);
     }
+}
+
+static GLFWbool
+call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void *user_data, va_list ap) {
+    if (!conn) return GLFW_FALSE;
+    DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
+    if (!msg) return GLFW_FALSE;
+    GLFWbool retval = GLFW_FALSE;
+    MethodResponse *res = malloc(sizeof(MethodResponse));
+    if (!res) { dbus_message_unref(msg); return GLFW_FALSE; }
+    res->callback = callback;
+    res->user_data = user_data;
+
+    int firstarg = va_arg(ap, int);
+    if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_append_args_valist(msg, firstarg, ap)) {
+        if (callback) {
+            DBusPendingCall *pending = NULL;
+            if (dbus_connection_send_with_reply(conn, msg, &pending, DBUS_TIMEOUT_USE_DEFAULT)) {
+                dbus_pending_call_set_notify(pending, method_reply_received, res, free);
+            } else {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s out of memory", method, node, interface);
+            }
+        } else {
+            if (!dbus_connection_send(conn, msg, NULL)) {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s out of memory", method, node, interface);
+            }
+        }
+    } else {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s could not add arguments", method, node, interface);
+    }
+    dbus_message_unref(msg);
 
     return retval;
 }
 
 GLFWbool
-glfw_dbus_call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...) {
+glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void* user_data, ...) {
+    GLFWbool retval;
+    va_list ap;
+    va_start(ap, user_data);
+    retval = call_method(conn, node, path, interface, method, callback, user_data, ap);
+    va_end(ap);
+    return retval;
+}
+
+GLFWbool
+glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...) {
     GLFWbool retval;
     va_list ap;
     va_start(ap, method);
-    retval = call_method(conn, node, path, interface, method, ap);
+    retval = call_method(conn, node, path, interface, method, NULL, NULL, ap);
     va_end(ap);
     return retval;
-
 }

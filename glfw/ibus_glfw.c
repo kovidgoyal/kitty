@@ -153,11 +153,30 @@ read_ibus_address(_GLFWIBUSData *ibus) {
     return GLFW_FALSE;
 }
 
+void
+input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
+    if (errmsg) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to create input context with error: %s", errmsg);
+        return;
+    }
+    const char *path = NULL;
+    if (!glfw_dbus_get_args(msg, "Failed to get IBUS context path from reply", DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID)) return;
+    _GLFWIBUSData *ibus = (_GLFWIBUSData*)data;
+    free((void*)ibus->input_ctx_path);
+    ibus->input_ctx_path = strdup(path);
+    enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
+    if (!glfw_dbus_call_void_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
+    glfw_ibus_set_focused(ibus, GLFW_FALSE);
+    set_cursor_geometry(ibus, 0, 0, 0, 0);
+    debug("Connected to IBUS daemon for IME input management\n");
+    ibus->ok = GLFW_TRUE;
+}
+
 GLFWbool
 setup_connection(_GLFWIBUSData *ibus) {
-    const char *path = NULL;
     const char *client_name = "GLFW_Application";
     const char *address_file_name = get_ibus_address_file_name();
+    ibus->ok = GLFW_FALSE;
     if (!address_file_name) return GLFW_FALSE;
     free((void*)ibus->address_file_name);
     ibus->address_file_name = strdup(address_file_name);
@@ -169,25 +188,17 @@ setup_connection(_GLFWIBUSData *ibus) {
     debug("Connecting to IBUS daemon @ %s for IME input management\n", ibus->address);
     ibus->conn = glfw_dbus_connect_to(ibus->address, "Failed to connect to the IBUS daemon, with error");
     if (!ibus->conn) return GLFW_FALSE;
-    if (!glfw_dbus_call_method(ibus->conn, IBUS_SERVICE, IBUS_PATH, IBUS_INTERFACE, "CreateInputContext",
-            DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID,
-            DBUS_TYPE_OBJECT_PATH, &path, DBUS_TYPE_INVALID)) return GLFW_FALSE;
-    free((void*)ibus->input_ctx_path);
-    ibus->input_ctx_path = strdup(path);
-    enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
-    if (!glfw_dbus_call_void_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return GLFW_FALSE;
-
+    free((void*)ibus->input_ctx_path); ibus->input_ctx_path = NULL;
+    if (!glfw_dbus_call_method_with_reply(
+            ibus->conn, IBUS_SERVICE, IBUS_PATH, IBUS_INTERFACE, "CreateInputContext", input_context_created, ibus,
+            DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID)) {
+        return GLFW_FALSE;
+    }
     dbus_connection_flush(ibus->conn);
     dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.IBus.InputContext'", NULL);
-
     DBusObjectPathVTable ibus_vtable = {.message_function = message_handler};
     dbus_connection_try_register_object_path(ibus->conn, ibus->input_ctx_path, &ibus_vtable, ibus, NULL);
     dbus_connection_flush(ibus->conn);
-    glfw_ibus_set_focused(ibus, GLFW_FALSE);
-    set_cursor_geometry(ibus, 0, 0, 0, 0);
-    debug("Connected to IBUS daemon for IME input management\n");
-    ibus->ok = GLFW_TRUE;
-
     return GLFW_TRUE;
 }
 
@@ -251,7 +262,7 @@ glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused) {
 static void
 set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
     if (check_connection(ibus)) {
-        glfw_dbus_call_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
+        glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
                 DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INT32, &w, DBUS_TYPE_INT32, &h, DBUS_TYPE_INVALID);
     }
 }

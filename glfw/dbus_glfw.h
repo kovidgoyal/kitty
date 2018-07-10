@@ -30,6 +30,8 @@
 #include <dbus/dbus.h>
 #include "backend_utils.h"
 
+typedef void(*dbus_pending_callback)(DBusMessage *msg, const char* err, void* data);
+
 typedef struct {
     EventLoopData* eld;
 } _GLFWDBUSData;
@@ -41,5 +43,8 @@ DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg);
 void glfw_dbus_close_connection(DBusConnection *conn);
 GLFWbool glfw_dbus_call_void_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 GLFWbool
-glfw_dbus_call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
+glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
+GLFWbool
+glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void *user_data, ...);
 void glfw_dbus_dispatch(DBusConnection *);
+GLFWbool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);
