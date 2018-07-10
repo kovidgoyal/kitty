@@ -50,7 +50,7 @@ typedef struct {
 typedef struct {
     struct pollfd fds[32];
     int wakeupFds[2];
-    nfds_t watches_count, fds_count, timers_count;
+    nfds_t watches_count, timers_count;
     Watch watches[32];
     Timer timers[128];
 } EventLoopData;

@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <float.h>
 #include <time.h>
+#include <stdio.h>
 
 #ifdef __NetBSD__
 #define ppoll pollts
@@ -33,14 +34,10 @@ monotonic() {
 
 void
 update_fds(EventLoopData *eld) {
-    eld->fds_count = 0;
     for (nfds_t i = 0; i < eld->watches_count; i++) {
         Watch *w = eld->watches + i;
-        if (w->enabled) {
-            eld->fds[eld->fds_count].fd = w->fd;
-            eld->fds[eld->fds_count].events = w->events;
-            eld->fds_count++;
-        }
+        eld->fds[i].fd = w->fd;
+        eld->fds[i].events = w->enabled ? w->events : 0;
     }
 }
 
@@ -144,7 +141,7 @@ changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval) {
 
 double
 prepareForPoll(EventLoopData *eld, double timeout) {
-    for (nfds_t i = 0; i < eld->fds_count; i++) eld->fds[i].revents = 0;
+    for (nfds_t i = 0; i < eld->watches_count; i++) eld->fds[i].revents = 0;
     if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return timeout;
     double now = monotonic(), next_repeat_at = eld->timers[0].trigger_at;
     if (timeout < 0 || now + timeout > next_repeat_at) {
@@ -163,12 +160,12 @@ pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout) {
 
 static void
 dispatchEvents(EventLoopData *eld) {
-    for (unsigned w = 0, f = 0; f < eld->fds_count; f++) {
-        while(eld->watches[w].fd != eld->fds[f].fd) w++;
-        Watch *ww = eld->watches + w;
-        if (eld->fds[f].revents & ww->events) {
+    for (nfds_t i = 0; i < eld->watches_count; i++) {
+        Watch *ww = eld->watches + i;
+        struct pollfd *pfd = eld->fds + i;
+        if (pfd->revents & ww->events) {
             ww->ready = 1;
-            if (ww->callback) ww->callback(ww->fd, eld->fds[f].revents, ww->callback_data);
+            if (ww->callback) ww->callback(ww->fd, pfd->revents, ww->callback_data);
         } else ww->ready = 0;
     }
 }
@@ -216,7 +213,7 @@ pollForEvents(EventLoopData *eld, double timeout) {
 
     while(1) {
         if (timeout >= 0) {
-            result = pollWithTimeout(eld->fds, eld->fds_count, timeout);
+            result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
@@ -228,7 +225,7 @@ pollForEvents(EventLoopData *eld, double timeout) {
             if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
             break;
         } else {
-            result = poll(eld->fds, eld->fds_count, -1);
+            result = poll(eld->fds, eld->watches_count, -1);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
