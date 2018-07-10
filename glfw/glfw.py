@@ -67,6 +67,8 @@ def init_env(env, pkg_config, at_least_version, module='x11'):
         at_least_version('wayland-protocols', *sinfo['wayland_protocols'])
         ans.wayland_packagedir = os.path.abspath(pkg_config('wayland-protocols', '--variable=pkgdatadir')[0])
         ans.wayland_scanner = os.path.abspath(pkg_config('wayland-scanner', '--variable=wayland_scanner')[0])
+        scanner_version = tuple(map(int, pkg_config('wayland-scanner', '--modversion')[0].strip().split('.')))
+        ans.wayland_scanner_code = 'private-code' if scanner_version >= (1, 14, 91) else 'code'
         ans.wayland_protocols = tuple(sinfo[module]['protocols'])
         for p in ans.wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
@@ -87,7 +89,7 @@ def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
             if newer(dest, src):
-                q = 'client-header' if ext == 'h' else 'code'
+                q = 'client-header' if ext == 'h' else env.wayland_scanner_code
                 run_tool([env.wayland_scanner, q, src, dest],
                          desc='Generating {} ...'.format(emphasis(os.path.basename(dest))))
 
