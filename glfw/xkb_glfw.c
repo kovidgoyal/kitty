@@ -408,6 +408,7 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
 void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
+    static KeyEvent ev;
     xkb_keysym_t glfw_sym;
     xkb_keycode_t code_for_sym = scancode;
 #ifdef _GLFW_WAYLAND
@@ -425,6 +426,9 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     }
     glfw_sym = clean_syms[0];
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
+    ev.action = action; ev.glfw_modifiers = xkb->modifiers; ev.keycode = scancode; ev.keysym = glfw_sym;
+    ev.ibus = &xkb->ibus;
+    process_key(&ev);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
         glfw_sym = compose_symbol(xkb, syms[0]);

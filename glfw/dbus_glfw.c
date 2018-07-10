@@ -180,38 +180,6 @@ glfw_dbus_close_connection(DBusConnection *conn) {
     dbus_connection_unref(conn);
 }
 
-static GLFWbool
-call_void_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, va_list ap) {
-    GLFWbool retval = GLFW_FALSE;
-
-    if (conn) {
-        DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
-        if (msg) {
-            int firstarg = va_arg(ap, int);
-            if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_append_args_valist(msg, firstarg, ap)) {
-                if (dbus_connection_send(conn, msg, NULL)) {
-                    dbus_connection_flush(conn);
-                    retval = GLFW_TRUE;
-                }
-            }
-
-            dbus_message_unref(msg);
-        }
-    }
-
-    return retval;
-}
-
-GLFWbool
-glfw_dbus_call_void_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...) {
-    GLFWbool retval;
-    va_list ap;
-    va_start(ap, method);
-    retval = call_void_method(conn, node, path, interface, method, ap);
-    va_end(ap);
-    return retval;
-}
-
 GLFWbool
 glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...) {
     DBusError err;
@@ -267,11 +235,14 @@ call_method(DBusConnection *conn, const char *node, const char *path, const char
             DBusPendingCall *pending = NULL;
             if (dbus_connection_send_with_reply(conn, msg, &pending, DBUS_TIMEOUT_USE_DEFAULT)) {
                 dbus_pending_call_set_notify(pending, method_reply_received, res, free);
+                retval = GLFW_TRUE;
             } else {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s out of memory", method, node, interface);
             }
         } else {
-            if (!dbus_connection_send(conn, msg, NULL)) {
+            if (dbus_connection_send(conn, msg, NULL)) {
+                retval = GLFW_TRUE;
+            } else {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: %s on node: %s and interface: %s out of memory", method, node, interface);
             }
         }

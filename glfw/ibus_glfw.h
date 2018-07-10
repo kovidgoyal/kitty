@@ -28,6 +28,7 @@
 #pragma once
 
 #include "dbus_glfw.h"
+#include <xkbcommon/xkbcommon.h>
 
 typedef struct {
     GLFWbool ok, inited;
@@ -36,7 +37,16 @@ typedef struct {
     const char *input_ctx_path, *address_file_name, *address;
 } _GLFWIBUSData;
 
+typedef struct {
+    xkb_keycode_t keycode;
+    xkb_keysym_t keysym;
+    unsigned int glfw_modifiers;
+    int action;
+    _GLFWIBUSData *ibus;
+} KeyEvent;
+
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
+GLFWbool process_key(const KeyEvent *ev_);

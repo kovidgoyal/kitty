@@ -164,8 +164,12 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     _GLFWIBUSData *ibus = (_GLFWIBUSData*)data;
     free((void*)ibus->input_ctx_path);
     ibus->input_ctx_path = strdup(path);
+    if (!ibus->input_ctx_path) return;
+    dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.IBus.InputContext'", NULL);
+    DBusObjectPathVTable ibus_vtable = {.message_function = message_handler};
+    dbus_connection_try_register_object_path(ibus->conn, ibus->input_ctx_path, &ibus_vtable, ibus, NULL);
     enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
-    if (!glfw_dbus_call_void_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
+    if (!glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
     ibus->ok = GLFW_TRUE;
     glfw_ibus_set_focused(ibus, GLFW_FALSE);
     set_cursor_geometry(ibus, 0, 0, 0, 0);
@@ -194,10 +198,6 @@ setup_connection(_GLFWIBUSData *ibus) {
             DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID)) {
         return GLFW_FALSE;
     }
-    dbus_connection_flush(ibus->conn);
-    dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.IBus.InputContext'", NULL);
-    DBusObjectPathVTable ibus_vtable = {.message_function = message_handler};
-    dbus_connection_try_register_object_path(ibus->conn, ibus->input_ctx_path, &ibus_vtable, ibus, NULL);
     dbus_connection_flush(ibus->conn);
     return GLFW_TRUE;
 }
@@ -250,7 +250,7 @@ glfw_ibus_dispatch(_GLFWIBUSData *ibus) {
 static void
 simple_message(_GLFWIBUSData *ibus, const char *method) {
     if (check_connection(ibus)) {
-        glfw_dbus_call_void_method(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, method, DBUS_TYPE_INVALID);
+        glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, method, DBUS_TYPE_INVALID);
     }
 }
 
@@ -265,4 +265,83 @@ set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
         glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
                 DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INT32, &w, DBUS_TYPE_INT32, &h, DBUS_TYPE_INVALID);
     }
+}
+
+typedef enum
+{
+    IBUS_SHIFT_MASK    = 1 << 0,
+    IBUS_LOCK_MASK     = 1 << 1,
+    IBUS_CONTROL_MASK  = 1 << 2,
+    IBUS_MOD1_MASK     = 1 << 3,
+    IBUS_MOD2_MASK     = 1 << 4,
+    IBUS_MOD3_MASK     = 1 << 5,
+    IBUS_MOD4_MASK     = 1 << 6,
+    IBUS_MOD5_MASK     = 1 << 7,
+    IBUS_BUTTON1_MASK  = 1 << 8,
+    IBUS_BUTTON2_MASK  = 1 << 9,
+    IBUS_BUTTON3_MASK  = 1 << 10,
+    IBUS_BUTTON4_MASK  = 1 << 11,
+    IBUS_BUTTON5_MASK  = 1 << 12,
+
+    /* The next few modifiers are used by XKB, so we skip to the end.
+     * Bits 15 - 23 are currently unused. Bit 29 is used internally.
+     */
+
+    /* ibus mask */
+    IBUS_HANDLED_MASK  = 1 << 24,
+    IBUS_FORWARD_MASK  = 1 << 25,
+    IBUS_IGNORED_MASK  = IBUS_FORWARD_MASK,
+
+    IBUS_SUPER_MASK    = 1 << 26,
+    IBUS_HYPER_MASK    = 1 << 27,
+    IBUS_META_MASK     = 1 << 28,
+
+    IBUS_RELEASE_MASK  = 1 << 30,
+
+    IBUS_MODIFIER_MASK = 0x5f001fff
+} IBusModifierType;
+
+
+static inline uint32_t
+ibus_key_state(unsigned int glfw_modifiers, int action) {
+    uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
+#define M(g, i) if(glfw_modifiers & GLFW_MOD_##g) ans |= i
+    M(SHIFT, IBUS_SHIFT_MASK);
+    M(CAPS_LOCK, IBUS_LOCK_MASK);
+    M(CONTROL, IBUS_CONTROL_MASK);
+    M(ALT, IBUS_MOD1_MASK);
+    M(NUM_LOCK, IBUS_MOD2_MASK);
+    M(SUPER, IBUS_MOD4_MASK);
+#undef M
+    return ans;
+}
+
+void
+key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
+    if (errmsg) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
+        return;
+    }
+    uint32_t handled;
+    if (!glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID)) return;
+    KeyEvent *ev = (KeyEvent*)data;
+    free(ev);
+}
+
+GLFWbool
+process_key(const KeyEvent *ev_) {
+    if (!check_connection(ev_->ibus)) return GLFW_FALSE;
+    KeyEvent *ev = malloc(sizeof(KeyEvent));
+    if (!ev) return GLFW_FALSE;
+    memcpy(ev, ev_, sizeof(KeyEvent));
+    uint32_t state = ibus_key_state(ev->glfw_modifiers, ev->action);
+    if (!glfw_dbus_call_method_with_reply(
+            ev->ibus->conn, IBUS_SERVICE, ev->ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "ProcessKeyEvent",
+            key_event_processed, ev,
+            DBUS_TYPE_UINT32, &ev->keysym, DBUS_TYPE_UINT32, &ev->keycode, DBUS_TYPE_UINT32,
+            &state, DBUS_TYPE_INVALID)) {
+        free(ev);
+        return GLFW_FALSE;
+    }
+    return GLFW_TRUE;
 }

@@ -41,7 +41,6 @@ GLFWbool glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld);
 void glfw_dbus_terminate(_GLFWDBUSData *dbus);
 DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg, const char* name);
 void glfw_dbus_close_connection(DBusConnection *conn);
-GLFWbool glfw_dbus_call_void_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 GLFWbool
 glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 GLFWbool
