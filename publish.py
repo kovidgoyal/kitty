@@ -341,13 +341,16 @@ def main():
         help='Only run the specified action, by default the specified action and all sub-sequent actions are run')
     parser.add_argument(
         'action',
-        default='build',
+        default='all',
         nargs='?',
-        choices=ALL_ACTIONS,
+        choices=list(ALL_ACTIONS) + ['all'],
         help='The action to start with')
     args = parser.parse_args()
-    idx = ALL_ACTIONS.index(args.action)
-    actions = ALL_ACTIONS[idx:]
+    if args.action == 'all':
+        actions = list(ALL_ACTIONS)
+    else:
+        idx = ALL_ACTIONS.index(args.action)
+        actions = ALL_ACTIONS[idx:]
     if args.only:
         del actions[1:]
     else:
