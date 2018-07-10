@@ -48,7 +48,7 @@ enum Capabilities {
 
 
 static inline GLFWbool
-has_env_var(const char *name, const char *val) {
+test_env_var(const char *name, const char *val) {
     const char *q = getenv(name);
     return (q && strcmp(q, val) == 0) ? GLFW_TRUE : GLFW_FALSE;
 }
@@ -270,7 +270,7 @@ setup_connection(_GLFWIBUSData *ibus) {
 void
 glfw_connect_to_ibus(_GLFWIBUSData *ibus) {
     if (ibus->inited) return;
-    if (!has_env_var("XMODIFIERS", "@im=ibus") && !has_env_var("GTK_IM_MODULE", "ibus") && !has_env_var("QT_IM_MODULE", "ibus")) return;
+    if (!test_env_var("XMODIFIERS", "@im=ibus") && !test_env_var("GTK_IM_MODULE", "ibus") && !test_env_var("QT_IM_MODULE", "ibus")) return;
     ibus->inited = GLFW_TRUE;
     setup_connection(ibus);
 }
