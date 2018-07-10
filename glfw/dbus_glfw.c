@@ -273,3 +273,18 @@ glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const cha
     va_end(ap);
     return retval;
 }
+
+int
+glfw_dbus_match_signal(DBusMessage *msg, const char *interface, ...) {
+    va_list ap;
+    va_start(ap, interface);
+    int ans = -1, num = -1;
+    while(1) {
+        num++;
+        const char *name = va_arg(ap, const char*);
+        if (!name) break;
+        if (dbus_message_is_signal(msg, interface, name)) { ans = num; break; }
+    }
+    va_end(ap);
+    return ans;
+}

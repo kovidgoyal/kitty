@@ -58,14 +58,78 @@ MIN(size_t a, size_t b) {
     return a < b ? a : b;
 }
 
+static const char*
+get_ibus_text_from_message(DBusMessage *msg) {
+    /* The message structure is (from dbus-monitor)
+       variant       struct {
+         string "IBusText"
+         array [
+         ]
+         string "ash "
+         variant             struct {
+               string "IBusAttrList"
+               array [
+               ]
+               array [
+               ]
+            }
+      }
+    */
+    const char *text = NULL;
+    const char *struct_id = NULL;
+    DBusMessageIter iter, sub1, sub2;
+    dbus_message_iter_init(msg, &iter);
+
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT) return NULL;
+
+    dbus_message_iter_recurse(&iter, &sub1);
+
+    if (dbus_message_iter_get_arg_type(&sub1) != DBUS_TYPE_STRUCT) return NULL;
+
+    dbus_message_iter_recurse(&sub1, &sub2);
+
+    if (dbus_message_iter_get_arg_type(&sub2) != DBUS_TYPE_STRING) return NULL;
+
+    dbus_message_iter_get_basic(&sub2, &struct_id);
+    if (!struct_id || strncmp(struct_id, "IBusText", sizeof("IBusText")) != 0) return NULL;
+
+    dbus_message_iter_next(&sub2);
+    dbus_message_iter_next(&sub2);
+
+    if (dbus_message_iter_get_arg_type(&sub2) != DBUS_TYPE_STRING) return NULL;
+
+    dbus_message_iter_get_basic(&sub2, &text);
+
+    return text;
+}
+
 
 // Connection handling {{{
 static void set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h);
 
 static DBusHandlerResult
 message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
+    // To monitor signals from IBUS, use
+    //  dbus-monitor --address `ibus address` "type='signal',interface='org.freedesktop.IBus.InputContext'"
     _GLFWIBUSData *ibus = (_GLFWIBUSData*)user_data;
     (void)ibus;
+    const char *text;
+    switch(glfw_dbus_match_signal(msg, IBUS_INPUT_INTERFACE, "CommitText", "UpdatePreeditText", "HidePreeditText", "ShowPreeditText")) {
+        case 0:
+            text = get_ibus_text_from_message(msg);
+            debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
+            break;
+        case 1:
+            text = get_ibus_text_from_message(msg);
+            debug("IBUS: UpdatePreeditText: '%s'\n", text ? text : "(nil)");
+            break;
+        case 2:
+            debug("IBUS: HidePreeditText\n");
+            break;
+        case 3:
+            debug("IBUS: ShowPreeditText\n");
+            break;
+    }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
