@@ -428,7 +428,10 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
     ev.action = action; ev.glfw_modifiers = xkb->modifiers; ev.keycode = scancode; ev.keysym = glfw_sym;
     ev.ibus = &xkb->ibus;
-    process_key(&ev);
+    if (ibus_process_key(&ev)) {
+        debug(" queued in IBUS\n");
+        return;
+    }
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
         glfw_sym = compose_symbol(xkb, syms[0]);

@@ -325,11 +325,12 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled;
     if (!glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID)) return;
     KeyEvent *ev = (KeyEvent*)data;
+    debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->keycode, ev->action == GLFW_RELEASE, handled);
     free(ev);
 }
 
 GLFWbool
-process_key(const KeyEvent *ev_) {
+ibus_process_key(const KeyEvent *ev_) {
     if (!check_connection(ev_->ibus)) return GLFW_FALSE;
     KeyEvent *ev = malloc(sizeof(KeyEvent));
     if (!ev) return GLFW_FALSE;

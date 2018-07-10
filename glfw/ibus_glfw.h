@@ -49,4 +49,4 @@ void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
-GLFWbool process_key(const KeyEvent *ev_);
+GLFWbool ibus_process_key(const KeyEvent *ev_);
