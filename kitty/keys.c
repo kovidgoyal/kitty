@@ -113,6 +113,16 @@ check_if_special(int key, int mods, int scancode) {
     return special;
 }
 
+static inline void
+update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
+    unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
+    unsigned int left = w->geometry.left, top = w->geometry.top;
+    left += screen->cursor->x * cell_width;
+    top += screen->cursor->y * cell_height;
+    glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
+}
+
+
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
     Window *w = active_window();
@@ -120,6 +130,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     Screen *screen = w->render_data.screen;
     switch(state) {
         case 1:  // update pre-edit text
+            update_ime_position(global_state.callback_os_window, w, screen);
             return;
         case 2:  // commit text
             if (text && *text) {
