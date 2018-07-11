@@ -406,6 +406,21 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
 }
 
 void
+glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, int b, int c, int d) {
+    int x = 0, y = 0;
+    switch(which) {
+        case 1:
+            glfw_ibus_set_focused(&xkb->ibus, a ? GLFW_TRUE : GLFW_FALSE);
+            break;
+        case 2:
+            _glfwPlatformGetWindowPos(w, &x, &y);
+            x += a; y += b;
+            glfw_ibus_set_cursor_geometry(&xkb->ibus, x, y, c, d);
+            break;
+    }
+}
+
+void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
     static KeyEvent ev;

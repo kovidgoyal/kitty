@@ -4228,6 +4228,23 @@ GLFWAPI void glfwSetCursor(GLFWwindow* window, GLFWcursor* cursor);
  */
 GLFWAPI GLFWkeyboardfun glfwSetKeyboardCallback(GLFWwindow* window, GLFWkeyboardfun cbfun);
 
+/*! @brief Notifies the OS Input Method Event system of changes to application input state
+ *
+ * Used to notify the IME system of changes in state such as focus gained/lost
+ * and text cursor position.
+ *
+ * @param which: What data to notify. 1 means focus and 2 means cursor position.
+ * @param a, b, c, d: Interpreted based on the value of which. When which is 1
+ * a is interpreted as a boolean indicating focus gained/lost. When which is 2
+ * a, b, c, d are the cursor x, y, width and height values (in the window co-ordinate
+ * system).
+ *
+ *  @ingroup input
+ *  @since Added in version 4.0
+ */
+GLFWAPI void glfwUpdateIMEState(GLFWwindow* window, int which, int a, int b, int c, int d);
+
+
 /*! @brief Sets the mouse button callback.
  *
  *  This function sets the mouse button callback of the specified window, which

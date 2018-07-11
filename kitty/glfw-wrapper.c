@@ -257,6 +257,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetKeyboardCallback_impl) = dlsym(handle, "glfwSetKeyboardCallback");
     if (glfwSetKeyboardCallback_impl == NULL) fail("Failed to load glfw function glfwSetKeyboardCallback with error: %s", dlerror());
 
+    *(void **) (&glfwUpdateIMEState_impl) = dlsym(handle, "glfwUpdateIMEState");
+    if (glfwUpdateIMEState_impl == NULL) fail("Failed to load glfw function glfwUpdateIMEState with error: %s", dlerror());
+
     *(void **) (&glfwSetMouseButtonCallback_impl) = dlsym(handle, "glfwSetMouseButtonCallback");
     if (glfwSetMouseButtonCallback_impl == NULL) fail("Failed to load glfw function glfwSetMouseButtonCallback with error: %s", dlerror());
 

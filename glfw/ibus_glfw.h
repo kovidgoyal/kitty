@@ -50,3 +50,4 @@ void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
 GLFWbool ibus_process_key(const KeyEvent *ev_);
+void glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h);

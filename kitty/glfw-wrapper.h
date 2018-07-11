@@ -1699,6 +1699,10 @@ typedef GLFWkeyboardfun (*glfwSetKeyboardCallback_func)(GLFWwindow*, GLFWkeyboar
 glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
 #define glfwSetKeyboardCallback glfwSetKeyboardCallback_impl
 
+typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, int, int, int, int, int);
+glfwUpdateIMEState_func glfwUpdateIMEState_impl;
+#define glfwUpdateIMEState glfwUpdateIMEState_impl
+
 typedef GLFWmousebuttonfun (*glfwSetMouseButtonCallback_func)(GLFWwindow*, GLFWmousebuttonfun);
 glfwSetMouseButtonCallback_func glfwSetMouseButtonCallback_impl;
 #define glfwSetMouseButtonCallback glfwSetMouseButtonCallback_impl

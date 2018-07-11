@@ -2872,6 +2872,10 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     }
 }
 
+void
+_glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
+    glfw_xkb_update_ime_state(w, &_glfw.x11.xkb, which, a, b, c, d);
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////
