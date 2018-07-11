@@ -265,8 +265,8 @@ unload_glfw() {
         f.write(code)
 
 
-def main():
-    os.chdir(sys.argv[-1])
+def from_glfw(glfw_dir):
+    os.chdir(glfw_dir)
     sinfo = collect_source_information()
     files_to_copy = set()
     for x in sinfo.values():
@@ -293,6 +293,27 @@ def main():
         sort_keys=True
     )
     generate_wrappers(glfw_header, glfw_native_header)
+
+
+def to_glfw(glfw_dir):
+    src = os.path.join(base, 'glfw')
+    for x in os.listdir(src):
+        if x in ('glfw.py', 'glfw3.h', '__pycache__'):
+            continue
+        x = os.path.join(src, x)
+        shutil.copyfile(x, os.path.join(glfw_dir, 'src'))
+    shutil.copyfile(os.path.join(src, 'glfw3.h'), os.path.join(glfw_dir, 'include/GLFW'))
+
+
+def main():
+    glfw_dir = os.path.abspath(os.path.join(base, '../../glfw'))
+    q = sys.argv[1].lower().replace('_', '-')
+    if q == 'from-glfw':
+        from_glfw(glfw_dir)
+    elif q == 'to-glfw':
+        to_glfw(glfw_dir)
+    else:
+        raise SystemExit('First argument must be one of to-glfw or from-glfw')
 
 
 if __name__ == '__main__':
