@@ -215,6 +215,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     global_state.callback_os_window->cursor_blink_zero_time = now;
     if (is_window_ready_for_callbacks()) {
         WINDOW_CALLBACK(on_focus, "O", focused ? Py_True : Py_False);
+        glfwUpdateIMEState(global_state.callback_os_window->handle, 1, focused, 0, 0, 0);
     }
     global_state.callback_os_window = NULL;
 }
