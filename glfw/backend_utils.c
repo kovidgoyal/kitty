@@ -7,6 +7,7 @@
 
 #define _GNU_SOURCE
 #include "backend_utils.h"
+#include "internal.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +46,10 @@ static id_type watch_counter = 0;
 
 id_type
 addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
-    if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) return 0;
+    if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many watches added");
+        return 0;
+    }
     Watch *w = eld->watches + eld->watches_count++;
     w->name = name;
     w->fd = fd; w->events = events; w->enabled = enabled;
@@ -99,7 +103,10 @@ update_timers(EventLoopData *eld) {
 
 id_type
 addTimer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data) {
-    if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) return 0;
+    if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
+        return 0;
+    }
     Timer *t = eld->timers + eld->timers_count++;
     t->interval = interval;
     t->name = name;
