@@ -127,7 +127,6 @@ glfw_xkb_sym_for_key(int key) {
 }
 
 #ifdef _GLFW_X11
-#define XKB_POINTER (&_glfw.x11.xkb)
 
 GLFWbool
 glfw_xkb_set_x11_events_mask(void) {
@@ -167,7 +166,6 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
 
 #else
 
-#define XKB_POINTER (&_glfw.wl.xkb)
 #define xkb_glfw_load_keymap(keymap, map_str) keymap = xkb_keymap_new_from_string(xkb->context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 #define xkb_glfw_load_state(keymap, state, ...) state = xkb_state_new(keymap);
 
@@ -178,7 +176,6 @@ release_keyboard_data(_GLFWXKBData *xkb) {
 #define US(group, state, unref) if (xkb->group.state) {  unref(xkb->group.state); xkb->group.state = NULL; }
 #define UK(keymap) if(xkb->keymap) { xkb_keymap_unref(xkb->keymap); xkb->keymap = NULL; }
     US(states, composeState, xkb_compose_state_unref);
-    US(ime_states, composeState, xkb_compose_state_unref);
     UK(keymap);
     UK(default_keymap);
     US(states, state, xkb_state_unref);
@@ -229,12 +226,9 @@ load_keymaps(_GLFWXKBData *xkb, const char *map_str) {
 static const char*
 load_states(_GLFWXKBData *xkb) {
     xkb_glfw_load_state(xkb->keymap, xkb->states.state);
-    xkb_glfw_load_state(xkb->keymap, xkb->ime_states.state);
     xkb->states.clean_state = xkb_state_new(xkb->keymap);
-    xkb->ime_states.clean_state = xkb_state_new(xkb->keymap);
     xkb->states.default_state = xkb_state_new(xkb->default_keymap);
-    xkb->ime_states.default_state = xkb_state_new(xkb->default_keymap);
-    if (!xkb->states.state || !xkb->ime_states.state || !xkb->states.clean_state || !xkb->ime_states.clean_state || !xkb->states.default_state || !xkb->ime_states.default_state) return "Failed to create XKB state";
+    if (!xkb->states.state || !xkb->states.clean_state || !xkb->states.default_state) return "Failed to create XKB state";
     return NULL;
 }
 
@@ -252,8 +246,7 @@ load_compose_tables(_GLFWXKBData *xkb) {
         return;
     }
     xkb->states.composeState = xkb_compose_state_new(compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
-    xkb->ime_states.composeState = xkb_compose_state_new(compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
-    if (!xkb->states.composeState || !xkb->ime_states.composeState) {
+    if (!xkb->states.composeState) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose state");
     }
 }
@@ -290,8 +283,6 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     }
     xkb->states.modifiers = 0;
     xkb->states.activeUnknownModifiers = 0;
-    xkb->ime_states.modifiers = 0;
-    xkb->ime_states.activeUnknownModifiers = 0;
     return GLFW_TRUE;
 }
 
@@ -323,8 +314,6 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
     // We have to update the groups in clean_state, as they change for
     // different keyboard layouts, see https://github.com/kovidgoyal/kitty/issues/488
     xkb_state_update_mask(xkb->states.clean_state, 0, 0, 0, base_group, latched_group, locked_group);
-    xkb_state_update_mask(xkb->ime_states.state, 0, 0, 0, base_group, latched_group, locked_group);
-    xkb_state_update_mask(xkb->ime_states.clean_state, 0, 0, 0, base_group, latched_group, locked_group);
     update_modifiers(xkb, &xkb->states);
 }
 
@@ -337,7 +326,7 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
 }
 
 
-static char text[256];
+static KeyEvent key_event = {};
 
 static inline xkb_keysym_t
 compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym) {
@@ -345,7 +334,7 @@ compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym) {
     if (xkb_compose_state_feed(composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
     switch (xkb_compose_state_get_status(composeState)) {
         case XKB_COMPOSE_COMPOSED:
-            xkb_compose_state_get_utf8(composeState, text, sizeof(text));
+            xkb_compose_state_get_utf8(composeState, key_event.text, sizeof(key_event.text));
             return xkb_compose_state_get_one_sym(composeState);
         case XKB_COMPOSE_COMPOSING:
         case XKB_COMPOSE_CANCELLED:
@@ -423,20 +412,36 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, i
     }
 }
 
-static inline void
-handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action, GLFWbool from_ime) {
+void
+glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime) {
+    _GLFWwindow *window = _glfwWindowForId(ev->window_id);
+    static xkb_keycode_t last_handled_press_keycode = 0;
+    // We filter out release events that correspond to the last press event
+    // handled by the IME system. This wont fix the case of multiple key
+    // presses before a release, but is better than nothing. For that case
+    // you'd need to implement a ring buffer to store pending key presses.
+    xkb_keycode_t prev_handled_press = last_handled_press_keycode;
+    last_handled_press_keycode = 0;
+    GLFWbool is_release = ev->action == GLFW_RELEASE;
+    if (window && !handled_by_ime && !(is_release && ev->keycode == prev_handled_press)) {
+        _glfwInputKeyboard(window, ev->glfw_keycode, ev->keysym, ev->action, ev->glfw_modifiers, key_event.text, 0);
+    }
+    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->keycode;
+}
+
+void
+glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
-    static KeyEvent ev;
     xkb_keysym_t glfw_sym;
     xkb_keycode_t code_for_sym = scancode;
 #ifdef _GLFW_WAYLAND
     code_for_sym += 8;
 #endif
-    debug("%sscancode: 0x%x release: %d ", from_ime ? "From IBUS-> ": "", scancode, action == GLFW_RELEASE);
-    XKBStateGroup *sg = from_ime ? &xkb->ime_states : &xkb->states;
+    debug("scancode: 0x%x release: %d ", scancode, action == GLFW_RELEASE);
+    XKBStateGroup *sg = &xkb->states;
     int num_syms = xkb_state_key_get_syms(sg->state, code_for_sym, &syms);
     int num_clean_syms = xkb_state_key_get_syms(sg->clean_state, code_for_sym, &clean_syms);
-    text[0] = 0;
+    key_event.text[0] = 0;
     // According to the documentation of xkb_compose_state_feed it does not
     // support multi-sym events, so we ignore them
     if (num_syms != 1 || num_clean_syms != 1) {
@@ -445,13 +450,6 @@ handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode,
     }
     glfw_sym = clean_syms[0];
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
-    if (!from_ime) {
-        ev.action = action; ev.glfw_modifiers = sg->modifiers; ev.keycode = scancode; ev.keysym = glfw_sym; ev.window_id = window->id;
-        if (ibus_process_key(&ev, &xkb->ibus)) {
-            debug(" queued in IBUS\n");
-            return;
-        }
-    }
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
         glfw_sym = compose_symbol(sg->composeState, syms[0]);
@@ -470,15 +468,15 @@ handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode,
             if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
             else glfw_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
-            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & sg->modifiers) == 0) xkb_state_key_get_utf8(sg->state, code_for_sym, text, sizeof(text));
+            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & sg->modifiers) == 0) xkb_state_key_get_utf8(sg->state, code_for_sym, key_event.text, sizeof(key_event.text));
             text_type = "text";
         }
-        if ((1 <= text[0] && text[0] <= 31) || text[0] == 127) text[0] = 0;  // dont send text for ascii control codes
-        if (text[0]) { debug("%s: %s ", text_type, text); }
+        if ((1 <= key_event.text[0] && key_event.text[0] <= 31) || key_event.text[0] == 127) key_event.text[0] = 0;  // dont send text for ascii control codes
+        if (key_event.text[0]) { debug("%s: %s ", text_type, key_event.text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
     GLFWbool is_fallback = GLFW_FALSE;
-    if (glfw_keycode == GLFW_KEY_UNKNOWN && !text[0]) {
+    if (glfw_keycode == GLFW_KEY_UNKNOWN && !key_event.text[0]) {
         int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
             glfw_sym = default_syms[0];
@@ -492,31 +490,12 @@ handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode,
         is_fallback ? "glfw_fallback_key" : "glfw_key", _glfwGetKeyName(glfw_keycode),
         glfw_xkb_keysym_name(glfw_sym)
     );
-    _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, sg->modifiers, text, 0);
-
-}
-
-void
-glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime) {
-    _GLFWXKBData *xkb = XKB_POINTER;
-    _GLFWwindow *window = _glfwWindowForId(ev->window_id);
-    static xkb_keycode_t last_handled_press_keycode = 0;
-    // We filter out release events that correspond to the last press event
-    // handled by the IME system. This wont fix the case of multiple key
-    // presses before a release, but is better than nothing. For that case
-    // you'd need to implement a ring buffer to store pending key presses.
-    xkb_keycode_t prev_handled_press = last_handled_press_keycode;
-    last_handled_press_keycode = 0;
-    GLFWbool is_release = ev->action == GLFW_RELEASE;
-    if (window && !handled_by_ime && !(is_release && ev->keycode == prev_handled_press)) {
-        handle_key_event(window, xkb, ev->keycode, ev->action, GLFW_TRUE);
+    key_event.action = action; key_event.glfw_modifiers = sg->modifiers;
+    key_event.keycode = scancode; key_event.keysym = glfw_sym;
+    key_event.window_id = window->id; key_event.glfw_keycode = glfw_keycode;
+    if (ibus_process_key(&key_event, &xkb->ibus)) {
+        debug(" -> to IBUS\n");
+    } else {
+        _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, sg->modifiers, key_event.text, 0);
     }
-    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->keycode;
-    xkb_state_update_key(xkb->ime_states.state, ev->keycode, is_release ? XKB_KEY_UP : XKB_KEY_DOWN);
-    update_modifiers(xkb, &xkb->ime_states);
-}
-
-void
-glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
-    handle_key_event(window, xkb, scancode, action, GLFW_FALSE);
 }

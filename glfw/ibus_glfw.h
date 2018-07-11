@@ -43,6 +43,8 @@ typedef struct {
     unsigned int glfw_modifiers;
     int action;
     GLFWid window_id;
+    int glfw_keycode;
+    char text[64];
 } KeyEvent;
 
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
