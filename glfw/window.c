@@ -48,6 +48,7 @@ void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
     if (!focused)
     {
         int key, button;
+        _glfw.focusedWindowId = 0;
 
         for (key = 0;  key <= GLFW_KEY_LAST;  key++)
         {
@@ -63,7 +64,19 @@ void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
             if (window->mouseButtons[button] == GLFW_PRESS)
                 _glfwInputMouseClick(window, button, GLFW_RELEASE, 0);
         }
+    } else
+        _glfw.focusedWindowId = window->id;
+}
+
+_GLFWwindow* _glfwFocusedWindow() {
+    if (_glfw.focusedWindowId) {
+        _GLFWwindow *w = _glfw.windowListHead;
+        while (w) {
+            if (w->id == _glfw.focusedWindowId) return w;
+            w = w->next;
+        }
     }
+    return NULL;
 }
 
 // Notifies shared code that a window has moved
@@ -185,8 +198,10 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     if (!_glfwIsValidContextConfig(&ctxconfig))
         return NULL;
 
+    static GLFWid windowIdCounter = 0;
     window = calloc(1, sizeof(_GLFWwindow));
     window->next = _glfw.windowListHead;
+    window->id = ++windowIdCounter;
     _glfw.windowListHead = window;
 
     window->videoMode.width       = width;

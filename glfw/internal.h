@@ -59,6 +59,7 @@
 #define _GLFW_MESSAGE_SIZE      1024
 
 typedef int GLFWbool;
+typedef unsigned long long GLFWid;
 
 typedef struct _GLFWerror       _GLFWerror;
 typedef struct _GLFWinitconfig  _GLFWinitconfig;
@@ -377,6 +378,7 @@ struct _GLFWwindow
     GLFWbool            focusOnShow;
     GLFWbool            shouldClose;
     void*               userPointer;
+    GLFWid              id;
     GLFWvidmode         videoMode;
     _GLFWmonitor*       monitor;
     _GLFWcursor*        cursor;
@@ -525,6 +527,7 @@ struct _GLFWlibrary
     _GLFWerror*         errorListHead;
     _GLFWcursor*        cursorListHead;
     _GLFWwindow*        windowListHead;
+    GLFWid              focusedWindowId;
 
     _GLFWmonitor**      monitors;
     int                 monitorCount;
@@ -702,6 +705,7 @@ void _glfwPlatformUnlockMutex(_GLFWmutex* mutex);
 //////////////////////////////////////////////////////////////////////////
 
 void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused);
+_GLFWwindow* _glfwFocusedWindow();
 void _glfwInputWindowPos(_GLFWwindow* window, int xpos, int ypos);
 void _glfwInputWindowSize(_GLFWwindow* window, int width, int height);
 void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height);

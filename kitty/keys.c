@@ -114,9 +114,23 @@ check_if_special(int key, int mods, int scancode) {
 }
 
 void
-on_key_input(int key, int scancode, int action, int mods, const char* text, int state UNUSED) {
+on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
     Window *w = active_window();
     if (!w) return;
+    Screen *screen = w->render_data.screen;
+    switch(state) {
+        case 1:  // update pre-edit text
+            return;
+        case 2:  // commit text
+            if (text && *text) {
+                schedule_write_to_child(w->id, text, strlen(text));
+            }
+            return;
+        case 0:
+            break;
+        default:
+            return;
+    }
     if (global_state.in_sequence_mode) {
         if (
             action != GLFW_RELEASE &&
@@ -124,7 +138,6 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
         ) call_boss(process_sequence, "iiii", key, scancode, action, mods);
         return;
     }
-    Screen *screen = w->render_data.screen;
     bool has_text = text && !is_ascii_control_char(text[0]);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         if (check_if_special(key, mods, scancode)) {

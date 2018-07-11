@@ -103,6 +103,13 @@ get_ibus_text_from_message(DBusMessage *msg) {
     return text;
 }
 
+static inline void
+send_text(const char *text, int state) {
+    _GLFWwindow *w = _glfwFocusedWindow();
+    if (w && w->callbacks.keyboard) {
+        w->callbacks.keyboard((GLFWwindow*) w, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0, text, state);
+    }
+}
 
 // Connection handling {{{
 
@@ -117,9 +124,11 @@ message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
         case 0:
             text = get_ibus_text_from_message(msg);
             debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
+            send_text(text, 2);
             break;
         case 1:
             text = get_ibus_text_from_message(msg);
+            send_text(text, 1);
             debug("IBUS: UpdatePreeditText: '%s'\n", text ? text : "(nil)");
             break;
         case 2:
