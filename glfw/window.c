@@ -79,6 +79,15 @@ _GLFWwindow* _glfwFocusedWindow() {
     return NULL;
 }
 
+_GLFWwindow* _glfwWindowForId(GLFWid id) {
+    _GLFWwindow *w = _glfw.windowListHead;
+    while (w) {
+        if (w->id == _glfw.focusedWindowId) return w;
+        w = w->next;
+    }
+    return NULL;
+}
+
 // Notifies shared code that a window has moved
 // The position is specified in client-area relative screen coordinates
 //

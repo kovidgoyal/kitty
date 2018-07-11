@@ -705,7 +705,6 @@ void _glfwPlatformUnlockMutex(_GLFWmutex* mutex);
 //////////////////////////////////////////////////////////////////////////
 
 void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused);
-_GLFWwindow* _glfwFocusedWindow();
 void _glfwInputWindowPos(_GLFWwindow* window, int xpos, int ypos);
 void _glfwInputWindowSize(_GLFWwindow* window, int width, int height);
 void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height);
@@ -771,5 +770,7 @@ const char* _glfwGetKeyName(int key);
 GLFWbool _glfwInitVulkan(int mode);
 void _glfwTerminateVulkan(void);
 const char* _glfwGetVulkanResultString(VkResult result);
+_GLFWwindow* _glfwFocusedWindow();
+_GLFWwindow* _glfwWindowForId(GLFWid id);
 
 char* _glfw_strdup(const char* source);

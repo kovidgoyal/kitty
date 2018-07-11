@@ -42,12 +42,12 @@ typedef struct {
     xkb_keysym_t keysym;
     unsigned int glfw_modifiers;
     int action;
-    _GLFWIBUSData *ibus;
+    GLFWid window_id;
 } KeyEvent;
 
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
-GLFWbool ibus_process_key(const KeyEvent *ev_);
+GLFWbool ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus);
 void glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h);

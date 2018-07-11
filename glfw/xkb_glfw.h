@@ -35,13 +35,20 @@
 #include "ibus_glfw.h"
 
 typedef struct {
-    struct xkb_context*     context;
-    struct xkb_keymap*      keymap;
-    struct xkb_keymap*      default_keymap;
     struct xkb_state*       state;
     struct xkb_state*       clean_state;
     struct xkb_state*       default_state;
     struct xkb_compose_state* composeState;
+    xkb_mod_mask_t          activeUnknownModifiers;
+    unsigned int            modifiers;
+} XKBStateGroup;
+
+
+typedef struct {
+    struct xkb_context*     context;
+    struct xkb_keymap*      keymap;
+    struct xkb_keymap*      default_keymap;
+    XKBStateGroup           states, ime_states;
 
     xkb_mod_index_t         controlIdx;
     xkb_mod_index_t         altIdx;
@@ -55,8 +62,6 @@ typedef struct {
     xkb_mod_mask_t          superMask;
     xkb_mod_mask_t          capsLockMask;
     xkb_mod_mask_t          numLockMask;
-    xkb_mod_mask_t          activeUnknownModifiers;
-    unsigned int            modifiers;
     xkb_mod_index_t         unknownModifiers[256];
     _GLFWIBUSData           ibus;
 
@@ -88,3 +93,4 @@ xkb_keysym_t glfw_xkb_sym_for_key(int key);
 void glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action);
 int glfw_xkb_keysym_from_name(const char *name, GLFWbool case_sensitive);
 void glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, int b, int c, int d);
+void glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime);

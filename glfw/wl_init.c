@@ -308,7 +308,7 @@ static void pointerHandleButton(void* data,
                          state == WL_POINTER_BUTTON_STATE_PRESSED
                                 ? GLFW_PRESS
                                 : GLFW_RELEASE,
-                         _glfw.wl.xkb.modifiers);
+                         _glfw.wl.xkb.states.modifiers);
 }
 
 static void pointerHandleAxis(void* data,
