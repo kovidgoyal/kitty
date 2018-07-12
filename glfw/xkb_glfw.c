@@ -442,7 +442,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
 #else
     key_event.ibus_keycode -= 8;
 #endif
-    debug("scancode: 0x%x release: %d ", scancode, action == GLFW_RELEASE);
+    debug("%s scancode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", scancode);
     XKBStateGroup *sg = &xkb->states;
     int num_syms = xkb_state_key_get_syms(sg->state, code_for_sym, &syms);
     int num_clean_syms = xkb_state_key_get_syms(sg->clean_state, code_for_sym, &clean_syms);
