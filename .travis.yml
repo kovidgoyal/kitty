@@ -17,6 +17,7 @@ matrix:
                 - libxinerama-dev
                 - libxcursor-dev
                 - libxcb-xkb-dev
+                - libdbus-1-dev
 
         - os: linux
           dist: trusty
@@ -37,6 +38,7 @@ matrix:
                 - libxcursor-dev
                 - libxcb-xkb-dev
                 - libpng-dev
+                - libdbus-1-dev
                 - python3-pil
 
         - os: linux
@@ -58,6 +60,7 @@ matrix:
                 - libxcursor-dev
                 - libxcb-xkb-dev
                 - libpng-dev
+                - libdbus-1-dev
                 - python3-pil
 
         - os: linux
@@ -79,6 +82,7 @@ matrix:
                 - libxcursor-dev
                 - libxcb-xkb-dev
                 - libpng-dev
+                - libdbus-1-dev
                 - python3-pil
                 - clang
         - os: osx
