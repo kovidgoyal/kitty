@@ -414,7 +414,7 @@ ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "ProcessKeyEvent",
             key_event_processed, ev,
-            DBUS_TYPE_UINT32, &ev->keysym, DBUS_TYPE_UINT32, &ev->keycode, DBUS_TYPE_UINT32,
+            DBUS_TYPE_UINT32, &ev->ibus_sym, DBUS_TYPE_UINT32, &ev->ibus_keycode, DBUS_TYPE_UINT32,
             &state, DBUS_TYPE_INVALID)) {
         free(ev);
         return GLFW_FALSE;

@@ -38,8 +38,8 @@ typedef struct {
 } _GLFWIBUSData;
 
 typedef struct {
-    xkb_keycode_t keycode;
-    xkb_keysym_t keysym;
+    xkb_keycode_t keycode, ibus_keycode;
+    xkb_keysym_t keysym, ibus_sym;
     unsigned int glfw_modifiers;
     int action;
     GLFWid window_id;

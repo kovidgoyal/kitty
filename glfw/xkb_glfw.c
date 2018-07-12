@@ -436,8 +436,11 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
     xkb_keysym_t glfw_sym;
     xkb_keycode_t code_for_sym = scancode;
+    key_event.ibus_keycode = scancode;
 #ifdef _GLFW_WAYLAND
     code_for_sym += 8;
+#else
+    key_event.ibus_keycode -= 8;
 #endif
     debug("scancode: 0x%x release: %d ", scancode, action == GLFW_RELEASE);
     XKBStateGroup *sg = &xkb->states;
@@ -495,8 +498,9 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     key_event.action = action; key_event.glfw_modifiers = sg->modifiers;
     key_event.keycode = scancode; key_event.keysym = glfw_sym;
     key_event.window_id = window->id; key_event.glfw_keycode = glfw_keycode;
+    key_event.ibus_sym = syms[0];
     if (ibus_process_key(&key_event, &xkb->ibus)) {
-        debug("↳ to IBUS\n");
+        debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", key_event.ibus_keycode, key_event.ibus_sym, glfw_xkb_keysym_name(key_event.ibus_sym), format_mods(key_event.glfw_modifiers));
     } else {
         _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, sg->modifiers, key_event.text, 0);
     }
