@@ -1582,6 +1582,8 @@ deactivate_overlay_line(Screen *self) {
         Line *line = range_line_(self, self->overlay_line.ynum);
         line_reset_cells(line, self->overlay_line.xstart, self->overlay_line.xnum, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
         if (self->cursor->y == self->overlay_line.ynum) self->cursor->x = self->overlay_line.xstart;
+        self->is_dirty = true;
+        linebuf_mark_line_dirty(self->linebuf, self->overlay_line.ynum);
     }
     self->overlay_line.is_active = false;
     self->overlay_line.ynum = 0;
