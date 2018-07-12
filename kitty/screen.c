@@ -42,8 +42,8 @@ init_tabstops(bool *tabstops, index_type count) {
 
 static inline bool
 init_overlay_line(Screen *self, index_type columns) {
-    free(self->overlay_line.cpu_cells);
-    free(self->overlay_line.gpu_cells);
+    PyMem_Free(self->overlay_line.cpu_cells);
+    PyMem_Free(self->overlay_line.gpu_cells);
     self->overlay_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
     self->overlay_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
     if (!self->overlay_line.cpu_cells || !self->overlay_line.gpu_cells) {
