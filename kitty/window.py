@@ -56,9 +56,14 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs(semi_transparent=0):
+def load_shader_programs(semi_transparent=0, cursor_text_color=None):
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     v, f = load_shaders('cell')
+
+    def color_as_vec3(x):
+        return 'vec3({}, {}, {})'.format(x.red / 255, x.green / 255, x.blue / 255)
+
+    cursor_text_color = color_as_vec3(cursor_text_color) if cursor_text_color else 'bg'
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
@@ -66,7 +71,13 @@ def load_shader_programs(semi_transparent=0):
             'FOREGROUND': CELL_FG_PROGRAM,
     }.items():
         vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
-        for gln, pyn in {'REVERSE_SHIFT': REVERSE, 'STRIKE_SHIFT': STRIKETHROUGH, 'DIM_SHIFT': DIM, 'DECORATION_SHIFT': DECORATION}.items():
+        for gln, pyn in {
+                'REVERSE_SHIFT': REVERSE,
+                'STRIKE_SHIFT': STRIKETHROUGH,
+                'DIM_SHIFT': DIM,
+                'DECORATION_SHIFT': DECORATION,
+                'CURSOR_TEXT_COLOR': cursor_text_color,
+        }.items():
             vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
         if semi_transparent:
             vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')

@@ -82,8 +82,11 @@ def talk_to_instance(args):
 
 
 def load_all_shaders(semi_transparent=0):
-    load_shader_programs(semi_transparent)
+    load_shader_programs(semi_transparent, load_all_shaders.cursor_text_color)
     load_borders_program()
+
+
+load_all_shaders.cursor_text_color = None
 
 
 def init_glfw(debug_keyboard=False):
@@ -118,6 +121,7 @@ def _run_app(opts, args):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos:
         set_custom_ibeam_cursor()
+    load_all_shaders.cursor_text_color = opts.cursor_text_color
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(

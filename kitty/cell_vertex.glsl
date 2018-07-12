@@ -5,6 +5,7 @@
 #define REVERSE_SHIFT {REVERSE_SHIFT}
 #define STRIKE_SHIFT {STRIKE_SHIFT}
 #define DIM_SHIFT {DIM_SHIFT}
+#define CURSOR_TEXT_COLOR {CURSOR_TEXT_COLOR}
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
@@ -166,8 +167,8 @@ void main() {
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor
-    foreground = choose_color(cursor, bg, foreground);
-    decoration_fg = choose_color(cursor, bg, decoration_fg);
+    foreground = choose_color(cursor, CURSOR_TEXT_COLOR, foreground);
+    decoration_fg = choose_color(cursor, CURSOR_TEXT_COLOR, decoration_fg);
 #endif
     // }}}
 
