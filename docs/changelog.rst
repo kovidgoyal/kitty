@@ -6,8 +6,9 @@ Changelog
 0.12.0 [future]
 ------------------------------
 
-- Add an option :opt:`cursor_text_color` to render text under the cursor in a
-  fixed color. (:iss:`126`)
+- Render the text under the cursor in a fixed color, configurable via
+  the option :opt:`cursor_text_color` (:iss:`126`)
+
 
 0.11.3 [2018-07-10]
 ------------------------------

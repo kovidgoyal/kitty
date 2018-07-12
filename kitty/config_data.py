@@ -273,10 +273,9 @@ def cursor_text_color(x):
 
 
 o('cursor', '#cccccc', _('Default cursor color'), option_type=to_color)
-o('cursor_text_color', 'background', option_type=cursor_text_color, long_text=_('''
-Choose the color of text under the cursor. By default, text under the cursor is
-rendered using the background color. If, instead you want it rendered using a
-fixed color, you can specify that color here.'''))
+o('cursor_text_color', '#111111', option_type=cursor_text_color, long_text=_('''
+Choose the color of text under the cursor. If you want it rendered with the
+background color of the cell underneath instead, use the special keyword: background'''))
 o('cursor_shape', 'block', option_type=to_cursor_shape, long_text=_(
     'The cursor shape can be one of (block, beam, underline)'))
 o('cursor_blink_interval', 0.5, option_type=positive_float, long_text=_('''
