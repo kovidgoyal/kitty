@@ -296,13 +296,13 @@ def from_glfw(glfw_dir):
 
 
 def to_glfw(glfw_dir):
-    src = os.path.join(base, 'glfw')
+    src = base
     for x in os.listdir(src):
-        if x in ('glfw.py', 'glfw3.h', '__pycache__'):
+        if x in ('glfw.py', 'glfw3.h', '__pycache__', 'source-info.json') or x.startswith('wayland-'):
             continue
-        x = os.path.join(src, x)
-        shutil.copyfile(x, os.path.join(glfw_dir, 'src'))
-    shutil.copyfile(os.path.join(src, 'glfw3.h'), os.path.join(glfw_dir, 'include/GLFW'))
+        xp = os.path.join(src, x)
+        shutil.copyfile(xp, os.path.join(glfw_dir, 'src', x))
+    shutil.copyfile(os.path.join(src, 'glfw3.h'), os.path.join(glfw_dir, 'include/GLFW/glfw3.h'))
 
 
 def main():
