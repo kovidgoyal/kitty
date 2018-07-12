@@ -6,6 +6,10 @@ Changelog
 0.12.0 [future]
 ------------------------------
 
+- Linux: Implement support for Input Method Extensions (multilingual input
+  using standard keyboards) via `IBus
+  <https://github.com/ibus/ibus/wiki/ReadMe>`_ (:iss:`469`)
+
 - Render the text under the cursor in a fixed color, configurable via
   the option :opt:`cursor_text_color` (:iss:`126`)
 
