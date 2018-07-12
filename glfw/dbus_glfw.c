@@ -130,7 +130,7 @@ toggle_dbus_timeout(DBusTimeout *timeout, void *data) {
 
 
 DBusConnection*
-glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name) {
+glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name, GLFWbool register_on_bus) {
     DBusError err;
     dbus_error_init(&err);
     DBusConnection *ans = dbus_connection_open_private(path, &err);
@@ -139,13 +139,13 @@ glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name) {
         return NULL;
     }
     dbus_connection_set_exit_on_disconnect(ans, FALSE);
-    dbus_connection_flush(ans);
     dbus_error_free(&err);
-    if (!dbus_bus_register(ans, &err)) {
-        report_error(&err, err_msg);
-        return NULL;
+    if (register_on_bus) {
+        if (!dbus_bus_register(ans, &err)) {
+            report_error(&err, err_msg);
+            return NULL;
+        }
     }
-    dbus_connection_flush(ans);
     if (!dbus_connection_set_watch_functions(ans, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, (void*)name, NULL)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", path);
         dbus_connection_close(ans);
