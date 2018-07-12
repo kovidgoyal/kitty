@@ -131,6 +131,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     switch(state) {
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
+            screen_draw_overlay_text(screen, text);
             return;
         case 2:  // commit text
             if (text && *text) {

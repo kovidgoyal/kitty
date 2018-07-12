@@ -53,12 +53,20 @@ typedef struct {
     index_type start_of_data, count;
 } SavemodesBuffer;
 
+typedef struct {
+    CPUCell *cpu_cells;
+    GPUCell *gpu_cells;
+    bool is_active;
+    index_type xstart, ynum, xnum;
+} OverlayLine;
+
 
 typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
     CellPixelSize cell_size;
+    OverlayLine overlay_line;
     id_type window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     unsigned int current_charset;
@@ -175,6 +183,7 @@ bool screen_open_url(Screen*);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned int which);
+void screen_draw_overlay_text(Screen *self, const char *utf8_text);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

@@ -41,6 +41,17 @@ xlimit_for_line(Line *line) {
     return xlimit;
 }
 
+static inline void
+line_save_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cells, CPUCell *cpu_cells) {
+    memcpy(gpu_cells + sizeof(GPUCell) * start, line->gpu_cells + sizeof(GPUCell) * start, sizeof(GPUCell) * num);
+    memcpy(cpu_cells + sizeof(CPUCell) * start, line->cpu_cells + sizeof(CPUCell) * start, sizeof(CPUCell) * num);
+}
+
+static inline void
+line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cells, CPUCell *cpu_cells) {
+    memcpy(line->gpu_cells + sizeof(GPUCell) * start, gpu_cells + sizeof(GPUCell) * start, sizeof(GPUCell) * num);
+    memcpy(line->cpu_cells + sizeof(CPUCell) * start, cpu_cells + sizeof(CPUCell) * start, sizeof(CPUCell) * num);
+}
 
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);

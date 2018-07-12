@@ -30,7 +30,6 @@ typedef struct {
     unsigned int x; int y;
 } FullSelectionBoundary;
 
-
 // Constructor/destructor {{{
 
 static inline void
@@ -39,6 +38,22 @@ init_tabstops(bool *tabstops, index_type count) {
     for (unsigned int t=0; t < count; t++) {
         tabstops[t] = t % 8 == 0 ? true : false;
     }
+}
+
+static inline bool
+init_overlay_line(Screen *self, index_type columns) {
+    free(self->overlay_line.cpu_cells);
+    free(self->overlay_line.gpu_cells);
+    self->overlay_line.cpu_cells = PyMem_Calloc(columns, sizeof(CPUCell));
+    self->overlay_line.gpu_cells = PyMem_Calloc(columns, sizeof(GPUCell));
+    if (!self->overlay_line.cpu_cells || !self->overlay_line.gpu_cells) {
+        PyErr_NoMemory(); return false;
+    }
+    self->overlay_line.is_active = false;
+    self->overlay_line.xnum = 0;
+    self->overlay_line.ynum = 0;
+    self->overlay_line.xstart = 0;
+    return true;
 }
 
 #define RESET_CHARSETS \
@@ -104,13 +119,18 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->tabstops = self->main_tabstops;
         init_tabstops(self->main_tabstops, self->columns);
         init_tabstops(self->alt_tabstops, self->columns);
+        if (!init_overlay_line(self, self->columns)) { Py_CLEAR(self); return NULL; }
     }
     return (PyObject*) self;
 }
 
+static void deactivate_overlay_line(Screen *self);
+static inline Line* range_line_(Screen *self, int y);
+
 void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
+    if (self->overlay_line.is_active) deactivate_overlay_line(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
     grman_clear(self->grman, false, self->cell_size);
@@ -159,6 +179,7 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
 
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
+    if (self->overlay_line.is_active) deactivate_overlay_line(self);
     lines = MAX(1, lines); columns = MAX(1, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
@@ -170,6 +191,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         cursor_is_beyond_content = num_content_lines_before > 0 && self->cursor->y >= num_content_lines_before; \
         num_content_lines = num_content_lines_after; \
 }
+    // Resize overlay line
+    if (!init_overlay_line(self, columns)) return false;
 
     // Resize main linebuf
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
@@ -246,6 +269,8 @@ dealloc(Screen* self) {
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->historybuf);
     Py_CLEAR(self->color_profile);
+    PyMem_Free(self->overlay_line.cpu_cells);
+    PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
@@ -372,6 +397,37 @@ screen_draw(Screen *self, uint32_t och) {
     }
     self->is_dirty = true;
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
+}
+
+void
+screen_draw_overlay_text(Screen *self, const char *utf8_text) {
+    if (self->overlay_line.is_active) deactivate_overlay_line(self);
+    if (!utf8_text || !utf8_text[0]) return;
+    Line *line = range_line_(self, self->cursor->y);
+    if (!line) return;
+    line_save_cells(line, 0, self->columns, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
+    self->overlay_line.is_active = true;
+    self->overlay_line.ynum = self->cursor->y;
+    self->overlay_line.xstart = self->cursor->x;
+    self->overlay_line.xnum = 0;
+    uint32_t codepoint = 0, state = UTF8_ACCEPT;
+    bool orig_line_wrap_mode = self->modes.mDECAWM;
+    self->modes.mDECAWM = false;
+    self->cursor->reverse ^= true;
+    index_type before;
+    while (*utf8_text) {
+        switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
+            case UTF8_ACCEPT:
+                before = self->cursor->x;
+                screen_draw(self, codepoint);
+                self->overlay_line.xnum += self->cursor->x - before;
+                break;
+            case UTF8_REJECT:
+                break;
+        }
+    }
+    self->cursor->reverse ^= true;
+    self->modes.mDECAWM = orig_line_wrap_mode;
 }
 
 void
@@ -733,6 +789,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 }
 
 #define INDEX_UP \
+    if (self->overlay_line.is_active) deactivate_overlay_line(self); \
     linebuf_index(self->linebuf, top, bottom); \
     INDEX_GRAPHICS(-1) \
     if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
@@ -764,6 +821,7 @@ screen_scroll(Screen *self, unsigned int count) {
 }
 
 #define INDEX_DOWN \
+    if (self->overlay_line.is_active) deactivate_overlay_line(self); \
     linebuf_reverse_index(self->linebuf, top, bottom); \
     linebuf_clear_line(self->linebuf, top); \
     INDEX_GRAPHICS(1) \
@@ -1517,6 +1575,20 @@ screen_open_url(Screen *self) {
     else PyErr_Print();
     return true;
 }
+
+static void
+deactivate_overlay_line(Screen *self) {
+    if (self->overlay_line.is_active && self->overlay_line.xnum && self->overlay_line.ynum < self->lines) {
+        Line *line = range_line_(self, self->overlay_line.ynum);
+        line_reset_cells(line, self->overlay_line.xstart, self->overlay_line.xnum, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
+        if (self->cursor->y == self->overlay_line.ynum) self->cursor->x = self->overlay_line.xstart;
+    }
+    self->overlay_line.is_active = false;
+    self->overlay_line.ynum = 0;
+    self->overlay_line.xnum = 0;
+    self->overlay_line.xstart = 0;
+}
+
 
 // }}}
 
