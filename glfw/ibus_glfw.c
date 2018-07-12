@@ -266,7 +266,7 @@ setup_connection(_GLFWIBUSData *ibus) {
     if (!ibus->conn) return GLFW_FALSE;
     free((void*)ibus->input_ctx_path); ibus->input_ctx_path = NULL;
     if (!glfw_dbus_call_method_with_reply(
-            ibus->conn, IBUS_SERVICE, IBUS_PATH, IBUS_INTERFACE, "CreateInputContext", input_context_created, ibus,
+            ibus->conn, IBUS_SERVICE, IBUS_PATH, IBUS_INTERFACE, "CreateInputContext", DBUS_TIMEOUT_USE_DEFAULT, input_context_created, ibus,
             DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID)) {
         return GLFW_FALSE;
     }
@@ -393,13 +393,15 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled = 0;
     KeyEvent *ev = (KeyEvent*)data;
     GLFWbool is_release = ev->action == GLFW_RELEASE;
+    GLFWbool failed = GLFW_FALSE;
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
+        failed = GLFW_TRUE;
     } else {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
         debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->keycode, is_release, handled);
     }
-    glfw_xkb_key_from_ime(ev, handled ? GLFW_TRUE : GLFW_FALSE);
+    glfw_xkb_key_from_ime(ev, handled ? GLFW_TRUE : GLFW_FALSE, failed);
     free(ev);
 }
 
@@ -412,7 +414,7 @@ ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
     uint32_t state = ibus_key_state(ev->glfw_modifiers, ev->action);
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "ProcessKeyEvent",
-            key_event_processed, ev,
+            3000, key_event_processed, ev,
             DBUS_TYPE_UINT32, &ev->ibus_sym, DBUS_TYPE_UINT32, &ev->ibus_keycode, DBUS_TYPE_UINT32,
             &state, DBUS_TYPE_INVALID)) {
         free(ev);

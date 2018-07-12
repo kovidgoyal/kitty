@@ -413,8 +413,12 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, i
 }
 
 void
-glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime) {
+glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime, GLFWbool failed) {
     _GLFWwindow *window = _glfwWindowForId(ev->window_id);
+    if (failed && window && window->callbacks.keyboard) {
+        // notify application to remove any existing pre-edit text
+        window->callbacks.keyboard((GLFWwindow*) window, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0, "", 1);
+    }
     static xkb_keycode_t last_handled_press_keycode = 0;
     // We filter out release events that correspond to the last press event
     // handled by the IME system. This wont fix the case of multiple key

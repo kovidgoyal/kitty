@@ -219,7 +219,7 @@ method_reply_received(DBusPendingCall *pending, void *user_data) {
 }
 
 static GLFWbool
-call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void *user_data, va_list ap) {
+call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void *user_data, va_list ap) {
     if (!conn) return GLFW_FALSE;
     DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
     if (!msg) return GLFW_FALSE;
@@ -233,7 +233,7 @@ call_method(DBusConnection *conn, const char *node, const char *path, const char
     if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_append_args_valist(msg, firstarg, ap)) {
         if (callback) {
             DBusPendingCall *pending = NULL;
-            if (dbus_connection_send_with_reply(conn, msg, &pending, DBUS_TIMEOUT_USE_DEFAULT)) {
+            if (dbus_connection_send_with_reply(conn, msg, &pending, timeout)) {
                 dbus_pending_call_set_notify(pending, method_reply_received, res, free);
                 retval = GLFW_TRUE;
             } else {
@@ -255,11 +255,11 @@ call_method(DBusConnection *conn, const char *node, const char *path, const char
 }
 
 GLFWbool
-glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void* user_data, ...) {
+glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void* user_data, ...) {
     GLFWbool retval;
     va_list ap;
     va_start(ap, user_data);
-    retval = call_method(conn, node, path, interface, method, callback, user_data, ap);
+    retval = call_method(conn, node, path, interface, method, timeout, callback, user_data, ap);
     va_end(ap);
     return retval;
 }
@@ -269,7 +269,7 @@ glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const cha
     GLFWbool retval;
     va_list ap;
     va_start(ap, method);
-    retval = call_method(conn, node, path, interface, method, NULL, NULL, ap);
+    retval = call_method(conn, node, path, interface, method, DBUS_TIMEOUT_USE_DEFAULT, NULL, NULL, ap);
     va_end(ap);
     return retval;
 }

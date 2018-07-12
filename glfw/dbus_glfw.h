@@ -44,7 +44,7 @@ void glfw_dbus_close_connection(DBusConnection *conn);
 GLFWbool
 glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
 GLFWbool
-glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, dbus_pending_callback callback, void *user_data, ...);
+glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout_ms, dbus_pending_callback callback, void *user_data, ...);
 void glfw_dbus_dispatch(DBusConnection *);
 GLFWbool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);
 int glfw_dbus_match_signal(DBusMessage *msg, const char *interface, ...);
