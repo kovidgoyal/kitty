@@ -54,7 +54,7 @@
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
 //
-void _glfwDispatchX11Events(void);
+GLFWbool _glfwDispatchX11Events(void);
 
 static void
 handleEvents(double timeout) {
@@ -2543,8 +2543,10 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
                     PropModeReplace, (unsigned char*) &value, 1);
 }
 
-void _glfwDispatchX11Events(void) {
+GLFWbool
+_glfwDispatchX11Events(void) {
     _GLFWwindow* window;
+    GLFWbool dispatched = GLFW_FALSE;
 
 #if defined(__linux__)
     _glfwDetectJoystickConnectionLinux();
@@ -2556,6 +2558,7 @@ void _glfwDispatchX11Events(void) {
         XEvent event;
         XNextEvent(_glfw.x11.display, &event);
         processEvent(&event);
+        dispatched = GLFW_TRUE;
     }
 
     window = _glfw.x11.disabledCursorWindow;
@@ -2574,20 +2577,24 @@ void _glfwDispatchX11Events(void) {
     }
 
     XFlush(_glfw.x11.display);
+    return dispatched;
 }
 
 void _glfwPlatformPollEvents(void)
 {
+    _glfwDispatchX11Events();
     handleEvents(0);
 }
 
 void _glfwPlatformWaitEvents(void)
 {
-    handleEvents(-1);
+    double timeout = _glfwDispatchX11Events() ? 0 : -1;
+    handleEvents(timeout);
 }
 
 void _glfwPlatformWaitEventsTimeout(double timeout)
 {
+    if (_glfwDispatchX11Events()) timeout = 0;
     handleEvents(timeout);
 }
 

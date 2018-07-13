@@ -1163,16 +1163,19 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
 
 void _glfwPlatformPollEvents(void)
 {
+    wl_display_dispatch_pending(_glfw.wl.display);
     handleEvents(0);
 }
 
 void _glfwPlatformWaitEvents(void)
 {
-    handleEvents(-1);
+    double timeout = wl_display_dispatch_pending(_glfw.wl.display) > 0 ? 0 : -1;
+    handleEvents(timeout);
 }
 
 void _glfwPlatformWaitEventsTimeout(double timeout)
 {
+    if (wl_display_dispatch_pending(_glfw.wl.display) > 0) timeout = 0;
     handleEvents(timeout);
 }
 
