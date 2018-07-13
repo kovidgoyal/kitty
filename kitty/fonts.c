@@ -1105,7 +1105,7 @@ initialize_font(FontGroup *fg, unsigned int desc_idx, const char *ftype) {
     Py_CLEAR(face);
     if (!ok) {
         if (PyErr_Occurred()) { PyErr_Print(); }
-        fatal("Failed to initialize %s font: %d", ftype, idx);
+        fatal("Failed to initialize %s font: %zu", ftype, idx);
     }
     return idx;
 }

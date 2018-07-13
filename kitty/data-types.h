@@ -27,7 +27,7 @@
 #define xstr(s) str(s)
 #define str(s) #s
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))
-void log_error(const char *fmt, ...);
+void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
 
 typedef unsigned long long id_type;
