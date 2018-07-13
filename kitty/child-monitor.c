@@ -1066,7 +1066,6 @@ io_loop(void *data) {
 // {{{ Talk thread functions
 
 #define MAX_PEERS 256
-#define MAX_LISTENERS 2
 
 typedef struct {
     char *data;
@@ -1086,10 +1085,10 @@ static PeerWriteData empty_pwd = {.fd = -1, 0};
 
 typedef struct {
     size_t num_listen_fds, num_talk_fds, num_reads, num_writes, num_queued_writes;
-    struct pollfd fds[MAX_PEERS + MAX_LISTENERS + 1];
-    PeerReadData reads[MAX_LISTENERS];
-    PeerWriteData writes[MAX_LISTENERS];
-    PeerWriteData queued_writes[MAX_LISTENERS];
+    struct pollfd fds[MAX_PEERS + 1];
+    PeerReadData reads[MAX_PEERS + 1];
+    PeerWriteData writes[MAX_PEERS + 1];
+    PeerWriteData queued_writes[MAX_PEERS + 1];
     int wakeup_fds[2];
     pthread_mutex_t peer_lock;
 } TalkData;
@@ -1110,7 +1109,10 @@ accept_peer(int listen_fd, bool shutting_down) {
         talk_data.fds[fd_idx].fd = peer; talk_data.fds[fd_idx].events = POLLIN;
         talk_data.reads[talk_data.num_reads] = empty_prd; talk_data.reads[talk_data.num_reads++].fd = peer;
         talk_data.num_talk_fds++;
-    } else nuke_socket(peer);
+    } else {
+        log_error("Too many peers want to talk, already connected to %lu ignoring one.", talk_data.num_talk_fds);
+        nuke_socket(peer);
+    }
     return true;
 }
 
