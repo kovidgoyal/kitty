@@ -222,7 +222,9 @@ pollForEvents(EventLoopData *eld, double timeout) {
 
     while(1) {
         if (timeout >= 0) {
+            errno = 0;
             result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
+            int saved_errno = errno;
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
@@ -231,16 +233,18 @@ pollForEvents(EventLoopData *eld, double timeout) {
             }
             timeout = end_time - monotonic();
             if (timeout <= 0) break;
-            if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            if (result < 0 && (saved_errno == EINTR || saved_errno == EAGAIN)) continue;
             break;
         } else {
+            errno = 0;
             result = poll(eld->fds, eld->watches_count, -1);
+            int saved_errno = errno;
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
                 read_ok = eld->watches[0].ready;
             }
-            if (result < 0 && (errno == EINTR || errno == EAGAIN)) continue;
+            if (result < 0 && (saved_errno == EINTR || saved_errno == EAGAIN)) continue;
             break;
         }
     }
