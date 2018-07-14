@@ -259,6 +259,15 @@ see the :doc:`configuration docs <conf>`.
 
 .. _sessions:
 
+Remote control
+------------------
+
+|kitty| has a very powerful system that allows you to control it from the
+:doc:`shell prompt, even over SSH <remote-control>`. You can change colors,
+fonts, open new windows, tabs, set their titles, change window layout, get text
+from one window and send text to another, etc, etc. The possibilities are
+endless. See the :doc:`tutorial <remote-control>` to get started.
+
 Startup Sessions
 ------------------
 
