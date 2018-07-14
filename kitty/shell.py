@@ -155,7 +155,10 @@ def real_main(global_opts):
 
     while True:
         try:
-            cmdline = input('🐱 ')
+            try:
+                cmdline = input('🐱 ')
+            except UnicodeEncodeError:
+                cmdline = input('kitty> ')
         except EOFError:
             break
         except KeyboardInterrupt:
