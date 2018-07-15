@@ -106,10 +106,67 @@ class DiffHandler(Handler):
                 return
 
     def create_collection(self):
-        self.start_job('collect', create_collection, self.left, self.right)
+
+        def collect_done(collection):
+            self.collection = collection
+            self.state = COLLECTED
+            self.generate_diff()
+
+        def collect(left, right):
+            collection = create_collection(left, right)
+            self.asyncio_loop.call_soon_threadsafe(collect_done, collection)
+
+        self.asyncio_loop.run_in_executor(None, collect, self.left, self.right)
 
     def generate_diff(self):
-        self.start_job('diff', generate_diff, self.collection, self.current_context_count)
+
+        def diff_done(diff_map):
+            if isinstance(diff_map, str):
+                self.report_traceback_on_exit = diff_map
+                self.quit_loop(1)
+                return
+            self.state = DIFFED
+            self.diff_map = diff_map
+            self.calculate_statistics()
+            self.render_diff()
+            self.scroll_pos = 0
+            if self.restore_position is not None:
+                self.current_position = self.restore_position
+                self.restore_position = None
+            self.draw_screen()
+            if initialize_highlighter is not None and not self.highlighting_done:
+                from .highlight import StyleNotFound
+                self.highlighting_done = True
+                try:
+                    initialize_highlighter(self.opts.pygments_style)
+                except StyleNotFound as e:
+                    self.report_traceback_on_exit = str(e)
+                    self.quit_loop(1)
+                    return
+                self.syntax_highlight()
+
+        def diff(collection, current_context_count):
+            diff_map = generate_diff(collection, current_context_count)
+            self.asyncio_loop.call_soon_threadsafe(diff_done, diff_map)
+
+        self.asyncio_loop.run_in_executor(None, diff, self.collection, self.current_context_count)
+
+    def syntax_highlight(self):
+
+        def highlighting_done(hdata):
+            if isinstance(hdata, str):
+                self.report_traceback_on_exit = hdata
+                self.quit_loop(1)
+                return
+            set_highlight_data(hdata)
+            self.render_diff()
+            self.draw_screen()
+
+        def highlight(*a):
+            result = highlight_collection(*a)
+            self.asyncio_loop.call_soon_threadsafe(highlighting_done, result)
+
+        self.asyncio_loop.run_in_executor(None, highlight, self.collection, self.opts.syntax_aliases)
 
     def calculate_statistics(self):
         self.added_count = self.collection.added_count
@@ -412,50 +469,6 @@ class DiffHandler(Handler):
             self.image_manager.delete_all_sent_images()
             self.render_diff()
         self.draw_screen()
-
-    def on_job_done(self, job_id, job_result):
-        if 'tb' in job_result:
-            self.report_traceback_on_exit = job_result['tb']
-            self.quit_loop(1)
-            return
-        if job_id == 'collect':
-            self.collection = job_result['result']
-            self.state = COLLECTED
-            self.generate_diff()
-        elif job_id == 'diff':
-            diff_map = job_result['result']
-            if isinstance(diff_map, str):
-                self.report_traceback_on_exit = diff_map
-                self.quit_loop(1)
-                return
-            self.state = DIFFED
-            self.diff_map = diff_map
-            self.calculate_statistics()
-            self.render_diff()
-            self.scroll_pos = 0
-            if self.restore_position is not None:
-                self.current_position = self.restore_position
-                self.restore_position = None
-            self.draw_screen()
-            if initialize_highlighter is not None and not self.highlighting_done:
-                from .highlight import StyleNotFound
-                self.highlighting_done = True
-                try:
-                    initialize_highlighter(self.opts.pygments_style)
-                except StyleNotFound as e:
-                    self.report_traceback_on_exit = str(e)
-                    self.quit_loop(1)
-                    return
-                self.start_job('highlight', highlight_collection, self.collection, self.opts.syntax_aliases)
-        elif job_id == 'highlight':
-            hdata = job_result['result']
-            if isinstance(hdata, str):
-                self.report_traceback_on_exit = diff_map
-                self.quit_loop(1)
-                return
-            set_highlight_data(hdata)
-            self.render_diff()
-            self.draw_screen()
 
     def on_interrupt(self):
         self.quit_loop(1)
