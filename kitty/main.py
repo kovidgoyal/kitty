@@ -9,6 +9,7 @@ from contextlib import contextmanager
 
 from .borders import load_borders_program
 from .boss import Boss
+from .child import set_default_env
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
@@ -202,6 +203,13 @@ def macos_cmdline():
     return ans
 
 
+def setup_environment(opts):
+    extra_env = opts.env.copy()
+    if opts.editor != '.':
+        os.environ['EDITOR'] = opts.editor
+    set_default_env(extra_env)
+
+
 def _main():
     try:
         sys.setswitchinterval(1000.0)  # we have only a single python thread
@@ -256,8 +264,7 @@ def _main():
             return
     init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
     opts = create_opts(args)
-    if opts.editor != '.':
-        os.environ['EDITOR'] = opts.editor
+    setup_environment(opts)
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies

@@ -646,6 +646,19 @@ opening new windows, closing windows, reading the content of windows, etc.
 Note that this even works over ssh connections.
 '''))
 
+o(
+    '+env', '',
+    add_to_default=False,
+    long_text=_('''
+Specify environment variables to set in all child processes. Note that
+environment variables are expanded recursively, so if you use::
+
+    env MYVAR1=a
+    env MYVAR2=${MYVAR}/${HOME}/b
+
+The value of MYVAR2 will be :code:`a/<path to home directory>/b`.
+'''))
+
 
 def startup_session(x):
     if x.lower() == 'none':

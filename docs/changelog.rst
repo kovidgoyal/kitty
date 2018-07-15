@@ -13,6 +13,8 @@ Changelog
 - Render the text under the cursor in a fixed color, configurable via
   the option :opt:`cursor_text_color` (:iss:`126`)
 
+- Add an option :opt:`env` to set environment variables in child processes
+  from kitty.conf
 
 0.11.3 [2018-07-10]
 ------------------------------

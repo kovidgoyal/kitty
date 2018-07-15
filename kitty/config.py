@@ -245,28 +245,68 @@ def parse_send_text(val, key_definitions):
     return parse_key(key_str, key_definitions)
 
 
+special_handlers = {}
+
+
+def special_handler(func):
+    special_handlers[func.__name__.partition('_')[2]] = func
+
+
+@special_handler
+def handle_map(key, val, ans):
+    parse_key(val, ans['key_definitions'])
+
+
+@special_handler
+def handle_symbol_map(key, val, ans):
+    ans['symbol_map'].update(parse_symbol_map(val))
+
+
+@special_handler
+def handle_send_text(key, val, ans):
+    # For legacy compatibility
+    parse_send_text(val, ans['key_definitions'])
+
+
+@special_handler
+def handle_clear_all_shortcuts(key, val, ans):
+    if to_bool(val):
+        ans['key_definitions'] = [None]
+
+
+def expandvars(val, env):
+
+    def sub(m):
+        key = m.group(1)
+        result = env.get(key)
+        if result is None:
+            result = os.environ.get(key)
+        if result is None:
+            result = m.group()
+        return result
+
+    return re.sub(r'$\{(\S+)\}', sub, val)
+
+
+@special_handler
+def handle_env(key, val, ans):
+    key, val = val.partition('=')[::2]
+    key, val = key.strip(), val.strip()
+    ans['env'][key] = expandvars(val, ans['env'])
+
+
 def special_handling(key, val, ans):
-    if key == 'map':
-        parse_key(val, ans['key_definitions'])
+    func = special_handlers.get(key)
+    if func is not None:
+        func(key, val, ans)
         return True
-    if key == 'symbol_map':
-        ans['symbol_map'].update(parse_symbol_map(val))
-        return True
-    if key == 'send_text':
-        # For legacy compatibility
-        parse_send_text(val, ans['key_definitions'])
-        return True
-    if key == 'clear_all_shortcuts':
-        if to_bool(val):
-            ans['key_definitions'] = [None]
-        return
 
 
 defaults = None
 
 
 def parse_config(lines, check_keys=True):
-    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': []}
+    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}}
     parse_config_base(
         lines,
         defaults,

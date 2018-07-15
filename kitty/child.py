@@ -30,6 +30,20 @@ def remove_cloexec(fd):
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
 
 
+def default_env():
+    try:
+        return default_env.env
+    except AttributeError:
+        return os.environ
+
+
+def set_default_env(val=None):
+    env = os.environ.copy()
+    if val:
+        env.update(val)
+    default_env.env = env
+
+
 class Child:
 
     child_fd = pid = None
@@ -63,7 +77,7 @@ class Child:
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = os.environ.copy()
+        env = default_env().copy()
         env.update(self.env)
         env['TERM'] = self.opts.term
         env['COLORTERM'] = 'truecolor'
