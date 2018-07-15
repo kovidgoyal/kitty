@@ -658,7 +658,9 @@ Categories=System;TerminalEmulator;
             NSHighResolutionCapable=True,
             NSSupportsAutomaticGraphicsSwitching=True,
             LSApplicationCategoryType='public.app-category.utilities',
-            LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+            # Ensure I/O encoding is always utf-8, see
+            # https://github.com/kovidgoyal/kitty/issues/724
+            LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1', 'PYTHONIOENCODING': 'utf-8'},
         )
         plistlib.writePlist(pl, 'Info.plist')
         os.rename('../share', 'Resources')
