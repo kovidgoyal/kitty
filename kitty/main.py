@@ -222,12 +222,12 @@ def _main():
     except Exception:
         if not is_macos:
             raise
-        print('Failed to set locale with LANG:', os.environ.get('LANG'), file=sys.stderr)
-        os.environ.pop('LANG')
+        log_error('Failed to set locale with LANG:', os.environ.get('LANG'))
+        os.environ.pop('LANG', None)
         try:
             locale.setlocale(locale.LC_ALL, '')
         except Exception:
-            print('Failed to set locale with no LANG, ignoring', file=sys.stderr)
+            log_error('Failed to set locale with no LANG, ignoring')
 
     # Ensure kitty is in PATH
     rpath = os.path.dirname(kitty_exe())
