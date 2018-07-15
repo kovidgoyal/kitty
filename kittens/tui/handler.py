@@ -10,13 +10,18 @@ class Handler:
 
     image_manager_class = None
 
-    def _initialize(self, screen_size, quit_loop, wakeup, start_job, debug, image_manager=None):
-        self.screen_size, self.quit_loop = screen_size, quit_loop
-        self.wakeup = wakeup
+    def _initialize(self, screen_size, term_manager, schedule_write, tui_loop, debug, image_manager=None):
+        self.screen_size = screen_size
+        self._term_manager = term_manager
+        self._tui_loop = tui_loop
+        self._schedule_write = schedule_write
         self.debug = debug
-        self.start_job = start_job
         self.cmd = commander(self)
         self.image_manager = image_manager
+
+    @property
+    def asyncio_loop(self):
+        return self._tui_loop.asycio_loop
 
     def add_shortcut(self, action, key, mods=None, is_text=False):
         if not hasattr(self, '_text_shortcuts'):
@@ -38,7 +43,6 @@ class Handler:
         self.initialize()
 
     def __exit__(self, *a):
-        del self.write_buf[:]
         del self.debug.fobj
         self.finalize()
         if self.image_manager is not None:
@@ -53,8 +57,11 @@ class Handler:
     def on_resize(self, screen_size):
         self.screen_size = screen_size
 
+    def quit_loop(self, return_code=None):
+        self._tui_loop.quit(return_code)
+
     def on_term(self):
-        self.quit_loop(1)
+        self._tui_loop.quit(1)
 
     def on_text(self, text, in_bracketed_paste=False):
         pass
@@ -71,12 +78,6 @@ class Handler:
     def on_eot(self):
         pass
 
-    def on_wakeup(self):
-        pass
-
-    def on_job_done(self, job_id, job_result):
-        pass
-
     def on_kitty_cmd_response(self, response):
         pass
 
@@ -86,7 +87,7 @@ class Handler:
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')
-        self.write_buf.append(data)
+        self._schedule_write(data)
 
     def print(self, *args, sep=' ', end='\r\n'):
         data = sep.join(map(str, args)) + end
