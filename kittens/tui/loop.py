@@ -340,7 +340,8 @@ class Loop:
 
         def _on_sigwinch():
             self._get_screen_size.changed = True
-            handler.on_resize(self._get_screen_size())
+            handler.screen_size = self._get_screen_size()
+            handler.on_resize(handler.screen_size)
 
         signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
         with TermManager() as term_manager, signal_manager:

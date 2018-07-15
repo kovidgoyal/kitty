@@ -74,7 +74,6 @@ class Resize(Handler):
             self.do_window_resize(is_decrease=key_event.key in (N, S), is_horizontal=key_event.key in (W, N), multiplier=2)
 
     def on_resize(self, new_size):
-        Handler.on_resize(self, new_size)
         self.draw_screen()
 
     def draw_screen(self):

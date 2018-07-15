@@ -152,7 +152,6 @@ class Hints(Handler):
         self.quit_loop(1)
 
     def on_resize(self, new_size):
-        Handler.on_resize(self, new_size)
         self.draw_screen()
 
     def draw_screen(self):

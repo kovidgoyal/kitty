@@ -455,7 +455,6 @@ class UnicodeInput(Handler):
         self.quit_loop(1)
 
     def on_resize(self, new_size):
-        Handler.on_resize(self, new_size)
         self.refresh()
 
 
