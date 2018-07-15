@@ -13,7 +13,6 @@ class Clipboard(Handler):
 
     def __init__(self, data_to_send, args):
         self.args = args
-        self.print_on_fail = None
         self.clipboard_contents = None
         self.data_to_send = data_to_send
 
@@ -70,9 +69,6 @@ def main(args):
     if loop.return_code == 0 and handler.clipboard_contents:
         sys.stdout.write(handler.clipboard_contents)
         sys.stdout.flush()
-    if handler.print_on_fail:
-        print(handler.print_on_fail, file=sys.stderr)
-        input('Press Enter to quit')
     raise SystemExit(loop.return_code)
 
 
