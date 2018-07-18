@@ -43,8 +43,6 @@ def export():
     switch = ['glad_debug_{0} = glad_{0}'.format(f) for f in functions]
     c = c.replace('<glad/glad.h>', '"gl-wrapper.h"', 1)
     c = '#pragma GCC diagnostic ignored "-Wpedantic"\n' + c
-    # See https://github.com/kovidgoyal/kitty/issues/654
-    c = c.replace('strncpy(local_str, gl_str_tmp, len+1)', 'memcpy(local_str, gl_str_tmp, len+1)', 1)
     c += '''
 int
 init_glad(GLADloadproc load, int debug) {
