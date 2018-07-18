@@ -501,6 +501,13 @@ scroll_event(double UNUSED xoffset, double yoffset) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
+    if (!w && !in_tab_bar) {
+        // allow scroll events even if window is not currently focused (in
+        // which case on some platforms such as macOS the mouse location is zeroed so
+        // window_for_event() does not work).
+        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+        if (t) w = t->windows + t->active_window;
+    }
     if (w) {
         Screen *screen = w->render_data.screen;
         if (screen->linebuf == screen->main_linebuf) {
