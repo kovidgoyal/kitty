@@ -372,9 +372,9 @@ Key      Value                 Default    Description
 **Keys for deleting images**
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.
-         ``(a, A, c, C, p,
-         P, q, Q, x, X, y,
-         Y, z, Z)``.
+         ``(a, A, c, C, i,
+         I, p, P, q, Q, x, X,
+         y, Y, z, Z)``.
 =======  ====================  =========  =================
 
 
