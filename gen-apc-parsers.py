@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import subprocess
 from collections import defaultdict
 
 
@@ -224,6 +225,13 @@ static inline void
     '''
 
 
+def write_header(text, path):
+    with open(path, 'w') as f:
+        print('#pragma once', file=f)
+        print(text, file=f)
+    subprocess.check_call(['clang-format', '-i', path])
+
+
 def graphics_parser():
     flag = frozenset
     keymap = {
@@ -249,10 +257,7 @@ def graphics_parser():
         'z': ('z_index', 'int'),
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
-
-    with open('kitty/parse-graphics-command.h', 'w') as f:
-        print('#pragma once', file=f)
-        print(text, file=f)
+    write_header(text, 'kitty/parse-graphics-command.h')
 
 
 graphics_parser()
