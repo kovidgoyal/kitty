@@ -166,12 +166,43 @@ def render_special(
     return ans
 
 
-def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness):
-    # Pre-render the special underline, strikethrough and missing cells
+def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
+    CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
+    ans = CharTexture()
+
+    def vert(edge, width_pt=1):
+        width = max(1, int(round(width_pt * dpi_x / 72.0)))
+        left = 0 if edge == 'left' else max(0, cell_width - width)
+        for y in range(cell_height):
+            offset = y * cell_width + left
+            for x in range(offset, offset + width):
+                ans[x] = 255
+
+    def horz(edge, height_pt=1):
+        height = max(1, int(round(height_pt * dpi_y / 72.0)))
+        top = 0 if edge == 'top' else max(0, cell_height - height)
+        for y in range(top, top + height):
+            offset = y * cell_width
+            for x in range(cell_width):
+                ans[offset + x] = 255
+
+    if which == 1:  # beam
+        vert('left', 1.5)
+    elif which == 2:  # underline
+        horz('bottom', 2.0)
+    elif which == 3:  # hollow
+        vert('left'), vert('right'), horz('top'), horz('bottom')
+    return ans
+
+
+def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness, dpi_x, dpi_y):
+    # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
         underline_position=underline_position, underline_thickness=underline_thickness)
-    cells = f(1), f(2), f(3), f(0, True), f(missing=True)
+    c = partial(
+        render_cursor, cell_width=cell_width, cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
+    cells = f(1), f(2), f(3), f(0, True), f(missing=True), c(1), c(2), c(3)
     return tuple(map(ctypes.addressof, cells)) + (cells,)
 
 
