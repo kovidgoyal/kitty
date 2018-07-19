@@ -223,7 +223,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
 
-        GLuint xnum, ynum, cursor_x, cursor_y, cursor_w;
+        GLuint xnum, ynum;
+        GLfloat cursor_x, cursor_y, cursor_w;
     };
     static struct CellRenderData *rd;
 

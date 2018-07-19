@@ -13,7 +13,8 @@ layout(std140) uniform CellRenderData {
 
     uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
 
-    uint xnum, ynum, cursor_x, cursor_y, cursor_w;
+    uint xnum, ynum;
+    float cursor_x, cursor_y, cursor_w;
 
     uint color_table[256];
 };
@@ -111,9 +112,18 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
 
-float is_cursor(uint x, uint y) {
-    if (y == cursor_y && (x == cursor_x || x == cursor_w)) return 1.0;
-    return 0.0;
+float are_integers_equal(float a, float b) { // return 1 iff equal otherwise 0
+    float delta = abs(a - b);  // delta can be 0, 1 or larger
+    return step(delta, 0.5); // 0 if 0.5 < delta else 1
+}
+
+float is_cursor(uint xi, uint y) {
+    float x = float(xi);
+    float y_equal = are_integers_equal(float(y), cursor_y);
+    float x1_equal = are_integers_equal(x, cursor_x);
+    float x2_equal = are_integers_equal(x, cursor_w);
+    float x_equal = step(0.5, x1_equal + x2_equal);
+    return step(2.0, x_equal + y_equal);
 }
 // }}}
 
