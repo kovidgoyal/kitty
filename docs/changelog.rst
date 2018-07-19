@@ -16,7 +16,7 @@ Changelog
 - Add an option :opt:`env` to set environment variables in child processes
   from kitty.conf
 
-- macOS: Allow scrolling window contents using mouse wheel/trackbar even when the
+- macOS: Allow scrolling window contents using mouse wheel/trackpad even when the
   window is not the active window (:iss:`729`)
 
 0.11.3 [2018-07-10]
