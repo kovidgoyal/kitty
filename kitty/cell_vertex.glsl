@@ -152,7 +152,7 @@ void main() {
     uint is_inverted = ((text_attrs >> REVERSE_SHIFT) & ONE) + inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
-    float cursor = is_cursor(c, r);
+    float cell_has_cursor = is_cursor(c, r);
     vec3 bg = to_color(colors[bg_index], default_colors[bg_index]);
     // }}}
 
@@ -177,8 +177,8 @@ void main() {
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor
-    foreground = choose_color(cursor, CURSOR_TEXT_COLOR, foreground);
-    decoration_fg = choose_color(cursor, CURSOR_TEXT_COLOR, decoration_fg);
+    foreground = choose_color(cell_has_cursor, CURSOR_TEXT_COLOR, foreground);
+    decoration_fg = choose_color(cell_has_cursor, CURSOR_TEXT_COLOR, decoration_fg);
 #endif
     // }}}
 
@@ -193,17 +193,17 @@ void main() {
     // If the background color is default, set its opacity to background_opacity, otherwise it should be opaque
     bg_alpha = step(0.5, float(colors[bg_index] & BYTE_MASK));
     // Cursor must not be affected by background_opacity
-    bg_alpha = mix(bg_alpha, 1.0, cursor);
+    bg_alpha = mix(bg_alpha, 1.0, cell_has_cursor);
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
 #endif
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
-    background = choose_color(cursor, color_to_vec(cursor_color), bg);
+    background = choose_color(cell_has_cursor, color_to_vec(cursor_color), bg);
 #ifdef SPECIAL
     // bg_alpha should be 1 if cursor/selection otherwise 0
-    bg_alpha = mix(0.0, 1.0, step(0.5, float(is_selected & ONE) + cursor));
+    bg_alpha = mix(0.0, 1.0, step(0.5, float(is_selected & ONE) + cell_has_cursor));
 #endif
 #endif
 
