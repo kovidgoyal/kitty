@@ -197,7 +197,6 @@ typedef struct {
     bool is_visible, is_focused;
     CursorShape shape;
     unsigned int x, y;
-    double left, right, top, bottom;
     color_type color;
 } CursorRenderInfo;
 

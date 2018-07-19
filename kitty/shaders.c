@@ -8,7 +8,7 @@
 #include "fonts.h"
 #include "gl.h"
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, CURSOR_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
@@ -158,7 +158,7 @@ static ssize_t blit_vertex_array;
 
 static void
 init_cell_program() {
-    for (int i = CELL_PROGRAM; i < CURSOR_PROGRAM; i++) {
+    for (int i = CELL_PROGRAM; i < BORDERS_PROGRAM; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
         cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
@@ -167,7 +167,7 @@ init_cell_program() {
     }
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
-    for (int p = CELL_PROGRAM; p < CURSOR_PROGRAM; p++) {
+    for (int p = CELL_PROGRAM; p < BORDERS_PROGRAM; p++) {
         C(p, colors, 0); C(p, sprite_coords, 1); C(p, is_selected, 2);
     }
 #undef C
@@ -468,36 +468,6 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
 }
 // }}}
 
-// Cursor {{{
-enum CursorUniforms { CURSOR_color, CURSOR_pos, NUM_CURSOR_UNIFORMS };
-static GLint cursor_uniform_locations[NUM_CURSOR_UNIFORMS] = {0};
-static ssize_t cursor_vertex_array;
-
-static void
-init_cursor_program() {
-    Program *p = programs + CURSOR_PROGRAM;
-    int left = NUM_CURSOR_UNIFORMS;
-    cursor_vertex_array = create_vao();
-    for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) if (strcmp(p->uniforms[i].name, #which) == 0) cursor_uniform_locations[CURSOR_##which] = p->uniforms[i].location
-        SET_LOC(color);
-        else SET_LOC(pos);
-        else { fatal("Unknown uniform in cursor program: %s", p->uniforms[i].name); }
-    }
-    if (left) { fatal("Left over uniforms in cursor program"); }
-#undef SET_LOC
-}
-
-void
-draw_cursor(CursorRenderInfo *cursor, bool is_focused) {
-    bind_program(CURSOR_PROGRAM); bind_vertex_array(cursor_vertex_array);
-    glUniform3f(cursor_uniform_locations[CURSOR_color], ((cursor->color >> 16) & 0xff) / 255.0, ((cursor->color >> 8) & 0xff) / 255.0, (cursor->color & 0xff) / 255.0);
-    glUniform4f(cursor_uniform_locations[CURSOR_pos], cursor->left, cursor->top, cursor->right, cursor->bottom);
-    glDrawArrays(is_focused ? GL_TRIANGLE_FAN : GL_LINE_LOOP, 0, 4);
-    unbind_vertex_array(); unbind_program();
-}
-// }}}
-
 // Borders {{{
 enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
@@ -623,8 +593,6 @@ ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
 TWO_INT(unmap_vao_buffer)
 
-NO_ARG(init_cursor_program)
-
 NO_ARG(init_borders_program)
 
 NO_ARG(init_cell_program)
@@ -651,7 +619,6 @@ static PyMethodDef module_methods[] = {
     MW(unmap_vao_buffer, METH_VARARGS),
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
-    MW(init_cursor_program, METH_NOARGS),
     MW(init_borders_program, METH_NOARGS),
     MW(init_cell_program, METH_NOARGS),
 
@@ -661,7 +628,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(CURSOR_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(BLIT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(BLIT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

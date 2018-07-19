@@ -491,14 +491,6 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static double last_render_at = -DBL_MAX;
 
-static inline double
-cursor_width(double w, bool vert, OSWindow *os_window) {
-    double dpi = vert ? os_window->fonts_data->logical_dpi_x : os_window->fonts_data->logical_dpi_y;
-    double ans = w * dpi / 72.0;  // as pixels
-    double factor = 2.0 / (vert ? os_window->viewport_width : os_window->viewport_height);
-    return ans * factor;
-}
-
 extern void cocoa_update_title(PyObject*);
 
 static inline void
@@ -526,23 +518,6 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_w
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
     ans->is_focused = os_window->is_focused;
-    if (ans->shape == CURSOR_BLOCK && ans->is_focused) return;
-    double left = rd->xstart + cursor->x * rd->dx;
-    double top = rd->ystart - cursor->y * rd->dy;
-    unsigned long mult = MAX(1, screen_current_char_width(rd->screen));
-    double right = left + (ans->shape == CURSOR_BEAM ? cursor_width(1.5, true, os_window) : rd->dx * mult);
-    double bottom = top - rd->dy;
-	switch (ans->shape) {
-        case CURSOR_UNDERLINE:
-            top = bottom + cursor_width(2.0, false, os_window);
-            break;
-        case CURSOR_BLOCK:
-            top -= 2.0 / os_window->viewport_height;  // 1px adjustment for width of line
-            break;
-        default:
-            break;
-	}
-    ans->left = left; ans->right = right; ans->top = top; ans->bottom = bottom;
 }
 
 static inline bool
@@ -614,9 +589,6 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
         if (w->visible && WD.screen) {
             bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window, is_active_window, true);
-            if (is_active_window && WD.screen->cursor_render_info.is_visible && (!WD.screen->cursor_render_info.is_focused || WD.screen->cursor_render_info.shape != CURSOR_BLOCK)) {
-                draw_cursor(&WD.screen->cursor_render_info, os_window->is_focused);
-            }
             if (WD.screen->start_visual_bell_at != 0) {
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);

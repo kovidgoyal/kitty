@@ -16,13 +16,13 @@ from .constants import (
 )
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM, CSI, CURSOR_PROGRAM, DCS, DECORATION, DIM,
+    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
     GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL,
     SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen, add_window,
     cell_size_for_window, compile_program, get_clipboard_string,
-    glfw_post_empty_event, init_cell_program, init_cursor_program,
-    set_clipboard_string, set_titlebar_color, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    glfw_post_empty_event, init_cell_program, set_clipboard_string,
+    set_titlebar_color, set_window_render_data, update_window_title,
+    update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -91,8 +91,6 @@ def load_shader_programs(semi_transparent=0, cursor_text_color=None):
         ff = f.replace('ALPHA_TYPE', which)
         compile_program(p, v, ff)
     init_cell_program()
-    compile_program(CURSOR_PROGRAM, *load_shaders('cursor'))
-    init_cursor_program()
 
 
 def setup_colors(screen, opts):
