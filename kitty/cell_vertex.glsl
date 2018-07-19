@@ -55,6 +55,8 @@ uniform float inactive_text_alpha;
 uniform float dim_opacity;
 out vec3 sprite_pos;
 out vec3 underline_pos;
+out vec3 cursor_pos;
+out vec4 cursor_color_vec;
 out vec3 strike_pos;
 out vec3 foreground;
 out vec3 decoration_fg;
@@ -179,8 +181,10 @@ void main() {
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor
+    cursor_color_vec = vec4(color_to_vec(cursor_color), 1.0);
     foreground = choose_color(cell_has_block_cursor, CURSOR_TEXT_COLOR, foreground);
     decoration_fg = choose_color(cell_has_block_cursor, CURSOR_TEXT_COLOR, decoration_fg);
+    cursor_pos = to_sprite_pos(pos, cursor_fg_sprite_idx * uint(cell_has_cursor), ZERO, ZERO);
 #endif
     // }}}
 

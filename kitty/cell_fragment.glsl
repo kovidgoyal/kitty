@@ -22,8 +22,10 @@ uniform sampler2DArray sprites;
 in float effective_text_alpha;
 in vec3 sprite_pos;
 in vec3 underline_pos;
+in vec3 cursor_pos;
 in vec3 strike_pos;
 in vec3 foreground;
+in vec4 cursor_color_vec;
 in vec3 decoration_fg;
 in float colored_sprite;
 #endif
@@ -58,10 +60,12 @@ vec4 calculate_foreground() {
     float text_alpha = text_fg.a;
     float underline_alpha = texture(sprites, underline_pos).a;
     float strike_alpha = texture(sprites, strike_pos).a;
+    float cursor_alpha = texture(sprites, cursor_pos).a;
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    return alpha_blend(decoration_fg, underline_alpha * effective_text_alpha, fg, combined_alpha * effective_text_alpha);
+    vec4 ans = alpha_blend(decoration_fg, underline_alpha * effective_text_alpha, fg, combined_alpha * effective_text_alpha);
+    return mix(ans, cursor_color_vec, cursor_alpha);
 }
 #endif
 
