@@ -223,7 +223,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
 
-        GLuint xnum, ynum;
+        GLuint xnum, ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w;
     };
     static struct CellRenderData *rd;
@@ -236,8 +236,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     // Cursor position
     if (cursor->is_visible && cursor->shape == CURSOR_BLOCK && cursor->is_focused) {
         rd->cursor_x = screen->cursor->x, rd->cursor_y = screen->cursor->y;
+        rd->cursor_fg_sprite_idx = 0;
     } else {
         rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
+        rd->cursor_fg_sprite_idx = 0;
     }
     rd->cursor_w = rd->cursor_x + MAX(1, screen_current_char_width(screen)) - 1;
 
