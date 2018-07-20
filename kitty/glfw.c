@@ -420,7 +420,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #endif
 
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
-    if (temp_window == NULL) { fatal("Failed to create GLFW temp window!"); }
+    if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
 
     double dpi_x, dpi_y;
     get_window_dpi(temp_window, &dpi_x, &dpi_y);
