@@ -102,7 +102,7 @@ def main(args):
         sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
         if len(server_args) > 1:
             command_to_execute = ["'{}'".format(c.replace("'", """'"'"'""")) for c in server_args[1:]]
-            command_to_execute = 'cmd=({}); exec "$cmd"'.format(' '.join(command_to_execute))
+            command_to_execute = 'exec ' + ' '.join(command_to_execute)
         else:
             command_to_execute = ''
         sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
