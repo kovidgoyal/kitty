@@ -119,7 +119,16 @@ def merged_opts(all_options, opt, i):
 
 
 def remove_markup(text):
-    return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', r'\2', text, flags=re.DOTALL)
+
+    def sub(m):
+        if m.group(1) == 'ref':
+            return {
+                'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
+                'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
+            }[m.group(2)]
+        return m.group(2)
+
+    return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
 
 def iter_blocks(lines):
