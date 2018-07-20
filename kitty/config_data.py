@@ -885,7 +885,7 @@ Useful with git, which uses sha1 hashes to identify commits'''))
 
 g('shortcuts.misc')  # {{{
 k('toggle_fullscreen', 'kitty_mod+f11', 'toggle_fullscreen', _('Toggle fullscreen'))
-k('input_unicode_character', 'kitty_mod+u', 'input_unicode_character', _('Unicode input'))
+k('input_unicode_character', 'kitty_mod+u', 'kitten unicode_input', _('Unicode input'))
 k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
 k('kitty_shell', 'kitty_mod+escape', 'kitty_shell window', _('Open the kitty command shell'), long_text=_('''
 Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
