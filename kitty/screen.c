@@ -111,6 +111,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
+        self->pending_mode.wait_time = 2.0;
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
             Py_CLEAR(self); return NULL;
@@ -272,6 +273,7 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
+    free(self->pending_mode.buf);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
@@ -659,6 +661,7 @@ void
 screen_set_8bit_controls(Screen *self, bool yes) {
     self->modes.eight_bit_controls = yes;
 }
+
 // }}}
 
 // Cursor {{{
@@ -1604,6 +1607,14 @@ deactivate_overlay_line(Screen *self) {
 #define WRAP2B(name) static PyObject* name(Screen *self, PyObject *args) { unsigned int a, b; int p; if(!PyArg_ParseTuple(args, "IIp", &a, &b, &p)) return NULL; screen_##name(self, a, b, (bool)p); Py_RETURN_NONE; }
 
 static PyObject*
+set_pending_timeout(Screen *self, PyObject *val) {
+    if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
+    PyObject *ans = PyFloat_FromDouble(self->pending_mode.wait_time);
+    self->pending_mode.wait_time = PyFloat_AS_DOUBLE(val);
+    return ans;
+}
+
+static PyObject*
 as_text(Screen *self, PyObject *args) {
     as_text_generic(args, self, visual_line_, self->lines, self->columns);
 }
@@ -2095,6 +2106,7 @@ static PyMethodDef methods[] = {
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
+    MND(set_pending_timeout, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(tab, METH_NOARGS)

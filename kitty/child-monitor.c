@@ -25,7 +25,7 @@ extern PyTypeObject Screen_Type;
 #define MSG_NOSIGNAL 0
 #endif
 
-static void (*parse_func)(Screen*, PyObject*);
+static void (*parse_func)(Screen*, PyObject*, double);
 
 typedef struct {
     char *data;
@@ -314,13 +314,17 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 static inline void
 do_parse(ChildMonitor *self, Screen *screen, double now) {
     screen_mutex(lock, read);
-    if (screen->read_buf_sz) {
+    if (screen->read_buf_sz || screen->pending_mode.used) {
         double time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
-            parse_func(screen, self->dump_callback);
-            if (screen->read_buf_sz >= READ_BUF_SZ) wakeup_io_loop(false);  // Ensure the read fd has POLLIN set
-            screen->read_buf_sz = 0;
+            bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
+            parse_func(screen, self->dump_callback, now);
+            if (read_buf_full) wakeup_io_loop(false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
+            if (screen->pending_mode.activated_at) {
+                double time_since_pending = MAX(0, now - screen->pending_mode.activated_at);
+                set_maximum_wait(screen->pending_mode.wait_time - time_since_pending);
+            }
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
     }
     screen_mutex(unlock, read);

@@ -775,6 +775,8 @@ startswith(const uint32_t *string, size_t sz, const char *prefix) {
     return true;
 }
 
+#define PENDING_MODE_CHAR '='
+
 static inline void
 dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
@@ -788,6 +790,14 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     screen_request_capabilities(screen, (char)screen->parser_buf[0], string);
                     Py_DECREF(string);
                 } else PyErr_Clear();
+            } else {
+                REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)screen->parser_buf[0], screen->parser_buf[1]);
+            }
+            break;
+        case PENDING_MODE_CHAR:
+            if (screen->parser_buf[1] == 's') {
+                screen->pending_mode.activated_at = monotonic();
+                REPORT_COMMAND(screen_start_pending_mode);
             } else {
                 REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)screen->parser_buf[0], screen->parser_buf[1]);
             }
@@ -1003,45 +1013,45 @@ END_ALLOW_CASE_RANGE
 #undef ENSURE_SPACE
 }
 
-static inline void
-dispatch_unicode_char(Screen *screen, uint32_t codepoint, PyObject DUMP_UNUSED *dump_callback) {
-#define HANDLE(name) handle_##name(screen, codepoint, dump_callback); break
-    switch(screen->parser_state) {
-        case ESC:
-            HANDLE(esc_mode_char);
-        case CSI:
-            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); }
-            break;
-        case OSC:
-            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); }
-            break;
-        case APC:
-            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_apc(screen, dump_callback); SET_STATE(0); }
-            break;
-        case PM:
-            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_pm(screen, dump_callback); SET_STATE(0); }
-            break;
-        case DCS:
-            if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); }
-            if (screen->parser_state == ESC) { HANDLE(esc_mode_char); }
-            break;
-        default:
-            HANDLE(normal_mode_char);
-    }
-#undef HANDLE
-}
+#define dispatch_unicode_char(codepoint, watch_for_pending) { \
+    switch(screen->parser_state) { \
+        case ESC: \
+            handle_esc_mode_char(screen, codepoint, dump_callback); \
+            break; \
+        case CSI: \
+            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); } \
+            break; \
+        case OSC: \
+            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); } \
+            break; \
+        case APC: \
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_apc(screen, dump_callback); SET_STATE(0); } \
+            break; \
+        case PM: \
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_pm(screen, dump_callback); SET_STATE(0); } \
+            break; \
+        case DCS: \
+            if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
+            if (screen->parser_state == ESC) { handle_esc_mode_char(screen, codepoint, dump_callback); break; } \
+            break; \
+        default: \
+            handle_normal_mode_char(screen, codepoint, dump_callback); \
+            break; \
+    } \
+} \
 
 extern uint32_t *latin1_charset;
 
 static inline void
-_parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
+_parse_bytes(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     uint32_t prev = screen->utf8_state;
     for (unsigned int i = 0; i < (unsigned int)len; i++) {
-        if (screen->use_latin1) dispatch_unicode_char(screen, latin1_charset[buf[i]], dump_callback);
-        else {
+        if (screen->use_latin1) {
+            dispatch_unicode_char(latin1_charset[buf[i]], ;);
+        } else {
             switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, buf[i])) {
                 case UTF8_ACCEPT:
-                    dispatch_unicode_char(screen, screen->utf8_codepoint, dump_callback);
+                    dispatch_unicode_char(screen->utf8_codepoint, ;);
                     break;
                 case UTF8_REJECT:
                     screen->utf8_state = UTF8_ACCEPT;
@@ -1053,6 +1063,162 @@ _parse_bytes(Screen *screen, uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED 
     }
 FLUSH_DRAW;
 }
+
+static inline size_t
+_parse_bytes_watching_for_pending(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
+    uint32_t prev = screen->utf8_state;
+    size_t i = 0;
+    while(i < (size_t)len) {
+        uint8_t ch = buf[i++];
+        if (screen->use_latin1) {
+            dispatch_unicode_char(latin1_charset[ch], if (screen->pending_mode.activated_at) goto end);
+        } else {
+            switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, ch)) {
+                case UTF8_ACCEPT:
+                    dispatch_unicode_char(screen->utf8_codepoint, if (screen->pending_mode.activated_at) goto end);
+                    break;
+                case UTF8_REJECT:
+                    screen->utf8_state = UTF8_ACCEPT;
+                    if (prev != UTF8_ACCEPT && i > 0) i--;
+                    break;
+            }
+            prev = screen->utf8_state;
+        }
+    }
+end:
+FLUSH_DRAW;
+    return i;
+}
+
+
+static inline size_t
+_queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *dump_callback DUMP_UNUSED) {
+    size_t pos = 0;
+    enum STATE { NORMAL, MAYBE_DCS, IN_DCS, EXPECTING_START_OR_ESC, EXPECTING_ESC, EXPECTING_SLASH };
+    enum STATE state = screen->pending_mode.state;
+    bool is_end_code = true;
+#define COPY(what) screen->pending_mode.buf[screen->pending_mode.used++] = what
+    while (pos < len) {
+        uint8_t ch = buf[pos++];
+        switch(state) {
+            case NORMAL:
+                if (ch == ESC) state = MAYBE_DCS;
+                else COPY(ch);
+                break;
+            case MAYBE_DCS:
+                if (ch == 'P') state = IN_DCS;
+                else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY(ch);
+                }
+                break;
+            case IN_DCS:
+                if (ch == PENDING_MODE_CHAR) { state = EXPECTING_START_OR_ESC; is_end_code = true; }
+                else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY('P'); COPY(ch);
+                }
+                break;
+            case EXPECTING_START_OR_ESC:
+                if (ch == 0x1b) state = EXPECTING_SLASH;
+                else if (ch == 's') {
+                    state = EXPECTING_ESC;
+                    is_end_code = false;
+                } else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY('P'); COPY('='); COPY(ch);
+                }
+                break;
+            case EXPECTING_ESC:
+                if (ch == 0x1b) state = EXPECTING_SLASH;
+                else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY('P'); COPY('=');
+                    if (!is_end_code) COPY('s');
+                    COPY(ch);
+                }
+                break;
+            case EXPECTING_SLASH:
+                if (ch == '\\') {
+                    // We found a pending mode sequence
+                    if (is_end_code) {
+                        REPORT_COMMAND(screen_stop_pending_mode);
+                        screen->pending_mode.activated_at = 0;
+                        goto end;
+                    } else {
+                        REPORT_COMMAND(screen_start_pending_mode);
+                        screen->pending_mode.activated_at = monotonic();
+                    }
+                } else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY('P'); COPY('=');
+                    if (!is_end_code) { COPY('s'); }
+                    COPY(0x1b); COPY(ch);
+                }
+                break;
+        }
+    }
+end:
+    screen->pending_mode.state = state;
+    return pos;
+#undef COPY
+}
+
+static inline void
+do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz, double now, PyObject *dump_callback DUMP_UNUSED) {
+    enum STATE {START, PARSE_PENDING, PARSE_READ_BUF, QUEUE_PENDING};
+    enum STATE state = START;
+    size_t read_buf_pos = 0;
+
+    do {
+        switch(state) {
+            case START:
+                if (screen->pending_mode.activated_at) {
+                    if (screen->pending_mode.activated_at + screen->pending_mode.wait_time < now) {
+                        screen->pending_mode.activated_at = 0;
+                        state = screen->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
+                    } else state = QUEUE_PENDING;
+                } else {
+                    if (screen->pending_mode.used) state = PARSE_PENDING;
+                    else {
+                        state = PARSE_READ_BUF;
+                    }
+                }
+                break;
+
+            case PARSE_PENDING:
+                _parse_bytes(screen, screen->pending_mode.buf, screen->pending_mode.used, dump_callback);
+                screen->pending_mode.used = 0; screen->pending_mode.state = 0;
+                screen->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
+                state = START;
+                break;
+
+            case PARSE_READ_BUF:
+                screen->pending_mode.activated_at = 0; screen->pending_mode.state = 0;
+                read_buf_pos += _parse_bytes_watching_for_pending(screen, read_buf + read_buf_pos, read_buf_sz - read_buf_pos, dump_callback);
+                state = START;
+                break;
+
+            case QUEUE_PENDING: {
+                if (screen->pending_mode.capacity - screen->pending_mode.used < read_buf_sz) {
+                    if (screen->pending_mode.capacity >= READ_BUF_SZ) {
+                        // Too much pending data, drain it
+                        screen->pending_mode.activated_at = 0;
+                        state = START;
+                        break;
+                    }
+                    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + read_buf_sz);
+                    screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
+                    if (!screen->pending_mode.buf) fatal("Out of memory");
+                }
+                read_buf_pos += _queue_pending_bytes(screen, read_buf + read_buf_pos, read_buf_sz - read_buf_pos, dump_callback);
+                state = START;
+            }   break;
+        }
+    } while(read_buf_pos < read_buf_sz || (!screen->pending_mode.activated_at && screen->pending_mode.used));
+
+}
+
 // }}}
 
 // Entry points {{{
@@ -1072,17 +1238,20 @@ FNAME(parse_bytes)(PyObject UNUSED *self, PyObject *args) {
 #else
     if (!PyArg_ParseTuple(args, "O!y*", &Screen_Type, &screen, &pybuf)) return NULL;
 #endif
-    _parse_bytes(screen, pybuf.buf, pybuf.len, dump_callback);
+    do_parse_bytes(screen, pybuf.buf, pybuf.len, monotonic(), dump_callback);
     Py_RETURN_NONE;
 }
 
 
 void
-FNAME(parse_worker)(Screen *screen, PyObject *dump_callback) {
+FNAME(parse_worker)(Screen *screen, PyObject *dump_callback, double now) {
 #ifdef DUMP_COMMANDS
-    Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, screen->read_buf_sz)); PyErr_Clear();
+    if (screen->read_buf_sz) {
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, screen->read_buf_sz)); PyErr_Clear();
+    }
 #endif
-    _parse_bytes(screen, screen->read_buf, screen->read_buf_sz, dump_callback);
-#undef FNAME
+    do_parse_bytes(screen, screen->read_buf, screen->read_buf_sz, now, dump_callback);
+    screen->read_buf_sz = 0;
 }
+#undef FNAME
 // }}}

@@ -97,11 +97,18 @@ typedef struct {
 
     CursorRenderInfo cursor_render_info;
 
+    struct {
+        size_t capacity, used;
+        uint8_t *buf;
+        double activated_at, wait_time;
+        int state;
+    } pending_mode;
+
 } Screen;
 
 
-void parse_worker(Screen *screen, PyObject *dump_callback);
-void parse_worker_dump(Screen *screen, PyObject *dump_callback);
+void parse_worker(Screen *screen, PyObject *dump_callback, double now);
+void parse_worker_dump(Screen *screen, PyObject *dump_callback, double now);
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);

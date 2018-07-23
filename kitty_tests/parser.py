@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import time
 from binascii import hexlify
 from functools import partial
 
@@ -225,6 +226,29 @@ class TestParser(BaseTest):
         c.clear()
         pb('\033[0c', ('report_device_attributes', 0, 0))
         self.ae(c.wtcbuf, b'\x9b?62;c')
+
+    def test_pending(self):
+        s = self.create_screen()
+        timeout = 0.1
+        s.set_pending_timeout(timeout)
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033P=s\033\\', ('screen_start_pending_mode',))
+        pb('a')
+        self.ae(str(s.line(0)), '')
+        pb('\033P=\033\\', ('screen_stop_pending_mode',), ('draw', 'a'))
+        self.ae(str(s.line(0)), 'a')
+        pb('\033P=s\033\\', ('screen_start_pending_mode',))
+        pb('b')
+        self.ae(str(s.line(0)), 'a')
+        time.sleep(timeout)
+        pb('c', ('draw', 'bc'))
+        self.ae(str(s.line(0)), 'abc')
+        pb('\033P=s\033\\d', ('screen_start_pending_mode',))
+        pb('\033P=\033\\', ('screen_stop_pending_mode',), ('draw', 'd'))
+        pb('\033P=s\033\\e', ('screen_start_pending_mode',))
+        pb('\033P'), pb('=')
+        pb('\033\\', ('screen_stop_pending_mode',), ('draw', 'e'))
+        pb('\033P=s\033\\f\033P=s\033\\', ('screen_start_pending_mode',), ('screen_start_pending_mode',))
 
     def test_oth_codes(self):
         s = self.create_screen()
