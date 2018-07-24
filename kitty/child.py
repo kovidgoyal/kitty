@@ -9,21 +9,23 @@ import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
 
+if is_macos:
+    from kitty.fast_data_types import cmdline_of_process as _cmdl, cwd_of_process as _cwd
 
-def cwd_of_process(pid):
-    if is_macos:
-        from kitty.fast_data_types import cwd_of_process
-        ans = cwd_of_process(pid)
-    else:
+    def cmdline_of_process(pid):
+        return _cmdl(pid)
+
+    def cwd_of_process(pid):
+        return os.path.realpath(_cwd(pid))
+
+else:
+
+    def cmdline_of_process(pid):
+        return list(filter(None, open('/proc/{}/cmdline'.format(pid), 'rb').read().decode('utf-8').split('\0')))
+
+    def cwd_of_process(pid):
         ans = '/proc/{}/cwd'.format(pid)
-    return os.path.realpath(ans)
-
-
-def cmdline_of_process(pid):
-    if is_macos:
-        # TODO: macOS implementation, see DarwinProcess.c in htop for inspiration
-        raise NotImplementedError()
-    return list(filter(None, open('/proc/{}/cmdline'.format(pid), 'rb').read().decode('utf-8').split('\0')))
+        return os.path.realpath(ans)
 
 
 def remove_cloexec(fd):

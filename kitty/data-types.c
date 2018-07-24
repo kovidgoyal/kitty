@@ -215,6 +215,7 @@ extern bool init_png_reader(PyObject *module);
 #ifdef __APPLE__
 extern int init_CoreText(PyObject *);
 extern bool init_cocoa(PyObject *module);
+extern bool init_macos_process_info(PyObject *module);
 #else
 extern bool init_freetype_library(PyObject*);
 #endif
@@ -249,6 +250,7 @@ PyInit_fast_data_types(void) {
         if (!init_kittens(m)) return NULL;
         if (!init_png_reader(m)) return NULL;
 #ifdef __APPLE__
+        if (!init_macos_process_info(m)) return NULL;
         if (!init_CoreText(m)) return NULL;
         if (!init_cocoa(m)) return NULL;
 #else
