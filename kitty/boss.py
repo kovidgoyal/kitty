@@ -606,6 +606,7 @@ class Boss:
                     stdin=data,
                     env={
                         'KITTY_COMMON_OPTS': json.dumps(copts),
+                        'KITTY_CHILD_PID': w.child.pid,
                         'PYTHONWARNINGS': 'ignore',
                         'OVERLAID_WINDOW_LINES': str(w.screen.lines),
                         'OVERLAID_WINDOW_COLS': str(w.screen.columns),
