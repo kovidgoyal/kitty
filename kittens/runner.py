@@ -30,10 +30,10 @@ def import_kitten_main_module(config_dir, kitten):
         exec(code, g)
         hr = g.get('handle_result', lambda *a, **kw: None)
         return {'start': g['main'], 'end': hr}
-    else:
-        kitten = resolved_kitten(kitten)
-        m = importlib.import_module('kittens.{}.main'.format(kitten))
-        return {'start': m.main, 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
+
+    kitten = resolved_kitten(kitten)
+    m = importlib.import_module('kittens.{}.main'.format(kitten))
+    return {'start': m.main, 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
 
 
 def create_kitten_handler(kitten, orig_args):

@@ -103,7 +103,7 @@ instance of |kitty| using the :option:`kitty @ --to` command line argument to ``
     kitty @ --to unix:/tmp/mykitty ls
 
 
-Note that is all you want to do is run a single |kitty| "daemon" and have subsequent
+Note that if all you want to do is run a single |kitty| "daemon" and have subsequent
 |kitty| invocations appear as new top-level windows, you can use the simpler :option:`kitty --single-instance`
 option, see ``kitty --help`` for that.
 
