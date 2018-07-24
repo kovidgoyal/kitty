@@ -1179,10 +1179,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                         state = screen->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
                     } else state = QUEUE_PENDING;
                 } else {
-                    if (screen->pending_mode.used) state = PARSE_PENDING;
-                    else {
-                        state = PARSE_READ_BUF;
-                    }
+                    state = screen->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
                 }
                 break;
 
