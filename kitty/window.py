@@ -140,7 +140,9 @@ class Window:
             id=self.id,
             title=self.override_title or self.title,
             pid=self.child.pid,
-            cwd=self.child.current_cwd or self.child.cwd, cmdline=self.child.cmdline
+            cwd=self.child.current_cwd or self.child.cwd,
+            cmdline=self.child.cmdline,
+            env=self.child.environ,
         )
 
     @property
@@ -161,6 +163,12 @@ class Window:
                 if pat.search(x) is not None:
                     return True
             return False
+        if field == 'env':
+            key_pat, val_pat = pat
+            for key, val in self.child.environ.items():
+                if key_pat.search(key) is not None and (
+                        val_pat is None or val_pat.search(val) is not None):
+                    return True
         return False
 
     def set_visible_in_layout(self, window_idx, val):

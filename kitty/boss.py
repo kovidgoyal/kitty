@@ -152,11 +152,18 @@ class Boss:
                     return
                 if w is not None:
                     yield w
+            return
+        if field == 'env':
+            kp, vp = exp.partition('=')[::2]
+            if vp:
+                pat = tuple(map(re.compile, (kp, vp)))
+            else:
+                pat = re.compile(kp), None
         else:
             pat = re.compile(exp)
-            for window in self.all_windows:
-                if window.matches(field, pat):
-                    yield window
+        for window in self.all_windows:
+            if window.matches(field, pat):
+                yield window
 
     def tab_for_window(self, window):
         for tab in self.all_tabs:
