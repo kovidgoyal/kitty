@@ -278,7 +278,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     if (screen->scroll_changed || screen->is_dirty) {
         sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        screen_update_cell_data(screen, address, sz, fonts_data);
+        screen_update_cell_data(screen, address, fonts_data);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
         changed = true;
     }

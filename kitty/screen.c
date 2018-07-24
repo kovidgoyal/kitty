@@ -1397,7 +1397,7 @@ screen_reset_dirty(Screen *self) {
 }
 
 void
-screen_update_cell_data(Screen *self, void *address, size_t UNUSED sz, FONTS_DATA_HANDLE fonts_data) {
+screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data) {
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
     bool selection_must_be_cleared = self->is_dirty ? true : false;
