@@ -610,7 +610,9 @@ class Boss:
                         'OVERLAID_WINDOW_LINES': str(w.screen.lines),
                         'OVERLAID_WINDOW_COLS': str(w.screen.columns),
                     },
-                    overlay_for=w.id))
+                    cwd=w.cwd_of_child,
+                    overlay_for=w.id
+                ))
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
             return overlay_window
 
