@@ -10,10 +10,7 @@ import kitty.fast_data_types as fast_data_types
 from .constants import is_macos, shell_path, terminfo_dir
 
 if is_macos:
-    from kitty.fast_data_types import cmdline_of_process as _cmdl, cwd_of_process as _cwd
-
-    def cmdline_of_process(pid):
-        return _cmdl(pid)
+    from kitty.fast_data_types import cmdline_of_process, cwd_of_process as _cwd, environ_of_process as _environ_of_process
 
     def cwd_of_process(pid):
         return os.path.realpath(_cwd(pid))
@@ -26,6 +23,36 @@ else:
     def cwd_of_process(pid):
         ans = '/proc/{}/cwd'.format(pid)
         return os.path.realpath(ans)
+
+    def _environ_of_process(pid):
+        return open('/proc/{}/environ'.format(pid), 'rb').read().decode('utf-8')
+
+
+def parse_environ_block(data):
+    """Parse a C environ block of environment variables into a dictionary."""
+    # The block is usually raw data from the target process.  It might contain
+    # trailing garbage and lines that do not look like assignments.
+    ret = {}
+    pos = 0
+
+    while True:
+        next_pos = data.find("\0", pos)
+        # nul byte at the beginning or double nul byte means finish
+        if next_pos <= pos:
+            break
+        # there might not be an equals sign
+        equal_pos = data.find("=", pos, next_pos)
+        if equal_pos > pos:
+            key = data[pos:equal_pos]
+            value = data[equal_pos + 1:next_pos]
+            ret[key] = value
+        pos = next_pos + 1
+
+    return ret
+
+
+def environ_of_process(pid):
+    return parse_environ_block(_environ_of_process(pid))
 
 
 def remove_cloexec(fd):
@@ -108,6 +135,13 @@ class Child:
             return cmdline_of_process(self.pid) or list(self.argv)
         except Exception:
             return list(self.argv)
+
+    @property
+    def environ(self):
+        try:
+            return environ_of_process(self.pid)
+        except Exception:
+            return {}
 
     @property
     def current_cwd(self):

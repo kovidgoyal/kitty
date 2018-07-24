@@ -133,9 +133,130 @@ error:
 
 }
 
+PyObject *
+environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    // Taken from psutil, with thanks (BSD 3-clause license)
+    int mib[3];
+    int nargs;
+    char *procargs = NULL;
+    char *procenv = NULL;
+    char *arg_ptr;
+    char *arg_end;
+    char *env_start;
+    size_t argmax;
+    PyObject *py_ret = NULL;
+    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); goto error; }
+    long pid = PyLong_AsLong(pid_);
+    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); goto error; }
+
+    // special case for PID 0 (kernel_task) where cmdline cannot be fetched
+    if (pid == 0)
+        goto empty;
+
+    // read argmax and allocate memory for argument space.
+    argmax = get_argmax();
+    if (! argmax) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        goto error;
+    }
+
+    procargs = (char *)malloc(argmax);
+    if (NULL == procargs) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        goto error;
+    }
+
+    // read argument space
+    mib[0] = CTL_KERN;
+    mib[1] = KERN_PROCARGS2;
+    mib[2] = (pid_t)pid;
+    if (sysctl(mib, 3, procargs, &argmax, NULL, 0) < 0) {
+        // In case of zombie process or a non-existant process we'll get EINVAL
+        // to NSP and _psosx.py will translate it to ZP.
+        if (errno == EINVAL)
+            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie", pid);
+        else
+            PyErr_SetFromErrno(PyExc_OSError);
+        goto error;
+    }
+
+    arg_end = &procargs[argmax];
+    // copy the number of arguments to nargs
+    memcpy(&nargs, procargs, sizeof(nargs));
+
+    // skip executable path
+    arg_ptr = procargs + sizeof(nargs);
+    arg_ptr = memchr(arg_ptr, '\0', arg_end - arg_ptr);
+
+    if (arg_ptr == NULL || arg_ptr == arg_end)
+        goto empty;
+
+    // skip ahead to the first argument
+    for (; arg_ptr < arg_end; arg_ptr++) {
+        if (*arg_ptr != '\0')
+            break;
+    }
+
+    // iterate through arguments
+    while (arg_ptr < arg_end && nargs > 0) {
+        if (*arg_ptr++ == '\0')
+            nargs--;
+    }
+
+    // build an environment variable block
+    env_start = arg_ptr;
+
+    procenv = calloc(1, arg_end - arg_ptr);
+    if (procenv == NULL) {
+        PyErr_NoMemory();
+        goto error;
+    }
+
+    while (*arg_ptr != '\0' && arg_ptr < arg_end) {
+        char *s = memchr(arg_ptr + 1, '\0', arg_end - arg_ptr);
+
+        if (s == NULL)
+            break;
+
+        memcpy(procenv + (arg_ptr - env_start), arg_ptr, s - arg_ptr);
+
+        arg_ptr = s + 1;
+    }
+
+    py_ret = PyUnicode_DecodeFSDefaultAndSize(
+        procenv, arg_ptr - env_start + 1);
+    if (!py_ret) {
+        // XXX: don't want to free() this as per:
+        // https://github.com/giampaolo/psutil/issues/926
+        // It sucks but not sure what else to do.
+        procargs = NULL;
+        goto error;
+    }
+
+    free(procargs);
+    free(procenv);
+
+    return py_ret;
+
+empty:
+    if (procargs != NULL)
+        free(procargs);
+    return Py_BuildValue("s", "");
+
+error:
+    Py_XDECREF(py_ret);
+    if (procargs != NULL)
+        free(procargs);
+    if (procenv != NULL)
+        free(procargs);
+    return NULL;
+}
+
+
 static PyMethodDef module_methods[] = {
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
     {"cmdline_of_process", (PyCFunction)cmdline_of_process, METH_O, ""},
+    {"environ_of_process", (PyCFunction)environ_of_process, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
