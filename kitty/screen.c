@@ -1400,7 +1400,7 @@ void
 screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data) {
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
-    bool selection_must_be_cleared = self->is_dirty ? true : false;
+    bool was_dirty = self->is_dirty;
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     screen_reset_dirty(self);
     self->scroll_changed = false;
@@ -1422,7 +1422,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         }
         update_line_data(self->linebuf->line, y, address);
     }
-    if (selection_must_be_cleared) {
+    if (was_dirty) {
         self->selection = EMPTY_SELECTION; self->url_range = EMPTY_SELECTION;
     }
 }
