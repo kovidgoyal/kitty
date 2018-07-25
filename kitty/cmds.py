@@ -685,7 +685,10 @@ def set_background_opacity(boss, window, payload):
 # kitten {{{
 @cmd(
     'Run a kitten',
-    'Run a kitten over the specified window (active window by default)',
+    'Run a kitten over the specified window (active window by default).'
+    ' The :italic:`kitten_name` can be either the name of a builtin kitten'
+    ' or the path to a python file containing a custom kitten. If a relative path'
+    ' is used it is searched for in the kitty config directory.',
     options_spec=MATCH_WINDOW_OPTION,
     argspec='kitten_name',
 )
