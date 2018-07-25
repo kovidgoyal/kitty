@@ -6,6 +6,10 @@ Changelog
 0.12.0 [future]
 ------------------------------
 
+- Preserve the mouse selection even when the contents of the screen are
+  scrolled or overwritten provided the new text does not intersect the
+  selected lines.
+
 - Linux: Implement support for Input Method Extensions (multilingual input
   using standard keyboards) via `IBus
   <https://github.com/ibus/ibus/wiki/ReadMe>`_ (:iss:`469`)
