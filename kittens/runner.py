@@ -17,18 +17,22 @@ def resolved_kitten(k):
 
 def import_kitten_main_module(config_dir, kitten):
     if kitten.endswith('.py'):
+        path_modified = False
         path = os.path.expanduser(kitten)
         if not os.path.isabs(path):
             path = os.path.join(config_dir, path)
         path = os.path.abspath(path)
         if os.path.dirname(path):
             sys.path.insert(0, os.path.dirname(path))
+            path_modified = True
         with open(path) as f:
             src = f.read()
         code = compile(src, path, 'exec')
         g = {'__name__': 'kitten'}
         exec(code, g)
         hr = g.get('handle_result', lambda *a, **kw: None)
+        if path_modified:
+            del sys.path[0]
         return {'start': g['main'], 'end': hr}
 
     kitten = resolved_kitten(kitten)
