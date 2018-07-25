@@ -404,6 +404,26 @@ def natsort_ints(iterable):
     return sorted(iterable, key=alphanum_key)
 
 
+def exe_exists(exe):
+    for loc in os.environ.get('PATH', '').split(os.pathsep):
+        if loc and os.access(os.path.join(loc, exe), os.X_OK):
+            return os.path.join(loc, exe)
+    return False
+
+
 def get_editor():
-    import shlex
-    return shlex.split(os.environ.get('EDITOR', 'vim'))
+    ans = getattr(get_editor, 'ans', False)
+    if ans is False:
+        import shlex
+        ans = os.environ.get('EDITOR')
+        if not ans or not exe_exists(shlex.split(ans)[0]):
+            for q in ('vim', 'vi', 'emacs', 'micro', 'nano'):
+                r = exe_exists(q)
+                if r:
+                    ans = r
+                    break
+            else:
+                ans = 'vim'
+        ans = shlex.split(ans)
+        get_editor.ans = ans
+    return ans
