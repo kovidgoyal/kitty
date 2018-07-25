@@ -582,9 +582,14 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=(), input_data=None):
-        w = self.active_window
-        tab = self.active_tab
+    def _run_kitten(self, kitten, args=(), input_data=None, window=None):
+        if window is None:
+            w = self.active_window
+            tab = self.active_tab
+        else:
+            w = window
+            tab = w.tabref()
+
         if w is not None and tab is not None and w.overlay_for is None:
             orig_args, args = list(args), list(args)
             from kittens.runner import create_kitten_handler

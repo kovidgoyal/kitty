@@ -682,6 +682,33 @@ def set_background_opacity(boss, window, payload):
 # }}}
 
 
+# kitten {{{
+@cmd(
+    'Run a kitten',
+    'Run a kitten over the specified window (active window by default)',
+    options_spec=MATCH_WINDOW_OPTION,
+    argspec='kitten_name',
+)
+def cmd_kitten(global_opts, opts, args):
+    if len(args) < 1:
+        raise SystemExit('Must specify kitten name')
+    return {'match': opts.match, 'args': list(args)[1:], 'kitten': args[0]}
+
+
+def kitten(boss, window, payload):
+    windows = [window or boss.active_window]
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    for window in windows:
+        if window:
+            boss._run_kitten(payload['kitten'], args=tuple(payload['args']), window=window)
+            break
+# }}}
+
+
 cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 

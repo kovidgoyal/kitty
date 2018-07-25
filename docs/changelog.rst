@@ -22,6 +22,8 @@ Changelog
 - Remote control: Allow matching windows by the environment variables of their
   child process as well
 
+- Allow running kitten via the remote control system (:iss:`738`)
+
 0.11.3 [2018-07-10]
 ------------------------------
 
