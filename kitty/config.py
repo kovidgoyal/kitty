@@ -121,6 +121,17 @@ def parse_change_font_size(func, rest):
     return func, args
 
 
+@func_with_args('clear_terminal')
+def clear_terminal(func, rest):
+    vals = rest.split(' ', 1)
+    if len(vals) != 2:
+        log_error('clear_terminal needs two arguments, using defaults')
+        args = ['reset', 'active']
+    else:
+        args = [vals[0].lower(), vals[1].lower() == 'active']
+    return func, args
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]

@@ -322,6 +322,23 @@ class Boss:
             if tm is not None:
                 tm.resize()
 
+    def clear_terminal(self, action, only_active):
+        if only_active:
+            windows = []
+            w = self.active_window
+            if w is not None:
+                windows.append(w)
+        else:
+            windows = self.all_windows
+        reset = action == 'reset'
+        how = 3 if action == 'scrollback' else 2
+        for w in windows:
+            w.screen.cursor.x = w.screen.cursor.y = 0
+            if reset:
+                w.screen.reset()
+            else:
+                w.screen.erase_in_display(how, False)
+
     def increase_font_size(self):  # legacy
         cfs = global_font_size()
         self.set_font_size(min(self.opts.font_size * 5, cfs + 2.0))

@@ -165,6 +165,7 @@ Restore font size                   :sc:`reset_font_size`
 Toggle fullscreen                   :sc:`toggle_fullscreen`
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
+Reset the terminal                  :sc:`reset_terminal`
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file`
 Open a |kitty| shell                :sc:`kitty_shell`

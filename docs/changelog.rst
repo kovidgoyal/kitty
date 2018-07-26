@@ -28,6 +28,10 @@ Changelog
 
 - Allow running kitten via the remote control system (:iss:`738`)
 
+- Add a keyboard shortcut to reset the terminal (:sc:`reset_terminal`). It
+  takes parameters so you can define your own shortcuts to clear the
+  screen/scrollback also (:iss:`747`)
+
 0.11.3 [2018-07-10]
 ------------------------------
 

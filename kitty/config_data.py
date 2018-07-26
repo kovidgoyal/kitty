@@ -893,6 +893,17 @@ k('increase_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1',
 k('decrease_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
 k('full_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
 k('reset_background_opacity', 'kitty_mod+a>d', 'set_background_opacity default', _('Reset background opacity'))
+k('reset_terminal', 'kitty_mod+delete', 'clear_terminal reset active', _('Reset the terminal'),
+    long_text=_('''
+You can create shortcuts to clear/reset the terminal. For example::
+
+    map kitty_mod+f9 clear_terminal reset active
+    map kitty_mod+f10 clear_terminal clear active
+    map kitty_mod+f11 clear_terminal scrollback active
+
+These will reset screen/clear screen/clear screen+scrollback respectively. If you want to
+operate on all windows instead of just the current one, use :italic:`all` instead of :italic`active`.
+'''))
 k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
   add_to_default=False, long_text=_('''
 You can tell kitty to send arbitrary (UTF-8) encoded text to
