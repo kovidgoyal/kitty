@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <locale.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 
 // Check whether the specified atom is supported
