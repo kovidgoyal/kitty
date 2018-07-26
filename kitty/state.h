@@ -34,6 +34,7 @@ typedef struct {
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;
+    bool debug_keyboard;
 } Options;
 
 typedef struct {

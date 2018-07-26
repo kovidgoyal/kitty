@@ -122,28 +122,37 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
 }
 
+#define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
     Window *w = active_window();
-    if (!w) return;
+    debug("on_key_input: glfw key: %d native_code: %d action: %s mods: 0x%x text: '%s' state: %d ",
+            key, scancode,
+            (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
+            mods, text, state);
+    if (!w) { debug("no active window, ignoring\n"); return; }
     Screen *screen = w->render_data.screen;
     switch(state) {
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
             screen_draw_overlay_text(screen, text);
+            debug("updated pre-edit text\n");
             return;
         case 2:  // commit text
             if (text && *text) {
                 schedule_write_to_child(w->id, text, strlen(text));
             }
+            debug("committed pre-edit text\n");
             return;
         case 0:
             break;
         default:
+            debug("invalid state, ignoring\n");
             return;
     }
     if (global_state.in_sequence_mode) {
+        debug("in sequence mode, handling as shortcut\n");
         if (
             action != GLFW_RELEASE &&
             key != GLFW_KEY_LEFT_SHIFT && key != GLFW_KEY_RIGHT_SHIFT && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_RIGHT_ALT && key != GLFW_KEY_LEFT_CONTROL && key != GLFW_KEY_RIGHT_CONTROL
@@ -158,11 +167,17 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             else {
                 bool consumed = ret == Py_True;
                 Py_DECREF(ret);
-                if (consumed) return;
+                if (consumed) {
+                    debug("handled as shortcut\n");
+                    return;
+                }
             }
         }
     }
-    if (action == GLFW_REPEAT && !screen->modes.mDECARM) return;
+    if (action == GLFW_REPEAT && !screen->modes.mDECARM) {
+        debug("discarding repeat key event as DECARM is off\n");
+        return;
+    }
     if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
@@ -170,9 +185,13 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     if (ok_to_send) {
         if (has_text) {
             schedule_write_to_child(w->id, text, strlen(text));
+            debug("sent text to child\n");
         } else {
             send_key_to_child(w, key, mods, action);
+            debug("sent key to child\n");
         }
+    } else {
+        debug("ignoring as keyboard mode does not allow repeat events\n");
     }
 }
 

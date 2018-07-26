@@ -429,8 +429,12 @@ glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime, GLFWbool failed) {
     GLFWbool is_release = ev->action == GLFW_RELEASE;
     debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->keycode, glfw_xkb_keysym_name(ev->keysym), is_release);
     if (window && !handled_by_ime && !(is_release && ev->keycode == prev_handled_press)) {
+        debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
+            ev->glfw_keycode, _glfwGetKeyName(ev->glfw_keycode), ev->keysym, glfw_xkb_keysym_name(ev->keysym),
+            (ev->action == GLFW_RELEASE ? "RELEASE" : (ev->action == GLFW_PRESS ? "PRESS" : "REPEAT")),
+            format_mods(ev->glfw_modifiers), key_event.text
+        );
         _glfwInputKeyboard(window, ev->glfw_keycode, ev->keysym, ev->action, ev->glfw_modifiers, key_event.text, 0);
-        debug("↳ to application\n");
     } else debug("↳ discarded\n");
     if (!is_release && handled_by_ime) last_handled_press_keycode = ev->keycode;
 }
@@ -494,10 +498,10 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         }
     }
     debug(
-        "%s%s: %s xkb_key_name: %s\n",
+        "%s%s: %d (%s) xkb_key: %d (%s)\n",
         format_mods(sg->modifiers),
-        is_fallback ? "glfw_fallback_key" : "glfw_key", _glfwGetKeyName(glfw_keycode),
-        glfw_xkb_keysym_name(glfw_sym)
+        is_fallback ? "glfw_fallback_key" : "glfw_key", glfw_keycode, _glfwGetKeyName(glfw_keycode),
+        glfw_sym, glfw_xkb_keysym_name(glfw_sym)
     );
     key_event.action = action; key_event.glfw_modifiers = sg->modifiers;
     key_event.keycode = scancode; key_event.keysym = glfw_sym;
