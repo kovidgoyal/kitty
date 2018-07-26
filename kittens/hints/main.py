@@ -255,7 +255,7 @@ def functions_for(args):
         )
         post_processors.append(url)
     elif args.type == 'path':
-        pattern = r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,5})'
+        pattern = r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,7})'
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
