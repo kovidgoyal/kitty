@@ -25,7 +25,8 @@ set_thread_name(const char *name) {
 #if defined(__APPLE__)
     ret = pthread_setname_np(name);
 #elif defined(__FreeBSD__)
-    ret = pthread_set_name_np(pthread_self(), name);
+    pthread_set_name_np(pthread_self(), name);
+    ret = 0;
 #else
     ret = pthread_setname_np(pthread_self(), name);
 #endif
