@@ -89,9 +89,9 @@ matrix:
           language: generic
           env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH
 
-        # - os: osx
-        #   language: generic
-        #   env: USE_BREW=1 BUILD_PKG=osx-bundle
+        - os: osx
+          language: generic
+          env: USE_BREW=1 BUILD_PKG=osx-bundle
 
 env:
     global:
