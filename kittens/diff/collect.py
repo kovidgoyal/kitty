@@ -149,6 +149,9 @@ def data_for_path(path):
 
 @lru_cache(maxsize=1024)
 def lines_for_path(path):
+    if os.path.samefile(path, os.devnull):
+        return ''
+
     data = data_for_path(path).replace('\t', lines_for_path.replace_tab_by)
     return tuple(sanitize(data).splitlines())
 
