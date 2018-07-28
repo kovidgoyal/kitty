@@ -139,7 +139,7 @@ def is_image(path):
 @lru_cache(maxsize=1024)
 def data_for_path(path):
     ans = raw_data_for_path(path)
-    if not is_image(path) and not os.path.samefile(path, os.devnull):
+    if not is_image(path):
         try:
             ans = ans.decode('utf-8')
         except UnicodeDecodeError:
@@ -149,6 +149,9 @@ def data_for_path(path):
 
 @lru_cache(maxsize=1024)
 def lines_for_path(path):
+    if os.path.samefile(path, os.devnull):
+        return ''
+
     data = data_for_path(path).replace('\t', lines_for_path.replace_tab_by)
     return tuple(sanitize(data).splitlines())
 
