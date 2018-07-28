@@ -42,7 +42,7 @@ def generate_diff(collection, context):
 
     for path, item_type, changed_path in collection:
         if item_type == 'diff':
-            is_binary = isinstance(data_for_path(path), bytes)
+            is_binary = isinstance(data_for_path(path), bytes) or isinstance(data_for_path(changed_path), bytes)
             if not is_binary:
                 d.add_diff(path, changed_path)
 

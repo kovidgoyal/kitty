@@ -32,6 +32,10 @@ Changelog
   takes parameters so you can define your own shortcuts to clear the
   screen/scrollback also (:iss:`747`)
 
+- diff kitten: Fix error when right hand side file is binary and left hand side
+  file is text (:iss:`752`)
+
+
 0.11.3 [2018-07-10]
 ------------------------------
 
