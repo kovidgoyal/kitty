@@ -452,7 +452,9 @@ def render_diff(collection, diff_map, args, columns, image_manager):
 
     for i, (path, item_type, other_path) in enumerate(collection):
         item_ref = Reference(path)
-        is_binary = isinstance(data_for_path(path), bytes) or (other_path and isinstance(data_for_path(other_path), bytes))
+        is_binary = isinstance(data_for_path(path), bytes)
+        if not is_binary and item_type == 'diff' and isinstance(data_for_path(other_path), bytes):
+            is_binary = True
         is_img = is_binary and (is_image(path) or is_image(other_path)) and images_supported()
         yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
         if item_type == 'diff':
