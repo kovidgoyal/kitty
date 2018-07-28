@@ -181,7 +181,7 @@ def init_env(
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cppflags = os.environ.get(
         'OVERRIDE_CPPFLAGS', (
-            '-D_XOPEN_SOURCE=700 -D{}DEBUG'
+            '-D{}DEBUG'
         ).format(
             ('' if debug else 'N'),
         )

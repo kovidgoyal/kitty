@@ -47,6 +47,20 @@ enum Capabilities {
     IBUS_CAP_SURROUNDING_TEXT   = 1 << 5
 };
 
+// implement strdup ourselves because the various unix/libc flavors all
+// require different sets of macros to make it available, and I cannot be
+// bothered
+static inline char*
+strdup(const char *src) {
+    size_t len = strlen(src);
+    char *ans = malloc(len + 1);
+    if (ans) {
+        memcpy(ans, src, len);
+        ans[len] = 0;
+    }
+    return ans;
+}
+
 
 static inline GLFWbool
 test_env_var(const char *name, const char *val) {
