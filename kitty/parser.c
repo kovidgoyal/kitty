@@ -795,9 +795,14 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             }
             break;
         case PENDING_MODE_CHAR:
-            if (screen->parser_buf[1] == 's') {
-                screen->pending_mode.activated_at = monotonic();
-                REPORT_COMMAND(screen_start_pending_mode);
+            if (screen->parser_buf_pos > 2 && (screen->parser_buf[1] == '1' || screen->parser_buf[2] == '2') && screen->parser_buf[2] == 's') {
+                if (screen->parser_buf[1] == '1') {
+                    screen->pending_mode.activated_at = monotonic();
+                    REPORT_COMMAND(screen_start_pending_mode);
+                } else {
+                    // ignore stop without matching start
+                    REPORT_COMMAND(screen_stop_pending_mode);
+                }
             } else {
                 REPORT_ERROR("Unrecognized DCS %c code: 0x%x", (char)screen->parser_buf[0], screen->parser_buf[1]);
             }
@@ -1094,10 +1099,16 @@ FLUSH_DRAW;
 static inline size_t
 _queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *dump_callback DUMP_UNUSED) {
     size_t pos = 0;
-    enum STATE { NORMAL, MAYBE_DCS, IN_DCS, EXPECTING_START_OR_ESC, EXPECTING_ESC, EXPECTING_SLASH };
+    enum STATE { NORMAL, MAYBE_DCS, IN_DCS, EXPECTING_DATA, EXPECTING_SLASH };
     enum STATE state = screen->pending_mode.state;
-    bool is_end_code = true;
 #define COPY(what) screen->pending_mode.buf[screen->pending_mode.used++] = what
+#define COPY_STOP_BUF { \
+    COPY(0x1b); COPY('P'); COPY(PENDING_MODE_CHAR); \
+    for (size_t i = 0; i < screen->pending_mode.stop_buf_pos; i++) { \
+        COPY(screen->pending_mode.stop_buf[i]); \
+    } \
+    screen->pending_mode.stop_buf_pos = 0;}
+
     while (pos < len) {
         uint8_t ch = buf[pos++];
         switch(state) {
@@ -1113,35 +1124,31 @@ _queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *d
                 }
                 break;
             case IN_DCS:
-                if (ch == PENDING_MODE_CHAR) { state = EXPECTING_START_OR_ESC; is_end_code = true; }
+                if (ch == PENDING_MODE_CHAR) { state = EXPECTING_DATA; screen->pending_mode.stop_buf_pos = 0; }
                 else {
                     state = NORMAL;
                     COPY(0x1b); COPY('P'); COPY(ch);
                 }
                 break;
-            case EXPECTING_START_OR_ESC:
-                if (ch == 0x1b) state = EXPECTING_SLASH;
-                else if (ch == 's') {
-                    state = EXPECTING_ESC;
-                    is_end_code = false;
-                } else {
-                    state = NORMAL;
-                    COPY(0x1b); COPY('P'); COPY('='); COPY(ch);
-                }
-                break;
-            case EXPECTING_ESC:
+            case EXPECTING_DATA:
                 if (ch == 0x1b) state = EXPECTING_SLASH;
                 else {
-                    state = NORMAL;
-                    COPY(0x1b); COPY('P'); COPY('=');
-                    if (!is_end_code) COPY('s');
-                    COPY(ch);
+                    screen->pending_mode.stop_buf[screen->pending_mode.stop_buf_pos++] = ch;
+                    if (screen->pending_mode.stop_buf_pos >= sizeof(screen->pending_mode.stop_buf)) {
+                        state = NORMAL;
+                        COPY_STOP_BUF;
+                    }
                 }
                 break;
             case EXPECTING_SLASH:
-                if (ch == '\\') {
+                if (
+                        ch == '\\' &&
+                        screen->pending_mode.stop_buf_pos >= 2 &&
+                        (screen->pending_mode.stop_buf[0] == '1' || screen->pending_mode.stop_buf[0] == '2') &&
+                        screen->pending_mode.stop_buf[1] == 's'
+                   ) {
                     // We found a pending mode sequence
-                    if (is_end_code) {
+                    if (screen->pending_mode.stop_buf[0] == '2') {
                         REPORT_COMMAND(screen_stop_pending_mode);
                         screen->pending_mode.activated_at = 0;
                         goto end;
@@ -1151,9 +1158,7 @@ _queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *d
                     }
                 } else {
                     state = NORMAL;
-                    COPY(0x1b); COPY('P'); COPY('=');
-                    if (!is_end_code) { COPY('s'); }
-                    COPY(0x1b); COPY(ch);
+                    COPY_STOP_BUF; COPY(ch);
                 }
                 break;
         }
@@ -1162,6 +1167,7 @@ end:
     screen->pending_mode.state = state;
     return pos;
 #undef COPY
+#undef COPY_STOP_BUF
 }
 
 static inline void
@@ -1197,7 +1203,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 break;
 
             case QUEUE_PENDING: {
-                if (screen->pending_mode.capacity - screen->pending_mode.used < read_buf_sz) {
+                if (screen->pending_mode.capacity - screen->pending_mode.used < read_buf_sz + sizeof(screen->pending_mode.stop_buf)) {
                     if (screen->pending_mode.capacity >= READ_BUF_SZ) {
                         // Too much pending data, drain it
                         screen->pending_mode.activated_at = 0;

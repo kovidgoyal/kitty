@@ -98,10 +98,11 @@ typedef struct {
     CursorRenderInfo cursor_render_info;
 
     struct {
-        size_t capacity, used;
+        size_t capacity, used, stop_buf_pos;
         uint8_t *buf;
         double activated_at, wait_time;
         int state;
+        uint8_t stop_buf[32];
     } pending_mode;
 
 } Screen;
