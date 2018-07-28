@@ -24,6 +24,10 @@
 //
 //========================================================================
 
+// _POSIX_C_SOURCE needed for fileno() on Linux systems
+#define _POSIX_C_SOURCE 1
+#include <stdio.h>
+#undef _POSIX_C_SOURCE
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
