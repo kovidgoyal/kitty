@@ -85,7 +85,7 @@ without needing to install all of |kitty|.
 .. note::
         You need a couple of extra dependencies to build linux-package.
         :file:`tic` to compile terminfo files, usually found in the
-        development package of :file:`ncurses`. Also, if you are building form
+        development package of :file:`ncurses`. Also, if you are building from
         a git checkout instead of the released source code tarball, you will
         need :file:`sphinx-build` from the `Sphinx documentation generator
         <http://www.sphinx-doc.org/>`_.
