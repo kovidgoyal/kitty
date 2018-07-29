@@ -109,6 +109,14 @@ read_exe_path(char *exe, size_t buf_sz) {
     }
     return true;
 }
+#elif defined(__NetBSD__)
+
+static inline bool
+read_exe_path(char *exe, size_t buf_sz) {
+    if (realpath("/proc/curproc/exe", exe) == NULL) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
+    return true;
+}
+
 #else
 
 static inline bool
