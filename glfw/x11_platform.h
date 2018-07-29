@@ -104,8 +104,6 @@ typedef XineramaScreenInfo* (* PFN_XineramaQueryScreens)(Display*,int*);
 #define XineramaQueryExtension _glfw.x11.xinerama.QueryExtension
 #define XineramaQueryScreens _glfw.x11.xinerama.QueryScreens
 
-typedef struct xcb_connection_t xcb_connection_t;
-
 typedef Bool (* PFN_XF86VidModeQueryExtension)(Display*,int*,int*);
 typedef Bool (* PFN_XF86VidModeGetGammaRamp)(Display*,int,int,unsigned short*,unsigned short*,unsigned short*);
 typedef Bool (* PFN_XF86VidModeSetGammaRamp)(Display*,int,int,unsigned short*,unsigned short*,unsigned short*);
