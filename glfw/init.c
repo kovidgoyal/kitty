@@ -115,8 +115,9 @@ static void terminate(void)
 char* _glfw_strdup(const char* source)
 {
     const size_t length = strlen(source);
-    char* result = calloc(length + 1, 1);
-    strcpy(result, source);
+    char* result = malloc(length + 1);
+    memcpy(result, source, length);
+    result[length] = 0;
     return result;
 }
 
