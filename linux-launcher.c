@@ -11,6 +11,7 @@
 #include <libgen.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
@@ -84,17 +85,42 @@ static int run_embedded(const char* exe_dir, int argc, wchar_t **argv) {
 
 #endif
 
-int main(int argc, char *argv[]) {
-    char exe[PATH_MAX+1] = {0};
-
 #ifdef __APPLE__
+static inline bool
+read_exe_path(char *exe, size_t buf_sz) {
+    (void)buf_sz;
     uint32_t size = PATH_MAX;
     char apple[PATH_MAX+1] = {0};
-    if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return 1; }
-    if (realpath(apple, exe) == NULL) { fprintf(stderr, "realpath() failed on the executable's path\n"); return 1; }
+    if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return false; }
+    if (realpath(apple, exe) == NULL) { fprintf(stderr, "realpath() failed on the executable's path\n"); return false; }
+}
+#elif defined(__FreeBSD__)
+#include <sys/param.h>
+#include <sys/sysctl.h>
+
+static inline bool
+read_exe_path(char *exe, size_t buf_sz) {
+    int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+    size_t length = buf_sz;
+    int error = sysctl(name, 4, exe, &length, NULL, 0);
+    if (error < 0 || length <= 1) {
+        fprintf(stderr, "failed to get path to executable, sysctl() failed\n");
+        return false;
+    }
+    return true;
+}
 #else
-    if (realpath("/proc/self/exe", exe) == NULL) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return 1; }
+
+static inline bool
+read_exe_path(char *exe, size_t buf_sz) {
+    if (realpath("/proc/self/exe", exe) == NULL) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
+    return true;
+}
 #endif
+
+int main(int argc, char *argv[]) {
+    char exe[PATH_MAX+1] = {0};
+    if (!read_exe_path(exe, sizeof(exe))) return 1;
 
     char *exe_dir = dirname(exe);
     int num, num_args, i, ret=0;
