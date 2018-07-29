@@ -8,10 +8,13 @@
 
 #include <stdio.h>
 #include <pthread.h>
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#define FREEBSD_SET_NAME
+#endif
 #if defined(__APPLE__)
 // I cant figure out how to get pthread.h to include this definition on macOS. MACOSX_DEPLOYMENT_TARGET does not work.
 extern int pthread_setname_np(const char *name);
-#elif defined(__FreeBSD__)
+#elif defined(FREEBSD_SET_NAME)
 // Function has a different name on FreeBSD
 void pthread_set_name_np(pthread_t tid, const char *name);
 #else
@@ -21,10 +24,10 @@ extern int pthread_setname_np(pthread_t, const char *name);
 
 static inline void
 set_thread_name(const char *name) {
-    int ret = 0;
+    int ret;
 #if defined(__APPLE__)
     ret = pthread_setname_np(name);
-#elif defined(__FreeBSD__)
+#elif defined(FREEBSD_SET_NAME)
     pthread_set_name_np(pthread_self(), name);
     ret = 0;
 #else
