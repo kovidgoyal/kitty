@@ -570,6 +570,20 @@ make && make docs
     shutil.copytree(src, htmldir)
 
 
+def compile_python(base_path):
+    import compileall
+    try:
+        from multiprocessing import cpu_count
+        num_workers = max(1, cpu_count())
+    except Exception:
+        num_workers = 1
+    for root, dirs, files in os.walk(base_path):
+        for f in files:
+            if f.rpartition('.')[-1] in ('pyc', 'pyo'):
+                os.remove(os.path.join(root, f))
+    compileall.compile_dir(base_path, ddir='', force=True, optimize=1, quiet=1, workers=num_workers)
+
+
 def package(args, for_bundle=False, sh_launcher=False):
     ddir = args.prefix
     if for_bundle or sh_launcher:
@@ -596,8 +610,7 @@ def package(args, for_bundle=False, sh_launcher=False):
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
-    import compileall
-    compileall.compile_dir(libdir, quiet=1, workers=4)
+    compile_python(libdir)
     for root, dirs, files in os.walk(libdir):
         for f in files:
             path = os.path.join(root, f)
