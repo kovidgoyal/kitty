@@ -93,6 +93,7 @@ read_exe_path(char *exe, size_t buf_sz) {
     char apple[PATH_MAX+1] = {0};
     if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return false; }
     if (realpath(apple, exe) == NULL) { fprintf(stderr, "realpath() failed on the executable's path\n"); return false; }
+    return true;
 }
 #elif defined(__FreeBSD__)
 #include <sys/param.h>
