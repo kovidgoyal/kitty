@@ -666,7 +666,7 @@ Categories=System;TerminalEmulator;
             NSAppleScriptEnabled=False,
             NSHumanReadableCopyright=time.strftime(
                 'Copyright %Y, Kovid Goyal'),
-            CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://github.com/kovidgoyal/kitty',
+            CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
             CFBundleIconFile=appname + '.icns',
             NSHighResolutionCapable=True,
             NSSupportsAutomaticGraphicsSwitching=True,
