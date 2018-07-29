@@ -79,6 +79,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // Establish the controlling terminal (see man 7 credentials)
             int tfd = open(name, O_RDWR);
             if (tfd == -1) exit_on_err("Failed to open controlling terminal");
+#ifdef TIOCSTTY
+            // On BSD open() does not establish the controlling terminal
+            if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
+#endif
             close(tfd);
 
             environ = env;
