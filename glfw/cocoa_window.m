@@ -695,6 +695,8 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     if (window->cursorMode == GLFW_CURSOR_HIDDEN)
         hideCursor(window);
 
+    [[self window] makeKeyWindow];
+
     _glfwInputCursorEnter(window, GLFW_TRUE);
 }
 
@@ -743,6 +745,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
                                           NSTrackingEnabledDuringMouseDrag |
                                           NSTrackingCursorUpdate |
                                           NSTrackingInVisibleRect |
+                                          NSTrackingActiveAlways |
                                           NSTrackingAssumeInside;
 
     trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
