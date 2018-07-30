@@ -543,6 +543,11 @@ destroy_os_window(OSWindow *w) {
 #endif
 }
 
+void
+focus_os_window(OSWindow *w) {
+    if (w->handle) glfwFocusWindow(w->handle);
+}
+
 #ifdef __APPLE__
 bool
 application_quit_requested() {

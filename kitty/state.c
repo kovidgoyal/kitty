@@ -497,6 +497,16 @@ PYWRAP1(mark_os_window_for_close) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(focus_os_window) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        if (!os_window->is_focused) focus_os_window(os_window);
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
 PYWRAP1(set_titlebar_color) {
     id_type os_window_id;
     unsigned int color;
@@ -718,6 +728,7 @@ static PyMethodDef module_methods[] = {
     MW(cell_size_for_window, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_titlebar_color, METH_VARARGS),
+    MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

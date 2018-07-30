@@ -190,17 +190,20 @@ class Boss:
                     yield tab
 
     def set_active_window(self, window):
-        for tm in self.os_window_map.values():
+        for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
                     if w.id == window.id:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab)
                         tab.set_active_window(w)
-                        return
+                        return os_window_id
 
     def _new_os_window(self, args, cwd_from=None):
-        sw = self.args_to_special_window(args, cwd_from) if args else None
+        if isinstance(args, SpecialWindowInstance):
+            sw = args
+        else:
+            sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)
         return self.add_os_window(startup_session)
 

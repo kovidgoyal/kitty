@@ -35,6 +35,9 @@ Changelog
 - diff kitten: Fix error when right hand side file is binary and left hand side
   file is text (:pull:`752`)
 
+- kitty @ new-window: Add a new option :option:`kitty @ new-window --window-type`
+  to create top-level OS windows. (:iss:`770`)
+
 
 0.11.3 [2018-07-10]
 ------------------------------

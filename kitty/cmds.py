@@ -9,6 +9,7 @@ import sys
 from .cli import parse_args
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
+from .fast_data_types import focus_os_window
 from .tabs import SpecialWindow
 from .utils import natsort_ints
 
@@ -402,6 +403,12 @@ type=bool-set
 Keep the current window focused instead of switching to the newly opened window
 
 
+--window-type
+default=kitty
+choices=kitty,os
+What kind of window to open. A kitty window or a top-level OS window.
+
+
 --new-tab
 type=bool-set
 Open a new tab
@@ -415,6 +422,7 @@ When using --new-tab set the title of the tab.
 def cmd_new_window(global_opts, opts, args):
     return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
             'new_tab': opts.new_tab, 'tab_title': opts.tab_title,
+            'window_type': opts.window_type,
             'keep_focus': opts.keep_focus, 'args': args or []}
 
 
@@ -429,6 +437,15 @@ def new_window(boss, window, payload):
         wid = boss.active_window.id
         if payload['keep_focus'] and old_window:
             boss.set_active_window(old_window)
+        return str(wid)
+
+    if payload['window_type'] == 'os':
+        boss._new_os_window(w)
+        wid = boss.active_window.id
+        if payload['keep_focus'] and old_window:
+            os_window_id = boss.set_active_window(old_window)
+            if os_window_id:
+                focus_os_window(os_window_id)
         return str(wid)
 
     match = payload['match']
