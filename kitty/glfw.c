@@ -9,6 +9,7 @@
 #include <structmember.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
+extern void cocoa_focus_window(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -135,6 +136,18 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const c
         global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
     }
     if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
+    global_state.callback_os_window = NULL;
+}
+
+static void
+cursor_enter_callback(GLFWwindow *w, int entered) {
+    if (!set_callback_window(w)) return;
+    if (entered) {
+        show_mouse_cursor(w);
+        double now = monotonic();
+        global_state.callback_os_window->last_mouse_activity_at = now;
+        if (is_window_ready_for_callbacks()) enter_event();
+    }
     global_state.callback_os_window = NULL;
 }
 
@@ -489,6 +502,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
     glfwSetWindowContentScaleCallback(glfw_window, dpi_change_callback);
     glfwSetWindowRefreshCallback(glfw_window, refresh_callback);
+    glfwSetCursorEnterCallback(glfw_window, cursor_enter_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetCursorPosCallback(glfw_window, cursor_pos_callback);
@@ -544,8 +558,16 @@ destroy_os_window(OSWindow *w) {
 }
 
 void
-focus_os_window(OSWindow *w) {
-    if (w->handle) glfwFocusWindow(w->handle);
+focus_os_window(OSWindow *w, bool also_raise) {
+    if (w->handle) {
+#ifdef __APPLE__
+        if (!also_raise) cocoa_focus_window(glfwGetCocoaWindow(w->handle));
+        else glfwFocusWindow(w->handle);
+#else
+        (void)also_raise;
+        glfwFocusWindow(w->handle);
+#endif
+    }
 }
 
 #ifdef __APPLE__

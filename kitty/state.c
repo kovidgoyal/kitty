@@ -499,9 +499,10 @@ PYWRAP1(mark_os_window_for_close) {
 
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
-    PA("K", &os_window_id);
+    int also_raise = 1;
+    PA("K|p", &os_window_id, &also_raise);
     WITH_OS_WINDOW(os_window_id)
-        if (!os_window->is_focused) focus_os_window(os_window);
+        if (!os_window->is_focused) focus_os_window(os_window, also_raise);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

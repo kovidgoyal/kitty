@@ -452,6 +452,13 @@ focus_in_event() {
 }
 
 void
+enter_event() {
+    if (OPT(focus_follows_mouse) && !global_state.callback_os_window->is_focused) {
+        focus_os_window(global_state.callback_os_window, false);
+    }
+}
+
+void
 mouse_event(int button, int modifiers) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;

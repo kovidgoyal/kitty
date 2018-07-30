@@ -36,7 +36,10 @@ Changelog
   file is text (:pull:`752`)
 
 - kitty @ new-window: Add a new option :option:`kitty @ new-window --window-type`
-  to create top-level OS windows. (:iss:`770`)
+  to create top-level OS windows (:iss:`770`)
+
+- The :opt:`focus_follows_mouse` option now also works across top-level kitty OS windows
+  (:iss:`754`)
 
 
 0.11.3 [2018-07-10]

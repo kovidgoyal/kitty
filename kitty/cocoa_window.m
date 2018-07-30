@@ -218,6 +218,12 @@ cocoa_make_window_resizable(void *w, bool resizable) {
     return true;
 }
 
+void
+cocoa_focus_window(void *w) {
+    NSWindow *window = (NSWindow*)w;
+    [window makeKeyWindow];
+}
+
 static PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     NSString* locale = nil;
