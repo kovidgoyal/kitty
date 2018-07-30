@@ -98,7 +98,7 @@ start_profiler(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-stop_profiler(PyObject UNUSED *self) {
+stop_profiler(PyObject UNUSED *self, PyObject *args UNUSED) {
     ProfilerStop();
     Py_RETURN_NONE;
 }
