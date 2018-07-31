@@ -599,6 +599,8 @@ def package(args, for_bundle=False, sh_launcher=False):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
         subprocess.check_call(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'])
+        if not glob.glob(os.path.join(odir, '*/xterm-kitty')):
+            raise SystemExit('tic failed to output the compiled kitty terminfo file')
     shutil.copy2('__main__.py', libdir)
     shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
