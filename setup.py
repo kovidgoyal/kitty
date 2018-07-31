@@ -669,6 +669,8 @@ Categories=System;TerminalEmulator;
             LSMinimumSystemVersion='10.12.0',
             LSRequiresNativeExecution=True,
             NSAppleScriptEnabled=False,
+            # Needed for dark mode in Mojave when linking against older SDKs
+            NSRequiresAquaSystemAppearance='NO',
             NSHumanReadableCopyright=time.strftime(
                 'Copyright %Y, Kovid Goyal'),
             CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
