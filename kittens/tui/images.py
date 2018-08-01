@@ -71,13 +71,15 @@ def convert(path, m, available_width, available_height, scale_up, tdir=None):
     from tempfile import NamedTemporaryFile
     width, height = m.width, m.height
     cmd = ['convert', '-background', 'none', path]
+    scaled = False
     if scale_up:
         if width < available_width:
             r = available_width / width
             width, height = available_width, int(height * r)
-    if width > available_width or height > available_height:
+            scaled = True
+    if scaled or width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
-        cmd += ['-resize', '{}x{}'.format(width, height)]
+        cmd += ['-resize', '{}x{}!'.format(width, height)]
     with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
         run_imagemagick(path, cmd + [outfile.name])
     # ImageMagick sometimes generated rgba images smaller than the specified
@@ -88,7 +90,10 @@ def convert(path, m, available_width, available_height, scale_up, tdir=None):
     if sz < expected_size:
         missing = expected_size - sz
         if missing % (bytes_per_pixel * width) != 0:
-            raise ConvertFailed(path, 'ImageMagick failed to convert {} correctly, it generated {} < {} of data'.format(path, sz, expected_size))
+            raise ConvertFailed(
+                path, 'ImageMagick failed to convert {} correctly,'
+                ' it generated {} < {} of data (w={}, h={}, bpp={})'.format(
+                    path, sz, expected_size, width, height, bytes_per_pixel))
         height -= missing // (bytes_per_pixel * width)
 
     return outfile.name, width, height
