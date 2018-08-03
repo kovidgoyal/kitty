@@ -29,3 +29,4 @@ class TestHints(BaseTest):
         t(u + '\nxxx', u + 'xxx', len(u))
         t('link:{}[xxx]'.format(u), u)
         t('`xyz <{}>`_.'.format(u), u)
+        t('<a href="{}">moo'.format(u), u)

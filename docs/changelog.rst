@@ -42,6 +42,9 @@ Changelog
   (:iss:`754`)
 
 
+- Fix detection of URLs in HTML source code (URLs inside quotes) (:iss:`785`)
+
+
 0.11.3 [2018-07-10]
 ------------------------------
 

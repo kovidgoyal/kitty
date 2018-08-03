@@ -209,16 +209,39 @@ extend_selection(Window *w) {
 }
 
 static inline void
-extend_url(Screen *screen, Line *line, index_type *x, index_type *y) {
+extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel) {
     unsigned int count = 0;
     while(count++ < 10) {
         if (*x != line->xnum - 1) break;
         line = screen_visual_line(screen, *y + 1);
         if (!line) break; // we deliberately allow non-continued lines as some programs, like mutt split URLs with newlines at line boundaries
-        index_type new_x = line_url_end_at(line, 0, false);
+        index_type new_x = line_url_end_at(line, 0, false, sentinel);
         if (!new_x) break;
         *y += 1; *x = new_x;
     }
+}
+
+static inline char_type
+get_url_sentinel(Line *line, index_type url_start) {
+    char_type before = 0, sentinel;
+    if (url_start > 0 && url_start < line->xnum) before = line->cpu_cells[url_start - 1].ch;
+    switch(before) {
+        case '"':
+        case '\'':
+        case '*':
+            sentinel = before; break;
+        case '(':
+            sentinel = ')'; break;
+        case '[':
+            sentinel = ']'; break;
+        case '{':
+            sentinel = '}'; break;
+        case '<':
+            sentinel = '>'; break;
+        default:
+            sentinel = 0; break;
+    }
+    return sentinel;
 }
 
 static inline void
@@ -226,15 +249,17 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
+    char_type sentinel;
     if (line) {
         url_start = line_url_start_at(line, x);
-        if (url_start < line->xnum) url_end = line_url_end_at(line, x, true);
+        sentinel = get_url_sentinel(line, url_start);
+        if (url_start < line->xnum) url_end = line_url_end_at(line, x, true, sentinel);
         has_url = url_end > url_start;
     }
     if (has_url) {
         mouse_cursor_shape = HAND;
         index_type y_extended = y;
-        extend_url(screen, line, &url_end, &y_extended);
+        extend_url(screen, line, &url_end, &y_extended, sentinel);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else {
         mouse_cursor_shape = BEAM;

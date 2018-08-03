@@ -170,7 +170,7 @@ def regex_finditer(pat, minimum_match_length, text):
             yield s, e
 
 
-closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>'}
+closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'"}
 opening_brackets = ''.join(closing_bracket_map)
 postprocessor_map = {}
 
@@ -189,15 +189,15 @@ def url(text, s, e):
             e -= len(url) - idx
     while text[e - 1] in '.,?!' and e > 1:  # remove trailing punctuation
         e -= 1
+    # truncate url at closing bracket/quote
+    if s > 0 and e <= len(text) and text[s-1] in opening_brackets:
+        q = closing_bracket_map[text[s-1]]
+        idx = text.find(q, s)
+        if idx > s:
+            e = idx
     # Restructured Text URLs
     if e > 3 and text[e-2:e] == '`_':
         e -= 2
-    # Remove trailing bracket if matched by leading bracket
-    if s > 0 and e < len(text) and text[s-1] in opening_brackets and text[e-1] == closing_bracket_map[text[s-1]]:
-        e -= 1
-    # Remove trailing quote if matched by leading quote
-    if s > 0 and e < len(text) and text[s-1] in '\'"' and text[e-1] == text[s-1]:
-        e -= 1
 
     return s, e
 
