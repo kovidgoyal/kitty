@@ -152,6 +152,11 @@ void _glfwPollMonitorsX11(void)
             }
 
             ci = XRRGetCrtcInfo(_glfw.x11.display, sr, oi->crtc);
+            if (!ci)
+            {
+                XRRFreeOutputInfo(oi);
+                continue;
+            }
             if (ci->rotation == RR_Rotate_90 || ci->rotation == RR_Rotate_270)
             {
                 widthMM  = oi->mm_height;
@@ -501,4 +506,3 @@ GLFWAPI RROutput glfwGetX11Monitor(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(None);
     return monitor->x11.output;
 }
-
