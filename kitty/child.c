@@ -85,11 +85,6 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 #endif
             close(tfd);
 
-            // Wait for READY_SIGNAL which indicates kitty has setup the screen object
-            close(ready_write_fd);
-            wait_for_terminal_ready(ready_read_fd);
-            close(ready_read_fd);
-
             // Redirect stdin/stdout/stderr to the pty
             if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
             if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
@@ -102,6 +97,13 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             }
             close(slave);
             close(master);
+
+            // Wait for READY_SIGNAL which indicates kitty has setup the screen object
+            close(ready_write_fd);
+            wait_for_terminal_ready(ready_read_fd);
+            close(ready_read_fd);
+
+            // Close any extra fds inherited from parent
             for (int c = 3; c < 201; c++) close(c);
 
             environ = env;
