@@ -384,7 +384,7 @@ def close_tab(boss, window, payload):
     'Open new window',
     'Open a new window in the specified tab. If you use the :option:`kitty @ new-window --match` option'
     ' the first matching tab is used. Otherwise the currently active tab is used.'
-    ' Prints out the id of the newly opened window. Any command line arguments'
+    ' Prints out the id of the newly opened window (unless :option:`--no-response` is used). Any command line arguments'
     ' are assumed to be the command line used to run in the new window, if none'
     ' are provided, the default shell is run. For example:\n'
     ':italic:`kitty @ new-window --title Email mutt`',
@@ -416,13 +416,23 @@ Open a new tab
 
 --tab-title
 When using --new-tab set the title of the tab.
+
+
+--no-response
+type=bool-set
+default=false
+Dont wait for a response giving the id of the newly opened window. Note that
+using this option means that you will not be notified of failures and that
+the id of the new window will not be printed out.
 ''',
     argspec='[CMD ...]'
 )
 def cmd_new_window(global_opts, opts, args):
+    if opts.no_response:
+        global_opts.no_command_response = True
     return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
             'new_tab': opts.new_tab, 'tab_title': opts.tab_title,
-            'window_type': opts.window_type,
+            'window_type': opts.window_type, 'no_response': opts.no_response,
             'keep_focus': opts.keep_focus, 'args': args or []}
 
 
@@ -437,7 +447,7 @@ def new_window(boss, window, payload):
         wid = boss.active_window.id
         if payload['keep_focus'] and old_window:
             boss.set_active_window(old_window)
-        return str(wid)
+        return None if payload['no_response'] else str(wid)
 
     if payload['window_type'] == 'os':
         boss._new_os_window(w)
@@ -446,7 +456,7 @@ def new_window(boss, window, payload):
             os_window_id = boss.set_active_window(old_window)
             if os_window_id:
                 focus_os_window(os_window_id)
-        return str(wid)
+        return None if payload['no_response'] else str(wid)
 
     match = payload['match']
     if match:
@@ -459,7 +469,7 @@ def new_window(boss, window, payload):
     w = tab.new_special_window(w)
     if payload['keep_focus'] and old_window:
         boss.set_active_window(old_window)
-    return str(w.id)
+    return None if payload['no_response'] else str(w.id)
 # }}}
 
 

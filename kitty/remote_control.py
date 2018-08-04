@@ -19,6 +19,8 @@ def handle_cmd(boss, window, cmd):
     cmd = json.loads(cmd)
     v = cmd['version']
     if tuple(v)[:2] > version[:2]:
+        if cmd['no_response']:
+            return
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
     c = cmap[cmd['cmd']]
     func = partial(c.impl(), boss, window)
@@ -27,7 +29,7 @@ def handle_cmd(boss, window, cmd):
     response = {'ok': True}
     if ans is not None:
         response['data'] = ans
-    if not c.no_response:
+    if not c.no_response and not cmd['no_response']:
         return response
 
 
@@ -137,6 +139,7 @@ def parse_rc_args(args):
 
 def main(args):
     global_opts, items = parse_rc_args(args)
+    global_opts.no_command_response = None
 
     if not items:
         from kitty.shell import main
@@ -156,7 +159,14 @@ def main(args):
     }
     if payload is not None:
         send['payload'] = payload
-    response = do_io(global_opts.to, send, func.no_response)
+    if global_opts.no_command_response is not None:
+        no_response = global_opts.no_command_response
+    else:
+        no_response = func.no_response
+    send['no_response'] = no_response
+    response = do_io(global_opts.to, send, no_response)
+    if no_response:
+        return
     if not response.get('ok'):
         if response.get('tb'):
             print(response['tb'], file=sys.stderr)
