@@ -122,8 +122,6 @@ def highlight_line(line):
 def highlight_for_diff(path, aliases):
     ans = []
     lines = lines_for_path(path)
-    if len(lines) > 10000:
-        return ans
     hd = highlight_data('\n'.join(lines), path, aliases)
     if hd is not None:
         for line in hd.splitlines():
@@ -135,6 +133,7 @@ def highlight_collection(collection, aliases=None):
     jobs = {}
     ans = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+        highlight_collection.processes = executor._processes
         for path, item_type, other_path in collection:
             if item_type != 'rename':
                 for p in (path, other_path):

@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import signal
 import sys
 import warnings
 from collections import defaultdict
@@ -508,6 +509,13 @@ help_text = 'Show a side-by-side diff of the specified files/directories'
 usage = 'file_or_directory_left file_or_directory_right'
 
 
+def terminate_processes(processes):
+    for pid in processes:
+        os.kill(pid, signal.SIGTERM)
+    for pid in processes:
+        os.kill(pid, signal.SIGKILL)
+
+
 def main(args):
     warnings.showwarning = showwarning
     args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten diff')
@@ -530,6 +538,8 @@ def main(args):
     for message in showwarning.warnings:
         from kitty.utils import safe_print
         safe_print(message, file=sys.stderr)
+    processes = getattr(highlight_collection, 'processes', ())
+    terminate_processes(tuple(processes))
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
             print(handler.report_traceback_on_exit, file=sys.stderr)
