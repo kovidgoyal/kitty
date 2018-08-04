@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 
 static inline char**
 serialize_string_tuple(PyObject *src) {
@@ -44,6 +45,31 @@ write_to_stderr(const char *text) {
     }
 }
 
+#define exit_on_err(m) { write_to_stderr(m); write_to_stderr(": "); write_to_stderr(strerror(errno)); exit(EXIT_FAILURE); }
+
+static sig_atomic_t sigwinch_arrived;
+
+void handle_sigwinch(int signal) {
+    if (signal == SIGWINCH) sigwinch_arrived = 1;
+}
+
+static inline void
+wait_for_sigwinch() {
+    sigwinch_arrived = 0;
+    sigset_t mask, oldmask;
+    struct sigaction sa;
+    sa.sa_handler = handle_sigwinch;
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGWINCH, &sa, NULL) == -1) {
+        exit_on_err("Failed to set the SIGWINCH signal handler");
+    }
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGWINCH);
+    sigprocmask(SIG_BLOCK, &mask, &oldmask);
+    while(!sigwinch_arrived) sigsuspend(&oldmask);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
+}
+
 static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
     PyObject *argv_p, *env_p;
@@ -55,7 +81,6 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     char **argv = serialize_string_tuple(argv_p);
     char **env = serialize_string_tuple(env_p);
 
-#define exit_on_err(m) { write_to_stderr(m); write_to_stderr(": "); write_to_stderr(strerror(errno)); exit(EXIT_FAILURE); }
     pid_t pid = fork();
     switch(pid) {
         case 0:
@@ -63,6 +88,20 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // Use only signal-safe functions (man 7 signal-safety)
             if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
             if (setsid() == -1) exit_on_err("setsid() in child process failed");
+
+            // Establish the controlling terminal (see man 7 credentials)
+            int tfd = open(name, O_RDWR);
+            if (tfd == -1) exit_on_err("Failed to open controlling terminal");
+#ifdef TIOCSTTY
+            // On BSD open() does not establish the controlling terminal
+            if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
+#endif
+            close(tfd);
+
+            // Wait for SIGWINCH which indicates kitty has setup the screen object
+            wait_for_sigwinch();
+
+            // Redirect stdin/stdout/stderr to the pty
             if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
             if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
             if (stdin_read_fd > -1) {
@@ -75,15 +114,6 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             close(slave);
             close(master);
             for (int c = 3; c < 201; c++) close(c);
-
-            // Establish the controlling terminal (see man 7 credentials)
-            int tfd = open(name, O_RDWR);
-            if (tfd == -1) exit_on_err("Failed to open controlling terminal");
-#ifdef TIOCSTTY
-            // On BSD open() does not establish the controlling terminal
-            if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
-#endif
-            close(tfd);
 
             environ = env;
             execvp(exe, argv);
