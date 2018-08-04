@@ -16,13 +16,12 @@ from .constants import (
 )
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
-    GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL,
-    SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen, add_window,
-    cell_size_for_window, compile_program, get_clipboard_string,
-    glfw_post_empty_event, init_cell_program, set_clipboard_string,
-    set_titlebar_color, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM, GRAPHICS_PREMULT_PROGRAM,
+    GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
+    STRIKETHROUGH, Screen, add_window, cell_size_for_window, compile_program,
+    get_clipboard_string, glfw_post_empty_event, init_cell_program,
+    set_clipboard_string, set_titlebar_color, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .rgb import to_color
@@ -104,6 +103,7 @@ class Window:
     def __init__(self, tab, child, opts, args, override_title=None):
         self.action_on_close = None
         self.layout_data = None
+        self.pty_resized_once = False
         self.needs_attention = False
         self.override_title = override_title
         self.overlay_window_id = None
@@ -200,6 +200,9 @@ class Window:
             sg = self.update_position(new_geometry)
             self.needs_layout = False
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
+            if not self.pty_resized_once:
+                self.pty_resized_once = True
+                self.child.mark_terminal_ready()
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry

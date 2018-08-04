@@ -101,6 +101,8 @@ class Child:
         remove_cloexec(slave)
         fast_data_types.set_iutf8(master, True)
         stdin, self.stdin = self.stdin, None
+        ready_read_fd, ready_write_fd = os.pipe()
+        remove_cloexec(ready_read_fd)
         if stdin is not None:
             stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
@@ -119,15 +121,21 @@ class Child:
             # Some macOS machines need the shell to have argv[0] prefixed by
             # hyphen, see https://github.com/kovidgoyal/kitty/issues/247
             argv[0] = ('-' + exe.split('/')[-1])
-        pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd)
+        pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)
         self.pid = pid
         self.child_fd = master
         if stdin is not None:
             os.close(stdin_read_fd)
             fast_data_types.thread_write(stdin_write_fd, stdin)
+        os.close(ready_read_fd)
+        self.terminal_ready_fd = ready_write_fd
         fcntl.fcntl(self.child_fd, fcntl.F_SETFL, fcntl.fcntl(self.child_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
         return pid
+
+    def mark_terminal_ready(self):
+        os.close(self.terminal_ready_fd)
+        self.terminal_ready_fd = -1
 
     @property
     def cmdline(self):

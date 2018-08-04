@@ -47,35 +47,22 @@ write_to_stderr(const char *text) {
 
 #define exit_on_err(m) { write_to_stderr(m); write_to_stderr(": "); write_to_stderr(strerror(errno)); exit(EXIT_FAILURE); }
 
-static sig_atomic_t sigwinch_arrived;
-
-void handle_sigwinch(int signal) {
-    if (signal == SIGWINCH) sigwinch_arrived = 1;
-}
-
 static inline void
-wait_for_sigwinch() {
-    sigwinch_arrived = 0;
-    sigset_t mask, oldmask;
-    struct sigaction sa;
-    sa.sa_handler = handle_sigwinch;
-    sa.sa_flags = SA_RESTART;
-    if (sigaction(SIGWINCH, &sa, NULL) == -1) {
-        exit_on_err("Failed to set the SIGWINCH signal handler");
+wait_for_terminal_ready(int fd) {
+    char data;
+    while(1) {
+        int ret = read(fd, &data, 1);
+        if (ret == -1 && (errno == EINTR || errno == EAGAIN)) continue;
+        break;
     }
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGWINCH);
-    sigprocmask(SIG_BLOCK, &mask, &oldmask);
-    while(!sigwinch_arrived) sigsuspend(&oldmask);
-    sigprocmask(SIG_UNBLOCK, &mask, NULL);
 }
 
 static PyObject*
 spawn(PyObject *self UNUSED, PyObject *args) {
     PyObject *argv_p, *env_p;
-    int master, slave, stdin_read_fd, stdin_write_fd;
+    int master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd;
     char *cwd, *exe;
-    if (!PyArg_ParseTuple(args, "ssO!O!iiii", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "ssO!O!iiiiii", &exe, &cwd, &PyTuple_Type, &argv_p, &PyTuple_Type, &env_p, &master, &slave, &stdin_read_fd, &stdin_write_fd, &ready_read_fd, &ready_write_fd)) return NULL;
     char name[2048] = {0};
     if (ttyname_r(slave, name, sizeof(name) - 1) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     char **argv = serialize_string_tuple(argv_p);
@@ -98,8 +85,10 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 #endif
             close(tfd);
 
-            // Wait for SIGWINCH which indicates kitty has setup the screen object
-            wait_for_sigwinch();
+            // Wait for READY_SIGNAL which indicates kitty has setup the screen object
+            close(ready_write_fd);
+            wait_for_terminal_ready(ready_read_fd);
+            close(ready_read_fd);
 
             // Redirect stdin/stdout/stderr to the pty
             if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
