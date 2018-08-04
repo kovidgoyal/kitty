@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import re
 import sys
 import types
@@ -164,6 +165,8 @@ def main(args):
     else:
         no_response = func.no_response
     send['no_response'] = no_response
+    if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
+        global_opts.to = os.environ['KITTY_LISTEN_ON']
     response = do_io(global_opts.to, send, no_response)
     if no_response:
         return

@@ -203,10 +203,12 @@ def macos_cmdline():
     return ans
 
 
-def setup_environment(opts):
+def setup_environment(opts, args):
     extra_env = opts.env.copy()
     if opts.editor != '.':
         os.environ['EDITOR'] = opts.editor
+    if args.listen_on:
+        os.environ['KITTY_LISTEN_ON'] = args.listen_on
     set_default_env(extra_env)
 
 
@@ -264,7 +266,7 @@ def _main():
             return
     init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
     opts = create_opts(args)
-    setup_environment(opts)
+    setup_environment(opts, args)
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies
