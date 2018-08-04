@@ -20,6 +20,7 @@ non_characters |= frozenset(range(0xffff, 0x10ffff + 1, 0x10000))
 non_characters |= frozenset(range(0xfdd0, 0xfdf0))
 if len(non_characters) != 66:
     raise SystemExit('non_characters table incorrect')
+emoji_skin_tone_modifiers = frozenset(range(0x1f3fb, 0x1F3FF + 1))
 
 
 def get_data(fname, folder='UCD'):
@@ -41,7 +42,7 @@ def get_data(fname, folder='UCD'):
 class_maps = {}
 name_map = {}
 word_search_map = defaultdict(set)
-marks = set()
+marks = set(emoji_skin_tone_modifiers)
 not_assigned = set(range(0, sys.maxunicode))
 
 
@@ -251,7 +252,13 @@ def gen_ucd():
     cz = {c for c in class_maps if c[0] in 'CZ'}
     with create_header('kitty/unicode-data.c') as p:
         p('#include "unicode-data.h"')
-        category_test('is_combining_char', p, {c for c in class_maps if c.startswith('M')}, 'M category (marks)')
+        category_test(
+                'is_combining_char', p,
+                {c for c in class_maps if c.startswith('M')},
+                'M category (marks)',
+                # See https://github.com/harfbuzz/harfbuzz/issues/169
+                extra_chars=emoji_skin_tone_modifiers
+        )
         category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters and non-characters', extra_chars=non_characters)
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, cz, 'C and Z categories')

@@ -89,6 +89,13 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(4)), 'a\u0306b1\u030623')
         self.ae((s.cursor.x, s.cursor.y), (2, 4))
 
+    def test_emoji_skin_tone_modifiers(self):
+        s = self.create_screen()
+        q = chr(0x1f469) + chr(0x1f3fd)
+        s.draw(q)
+        self.ae(str(s.line(0)), q)
+        self.ae(s.cursor.x, 2)
+
     def test_char_manipulation(self):
         s = self.create_screen()
 

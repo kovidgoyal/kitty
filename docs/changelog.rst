@@ -41,9 +41,9 @@ Changelog
 - The :opt:`focus_follows_mouse` option now also works across top-level kitty OS windows
   (:iss:`754`)
 
-
 - Fix detection of URLs in HTML source code (URLs inside quotes) (:iss:`785`)
 
+- Implement support for emoji skin tone modifiers (:iss:`787`)
 
 0.11.3 [2018-07-10]
 ------------------------------
