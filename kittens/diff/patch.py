@@ -205,9 +205,13 @@ def parse_patch(raw):
 
 class Differ:
 
+    diff_executor = None
+
     def __init__(self):
         self.jmap = {}
         self.jobs = []
+        if Differ.diff_executor is None:
+            Differ.diff_executor = self.diff_executor = concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count())
 
     def add_diff(self, file1, file2):
         self.jmap[file1] = file2
@@ -216,26 +220,26 @@ class Differ:
     def __call__(self, context=3):
         global left_lines, right_lines
         ans = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-            jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
-            for future in concurrent.futures.as_completed(jobs):
-                key = jobs[future]
-                left_path, right_path = key, self.jmap[key]
-                try:
-                    ok, returncode, output = future.result()
-                except FileNotFoundError as err:
-                    return 'Could not find the {} executable. Is it in your PATH?'.format(err.filename)
-                except Exception as e:
-                    return 'Running git diff for {} vs. {} generated an exception: {}'.format(left_path, right_path, e)
-                if not ok:
-                    return output + '\nRunning git diff for {} vs. {} failed'.format(left_path, right_path)
-                left_lines = lines_for_path(left_path)
-                right_lines = lines_for_path(right_path)
-                try:
-                    patch = parse_patch(output)
-                except Exception:
-                    import traceback
-                    return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(left_path, right_path)
-                else:
-                    ans[key] = patch
+        executor = Differ.diff_executor
+        jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
+        for future in concurrent.futures.as_completed(jobs):
+            key = jobs[future]
+            left_path, right_path = key, self.jmap[key]
+            try:
+                ok, returncode, output = future.result()
+            except FileNotFoundError as err:
+                return 'Could not find the {} executable. Is it in your PATH?'.format(err.filename)
+            except Exception as e:
+                return 'Running git diff for {} vs. {} generated an exception: {}'.format(left_path, right_path, e)
+            if not ok:
+                return output + '\nRunning git diff for {} vs. {} failed'.format(left_path, right_path)
+            left_lines = lines_for_path(left_path)
+            right_lines = lines_for_path(right_path)
+            try:
+                patch = parse_patch(output)
+            except Exception:
+                import traceback
+                return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(left_path, right_path)
+            else:
+                ans[key] = patch
         return ans
