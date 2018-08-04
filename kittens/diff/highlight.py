@@ -122,6 +122,8 @@ def highlight_line(line):
 def highlight_for_diff(path, aliases):
     ans = []
     lines = lines_for_path(path)
+    if len(lines) > 10000:
+        return ans
     hd = highlight_data('\n'.join(lines), path, aliases)
     if hd is not None:
         for line in hd.splitlines():
