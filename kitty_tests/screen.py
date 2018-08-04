@@ -96,6 +96,13 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), q)
         self.ae(s.cursor.x, 2)
 
+    def test_zwj(self):
+        s = self.create_screen(cols=20)
+        q = '\U0001f468\u200d\U0001f469\u200d\U0001f467\u200d\U0001f466'
+        s.draw(q)
+        self.ae(q, str(s.line(0)))
+        self.ae(s.cursor.x, 8)
+
     def test_char_manipulation(self):
         s = self.create_screen()
 

@@ -42,7 +42,8 @@ def get_data(fname, folder='UCD'):
 class_maps = {}
 name_map = {}
 word_search_map = defaultdict(set)
-marks = set(emoji_skin_tone_modifiers)
+zwj = 0x200d
+marks = set(emoji_skin_tone_modifiers) | {zwj}
 not_assigned = set(range(0, sys.maxunicode))
 
 
@@ -196,12 +197,13 @@ def gen_emoji():
         p('\treturn false;\n}')
 
 
-def category_test(name, p, classes, comment, static=False, extra_chars=frozenset()):
+def category_test(name, p, classes, comment, static=False, extra_chars=frozenset(), exclude=frozenset()):
     static = 'static inline ' if static else ''
     chars = set()
     for c in classes:
         chars |= class_maps[c]
     chars |= extra_chars
+    chars -= exclude
     p(f'{static}bool\n{name}(char_type code) {{')
     p(f'\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
     p('\tswitch(code) {')
@@ -257,9 +259,11 @@ def gen_ucd():
                 {c for c in class_maps if c.startswith('M')},
                 'M category (marks)',
                 # See https://github.com/harfbuzz/harfbuzz/issues/169
-                extra_chars=emoji_skin_tone_modifiers
+                extra_chars=emoji_skin_tone_modifiers | {zwj}
         )
-        category_test('is_ignored_char', p, 'Cc Cf Cs'.split(), 'Control characters and non-characters', extra_chars=non_characters)
+        category_test(
+            'is_ignored_char', p, 'Cc Cf Cs'.split(),
+            'Control characters and non-characters', extra_chars=non_characters, exclude={zwj})
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, cz, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')
@@ -272,7 +276,7 @@ def gen_ucd():
         p('combining_type mark_for_codepoint(char_type c) {')
         rmap = codepoint_to_mark_map(p, mark_map)
         p('}\n')
-        if rmap[0xfe0e] != 1280:
+        if rmap[0xfe0e] != 1281:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))

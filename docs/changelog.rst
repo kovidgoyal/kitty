@@ -45,6 +45,12 @@ Changelog
 
 - Implement support for emoji skin tone modifiers (:iss:`787`)
 
+- Round-trip the zwj unicode character. Rendering of sequences containing zwj
+  is still not implemented, since it can cause the collapse of an unbounded
+  number of characters into a single cell. However, kitty at least preserves
+  the zwj by storing it as a combining character.
+
+
 0.11.3 [2018-07-10]
 ------------------------------
 

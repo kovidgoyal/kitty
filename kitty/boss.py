@@ -505,6 +505,8 @@ class Boss:
         if w is not None:
             tm = self.os_window_map.get(w.os_window_id)
             if tm is not None:
+                tm.update_tab_bar_data()
+                tm.mark_tab_bar_dirty()
                 t = tm.tab_for_id(w.tab_id)
                 if t is not None:
                     t.relayout_borders()
