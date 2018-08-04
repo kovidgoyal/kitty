@@ -14,6 +14,7 @@ from .diff_speedup import changed_center
 left_lines = right_lines = None
 GIT_DIFF = 'git diff --no-color --no-ext-diff --exit-code -U_CONTEXT_ --no-index --'
 DIFF_DIFF = 'diff -p -U _CONTEXT_ --'
+worker_processes = []
 
 
 def find_differ():
@@ -43,8 +44,10 @@ def run_diff(file1, file2, context=3):
     p = subprocess.Popen(
             cmd + [path1, path2],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
+    worker_processes.append(p.pid)
     stdout, stderr = p.communicate()
     returncode = p.wait()
+    worker_processes.remove(p.pid)
     if returncode in (0, 1):
         return True, returncode == 1, stdout.decode('utf-8')
     return False, returncode, stderr.decode('utf-8')
