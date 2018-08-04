@@ -260,13 +260,13 @@ def main(args=sys.argv):
 
     if args.print_window_size:
         screen_size_function.ans = None
-        with open('/dev/tty') as tty:
+        with open(os.ctermid()) as tty:
             ss = screen_size_function(tty)()
         print('{}x{}'.format(ss.width, ss.height), end='')
         raise SystemExit(0)
 
     if not sys.stdout.isatty():
-        sys.stdout = open('/dev/tty', 'w')
+        sys.stdout = open(os.ctermid(), 'w')
     screen_size = screen_size_function()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:

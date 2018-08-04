@@ -381,7 +381,7 @@ def main(args):
             return
     else:
         text = sys.stdin.buffer.read().decode('utf-8')
-        sys.stdin = open('/dev/tty')
+        sys.stdin = open(os.ctermid())
     try:
         args, items = parse_hints_args(args[1:])
     except SystemExit as e:

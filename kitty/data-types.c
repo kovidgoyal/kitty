@@ -18,6 +18,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <stdio.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -123,7 +124,8 @@ open_tty(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "|p", &read_with_timeout)) return NULL;
     int flags = O_RDWR | O_CLOEXEC | O_NOCTTY;
     if (!read_with_timeout) flags |= O_NONBLOCK;
-    int fd = open("/dev/tty", flags);
+    static char ctty[L_ctermid+1];
+    int fd = open(ctermid(ctty), flags);
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();
     if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }

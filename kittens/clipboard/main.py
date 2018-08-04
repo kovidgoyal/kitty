@@ -2,7 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
+
 from kitty.cli import parse_args
 
 from ..tui.handler import Handler
@@ -62,7 +64,7 @@ def main(args):
     data = None
     if not sys.stdin.isatty():
         data = sys.stdin.buffer.read()
-        sys.stdin = open('/dev/tty', 'r')
+        sys.stdin = open(os.ctermid(), 'r')
     loop = Loop()
     handler = Clipboard(data, args)
     loop.loop(handler)

@@ -1057,7 +1057,8 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
     // TODO: Use an actual Wayland API to implement this when one becomes available
-    int fd = open("/dev/tty", O_WRONLY | O_CLOEXEC);
+    static char tty[L_ctermid + 1];
+    int fd = open(ctermid(tty), O_WRONLY | O_CLOEXEC);
     if (fd > -1) {
         int ret = write(fd, "\x07", 1) == 1 ? GLFW_TRUE : GLFW_FALSE;
         close(fd);

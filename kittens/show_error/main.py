@@ -2,11 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import sys
 
 from kitty.cli import parse_args
-from ..tui.operations import styled
 
+from ..tui.operations import styled
 
 OPTIONS = '''\
 --title
@@ -17,7 +18,7 @@ The title for the error message.
 
 def real_main(args):
     error_message = sys.stdin.buffer.read().decode('utf-8')
-    sys.stdin = open('/dev/tty')
+    sys.stdin = open(os.ctermid())
     msg = 'Show an error message'
     args, items = parse_args(args, OPTIONS, '', msg, 'hints')
     print(styled(args.title, fg_intense=True, fg='red', bold=True))
