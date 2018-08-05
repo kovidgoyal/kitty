@@ -48,6 +48,8 @@ SHIFTED_KEYS = {
     defines.GLFW_KEY_RIGHT: key_as_bytes('kRIT'),
     defines.GLFW_KEY_UP: key_as_bytes('kri'),
     defines.GLFW_KEY_DOWN: key_as_bytes('kind'),
+    defines.GLFW_KEY_PAGE_UP: modify_complex_key('kpp', 2),
+    defines.GLFW_KEY_PAGE_DOWN: modify_complex_key('knp', 2),
 }
 
 control_alt_codes = {
