@@ -19,14 +19,20 @@ from .utils import TTYIO, parse_address_spec
 def handle_cmd(boss, window, cmd):
     cmd = json.loads(cmd)
     v = cmd['version']
+    no_response = cmd['no_response']
     if tuple(v)[:2] > version[:2]:
-        if cmd['no_response']:
+        if no_response:
             return
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
     c = cmap[cmd['cmd']]
     func = partial(c.impl(), boss, window)
     payload = cmd.get('payload')
-    ans = func() if payload is None else func(payload)
+    try:
+        ans = func() if payload is None else func(payload)
+    except Exception:
+        if no_response:  # dont report errors if --no-response was used
+            return
+        raise
     response = {'ok': True}
     if ans is not None:
         response['data'] = ans

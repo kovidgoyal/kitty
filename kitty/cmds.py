@@ -477,11 +477,19 @@ def new_window(boss, window, payload):
 @cmd(
     'Focus the specified window',
     'Focus the specified window, if no window is specified, focus the window this command is run inside.',
-    options_spec=MATCH_WINDOW_OPTION,
     argspec='',
+    options_spec=MATCH_WINDOW_OPTION + '''\n\n
+--no-response
+type=bool-set
+default=false
+Dont wait for a response from kitty. This means that even if no matching window is found,
+the command will exit with a success code.
+'''
 )
 def cmd_focus_window(global_opts, opts, args):
-    return {'match': opts.match}
+    if opts.no_response:
+        global_opts.no_command_response = True
+    return {'match': opts.match, 'no_response': opts.no_response}
 
 
 def focus_window(boss, window, payload):
