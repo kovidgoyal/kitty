@@ -121,6 +121,8 @@ def get_new_os_window_trigger(opts):
 def _run_app(opts, args):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if False and is_macos:
+        # This is disabled because using s custom cursors fails
+        # on dual GPU machines: https://github.com/kovidgoyal/kitty/issues/794
         set_custom_ibeam_cursor()
     load_all_shaders.cursor_text_color = opts.cursor_text_color
     with cached_values_for(run_app.cached_values_name) as cached_values:
