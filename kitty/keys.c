@@ -137,13 +137,13 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
             screen_draw_overlay_text(screen, text);
-            debug("updated pre-edit text\n");
+            debug("updated pre-edit text: '%s'\n", text);
             return;
         case 2:  // commit text
             if (text && *text) {
                 schedule_write_to_child(w->id, text, strlen(text));
-            }
-            debug("committed pre-edit text\n");
+                debug("committed pre-edit text: %s\n", text);
+            } else debug("committed pre-edit text: (null)\n");
             return;
         case 0:
             break;
