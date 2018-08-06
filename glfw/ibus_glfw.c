@@ -123,7 +123,7 @@ message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
     _GLFWIBUSData *ibus = (_GLFWIBUSData*)user_data;
     (void)ibus;
     const char *text;
-    switch(glfw_dbus_match_signal(msg, IBUS_INPUT_INTERFACE, "CommitText", "UpdatePreeditText", "HidePreeditText", "ShowPreeditText")) {
+    switch(glfw_dbus_match_signal(msg, IBUS_INPUT_INTERFACE, "CommitText", "UpdatePreeditText", "HidePreeditText", "ShowPreeditText", NULL)) {
         case 0:
             text = get_ibus_text_from_message(msg);
             debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
