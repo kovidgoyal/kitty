@@ -36,7 +36,7 @@ def handle_cmd(boss, window, cmd):
     response = {'ok': True}
     if ans is not None:
         response['data'] = ans
-    if not c.no_response and not cmd['no_response']:
+    if not c.no_response and not no_response:
         return response
 
 

@@ -134,6 +134,7 @@ def run_cmd(global_opts, cmd, func, opts, items):
     send = {
         'cmd': cmd,
         'version': version,
+        'no_response': False,
     }
     if payload is not None:
         send['payload'] = payload
