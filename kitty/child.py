@@ -82,7 +82,8 @@ class Child:
         self.allow_remote_control = False
         if argv and argv[0] == '@':
             self.allow_remote_control = True
-            argv = argv[1:]
+            if len(argv) > 1:
+                argv = argv[1:]
         self.argv = argv
         if cwd_from is not None:
             try:
