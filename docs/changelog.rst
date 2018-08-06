@@ -50,6 +50,10 @@ Changelog
   number of characters into a single cell. However, kitty at least preserves
   the zwj by storing it as a combining character.
 
+- macOS: Disable the custom mouse cursor. Using a custom cursor fails on dual
+  GPU machines. I give up, Apple users will just have to live with the
+  limitations of their choice of OS. (:iss:`794`)
+
 
 0.11.3 [2018-07-10]
 ------------------------------
