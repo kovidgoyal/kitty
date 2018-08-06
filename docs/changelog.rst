@@ -26,7 +26,9 @@ Changelog
 - Remote control: Allow matching windows by the environment variables of their
   child process as well
 
-- Allow running kitten via the remote control system (:iss:`738`)
+- Allow running kittens via the remote control system (:iss:`738`)
+
+- Allow enabling remote control in only some kitty windows
 
 - Add a keyboard shortcut to reset the terminal (:sc:`reset_terminal`). It
   takes parameters so you can define your own shortcuts to clear the

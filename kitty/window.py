@@ -110,6 +110,7 @@ class Window:
         self.overlay_for = None
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
+        self.allow_remote_control = child.allow_remote_control
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))

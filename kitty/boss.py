@@ -686,23 +686,19 @@ class Boss:
                     break
 
     def kitty_shell(self, window_type):
-        cmd = [kitty_exe(), '@']
+        cmd = ['@', kitty_exe(), '@']
         if window_type == 'tab':
-            window = self._new_tab(cmd).active_window
+            self._new_tab(cmd).active_window
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(cmd)
-            window = self.os_window_map[os_window_id].active_window
+            self.os_window_map[os_window_id].active_window
         elif window_type == 'overlay':
             w = self.active_window
             tab = self.active_tab
             if w is not None and tab is not None and w.overlay_for is None:
-                window = tab.new_special_window(SpecialWindow(cmd, overlay_for=w.id))
-            else:
-                window = None
+                tab.new_special_window(SpecialWindow(cmd, overlay_for=w.id))
         else:
-            window = self._new_window(cmd)
-        if window is not None:
-            window.allow_remote_control = True
+            self._new_window(cmd)
 
     def switch_focus_to(self, window_idx):
         tab = self.active_tab
@@ -786,7 +782,7 @@ class Boss:
             if arg == '@ansi_screen':
                 return w.as_text(as_ansi=True)
 
-        if args[0].startswith('@'):
+        if args[0].startswith('@') and args[0] != '@':
             stdin = data_for_at(args[0]) or None
             if stdin is not None:
                 stdin = stdin.encode('utf-8')

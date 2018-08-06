@@ -79,6 +79,10 @@ class Child:
     forked = False
 
     def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None):
+        self.allow_remote_control = False
+        if argv and argv[0] == '@':
+            self.allow_remote_control = True
+            argv = argv[1:]
         self.argv = argv
         if cwd_from is not None:
             try:

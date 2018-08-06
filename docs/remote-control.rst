@@ -119,4 +119,20 @@ keyboard shortcut (:sc:`kitty_shell` by default). This has the added
 advantage that you dont need to use ``allow_remote_control`` to make it work.
 
 
+Allowing only some windows to control kitty
+----------------------------------------------
+
+If you do not want to allow all programs running in |kitty| to control it, you can selectively
+enable remote control for only some |kitty| windows. Simply create a shortcut
+such as::
+
+    map ctrl+k new_window @ some_program
+
+Then programs running in windows created with that shortcut can use ``kitty @``
+to control kitty. Note that any program with the right level of permissions can
+still write to the pipes of any other program on the same computer and
+therefore can control |kitty|. It can, however, be useful to block programs
+running on other computers (for example, over ssh) or as other users.
+
+
 .. include:: generated/cli-kitty-at.rst

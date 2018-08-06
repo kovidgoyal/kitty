@@ -815,6 +815,13 @@ You can open a new window with the current working directory set to the
 working directory of the current window using::
 
     map ctrl+alt+enter    new_window_with_cwd
+
+You can open a new window that is allowed to control kitty via
+the kitty remote control facility by prefixing the command line with @.
+Any programs running in that window will be allowed to control kitty.
+For example::
+
+    map ctrl+enter new_window @ some_program
 '''))
 if is_macos:
     k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'))
