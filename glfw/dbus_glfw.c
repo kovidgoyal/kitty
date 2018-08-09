@@ -96,8 +96,10 @@ toggle_dbus_watch(DBusWatch *watch, void *data) {
 
 static void
 on_dbus_timer_ready(id_type timer_id, void *data) {
-    DBusTimeout *t = (DBusTimeout*)data;
-    dbus_timeout_handle(t);
+    if (data) {
+        DBusTimeout *t = (DBusTimeout*)data;
+        dbus_timeout_handle(t);
+    }
 }
 
 
