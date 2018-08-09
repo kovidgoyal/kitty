@@ -111,7 +111,10 @@ add_dbus_timeout(DBusTimeout *timeout, void *data) {
     id_type timer_id = addTimer(dbus_data->eld, data, interval, enabled, on_dbus_timer_ready, timeout);
     if (!timer_id) return FALSE;
     id_type *idp = malloc(sizeof(id_type));
-    if (!idp) return FALSE;
+    if (!idp) {
+        removeTimer(dbus_data->eld, timer_id);
+        return FALSE;
+    }
     *idp = timer_id;
     dbus_timeout_set_data(timeout, idp, free);
     return TRUE;
