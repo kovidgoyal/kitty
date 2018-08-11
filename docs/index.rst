@@ -122,7 +122,7 @@ Action                      Shortcut
 ========================    =======================
 New tab                     :sc:`new_tab`
 Close tab                   :sc:`close_tab`
-Next tab                    :sc:`next_tab`
+Next tab                    :sc:`next_tab` (also :kbd:`control+tab` on macOS)
 Previous tab                :sc:`previous_tab`
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`

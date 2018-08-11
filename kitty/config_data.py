@@ -846,6 +846,8 @@ k('tenth_window', 'kitty_mod+0', 'tenth_window', _('Tenth window'))
 # }}}
 
 g('shortcuts.tab')  # {{{
+if is_macos:
+    k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'))
 k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
 k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
 k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
