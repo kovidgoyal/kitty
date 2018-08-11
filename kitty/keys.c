@@ -191,7 +191,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             debug("sent key to child\n");
         }
     } else {
-        debug("ignoring as keyboard mode does not allow repeat events\n");
+        debug("ignoring as keyboard mode does not allow %s events\n", action == GLFW_RELEASE ? "release" : "repeat");
     }
 }
 
