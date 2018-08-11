@@ -56,6 +56,7 @@ Changelog
   GPU machines. I give up, Apple users will just have to live with the
   limitations of their choice of OS. (:iss:`794`)
 
+- macOS: Fix control+tab key combination not working (:iss:`801`)
 
 0.11.3 [2018-07-10]
 ------------------------------

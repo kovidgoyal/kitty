@@ -1061,18 +1061,39 @@ is_ascii_control_char(char x) {
 
 @implementation GLFWApplication
 
-// From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
-// This works around an AppKit bug, where key up events while holding
-// down the command key don't get sent to the key window.
 - (void)sendEvent:(NSEvent *)event
 {
-    if ([event type] == NSEventTypeKeyUp &&
-        ([event modifierFlags] & NSEventModifierFlagCommand))
-    {
-        [[self keyWindow] sendEvent:event];
+    NSEventType etype = [event type];
+    NSEventModifierFlags flags;
+    switch(etype) {
+        case NSEventTypeKeyUp:
+            flags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+            if (flags & NSEventModifierFlagCommand) {
+                // From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
+                // This works around an AppKit bug, where key up events while holding
+                // down the command key don't get sent to the key window.
+                [[self keyWindow] sendEvent:event];
+                return;
+            }
+            if (flags == NSEventModifierFlagControl && event.keyCode == kVK_Tab) {
+                // Cocoa swallows Ctrl+Tab to cycle between views
+                [[self keyWindow].contentView keyUp:event];
+                return;
+            }
+            break;
+        case NSEventTypeKeyDown:
+            flags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+            if (flags == NSEventModifierFlagControl && event.keyCode == kVK_Tab) {
+                // Cocoa swallows Ctrl+Tab to cycle between views
+                [[self keyWindow].contentView keyDown:event];
+                return;
+            }
+            break;
+        default:
+            break;
     }
-    else
-        [super sendEvent:event];
+
+    [super sendEvent:event];
 }
 
 
