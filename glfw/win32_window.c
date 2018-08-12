@@ -529,7 +529,18 @@ static void fitToMonitor(_GLFWwindow* window)
 static void acquireMonitor(_GLFWwindow* window)
 {
     if (!_glfw.win32.acquiredMonitorCount)
+    {
         SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+
+        // HACK: When mouse trails are enabled the cursor becomes invisible when
+        //       the OpenGL ICD switches to page flipping
+        if (IsWindowsXPOrGreater())
+        {
+            SystemParametersInfo(SPI_GETMOUSETRAILS, 0, &_glfw.win32.mouseTrailSize, 0);
+            SystemParametersInfo(SPI_SETMOUSETRAILS, 0, 0, 0);
+        }
+    }
+
     if (!window->monitor->window)
         _glfw.win32.acquiredMonitorCount++;
 
@@ -546,7 +557,13 @@ static void releaseMonitor(_GLFWwindow* window)
 
     _glfw.win32.acquiredMonitorCount--;
     if (!_glfw.win32.acquiredMonitorCount)
+    {
         SetThreadExecutionState(ES_CONTINUOUS);
+
+        // HACK: Restore mouse trail length saved in acquireMonitor
+        if (IsWindowsXPOrGreater())
+            SystemParametersInfo(SPI_SETMOUSETRAILS, _glfw.win32.mouseTrailSize, 0, 0);
+    }
 
     _glfwInputMonitorWindow(window->monitor, NULL);
     _glfwRestoreVideoModeWin32(window->monitor);

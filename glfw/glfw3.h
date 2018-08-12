@@ -4009,8 +4009,8 @@ GLFWAPI int glfwGetKey(GLFWwindow* window, int key);
  *  `GLFW_RELEASE`.
  *
  *  If the @ref GLFW_STICKY_MOUSE_BUTTONS input mode is enabled, this function
- *  `GLFW_PRESS` the first time you call it for a mouse button that was pressed,
- *  even if that mouse button has already been released.
+ *  returns `GLFW_PRESS` the first time you call it for a mouse button that was
+ *  pressed, even if that mouse button has already been released.
  *
  *  @param[in] window The desired window.
  *  @param[in] button The desired [mouse button](@ref buttons).
@@ -4806,6 +4806,8 @@ GLFWAPI const char* glfwGetGamepadName(int jid);
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_INVALID_ENUM.
+ *
+ *  @thread_safety This function must only be called from the main thread.
  *
  *  @sa @ref gamepad
  *  @sa @ref glfwUpdateGamepadMappings

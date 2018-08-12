@@ -142,6 +142,9 @@ typedef enum
 
 // HACK: Define versionhelpers.h functions manually as MinGW lacks the header
 BOOL IsWindowsVersionOrGreater(WORD major, WORD minor, WORD sp);
+#define IsWindowsXPOrGreater()                                 \
+    IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_WINXP),      \
+                              LOBYTE(_WIN32_WINNT_WINXP), 0)
 #define IsWindowsVistaOrGreater()                              \
     IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_VISTA),      \
                               LOBYTE(_WIN32_WINNT_VISTA), 0)
@@ -300,6 +303,7 @@ typedef struct _GLFWlibraryWin32
     _GLFWwindow*        disabledCursorWindow;
     RAWINPUT*           rawInput;
     int                 rawInputSize;
+    UINT                mouseTrailSize;
 
     struct {
         HINSTANCE                       instance;
