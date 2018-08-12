@@ -34,6 +34,9 @@ Changelog
   takes parameters so you can define your own shortcuts to clear the
   screen/scrollback also (:iss:`747`)
 
+- Fix one-pixel line appearing at window edges at some window sizes when
+  displaying images with background opacity enabled (:iss:`741`)
+
 - diff kitten: Fix error when right hand side file is binary and left hand side
   file is text (:pull:`752`)
 

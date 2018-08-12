@@ -456,12 +456,15 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     float current_inactive_text_alpha = (!can_be_focused || screen->cursor_render_info.is_focused) && is_active_window ? 1.0 : OPT(inactive_text_alpha);
     set_cell_uniforms(current_inactive_text_alpha);
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
+    // The scissor limits below are calculated to ensure that they do not
+    // overlap with the pixels outside the draw area, see https://github.com/kovidgoyal/kitty/issues/741
+    // for a test case (the scissor is also used by draw_cells_interleaved_premult to blit the framebuffer)
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
-            (GLint)(SCALE(width, (xstart + 1.0f) / 2.0f)),
-            (GLint)(SCALE(height, ((ystart - h) + 1.0f) / 2.0f)),
-            (GLsizei)(ceilf(SCALE(width, w / 2.0f))),
-            (GLsizei)(ceilf(SCALE(height, h / 2.0f)))
+            (GLint)(ceilf(SCALE(width, (xstart + 1.0f) / 2.0f))),
+            (GLint)(ceilf(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))),
+            (GLsizei)(floorf(SCALE(width, w / 2.0f))-1),
+            (GLsizei)(floorf(SCALE(height, h / 2.0f))-1)
     );
 #undef SCALE
     if (os_window->is_semi_transparent) {
