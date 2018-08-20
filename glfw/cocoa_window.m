@@ -1075,7 +1075,7 @@ is_ascii_control_char(char x) {
                 [[self keyWindow] sendEvent:event];
                 return;
             }
-            if (flags == NSEventModifierFlagControl && event.keyCode == kVK_Tab) {
+            if (event.keyCode == kVK_Tab && (flags == NSEventModifierFlagControl || flags == NSEventModifierFlagControl | NSEventModifierFlagShift)) {
                 // Cocoa swallows Ctrl+Tab to cycle between views
                 [[self keyWindow].contentView keyUp:event];
                 return;
@@ -1083,7 +1083,7 @@ is_ascii_control_char(char x) {
             break;
         case NSEventTypeKeyDown:
             flags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-            if (flags == NSEventModifierFlagControl && event.keyCode == kVK_Tab) {
+            if (event.keyCode == kVK_Tab && (flags == NSEventModifierFlagControl || flags == NSEventModifierFlagControl | NSEventModifierFlagShift)) {
                 // Cocoa swallows Ctrl+Tab to cycle between views
                 [[self keyWindow].contentView keyDown:event];
                 return;

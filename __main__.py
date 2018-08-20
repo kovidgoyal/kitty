@@ -33,6 +33,11 @@ def hold(args):
     raise SystemExit(ret)
 
 
+def complete(args):
+    from kitty.complete import main
+    main(args[1:], entry_points, namespaced_entry_points)
+
+
 def launch(args):
     import runpy
     sys.argv = args[1:]
@@ -69,6 +74,7 @@ entry_points = {
 }
 namespaced_entry_points = {k: v for k, v in entry_points.items() if k[0] not in '+@'}
 namespaced_entry_points['hold'] = hold
+namespaced_entry_points['complete'] = complete
 
 
 def setup_openssl_environment():
