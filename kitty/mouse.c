@@ -528,12 +528,11 @@ mouse_event(int button, int modifiers) {
 
 void
 scroll_event(double UNUSED xoffset, double yoffset) {
+    if (yoffset == 0.0) return;
     // glfw inverts the y-axis when reporting scroll events under wayland
     // Until this is fixed in upstream, invert y ourselves.
     if (global_state.is_wayland) yoffset *= -1;
-    int s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
-    if (s == 0) return;
-    bool upwards = s > 0;
+    yoffset *= OPT(wheel_scroll_multiplier);
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
@@ -546,6 +545,11 @@ scroll_event(double UNUSED xoffset, double yoffset) {
     }
     if (w) {
         Screen *screen = w->render_data.screen;
+        yoffset += w->yoffset_remaining;
+        int s = (int) round(yoffset);
+        w->yoffset_remaining = yoffset - s;
+        if (s == 0) return;
+        bool upwards = s > 0;
         if (screen->linebuf == screen->main_linebuf) {
             screen_history_scroll(screen, abs(s), upwards);
         } else {
