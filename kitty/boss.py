@@ -118,10 +118,13 @@ class Boss:
         return os_window_id
 
     def list_os_windows(self):
+        active_tab, active_window = self.active_tab, self.active_window
+        active_tab_manager = self.active_tab_manager
         for os_window_id, tm in self.os_window_map.items():
             yield {
                 'id': os_window_id,
-                'tabs': list(tm.list_tabs()),
+                'is_focused': tm is active_tab_manager,
+                'tabs': list(tm.list_tabs(active_tab, active_window)),
             }
 
     @property

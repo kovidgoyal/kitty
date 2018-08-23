@@ -272,9 +272,9 @@ class Tab:  # {{{
     def move_window_backward(self):
         self.move_window(-1)
 
-    def list_windows(self):
+    def list_windows(self, active_window):
         for w in self:
-            yield w.as_dict()
+            yield w.as_dict(is_focused=w is active_window)
 
     def matches(self, field, pat):
         if field == 'id':
@@ -410,12 +410,13 @@ class TabManager:  # {{{
     def __len__(self):
         return len(self.tabs)
 
-    def list_tabs(self):
+    def list_tabs(self, active_tab, active_window):
         for tab in self:
             yield {
                 'id': tab.id,
+                'is_focused': tab is active_tab,
                 'title': tab.name or tab.title,
-                'windows': list(tab.list_windows()),
+                'windows': list(tab.list_windows(active_window)),
             }
 
     @property

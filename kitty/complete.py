@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import shlex
 import sys
 
@@ -64,6 +65,25 @@ def kitty_cli_opts(ans, prefix=None):
     ans.match_groups['Options'] = matches
 
 
+def executables(ans, prefix=None):
+    matches = {}
+    prefix = prefix or ''
+    for src in os.environ.get('PATH', '').split(os.pathsep):
+        if src:
+            try:
+                it = os.scandir(src)
+            except EnvironmentError:
+                continue
+            for entry in it:
+                try:
+                    if entry.name.startswith(prefix) and entry.is_file() and os.access(entry.path, os.X_OK):
+                        matches[entry.name] = None
+                except EnvironmentError:
+                    pass
+    if matches:
+        ans.match_groups['Executables'] = matches
+
+
 def find_completions(words, new_word, entry_points, namespaced_entry_points):
     ans = Completions()
     if not words or words[0] != 'kitty':
@@ -73,6 +93,7 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
         prefix = words[0] if words else ''
         completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points)
         kitty_cli_opts(ans, prefix)
+        executables(ans, prefix)
         return ans
 
     return ans

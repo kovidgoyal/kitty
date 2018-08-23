@@ -136,9 +136,10 @@ class Window:
         return 'Window(title={}, id={}, overlay_for={}, overlay_window_id={})'.format(
                 self.title, self.id, self.overlay_for, self.overlay_window_id)
 
-    def as_dict(self):
+    def as_dict(self, is_focused=False):
         return dict(
             id=self.id,
+            is_focused=is_focused,
             title=self.override_title or self.title,
             pid=self.child.pid,
             cwd=self.child.current_cwd or self.child.cwd,
