@@ -1,0 +1,9 @@
+#compdef kitty
+
+_kitty() {
+    local src
+    src=$(printf "%s\n" "${words[@]}" | kitty +complete zsh)
+    if [[ $? == 0 ]]; then
+        eval ${src}
+    fi
+}

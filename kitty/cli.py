@@ -599,6 +599,10 @@ def options_spec():
     return options_spec.ans
 
 
+def options_for_completion():
+    return parse_option_spec(options_spec())[0]
+
+
 def option_spec_as_rst(ospec=options_spec, usage=None, message=None, appname=None, heading_char='-'):
     options = parse_option_spec(ospec())
     seq, disabled = options
