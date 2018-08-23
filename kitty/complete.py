@@ -10,9 +10,8 @@ parsers, serializers = {}, {}
 
 class Completions:
 
-    def __init__(self, description=None):
-        self.matches = {}
-        self.description = description
+    def __init__(self):
+        self.match_groups = {}
 
 
 def input_parser(func):
@@ -36,30 +35,33 @@ def zsh_input_parser(data):
 
 @output_serializer
 def zsh_output_serializer(ans):
-    output = ['compadd', '--']
-    for word, description in ans.matches.items():
-        output.append(shlex.quote(word))
-    return ' '.join(output)
+    lines = []
+    for description, matches in ans.match_groups.items():
+        output = ['compadd', '-J', shlex.quote(description), '-X', shlex.quote(description), '--']
+        for word, description in matches.items():
+            output.append(shlex.quote(word))
+        lines.append(' '.join(output) + ';')
+    return '\n'.join(lines)
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):
-    ans.matches.update({
+    ans.match_groups['Entry points'] = {
         k: None for k in
         list(entry_points) + ['+' + k for k in namespaced_entry_points]
         if not prefix or k.startswith(prefix)
-    })
+    }
 
 
-def kitty_cli_opts(prefix=None):
+def kitty_cli_opts(ans, prefix=None):
     from kitty.cli import options_for_completion
-    ans = {}
+    matches = {}
     for opt in options_for_completion():
         if isinstance(opt, str):
             continue
         aliases = frozenset(x for x in opt['aliases'] if x.startswith(prefix)) if prefix else opt['aliases']
         for alias in aliases:
-            ans[alias] = opt['help'].strip()
-    return ans
+            matches[alias] = opt['help'].strip()
+    ans.match_groups['Options'] = matches
 
 
 def find_completions(words, new_word, entry_points, namespaced_entry_points):
@@ -70,7 +72,7 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
     if not words or (len(words) == 1 and not new_word):
         prefix = words[0] if words else ''
         completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points)
-        ans.matches.update(kitty_cli_opts(prefix))
+        kitty_cli_opts(ans, prefix)
         return ans
 
     return ans
