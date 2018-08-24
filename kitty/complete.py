@@ -6,6 +6,9 @@ import os
 import shlex
 import sys
 
+from .cmds import cmap
+
+
 parsers, serializers = {}, {}
 
 
@@ -46,9 +49,10 @@ def zsh_output_serializer(ans):
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):
+    cmds = ['@' + c for c in cmap]
     ans.match_groups['Entry points'] = {
         k: None for k in
-        list(entry_points) + ['+' + k for k in namespaced_entry_points]
+        list(entry_points) + cmds + ['+' + k for k in namespaced_entry_points]
         if not prefix or k.startswith(prefix)
     }
 
@@ -95,6 +99,18 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
         kitty_cli_opts(ans, prefix)
         executables(ans, prefix)
         return ans
+    if words[0] == '@':
+        if len(words) == 1 or (len(words) == 2 and not new_word):
+            prefix = words[1] if len(words) > 1 else ''
+            ans.match_groups['Remote control commands'] = {c: None for c in cmap if c.startswith(prefix)}
+            return ans
+    elif words[0] == '+':
+        if len(words) == 1 or (len(words) == 2 and not new_word):
+            prefix = words[1] if len(words) > 1 else ''
+            ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
+            return ans
+    else:
+        pass
 
     return ans
 
