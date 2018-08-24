@@ -38,7 +38,7 @@ def zsh_input_parser(data):
 def zsh_output_serializer(ans):
     lines = []
     for description, matches in ans.match_groups.items():
-        output = ['compadd', '-J', shlex.quote(description), '-X', shlex.quote(description), '--']
+        output = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description), '--']
         for word, description in matches.items():
             output.append(shlex.quote(word))
         lines.append(' '.join(output) + ';')
