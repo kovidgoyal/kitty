@@ -319,11 +319,6 @@ static void pointerHandleAxis(void* data,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     double x = 0.0, y = 0.0;
-    // Wayland scroll events are in pointer motion coordinate space (think two
-    // finger scroll).  The factor 10 is commonly used to convert to "scroll
-    // step means 1.0.
-    const double scrollFactor = 1.0 / 10.0;
-
     if (!window)
         return;
 
@@ -331,11 +326,11 @@ static void pointerHandleAxis(void* data,
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
-        x = wl_fixed_to_double(value) * scrollFactor;
+        x = wl_fixed_to_double(value) * -1;
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
-        y = wl_fixed_to_double(value) * scrollFactor;
+        y = wl_fixed_to_double(value) * -1;
 
-    _glfwInputScroll(window, x, y);
+    _glfwInputScroll(window, x, y, 1);
 }
 
 static const struct wl_pointer_listener pointerListener = {

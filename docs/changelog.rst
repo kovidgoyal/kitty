@@ -20,6 +20,9 @@ Changelog
 - Add an option :opt:`env` to set environment variables in child processes
   from kitty.conf
 
+- Implement high precision scrolling with the trackpad on platforms such as
+  macOS and Wayland that implement it. (:pull:`819`)
+
 - macOS: Allow scrolling window contents using mouse wheel/trackpad even when the
   window is not the active window (:iss:`729`)
 

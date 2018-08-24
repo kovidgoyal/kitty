@@ -302,8 +302,9 @@ INPUT_LINE_NUMBER in the command line above will be replaced by an integer
 representing which line should be at the top of the screen.'''))
 
 o('wheel_scroll_multiplier', 5.0, long_text=_('''
-Modify the amount scrolled by the mouse wheel or touchpad. Use
-negative numbers to change scroll direction.'''))
+Modify the amount scrolled by the mouse wheel. Note this is only used for low
+precision scrolling devices, not for high precision scrolling on platforms such
+as macOS and Wayland. Use negative numbers to change scroll direction.'''))
 # }}}
 
 g('mouse')  # {{{

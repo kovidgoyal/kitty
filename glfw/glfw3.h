@@ -1372,15 +1372,17 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  *  @param[in] window The window that received the event.
  *  @param[in] xoffset The scroll offset along the x-axis.
  *  @param[in] yoffset The scroll offset along the y-axis.
+ *  @param[in] flags A bit-mask providing extra data about the event. flags & 1 will be true if and only if the offset values are "high-precision". Typically pixel values. Otherwise the offset values are number of lines.
  *
  *  @sa @ref scrolling
  *  @sa @ref glfwSetScrollCallback
  *
  *  @since Added in version 3.0.  Replaces `GLFWmousewheelfun`.
+ *  @since Changed in version 4.0.  Added `flags` parameter.
  *
  *  @ingroup input
  */
-typedef void (* GLFWscrollfun)(GLFWwindow*,double,double);
+typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int);
 
 /*! @brief The function signature for key callbacks.
  *

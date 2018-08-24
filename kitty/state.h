@@ -124,6 +124,7 @@ typedef struct {
     float background_opacity;
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
+    double pending_scroll_pixels;
 } OSWindow;
 
 

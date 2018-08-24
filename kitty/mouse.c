@@ -527,13 +527,7 @@ mouse_event(int button, int modifiers) {
 }
 
 void
-scroll_event(double UNUSED xoffset, double yoffset) {
-    // glfw inverts the y-axis when reporting scroll events under wayland
-    // Until this is fixed in upstream, invert y ourselves.
-    if (global_state.is_wayland) yoffset *= -1;
-    int s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
-    if (s == 0) return;
-    bool upwards = s > 0;
+scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
@@ -544,17 +538,36 @@ scroll_event(double UNUSED xoffset, double yoffset) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (t) w = t->windows + t->active_window;
     }
-    if (w) {
-        Screen *screen = w->render_data.screen;
-        if (screen->linebuf == screen->main_linebuf) {
-            screen_history_scroll(screen, abs(s), upwards);
+    if (!w) return;
+
+    int s;
+    if (flags & 1) {
+        if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
+            global_state.callback_os_window->pending_scroll_pixels = 0;  // change of direction
+        }
+        double pixels = global_state.callback_os_window->pending_scroll_pixels + yoffset;
+        if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
+            global_state.callback_os_window->pending_scroll_pixels = pixels;
+            return;
+        }
+        s = abs(((int)round(pixels))) / global_state.callback_os_window->fonts_data->cell_height;
+        if (pixels < 0) s *= -1;
+        global_state.callback_os_window->pending_scroll_pixels = pixels - s;
+    } else {
+        s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
+        global_state.callback_os_window->pending_scroll_pixels = 0;
+    }
+    if (s == 0) return;
+    bool upwards = s > 0;
+    Screen *screen = w->render_data.screen;
+    if (screen->linebuf == screen->main_linebuf) {
+        screen_history_scroll(screen, abs(s), upwards);
+    } else {
+        if (screen->modes.mouse_tracking_mode) {
+            int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
+            if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
         } else {
-            if (screen->modes.mouse_tracking_mode) {
-                int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
-                if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
-            } else {
-                fake_scroll(abs(s), upwards);
-            }
+            fake_scroll(abs(s), upwards);
         }
     }
 }

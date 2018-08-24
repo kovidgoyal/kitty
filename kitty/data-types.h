@@ -284,7 +284,7 @@ void enter_event();
 void mouse_event(int, int);
 void focus_in_event();
 void wakeup_io_loop(bool);
-void scroll_event(double, double);
+void scroll_event(double, double, int);
 void fake_scroll(int, bool);
 void set_special_key_combo(int glfw_key, int mods, bool is_native);
 void on_key_input(int key, int scancode, int action, int mods, const char*, int);
