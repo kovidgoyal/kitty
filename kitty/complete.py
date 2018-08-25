@@ -8,6 +8,7 @@ import sys
 
 from .cli import options_for_completion
 from .cmds import cmap
+from .shell import options_for_cmd
 
 parsers, serializers = {}, {}
 
@@ -50,10 +51,11 @@ def zsh_output_serializer(ans):
         cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
         if description in ans.no_space_groups:
             cmd += ['-S', '""']
-        output = cmd + ['--']
+        cmd.append('--')
         for word, description in matches.items():
-            output.append(shlex.quote(word))
-        lines.append(' '.join(output) + ';')
+            cmd.append(shlex.quote(word))
+        lines.append(' '.join(cmd) + ';')
+    # debug('\n'.join(lines))
     return '\n'.join(lines)
 
 
@@ -86,15 +88,10 @@ def complete_kitty_cli_arg(ans, opt, prefix):
         ans.no_space_groups.add(k)
 
 
-def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
-    option_map = {}
-    for opt in seq:
-        if not isinstance(opt, str):
-            for alias in opt['aliases']:
-                option_map[alias] = opt
+def complete_alias_map(ans, words, new_word, option_map, complete_args=lambda *a: None):
     expecting_arg = False
     opt = None
-    last_word = words[-1]
+    last_word = words[-1] if words else ''
     for w in words:
         if expecting_arg:
             if w is last_word and not new_word:
@@ -119,6 +116,15 @@ def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
         ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)}
 
 
+def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
+    option_map = {}
+    for opt in seq:
+        if not isinstance(opt, str):
+            for alias in opt['aliases']:
+                option_map[alias] = opt
+    complete_alias_map(ans, words, new_word, option_map, complete_args)
+
+
 def executables(ans, prefix=None):
     matches = {}
     prefix = prefix or ''
@@ -138,6 +144,13 @@ def executables(ans, prefix=None):
         ans.match_groups['Executables'] = matches
 
 
+def complete_remote_command(ans, cmd_name, words, new_word):
+    aliases, alias_map = options_for_cmd(cmd_name)
+    if not alias_map:
+        return
+    complete_alias_map(ans, words, new_word, alias_map)
+
+
 def find_completions(words, new_word, entry_points, namespaced_entry_points):
     ans = Completions()
     if not words or words[0] != 'kitty':
@@ -152,7 +165,15 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
         if len(words) == 1 or (len(words) == 2 and not new_word):
             prefix = words[1] if len(words) > 1 else ''
             ans.match_groups['Remote control commands'] = {c: None for c in cmap if c.startswith(prefix)}
-            return ans
+        else:
+            complete_remote_command(ans, words[1], words[2:], new_word)
+        return ans
+    if words[0].startswith('@'):
+        if len(words) == 1 and not new_word:
+            prefix = words[0]
+            ans.match_groups['Remote control commands'] = {'@' + c: None for c in cmap if c.startswith(prefix)}
+        else:
+            complete_remote_command(ans, words[0][1:], words[1:], new_word)
     elif words[0] == '+':
         if len(words) == 1 or (len(words) == 2 and not new_word):
             prefix = words[1] if len(words) > 1 else ''

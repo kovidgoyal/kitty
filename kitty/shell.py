@@ -44,6 +44,8 @@ def options_for_cmd(cmd):
         func = cmap[cmd]
     except KeyError:
         return (), alias_map
+    if not func.options_spec:
+        return (), alias_map
     seq, disabled = parse_option_spec(func.options_spec)
     ans = []
     for opt in seq:
