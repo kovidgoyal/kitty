@@ -2,7 +2,8 @@
 
 _kitty() {
     local src
-    src=$(printf "%s\n" "${words[@]}" | kitty +complete zsh)
+    # Send all words upto the word the cursor is currently on
+    src=$(printf "%s\n" "${(@)words[1,$CURRENT]}" | kitty +complete zsh)
     if [[ $? == 0 ]]; then
         eval ${src}
     fi

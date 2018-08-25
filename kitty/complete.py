@@ -6,16 +6,22 @@ import os
 import shlex
 import sys
 
+from .cli import options_for_completion
 from .cmds import cmap
 
-
 parsers, serializers = {}, {}
+
+
+def debug(*a, **kw):
+    kw['file'] = sys.stderr
+    print(*a, **kw)
 
 
 class Completions:
 
     def __init__(self):
         self.match_groups = {}
+        self.no_space_groups = set()
 
 
 def input_parser(func):
@@ -41,7 +47,10 @@ def zsh_input_parser(data):
 def zsh_output_serializer(ans):
     lines = []
     for description, matches in ans.match_groups.items():
-        output = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description), '--']
+        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
+        if description in ans.no_space_groups:
+            cmd += ['-S', '""']
+        output = cmd + ['--']
         for word, description in matches.items():
             output.append(shlex.quote(word))
         lines.append(' '.join(output) + ';')
@@ -58,7 +67,6 @@ def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_point
 
 
 def kitty_cli_opts(ans, prefix=None):
-    from kitty.cli import options_for_completion
     matches = {}
     for opt in options_for_completion():
         if isinstance(opt, str):
@@ -67,6 +75,48 @@ def kitty_cli_opts(ans, prefix=None):
         for alias in aliases:
             matches[alias] = opt['help'].strip()
     ans.match_groups['Options'] = matches
+
+
+def complete_kitty_cli_arg(ans, opt, prefix):
+    prefix = prefix or ''
+    if opt and opt['dest'] == 'override':
+        from kitty.config import option_names_for_completion
+        k = 'Config directives'
+        ans.match_groups[k] = {k+'=': None for k in option_names_for_completion() if k.startswith(prefix)}
+        ans.no_space_groups.add(k)
+
+
+def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
+    option_map = {}
+    for opt in seq:
+        if not isinstance(opt, str):
+            for alias in opt['aliases']:
+                option_map[alias] = opt
+    expecting_arg = False
+    opt = None
+    last_word = words[-1]
+    for w in words:
+        if expecting_arg:
+            if w is last_word and not new_word:
+                if opt is not None:
+                    complete_args(ans, opt, w)
+                return
+            expecting_arg = False
+            continue
+        opt = option_map.get(w)
+        if w is last_word and not new_word:
+            if w.startswith('-'):
+                ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(last_word)}
+            return
+        if opt is None:
+            return  # some non-option word encountered
+        expecting_arg = not opt.get('type', '').startswith('bool-')
+    if expecting_arg:
+        if opt is not None:
+            complete_args(ans, opt, '' if new_word else last_word)
+    else:
+        prefix = '' if new_word else last_word
+        ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)}
 
 
 def executables(ans, prefix=None):
@@ -97,7 +147,6 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
         prefix = words[0] if words else ''
         completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points)
         kitty_cli_opts(ans, prefix)
-        executables(ans, prefix)
         return ans
     if words[0] == '@':
         if len(words) == 1 or (len(words) == 2 and not new_word):
@@ -110,7 +159,7 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
             ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
             return ans
     else:
-        pass
+        complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
 
     return ans
 

@@ -316,6 +316,11 @@ def special_handling(key, val, ans):
 defaults = None
 
 
+def option_names_for_completion():
+    yield from defaults
+    yield from special_handlers
+
+
 def parse_config(lines, check_keys=True):
     ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}}
     parse_config_base(
