@@ -2,11 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
 import shlex
 import sys
 
-from .cli import options_for_completion
+from kittens.runner import get_kitten_cli_docs
+
+from .cli import options_for_completion, parse_option_spec
 from .cmds import cmap
 from .shell import options_for_cmd
 
@@ -24,6 +25,8 @@ class Completions:
         self.match_groups = {}
         self.no_space_groups = set()
 
+
+# I/O {{{
 
 def input_parser(func):
     name = func.__name__.split('_')[0]
@@ -74,6 +77,7 @@ def bash_output_serializer(ans):
             lines.append('COMPREPLY+=({})'.format(shlex.quote(word)))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
+# }}}
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):
@@ -142,30 +146,25 @@ def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
     complete_alias_map(ans, words, new_word, option_map, complete_args)
 
 
-def executables(ans, prefix=None):
-    matches = {}
-    prefix = prefix or ''
-    for src in os.environ.get('PATH', '').split(os.pathsep):
-        if src:
-            try:
-                it = os.scandir(src)
-            except EnvironmentError:
-                continue
-            for entry in it:
-                try:
-                    if entry.name.startswith(prefix) and entry.is_file() and os.access(entry.path, os.X_OK):
-                        matches[entry.name] = None
-                except EnvironmentError:
-                    pass
-    if matches:
-        ans.match_groups['Executables'] = matches
-
-
 def complete_remote_command(ans, cmd_name, words, new_word):
     aliases, alias_map = options_for_cmd(cmd_name)
     if not alias_map:
         return
     complete_alias_map(ans, words, new_word, alias_map)
+
+
+def complete_kitten(ans, kitten, words, new_word):
+    cd = get_kitten_cli_docs(kitten)
+    if cd is None:
+        return
+    options = cd['options']()
+    seq = parse_option_spec(options)[0]
+    option_map = {}
+    for opt in seq:
+        if not isinstance(opt, str):
+            for alias in opt['aliases']:
+                option_map[alias] = opt
+    complete_alias_map(ans, words, new_word, option_map)
 
 
 def find_completions(words, new_word, entry_points, namespaced_entry_points):
@@ -191,11 +190,19 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
             ans.match_groups['Remote control commands'] = {'@' + c: None for c in cmap if c.startswith(prefix)}
         else:
             complete_remote_command(ans, words[0][1:], words[1:], new_word)
-    elif words[0] == '+':
+    if words[0] == '+':
         if len(words) == 1 or (len(words) == 2 and not new_word):
             prefix = words[1] if len(words) > 1 else ''
             ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
-            return ans
+        else:
+            complete_kitten(ans, words[1], words[2:], new_word)
+        return ans
+    if words[0].startswith('+'):
+        if len(words) == 1 and not new_word:
+            prefix = words[0]
+            ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
+        else:
+            complete_kitten(ans, words[0][1:], words[1:], new_word)
     else:
         complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
 
