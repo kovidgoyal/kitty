@@ -55,7 +55,7 @@ kitty_completions() {
     fi
 }
 
-complete -F kitty_completions kitty
+complete -o nospace -F kitty_completions kitty
 ''',
 }
 
@@ -106,8 +106,11 @@ def zsh_output_serializer(ans):
 @output_serializer
 def bash_output_serializer(ans):
     lines = []
-    for matches in ans.match_groups.values():
+    for description, matches in ans.match_groups.items():
+        needs_space = description not in ans.no_space_groups
         for word in matches:
+            if needs_space:
+                word += ' '
             lines.append('COMPREPLY+=({})'.format(shlex.quote(word)))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
