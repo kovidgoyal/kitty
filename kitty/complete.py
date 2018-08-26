@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import shlex
 import sys
 
@@ -24,6 +25,7 @@ class Completions:
     def __init__(self):
         self.match_groups = {}
         self.no_space_groups = set()
+        self.files_groups = set()
 
 
 # Shell specific code {{{
@@ -91,6 +93,8 @@ def zsh_output_serializer(ans):
         cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
         if description in ans.no_space_groups:
             cmd += ['-S', '""']
+        if description in ans.files_groups:
+            cmd.append('-f')
         cmd.append('--')
         for word, description in matches.items():
             cmd.append(shlex.quote(word))
@@ -139,7 +143,7 @@ def complete_kitty_cli_arg(ans, opt, prefix):
         ans.no_space_groups.add(k)
 
 
-def complete_alias_map(ans, words, new_word, option_map, complete_args=lambda *a: None):
+def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
     expecting_arg = False
     opt = None
     last_word = words[-1] if words else ''
@@ -155,15 +159,22 @@ def complete_alias_map(ans, words, new_word, option_map, complete_args=lambda *a
         if w is last_word and not new_word:
             if w.startswith('-'):
                 ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(last_word)}
+            else:
+                if complete_args is not None:
+                    complete_args(ans, None, last_word)
             return
         if opt is None:
+            if complete_args is not None:
+                complete_args(ans, None, '' if new_word else last_word)
             return  # some non-option word encountered
         expecting_arg = not opt.get('type', '').startswith('bool-')
     if expecting_arg:
-        if opt is not None:
+        if opt is not None and complete_args is not None:
             complete_args(ans, opt, '' if new_word else last_word)
     else:
         prefix = '' if new_word else last_word
+        if complete_args is not None:
+            complete_args(ans, None, prefix)
         ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)}
 
 
@@ -183,8 +194,46 @@ def complete_remote_command(ans, cmd_name, words, new_word):
     complete_alias_map(ans, words, new_word, alias_map)
 
 
+def complete_files_and_dirs(ans, prefix, files_group_name='Files', predicate=lambda filename: True):
+    dirs, files = [], []
+    base = '.'
+    if prefix.endswith('/'):
+        base = prefix
+    elif '/' in prefix:
+        base = os.path.dirname(prefix)
+    for x in os.scandir(base):
+        q = os.path.relpath(x.path)
+        if x.is_dir():
+            if q.startswith(prefix):
+                dirs.append(q.rstrip(os.sep) + os.sep)
+        else:
+            if q.startswith(prefix) and predicate(q):
+                files.append(q)
+    if dirs:
+        ans.match_groups['Directories'] = dict.fromkeys(dirs)
+        ans.files_groups.add('Directories'), ans.no_space_groups.add('Directories')
+    if files:
+        ans.match_groups[files_group_name] = dict.fromkeys(files)
+        ans.files_groups.add(files_group_name)
+
+
+def complete_icat_args(ans, opt, prefix):
+    from mimetypes import guess_type
+
+    def icat_file_predicate(filename):
+        mt = guess_type(filename)[0]
+        if mt and mt.startswith('image/'):
+            return True
+
+    if opt is None:
+        complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
+
+
 def complete_kitten(ans, kitten, words, new_word):
-    cd = get_kitten_cli_docs(kitten)
+    try:
+        cd = get_kitten_cli_docs(kitten)
+    except SystemExit:
+        cd = None
     if cd is None:
         return
     options = cd['options']()
@@ -194,7 +243,9 @@ def complete_kitten(ans, kitten, words, new_word):
         if not isinstance(opt, str):
             for alias in opt['aliases']:
                 option_map[alias] = opt
-    complete_alias_map(ans, words, new_word, option_map)
+    complete_alias_map(ans, words, new_word, option_map, {
+        'icat': complete_icat_args
+    }.get(kitten))
 
 
 def find_completions(words, new_word, entry_points, namespaced_entry_points):
@@ -232,7 +283,7 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
             prefix = words[0]
             ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
         else:
-            complete_kitten(ans, words[0][1:], words[1:], new_word)
+            complete_kitten(ans, words[1], words[2:], new_word)
     else:
         complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
 
