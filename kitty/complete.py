@@ -57,6 +57,14 @@ kitty_completions() {
 
 complete -o nospace -F kitty_completions kitty
 ''',
+    'fish': '''
+function __kitty_completions
+    # Send all words up to the one before the cursor
+    commandline -cop | kitty +complete fish
+end
+
+complete -f -c kitty -a "(__kitty_completions)"
+''',
 }
 
 
@@ -84,6 +92,11 @@ def bash_input_parser(data):
     new_word = data.endswith('\n\n')
     words = data.rstrip().splitlines()
     return words, new_word
+
+
+@input_parser
+def fish_input_parser(data):
+    return data.rstrip().splitlines(), True
 
 
 @output_serializer
@@ -115,6 +128,16 @@ def bash_output_serializer(ans):
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 # }}}
+
+
+@output_serializer
+def fish_output_serializer(ans):
+    lines = []
+    for matches in ans.match_groups.values():
+        for word in matches:
+            lines.append(shlex.quote(word))
+    # debug('\n'.join(lines))
+    return '\n'.join(lines)
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):

@@ -371,6 +371,16 @@ Add the following to your :file:`~/.bashrc`
    source <(kitty + complete setup bash)
 
 
+fish
+~~~~~~~~
+
+Add the following to your :file:`~/.config/fish/config.fish`
+
+.. code-block:: sh
+
+   kitty + complete setup fish | source
+
+
 zsh
 ~~~~~~~~~
 
