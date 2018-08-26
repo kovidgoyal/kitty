@@ -44,6 +44,13 @@ def zsh_input_parser(data):
     return words, new_word
 
 
+@input_parser
+def bash_input_parser(data):
+    new_word = data.endswith('\n\n')
+    words = data.rstrip().splitlines()
+    return words, new_word
+
+
 @output_serializer
 def zsh_output_serializer(ans):
     lines = []
@@ -55,6 +62,16 @@ def zsh_output_serializer(ans):
         for word, description in matches.items():
             cmd.append(shlex.quote(word))
         lines.append(' '.join(cmd) + ';')
+    # debug('\n'.join(lines))
+    return '\n'.join(lines)
+
+
+@output_serializer
+def bash_output_serializer(ans):
+    lines = []
+    for matches in ans.match_groups.values():
+        for word in matches:
+            lines.append('COMPREPLY+=({})'.format(shlex.quote(word)))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 
