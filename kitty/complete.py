@@ -26,7 +26,37 @@ class Completions:
         self.no_space_groups = set()
 
 
-# I/O {{{
+# Shell specific code {{{
+
+
+completion_scripts = {
+    'zsh': '''
+_kitty() {
+    local src
+    # Send all words upto the word the cursor is currently on
+    src=$(printf "%s\n" "${(@)words[1,$CURRENT]}" | kitty +complete zsh)
+    if [[ $? == 0 ]]; then
+        eval ${src}
+    fi
+}
+compdef _kitty kitty
+''',
+    'bash': '''
+kitty_completions() {
+    local src
+    local limit
+    # Send all words up to the word the cursor is currently on
+    let limit=1+$COMP_CWORD
+    src=$(printf "%s\n" "${COMP_WORDS[@]: 0:$limit}" | kitty +complete bash)
+    if [[ $? == 0 ]]; then
+        eval ${src}
+    fi
+}
+
+complete -F kitty_completions kitty
+''',
+}
+
 
 def input_parser(func):
     name = func.__name__.split('_')[0]
@@ -209,10 +239,16 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
     return ans
 
 
+def setup(cstyle):
+    print(completion_scripts[cstyle])
+
+
 def main(args, entry_points, namespaced_entry_points):
     if not args:
         raise SystemExit('Must specify completion style')
     cstyle = args[0]
+    if cstyle == 'setup':
+        return setup(args[1])
     data = sys.stdin.read()
     try:
         parser = parsers[cstyle]

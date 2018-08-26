@@ -350,6 +350,39 @@ Frequently Asked Questions
 
 The list of Frequently Asked Questions (*FAQ*) is :doc:`available here <faq>`.
 
+.. _completion:
+
+Completion for kitty
+---------------------------------
+
+|kitty| comes with completion for the ``kitty`` command for popular shells.
+
+
+bash
+~~~~~~~~
+
+Add the following to your :file:`~/.bashrc`
+
+.. code-block:: sh
+
+   source <(kitty + complete setup bash)
+
+
+zsh
+~~~~~~~~~
+
+Add the following to your :file:`~/.zshrc`
+
+.. code-block:: sh
+
+    autoload -Uz compinit
+    compinit
+    # Completion for kitty
+    kitty + complete setup zsh | source /dev/stdin
+
+The important thing above is to make sure the call to |kitty| to load the zsh
+completions happens after the call to :file:`compinit`.
+
 
 Changelog
 ------------------
