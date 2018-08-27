@@ -8,7 +8,6 @@ import sys
 from collections import deque
 
 from .conf.utils import resolve_config
-from .config import defaults, load_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .fast_data_types import GLFW_KEY_UNKNOWN, glfw_get_key_name
 
@@ -672,6 +671,7 @@ def flatten_sequence_map(m):
 
 
 def compare_opts(opts):
+    from .config import defaults, load_config
     print('\nConfig options different from defaults:')
     default_opts = load_config()
     changed_opts = [
@@ -693,6 +693,7 @@ def compare_opts(opts):
 
 
 def create_opts(args, debug_config=False):
+    from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
         print(version(add_rev=True))
