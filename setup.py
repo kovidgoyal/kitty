@@ -680,7 +680,8 @@ Categories=System;TerminalEmulator;
             LSApplicationCategoryType='public.app-category.utilities',
             LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
         )
-        plistlib.writePlist(pl, 'Info.plist')
+        with open('Info.plist', 'wb') as fp:
+            plistlib.dump(pl, fp)
         os.rename('../share', 'Resources')
         os.rename('../bin', 'MacOS')
         os.rename('../lib', 'Frameworks')
