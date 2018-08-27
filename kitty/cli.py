@@ -29,7 +29,10 @@ directory is always used and the above searching does not happen.
 If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists it is merged before (i.e. with lower
 priority) than any user config files. It can be used to specify system-wide
 defaults for all users.
-'''.replace('{macos_confpath}', ':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else '')
+'''.replace(
+    '{macos_confpath}',
+    (':file:`~/Library/Preferences/{appname}/{conf_name}.conf`,' if is_macos else ''), 1
+)
 
 
 def surround(x, start, end):
