@@ -552,7 +552,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         }
         s = abs(((int)round(pixels))) / global_state.callback_os_window->fonts_data->cell_height;
         if (pixels < 0) s *= -1;
-        global_state.callback_os_window->pending_scroll_pixels = pixels - s * global_state.callback_os_window->fonts_data->cell_height;
+        global_state.callback_os_window->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
         s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
         global_state.callback_os_window->pending_scroll_pixels = 0;
