@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import ast
 import os
 import re
 import shlex
@@ -40,6 +39,7 @@ def to_cmdline(x):
 
 
 def python_string(text):
+    import ast
     return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
 
 
