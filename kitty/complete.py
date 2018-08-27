@@ -6,7 +6,7 @@ import os
 import shlex
 import sys
 
-from kittens.runner import get_kitten_cli_docs
+from kittens.runner import get_kitten_cli_docs, all_kitten_names
 
 from .cli import options_for_completion, parse_option_spec
 from .cmds import cmap
@@ -279,14 +279,26 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
             prefix = words[1] if len(words) > 1 else ''
             ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
         else:
-            complete_kitten(ans, words[1], words[2:], new_word)
+            if words[1] == 'kitten':
+                if len(words) == 2 or (len(words) == 3 and not new_word):
+                    ans.match_groups['Kittens'] = dict.fromkeys(k for k in all_kitten_names() if k.startswith('' if len(words) == 2 else words[2]))
+                else:
+                    complete_kitten(ans, words[2], words[3:], new_word)
         return ans
     if words[0].startswith('+'):
-        if len(words) == 1 and not new_word:
-            prefix = words[0]
-            ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
+        if len(words) == 1:
+            if new_word:
+                if words[0] == '+kitten':
+                    ans.match_groups['Kittens'] = dict.fromkeys(all_kitten_names())
+            else:
+                prefix = words[0]
+                ans.match_groups['Entry points'] = {c: None for c in namespaced_entry_points if c.startswith(prefix)}
         else:
-            complete_kitten(ans, words[1], words[2:], new_word)
+            if len(words) == 2 and not new_word:
+                ans.match_groups['Kittens'] = dict.fromkeys(k for k in all_kitten_names() if k.startswith(words[1]))
+            else:
+                if words[0] == '+kitten':
+                    complete_kitten(ans, words[1], words[2:], new_word)
     else:
         complete_cli(ans, words, new_word, options_for_completion(), complete_kitty_cli_arg)
 
