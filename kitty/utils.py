@@ -15,16 +15,13 @@ from time import monotonic
 from .constants import (
     appname, is_macos, is_wayland, supports_primary_selection
 )
-from .fast_data_types import (
-    GLSL_VERSION, close_tty, log_error_string, open_tty, redirect_std_streams,
-    x11_display
-)
 from .rgb import Color, to_color
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_shaders(name):
+    from .fast_data_types import GLSL_VERSION
     vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
     frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
     return vert, frag
@@ -38,6 +35,7 @@ def safe_print(*a, **k):
 
 
 def log_error(*a, **k):
+    from .fast_data_types import log_error_string
     try:
         msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '')
         log_error_string(msg.replace('\0', ''))
@@ -180,6 +178,7 @@ def detach(fork=True, setsid=True, redirect=True):
     if setsid:
         os.setsid()
     if redirect:
+        from .fast_data_types import redirect_std_streams
         redirect_std_streams(os.devnull)
 
 
@@ -195,6 +194,7 @@ def init_startup_notification_x11(window_handle, startup_id=None):
     sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
     if not sid:
         return
+    from .fast_data_types import x11_display
     display = x11_display()
     if not display:
         return
@@ -369,10 +369,12 @@ def write_all(fd, data):
 class TTYIO:
 
     def __enter__(self):
+        from .fast_data_types import open_tty
         self.tty_fd, self.original_termios = open_tty(True)
         return self
 
     def __exit__(self, *a):
+        from .fast_data_types import close_tty
         close_tty(self.tty_fd, self.original_termios)
 
     def send(self, data):
