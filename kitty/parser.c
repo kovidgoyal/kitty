@@ -712,6 +712,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 break;
             }
             switch(params[0]) {
+                case 4:
+                case 8:
+                    log_error("Escape codes to resize text area are not supported");
+                    break;
                 case 14:
                 case 16:
                 case 18:
