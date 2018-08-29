@@ -394,8 +394,8 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         parallel_run(todo)
     dest = os.path.join(base, module + '.so')
     if not incremental or newer(dest, *objects):
-        # Old versions of clang dont like -pthread being passed to the linker
-        # Dont treat linker warnings as errors (linker generates spurious
+        # Old versions of clang don't like -pthread being passed to the linker
+        # Don't treat linker warnings as errors (linker generates spurious
         # warnings on some old systems)
         unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
         linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))

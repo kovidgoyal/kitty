@@ -845,7 +845,7 @@ is_ascii_control_char(char x) {
     debug_key(@"scancode: 0x%x (%s) %stext: %s glfw_key: %s\n",
             scancode, safe_name_for_scancode(scancode), format_mods(mods),
             format_text(_glfw.ns.text), _glfwGetKeyName(key));
-    if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // dont send text for ascii control codes
+    if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
     _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
 }
 
