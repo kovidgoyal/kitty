@@ -110,6 +110,7 @@ class Window:
         self.overlay_for = None
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
+        self.title_stack = deque(maxlen=10)
         self.allow_remote_control = child.allow_remote_control
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:
@@ -413,6 +414,16 @@ class Window:
                         write('c', set_clipboard_string)
                 if 'write-primary' in self.opts.clipboard_control:
                     write('p', set_primary_selection)
+
+    def manipulate_title_stack(self, pop, title, icon):
+        if title:
+            if pop:
+                if self.title_stack:
+                    self.child_title = self.title_stack.popleft()
+                    self.title_updated()
+            else:
+                if self.child_title:
+                    self.title_stack.append(self.child_title)
     # }}}
 
     def text_for_selection(self):

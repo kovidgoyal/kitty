@@ -191,6 +191,7 @@ bool screen_open_url(Screen*);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned int which);
+void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 void screen_draw_overlay_text(Screen *self, const char *utf8_text);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)

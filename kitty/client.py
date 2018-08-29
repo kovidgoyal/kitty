@@ -122,6 +122,10 @@ def draw(*a):
     write(' '.join(a))
 
 
+def screen_manipulate_title_stack(op, which):
+    write(CSI + '%d;%dt' % (op, which))
+
+
 def report_device_attributes(mode, char):
     x = CSI
     if char:
