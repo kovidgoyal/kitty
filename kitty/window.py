@@ -419,7 +419,7 @@ class Window:
         if title:
             if pop:
                 if self.title_stack:
-                    self.child_title = self.title_stack.popleft()
+                    self.child_title = self.title_stack.pop()
                     self.title_updated()
             else:
                 if self.child_title:
