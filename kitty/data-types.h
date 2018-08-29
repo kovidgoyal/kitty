@@ -271,7 +271,7 @@ const char* cursor_as_sgr(Cursor*, Cursor*);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
-bool schedule_write_to_child(unsigned long id, const char *data, size_t sz);
+bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);

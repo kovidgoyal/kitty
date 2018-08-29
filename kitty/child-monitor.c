@@ -246,9 +246,18 @@ add_child(ChildMonitor *self, PyObject *args) {
 }
 
 bool
-schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
+schedule_write_to_child(unsigned long id, unsigned int num, ...) {
     ChildMonitor *self = the_monitor;
     bool found = false;
+    const char *data;
+    size_t sz = 0;
+    va_list ap;
+    va_start(ap, num);
+    for (unsigned int i = 0; i < num; i++) {
+        data = va_arg(ap, const char*);
+        sz += va_arg(ap, size_t);
+    }
+    va_end(ap);
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == id) {
@@ -266,8 +275,14 @@ schedule_write_to_child(unsigned long id, const char *data, size_t sz) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
-            memcpy(screen->write_buf + screen->write_buf_used, data, sz);
-            screen->write_buf_used += sz;
+            va_start(ap, num);
+            for (unsigned int i = 0; i < num; i++) {
+                data = va_arg(ap, const char*);
+                size_t dsz = va_arg(ap, size_t);
+                memcpy(screen->write_buf + screen->write_buf_used, data, dsz);
+                screen->write_buf_used += dsz;
+            }
+            va_end(ap);
             if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
                 screen->write_buf_sz = BUFSIZ;
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
@@ -288,7 +303,7 @@ needs_write(ChildMonitor UNUSED *self, PyObject *args) {
     unsigned long id, sz;
     const char *data;
     if (!PyArg_ParseTuple(args, "ks#", &id, &data, &sz)) return NULL;
-    if (schedule_write_to_child(id, data, sz)) { Py_RETURN_TRUE; }
+    if (schedule_write_to_child(id, 1, data, (size_t)sz)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 

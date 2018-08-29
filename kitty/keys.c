@@ -80,12 +80,12 @@ send_key_to_child(Window *w, int key, int mods, int action) {
     const char *data = key_to_bytes(key, screen->modes.mDECCKM, screen->modes.mEXTENDED_KEYBOARD, mods, action);
     if (data) {
         if (screen->modes.mEXTENDED_KEYBOARD) {
-            if (*data == 1) schedule_write_to_child(w->id, (data + 1), 1);
+            if (*data == 1) schedule_write_to_child(w->id, 1, (data + 1), 1);
             else write_escape_code_to_child(screen, APC, data + 1);
         } else {
             if (*data > 2 && data[1] == 0x1b && data[2] == '[') { // CSI code
                 write_escape_code_to_child(screen, CSI, data + 3);
-            } else schedule_write_to_child(w->id, (data + 1), *data);
+            } else schedule_write_to_child(w->id, 1, (data + 1), *data);
         }
     }
 }
@@ -141,7 +141,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             return;
         case 2:  // commit text
             if (text && *text) {
-                schedule_write_to_child(w->id, text, strlen(text));
+                schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s\n", text);
             } else debug("committed pre-edit text: (null)\n");
             return;
@@ -184,7 +184,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     bool ok_to_send = action == GLFW_PRESS || action == GLFW_REPEAT || screen->modes.mEXTENDED_KEYBOARD;
     if (ok_to_send) {
         if (has_text) {
-            schedule_write_to_child(w->id, text, strlen(text));
+            schedule_write_to_child(w->id, 1, text, strlen(text));
             debug("sent text to child\n");
         } else {
             send_key_to_child(w, key, mods, action);

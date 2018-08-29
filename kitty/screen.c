@@ -500,9 +500,14 @@ select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count,
 }
 
 static inline void
+write_to_test_child(Screen *self, const char *data, size_t sz) {
+    PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r);
+}
+
+static inline void
 write_to_child(Screen *self, const char *data, size_t sz) {
-    if (self->window_id) schedule_write_to_child(self->window_id, data, sz);
-    if (self->test_child != Py_None) { PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r); }
+    if (self->window_id) schedule_write_to_child(self->window_id, 1, data, sz);
+    if (self->test_child != Py_None) { write_to_test_child(self, data, sz); }
 }
 
 void
@@ -527,9 +532,18 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
         default:
             fatal("Unknown escape code to write: %u", which);
     }
-    write_to_child(self, prefix, strlen(prefix));
-    write_to_child(self, data, strlen(data));
-    if (suffix[0]) write_to_child(self, suffix, strlen(suffix));
+    if (self->window_id) {
+        if (suffix[0]) {
+            schedule_write_to_child(self->window_id, 3, prefix, strlen(prefix), data, strlen(data), suffix, strlen(suffix));
+        } else {
+            schedule_write_to_child(self->window_id, 2, prefix, strlen(prefix), data, strlen(data));
+        }
+    }
+    if (self->test_child != Py_None) {
+        write_to_test_child(self, prefix, strlen(prefix));
+        write_to_test_child(self, data, strlen(data));
+        if (suffix[0]) write_to_test_child(self, suffix, strlen(suffix));
+    }
 }
 
 static inline bool
