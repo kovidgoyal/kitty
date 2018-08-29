@@ -438,7 +438,7 @@ queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset('Su Tc setrgbf setrgbb'.split())
 if extra - no_termcap_for:
-    raise Exception('Termcap aliases not complete, missing: {}'.format(extra))
+    raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
 del extra
 
 
@@ -477,7 +477,7 @@ def get_capabilities(query_string):
                     try:
                         qname = termcap_aliases[name]
                         val = queryable_capabilities[qname]
-                    except Exception as e:
+                    except Exception:
                         from .utils import log_error
                         log_error(ERROR_PREFIX, 'Unknown terminfo property:', name)
                         raise
