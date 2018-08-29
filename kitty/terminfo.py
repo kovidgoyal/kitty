@@ -38,7 +38,7 @@ bool_capabilities = {
     # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
     'Su',
 
-    # The following are entries that we dont use
+    # The following are entries that we don't use
     # # background color erase
     # 'bce',
 }
@@ -283,7 +283,7 @@ string_capabilities = {
     # Set RGB background color (non-standard used by neovim)
     'setrgbb': r'\E[48:2:%p1%d:%p2%d:%p3%dm',
 
-    # The following are entries that we dont use
+    # The following are entries that we don't use
     # # display status line
     # 'dsl': r'\E]2;\007',
     # # return from status line

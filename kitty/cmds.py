@@ -421,7 +421,7 @@ When using --new-tab set the title of the tab.
 --no-response
 type=bool-set
 default=false
-Dont wait for a response giving the id of the newly opened window. Note that
+Don't wait for a response giving the id of the newly opened window. Note that
 using this option means that you will not be notified of failures and that
 the id of the new window will not be printed out.
 ''',
@@ -482,7 +482,7 @@ def new_window(boss, window, payload):
 --no-response
 type=bool-set
 default=false
-Dont wait for a response from kitty. This means that even if no matching window is found,
+Don't wait for a response from kitty. This means that even if no matching window is found,
 the command will exit with a success code.
 '''
 )

@@ -395,7 +395,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-        // We dont use depth and stencil buffers
+        // We don't use depth and stencil buffers
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
 #ifdef __APPLE__
@@ -482,7 +482,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->handle = glfw_window;
     update_os_window_references();
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        // On some platforms (macOS) newly created windows dont get the initial focus in event
+        // On some platforms (macOS) newly created windows don't get the initial focus in event
         OSWindow *q = global_state.os_windows + i;
         q->is_focused = q == w ? true : false;
     }

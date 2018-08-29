@@ -113,7 +113,7 @@ static inline void
 ensure_sprite_map(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     if (!sprite_map->texture_id) realloc_sprite_texture(fg);
-    // We have to rebind since we dont know if the texture was ever bound
+    // We have to rebind since we don't know if the texture was ever bound
     // in the context of the current OSWindow
     glActiveTexture(GL_TEXTURE0 + SPRITE_MAP_UNIT);
     glBindTexture(GL_TEXTURE_2D_ARRAY, sprite_map->texture_id);

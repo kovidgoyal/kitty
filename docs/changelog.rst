@@ -359,7 +359,7 @@ Changelog
 
 - When triple-clicking select all wrapped lines belonging to a single logical line.
 
-- hints kitten: Detect bracketed URLs and dont include the closing bracket in the URL.
+- hints kitten: Detect bracketed URLs and don't include the closing bracket in the URL.
 
 - When calling pass_selection_to_program use the current directory of the child
   process as the cwd of the program.

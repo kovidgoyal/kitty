@@ -1242,7 +1242,7 @@ screen_report_size(Screen *self, unsigned int which) {
 
 void
 report_device_status(Screen *self, unsigned int which, bool private) {
-    // We dont implement the private device status codes, since I haven't come
+    // We don't implement the private device status codes, since I haven't come
     // across any programs that use them
     unsigned int x, y;
     static char buf[64];

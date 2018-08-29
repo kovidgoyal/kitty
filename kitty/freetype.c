@@ -336,7 +336,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
 static void
 downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
     // Downsample using a simple area averaging algorithm. Could probably do
-    // better with bi-cubic or lanczos, but at these small sizes I dont think
+    // better with bi-cubic or lanczos, but at these small sizes I don't think
     // it matters
     float ratio = MAX((float)bm->width / width, (float)bm->rows / cell_height);
     int factor = ceilf(ratio);

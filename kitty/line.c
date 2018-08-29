@@ -306,7 +306,7 @@ line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     CPUCell *cell = self->cpu_cells + x;
     if (!cell->ch) {
         if (x > 0 && (self->gpu_cells[x-1].attrs & WIDTH_MASK) == 2 && self->cpu_cells[x-1].ch) cell = self->cpu_cells + x - 1;
-        else return; // dont allow adding combining chars to a null cell
+        else return; // don't allow adding combining chars to a null cell
     }
     for (unsigned i = 0; i < arraysz(cell->cc_idx); i++) {
         if (!cell->cc_idx[i]) { cell->cc_idx[i] = mark_for_codepoint(ch); return; }

@@ -30,7 +30,7 @@ def handle_cmd(boss, window, cmd):
     try:
         ans = func() if payload is None else func(payload)
     except Exception:
-        if no_response:  # dont report errors if --no-response was used
+        if no_response:  # don't report errors if --no-response was used
             return
         raise
     response = {'ok': True}

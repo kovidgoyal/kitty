@@ -191,7 +191,7 @@ def adjust_line_height(cell_height, val):
 def init_startup_notification_x11(window_handle, startup_id=None):
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
-    sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes dont get this env var
+    sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes don't get this env var
     if not sid:
         return
     from .fast_data_types import x11_display
