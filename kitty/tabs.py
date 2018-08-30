@@ -157,9 +157,11 @@ class Tab:  # {{{
             self.current_layout = self.create_layout_object(nl)
             self.relayout()
 
-    def goto_layout(self, layout_name):
+    def goto_layout(self, layout_name, raise_exception=False):
         layout_name = layout_name.lower()
         if layout_name not in self.enabled_layouts:
+            if raise_exception:
+                raise ValueError(layout_name)
             log_error('Unknown or disabled layout: {}'.format(layout_name))
             return
         self.current_layout = self.create_layout_object(layout_name)

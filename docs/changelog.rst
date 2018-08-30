@@ -29,6 +29,9 @@ Changelog
 - macOS: Allow scrolling window contents using mouse wheel/trackpad even when the
   window is not the active window (:iss:`729`)
 
+- Remote control: Allow changing the current window layout with a new
+  :ref:`at_goto-layout` command (:iss:`845`)
+
 - Remote control: Allow matching windows by the environment variables of their
   child process as well
 

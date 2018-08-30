@@ -27,6 +27,11 @@ class OpacityError(ValueError):
     hide_traceback = True
 
 
+class UnknownLayout(ValueError):
+
+    hide_traceback = True
+
+
 def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False, args_count=None):
 
     def w(func):
@@ -270,6 +275,41 @@ def set_tab_title(boss, window, payload):
     for tab in tabs:
         if tab:
             tab.set_title(payload['title'])
+# }}}
+
+
+# set_layout {{{
+@cmd(
+    'Set the window layout',
+    'Set the window layout in the specified tab (or the active tab if not specified).'
+    ' You can use special match value :italic:`all` to set the layout in all tabs.',
+    options_spec=MATCH_TAB_OPTION,
+    argspec='LAYOUT_NAME'
+)
+def cmd_goto_layout(global_opts, opts, args):
+    try:
+        return {'layout': args[0], 'match': opts.match}
+    except IndexError:
+        raise SystemExit('No layout specified')
+
+
+def goto_layout(boss, window, payload):
+    match = payload['match']
+    if match:
+        if match == 'all':
+            tabs = tuple(boss.all_tabs)
+        else:
+            tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise MatchError(match, 'tabs')
+    else:
+        tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+    for tab in tabs:
+        if tab:
+            try:
+                tab.goto_layout(payload['layout'], raise_exception=True)
+            except ValueError:
+                raise UnknownLayout('The layout {} is unknown or disabled'.format(payload['layout']))
 # }}}
 
 
