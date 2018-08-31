@@ -1099,9 +1099,8 @@ is_ascii_control_char(char x) {
 }
 
 - (void)loadMainMenu
-{ // removed by Kovid as it generated compiler warnings 
+{ // removed by Kovid as it generated compiler warnings
 }
-
 
 @end
 

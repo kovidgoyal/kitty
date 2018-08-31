@@ -660,7 +660,6 @@ int _glfwPlatformInit(void)
 
 #if defined(__linux__)
     if (_glfw.hints.init.enableJoysticks) {
-        printf("1111111111\n");
         if (!_glfwInitJoysticksLinux())
             return GLFW_FALSE;
         if (_glfw.linjs.inotify > 0)

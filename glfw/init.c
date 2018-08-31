@@ -52,7 +52,7 @@ static _GLFWinitconfig _glfwInitHints =
 {
     GLFW_TRUE,      // hat buttons
     GLFW_FALSE,     // debug keyboard
-    GLFW_TRUE,     // enable joystick
+    GLFW_TRUE,      // enable joystick
     {
         GLFW_TRUE,  // macOS menu bar
         GLFW_TRUE   // macOS bundle chdir
