@@ -541,7 +541,8 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     if (!w) return;
 
     int s;
-    if (flags & 1) {
+    bool is_high_resolution = flags & 1;
+    if (is_high_resolution) {
         if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
             global_state.callback_os_window->pending_scroll_pixels = 0;  // change of direction
         }
@@ -567,7 +568,13 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
-                for (s = abs(s); s > 0; s--) {
+                if (is_high_resolution) {
+                    for (s = abs(s); s > 0; s--) {
+                        write_escape_code_to_child(screen, CSI, mouse_event_buf);
+                    }
+                } else {
+                    // Since we are sending a mouse button 4/5 event, we ignore 's'
+                    // and simply send one event per received scroll event
                     write_escape_code_to_child(screen, CSI, mouse_event_buf);
                 }
             }
