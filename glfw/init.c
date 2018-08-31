@@ -52,6 +52,7 @@ static _GLFWinitconfig _glfwInitHints =
 {
     GLFW_TRUE,      // hat buttons
     GLFW_FALSE,     // debug keyboard
+    GLFW_TRUE,     // enable joystick
     {
         GLFW_TRUE,  // macOS menu bar
         GLFW_TRUE   // macOS bundle chdir
@@ -254,6 +255,9 @@ GLFWAPI void glfwInitHint(int hint, int value)
 {
     switch (hint)
     {
+        case GLFW_ENABLE_JOYSTICKS:
+            _glfwInitHints.enableJoysticks = value;
+            return;
         case GLFW_JOYSTICK_HAT_BUTTONS:
             _glfwInitHints.hatButtons = value;
             return;

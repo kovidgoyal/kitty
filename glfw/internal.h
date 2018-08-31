@@ -244,6 +244,7 @@ struct _GLFWinitconfig
 {
     GLFWbool      hatButtons;
     GLFWbool      debugKeyboard;
+    GLFWbool      enableJoysticks;
     struct {
         GLFWbool  menubar;
         GLFWbool  chdir;

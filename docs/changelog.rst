@@ -70,6 +70,11 @@ Changelog
 
 - macOS: Fix control+tab key combination not working (:iss:`801`)
 
+- Linux: Fix slow startup on some systems caused by GLFW searching for
+  joysticks. Since kitty does not use joysticks, disable joystick support.
+  (:iss:`830`)
+
+
 0.11.3 [2018-07-10]
 ------------------------------
 
