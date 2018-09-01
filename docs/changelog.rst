@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.12.0 [future]
+0.12.0 [2018-09-01]
 ------------------------------
 
 - Preserve the mouse selection even when the contents of the screen are
