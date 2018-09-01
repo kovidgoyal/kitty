@@ -34,9 +34,9 @@ Horizontal alignment for the displayed image.
 --place
 Choose where on the screen to display the image. The image will
 be scaled to fit into the specified rectangle. The syntax for
-specifying rectanges is <:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>. All measurements
-are in cells (i.e. cursor positions) with the origin :italic:`(0, 0)` at
-the top-left corner of the screen.
+specifying rectangles is <:italic:`width`>x<:italic:`height`>@<:italic:`left`>x<:italic:`top`>.
+All measurements are in cells (i.e. cursor positions) with the
+origin :italic:`(0, 0)` at the top-left corner of the screen.
 
 
 --scale-up
