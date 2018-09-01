@@ -363,7 +363,7 @@ reset the layout to its default configuration.
 
 --self
 type=bool-set
-If specified close the window this command is run in, rather than the active window.
+If specified resize the window this command is run in, rather than the active window.
 ''',
     argspec='',
     string_return_is_error=True
