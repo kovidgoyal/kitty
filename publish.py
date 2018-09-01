@@ -331,8 +331,14 @@ def require_git_master(branch='master'):
         raise SystemExit('You must be in the {} git branch'.format(branch))
 
 
+def require_penv():
+    if 'PENV' not in os.environ:
+        raise SystemExit('The PENV env var is not present, required for uploading releases')
+
+
 def main():
     require_git_master()
+    require_penv()
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
         '--only',
