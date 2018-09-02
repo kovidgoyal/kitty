@@ -7,8 +7,9 @@ import os
 
 
 def icat(args):
-    from kittens.icat.main import main
-    main(args)
+    from kittens.runner import run_kitten
+    sys.argv = args
+    run_kitten('icat')
 
 
 def list_fonts(args):
