@@ -103,13 +103,9 @@ check_if_special(int key, int mods, int scancode) {
         qkey = SPECIAL_INDEX(qkey);
         special = needs_special_handling[qkey];
     }
-#ifdef __APPLE__
-    (void)scancode;
-#else
-        for (size_t i = 0; !special && i < native_special_keys_count; i++) {
-            if (scancode == native_special_keys[i].scancode && mods == native_special_keys[i].mods) special = true;
-        }
-#endif
+    for (size_t i = 0; !special && i < native_special_keys_count; i++) {
+        if (scancode == native_special_keys[i].scancode && mods == native_special_keys[i].mods) special = true;
+    }
     return special;
 }
 
@@ -127,7 +123,7 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
 void
 on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
     Window *w = active_window();
-    debug("on_key_input: glfw key: %d native_code: %d action: %s mods: 0x%x text: '%s' state: %d ",
+    debug("on_key_input: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
             key, scancode,
             (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
             mods, text, state);
@@ -222,15 +218,13 @@ PYWRAP1(key_for_native_key_name) {
     const char *name;
     int case_sensitive = 0;
     PA("s|p", &name, case_sensitive);
-#ifdef __APPLE__
-    Py_RETURN_NONE;
-#else
+#ifndef __APPLE__
     if (glfwGetXKBScancode) {  // if this function is called before GLFW is initialized glfwGetXKBScancode will be NULL
         int scancode = glfwGetXKBScancode(name, case_sensitive);
         if (scancode) return Py_BuildValue("i", scancode);
     }
-    Py_RETURN_NONE;
 #endif
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef module_methods[] = {

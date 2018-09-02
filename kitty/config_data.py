@@ -95,6 +95,21 @@ for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
 prefix. Note that you should only use an XKB key name for keys that are not present
 in the list of GLFW keys.
 
+Finally, you can use raw system key codes to map keys. To see the system key code
+for a key, start kitty with the :option:`kitty --debug-keyboard` option. Then kitty will
+output some debug text for every key event. In that text look for ``native_code``
+the value of that becomes the key name in the shortcut. For example:
+
+.. code-block:: none
+
+    on_key_input: glfw key: 65 native_code: 0x61 action: PRESS mods: 0x0 text: 'a'
+
+Here, the key name for the :kbd:`A` key is :kbd:`0x61` and you can use it with::
+
+    map ctrl+0x61 something
+
+to map :kbd:`ctrl+a` to something.
+
 You can use the special action :code:`no_op` to unmap a keyboard shortcut that is
 assigned in the default configuration.
 

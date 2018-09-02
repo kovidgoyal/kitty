@@ -35,14 +35,22 @@ named_keys = {
 
 def parse_shortcut(sc):
     parts = sc.split('+')
-    mods = parse_mods(parts[:-1], sc)
-    if mods is None:
-        return None, None, None
+    mods = 0
+    if len(parts) > 1:
+        mods = parse_mods(parts[:-1], sc)
+        if mods is None:
+            return None, None, None
     key = parts[-1].upper()
     key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
     is_native = False
     if key is None:
-        key = defines.key_for_native_key_name(parts[-1])
+        if parts[-1].startswith('0x'):
+            try:
+                key = int(parts[-1], 16)
+            except Exception:
+                pass
+        else:
+            key = defines.key_for_native_key_name(parts[-1])
         is_native = key is not None
     return mods, is_native, key
 

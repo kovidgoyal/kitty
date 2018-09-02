@@ -3,6 +3,15 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.12.1 [future]
+------------------------------
+
+- Allow mapping shortcuts using the raw key code from the OS (:iss:`848`)
+
+- Allow mapping of individual keypresses without modifiers as shortcuts
+
+- Fix legacy invocation of icat as `kitty icat` not working (:iss:`850`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 
