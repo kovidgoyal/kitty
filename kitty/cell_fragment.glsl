@@ -64,7 +64,7 @@ vec4 calculate_foreground() {
     // Since strike and text are the same color, we simply add the alpha values
     float combined_alpha = min(text_alpha + strike_alpha, 1.0f);
     // Underline color might be different, so alpha blend
-    vec4 ans = alpha_blend(decoration_fg, underline_alpha * effective_text_alpha, fg, combined_alpha * effective_text_alpha);
+    vec4 ans = alpha_blend(fg, combined_alpha * effective_text_alpha, decoration_fg, underline_alpha * effective_text_alpha);
     return mix(ans, cursor_color_vec, cursor_alpha);
 }
 #endif

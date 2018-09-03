@@ -12,6 +12,8 @@ Changelog
 
 - Fix legacy invocation of icat as `kitty icat` not working (:iss:`850`)
 
+- Draw underlines under the text instead of over it
+
 0.12.0 [2018-09-01]
 ------------------------------
 
