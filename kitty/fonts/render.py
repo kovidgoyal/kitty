@@ -116,7 +116,9 @@ def add_dline(buf, cell_width, position, thickness, cell_height):
 
 def add_curl(buf, cell_width, position, thickness, cell_height):
     xfactor = 2.0 * pi / cell_width
-    yfactor = thickness
+    yfactor = max(thickness, 2)
+    if position + yfactor >= cell_height:
+        position = cell_height - yfactor - 1
 
     def clamp_y(y):
         return max(0, min(int(y), cell_height - 1))
@@ -125,8 +127,9 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
         return max(0, min(int(x), cell_width - 1))
 
     def add_intensity(x, y, distance):
-        buf[cell_width * y + x] = min(
-            255, buf[cell_width * y + x] + int(255 * (1 - distance))
+        idx = cell_width * y + x
+        buf[idx] = min(
+            255, buf[idx] + int(255 * (1 - distance))
         )
 
     for x_exact in range(cell_width):
