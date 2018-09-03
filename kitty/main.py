@@ -191,12 +191,12 @@ def setup_profiling(args):
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def macos_cmdline():
+def macos_cmdline(argv_args):
     try:
         with open(os.path.join(config_dir, 'macos-launch-services-cmdline')) as f:
             raw = f.read()
     except FileNotFoundError:
-        return []
+        return argv_args
     import shlex
     raw = raw.strip()
     ans = shlex.split(raw)
@@ -242,7 +242,7 @@ def _main():
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
         os.chdir(os.path.expanduser('~'))
-        args = macos_cmdline()
+        args = macos_cmdline(args)
     try:
         cwd_ok = os.path.isdir(os.getcwd())
     except Exception:
