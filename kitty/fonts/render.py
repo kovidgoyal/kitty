@@ -5,7 +5,7 @@
 import ctypes
 import sys
 from functools import partial
-from math import ceil, floor, pi, sin, sqrt
+from math import ceil, floor, pi, cos, sqrt
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -133,7 +133,7 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
         )
 
     for x_exact in range(cell_width):
-        y_exact = yfactor * sin(x_exact * xfactor) + position
+        y_exact = yfactor * cos(x_exact * xfactor) + position
         y_below = clamp_y(floor(y_exact))
         y_above = clamp_y(ceil(y_exact))
         x_before, x_after = map(clamp_x, (x_exact - 1, x_exact + 1))
