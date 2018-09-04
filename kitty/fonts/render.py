@@ -117,8 +117,6 @@ def add_dline(buf, cell_width, position, thickness, cell_height):
 def add_curl(buf, cell_width, position, thickness, cell_height):
     xfactor = 2.0 * pi / cell_width
     yfactor = max(thickness, 2)
-    if position + yfactor >= cell_height:
-        position = cell_height - yfactor - 1
 
     def clamp_y(y):
         return max(0, min(int(y), cell_height - 1))
@@ -134,13 +132,11 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
 
     for x_exact in range(cell_width):
         y_exact = yfactor * cos(x_exact * xfactor) + position
-        y_below = clamp_y(floor(y_exact))
-        y_above = clamp_y(ceil(y_exact))
+        y = clamp_y(ceil(y_exact))
         x_before, x_after = map(clamp_x, (x_exact - 1, x_exact + 1))
         for x in {x_before, x_exact, x_after}:
-            for y in {y_below, y_above}:
-                dist = sqrt((x - x_exact)**2 + (y - y_exact)**2) / 2
-                add_intensity(x, y, dist)
+            dist = sqrt((x - x_exact)**2 + (y - y_exact)**2) / 2
+            add_intensity(x, y, dist)
 
 
 def render_special(
