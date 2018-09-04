@@ -60,7 +60,7 @@ If you are on Linux, you can also use your distribution's |kitty| package.
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
 `NixOS <https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix>`_,
 `Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
-`Fedora <https://copr.fedorainfracloud.org/coprs/oleastre/kitty-terminal/>`_.
+`Fedora <https://copr.fedorainfracloud.org/coprs/gagbo/kitty-latest/>`_.
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 :doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
