@@ -5,7 +5,7 @@
 import ctypes
 import sys
 from functools import partial
-from math import ceil, floor, pi, cos, sqrt
+from math import ceil, pi, cos, sqrt
 
 from kitty.config import defaults
 from kitty.constants import is_macos
