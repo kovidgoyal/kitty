@@ -1435,11 +1435,95 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
     }
 }
 
+static void _glfwSendClipboardText(void *data, struct wl_data_source *data_source, const char *mime_type, int fd)
+{
+    if (_glfw.wl.clipboardString) {
+        size_t len = strlen(_glfw.wl.clipboardString), pos = 0;
+        double start = glfwGetTime();
+        while (pos < len && glfwGetTime() - start < 2.0) {
+            ssize_t ret = write(fd, _glfw.wl.clipboardString + pos, len - pos);
+            if (ret < 0) {
+                if (errno == EAGAIN || errno == EINTR) continue;
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Wayland: Could not copy writing to destination fd failed with error: %s", strerror(errno));
+                break;
+            }
+            if (ret > 0) {
+                start = glfwGetTime();
+                pos += ret;
+            }
+        }
+    }
+    close(fd);
+}
+
+static void _glfwDataSourceTargetHandler(void *data, struct wl_data_source *data_source, const char *mime_type) {}
+static void _glfwDataSourceCanceledHandler(void *data, struct wl_data_source *data_source) {}
+
+
+const struct wl_data_source_listener data_source_listener = {
+    .send = _glfwSendClipboardText,
+    .target = _glfwDataSourceTargetHandler,
+    .cancelled = _glfwDataSourceCanceledHandler
+};
+
+static void
+copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
+    if (!_glfw.wl.dataDevice) return;
+    if (data == (void*)_glfw.wl.dataSourceForClipboard) {
+        wl_data_device_set_selection(_glfw.wl.dataDevice, data, serial);
+    }
+}
+
+const struct wl_callback_listener copy_callback_listener = {
+    .done = copy_callback_done
+};
+
+
 void _glfwPlatformSetClipboardString(const char* string)
 {
-    // TODO
-    _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Clipboard setting not implemented yet");
+    if (!_glfw.wl.dataDeviceManager)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Cannot copy to clipboard data device manager is not ready");
+        return;
+    }
+    if (!_glfw.wl.dataDevice)
+    {
+        if (!_glfw.wl.seat)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Wayland: Cannot copy to clipboard seat is not ready");
+            return;
+        }
+        _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
+        if (!_glfw.wl.dataDevice)
+        {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Wayland: Clipboard copy not enabled, failed to create data device");
+            return;
+        }
+    }
+
+    free(_glfw.wl.clipboardString);
+    _glfw.wl.clipboardString = _glfw_strdup(string);
+    if (_glfw.wl.dataSourceForClipboard)
+        wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
+    _glfw.wl.dataSourceForClipboard = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
+    if (!_glfw.wl.dataSourceForClipboard)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Cannot copy failed to create data source");
+        return;
+    }
+    wl_data_source_add_listener(_glfw.wl.dataSourceForClipboard, &data_source_listener, NULL);
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain");
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain;charset=utf-8");
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "TEXT");
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "STRING");
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "UTF8_STRING");
+    struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
+    wl_callback_add_listener(callback, &copy_callback_listener, _glfw.wl.dataSourceForClipboard);
 }
 
 const char* _glfwPlatformGetClipboardString(void)

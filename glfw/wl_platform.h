@@ -193,6 +193,9 @@ typedef struct _GLFWlibraryWayland
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;
+    struct wl_data_device_manager*          dataDeviceManager;
+    struct wl_data_device*                  dataDevice;
+    struct wl_data_source*                  dataSourceForClipboard;
 
     int                         compositorVersion;
     int                         seatVersion;
@@ -232,7 +235,7 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     EventLoopData eventLoopData;
-
+    char *clipboardString;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
