@@ -6,6 +6,10 @@ Changelog
 0.12.1 [future]
 ------------------------------
 
+- macOS: Fix a character that cannot be rendered in any font causing
+  font fallback for all subsequent characters that cannot be rendered in the
+  main font to fail (:iss:`799`)
+
 - Allow mapping shortcuts using the raw key code from the OS (:iss:`848`)
 
 - Allow mapping of individual keypresses without modifiers as shortcuts

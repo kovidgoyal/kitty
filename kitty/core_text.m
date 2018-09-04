@@ -171,6 +171,14 @@ find_substitute_face(CFStringRef str, CTFontRef old_font) {
         else start++;
         if (new_font == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont"); return NULL; }
         if (new_font == old_font) { CFRelease(new_font); continue; }
+        CFStringRef name = CTFontCopyPostScriptName(new_font);
+        CFComparisonResult cr = CFStringCompare(name, CFSTR("LastResort"), 0);
+        CFRelease(name);
+        if (cr == kCFCompareEqualTo) {
+            CFRelease(new_font);
+            PyErr_SetString(PyExc_ValueError, "Failed to find fallback CTFont other than the LastResort font");
+            return NULL;
+        }
         return new_font;
     }
     PyErr_SetString(PyExc_ValueError, "CoreText returned the same font as a fallback font");

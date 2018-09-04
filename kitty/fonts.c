@@ -1280,6 +1280,7 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     if (italic) gpu_cell.attrs |= 1 << ITALIC_SHIFT;
     FontGroup *fg = font_groups;
     ssize_t ans = fallback_font(fg, &cpu_cell, &gpu_cell);
+    if (ans == MISSING_FONT) { PyErr_SetString(PyExc_ValueError, "No fallback font found"); return NULL; }
     if (ans < 0) { PyErr_SetString(PyExc_ValueError, "Too many fallback fonts"); return NULL; }
     return fg->fonts[ans].face;
 }
