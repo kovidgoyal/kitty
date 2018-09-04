@@ -324,9 +324,9 @@ void _glfwGetMonitorContentScaleWin32(HMONITOR handle, float* xscale, float* ysc
     }
 
     if (xscale)
-        *xscale = xdpi / 96.f;
+        *xscale = xdpi / (float) USER_DEFAULT_SCREEN_DPI;
     if (yscale)
-        *yscale = ydpi / 96.f;
+        *yscale = ydpi / (float) USER_DEFAULT_SCREEN_DPI;
 }
 
 
