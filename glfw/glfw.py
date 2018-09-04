@@ -128,16 +128,6 @@ def collect_source_information():
     return ans
 
 
-def patch_in_file(path, pfunc):
-    with open(path, 'r+') as f:
-        raw = f.read()
-        nraw = pfunc(raw)
-        if raw == nraw:
-            raise SystemExit('Patching of {} failed'.format(path))
-        f.seek(0), f.truncate()
-        f.write(nraw)
-
-
 class Arg:
 
     def __init__(self, decl):
@@ -283,8 +273,6 @@ def from_glfw(glfw_dir):
     for src in files_to_copy:
         shutil.copy2(src, '.')
     shutil.copy2(glfw_header, '.')
-    patch_in_file('cocoa_window.m', lambda x: re.sub(
-        r'[(]void[)]loadMainMenu.+?}', '(void)loadMainMenu\n{ // removed by Kovid as it generated compiler warnings \n}\n', x, flags=re.DOTALL))
     json.dump(
         sinfo,
         open('source-info.json', 'w'),
