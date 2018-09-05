@@ -1457,14 +1457,8 @@ static void _glfwSendClipboardText(void *data, struct wl_data_source *data_sourc
     close(fd);
 }
 
-static void _glfwDataSourceTargetHandler(void *data, struct wl_data_source *data_source, const char *mime_type) {}
-static void _glfwDataSourceCanceledHandler(void *data, struct wl_data_source *data_source) {}
-
-
 const struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
-    .target = _glfwDataSourceTargetHandler,
-    .cancelled = _glfwDataSourceCanceledHandler
 };
 
 static void
@@ -1479,32 +1473,36 @@ const struct wl_callback_listener copy_callback_listener = {
     .done = copy_callback_done
 };
 
-
-void _glfwPlatformSetClipboardString(const char* string)
-{
+static inline GLFWbool _glfwEnsureDataDevice() {
     if (!_glfw.wl.dataDeviceManager)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cannot copy to clipboard data device manager is not ready");
-        return;
+                        "Wayland: Cannot use clipboard data device manager is not ready");
+        return GLFW_FALSE;
     }
+
     if (!_glfw.wl.dataDevice)
     {
         if (!_glfw.wl.seat)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                            "Wayland: Cannot copy to clipboard seat is not ready");
-            return;
+                            "Wayland: Cannot use clipboard seat is not ready");
+            return GLFW_FALSE;
         }
         _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
         if (!_glfw.wl.dataDevice)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Clipboard copy not enabled, failed to create data device");
-            return;
+                    "Wayland: Cannot use clipboard, failed to create data device");
+            return GLFW_FALSE;
         }
     }
+    return GLFW_TRUE;
+}
 
+void _glfwPlatformSetClipboardString(const char* string)
+{
+    if (!_glfwEnsureDataDevice()) return;
     free(_glfw.wl.clipboardString);
     _glfw.wl.clipboardString = _glfw_strdup(string);
     if (_glfw.wl.dataSourceForClipboard)
