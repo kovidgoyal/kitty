@@ -32,6 +32,9 @@ class UnknownLayout(ValueError):
     hide_traceback = True
 
 
+cmap = {}
+
+
 def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False, args_count=None):
 
     def w(func):
@@ -45,6 +48,7 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
         func.no_response = no_response
         func.string_return_is_error = string_return_is_error
         func.args_count = 0 if not argspec else args_count
+        cmap[func.name] = func
         return func
     return w
 
@@ -785,9 +789,6 @@ def kitten(boss, window, payload):
             boss._run_kitten(payload['kitten'], args=tuple(payload['args']), window=window)
             break
 # }}}
-
-
-cmap = {v.name: v for v in globals().values() if hasattr(v, 'is_cmd')}
 
 
 def cli_params_for(func):
