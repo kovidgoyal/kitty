@@ -1512,8 +1512,15 @@ static const char* _glfwReceiveClipboardText(struct wl_data_offer *data_offer, c
 #undef bail
 }
 
+static void data_source_canceled(void *data, struct wl_data_source *wl_data_source) {
+    if (_glfw.wl.dataSourceForClipboard == wl_data_source)
+        _glfw.wl.dataSourceForClipboard = NULL;
+    wl_data_source_destroy(wl_data_source);
+}
+
 const static struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
+    .cancelled = data_source_canceled,
 };
 
 static void prune_unclaimed_data_offers() {
