@@ -1558,8 +1558,29 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
     }
 }
 
+static void data_offer_source_actions(void *data, struct wl_data_offer* id, uint32_t actions) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == id) {
+            _glfw.wl.dataOffers[i].source_actions = actions;
+            break;
+        }
+    }
+}
+
+static void data_offer_action(void *data, struct wl_data_offer* id, uint32_t action) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == id) {
+            _glfw.wl.dataOffers[i].dnd_action = action;
+            break;
+        }
+    }
+}
+
+
 static const struct wl_data_offer_listener data_offer_listener = {
     .offer = handle_offer_mimetype,
+    .source_actions = data_offer_source_actions,
+    .action = data_offer_action,
 };
 
 static void handle_data_offer(void *data, struct wl_data_device *wl_data_device, struct wl_data_offer *id) {
