@@ -37,9 +37,17 @@
 #include <sys/mman.h>
 
 
-#define KITTY_CLIPBOARD_MIME "application/kitty+clipboard-data"
 #define URI_LIST_MIME "text/uri-list"
 
+
+static const char*
+clipboard_mime() {
+    static char buf[128] = {0};
+    if (buf[0] == 0) {
+        snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d", getpid());
+    }
+    return buf;
+}
 
 static void handlePing(void* data,
                        struct wl_shell_surface* shellSurface,
@@ -1562,7 +1570,7 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
                 _glfw.wl.dataOffers[i].mime = "text/plain;charset=utf-8";
             else if (!_glfw.wl.dataOffers[i].mime && strcmp(mime, "text/plain") == 0)
                 _glfw.wl.dataOffers[i].mime = "text/plain";
-            else if (strcmp(mime, KITTY_CLIPBOARD_MIME) == 0)
+            else if (strcmp(mime, clipboard_mime()) == 0)
                 _glfw.wl.dataOffers[i].is_self_offer = 1;
             else if (strcmp(mime, URI_LIST_MIME) == 0)
                 _glfw.wl.dataOffers[i].has_uri_list = 1;
@@ -1745,7 +1753,7 @@ void _glfwPlatformSetClipboardString(const char* string)
         return;
     }
     wl_data_source_add_listener(_glfw.wl.dataSourceForClipboard, &data_source_listener, NULL);
-    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, KITTY_CLIPBOARD_MIME);
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, clipboard_mime());
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain;charset=utf-8");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "TEXT");
