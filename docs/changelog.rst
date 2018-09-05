@@ -25,6 +25,8 @@ Changelog
 
 - Improve rendering of wavy underline at small font sizes (:iss:`853`)
 
+- Fix a regression in 0.12.0 that broke resizing of layouts (:iss:`860`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 
