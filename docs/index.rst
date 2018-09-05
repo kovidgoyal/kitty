@@ -181,6 +181,9 @@ Reset background opacity            :sc:`reset_background_opacity`
 Layouts
 ----------
 
+A layout is an arrangement of multiple *windows*. You can create a new window
+using the :sc:`new_window` key combination.
+
 Currently, there are five layouts available,
 
 * **Stack** -- Only a single maximized window is shown at a time
