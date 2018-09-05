@@ -38,6 +38,7 @@
 
 
 #define KITTY_CLIPBOARD_MIME "application/kitty+clipboard-data"
+#define URI_LIST_MIME "text/uri-list"
 
 
 static void handlePing(void* data,
@@ -1460,25 +1461,21 @@ static void _glfwSendClipboardText(void *data, struct wl_data_source *data_sourc
     close(fd);
 }
 
-static const char* _glfwReceiveClipboardText(struct wl_data_offer *data_offer, const char *mime)
-{
-    if (_glfw.wl.clipboardSourceOffer == data_offer && _glfw.wl.clipboardSourceString)
-        return _glfw.wl.clipboardSourceString;
+static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime) {
     int pipefd[2];
     if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
     wl_data_offer_receive(data_offer, mime, pipefd[1]);
     close(pipefd[1]);
     wl_display_flush(_glfw.wl.display);
     size_t sz = 0, capacity = 0;
-    free(_glfw.wl.clipboardSourceString);
-    _glfw.wl.clipboardSourceString = NULL;
+    char *buf = NULL;
     struct pollfd fds;
     fds.fd = pipefd[0];
     fds.events = POLLIN;
     double start = glfwGetTime();
 #define bail(...) { \
     _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); \
-    free(_glfw.wl.clipboardSourceString); _glfw.wl.clipboardSourceString = NULL; \
+    free(buf); buf = NULL; \
     close(pipefd[0]); \
     return NULL; \
 }
@@ -1494,22 +1491,32 @@ static const char* _glfwReceiveClipboardText(struct wl_data_offer *data_offer, c
         }
         if (capacity <= sz || capacity - sz <= 64) {
             capacity += 4096;
-            _glfw.wl.clipboardSourceString = realloc(_glfw.wl.clipboardSourceString, capacity);
-            if (!_glfw.wl.clipboardSourceString) {
+            buf = realloc(buf, capacity);
+            if (!buf) {
                 bail("Wayland: Failed to allocate memory to read clipboard data");
             }
         }
-        ret = read(pipefd[0], _glfw.wl.clipboardSourceString + sz, capacity - sz - 1);
+        ret = read(pipefd[0], buf + sz, capacity - sz - 1);
         if (ret == -1) {
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
             bail("Wayland: Failed to read clipboard data from pipe with error: %s", strerror(errno));
         }
-        if (ret == 0) { close(pipefd[0]); _glfw.wl.clipboardSourceString[sz] = 0; return _glfw.wl.clipboardSourceString; }
+        if (ret == 0) { close(pipefd[0]); buf[sz] = 0; return buf; }
         sz += ret;
         start = glfwGetTime();
     }
     bail("Wayland: Failed to read clipboard data from pipe (timed out)");
 #undef bail
+
+}
+
+static const char* _glfwReceiveClipboardText(struct wl_data_offer *data_offer, const char *mime)
+{
+    if (_glfw.wl.clipboardSourceOffer == data_offer && _glfw.wl.clipboardSourceString)
+        return _glfw.wl.clipboardSourceString;
+    free(_glfw.wl.clipboardSourceString);
+    _glfw.wl.clipboardSourceString = read_data_offer(data_offer, mime);
+    return _glfw.wl.clipboardSourceString;
 }
 
 static void data_source_canceled(void *data, struct wl_data_source *wl_data_source) {
@@ -1557,6 +1564,8 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
                 _glfw.wl.dataOffers[i].mime = "text/plain";
             else if (strcmp(mime, KITTY_CLIPBOARD_MIME) == 0)
                 _glfw.wl.dataOffers[i].is_self_offer = 1;
+            else if (strcmp(mime, URI_LIST_MIME) == 0)
+                _glfw.wl.dataOffers[i].has_uri_list = 1;
             break;
         }
     }
@@ -1608,9 +1617,73 @@ end:
     wl_data_offer_add_listener(id, &data_offer_listener, NULL);
 }
 
+static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == id) {
+            _glfw.wl.dataOffers[i].offer_type = 2;
+            _glfw.wl.dataOffers[i].surface = surface;
+            const char *mime = _glfw.wl.dataOffers[i].has_uri_list ? URI_LIST_MIME : NULL;
+            wl_data_offer_accept(id, serial, mime);
+        } else if (_glfw.wl.dataOffers[i].offer_type == 2) {
+            _glfw.wl.dataOffers[i].offer_type = 0;  // previous drag offer
+        }
+    }
+    prune_unclaimed_data_offers();
+}
+
+static void drag_leave(void *data, struct wl_data_device *wl_data_device) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].offer_type == 2) {
+            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
+            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
+        }
+    }
+}
+
+
+
+static void drop(void *data, struct wl_data_device *wl_data_device) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].offer_type == 2) {
+            char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
+            if (uri_list) {
+                wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
+                int count;
+                char** paths = parseUriList(data, &count);
+
+                _GLFWwindow* window = _glfw.windowListHead;
+                while (window)
+                {
+                    if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
+                        _glfwInputDrop(window, count, (const char**) paths);
+                        break;
+                    }
+                    window = window->next;
+                }
+
+
+                for (int k = 0;  k < count;  k++)
+                    free(paths[k]);
+                free(paths);
+                free(uri_list);
+            }
+            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
+            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
+            break;
+        }
+    }
+}
+
+static void motion(void *data, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y) {
+}
+
 const static struct wl_data_device_listener data_device_listener = {
     .data_offer = handle_data_offer,
     .selection = mark_selection_offer,
+    .enter = drag_enter,
+    .motion = motion,
+    .drop = drop,
+    .leave = drag_leave,
 };
 
 

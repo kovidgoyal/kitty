@@ -71,3 +71,4 @@ int pollForEvents(EventLoopData *eld, double timeout);
 unsigned dispatchTimers(EventLoopData *eld);
 void closeFds(int *fds, size_t count);
 void initPollData(EventLoopData *eld, int wakeup_fd, int display_fd);
+char** parseUriList(char* text, int* count);

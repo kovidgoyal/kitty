@@ -182,8 +182,10 @@ typedef struct _GLFWWaylandDataOffer
     int offer_type;
     size_t idx;
     int is_self_offer;
+    int has_uri_list;
     uint32_t source_actions;
     uint32_t dnd_action;
+    struct wl_surface *surface;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data
