@@ -103,6 +103,8 @@ class Boss:
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
         self.add_os_window(startup_session, os_window_id=os_window_id)
+        if args.start_in_fullscreen:
+            self.toggle_fullscreen()
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:

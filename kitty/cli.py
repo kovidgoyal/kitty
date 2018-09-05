@@ -546,6 +546,11 @@ specify this address. This option will be ignored, unless you set
 option as it is read automatically from the environment.
 
 
+--start-in-fullscreen
+type=bool-set
+Make the initial kitty window fullscreen on startup
+
+
 # Debugging options
 
 --version -v

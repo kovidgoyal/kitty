@@ -6,6 +6,9 @@ Changelog
 0.12.1 [future]
 ------------------------------
 
+- Add a new :option:`kitty --start-in-fullscreen` command line flag to start
+  kitty in fullscreen mode (:iss:`856`)
+
 - macOS: Fix a character that cannot be rendered in any font causing
   font fallback for all subsequent characters that cannot be rendered in the
   main font to fail (:iss:`799`)
