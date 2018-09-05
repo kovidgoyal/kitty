@@ -1457,9 +1457,125 @@ static void _glfwSendClipboardText(void *data, struct wl_data_source *data_sourc
     close(fd);
 }
 
-const struct wl_data_source_listener data_source_listener = {
+static const char* _glfwReceiveClipboardText(struct wl_data_offer *data_offer, const char *mime)
+{
+    if (_glfw.wl.clipboardSourceOffer == data_offer && _glfw.wl.clipboardSourceString)
+        return _glfw.wl.clipboardSourceString;
+    int pipefd[2];
+    if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
+    wl_data_offer_receive(data_offer, mime, pipefd[1]);
+    close(pipefd[1]);
+    wl_display_flush(_glfw.wl.display);
+    size_t sz = 0, capacity = 0;
+    free(_glfw.wl.clipboardSourceString);
+    _glfw.wl.clipboardSourceString = NULL;
+    struct pollfd fds;
+    fds.fd = pipefd[0];
+    fds.events = POLLIN;
+    double start = glfwGetTime();
+#define bail(...) { \
+    _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); \
+    free(_glfw.wl.clipboardSourceString); _glfw.wl.clipboardSourceString = NULL; \
+    close(pipefd[0]); \
+    return NULL; \
+}
+
+    while (glfwGetTime() - start < 2) {
+        int ret = poll(&fds, 1, 2000);
+        if (ret == -1) {
+            if (errno == EINTR) continue;
+            bail("Wayland: Failed to poll clipboard data from pipe with error: %s", strerror(errno));
+        }
+        if (!ret) {
+            bail("Wayland: Failed to read clipboard data from pipe (timed out)");
+        }
+        if (capacity <= sz || capacity - sz <= 64) {
+            capacity += 4096;
+            _glfw.wl.clipboardSourceString = realloc(_glfw.wl.clipboardSourceString, capacity);
+            if (!_glfw.wl.clipboardSourceString) {
+                bail("Wayland: Failed to allocate memory to read clipboard data");
+            }
+        }
+        ret = read(pipefd[0], _glfw.wl.clipboardSourceString + sz, capacity - sz - 1);
+        if (ret == -1) {
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
+            bail("Wayland: Failed to read clipboard data from pipe with error: %s", strerror(errno));
+        }
+        if (ret == 0) { close(pipefd[0]); _glfw.wl.clipboardSourceString[sz] = 0; return _glfw.wl.clipboardSourceString; }
+        sz += ret;
+        start = glfwGetTime();
+    }
+    bail("Wayland: Failed to read clipboard data from pipe (timed out)");
+#undef bail
+}
+
+const static struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
 };
+
+static void prune_unclaimed_data_offers() {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
+            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
+            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
+        }
+    }
+}
+
+static void mark_selection_offer(void *data, struct wl_data_device *data_device, struct wl_data_offer *data_offer)
+{
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == data_offer) {
+            _glfw.wl.dataOffers[i].offer_type = 1;
+        } else if (_glfw.wl.dataOffers[i].offer_type == 1) {
+            _glfw.wl.dataOffers[i].offer_type = 0;  // previous selection offer
+        }
+    }
+    prune_unclaimed_data_offers();
+}
+
+static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const char *mime) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == id) {
+            if (strcmp(mime, "text/plain;charset=utf-8") == 0)
+                _glfw.wl.dataOffers[i].mime = "text/plain;charset=utf-8";
+            else if (!_glfw.wl.dataOffers[i].mime && strcmp(mime, "text/plain"))
+                _glfw.wl.dataOffers[i].mime = "text/plain";
+            break;
+        }
+    }
+}
+
+static const struct wl_data_offer_listener data_offer_listener = {
+    .offer = handle_offer_mimetype,
+};
+
+static void handle_data_offer(void *data, struct wl_data_device *wl_data_device, struct wl_data_offer *id) {
+    size_t smallest_idx = SIZE_MAX, pos = 0;
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].idx && _glfw.wl.dataOffers[i].idx < smallest_idx) {
+            smallest_idx = _glfw.wl.dataOffers[i].idx;
+            pos = i;
+        }
+        if (_glfw.wl.dataOffers[i].id == NULL) {
+            _glfw.wl.dataOffers[i].id = id;
+            _glfw.wl.dataOffers[i].idx = ++_glfw.wl.dataOffersCounter;
+            goto end;
+        }
+    }
+    if (_glfw.wl.dataOffers[pos].id) wl_data_offer_destroy(_glfw.wl.dataOffers[pos].id);
+    memset(_glfw.wl.dataOffers + pos, 0, sizeof(_glfw.wl.dataOffers[0]));
+    _glfw.wl.dataOffers[pos].id = id;
+    _glfw.wl.dataOffers[pos].idx = ++_glfw.wl.dataOffersCounter;
+end:
+    wl_data_offer_add_listener(id, &data_offer_listener, NULL);
+}
+
+const static struct wl_data_device_listener data_device_listener = {
+    .data_offer = handle_data_offer,
+    .selection = mark_selection_offer,
+};
+
 
 static void
 copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
@@ -1469,15 +1585,20 @@ copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
     }
 }
 
-const struct wl_callback_listener copy_callback_listener = {
+const static struct wl_callback_listener copy_callback_listener = {
     .done = copy_callback_done
 };
+
+void _glfwSetupWaylandDataDevice() {
+    _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
+    if (_glfw.wl.dataDevice) wl_data_device_add_listener(_glfw.wl.dataDevice, &data_device_listener, NULL);
+}
 
 static inline GLFWbool _glfwEnsureDataDevice() {
     if (!_glfw.wl.dataDeviceManager)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cannot use clipboard data device manager is not ready");
+                        "Wayland: Cannot use clipboard, data device manager is not ready");
         return GLFW_FALSE;
     }
 
@@ -1486,10 +1607,9 @@ static inline GLFWbool _glfwEnsureDataDevice() {
         if (!_glfw.wl.seat)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                            "Wayland: Cannot use clipboard seat is not ready");
+                            "Wayland: Cannot use clipboard, seat is not ready");
             return GLFW_FALSE;
         }
-        _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
         if (!_glfw.wl.dataDevice)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
@@ -1526,9 +1646,11 @@ void _glfwPlatformSetClipboardString(const char* string)
 
 const char* _glfwPlatformGetClipboardString(void)
 {
-    // TODO
-    _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Clipboard getting not implemented yet");
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id && _glfw.wl.dataOffers[i].mime && _glfw.wl.dataOffers[i].offer_type == 1) {
+            return _glfwReceiveClipboardText(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime);
+        }
+    }
     return NULL;
 }
 

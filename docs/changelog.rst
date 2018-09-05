@@ -15,6 +15,8 @@ Changelog
 
 - Linux: Fix numpad arrow keys not working when num lock is off (:iss:`857`)
 
+- Wayland: Implement support for clipboard copy/paste (:iss:`855`)
+
 - Allow mapping shortcuts using the raw key code from the OS (:iss:`848`)
 
 - Allow mapping of individual keypresses without modifiers as shortcuts

@@ -560,6 +560,9 @@ static void registryHandleGlobal(void* data,
                                  _glfw.wl.seatVersion);
             wl_seat_add_listener(_glfw.wl.seat, &seatListener, NULL);
         }
+        if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
+            _glfwSetupWaylandDataDevice();
+        }
     }
     else if (strcmp(interface, "xdg_wm_base") == 0)
     {
@@ -599,6 +602,9 @@ static void registryHandleGlobal(void* data,
             wl_registry_bind(registry, name,
                              &wl_data_device_manager_interface,
                              1);
+        if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
+            _glfwSetupWaylandDataDevice();
+        }
     }
 
 }
@@ -771,6 +777,11 @@ void _glfwPlatformTerminate(void)
         zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idleInhibitManager);
     if (_glfw.wl.dataSourceForClipboard)
         wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
+    for (size_t doi=0; doi < arraysz(_glfw.wl.dataOffers); doi++) {
+        if (_glfw.wl.dataOffers[doi].id) {
+            wl_data_offer_destroy(_glfw.wl.dataOffers[doi].id);
+        }
+    }
     if (_glfw.wl.dataDevice)
         wl_data_device_destroy(_glfw.wl.dataDevice);
     if (_glfw.wl.dataDeviceManager)
@@ -784,6 +795,8 @@ void _glfwPlatformTerminate(void)
     }
     closeFds(_glfw.wl.eventLoopData.wakeupFds, sizeof(_glfw.wl.eventLoopData.wakeupFds)/sizeof(_glfw.wl.eventLoopData.wakeupFds[0]));
     free(_glfw.wl.clipboardString); _glfw.wl.clipboardString = NULL;
+    free(_glfw.wl.clipboardSourceString); _glfw.wl.clipboardSourceString = NULL;
+
 }
 
 const char* _glfwPlatformGetVersionString(void)

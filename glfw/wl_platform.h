@@ -175,6 +175,14 @@ typedef struct _GLFWwindowWayland
 
 } _GLFWwindowWayland;
 
+typedef struct _GLFWWaylandDataOffer
+{
+    struct wl_data_offer *id;
+    const char *mime;
+    int offer_type;
+    size_t idx;
+} _GLFWWaylandDataOffer;
+
 // Wayland-specific global data
 //
 typedef struct _GLFWlibraryWayland
@@ -235,7 +243,11 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     EventLoopData eventLoopData;
-    char *clipboardString;
+    char* clipboardString;
+    char* clipboardSourceString;
+    struct wl_data_offer* clipboardSourceOffer;
+    size_t dataOffersCounter;
+    _GLFWWaylandDataOffer dataOffers[8];
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -264,3 +276,4 @@ typedef struct _GLFWcursorWayland
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
+void _glfwSetupWaylandDataDevice();
