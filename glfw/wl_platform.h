@@ -181,6 +181,7 @@ typedef struct _GLFWWaylandDataOffer
     const char *mime;
     int offer_type;
     size_t idx;
+    int is_self_offer;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data

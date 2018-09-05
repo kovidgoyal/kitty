@@ -37,6 +37,9 @@
 #include <sys/mman.h>
 
 
+#define KITTY_CLIPBOARD_MIME "application/kitty+clipboard-data"
+
+
 static void handlePing(void* data,
                        struct wl_shell_surface* shellSurface,
                        uint32_t serial)
@@ -1539,8 +1542,10 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
         if (_glfw.wl.dataOffers[i].id == id) {
             if (strcmp(mime, "text/plain;charset=utf-8") == 0)
                 _glfw.wl.dataOffers[i].mime = "text/plain;charset=utf-8";
-            else if (!_glfw.wl.dataOffers[i].mime && strcmp(mime, "text/plain"))
+            else if (!_glfw.wl.dataOffers[i].mime && strcmp(mime, "text/plain") == 0)
                 _glfw.wl.dataOffers[i].mime = "text/plain";
+            else if (strcmp(mime, KITTY_CLIPBOARD_MIME) == 0)
+                _glfw.wl.dataOffers[i].is_self_offer = 1;
             break;
         }
     }
@@ -1635,6 +1640,7 @@ void _glfwPlatformSetClipboardString(const char* string)
         return;
     }
     wl_data_source_add_listener(_glfw.wl.dataSourceForClipboard, &data_source_listener, NULL);
+    wl_data_source_offer(_glfw.wl.dataSourceForClipboard, KITTY_CLIPBOARD_MIME);
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "text/plain;charset=utf-8");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "TEXT");
@@ -1648,6 +1654,7 @@ const char* _glfwPlatformGetClipboardString(void)
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id && _glfw.wl.dataOffers[i].mime && _glfw.wl.dataOffers[i].offer_type == 1) {
+            if (_glfw.wl.dataOffers[i].is_self_offer) return _glfw.wl.clipboardString;
             return _glfwReceiveClipboardText(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime);
         }
     }
