@@ -1518,9 +1518,13 @@ static void data_source_canceled(void *data, struct wl_data_source *wl_data_sour
     wl_data_source_destroy(wl_data_source);
 }
 
+static void data_source_target(void *data, struct wl_data_source *wl_data_source, const char* mime) {
+}
+
 const static struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
     .cancelled = data_source_canceled,
+    .target = data_source_target,
 };
 
 static void prune_unclaimed_data_offers() {
