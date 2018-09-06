@@ -225,6 +225,7 @@ def complete_remote_command(ans, cmd_name, words, new_word):
 
 
 def path_completion(prefix=''):
+    prefix = prefix.replace(r'\ ', ' ')
     dirs, files = [], []
     base = '.'
     if prefix.endswith('/'):
