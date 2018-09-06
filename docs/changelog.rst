@@ -32,6 +32,8 @@ Changelog
 - Wayland: Allow using the :option:`kitty --class` command line flag
   to set the app id (:iss:`862`)
 
+- Add completion of the kitty command for the fish shell (:pull:`829`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 
