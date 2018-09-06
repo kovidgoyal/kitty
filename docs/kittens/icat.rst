@@ -10,6 +10,12 @@ It supports all image types supported by `ImageMagick
 <https://www.imagemagick.org>`_. It even works over SSH. For details, see
 the :doc:`kitty graphics protocol </graphics-protocol>`.
 
+You might want to create an alias in your shell's configuration files::
+
+   alias icat="kitty +kitten icat"
+
+Then you can simply use ``icat image.png`` to view images.
+
 .. note::
 
     `ImageMagick <https://www.imagemagick.org>`_ must be installed for ``icat`` to
