@@ -42,7 +42,13 @@ def complete(args):
 def launch(args):
     import runpy
     sys.argv = args[1:]
-    runpy.run_path(args[1], run_name='__main__')
+    exe = args[1]
+    if exe.startswith(':'):
+        import shutil
+        exe = shutil.which(exe[1:])
+        if not exe:
+            raise SystemExit('{} not found in PATH'.format(args[1][1:]))
+    runpy.run_path(exe, run_name='__main__')
 
 
 def run_kitten(args):
