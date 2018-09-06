@@ -29,6 +29,9 @@ Changelog
 
 - Fix a regression in 0.12.0 that broke resizing of layouts (:iss:`860`)
 
+- Wayland: Allow using the :option:`kitty --class` command line flag
+  to set the app id (:iss:`862`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 

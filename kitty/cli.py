@@ -464,7 +464,7 @@ def options_spec():
 dest=cls
 default={appname}
 condition=not is_macos
-Set the class part of the :italic:`WM_CLASS` window property
+Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
 
 
 --name

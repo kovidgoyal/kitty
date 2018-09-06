@@ -984,6 +984,8 @@ extern "C" {
 
 #define GLFW_X11_CLASS_NAME         0x00024001
 #define GLFW_X11_INSTANCE_NAME      0x00024002
+
+#define GLFW_WAYLAND_APP_ID         0x00025001
 /*! @} */
 
 #define GLFW_NO_API                          0

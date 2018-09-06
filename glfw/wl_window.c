@@ -693,6 +693,8 @@ static GLFWbool createXdgSurface(_GLFWwindow* window)
     {
         setIdleInhibitor(window, GLFW_FALSE);
     }
+    if (strlen(window->wl.appId))
+        xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
 
     wl_surface_commit(window->wl.surface);
     wl_display_roundtrip(_glfw.wl.display);
@@ -769,6 +771,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 {
     window->wl.justCreated = GLFW_TRUE;
     window->wl.transparent = fbconfig->transparent;
+    strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
 
     if (!createSurface(window, wndconfig))
         return GLFW_FALSE;
