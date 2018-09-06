@@ -58,6 +58,13 @@ Customizing the installation
      |ins| \\
          installer=/path/to/dmg or tarball
 
+Uninstalling
+----------------
+
+All the installer does is copy the kitty files into the install directory
+(defaults to :file:`~/.local/kitty.app`. To uninstall, simply delete that
+directory.
+
 
 Building from source
 ------------------------
