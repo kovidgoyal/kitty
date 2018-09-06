@@ -1077,10 +1077,10 @@ send_prerendered_sprites(FontGroup *fg) {
     do_increment(fg, &error);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("failed"); }
     PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->logical_dpi_x, fg->logical_dpi_y);
-    if (args == NULL) { PyErr_Print(); fatal("Failed to prerender cells"); }
+    if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
     for (ssize_t i = 0; i < PyTuple_GET_SIZE(args) - 1; i++) {
         x = fg->sprite_tracker.x; y = fg->sprite_tracker.y; z = fg->sprite_tracker.z;
-        if (y > 0) { fatal("too many prerendered sprites for your GPU or the font size is too large"); }
+        if (y > 0) { fatal("too many pre-rendered sprites for your GPU or the font size is too large"); }
         do_increment(fg, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("failed"); }
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
