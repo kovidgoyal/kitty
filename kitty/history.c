@@ -61,7 +61,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
     if (!PyArg_ParseTuple(args, "II", &ynum, &xnum)) return NULL;
 
-    if (xnum * ynum == 0) {
+    if (xnum == 0 || ynum == 0) {
         PyErr_SetString(PyExc_ValueError, "Cannot create an empty history buffer");
         return NULL;
     }
@@ -74,9 +74,6 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         add_segment(self);
         self->line = alloc_line();
         self->line->xnum = xnum;
-        for(index_type y = 0; y < self->ynum; y++) {
-            clear_chars_in_line(cpu_lineptr(self, y), gpu_lineptr(self, y), self->xnum, BLANK_CHAR);
-        }
     }
 
     return (PyObject*)self;
@@ -164,7 +161,7 @@ line(HistoryBuf *self, PyObject *val) {
 
 static PyObject*
 __str__(HistoryBuf *self) {
-    PyObject *lines = PyTuple_New(self->ynum);
+    PyObject *lines = PyTuple_New(self->count);
     if (lines == NULL) return PyErr_NoMemory();
     for (index_type i = 0; i < self->count; i++) {
         init_line(self, index_of(self, i), self->line);
@@ -225,7 +222,7 @@ static PyObject*
 dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
-    for (index_type i = 0; i < self->ynum; i++) {
+    for (index_type i = 0; i < self->count; i++) {
         if (*attrptr(self, i) & TEXT_DIRTY_MASK) {
             PyList_Append(ans, PyLong_FromUnsignedLong(i));
         }

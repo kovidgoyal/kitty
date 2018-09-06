@@ -305,9 +305,19 @@ o('cursor_stop_blinking_after', 15.0, option_type=positive_float)
 
 g('scrollback')  # {{{
 
-o('scrollback_lines', 2000, option_type=positive_int, long_text=_('''
+
+def scrollback_lines(x):
+    x = int(x)
+    if x < 0:
+        x = 2 ** 32 - 1
+    return x
+
+
+o('scrollback_lines', 2000, option_type=scrollback_lines, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
-on demand.'''))
+on demand. Negative numbers are (effectively) infinite scrollback. Note that using
+very large scrollback is not recommended a it can slow down resizing of the terminal
+and also use large amounts of RAM.'''))
 
 o('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER', option_type=to_cmdline, long_text=_('''
 Program with which to view scrollback in a new window. The scrollback buffer is
