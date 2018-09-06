@@ -7,19 +7,19 @@ Changelog
 ------------------------------
 
 - Add a new :option:`kitty --start-in-fullscreen` command line flag to start
-  kitty in fullscreen mode (:iss:`856`)
+  kitty in full screen mode (:iss:`856`)
 
 - macOS: Fix a character that cannot be rendered in any font causing
   font fallback for all subsequent characters that cannot be rendered in the
   main font to fail (:iss:`799`)
 
-- Linux: Fix numpad arrow keys not working when num lock is off (:iss:`857`)
+- Linux: Fix number pad arrow keys not working when Numlock is off (:iss:`857`)
 
 - Wayland: Implement support for clipboard copy/paste (:iss:`855`)
 
 - Allow mapping shortcuts using the raw key code from the OS (:iss:`848`)
 
-- Allow mapping of individual keypresses without modifiers as shortcuts
+- Allow mapping of individual key-presses without modifiers as shortcuts
 
 - Fix legacy invocation of icat as `kitty icat` not working (:iss:`850`)
 
