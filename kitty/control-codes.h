@@ -16,7 +16,7 @@
 // *Bell*: Beeps.
 #define BEL 0x07
 
-// *Backspace*: Backspace one column, but not past the begining of the
+// *Backspace*: Backspace one column, but not past the beginning of the
 // line.
 #define BS 0x08
 
