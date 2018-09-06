@@ -32,7 +32,7 @@ from .search import BadRegex, Search
 try:
     from .highlight import initialize_highlighter, highlight_collection
 except ImportError:
-    initialize_highlighter = None
+    initialize_highlighter = highlight_collection = None
 
 
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
