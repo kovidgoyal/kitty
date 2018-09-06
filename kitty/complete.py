@@ -220,21 +220,39 @@ def complete_remote_command(ans, cmd_name, words, new_word):
     complete_alias_map(ans, words, new_word, alias_map)
 
 
-def complete_files_and_dirs(ans, prefix, files_group_name='Files', predicate=lambda filename: True):
+def path_completion(prefix=''):
     dirs, files = [], []
     base = '.'
     if prefix.endswith('/'):
         base = prefix
     elif '/' in prefix:
         base = os.path.dirname(prefix)
-    for x in os.scandir(base):
-        q = os.path.relpath(x.path)
-        if x.is_dir():
-            if q.startswith(prefix):
-                dirs.append(q.rstrip(os.sep) + os.sep)
+    src = os.path.expandvars(os.path.expanduser(base))
+    src_prefix = os.path.abspath(os.path.expandvars(os.path.expanduser(prefix))) if prefix else ''
+    try:
+        items = os.scandir(src)
+    except FileNotFoundError:
+        items = ()
+    for x in items:
+        abspath = os.path.abspath(x.path)
+        if prefix and not abspath.startswith(src_prefix):
+            continue
+        if prefix:
+            q = prefix + abspath[len(src_prefix):].lstrip(os.sep)
+            q = os.path.expandvars(os.path.expanduser(q))
         else:
-            if q.startswith(prefix) and predicate(q):
-                files.append(q)
+            q = os.path.relpath(abspath)
+        if x.is_dir():
+            dirs.append(q.rstrip(os.sep) + os.sep)
+        else:
+            files.append(q)
+    return dirs, files
+
+
+def complete_files_and_dirs(ans, prefix, files_group_name='Files', predicate=None):
+    dirs, files = path_completion(prefix or '')
+    files = filter(predicate, files)
+
     if dirs:
         ans.match_groups['Directories'] = dict.fromkeys(dirs)
         ans.files_groups.add('Directories'), ans.no_space_groups.add('Directories')
@@ -255,9 +273,15 @@ def complete_icat_args(ans, opt, prefix):
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
 
 
+def config_file_predicate(filename):
+    return filename.endswith('.conf')
+
+
 def complete_diff_args(ans, opt, prefix):
     if opt is None:
         complete_files_and_dirs(ans, prefix, 'Files')
+    elif opt['dest'] == 'config':
+        complete_files_and_dirs(ans, prefix, 'Config Files', config_file_predicate)
 
 
 def complete_kitten(ans, kitten, words, new_word):
