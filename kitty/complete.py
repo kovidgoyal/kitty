@@ -255,6 +255,11 @@ def complete_icat_args(ans, opt, prefix):
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
 
 
+def complete_diff_args(ans, opt, prefix):
+    if opt is None:
+        complete_files_and_dirs(ans, prefix, 'Files')
+
+
 def complete_kitten(ans, kitten, words, new_word):
     try:
         cd = get_kitten_cli_docs(kitten)
@@ -270,7 +275,8 @@ def complete_kitten(ans, kitten, words, new_word):
             for alias in opt['aliases']:
                 option_map[alias] = opt
     complete_alias_map(ans, words, new_word, option_map, {
-        'icat': complete_icat_args
+        'icat': complete_icat_args,
+        'diff': complete_diff_args,
     }.get(kitten))
 
 
