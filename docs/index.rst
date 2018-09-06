@@ -387,6 +387,16 @@ The important thing above is to make sure the call to |kitty| to load the zsh
 completions happens after the call to :file:`compinit`.
 
 
+fish
+~~~~~~~~
+
+Add the following to your :file:`~/.config/fish/config.fish`
+
+.. code-block:: sh
+
+   kitty + complete setup fish | source
+
+
 Changelog
 ------------------
 
