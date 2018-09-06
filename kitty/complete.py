@@ -35,7 +35,7 @@ completion_scripts = {
     'zsh': '''
 _kitty() {
     local src
-    # Send all words upto the word the cursor is currently on
+    # Send all words up to the word the cursor is currently on
     src=$(printf "%s\n" "${(@)words[1,$CURRENT]}" | kitty +complete zsh)
     if [[ $? == 0 ]]; then
         eval ${src}
