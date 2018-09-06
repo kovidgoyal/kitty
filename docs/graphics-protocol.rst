@@ -19,7 +19,7 @@ For some discussion regarding the design choices, see `#33
 
 To see a quick demo, inside a |kitty| terminal run::
 
-    kitty icat path/to/some/image.png
+    kitty +kitten icat path/to/some/image.png
 
 You can also see a screenshot with more sophisticated features such as
 alpha-blending and text over graphics.
