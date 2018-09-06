@@ -335,12 +335,14 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
 static KeyEvent key_event = {};
 
 static inline xkb_keysym_t
-compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym) {
+compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym, int *compose_completed) {
+    *compose_completed = 0;
     if (sym == XKB_KEY_NoSymbol || !composeState) return sym;
     if (xkb_compose_state_feed(composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
     switch (xkb_compose_state_get_status(composeState)) {
         case XKB_COMPOSE_COMPOSED:
             xkb_compose_state_get_utf8(composeState, key_event.text, sizeof(key_event.text));
+            *compose_completed = 1;
             return xkb_compose_state_get_one_sym(composeState);
         case XKB_COMPOSE_COMPOSING:
         case XKB_COMPOSE_CANCELLED:
@@ -471,8 +473,9 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
-        glfw_sym = compose_symbol(sg->composeState, syms[0]);
-        if (glfw_sym == XKB_KEY_NoSymbol) {
+        int compose_completed;
+        glfw_sym = compose_symbol(sg->composeState, syms[0], &compose_completed);
+        if (glfw_sym == XKB_KEY_NoSymbol && !compose_completed) {
             debug("compose not complete, ignoring.\n");
             return;
         }
