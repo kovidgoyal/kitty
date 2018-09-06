@@ -108,6 +108,10 @@ def zsh_output_serializer(ans):
             cmd += ['-S', '""']
         if description in ans.files_groups:
             cmd.append('-f')
+            common_prefix = os.path.commonprefix(tuple(matches))
+            if common_prefix:
+                cmd.extend(('-p', shlex.quote(common_prefix)))
+                matches = {k[len(common_prefix):]: v for k, v in matches.items()}
         cmd.append('--')
         for word, description in matches.items():
             cmd.append(shlex.quote(word))
