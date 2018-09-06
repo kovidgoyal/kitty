@@ -34,6 +34,8 @@ Changelog
 
 - Add completion of the kitty command for the fish shell (:pull:`829`)
 
+- Linux: Fix XCompose rules with no defined symbol not working (:iss:`880`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 
