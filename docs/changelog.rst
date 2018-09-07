@@ -13,6 +13,8 @@ Changelog
   font fallback for all subsequent characters that cannot be rendered in the
   main font to fail (:iss:`799`)
 
+- Fix backspacing of wide characters in wide-character unaware programs not working (:iss:`875`)
+
 - Linux: Fix number pad arrow keys not working when Numlock is off (:iss:`857`)
 
 - Wayland: Implement support for clipboard copy/paste (:iss:`855`)

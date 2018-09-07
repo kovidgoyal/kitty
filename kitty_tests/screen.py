@@ -222,6 +222,15 @@ class TestScreen(BaseTest):
         for i in range(1, 5):
             self.ae(str(s.line(i)), '12345')
 
+    def test_backspace_wide_characters(self):
+        s = self.create_screen()
+        s.draw('⛅')
+        self.ae(s.cursor.x, 2)
+        s.backspace()
+        s.draw(' ')
+        s.backspace()
+        self.ae(s.cursor.x, 0)
+
     def test_resize(self):
         s = self.create_screen(scrollback=6)
         s.draw(''.join([str(i) * s.columns for i in range(s.lines)]))
