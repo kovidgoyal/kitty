@@ -13,6 +13,10 @@ Changelog
   font fallback for all subsequent characters that cannot be rendered in the
   main font to fail (:iss:`799`)
 
+- Linux: Do not enable IME input via ibus unless the ``GLFW_IM_MODULE=ibus``
+  environment variable is set. IME causes key processing latency and even
+  missed keystrokes for many people, so it is now off by default.
+
 - Fix backspacing of wide characters in wide-character unaware programs not working (:iss:`875`)
 
 - Linux: Fix number pad arrow keys not working when Numlock is off (:iss:`857`)

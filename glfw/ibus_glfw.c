@@ -280,8 +280,7 @@ setup_connection(_GLFWIBUSData *ibus) {
 void
 glfw_connect_to_ibus(_GLFWIBUSData *ibus) {
     if (ibus->inited) return;
-    if (!test_env_var("XMODIFIERS", "@im=ibus") && !test_env_var("GTK_IM_MODULE", "ibus") && !test_env_var("QT_IM_MODULE", "ibus") && !test_env_var("GLFW_IM_MODULE", "ibus")) return;
-    if (getenv("GLFW_IM_MODULE") && !test_env_var("GLFW_IM_MODULE", "ibus")) return;
+    if (!test_env_var("GLFW_IM_MODULE", "ibus")) return;
     ibus->inited = GLFW_TRUE;
     setup_connection(ibus);
 }
