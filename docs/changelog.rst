@@ -25,11 +25,9 @@ Changelog
 
 - Fix legacy invocation of icat as `kitty icat` not working (:iss:`850`)
 
-- Draw underlines under the text instead of over it
-
 - Improve rendering of wavy underline at small font sizes (:iss:`853`)
 
-- Fix a regression in 0.12.0 that broke resizing of layouts (:iss:`860`)
+- Fix a regression in 0.12.0 that broke dynamic resizing of layouts (:iss:`860`)
 
 - Wayland: Allow using the :option:`kitty --class` command line flag
   to set the app id (:iss:`862`)
