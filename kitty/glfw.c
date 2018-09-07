@@ -278,12 +278,11 @@ set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static GLFWwindow *current_os_window_ctx = NULL;
 
 void
 make_os_window_context_current(OSWindow *w) {
-    if (w->handle != current_os_window_ctx) {
-        current_os_window_ctx = w->handle;
+    GLFWwindow *current_context = glfwGetCurrentContext();
+    if (w->handle != current_context) {
         glfwMakeContextCurrent(w->handle);
     }
 }
@@ -489,7 +488,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
     w->fonts_data = fonts_data;
-    current_os_window_ctx = glfw_window;
     w->shown_once = true;
     push_focus_history(w);
     glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);
@@ -536,7 +534,6 @@ destroy_os_window(OSWindow *w) {
         show_mouse_cursor(w->handle);
         glfwSetCursor(w->handle, NULL);
         glfwDestroyWindow(w->handle);
-        if (current_os_window_ctx == w->handle) current_os_window_ctx = NULL;
     }
     w->handle = NULL;
 #ifdef __APPLE__
