@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.12.1 [future]
+0.12.1 [2018-09-08]
 ------------------------------
 
 - Add a new :option:`kitty --start-in-fullscreen` command line flag to start
@@ -42,6 +42,9 @@ Changelog
 
 - Linux: Fix crash with some Nvidia drivers when creating tabs in the first
   top level-window after creating a second top-level window. (:iss:`873`)
+
+- macOS: Diff kitten: Fix syntax highlighting not working because of
+  a bug in the 0.12.0 macOS package
 
 0.12.0 [2018-09-01]
 ------------------------------
