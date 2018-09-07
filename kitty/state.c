@@ -90,6 +90,7 @@ add_os_window() {
 static inline id_type
 add_tab(id_type os_window_id) {
     WITH_OS_WINDOW(os_window_id)
+        make_os_window_context_current(os_window);
         ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
         memset(os_window->tabs + os_window->num_tabs, 0, sizeof(Tab));
         os_window->tabs[os_window->num_tabs].id = ++global_state.tab_id_counter;

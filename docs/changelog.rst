@@ -38,6 +38,9 @@ Changelog
 
 - Linux: Fix XCompose rules with no defined symbol not working (:iss:`880`)
 
+- Linux: Fix crash with some nvidia drivers when creating tabs in the first
+  top level-window after creating a second top-level window. (:iss:`873`)
+
 0.12.0 [2018-09-01]
 ------------------------------
 
