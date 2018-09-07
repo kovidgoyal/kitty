@@ -875,6 +875,8 @@ g('shortcuts.tab')  # {{{
 if is_macos:
     k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'))
 k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
+if is_macos:
+    k('previous_tab', 'ctrl+shift+tab', 'previous_tab', _('Previous tab'))
 k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
 k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
 k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
