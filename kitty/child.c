@@ -16,6 +16,7 @@
 static inline char**
 serialize_string_tuple(PyObject *src) {
     Py_ssize_t sz = PyTuple_GET_SIZE(src);
+
     char **ans = calloc(sz + 1, sizeof(char*));
     if (!ans) fatal("Out of memory");
     for (Py_ssize_t i = 0; i < sz; i++) {
@@ -26,6 +27,13 @@ serialize_string_tuple(PyObject *src) {
         memcpy(ans[i], pysrc, len);
     }
     return ans;
+}
+
+static inline void
+free_string_tuple(char** data) {
+    size_t i = 0;
+	while(data[i++]) free(data[i-1]);
+	free(data);
 }
 
 extern char **environ;
@@ -125,8 +133,8 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             break;
     }
 #undef exit_on_err
-    free(argv);
-    free(env);
+    free_string_tuple(argv);
+    free_string_tuple(env);
     if (PyErr_Occurred()) return NULL;
     return PyLong_FromLong(pid);
 }
