@@ -462,7 +462,7 @@ def to_layout_names(raw):
     parts = [x.strip().lower() for x in raw.split(',')]
     ans = []
     for p in parts:
-        if p == '*':
+        if p in ('*', 'all'):
             ans.extend(sorted(all_layouts))
             continue
         name = p.partition(':')[0]
@@ -474,7 +474,7 @@ def to_layout_names(raw):
 
 o('enabled_layouts', '*', option_type=to_layout_names, long_text=_('''
 The enabled window layouts. A comma separated list of layout names. The special
-value :code:`*` means all layouts. The first listed layout will be used as the
+value :code:`all` means all layouts. The first listed layout will be used as the
 startup layout. For a list of available layouts, see the :ref:`layouts`.
 '''))
 
