@@ -233,7 +233,7 @@ class Layout:  # {{{
         windows = process_overlaid_windows(all_windows)[1]
         ans = self.neighbors_for_window(w, windows)
         for values in ans.values():
-            values[:] = [idx_for_id(w.id, windows) for w in values]
+            values[:] = [idx_for_id(w.id, all_windows) for w in values]
         return ans
 
     def move_window(self, all_windows, active_window_idx, delta=1):
