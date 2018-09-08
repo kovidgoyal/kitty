@@ -228,6 +228,11 @@ class Layout:  # {{{
         active_window_idx = idx_for_id(windows[active_window_idx].id, all_windows)
         return self.set_active_window(all_windows, active_window_idx)
 
+    def neighbors(self, all_windows, active_window_idx):
+        w = all_windows[active_window_idx]
+        windows = process_overlaid_windows(all_windows)[1]
+        self.neighbors_for_window(w, windows)
+
     def move_window(self, all_windows, active_window_idx, delta=1):
         w = all_windows[active_window_idx]
         windows = process_overlaid_windows(all_windows)[1]
@@ -368,6 +373,9 @@ class Layout:  # {{{
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
 
+    def neighbors_for_window(self, window, windows):
+        return {'left': [], 'right': [], 'top': [], 'bottom': []}
+
     def resolve_borders(self, windows, active_window):
         if draw_minimal_borders:
             needs_borders_map = {w.id: (w is active_window or w.needs_attention) for w in windows}
@@ -469,6 +477,13 @@ class Tall(Layout):  # {{{
         # left bottom blank rect
         self.bottom_blank_rect(windows[0])
 
+    def neighbors_for_window(self, window, windows):
+        if window is windows[0]:
+            return {'left': [], 'right': windows[1:], 'top': [], 'bottom': []}
+        idx = windows.index(window)
+        return {'left': windows[0], 'right': [], 'top': [] if idx <= 1 else [windows[idx-1]],
+                'bottom': [] if window is windows[-1] else [windows[idx+1]]}
+
     def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
@@ -520,6 +535,14 @@ class Fat(Tall):  # {{{
         self.bottom_blank_rect(windows[0])
         # bottom blank rect
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+
+    def neighbors_for_window(self, window, windows):
+        if window is windows[0]:
+            return {'left': [], 'bottom': windows[1:], 'top': [], 'right': []}
+        idx = windows.index(window)
+        return {'top': windows[0], 'bottom': [], 'left': [] if idx <= 1 else [windows[idx-1]],
+                'right': [] if window is windows[-1] else [windows[idx+1]]}
+
 # }}}
 
 
@@ -680,6 +703,56 @@ class Grid(Layout):  # {{{
                 (right_neighbor_id is not None and not needs_borders_map[right_neighbor_id]) or next_col_has_different_count,
                 bottom_neighbor_id is not None and not needs_borders_map[bottom_neighbor_id]
             )
+
+    def neighbors_for_window(self, window, windows):
+        n = len(windows)
+        if n < 4:
+            return Tall.neighbors_for_window(window, windows)
+        try:
+            n, ncols, nrows, special_rows, special_col = windows[0].layout_data
+        except Exception:
+            n = -1
+        if n != len(windows):
+            # Something bad happened
+            return Layout.neighbors_for_window(self, window, windows)
+
+        blank_row = [None for i in range(ncols)]
+        matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
+        wi = iter(windows)
+        pos_map = {}
+        col_counts = []
+        id_map = {}
+        for col in range(ncols):
+            rows = special_rows if col == special_col else nrows
+            for row in range(rows):
+                w = next(wi)
+                matrix[row][col] = wid = w.id
+                pos_map[wid] = row, col
+                id_map[wid] = w
+            col_counts.append(rows)
+        row, col = pos_map[window.id]
+
+        def neighbors(row, col):
+            try:
+                ans = matrix[row][col]
+            except IndexError:
+                ans = None
+            return [] if ans is None else [id_map[ans]]
+
+        def side(row, col, delta):
+            neighbor_col = col + delta
+            if col_counts[neighbor_col] == col_counts[col]:
+                return neighbors(row, neighbor_col)
+            return neighbors(min(row, col_counts[neighbor_col] - 1), neighbor_col)
+
+        return {
+            'top': neighbors(row-1, col) if row else [],
+            'bottom': neighbors(row + 1, col),
+            'left': side(row, col, -1) if col else [],
+            'right': side(row, col, 1) if col < ncols - 1 else [],
+        }
+
+
 # }}}
 
 
@@ -740,6 +813,15 @@ class Vertical(Layout):  # {{{
                 yield no_borders
             else:
                 yield self.only_between_border
+
+    def neighbors_for_window(self, window, windows):
+        idx = windows.index(window)
+        before = [] if window is windows[0] else [windows[idx-1]]
+        after = [] if window is windows[-1] else [windows[idx+1]]
+        if self.main_is_horizontal:
+            return {'left': before, 'right': after, 'top': [], 'bottom': []}
+        return {'top': before, 'bottom': after, 'left': [], 'right': []}
+
 # }}}
 
 
@@ -768,6 +850,7 @@ class Horizontal(Vertical):  # {{{
         self.simple_blank_rects(windows[0], windows[-1])
         # bottom blank rect
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+
 # }}}
 
 
