@@ -150,6 +150,19 @@ def neighboring_window(func, rest):
     return func, [rest]
 
 
+@func_with_args('move_window')
+def move_window(func, rest):
+    rest = rest.lower()
+    rest = {'up': 'top', 'down': 'bottom'}.get(rest, rest)
+    try:
+        rest = int(rest)
+    except Exception:
+        if rest not in ('left', 'right', 'top', 'bottom'):
+            log_error('Invalid move_window specification: {}'.format(rest))
+            rest = 0
+    return func, [rest]
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]

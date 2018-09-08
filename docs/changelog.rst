@@ -9,8 +9,9 @@ Changelog
 - Add a new ``last_used_layout`` function that can be mapped to a shortcut to
   switch to the previously used window layout (:iss:`870`)
 
-- Add a new ``neighboring_window`` function to switch to neighboring
-  windows in the current layout, similar to window movement in vim (:iss:`916`)
+- Add new ``neighboring_window`` and ``move_window`` functions to switch to
+  neighboring windows in the current layout, and move them around, similar to
+  window movement in vim (:iss:`916`)
 
 - Linux: Ensure that the python embedded in the kitty binary build always uses
   UTF-8 mode (:iss:`924`)

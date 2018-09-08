@@ -237,14 +237,25 @@ class Layout:  # {{{
         return ans
 
     def move_window(self, all_windows, active_window_idx, delta=1):
+        # delta can be either a number or a string such as 'left', 'top', etc
+        # for neighborhood moves
         w = all_windows[active_window_idx]
         windows = process_overlaid_windows(all_windows)[1]
-        if len(windows) < 2 or abs(delta) == 0:
+        if len(windows) < 2 or not delta:
             return active_window_idx
         idx = idx_for_id(w.id, windows)
         if idx is None:
             idx = idx_for_id(w.overlay_window_id, windows)
-        nidx = (idx + len(windows) + delta) % len(windows)
+        if isinstance(delta, int):
+            nidx = (idx + len(windows) + delta) % len(windows)
+        else:
+            delta = delta.lower()
+            delta = {'up': 'top', 'down': 'bottom'}.get(delta, delta)
+            neighbors = self.neighbors_for_window(w, windows)
+            if not neighbors.get(delta):
+                return active_window_idx
+            nidx = idx_for_id(neighbors[delta][0].id, windows)
+
         nw = windows[nidx]
         nidx = idx_for_id(nw.id, all_windows)
         idx = active_window_idx
