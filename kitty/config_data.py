@@ -155,6 +155,11 @@ You can also create shortcuts to switch to specific layouts::
 
     map ctrl+alt+t goto_layout tall
     map ctrl+alt+s goto_layout stack
+
+Similarly, to switch back to the previous layout::
+
+   map ctrl+alt+p last_used_layout
+
 ''')],
     'shortcuts.fonts': [
         _('Font sizes'), _('''\

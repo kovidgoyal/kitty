@@ -282,7 +282,7 @@ def set_tab_title(boss, window, payload):
 # }}}
 
 
-# set_layout {{{
+# goto_layout {{{
 @cmd(
     'Set the window layout',
     'Set the window layout in the specified tab (or the active tab if not specified).'
@@ -314,6 +314,34 @@ def goto_layout(boss, window, payload):
                 tab.goto_layout(payload['layout'], raise_exception=True)
             except ValueError:
                 raise UnknownLayout('The layout {} is unknown or disabled'.format(payload['layout']))
+# }}}
+
+
+# last_used_layout {{{
+@cmd(
+    'Switch to the last used layout',
+    'Switch to the last used window layout in the specified tab (or the active tab if not specified).'
+    ' You can use special match value :italic:`all` to set the layout in all tabs.',
+    options_spec=MATCH_TAB_OPTION,
+)
+def cmd_last_used_layout(global_opts, opts, args):
+    return {'match': opts.match}
+
+
+def last_used_layout(boss, window, payload):
+    match = payload['match']
+    if match:
+        if match == 'all':
+            tabs = tuple(boss.all_tabs)
+        else:
+            tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise MatchError(match, 'tabs')
+    else:
+        tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+    for tab in tabs:
+        if tab:
+            tab.last_used_layout()
 # }}}
 
 

@@ -46,10 +46,11 @@ class Tab:  # {{{
         self.windows = deque()
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
+        self._last_used_layout = self._current_layout_name = None
         if session_tab is None:
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
-            self.current_layout = self.create_layout_object(sl)
+            self._set_current_layout(sl)
             if special_window is None:
                 self.new_window(cwd_from=cwd_from)
             else:
@@ -57,8 +58,13 @@ class Tab:  # {{{
         else:
             self.cwd = session_tab.cwd or self.args.directory
             l0 = session_tab.layout
-            self.current_layout = self.create_layout_object(l0)
+            self._set_current_layout(l0)
             self.startup(session_tab)
+
+    def _set_current_layout(self, layout_name):
+        self._last_used_layout = self._current_layout_name
+        self.current_layout = self.create_layout_object(layout_name)
+        self._current_layout_name = layout_name
 
     def startup(self, session_tab):
         for cmd in session_tab.windows:
@@ -154,7 +160,12 @@ class Tab:  # {{{
             else:
                 idx = -1
             nl = self.enabled_layouts[(idx + 1) % len(self.enabled_layouts)]
-            self.current_layout = self.create_layout_object(nl)
+            self._set_current_layout(nl)
+            self.relayout()
+
+    def last_used_layout(self):
+        if len(self.enabled_layouts) > 1 and self._last_used_layout and self._last_used_layout != self._current_layout_name:
+            self._set_current_layout(self._last_used_layout)
             self.relayout()
 
     def goto_layout(self, layout_name, raise_exception=False):
@@ -164,7 +175,7 @@ class Tab:  # {{{
                 raise ValueError(layout_name)
             log_error('Unknown or disabled layout: {}'.format(layout_name))
             return
-        self.current_layout = self.create_layout_object(layout_name)
+        self._set_current_layout(layout_name)
         self.relayout()
 
     def resize_window_by(self, window_id, increment, is_horizontal):
