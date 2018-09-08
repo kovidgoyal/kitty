@@ -151,6 +151,13 @@ Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`ten
                             (clockwise from the top-left)
 ========================    =======================
 
+Additionally, you can define shortcuts in :file:`kitty.conf` to go to neighboring
+windows (similar to window movement in vim)::
+
+   map ctrl+left neighboring_window left
+   map ctrl+down neighboring_window bottom
+   ...
+
 
 Other keyboard shortcuts
 ----------------------------------

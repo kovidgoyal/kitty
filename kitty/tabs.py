@@ -271,6 +271,14 @@ class Tab:  # {{{
     def previous_window(self):
         self._next_window(-1)
 
+    def neighboring_window(self, which):
+        neighbors = self.current_layout.neighbors(self.windows, self.active_window_idx)
+        candidates = neighbors.get(which)
+        if candidates:
+            self.active_window_idx = self.current_layout.set_active_window(self.windows, candidates[0])
+            self.relayout_borders()
+            glfw_post_empty_event()
+
     def move_window(self, delta=1):
         self.active_window_idx = self.current_layout.move_window(self.windows, self.active_window_idx, delta)
         self.relayout()

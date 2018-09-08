@@ -140,6 +140,16 @@ def clear_terminal(func, rest):
     return func, args
 
 
+@func_with_args('neighboring_window')
+def neighboring_window(func, rest):
+    rest = rest.lower()
+    rest = {'up': 'top', 'down': 'bottom'}.get(rest, rest)
+    if rest not in ('left', 'right', 'top', 'bottom'):
+        log_error('Invalid neighbor specification: {}'.format(rest))
+        rest = 'right'
+    return func, [rest]
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]

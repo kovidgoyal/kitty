@@ -9,6 +9,9 @@ Changelog
 - Add a new ``last_used_layout`` function that can be mapped to a shortcut to
   switch to the previously used window layout (:iss:`870`)
 
+- Add a new ``neighboring_window`` function to switch to neighboring
+  windows in the current layout, similar to window movement in vim (:iss:`916`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------

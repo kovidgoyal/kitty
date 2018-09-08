@@ -231,7 +231,10 @@ class Layout:  # {{{
     def neighbors(self, all_windows, active_window_idx):
         w = all_windows[active_window_idx]
         windows = process_overlaid_windows(all_windows)[1]
-        self.neighbors_for_window(w, windows)
+        ans = self.neighbors_for_window(w, windows)
+        for values in ans.values():
+            values[:] = [idx_for_id(w.id, windows) for w in values]
+        return ans
 
     def move_window(self, all_windows, active_window_idx, delta=1):
         w = all_windows[active_window_idx]
@@ -481,7 +484,7 @@ class Tall(Layout):  # {{{
         if window is windows[0]:
             return {'left': [], 'right': windows[1:], 'top': [], 'bottom': []}
         idx = windows.index(window)
-        return {'left': windows[0], 'right': [], 'top': [] if idx <= 1 else [windows[idx-1]],
+        return {'left': [windows[0]], 'right': [], 'top': [] if idx <= 1 else [windows[idx-1]],
                 'bottom': [] if window is windows[-1] else [windows[idx+1]]}
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
@@ -540,7 +543,7 @@ class Fat(Tall):  # {{{
         if window is windows[0]:
             return {'left': [], 'bottom': windows[1:], 'top': [], 'right': []}
         idx = windows.index(window)
-        return {'top': windows[0], 'bottom': [], 'left': [] if idx <= 1 else [windows[idx-1]],
+        return {'top': [windows[0]], 'bottom': [], 'left': [] if idx <= 1 else [windows[idx-1]],
                 'right': [] if window is windows[-1] else [windows[idx+1]]}
 
 # }}}
