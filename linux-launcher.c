@@ -153,6 +153,10 @@ int main(int argc, char *argv[]) {
         final_argv[i+1] = argv[i];
         num_args++;
     }
+#if PY_VERSION_HEX >= 0x03070000
+    // Always use UTF-8 mode, see https://github.com/kovidgoyal/kitty/issues/924
+    Py_UTF8Mode = 1;
+#endif
     for (i = 0; i < num_args; i++) {
         argvw[i] = Py_DecodeLocale(final_argv[i], NULL);
         if (argvw[i] == NULL) {

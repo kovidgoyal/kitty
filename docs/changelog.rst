@@ -12,6 +12,9 @@ Changelog
 - Add a new ``neighboring_window`` function to switch to neighboring
   windows in the current layout, similar to window movement in vim (:iss:`916`)
 
+- Linux: Ensure that the python embedded in the kitty binary build always uses
+  UTF-8 mode (:iss:`924`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------
