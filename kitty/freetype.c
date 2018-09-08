@@ -236,7 +236,7 @@ load_glyph(Face *self, int glyph_index, int load_type) {
     // Embedded bitmap glyph?
     if(self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
         FT_Bitmap bitmap;
-        FT_Bitmap_Init(&bitmap);
+        FT_Bitmap_New(&bitmap);
 
         // This also sets pixel_mode to FT_PIXEL_MODE_GRAY so we don't have to
         error = FT_Bitmap_Convert(library, &self->face->glyph->bitmap, &bitmap, 1);
