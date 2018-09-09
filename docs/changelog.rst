@@ -16,6 +16,9 @@ Changelog
 - Linux: Ensure that the python embedded in the kitty binary build always uses
   UTF-8 mode (:iss:`924`)
 
+- Linux: Handle fonts that contain monochrome bitmaps (such as the Terminus TTF
+  font) (:pull:`934`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------
