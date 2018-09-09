@@ -837,7 +837,8 @@ includes text styling escape codes). For only the current screen, use @screen
 or @ansi_screen. For the secondary screen, use @alternate and @ansi_alternate.
 Note that the secondary screen is not currently displayed. For example if you
 run a fullscreen terminal application, the secondary screen will be the screen
-you return to when quitting the application.
+you return to when quitting the application. You can also use ``none`` for no
+:file:`STDIN` input.
 
 To open in a new window or tab use ``window`` or ``tab`` respectively. You can
 also use ``none`` in which case the data will be piped into the program without
