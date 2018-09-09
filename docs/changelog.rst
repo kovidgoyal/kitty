@@ -14,7 +14,7 @@ Changelog
   window movement in vim (:iss:`916`)
 
 - Add a new :option:`kitty --start-as` command line flag to start kitty
-  fullscreen/maximized/minimized. This obsoletes the ``--start-in-fullscreen``
+  fullscreen/maximized/minimized. This replaces the ``--start-in-fullscreen``
   flag introduced in the previous release (:iss:`935`)
 
 - Linux: Ensure that the python embedded in the kitty binary build uses
