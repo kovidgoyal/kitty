@@ -19,10 +19,11 @@ from .constants import (
 )
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
-    create_os_window, current_os_window, destroy_global_data,
-    get_clipboard_string, glfw_post_empty_event, global_font_size,
-    mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    set_clipboard_string, set_in_sequence_mode, toggle_fullscreen
+    change_os_window_state, create_os_window, current_os_window,
+    destroy_global_data, get_clipboard_string, glfw_post_empty_event,
+    global_font_size, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, set_clipboard_string, set_in_sequence_mode,
+    toggle_fullscreen
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_draw_minimal_borders
@@ -103,8 +104,11 @@ class Boss:
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
         self.add_os_window(startup_session, os_window_id=os_window_id)
-        if args.start_in_fullscreen:
-            self.toggle_fullscreen()
+        if args.start_as != 'normal':
+            if args.start_as == 'fullscreen':
+                self.toggle_fullscreen()
+            else:
+                change_os_window_state(args.start_as)
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:

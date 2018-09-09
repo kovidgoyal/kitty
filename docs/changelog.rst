@@ -13,6 +13,10 @@ Changelog
   neighboring windows in the current layout, and move them around, similar to
   window movement in vim (:iss:`916`)
 
+- Add a new :option:`kitty --start-as` command line flag to start kitty
+  fullscreen/maximized/minimized. This obsoletes the ``--start-in-fullscreen``
+  flag introduced in the previous release (:iss:`935`)
+
 - Linux: Ensure that the python embedded in the kitty binary build uses
   UTF-8 mode to process command-line arguments (:iss:`924`)
 
@@ -23,7 +27,7 @@ Changelog
 0.12.1 [2018-09-08]
 ------------------------------
 
-- Add a new :option:`kitty --start-in-fullscreen` command line flag to start
+- Add a new ``--start-in-fullscreen`` command line flag to start
   kitty in full screen mode (:iss:`856`)
 
 - macOS: Fix a character that cannot be rendered in any font causing
