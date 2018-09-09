@@ -229,7 +229,7 @@ class TestScreen(BaseTest):
         s.backspace()
         s.draw(' ')
         s.backspace()
-        self.ae(s.cursor.x, 0)
+        self.ae(s.cursor.x, 1)
 
     def test_resize(self):
         s = self.create_screen(scrollback=6)
