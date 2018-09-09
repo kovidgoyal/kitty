@@ -234,7 +234,7 @@ load_glyph(Face *self, int glyph_index, int load_type) {
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
 
     // Embedded bitmap glyph?
-    if(self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
+    if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO && load_type != FT_LOAD_DEFAULT) {
         FT_Bitmap bitmap;
         FT_Bitmap_New(&bitmap);
 
