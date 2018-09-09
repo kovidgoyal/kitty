@@ -13,8 +13,8 @@ Changelog
   neighboring windows in the current layout, and move them around, similar to
   window movement in vim (:iss:`916`)
 
-- Linux: Ensure that the python embedded in the kitty binary build always uses
-  UTF-8 mode (:iss:`924`)
+- Linux: Ensure that the python embedded in the kitty binary build uses
+  UTF-8 mode to process command-line arguments (:iss:`924`)
 
 - Linux: Handle fonts that contain monochrome bitmaps (such as the Terminus TTF
   font) (:pull:`934`)
