@@ -244,13 +244,10 @@ load_glyph(Face *self, int glyph_index, int load_type) {
 
         // Normalize gray levels to the range [0..255]
         bitmap.num_grays = 256;
+        unsigned int stride = bitmap.pitch < 0 ? -bitmap.pitch : bitmap.pitch;
         for (unsigned int i = 0; i < bitmap.rows; ++i) {
-            for (unsigned int j = 0; j < bitmap.width; ++j)
-            {
-                unsigned char *p = &bitmap.buffer[i*bitmap.width+j];
-                // We only have 2 levels
-                *p *= 255;
-            }
+            // We only have 2 levels
+            for (unsigned int j = 0; j < bitmap.width; ++j) bitmap.buffer[i * stride + j] *= 255;
         }
         error = FT_Bitmap_Copy(library, &bitmap, &self->face->glyph->bitmap);
         if (error) { set_freetype_error("Failed to copy bitmap, with error:", error); return false; }
