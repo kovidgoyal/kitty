@@ -26,6 +26,9 @@ Changelog
 - Have the :option:`kitty --title` flag apply to all windows created
   using :option:`kitty --session` (:iss:`921`)
 
+- Revert change for backspacing of wide characters in the previous release,
+  as it breaks backspacing in some wide-character aware programs (:iss:`875`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------

@@ -708,15 +708,7 @@ screen_is_cursor_visible(Screen *self) {
 
 void
 screen_backspace(Screen *self) {
-    unsigned int amount = 1;
-    if (self->cursor->x < self->columns && self->cursor->x > 1) {
-        // check if previous character is a wide character
-        linebuf_init_line(self->linebuf, self->cursor->y);
-        unsigned int xpos = self->cursor->x - 2;
-        GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
-        if ((gpu_cell->attrs & WIDTH_MASK) == 2) amount = 2;
-    }
-    screen_cursor_back(self, amount, -1);
+    screen_cursor_back(self, 1, -1);
 }
 
 void
