@@ -244,12 +244,12 @@ load_glyph(Face *self, int glyph_index, int load_type) {
 
         // Normalize gray levels to the range [0..255]
         bitmap.num_grays = 256;
-        for (uint i = 0; i < bitmap.rows; ++i) {
-            for (uint j = 0; j < bitmap.width; ++j)
+        for (unsigned int i = 0; i < bitmap.rows; ++i) {
+            for (unsigned int j = 0; j < bitmap.width; ++j)
             {
                 unsigned char *p = &bitmap.buffer[i*bitmap.width+j];
                 // We only have 2 levels
-                *p = *p ? 255 : 0;
+                *p *= 255;
             }
         }
         error = FT_Bitmap_Copy(library, &bitmap, &self->face->glyph->bitmap);
