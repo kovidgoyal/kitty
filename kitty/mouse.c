@@ -179,10 +179,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
 bool
 drag_scroll(Window *w, OSWindow *frame) {
     unsigned int margin = frame->fonts_data->cell_height / 2;
-    double left = window_left(w, frame), top = window_top(w, frame), right = window_right(w, frame), bottom = window_bottom(w, frame);
-    double x = frame->mouse_x, y = frame->mouse_y;
-    if (y < top || y > bottom) return false;
-    if (x < left || x > right) return false;
+    double y = frame->mouse_y;
     bool upwards = y <= (w->geometry.top + margin);
     if (upwards || y >= w->geometry.bottom - margin) {
         Screen *screen = w->render_data.screen;
@@ -488,23 +485,30 @@ enter_event() {
 }
 
 void
-mouse_event(int button, int modifiers) {
+mouse_event(int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = NULL;
-    if (button == -1 && global_state.active_drag_in_window) {  // drag move
-        w = window_for_id(global_state.active_drag_in_window);
-        if (w) {
-            button = currently_pressed_button();
-            if (button == GLFW_MOUSE_BUTTON_LEFT) {
-                clamp_to_window = true;
-                handle_move_event(w, button, modifiers, window_idx);
-                clamp_to_window = false;
-                return;
+    if (global_state.active_drag_in_window) {
+        if (button == -1) {  // drag move
+            w = window_for_id(global_state.active_drag_in_window);
+            if (w) {
+                button = currently_pressed_button();
+                if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                    clamp_to_window = true;
+                    handle_move_event(w, button, modifiers, window_idx);
+                    clamp_to_window = false;
+                    return;
+                }
             }
         }
-
+        else if (action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_LEFT) {
+            w = window_for_id(global_state.active_drag_in_window);
+            if (w) {
+                update_drag(true, w, true, modifiers);
+            }
+        }
     }
     w = window_for_event(&window_idx, &in_tab_bar);
     if (in_tab_bar) {

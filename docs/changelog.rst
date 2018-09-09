@@ -17,6 +17,9 @@ Changelog
   fullscreen/maximized/minimized. This replaces the ``--start-in-fullscreen``
   flag introduced in the previous release (:iss:`935`)
 
+- Fix drag-scrolling not working when the mouse leaves the window confines
+  (:iss:`917`)
+
 - Linux: Ensure that the python embedded in the kitty binary build uses
   UTF-8 mode to process command-line arguments (:iss:`924`)
 

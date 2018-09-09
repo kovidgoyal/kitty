@@ -281,7 +281,7 @@ void colorprofile_pop_dynamic_colors(ColorProfile*);
 
 void set_mouse_cursor(MouseShape);
 void enter_event();
-void mouse_event(int, int);
+void mouse_event(int, int, int);
 void focus_in_event();
 void wakeup_io_loop(bool);
 void scroll_event(double, double, int);
