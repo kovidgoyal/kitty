@@ -790,6 +790,10 @@ class Boss:
                 return w.as_text()
             if arg == '@ansi_screen':
                 return w.as_text(as_ansi=True)
+            if arg == '@alternate':
+                return w.as_text(alternate_screen=True)
+            if arg == '@ansi_alternate':
+                return w.as_text(as_ansi=True, alternate_screen=True)
 
         if args[0].startswith('@') and args[0] != '@':
             stdin = data_for_at(args[0]) or None

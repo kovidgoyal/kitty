@@ -1684,6 +1684,21 @@ as_text_non_visual(Screen *self, PyObject *args) {
     as_text_generic(args, self, range_line_, self->lines, self->columns);
 }
 
+static inline PyObject*
+as_text_generic_wrapper(Screen *self, PyObject *args, Line*(get_line)(Screen *, int)) {
+    as_text_generic(args, self, get_line, self->lines, self->columns);
+}
+
+static PyObject*
+as_text_alternate(Screen *self, PyObject *args) {
+    LineBuf *original = self->linebuf;
+    self->linebuf = original == self->main_linebuf ? self->alt_linebuf : self->main_linebuf;
+    PyObject *ans = as_text_generic_wrapper(self, args, range_line_);
+    self->linebuf = original;
+    return ans;
+}
+
+
 static PyObject*
 screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     if (PyUnicode_READY(str) != 0) return NULL;
@@ -2169,6 +2184,7 @@ static PyMethodDef methods[] = {
     MND(set_pending_timeout, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
+    MND(as_text_alternate, METH_VARARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)

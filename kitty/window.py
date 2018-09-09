@@ -436,10 +436,13 @@ class Window:
             self.screen.reset_callbacks()
         self.screen = None
 
-    def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False):
+    def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False, alternate_screen=False):
         lines = []
-        add_history = add_history and not self.screen.is_using_alternate_linebuf()
-        f = self.screen.as_text_non_visual if add_history else self.screen.as_text
+        add_history = add_history and not self.screen.is_using_alternate_linebuf() and not alternate_screen
+        if alternate_screen:
+            f = self.screen.as_text_alternate
+        else:
+            f = self.screen.as_text_non_visual if add_history else self.screen.as_text
         f(lines.append, as_ansi, add_wrap_markers)
         if add_history:
             h = []

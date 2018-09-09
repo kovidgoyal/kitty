@@ -827,7 +827,8 @@ k('scroll_end', 'kitty_mod+end', 'scroll_end', _('Scroll to bottom'))
 k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'), long_text=_('''
 You can send the contents of the current screen + history buffer as stdin to an arbitrary program using
 the placeholders @text (which is the plain text) and @ansi (which includes text styling escape codes).
-For only the current screen, use @screen or @ansi_screen.
+For only the current screen, use @screen or @ansi_screen. For the secondary screen, use
+@alternate and @ansi_alternate.
 For example, the following command opens the scrollback buffer in less in a new window::
 
     map kitty_mod+y new_window @ansi less +G -R
