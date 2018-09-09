@@ -29,7 +29,7 @@ the :file:`.dmg` and install as normal. If you are on Linux, download the tarbal
 and extract it into a directory. The |kitty| executable will be in the
 :file:`bin` sub-directory.
 
-Ubuntu/Debian (Gnome 3) installing
+Ubuntu/Debian (Gnome Shell) installing
 ---------------------
 
 .. code-block:: sh
