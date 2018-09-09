@@ -29,6 +29,15 @@ the :file:`.dmg` and install as normal. If you are on Linux, download the tarbal
 and extract it into a directory. The |kitty| executable will be in the
 :file:`bin` sub-directory.
 
+Ubuntu/Debian (Gnome 3) installing
+---------------------
+
+.. code-block:: sh
+
+    curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
+    curl https://sw.kovidgoyal.net/kitty/_static/kitty.png --output ~/.local/share/applications/kitty.png
+    echo -e "[Desktop Entry]\nEncoding=UTF-8\nName=Kitty\nExec=/home/$USER/.local/kitty.app/bin/kitty\nIcon=/home/$USER/.local/share/applications/kitty.png\nType=Application\nCategories=Application;" >> ~/.local/share/applications/kitty.desktop
+    
 
 Customizing the installation
 --------------------------------
