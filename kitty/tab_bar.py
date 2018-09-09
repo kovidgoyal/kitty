@@ -13,7 +13,7 @@ from .fast_data_types import (
 from .layout import Rect
 from .utils import color_as_int
 from .window import calculate_gl_geometry
-from .rgb import alpha_blend
+from .rgb import alpha_blend, color_from_int
 
 TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
 DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg alpha active_bg inactive_bg default_bg')
@@ -121,6 +121,11 @@ class TabBar:
             self.active_fg = (spec['active_tab_foreground'] << 8) | 2
         if 'active_tab_background' in spec:
             self.active_bg = (spec['active_tab_background'] << 8) | 2
+            self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
+        if 'inactive_tab_background' in spec:
+            self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
+        if 'background' in spec:
+            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['background']))
         self.screen.color_profile.set_configured_colors(
                 spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground)),
                 spec.get('inactive_tab_background', color_as_int(self.opts.inactive_tab_background))

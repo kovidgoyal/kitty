@@ -36,6 +36,9 @@ Changelog
 - Revert change for backspacing of wide characters in the previous release,
   as it breaks backspacing in some wide character aware programs (:iss:`875`)
 
+- Fix kitty @set-colors not working for tab backgrounds when using the `fade` tabbar style
+  (:iss:`937`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------
