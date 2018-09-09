@@ -825,13 +825,23 @@ k('scroll_page_down', 'kitty_mod+page_down', 'scroll_page_down', _('Scroll page 
 k('scroll_home', 'kitty_mod+home', 'scroll_home', _('Scroll to top'))
 k('scroll_end', 'kitty_mod+end', 'scroll_end', _('Scroll to bottom'))
 k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'), long_text=_('''
-You can send the contents of the current screen + history buffer as stdin to an arbitrary program using
-the placeholders @text (which is the plain text) and @ansi (which includes text styling escape codes).
-For only the current screen, use @screen or @ansi_screen. For the secondary screen, use
-@alternate and @ansi_alternate.
-For example, the following command opens the scrollback buffer in less in a new window::
 
-    map kitty_mod+y new_window @ansi less +G -R
+You can pipe the contents of the current screen + history buffer as
+:file:`STDIN` to an arbitrary program using the ``pipe`` function. For example,
+the following opens the scrollback buffer in less in an overlay window::
+
+    map f1 pipe @ansi overlay less +g -R
+
+Placeholders available are: @text (which is plain text) and @ansi (which
+includes text styling escape codes). For only the current screen, use @screen
+or @ansi_screen. For the secondary screen, use @alternate and @ansi_alternate.
+Note that the secondary screen is not currently displayed. For example if you
+run a fullscreen terminal application, the secondary screen will be the screen
+you return to when quitting the application.
+
+To open in a new window or tab use ``window`` or ``tab`` respectively. You can
+also use ``none`` in which case the data will be piped into the program without
+creating any windows.
 '''))
 
 

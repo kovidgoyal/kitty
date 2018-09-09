@@ -6,12 +6,16 @@ Changelog
 0.12.2 [future]
 ------------------------------
 
-- Add a new ``last_used_layout`` function that can be mapped to a shortcut to
+- A new ``last_used_layout`` function that can be mapped to a shortcut to
   switch to the previously used window layout (:iss:`870`)
 
-- Add new ``neighboring_window`` and ``move_window`` functions to switch to
+- New ``neighboring_window`` and ``move_window`` functions to switch to
   neighboring windows in the current layout, and move them around, similar to
   window movement in vim (:iss:`916`)
+
+- A new ``pipe`` function that can be used to pipe the contents of the screen
+  and scrollback buffer to any desired program running in a new window, tab or
+  overlay window. (:iss:`933`)
 
 - Add a new :option:`kitty --start-as` command line flag to start kitty
   fullscreen/maximized/minimized. This replaces the ``--start-in-fullscreen``

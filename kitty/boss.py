@@ -48,6 +48,23 @@ def listen_on(spec):
     return s.fileno()
 
 
+def data_for_at(w, arg):
+    if arg == '@selection':
+        return w.text_for_selection()
+    if arg == '@ansi':
+        return w.as_text(as_ansi=True, add_history=True)
+    if arg == '@text':
+        return w.as_text(add_history=True)
+    if arg == '@screen':
+        return w.as_text()
+    if arg == '@ansi_screen':
+        return w.as_text(as_ansi=True)
+    if arg == '@alternate':
+        return w.as_text(alternate_screen=True)
+    if arg == '@ansi_alternate':
+        return w.as_text(as_ansi=True, alternate_screen=True)
+
+
 class DumpCommands:  # {{{
 
     def __init__(self, args):
@@ -774,29 +791,50 @@ class Boss:
         if tm is not None:
             tm.next_tab(-1)
 
+    def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
+        w = window or self.active_window
+        if stdin:
+            stdin = data_for_at(w, stdin)
+            if stdin is not None:
+                stdin = stdin.encode('utf-8')
+        cmdline = []
+        for arg in cmd:
+            if arg == '@selection':
+                arg = data_for_at(w, arg)
+                if not arg:
+                    continue
+            cmdline.append(arg)
+        overlay_for = w.id if as_overlay and w.overlay_for is None else None
+        return SpecialWindow(cmd, stdin, cwd_from=cwd_from, overlay_for=overlay_for)
+
+    def pipe(self, source, dest, exe, *args):
+        cmd = [exe] + list(args)
+        window = self.active_window
+        cwd_from = window.child.pid if window else None
+
+        def create_window():
+            return self.special_window_for_cmd(
+                cmd, stdin=source, as_overlay=dest == 'overlay', cwd_from=cwd_from)
+
+        if dest == 'overlay' or dest == 'window':
+            tab = self.active_tab
+            if tab is not None:
+                return tab.new_special_window(create_window())
+        elif dest == 'tab':
+            tm = self.active_tab_manager
+            if tm is not None:
+                tm.new_tab(special_window=create_window(), cwd_from=cwd_from)
+        else:
+            import subprocess
+            subprocess.Popen(cmd)
+
     def args_to_special_window(self, args, cwd_from=None):
         args = list(args)
         stdin = None
         w = self.active_window
 
-        def data_for_at(arg):
-            if arg == '@selection':
-                return w.text_for_selection()
-            if arg == '@ansi':
-                return w.as_text(as_ansi=True, add_history=True)
-            if arg == '@text':
-                return w.as_text(add_history=True)
-            if arg == '@screen':
-                return w.as_text()
-            if arg == '@ansi_screen':
-                return w.as_text(as_ansi=True)
-            if arg == '@alternate':
-                return w.as_text(alternate_screen=True)
-            if arg == '@ansi_alternate':
-                return w.as_text(as_ansi=True, alternate_screen=True)
-
         if args[0].startswith('@') and args[0] != '@':
-            stdin = data_for_at(args[0]) or None
+            stdin = data_for_at(w, args[0]) or None
             if stdin is not None:
                 stdin = stdin.encode('utf-8')
             del args[0]
@@ -804,7 +842,7 @@ class Boss:
         cmd = []
         for arg in args:
             if arg == '@selection':
-                arg = data_for_at(arg)
+                arg = data_for_at(w, arg)
                 if not arg:
                     continue
             cmd.append(arg)

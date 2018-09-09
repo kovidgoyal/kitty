@@ -163,6 +163,16 @@ def move_window(func, rest):
     return func, [rest]
 
 
+@func_with_args('pipe')
+def pipe(func, rest):
+    import shlex
+    rest = shlex.split(rest)
+    if len(rest) < 3:
+        log_error('Too few arguments to pipe function')
+        rest = ['none', 'none', 'true']
+    return func, rest
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]
