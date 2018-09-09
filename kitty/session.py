@@ -24,9 +24,10 @@ class Tab:
 
 class Session:
 
-    def __init__(self):
+    def __init__(self, default_title=None):
         self.tabs = []
         self.active_tab_idx = 0
+        self.default_title = default_title
 
     def add_tab(self, opts, name=''):
         if self.tabs and not self.tabs[-1].windows:
@@ -48,7 +49,7 @@ class Session:
             cmd = None
         from .tabs import SpecialWindow
         t = self.tabs[-1]
-        t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title))
+        t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title or self.default_title))
         t.next_title = None
 
     def add_special_window(self, sw):
@@ -76,8 +77,8 @@ def resolved_shell(opts):
     return ans
 
 
-def parse_session(raw, opts):
-    ans = Session()
+def parse_session(raw, opts, default_title=None):
+    ans = Session(default_title)
     ans.add_tab(opts)
     for line in raw.splitlines():
         line = line.strip()
@@ -109,7 +110,7 @@ def parse_session(raw, opts):
 def create_session(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False, default_session=None):
     if args and args.session:
         with open(args.session) as f:
-            return parse_session(f.read(), opts)
+            return parse_session(f.read(), opts, getattr(args, 'title', None))
     if default_session and default_session != 'none':
         try:
             with open(default_session) as f:
@@ -117,7 +118,7 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
         except EnvironmentError:
             log_error('Failed to read from session file, ignoring: {}'.format(default_session))
         else:
-            return parse_session(session_data, opts)
+            return parse_session(session_data, opts, getattr(args, 'title', None))
     ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)

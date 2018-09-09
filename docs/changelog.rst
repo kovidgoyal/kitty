@@ -23,6 +23,9 @@ Changelog
 - Linux: Handle fonts that contain monochrome bitmaps (such as the Terminus TTF
   font) (:pull:`934`)
 
+- Have the :option:`kitty --title` flag apply to all windows created
+  using :option:`kitty --session` (:iss:`921`)
+
 
 0.12.1 [2018-09-08]
 ------------------------------
