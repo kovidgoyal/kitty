@@ -118,7 +118,7 @@ monospace. On Linux you can list all monospace fonts with::
 How can I assign a single global shortcut to bring up the kitty terminal?
 -----------------------------------------------------------------------------
 
-Bringin up application on a single keypress is the job of the window
+Bringing up applications on a single key press is the job of the window
 manager/desktop environment. For ways to do it with kitty (or indeed any
 terminal) in different environments,
 see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
