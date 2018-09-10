@@ -113,3 +113,12 @@ your font is not listed in ``kitty list-fonts`` it means that it is not
 monospace. On Linux you can list all monospace fonts with::
 
     fc-list : family spacing | grep spacing=100
+
+
+How can I assign a single global shortcut to bring up the kitty terminal?
+-----------------------------------------------------------------------------
+
+Bringin up application on a single keypress is the job of the window
+manager/desktop environment. For ways to do it with kitty (or indeed any
+terminal) in different environments,
+see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
