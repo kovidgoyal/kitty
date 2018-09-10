@@ -391,6 +391,7 @@ PYWRAP1(set_options) {
     S(macos_window_resizable, PyObject_IsTrue);
     S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
+    S(macos_thicken_font, PyFloat_AsDouble);
 
     PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
     if (chars == NULL) return NULL;

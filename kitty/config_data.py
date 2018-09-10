@@ -779,6 +779,11 @@ o('macos_window_resizable', True, long_text=_('''
 Disable this if you want kitty top-level (OS) windows to not be resizable
 on macOS.
 '''))
+
+o('macos_thicken_font', 0, option_type=positive_float, long_text=_('''
+Draw an extra border around the font with the given width, to increase
+legibility at small font sizes.
+'''))
 # }}}
 
 g('shortcuts')  # {{{
