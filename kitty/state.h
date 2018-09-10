@@ -70,6 +70,7 @@ typedef struct {
     ScreenRenderData render_data;
     struct {
         unsigned int cell_x, cell_y;
+        unsigned int edge_x, edge_y;
         double x, y;
     } mouse_pos;
     WindowGeometry geometry;
