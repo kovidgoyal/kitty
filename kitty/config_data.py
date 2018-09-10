@@ -830,19 +830,20 @@ You can pipe the contents of the current screen + history buffer as
 :file:`STDIN` to an arbitrary program using the ``pipe`` function. For example,
 the following opens the scrollback buffer in less in an overlay window::
 
-    map f1 pipe @ansi overlay less +g -R
+    map f1 pipe @ansi overlay less +G -R
 
 Placeholders available are: @text (which is plain text) and @ansi (which
 includes text styling escape codes). For only the current screen, use @screen
 or @ansi_screen. For the secondary screen, use @alternate and @ansi_alternate.
-Note that the secondary screen is not currently displayed. For example if you
-run a fullscreen terminal application, the secondary screen will be the screen
-you return to when quitting the application. You can also use ``none`` for no
-:file:`STDIN` input.
+The secondary screen is the screen not currently displayed. For
+example if you run a fullscreen terminal application, the secondary screen will
+be the screen you return to when quitting the application. You can also use
+``none`` for no :file:`STDIN` input.
 
 To open in a new window, tab or new OS window, use ``window``, ``tab``, or
 ``os_window`` respectively. You can also use ``none`` in which case the data
-will be piped into the program without creating any windows.  '''))
+will be piped into the program without creating any windows, useful if the
+program is a GUI program that creates its own windows. '''))
 
 
 # }}}
