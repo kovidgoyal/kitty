@@ -225,6 +225,7 @@ typedef struct _GLFWlibraryWayland
         id_type                 keyRepeatTimer;
         _GLFWwindow*            keyboardFocus;
     } keyRepeatInfo;
+    id_type                     cursorAnimationTimer;
     _GLFWXKBData                xkb;
     _GLFWDBUSData               dbus;
 
@@ -274,12 +275,14 @@ typedef struct _GLFWmonitorWayland
 //
 typedef struct _GLFWcursorWayland
 {
-    struct wl_cursor_image*     image;
+    struct wl_cursor*           cursor;
     struct wl_buffer*           buffer;
     int                         width, height;
     int                         xhot, yhot;
+    int                         currentImage;
 } _GLFWcursorWayland;
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwSetupWaylandDataDevice();
+void animateCursorImage(id_type timer_id, void *data);

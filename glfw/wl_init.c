@@ -139,6 +139,7 @@ static void setCursor(const char* name)
                         "Wayland: Standard cursor not found");
         return;
     }
+    // TODO: handle animated cursors too.
     image = cursor->images[0];
 
     if (!image)
@@ -688,7 +689,8 @@ int _glfwPlatformInit(void)
     }
     initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
     glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
-    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-keyrepeat", 0.5, 0, dispatchPendingKeyRepeats, NULL);
+    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-key-repeat", 0.5, 0, dispatchPendingKeyRepeats, NULL);
+    _glfw.wl.cursorAnimationTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-cursor-animation", 0.5, 0, animateCursorImage, NULL);
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
