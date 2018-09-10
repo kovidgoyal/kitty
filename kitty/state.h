@@ -66,6 +66,7 @@ typedef struct {
     PyObject *title;
     ScreenRenderData render_data;
     unsigned int mouse_cell_x, mouse_cell_y;
+    unsigned int mouse_edge_x, mouse_edge_y;
     WindowGeometry geometry;
     ClickQueue click_queue;
     double last_drag_scroll_at;

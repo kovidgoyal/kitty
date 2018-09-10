@@ -1490,7 +1490,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
 
 static inline bool
 is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, unsigned int end_x, unsigned int end_y) {
-    return (start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines || (start_x == end_x && start_y == end_y)) ? true : false;
+    return start_x >= self->columns || start_y >= self->lines || end_x >= self->columns || end_y >= self->lines;
 }
 
 static inline void
@@ -2019,7 +2019,14 @@ screen_is_selection_dirty(Screen *self) {
 void
 screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_select, SelectionExtendMode extend_mode) {
 #define A(attr, val) self->selection.attr = val;
-    A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
+    A(anchor_x, x);
+    A(anchor_y, y);
+    A(start_x, UINT_MAX);
+    A(start_y, UINT_MAX);
+    A(end_x, UINT_MAX);
+    A(end_y, UINT_MAX);
+    A(start_scrolled_by, self->scrolled_by);
+    A(end_scrolled_by, self->scrolled_by);
     A(in_progress, true); A(rectangle_select, rectangle_select); A(extend_mode, extend_mode);
 #undef A
 }
@@ -2033,27 +2040,55 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
-    self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
     if (ended) self->selection.in_progress = false;
-    index_type start, end;
-    bool found = false;
-    bool extending_leftwards = self->selection.end_y < self->selection.start_y || (self->selection.end_y == self->selection.start_y && self->selection.end_x < self->selection.start_x);
-    switch(self->selection.extend_mode) {
+    bool empty = false;
+    bool extending_leftwards = y < self->selection.anchor_y || (y == self->selection.anchor_y && x <= self->selection.anchor_x);
+    if (self->selection.rectangle_select) {
+        if (x == self->selection.anchor_x || y == self->selection.anchor_y) {
+            empty = true;
+        } else {
+            self->selection.start_x = MIN(self->selection.anchor_x, x);
+            self->selection.end_x = MAX(self->selection.anchor_x, x) - 1;
+            self->selection.start_y = MIN(self->selection.anchor_y, y);
+            self->selection.end_y = MAX(self->selection.anchor_y, y) - 1;
+        }
+    } else {
+        if (self->selection.extend_mode == EXTEND_CELL && x == self->selection.anchor_x && y == self->selection.anchor_y) {
+            empty = true;
+        } else if (extending_leftwards) {
+            self->selection.start_x = x;
+            self->selection.start_y = y;
+            self->selection.end_x = self->selection.anchor_x - 1;
+            self->selection.end_y = self->selection.anchor_y;
+        } else {
+            self->selection.start_x = self->selection.anchor_x;
+            self->selection.start_y = self->selection.anchor_y;
+            self->selection.end_x = x - 1;
+            self->selection.end_y = y;
+        }
+    }
+
+    if (empty) {
+        self->selection.start_x = self->selection.start_y = self->selection.end_x = self->selection.end_y = UINT_MAX;
+    } else {
+        index_type start, end;
+        bool found = false;
+        switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
             index_type y1 = y, y2;
-            found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end);
+            found = screen_selection_range_for_word(self, x - (extending_leftwards ? 0 : 1), &y1, &y2, &start, &end);
             if (found) {
                 if (extending_leftwards) {
                     self->selection.end_x = start; self->selection.end_y = y1;
-                    y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
+                    y1 = self->selection.anchor_y;
+                    found = screen_selection_range_for_word(self, self->selection.anchor_x, &y1, &y2, &start, &end);
                     if (found) {
                         self->selection.start_x = end; self->selection.start_y = y2;
                     }
                 } else {
                     self->selection.end_x = end; self->selection.end_y = y2;
-                    y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
+                    y1 = self->selection.anchor_y;
+                    found = screen_selection_range_for_word(self, self->selection.anchor_x, &y1, &y2, &start, &end);
                     if (found) {
                         self->selection.start_x = start; self->selection.start_y = y1;
                     }
@@ -2063,8 +2098,8 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
             break;
         }
         case EXTEND_LINE: {
-            index_type top_line = extending_leftwards ? self->selection.end_y : self->selection.start_y;
-            index_type bottom_line = extending_leftwards ? self->selection.start_y : self->selection.end_y;
+            index_type top_line = self->selection.start_y;
+            index_type bottom_line = self->selection.end_y;
             while(top_line > 0 && visual_line_(self, top_line)->continued) top_line--;
             while(bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) bottom_line++;
             found = screen_selection_range_for_line(self, top_line, &start, &end);
@@ -2087,6 +2122,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
         }
         case EXTEND_CELL:
             break;
+        }
     }
     call_boss(set_primary_selection, NULL);
 }
