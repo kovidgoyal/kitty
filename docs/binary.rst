@@ -34,9 +34,15 @@ Ubuntu/Debian (Gnome Shell) installing
 
 .. code-block:: sh
 
+    # Install kitty
     curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin
-    curl https://sw.kovidgoyal.net/kitty/_static/kitty.png --output ~/.local/share/applications/kitty.png
-    echo -e "[Desktop Entry]\nEncoding=UTF-8\nName=Kitty\nExec=/home/$USER/.local/kitty.app/bin/kitty\nIcon=/home/$USER/.local/share/applications/kitty.png\nType=Application\nCategories=Application;" >> ~/.local/share/applications/kitty.desktop
+    # Create symbolic link
+    ln -s ~/.local/kitty.app/bin/kitty ~/.local/bin/
+    # Create desktop icons in GNOME SHELL
+    cp ~/.local/kitty.app/share/applications/kitty.desktop ~/.local/share/applications
+    # Link icon
+    sed -i "s/Icon\=kitty/Icon\=\/home\/$USER\/.local\/kitty.app\/share\/icons\/hicolor\/256x256\/apps\/kitty.png/g" ~/.local/kitty.app/share/applications/kitty.desktop
+
     
 
 Customizing the installation
