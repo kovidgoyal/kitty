@@ -824,6 +824,8 @@ class Boss:
             tm = self.active_tab_manager
             if tm is not None:
                 tm.new_tab(special_window=create_window(), cwd_from=cwd_from)
+        elif dest == 'os_window':
+            self._new_os_window(create_window(), cwd_from=cwd_from)
         else:
             import subprocess
             subprocess.Popen(cmd)

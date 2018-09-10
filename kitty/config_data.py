@@ -840,10 +840,9 @@ run a fullscreen terminal application, the secondary screen will be the screen
 you return to when quitting the application. You can also use ``none`` for no
 :file:`STDIN` input.
 
-To open in a new window or tab use ``window`` or ``tab`` respectively. You can
-also use ``none`` in which case the data will be piped into the program without
-creating any windows.
-'''))
+To open in a new window, tab or new OS window, use ``window``, ``tab``, or
+``os_window`` respectively. You can also use ``none`` in which case the data
+will be piped into the program without creating any windows.  '''))
 
 
 # }}}
