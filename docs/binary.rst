@@ -81,9 +81,8 @@ Customizing the installation
 Uninstalling
 ----------------
 
-All the installer does is copy the kitty files into the install directory
-(defaults to :file:`~/.local/kitty.app`). To uninstall, simply delete that
-directory.
+All the installer does is copy the kitty files into the install directory. To
+uninstall, simply delete that directory.
 
 
 Building from source
