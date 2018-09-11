@@ -468,7 +468,7 @@ def get_capabilities(query_string):
     try:
         for q in query_string.split(';'):
             name = qname = unhexlify(q).decode('utf-8')
-            if name == 'TN':
+            if name in ('TN', 'name'):
                 val = names[0]
             else:
                 try:
