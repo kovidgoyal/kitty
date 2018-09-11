@@ -272,7 +272,6 @@ Configuring kitty
 painting frames-per-second. For details and a sample :file:`kitty.conf`,
 see the :doc:`configuration docs <conf>`.
 
-.. _sessions:
 
 Remote control
 ------------------
@@ -282,6 +281,8 @@ Remote control
 fonts, open new windows, tabs, set their titles, change window layout, get text
 from one window and send text to another, etc, etc. The possibilities are
 endless. See the :doc:`tutorial <remote-control>` to get started.
+
+.. _sessions:
 
 Startup Sessions
 ------------------
