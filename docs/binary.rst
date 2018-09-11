@@ -16,7 +16,8 @@ the following simple command:
 
 The binaries will be installed in the standard location for your OS,
 :file:`/Applications/kitty.app` on macOS and :file:`~/.local/kitty.app` on
-Linux. The installer only touches files in that directory.
+Linux. The installer only touches files in that directory. To update kitty,
+simply re-run the command.
 
 
 Manually installing
@@ -28,6 +29,25 @@ manually download and install |kitty| from the `GitHub releases page
 the :file:`.dmg` and install as normal. If you are on Linux, download the tarball
 and extract it into a directory. The |kitty| executable will be in the
 :file:`bin` sub-directory.
+
+Desktop integration on Linux
+--------------------------------
+
+If you want the kitty icon to appear in the taskbar and an entry for it to be
+present in the menus, you will need to install the :file:`kitty.desktop` file.
+The details of the following procedure may need to be adjusted for your
+particular desktop, but it should work for most major desktop environments.
+
+.. code-block:: sh
+
+    # Create a symbolic link to add kitty to PATH (assuming ~/.local/bin is in
+    # your PATH)
+    ln -s ~/.local/kitty.app/bin/kitty ~/.local/bin/
+    # Place the kitty.desktop file somewhere it can be found by the OS
+    cp ~/.local/kitty.app/share/applications/kitty.desktop ~/.local/share/applications
+    # Update the path to the kitty icon in the kitty.desktop file
+    sed -i "s/Icon\=kitty/Icon\=\/home\/$USER\/.local\/kitty.app\/share\/icons\/hicolor\/256x256\/apps\/kitty.png/g" ~/.local/share/applications/kitty.desktop
+
 
 
 Customizing the installation
