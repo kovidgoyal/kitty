@@ -335,7 +335,7 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
 
 static inline bool
 selection_has_screen_line(Selection *s, int y) {
-    if (s->start_scrolled_by == s->end_scrolled_by && s->start_x == s->end_x && s->start_y == s->end_y) return false;
+    if (s->start_scrolled_by == s->end_scrolled_by && s->start_x == UINT_MAX) return false;
     int top = (int)s->start_y - s->start_scrolled_by;
     int bottom = (int)s->end_y - s->end_scrolled_by;
     return top <= y && y <= bottom;
@@ -810,7 +810,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 
 static inline void
 index_selection(Screen *self, Selection *s, bool up) {
-    if (s->start_scrolled_by == s->end_scrolled_by && s->start_x == s->end_x && s->start_y == s->end_y) return;
+    if (s->start_scrolled_by == s->end_scrolled_by && s->start_x == UINT_MAX) return;
     if (up) {
         if (s->start_y == 0) s->start_scrolled_by += 1;
         else s->start_y--;
@@ -1495,7 +1495,9 @@ is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, uns
 
 static inline void
 selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
-    if (y + self->scrolled_by < ydelta) {
+    if (x == UINT_MAX) {
+        ans->x = UINT_MAX; ans->y = UINT_MAX;
+    } else if (y + self->scrolled_by < ydelta) {
         ans->x = 0; ans->y = 0;
     } else {
         y = y - ydelta + self->scrolled_by;
@@ -1912,7 +1914,7 @@ text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
     PyObject *ans = NULL;
-    if (start.y == end.y && start.x == end.x) ans = PyTuple_New(0);
+    if (start.x == UINT_MAX) ans = PyTuple_New(0);
     else text_for_range(ans, start, end, self->selection.rectangle_select, true, range_line_, int);
     return ans;
 }
