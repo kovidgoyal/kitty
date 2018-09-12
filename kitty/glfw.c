@@ -10,7 +10,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
-extern bool cocoa_toggle_fullscreen(void *w);
+extern bool cocoa_toggle_fullscreen(void *w, bool);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -362,16 +362,20 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     glfwGetWindowSize(w->handle, &width, &height);
     glfwGetWindowPos(w->handle, &x, &y);
 #ifdef __APPLE__
-    if (cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle))) {
-        w->before_fullscreen.is_set = true;
-        w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
-        return true;
+    if (OPT(macos_traditional_fullscreen)) {
+        if (cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle), true)) {
+            w->before_fullscreen.is_set = true;
+            w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
+            return true;
+        }
+        if (w->before_fullscreen.is_set) {
+            glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
+            glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
+        }
+        return false;
+    } else {
+        return cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle), false);
     }
-    if (w->before_fullscreen.is_set) {
-        glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
-        glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
-    }
-    return false;
 #else
     GLFWmonitor *monitor;
     if ((monitor = glfwGetWindowMonitor(w->handle)) == NULL) {
@@ -418,7 +422,7 @@ on_application_reopen(int has_visible_windows) {
 
 static int
 intercept_cocoa_fullscreen(GLFWwindow *w) {
-    if (!set_callback_window(w)) return 0;
+    if (!OPT(macos_traditional_fullscreen) || !set_callback_window(w)) return 0;
     toggle_fullscreen_for_os_window(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
     return 1;

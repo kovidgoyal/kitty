@@ -786,6 +786,10 @@ legibility at small font sizes. For example, a value of 0.75 will
 result in rendering that looks similar to sub-pixel antialiasing at
 common font sizes.
 '''))
+
+o('macos_traditional_fullscreen', False, long_text=_('''
+Use the traditional full-screen transition, that is faster, but less pretty.
+'''))
 # }}}
 
 g('shortcuts')  # {{{

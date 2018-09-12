@@ -25,10 +25,8 @@ Changelog
   on macs thicker, which makes it similar to the result of
   sub-pixel antialiasing (:pull:`950`)
 
-- macOS: Make full screening of kitty much faster by using the "traditional full
-  screen" mode of cocoa, similar to iTerm and MacVim (:iss:`911`). Also should
-  hopefully workaround a bug in glfw that causes crashes when unplugging
-  monitors with full screen windows. (:iss:`898`)
+- macOS: Add an option :opt:`macos_traditional_fullscreen` to make
+  full-screening of kitty windows much faster, but less pretty. (:iss:`911`)
 
 - Fix a bug causing incorrect line ordering when viewing the scrollback buffer
   if the scrollback buffer is full (:iss:`960`)
