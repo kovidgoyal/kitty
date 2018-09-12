@@ -51,6 +51,8 @@ Changelog
 - macOS: Fix resizing semi-transparent windows causing the windows to be
   invisible during the resize (:iss:`941`)
 
+- Linux: Fix window icon not set on X11 for the first OS window (:iss:`961`)
+
 0.12.1 [2018-09-08]
 ------------------------------
 
