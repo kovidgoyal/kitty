@@ -563,6 +563,10 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     [super dealloc];
 }
 
+- (_GLFWwindow*)glfwWindow {
+    return window;
+}
+
 - (BOOL)isOpaque
 {
     return [window->ns.object isOpaque];
@@ -1038,6 +1042,18 @@ is_ascii_control_char(char x) {
 - (BOOL)canBecomeMainWindow
 {
     return YES;
+}
+
+- (void)toggleFullScreen:(nullable id)sender
+{
+    GLFWContentView *view = [self contentView];
+    if (view)
+    {
+        _GLFWwindow *window = [view glfwWindow];
+        if (window && window->ns.toggleFullscreenCallback && window->ns.toggleFullscreenCallback((GLFWwindow*)window) == 1)
+            return;
+    }
+    [super toggleFullScreen:sender];
 }
 
 @end
@@ -2111,6 +2127,14 @@ GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *hand
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     GLFWcocoatextinputfilterfun previous = window->ns.textInputFilterCallback;
     window->ns.textInputFilterCallback = callback;
+    return previous;
+}
+
+GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWwindow *handle, GLFWcocoatogglefullscreenfun callback) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    _GLFW_REQUIRE_INIT_OR_RETURN(nil);
+    GLFWcocoatogglefullscreenfun previous = window->ns.toggleFullscreenCallback;
+    window->ns.toggleFullscreenCallback = callback;
     return previous;
 }
 

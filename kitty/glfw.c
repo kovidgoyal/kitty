@@ -10,6 +10,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
+extern bool cocoa_toggle_fullscreen(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -355,11 +356,55 @@ set_os_window_dpi(OSWindow *w) {
     get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }
 
+static bool
+toggle_fullscreen_for_os_window(OSWindow *w) {
+    int width, height, x, y;
+    glfwGetWindowSize(w->handle, &width, &height);
+    glfwGetWindowPos(w->handle, &x, &y);
+#ifdef __APPLE__
+    if (cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle))) {
+        w->before_fullscreen.is_set = true;
+        w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
+        return true;
+    }
+    if (w->before_fullscreen.is_set) {
+        glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
+        glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
+    }
+    return false;
+#else
+    GLFWmonitor *monitor;
+    if ((monitor = glfwGetWindowMonitor(w->handle)) == NULL) {
+        // make fullscreen
+        monitor = current_monitor(w->handle);
+        if (monitor == NULL) { PyErr_Print(); return false; }
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        w->before_fullscreen.is_set = true;
+        w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
+        glfwGetWindowSize(w->handle, &w->before_fullscreen.w, &w->before_fullscreen.h);
+        glfwGetWindowPos(w->handle, &w->before_fullscreen.x, &w->before_fullscreen.y);
+        glfwSetWindowMonitor(w->handle, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        return true;
+    } else {
+        // make windowed
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        if (w->before_fullscreen.is_set) glfwSetWindowMonitor(w->handle, NULL, w->before_fullscreen.x, w->before_fullscreen.y, w->before_fullscreen.w, w->before_fullscreen.h, mode->refreshRate);
+        else glfwSetWindowMonitor(w->handle, NULL, 0, 0, 600, 400, mode->refreshRate);
+#ifdef __APPLE__
+        if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(w->handle), OPT(macos_window_resizable));
+#endif
+        return false;
+    }
+#endif
+}
+
+
 #ifdef __APPLE__
 static int
 filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
     return ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) ? 1 : 0;
 }
+
 static GLFWwindow *application_quit_canary = NULL;
 
 static int
@@ -369,6 +414,14 @@ on_application_reopen(int has_visible_windows) {
     // Without unjam wait_for_events() blocks until the next event
     unjam_event_loop();
     return false;
+}
+
+static int
+intercept_cocoa_fullscreen(GLFWwindow *w) {
+    if (!set_callback_window(w)) return 0;
+    toggle_fullscreen_for_os_window(global_state.callback_os_window);
+    global_state.callback_os_window = NULL;
+    return 1;
 }
 #endif
 
@@ -504,6 +557,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
+    glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
 #endif
     send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
@@ -702,29 +756,10 @@ set_clipboard_string(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 toggle_fullscreen(PYNOARG) {
-    GLFWmonitor *monitor;
     OSWindow *w = current_os_window();
-    if (!w || !w->handle) Py_RETURN_NONE;
-    if ((monitor = glfwGetWindowMonitor(w->handle)) == NULL) {
-        // make fullscreen
-        monitor = current_monitor(w->handle);
-        if (monitor == NULL) return NULL;
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        w->before_fullscreen.is_set = true;
-        glfwGetWindowSize(w->handle, &w->before_fullscreen.w, &w->before_fullscreen.h);
-        glfwGetWindowPos(w->handle, &w->before_fullscreen.x, &w->before_fullscreen.y);
-        glfwSetWindowMonitor(w->handle, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-        Py_RETURN_TRUE;
-    } else {
-        // make windowed
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        if (w->before_fullscreen.is_set) glfwSetWindowMonitor(w->handle, NULL, w->before_fullscreen.x, w->before_fullscreen.y, w->before_fullscreen.w, w->before_fullscreen.h, mode->refreshRate);
-        else glfwSetWindowMonitor(w->handle, NULL, 0, 0, 600, 400, mode->refreshRate);
-#ifdef __APPLE__
-        if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(w->handle), OPT(macos_window_resizable));
-#endif
-        Py_RETURN_FALSE;
-    }
+    if (!w) Py_RETURN_NONE;
+    if (toggle_fullscreen_for_os_window(w)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
 }
 
 static PyObject*

@@ -1,8 +1,6 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
-typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 
 
 
@@ -1386,6 +1384,10 @@ typedef struct GLFWgamepadstate
  */
 
 
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
+typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
+typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
+
 typedef int (*glfwInit_func)();
 glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
@@ -1853,6 +1855,10 @@ glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
 typedef GLFWcocoatextinputfilterfun (*glfwSetCocoaTextInputFilter_func)(GLFWwindow*, GLFWcocoatextinputfilterfun);
 glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
 #define glfwSetCocoaTextInputFilter glfwSetCocoaTextInputFilter_impl
+
+typedef GLFWcocoatogglefullscreenfun (*glfwSetCocoaToggleFullscreenIntercept_func)(GLFWwindow*, GLFWcocoatogglefullscreenfun);
+glfwSetCocoaToggleFullscreenIntercept_func glfwSetCocoaToggleFullscreenIntercept_impl;
+#define glfwSetCocoaToggleFullscreenIntercept glfwSetCocoaToggleFullscreenIntercept_impl
 
 typedef GLFWapplicationshouldhandlereopenfun (*glfwSetApplicationShouldHandleReopen_func)(GLFWapplicationshouldhandlereopenfun);
 glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHandleReopen_impl;

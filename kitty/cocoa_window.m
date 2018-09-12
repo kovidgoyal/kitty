@@ -224,6 +224,24 @@ cocoa_focus_window(void *w) {
     [window makeKeyWindow];
 }
 
+bool
+cocoa_toggle_fullscreen(void *w) {
+    NSWindow *window = (NSWindow*)w;
+    NSWindowStyleMask sm = [window styleMask];
+    bool made_fullscreen;
+    if (!(sm & NSWindowStyleMaskFullScreen)) {
+        made_fullscreen = true;
+        sm |= NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen;
+        [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
+    } else {
+        made_fullscreen = false;
+        sm &= ~(NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen);
+        [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+    }
+    [window setStyleMask: sm];
+    return made_fullscreen;
+}
+
 static PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     NSString* locale = nil;

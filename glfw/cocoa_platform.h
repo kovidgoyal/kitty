@@ -39,6 +39,7 @@ typedef void* id;
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,int);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
+typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {
@@ -102,6 +103,8 @@ typedef struct _GLFWwindowNS
 
     // The text input filter callback
     GLFWcocoatextinputfilterfun textInputFilterCallback;
+    // The toggle fullscreen intercept callback
+    GLFWcocoatogglefullscreenfun toggleFullscreenCallback;
     // Dead key state
     UInt32 deadKeyState;
 } _GLFWwindowNS;

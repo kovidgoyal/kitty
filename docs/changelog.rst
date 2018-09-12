@@ -25,6 +25,11 @@ Changelog
   on macs thicker, which makes it similar to the result of
   sub-pixel antialiasing (:pull:`950`)
 
+- macOS: Make full screening of kitty much faster by using the "traditional full
+  screen" mode of cocoa, similar to iTerm and MacVim (:iss:`911`). Also should
+  hopefully workaround a bug in glfw that causes crashes when unplugging
+  monitors with full screen windows. (:iss:`898`)
+
 - Fix drag-scrolling not working when the mouse leaves the window confines
   (:iss:`917`)
 
