@@ -394,9 +394,6 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
         if (w->before_fullscreen.is_set) glfwSetWindowMonitor(w->handle, NULL, w->before_fullscreen.x, w->before_fullscreen.y, w->before_fullscreen.w, w->before_fullscreen.h, mode->refreshRate);
         else glfwSetWindowMonitor(w->handle, NULL, 0, 0, 600, 400, mode->refreshRate);
-#ifdef __APPLE__
-        if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(w->handle), OPT(macos_window_resizable));
-#endif
         return false;
     }
 #endif
