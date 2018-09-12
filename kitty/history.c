@@ -207,7 +207,7 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
 }
 
 static inline Line*
-get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, y, l); return l; }
+get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
 static PyObject*
 as_text(HistoryBuf *self, PyObject *args) {

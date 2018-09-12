@@ -30,6 +30,9 @@ Changelog
   hopefully workaround a bug in glfw that causes crashes when unplugging
   monitors with full screen windows. (:iss:`898`)
 
+- Fix a bug causing incorrect line ordering when viewing the scrollback buffer
+  if the scrollback buffer is full (:iss:`960`)
+
 - Fix drag-scrolling not working when the mouse leaves the window confines
   (:iss:`917`)
 
