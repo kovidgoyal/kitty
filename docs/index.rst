@@ -173,7 +173,8 @@ Paste from selection                :sc:`paste_from_selection`
 Increase font size                  :sc:`increase_font_size`
 Decrease font size                  :sc:`decrease_font_size`
 Restore font size                   :sc:`reset_font_size`
-Toggle fullscreen                   :sc:`toggle_fullscreen`
+Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^⌘+f` on macOS)
+on
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal`
