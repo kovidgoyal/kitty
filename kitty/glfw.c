@@ -106,6 +106,17 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         window->has_pending_resizes = true; global_state.has_pending_resizes = true;
         window->last_resize_event_at = monotonic();
         unjam_event_loop();
+#ifdef __APPLE__
+        // Cocoa starts a sub-loop inside wait events which means main_loop
+        // stays stuck and no rendering happens. This causes the window to be
+        // blank. This is particularly bad for semi-transparent windows since
+        // they are rendered as invisible, so for that case we manually render.
+        if (global_state.callback_os_window->is_semi_transparent) {
+            make_os_window_context_current(global_state.callback_os_window);
+            blank_os_window(global_state.callback_os_window);
+            swap_window_buffers(global_state.callback_os_window);
+        }
+#endif
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
 }

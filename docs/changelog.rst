@@ -43,6 +43,8 @@ Changelog
 - Fix kitty @set-colors not working for tab backgrounds when using the `fade` tabbar style
   (:iss:`937`)
 
+- macOS: Fix resizing semi-transparent windows causing the windows to be
+  invisible during the resize (:iss:`941`)
 
 0.12.1 [2018-09-08]
 ------------------------------

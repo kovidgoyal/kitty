@@ -426,15 +426,20 @@ set_cell_uniforms(float current_inactive_text_alpha) {
     }
 }
 
+void
+blank_os_window(OSWindow *os_window) {
+#define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
+        glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? os_window->background_opacity : 1.0f);
+#undef C
+        glClear(GL_COLOR_BUFFER_BIT);
+}
+
 bool
 send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
     bool changed = false;
     if (os_window->clear_count < 2) {
         os_window->clear_count++;
-#define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
-        glClearColor(C(16), C(8), C(0), os_window->is_semi_transparent ? os_window->background_opacity : 1.0f);
-#undef C
-        glClear(GL_COLOR_BUFFER_BIT);
+        blank_os_window(os_window);
         changed = true;
     }
     if (os_window->fonts_data) {
