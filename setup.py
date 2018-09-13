@@ -376,8 +376,8 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
 
         if src == 'kitty/data-types.c':
             if os.path.exists('.git'):
-                rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-                cppflags.append(define('KITTY_VCS_REV="{}"'.format(rev)))
+                vcs_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+                cppflags.append(define('KITTY_VCS_HASH="{}"'.format(vcs_hash)))
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         key = original_src, os.path.basename(dest)
         all_keys.add(key)

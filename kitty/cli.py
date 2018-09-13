@@ -171,12 +171,12 @@ def prettify_rst(text):
     return re.sub(r':([a-z]+):`([^`]+)`(=[^\s.]+)', r':\1:`\2`:code:`\3`', text)
 
 
-def version(add_rev=False):
-    rev = ''
+def version(add_hash=False):
+    vcs_hash = ''
     from . import fast_data_types
-    if add_rev and hasattr(fast_data_types, 'KITTY_VCS_REV'):
-        rev = ' ({})'.format(fast_data_types.KITTY_VCS_REV[:10])
-    return '{} {}{} created by {}'.format(italic(appname), green(str_version), rev, title('Kovid Goyal'))
+    if add_hash and hasattr(fast_data_types, 'KITTY_VCS_HASH'):
+        vcs_hash = ' ({})'.format(fast_data_types.KITTY_VCS_HASH[:10])
+    return '{} {}{} created by {}'.format(italic(appname), green(str_version), vcs_hash, title('Kovid Goyal'))
 
 
 def wrap(text, limit=80):
@@ -709,7 +709,7 @@ def create_opts(args, debug_config=False):
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
-        print(version(add_rev=True))
+        print(version(add_hash=True))
         print(' '.join(os.uname()))
         if is_macos:
             import subprocess
