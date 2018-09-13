@@ -273,6 +273,9 @@ PyInit_fast_data_types(void) {
 #ifdef KITTY_VCS_HASH
         PyModule_AddStringMacro(m, KITTY_VCS_HASH);
 #endif
+#ifdef KITTY_VCS_VERSION
+        PyModule_AddStringMacro(m, KITTY_VCS_VERSION);
+#endif
         PyModule_AddIntMacro(m, CURSOR_BLOCK);
         PyModule_AddIntMacro(m, CURSOR_BEAM);
         PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
