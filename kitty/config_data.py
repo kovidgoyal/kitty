@@ -419,6 +419,9 @@ o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
 moving the mouse around'''))
 
+o('mouse_modes', True, long_text=_('''
+Ignore terminal mouse modes if set to no'''))
+
 # }}}
 
 g('performance')  # {{{

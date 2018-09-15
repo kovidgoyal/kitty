@@ -604,7 +604,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 
 #define MOUSE_MODE(name, attr, value) \
     case name: \
-        self->modes.attr = val ? value : 0; break;
+        if (OPT(mouse_modes)) self->modes.attr = val ? value : 0; break;
 
     bool private;
     switch(mode) {

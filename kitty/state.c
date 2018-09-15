@@ -361,6 +361,7 @@ PYWRAP1(set_options) {
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
+    S(mouse_modes, PyObject_IsTrue);
     S(cursor_blink_interval, PyFloat_AsDouble);
     S(cursor_stop_blinking_after, PyFloat_AsDouble);
     S(background_opacity, PyFloat_AsDouble);
