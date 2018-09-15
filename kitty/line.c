@@ -259,11 +259,8 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
         previous_width = attrs & WIDTH_MASK;
     }
     return i;
-#undef CHECK_BOOL
-#undef CHECK_COLOR
 #undef WRITE_SGR
 #undef WRITE_CH
-#undef WRITE_COLOR
 }
 
 static PyObject*
