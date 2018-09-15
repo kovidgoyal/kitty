@@ -174,10 +174,18 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
+    index_type bufsize;
+    Py_UCS4 *buffer;
+    index_type start, end;
+    index_type bufend;
+} PagerHistoryBuf;
+
+typedef struct {
     PyObject_HEAD
 
     index_type xnum, ynum, num_segments;
-    HistoryBufSegment* segments;
+    HistoryBufSegment *segments;
+    PagerHistoryBuf pagerhist;
     Line *line;
     index_type start_of_data, count;
 } HistoryBuf;

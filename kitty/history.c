@@ -74,6 +74,10 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         add_segment(self);
         self->line = alloc_line();
         self->line->xnum = xnum;
+        self->pagerhist.start = self->pagerhist.end = self->pagerhist.bufend = 0;
+        self->pagerhist.buffer = PyMem_RawMalloc(1024*1024*10);
+        self->pagerhist.bufsize = 1024*1024*10 / sizeof(Py_UCS4);
+        // abort if allocation failed?
     }
 
     return (PyObject*)self;
@@ -88,6 +92,7 @@ dealloc(HistoryBuf* self) {
         PyMem_Free(self->segments[i].line_attrs);
     }
     PyMem_Free(self->segments);
+    PyMem_Free(self->pagerhist.buffer);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -132,12 +137,37 @@ historybuf_clear(HistoryBuf *self) {
     self->start_of_data = 0;
 }
 
+static inline void
+pagerhist_push(HistoryBuf *self) {
+    PagerHistoryBuf *ph = &self->pagerhist;
+    if (!ph->buffer) return;
+    Line l = {.xnum=self->xnum};
+    init_line(self, self->start_of_data, &l);
+    if (ph->start != ph->end && !l.continued) {
+        ph->buffer[ph->end++] = '\n';
+    }
+    if (ph->bufsize - ph->end < 1024) { ph->bufend = ph->end; ph->end = 0; }
+    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1024);
+    if (ph->bufend) {
+#if NEXTLINE
+        /* something like wcsrchr would be more accurate, but is *slow* */
+        Py_UCS4 *newstart = (Py_UCS4 *)strchr((char *)ph->buffer + ph->end, '\n');
+        if (!newstart || newstart - ph->buffer > ph->bufend) ph->start = 0;
+        else ph->start = newstart - ph->buffer;
+#else
+        ph->start = ph->end + 1 < ph->bufend ? ph->end + 1 : 0;
+#endif
+    }
+}
+
 static inline index_type
 historybuf_push(HistoryBuf *self) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);
-    if (self->count == self->ynum) self->start_of_data = (self->start_of_data + 1) % self->ynum;
-    else self->count++;
+    if (self->count == self->ynum) {
+        pagerhist_push(self);
+        self->start_of_data = (self->start_of_data + 1) % self->ynum;
+    } else self->count++;
     return idx;
 }
 
@@ -209,6 +239,48 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
 static inline Line*
 get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
+static PyObject *
+pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
+    PagerHistoryBuf *ph = &self->pagerhist;
+    PyObject *ret = NULL, *t = NULL;
+    Py_UCS4 *buf = NULL;
+    if (!ph->buffer) Py_RETURN_NONE;
+
+    index_type num = (ph->bufend ? ph->bufend : ph->end) - ph->start;
+    buf = ph->buffer + ph->start;
+    t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+    if (t == NULL) goto end;
+    ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
+    Py_DECREF(t);
+    if (ret == NULL) goto end;
+    Py_DECREF(ret);
+    if (ph->bufend) {
+        num = ph->end;
+        buf = ph->buffer;
+        t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+        if (t == NULL) goto end;
+        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
+        Py_DECREF(t);
+        if (ret == NULL) goto end;
+        Py_DECREF(ret);
+    }
+
+    Line l = {.xnum=self->xnum};
+    get_line(self, 0, &l);
+    if (!l.continued) {
+        t = PyUnicode_FromString("\n");
+        if (t == NULL) goto end;
+        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
+        Py_DECREF(t);
+        if (ret == NULL) goto end;
+        Py_DECREF(ret);
+    }
+
+end:
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 as_text(HistoryBuf *self, PyObject *args) {
     Line l = {.xnum=self->xnum};
@@ -238,6 +310,7 @@ static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(as_ansi, METH_O)
+    METHODB(pagerhist_as_text, METH_O),
     METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)
