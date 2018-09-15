@@ -178,6 +178,7 @@ typedef struct {
     Py_UCS4 *buffer;
     index_type start, end;
     index_type bufend;
+    bool rewrap_needed;
 } PagerHistoryBuf;
 
 typedef struct {

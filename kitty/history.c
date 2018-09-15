@@ -157,7 +157,8 @@ pagerhist_push(HistoryBuf *self) {
         ph->buffer[ph->end++] = '\n';
     }
     if (ph->bufsize - ph->end < 1024) { ph->bufend = ph->end; ph->end = 0; }
-    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1024);
+    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023);
+    ph->buffer[ph->end++] = '\r';
     if (ph->bufend) {
 #if NEXTLINE
         /* something like wcsrchr would be more accurate, but is *slow* */
@@ -249,36 +250,82 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
 static inline Line*
 get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
+static void
+pagerhist_rewrap(PagerHistoryBuf *ph, index_type xnum) {
+    Py_UCS4 *buf = PyMem_RawMalloc(ph->bufsize * sizeof(Py_UCS4));
+    if (!buf) return;
+    index_type s = ph->start, i = s, dest = 0, dest_bufend = 0, x = 0;
+    index_type end = ph->bufend ? ph->bufend : ph->end;
+    index_type lastmod_s = 0, lastmod_len = 0;
+#define CPY(_s, _l) { if (dest + (_l) >= ph->bufsize - 1) { dest_bufend = dest; dest = 0; } \
+              memcpy(buf + dest, ph->buffer + (_s), (_l) * sizeof(Py_UCS4)); dest += (_l); }
+    while (i < end) {
+        switch (ph->buffer[i]) {
+        case '\n':
+            CPY(s, i - s + 1);
+            x = 0; s = i + 1; lastmod_len = 0;
+            break;
+        case '\r':
+            CPY(s, i - s);
+            if (!memcmp(ph->buffer + lastmod_s, ph->buffer + i + 1, lastmod_len * sizeof(Py_UCS4)))
+                i += lastmod_len;
+            s = i + 1;
+            break;
+        case '\x1b':
+            if (ph->buffer[i+1] != '[') break;
+            lastmod_s = i;
+            while (ph->buffer[++i] != 'm');
+            lastmod_len = i - lastmod_s + 1;
+            break;
+        default:
+            x++; break;
+        }
+        i++;
+        if (ph->bufend && i == ph->bufend) {
+            if (s != i) CPY(s, i - s);
+            end = ph->end; i = s = 0;
+        }
+        if (x == xnum) {
+            CPY(s, i - s); buf[dest++] = '\r'; s = i; x = 0;
+            if (!(ph->buffer[i] == '\x1b' && ph->buffer[i+1] == '[') && lastmod_len)
+                CPY(lastmod_s, lastmod_len);
+        }
+    }
+#undef CPY
+    PyMem_Free(ph->buffer);
+    ph->buffer = buf;
+    ph->end = dest; ph->bufend = dest_bufend;
+    ph->start = dest_bufend ? dest + 1 : 0;
+    ph->rewrap_needed = 0;
+}
+
 static PyObject *
 pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
     PagerHistoryBuf *ph = self->pagerhist;
     PyObject *ret = NULL, *t = NULL;
     Py_UCS4 *buf = NULL;
+    index_type num;
     if (!ph) Py_RETURN_NONE;
 
-    index_type num = (ph->bufend ? ph->bufend : ph->end) - ph->start;
-    buf = ph->buffer + ph->start;
-    t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-    if (t == NULL) goto end;
-    ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-    Py_DECREF(t);
-    if (ret == NULL) goto end;
-    Py_DECREF(ret);
-    if (ph->bufend) {
-        num = ph->end;
-        buf = ph->buffer;
-        t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-        if (t == NULL) goto end;
-        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-        Py_DECREF(t);
-        if (ret == NULL) goto end;
-        Py_DECREF(ret);
-    }
+    if (ph->rewrap_needed) pagerhist_rewrap(ph, self->xnum);
 
-    Line l = {.xnum=self->xnum};
-    get_line(self, 0, &l);
-    if (!l.continued) {
-        t = PyUnicode_FromString("\n");
+    for (int i = 0; i < 3; i++) {
+        switch(i) {
+        case 0:
+            num = (ph->bufend ? ph->bufend : ph->end) - ph->start;
+            buf = ph->buffer + ph->start;
+            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+            break;
+        case 1:
+            if (!ph->bufend) continue;
+            num = ph->end; buf = ph->buffer;
+            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+            break;
+        case 2:
+            { Line l = {.xnum=self->xnum}; get_line(self, 0, &l); if (l.continued) continue; }
+            t = PyUnicode_FromString("\n");
+            break;
+        }
         if (t == NULL) goto end;
         ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
         Py_DECREF(t);
@@ -381,6 +428,8 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other) {
         other->count = self->count; other->start_of_data = self->start_of_data;
         return;
     }
+    if (other->pagerhist && other->xnum != self->xnum && other->pagerhist->end != other->pagerhist->start)
+        other->pagerhist->rewrap_needed = true;
     other->count = 0; other->start_of_data = 0;
     index_type x = 0, y = 0;
     if (self->count > 0) {
