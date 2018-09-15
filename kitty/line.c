@@ -235,7 +235,6 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     if (limit == 0) return 0;
     char_type previous_width = 0;
 
-    WRITE_SGR("0");
     Cursor c1 = {{0}}, c2 = {{0}};
     Cursor *cursor = &c1, *prev_cursor = &c2;
     char_type prev_attrs = 0;
