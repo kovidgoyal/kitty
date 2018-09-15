@@ -237,21 +237,25 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
 
     WRITE_SGR("0");
     Cursor c1 = {{0}}, c2 = {{0}};
-    Cursor *cursor = &c1, *prev_cursor = &c2, *t;
+    Cursor *cursor = &c1, *prev_cursor = &c2;
+    char_type prev_attrs = 0;
 
     for (index_type pos=0; pos < limit; pos++) {
+        bool need_sgr = false;
         char_type attrs = self->gpu_cells[pos].attrs, ch = self->cpu_cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
         }
-        ATTRS_TO_CURSOR(attrs, cursor);
-        cursor->fg = self->gpu_cells[pos].fg; cursor->bg = self->gpu_cells[pos].bg;
-        cursor->decoration_fg = self->gpu_cells[pos].decoration_fg & COL_MASK;
+        if (attrs != prev_attrs) { ATTRS_TO_CURSOR(attrs, cursor); need_sgr = true; prev_attrs = attrs; }
+#define CMPSET(color) if (cursor->color != self->gpu_cells[pos].color) { cursor->color = self->gpu_cells[pos].color; need_sgr = true; }
+        CMPSET(fg); CMPSET(bg); CMPSET(decoration_fg);
 
-        const char *sgr = cursor_as_sgr(cursor, prev_cursor);
-        t = prev_cursor; prev_cursor = cursor; cursor = t;
-        if (*sgr) WRITE_SGR(sgr);
+        if (need_sgr) {
+            const char *sgr = cursor_as_sgr(cursor, prev_cursor);
+            *prev_cursor = *cursor;
+            if (*sgr) WRITE_SGR(sgr);
+        }
         WRITE_CH(ch);
         for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
             WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
