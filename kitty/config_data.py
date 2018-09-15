@@ -323,6 +323,13 @@ def scrollback_lines(x):
     return x
 
 
+def size_mb(x):
+    x = int(x)
+    if x < 0 or x > 2 ** 12 - 1:
+        raise ValueError('Size {} is in MB (positive & <4GB)'.format(x))
+    return x
+
+
 o('scrollback_lines', 2000, option_type=scrollback_lines, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
 on demand. Negative numbers are (effectively) infinite scrollback. Note that using
@@ -335,6 +342,13 @@ passed as STDIN to this program. If you change it, make sure the program you
 use can handle ANSI escape sequences for colors and text formatting.
 INPUT_LINE_NUMBER in the command line above will be replaced by an integer
 representing which line should be at the top of the screen.'''))
+
+o('scrollback_pager_history_size', 10, option_type=size_mb, long_text=_('''
+Separate scrollback history size, used only for pager, in MB.
+This separate buffer is not available for interactive scrolling but will be
+prepended to the pager program when viewing scrollback.
+The current implementation stores one character in 4 bytes, so approximatively
+2500 lines per megabyte at 100 chars per line'''))
 
 o('wheel_scroll_multiplier', 5.0, long_text=_('''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low

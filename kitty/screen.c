@@ -107,7 +107,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
-        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
+        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
         self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
@@ -165,8 +165,9 @@ screen_dirty_sprite_positions(Screen *self) {
 
 static inline HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
-    HistoryBuf *ans = alloc_historybuf(lines, columns);
+    HistoryBuf *ans = alloc_historybuf(lines, columns, 0);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
     historybuf_rewrap(old, ans);
     return ans;
 }

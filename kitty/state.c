@@ -367,6 +367,7 @@ PYWRAP1(set_options) {
     S(dynamic_background_opacity, PyObject_IsTrue);
     S(inactive_text_alpha, PyFloat_AsDouble);
     S(window_padding_width, PyFloat_AsDouble);
+    S(scrollback_pager_history_size, PyLong_AsLong);
     S(cursor_shape, PyLong_AsLong);
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
