@@ -19,7 +19,9 @@ terminal, very useful for picking files from the output of a ``git`` or ``ls`` c
 adding them to the command line for the next command.
 
 The hints kitten is very powerful to see more detailed help on its various
-options and modes of operation, see below.
+options and modes of operation, see below. You can use these options to
+create mappings in :file:`kitty.conf` to select various different text
+snippets. See :sc:`insert_selected_path` for examples.
 
 Command Line Interface
 -------------------------
