@@ -238,23 +238,37 @@ decoration_as_sgr(uint8_t decoration) {
 }
 
 const char*
-cursor_as_sgr(Cursor *self, Cursor *prev) {
+cell_as_sgr(GPUCell *cell, GPUCell *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(fmt, ...) { p += snprintf(p, SZ, fmt ";", __VA_ARGS__); }
     char *p = buf;
-    bool intensity_differs = self->bold != prev->bold || self->dim != prev->dim;
+#define CMP(attr) (attr(cell) != attr(prev))
+#define BOLD(cell) (cell->attrs & (1 << BOLD_SHIFT))
+#define DIM(cell) (cell->attrs & (1 << DIM_SHIFT))
+#define ITALIC(cell) (cell->attrs & (1 << ITALIC_SHIFT))
+#define REVERSE(cell) (cell->attrs & (1 << REVERSE_SHIFT))
+#define STRIKETHROUGH(cell) (cell->attrs & (1 << STRIKE_SHIFT))
+#define DECORATION(cell) (cell->attrs & (DECORATION_MASK << DECORATION_SHIFT))
+    bool intensity_differs = CMP(BOLD) || CMP(DIM);
     if (intensity_differs) {
-        if (!self->bold && !self->dim) { P("%d", 22); }
-        else { if (self->bold) P("%d", 1); if (self->dim) P("%d", 2); }
+        if (!BOLD(cell) && !DIM(cell)) { P("%d", 22); }
+        else { if (BOLD(cell)) P("%d", 1); if (DIM(cell)) P("%d", 2); }
     }
-    if (self->italic != prev->italic) P("%d", self->italic ? 3 : 23);
-    if (self->reverse != prev->reverse) P("%d", self->reverse ? 7 : 27);
-    if (self->strikethrough != prev->strikethrough) P("%d", self->strikethrough ? 9 : 29);
-    if (self->decoration != prev->decoration) P("%s", decoration_as_sgr(self->decoration));
-    if (self->fg != prev->fg) p += color_as_sgr(p, SZ, self->fg, 30, 90, 38);
-    if (self->bg != prev->bg) p += color_as_sgr(p, SZ, self->bg, 40, 100, 48);
-    if (self->decoration_fg != prev->decoration_fg) p += color_as_sgr(p, SZ, self->decoration_fg, 0, 0, DECORATION_FG_CODE);
+    if (CMP(ITALIC)) P("%d", ITALIC(cell) ? 3 : 23);
+    if (CMP(REVERSE)) P("%d", REVERSE(cell) ? 7 : 27);
+    if (CMP(STRIKETHROUGH)) P("%d", STRIKETHROUGH(cell) ? 9 : 29);
+    if (cell->fg != prev->fg) p += color_as_sgr(p, SZ, cell->fg, 30, 90, 38);
+    if (cell->bg != prev->bg) p += color_as_sgr(p, SZ, cell->bg, 40, 100, 48);
+    if (cell->decoration_fg != prev->decoration_fg) p += color_as_sgr(p, SZ, cell->decoration_fg, 0, 0, DECORATION_FG_CODE);
+    if (CMP(DECORATION)) P("%s", decoration_as_sgr((cell->attrs >> DECORATION_SHIFT) & DECORATION_MASK));
+#undef CMP
+#undef BOLD
+#undef DIM
+#undef ITALIC
+#undef REVERSE
+#undef STRIKETHROUGH
+#undef DECORATION
 #undef P
 #undef SZ
     if (p > buf) *(p - 1) = 0;  // remove trailing semi-colon

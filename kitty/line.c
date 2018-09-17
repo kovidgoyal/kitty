@@ -235,33 +235,34 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
     if (limit == 0) return 0;
     char_type previous_width = 0;
 
-    Cursor c1 = {{0}}, c2 = {{0}};
-    Cursor *cursor = &c1, *prev_cursor = &c2;
-    char_type prev_attrs = 0;
+    GPUCell blank_cell = { 0 };
+    GPUCell *cell, *prev_cell = &blank_cell;
 
     for (index_type pos=0; pos < limit; pos++) {
-        bool need_sgr = false;
-        char_type attrs = self->gpu_cells[pos].attrs, ch = self->cpu_cells[pos].ch;
+        char_type ch = self->cpu_cells[pos].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
         }
-        if (attrs != prev_attrs) { ATTRS_TO_CURSOR(attrs, cursor); need_sgr = true; prev_attrs = attrs; }
-#define CMPSET(color) if (cursor->color != self->gpu_cells[pos].color) { cursor->color = self->gpu_cells[pos].color; need_sgr = true; }
-        CMPSET(fg); CMPSET(bg); CMPSET(decoration_fg);
 
-        if (need_sgr) {
-            const char *sgr = cursor_as_sgr(cursor, prev_cursor);
-            *prev_cursor = *cursor;
+        cell = &self->gpu_cells[pos];
+
+#define CMP_ATTRS (cell->attrs & ATTRS_MASK_WITHOUT_WIDTH) != (prev_cell->attrs & ATTRS_MASK_WITHOUT_WIDTH)
+#define CMP(x) cell->x != prev_cell->x
+        if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
+            const char *sgr = cell_as_sgr(cell, prev_cell);
             if (*sgr) WRITE_SGR(sgr);
         }
+        prev_cell = cell;
         WRITE_CH(ch);
         for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
             WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
         }
-        previous_width = attrs & WIDTH_MASK;
+        previous_width = cell->attrs & WIDTH_MASK;
     }
     return i;
+#undef CMP_ATTRS
+#undef CMP
 #undef WRITE_SGR
 #undef WRITE_CH
 }

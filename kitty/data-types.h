@@ -276,7 +276,7 @@ void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 void cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned int *params, unsigned int count);
-const char* cursor_as_sgr(Cursor*, Cursor*);
+const char* cell_as_sgr(GPUCell *, GPUCell *);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
