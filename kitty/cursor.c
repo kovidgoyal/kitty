@@ -245,8 +245,8 @@ cursor_as_sgr(Cursor *self, Cursor *prev) {
     char *p = buf;
     bool intensity_differs = self->bold != prev->bold || self->dim != prev->dim;
     if (intensity_differs) {
-        if (!self->bold || !self->dim) { P("%d", 22); }
-        else P("%d;%d", 1, 2);
+        if (!self->bold && !self->dim) { P("%d", 22); }
+        else { if (self->bold) P("%d", 1); if (self->dim) P("%d", 2); }
     }
     if (self->italic != prev->italic) P("%d", self->italic ? 3 : 23);
     if (self->reverse != prev->reverse) P("%d", self->reverse ? 7 : 27);
