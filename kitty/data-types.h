@@ -174,7 +174,7 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
-    index_type bufsize;
+    index_type bufsize, maxsz;
     Py_UCS4 *buffer;
     index_type start, end;
     index_type bufend;

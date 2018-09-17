@@ -60,10 +60,21 @@ alloc_pagerhist(unsigned int pagerhist_sz) {
     if (!pagerhist_sz) return NULL;
     pagerhist_sz *= 1024*1024;
     ph = PyMem_Calloc(1, sizeof(PagerHistoryBuf));
-    ph->bufsize = pagerhist_sz / sizeof(Py_UCS4);
-    ph->buffer = PyMem_RawMalloc(pagerhist_sz);
+    ph->maxsz = pagerhist_sz / sizeof(Py_UCS4);
+    ph->bufsize = 1024*1024 / sizeof(Py_UCS4);
+    ph->buffer = PyMem_RawMalloc(1024*1024);
     if (!ph->buffer) { PyMem_Free(ph); return NULL; }
     return ph;
+}
+
+static inline bool
+pagerhist_extend(PagerHistoryBuf *ph) {
+    if (ph->bufsize >= ph->maxsz) return false;
+    void *newbuf = PyMem_Realloc(ph->buffer, ph->bufsize * sizeof(Py_UCS4) + 1024*1024);
+    if (!newbuf) return false;
+    ph->buffer = newbuf;
+    ph->bufsize += 1024*1024 / sizeof(Py_UCS4);
+    return true;
 }
 
 static PyObject *
@@ -156,7 +167,9 @@ pagerhist_push(HistoryBuf *self) {
     if (ph->start != ph->end && !l.continued) {
         ph->buffer[ph->end++] = '\n';
     }
-    if (ph->bufsize - ph->end < 1024) { ph->bufend = ph->end; ph->end = 0; }
+    if (ph->bufsize - ph->end < 1024 && !pagerhist_extend(ph)) {
+        ph->bufend = ph->end; ph->end = 0;
+    }
     ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023);
     ph->buffer[ph->end++] = '\r';
     if (ph->bufend) {
