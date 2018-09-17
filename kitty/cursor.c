@@ -230,10 +230,10 @@ color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsi
 static inline const char*
 decoration_as_sgr(uint8_t decoration) {
     switch(decoration) {
-        case 1: return "4";
-        case 2: return "4:2";
-        case 3: return "4:3";
-        default: return "24";
+        case 1: return "4;";
+        case 2: return "4:2;";
+        case 3: return "4:3;";
+        default: return "24;";
     }
 }
 
@@ -241,7 +241,7 @@ const char*
 cell_as_sgr(GPUCell *cell, GPUCell *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
-#define P(fmt, ...) { p += snprintf(p, SZ, fmt ";", __VA_ARGS__); }
+#define P(s) { size_t len = strlen(s); if (SZ > len) { memcpy(p, s, len); p += len; } }
     char *p = buf;
 #define CMP(attr) (attr(cell) != attr(prev))
 #define BOLD(cell) (cell->attrs & (1 << BOLD_SHIFT))
@@ -252,16 +252,16 @@ cell_as_sgr(GPUCell *cell, GPUCell *prev) {
 #define DECORATION(cell) (cell->attrs & (DECORATION_MASK << DECORATION_SHIFT))
     bool intensity_differs = CMP(BOLD) || CMP(DIM);
     if (intensity_differs) {
-        if (!BOLD(cell) && !DIM(cell)) { P("%d", 22); }
-        else { if (BOLD(cell)) P("%d", 1); if (DIM(cell)) P("%d", 2); }
+        if (!BOLD(cell) && !DIM(cell)) { P("22;"); }
+        else { if (BOLD(cell)) P("1;"); if (DIM(cell)) P("2;"); }
     }
-    if (CMP(ITALIC)) P("%d", ITALIC(cell) ? 3 : 23);
-    if (CMP(REVERSE)) P("%d", REVERSE(cell) ? 7 : 27);
-    if (CMP(STRIKETHROUGH)) P("%d", STRIKETHROUGH(cell) ? 9 : 29);
+    if (CMP(ITALIC)) P(ITALIC(cell) ? "3;" : "23;");
+    if (CMP(REVERSE)) P(REVERSE(cell) ? "7;" : "27;");
+    if (CMP(STRIKETHROUGH)) P(STRIKETHROUGH(cell) ? "9;" : "29;");
     if (cell->fg != prev->fg) p += color_as_sgr(p, SZ, cell->fg, 30, 90, 38);
     if (cell->bg != prev->bg) p += color_as_sgr(p, SZ, cell->bg, 40, 100, 48);
     if (cell->decoration_fg != prev->decoration_fg) p += color_as_sgr(p, SZ, cell->decoration_fg, 0, 0, DECORATION_FG_CODE);
-    if (CMP(DECORATION)) P("%s", decoration_as_sgr((cell->attrs >> DECORATION_SHIFT) & DECORATION_MASK));
+    if (CMP(DECORATION)) P(decoration_as_sgr((cell->attrs >> DECORATION_SHIFT) & DECORATION_MASK));
 #undef CMP
 #undef BOLD
 #undef DIM
