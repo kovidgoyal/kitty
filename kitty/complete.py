@@ -44,7 +44,7 @@ _kitty() {
 compdef _kitty kitty
 ''',
     'bash': '''
-kitty_completions() {
+_kitty_completions() {
     local src
     local limit
     # Send all words up to the word the cursor is currently on
@@ -55,7 +55,7 @@ kitty_completions() {
     fi
 }
 
-complete -o nospace -F kitty_completions kitty
+complete -o nospace -F _kitty_completions kitty
 ''',
     'fish': '''
 function __kitty_completions
