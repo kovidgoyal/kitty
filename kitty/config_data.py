@@ -291,7 +291,8 @@ def cursor_text_color(x):
         return
     return to_color(x)
 
-
+o('macos_custom_beam_cursor', False, long_text=_('''Enable/disable custom cursor for macOS. WARNING, 
+this might make your cursor invisible on dual GPU machines.'''))
 o('cursor', '#cccccc', _('Default cursor color'), option_type=to_color)
 o('cursor_text_color', '#111111', option_type=cursor_text_color, long_text=_('''
 Choose the color of text under the cursor. If you want it rendered with the
