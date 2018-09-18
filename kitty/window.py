@@ -535,26 +535,26 @@ class Window:
                 open_url(text, cwd=cwd)
 
     def scroll_line_up(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_LINE, True)
 
     def scroll_line_down(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_LINE, False)
 
     def scroll_page_up(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_PAGE, True)
 
     def scroll_page_down(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_PAGE, False)
 
     def scroll_home(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_FULL, True)
 
     def scroll_end(self):
-        if self.screen.is_main_linebuf():
+        if self.screen.is_main_linebuf() or not self.opts.mouse_modes:
             self.screen.scroll(SCROLL_FULL, False)
     # }}}

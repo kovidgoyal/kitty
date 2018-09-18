@@ -606,8 +606,10 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
                     write_escape_code_to_child(screen, CSI, mouse_event_buf);
                 }
             }
-        } else {
+        } else if (OPT(mouse_modes)) {
             fake_scroll(abs(s), upwards);
+        } else {
+            screen_history_scroll(screen, abs(s), upwards);
         }
     }
 }
