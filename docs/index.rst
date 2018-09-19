@@ -265,6 +265,8 @@ Some prominent kittens:
 :doc:`Clipboard <kittens/clipboard>`
     Copy/paste to the clipboard from shell scripts, even over SSH.
 
+You can also :doc:`Learn to create your own kittens <kittens/custom>`.
+
 
 Configuring kitty
 -------------------
