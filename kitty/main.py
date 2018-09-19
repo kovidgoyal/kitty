@@ -120,9 +120,7 @@ def get_new_os_window_trigger(opts):
 
 def _run_app(opts, args):
     new_os_window_trigger = get_new_os_window_trigger(opts)
-    if False and is_macos:
-        # This is disabled because using custom cursors fails
-        # on dual GPU machines: https://github.com/kovidgoyal/kitty/issues/794
+    if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     load_all_shaders.cursor_text_color = opts.cursor_text_color
     if not is_wayland and not is_macos:  # no window icons on wayland

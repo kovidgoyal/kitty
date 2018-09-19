@@ -790,6 +790,12 @@ common font sizes.
 o('macos_traditional_fullscreen', False, long_text=_('''
 Use the traditional full-screen transition, that is faster, but less pretty.
 '''))
+
+# Disabled by default because of https://github.com/kovidgoyal/kitty/issues/794
+o('macos_custom_beam_cursor', False, long_text=_('''
+Enable/disable custom mouse cursor for macOS that is easier to see on both
+light and dark backgrounds. WARNING: this might make your mouse cursor
+invisible on dual GPU machines.'''))
 # }}}
 
 g('shortcuts')  # {{{

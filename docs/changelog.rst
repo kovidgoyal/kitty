@@ -54,6 +54,11 @@ Changelog
 
 - Linux: Fix window icon not set on X11 for the first OS window (:iss:`961`)
 
+- macOS: Add an :opt:`macos_custom_beam_cursor` option to use a special
+  mouse cursor image that can be seen on both light and dark backgrounds
+  (:iss:`359`)
+
+
 0.12.1 [2018-09-08]
 ------------------------------
 
