@@ -146,7 +146,12 @@ You can also create shortcuts to go to specific tabs, with 1 being the first tab
     map ctrl+alt+2 goto_tab 2
 
 Just as with :code:`new_window` above, you can also pass the name of arbitrary
-commands to run when using new_tab and use :code:`new_tab_with_cwd`.
+commands to run when using new_tab and use :code:`new_tab_with_cwd`. Finally,
+if you want the new tab to open next to the current tab rather than at the
+end of the tabs list, use::
+
+    map ctrl+t new_tab !neighbor [optional cmd to run]
+
 ''')],
     'shortcuts.layout': [
             _('Layout management'), '',

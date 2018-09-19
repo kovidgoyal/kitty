@@ -850,7 +850,7 @@ class Boss:
             cmd.append(arg)
         return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
 
-    def _new_tab(self, args, cwd_from=None):
+    def _new_tab(self, args, cwd_from=None, as_neighbor=False):
         special_window = None
         if args:
             if isinstance(args, SpecialWindowInstance):
@@ -859,15 +859,22 @@ class Boss:
                 special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         tm = self.active_tab_manager
         if tm is not None:
-            return tm.new_tab(special_window=special_window, cwd_from=cwd_from)
+            return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
+
+    def _create_tab(self, args, cwd_from=None):
+        as_neighbor = False
+        if args and args[0].startswith('!'):
+            as_neighbor = 'neighbor' in args[0][1:].split(',')
+            args = args[1:]
+        self._new_tab(args, as_neighbor=as_neighbor, cwd_from=cwd_from)
 
     def new_tab(self, *args):
-        self._new_tab(args)
+        self._create_tab(args)
 
     def new_tab_with_cwd(self, *args):
         w = self.active_window
         cwd_from = w.child.pid if w is not None else None
-        self._new_tab(args, cwd_from=cwd_from)
+        self._create_tab(args, cwd_from=cwd_from)
 
     def _new_window(self, args, cwd_from=None):
         tab = self.active_tab
