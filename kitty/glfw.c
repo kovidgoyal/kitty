@@ -339,7 +339,7 @@ static inline void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
     GLFWmonitor *monitor = NULL;
     if (w) monitor = current_monitor(w);
-    if (monitor == NULL) monitor = glfwGetPrimaryMonitor();
+    if (monitor == NULL) { PyErr_Print(); monitor = glfwGetPrimaryMonitor(); }
     float xscale = 1, yscale = 1;
     if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #ifdef __APPLE__
