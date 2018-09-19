@@ -905,6 +905,7 @@ accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
         case DEL:
             break;
         case ESC_ST:
+        case ESC_RIS:
             if (screen->parser_buf_pos > 0 && screen->parser_buf[screen->parser_buf_pos - 1] == ESC) {
                 screen->parser_buf_pos--;
                 return true;
@@ -957,6 +958,7 @@ accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
         case ST:
             return true;
         case ESC_ST:
+        case ESC_RIS:
             if (screen->parser_buf_pos > 0 && screen->parser_buf[screen->parser_buf_pos - 1] == ESC) {
                 screen->parser_buf_pos--;
                 return true;
