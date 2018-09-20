@@ -21,7 +21,7 @@ Changelog
   full-screen/maximized/minimized. This replaces the ``--start-in-fullscreen``
   flag introduced in the previous release (:iss:`935`)
 
-- When mapping the new_tab action allow specifying that the tab should open
+- When mapping the ``new_tab`` action allow specifying that the tab should open
   next to the current tab instead of at the end of the tabs list (:iss:`979`)
 
 - macOS: Add a new :opt:`macos_thicken_font` to make text rendering
