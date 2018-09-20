@@ -440,9 +440,9 @@ glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime, GLFWbool failed) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
             ev->glfw_keycode, _glfwGetKeyName(ev->glfw_keycode), ev->keysym, glfw_xkb_keysym_name(ev->keysym),
             (ev->action == GLFW_RELEASE ? "RELEASE" : (ev->action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            format_mods(ev->glfw_modifiers), key_event.text
+            format_mods(ev->glfw_modifiers), ev->text
         );
-        _glfwInputKeyboard(window, ev->glfw_keycode, ev->keysym, ev->action, ev->glfw_modifiers, key_event.text, 0);
+        _glfwInputKeyboard(window, ev->glfw_keycode, ev->keysym, ev->action, ev->glfw_modifiers, ev->text, 0);
     } else debug("↳ discarded\n");
     if (!is_release && handled_by_ime) last_handled_press_keycode = ev->keycode;
 }
