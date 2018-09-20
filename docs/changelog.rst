@@ -37,6 +37,9 @@ Changelog
 - Fix drag-scrolling not working when the mouse leaves the window confines
   (:iss:`917`)
 
+- Workaround for broken editors like nano that cannot handle newlines in pasted text
+  (:iss:`994`)
+
 - Linux: Ensure that the python embedded in the kitty binary build uses
   UTF-8 mode to process command-line arguments (:iss:`924`)
 

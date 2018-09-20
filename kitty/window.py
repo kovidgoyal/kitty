@@ -478,6 +478,10 @@ class Window:
                     if len(text) == len(new_text):
                         break
                     text = new_text
+            else:
+                # Workaround for broken editors like nano that cannot handle
+                # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
+                text = b'\r'.join(text.splitlines())
             self.screen.paste(text)
 
     def copy_to_clipboard(self):
