@@ -25,7 +25,9 @@ typedef struct {
 typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
 
 typedef struct {
-    unsigned int anchor_x, anchor_y, start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
+    unsigned int anchor_x, anchor_y, start_x, start_y, end_x, end_y;
+    int scroll_offset;
+    int anchor_scroll_offset;
     bool in_progress, rectangle_select;
     SelectionExtendMode extend_mode;
 } Selection;
