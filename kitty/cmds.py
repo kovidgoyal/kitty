@@ -582,10 +582,20 @@ def focus_window(boss, window, payload):
 @cmd(
     'Focus the specified tab',
     'The active window in the specified tab will be focused.',
-    options_spec=MATCH_TAB_OPTION,
+    options_spec=MATCH_TAB_OPTION + '''
+
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
+''',
     argspec='',
+    no_response=True,
 )
 def cmd_focus_tab(global_opts, opts, args):
+    if opts.no_response:
+        global_opts.no_command_response = True
     return {'match': opts.match}
 
 
