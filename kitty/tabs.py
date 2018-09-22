@@ -271,6 +271,8 @@ class Tab:  # {{{
     def previous_window(self):
         self._next_window(-1)
 
+    prev_window = previous_window
+
     def neighboring_window(self, which):
         neighbors = self.current_layout.neighbors(self.windows, self.active_window_idx)
         candidates = neighbors.get(which)

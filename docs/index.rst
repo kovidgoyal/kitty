@@ -125,7 +125,7 @@ Action                      Shortcut
 New tab                     :sc:`new_tab`
 Close tab                   :sc:`close_tab`
 Next tab                    :sc:`next_tab` (also :kbd:`control+tab` on macOS)
-Previous tab                :sc:`previous_tab` (also :kbd:`control+shift+tab` on macOS)
+Previous tab                :sc:`previous_tab` or :sc:`prev_tab` (also :kbd:`control+shift+tab` on macOS)
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`
 Move tab backward           :sc:`move_tab_backward`
@@ -143,7 +143,7 @@ New window                  :sc:`new_window`
 New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
 Close window                :sc:`close_window`
 Next window                 :sc:`next_window`
-Previous window             :sc:`previous_window`
+Previous window             :sc:`previous_window` or :sc:`prev_window`
 Move window forward         :sc:`move_window_forward`
 Move window backward        :sc:`move_window_backward`
 Move window to top          :sc:`move_window_to_top`
