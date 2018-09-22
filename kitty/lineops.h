@@ -37,6 +37,7 @@ xlimit_for_line(Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
         while (xlimit > 0 && (line->cpu_cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;
+        if ((line->gpu_cells[xlimit > 0 ? xlimit - 1 : xlimit].attrs & WIDTH_MASK) == 2) xlimit++;
     }
     return xlimit;
 }
