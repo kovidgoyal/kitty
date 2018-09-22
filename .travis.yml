@@ -85,6 +85,31 @@ matrix:
                 - libdbus-1-dev
                 - python3-pil
                 - clang
+
+        - os: linux
+          dist: xenial
+          group: beta
+          sudo: true
+          env:
+            - RUN_FLAKE=1 BUILD_PKG=linux-package
+          language: python
+          python: "3.7"
+          addons:
+            apt:
+              packages:
+                - libgl-dev
+                - libfontconfig1-dev
+                - libharfbuzz-dev
+                - libxi-dev
+                - libxrandr-dev
+                - libxinerama-dev
+                - libxcursor-dev
+                - libxcb-xkb-dev
+                - libpng-dev
+                - libdbus-1-dev
+                - python3-pil
+                - clang
+
         - os: osx
           language: generic
           env: SWBASE=/Users/Shared/buildbot/sw SW=$SWBASE/sw PATH=$SW/bin:$PATH
