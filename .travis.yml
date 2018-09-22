@@ -97,6 +97,7 @@ matrix:
           addons:
             apt:
               packages:
+                - libgl-dev
                 - libfontconfig1-dev
                 - libharfbuzz-dev
                 - libxi-dev
