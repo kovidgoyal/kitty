@@ -573,7 +573,9 @@ def focus_window(boss, window, payload):
             raise MatchError(match)
     for window in windows:
         if window:
-            boss.set_active_window(window)
+            os_window_id = boss.set_active_window(window)
+            if os_window_id:
+                focus_os_window(os_window_id, True)
             break
 # }}}
 

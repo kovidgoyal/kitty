@@ -64,6 +64,8 @@ Changelog
   mouse cursor image that can be seen on both light and dark backgrounds
   (:iss:`359`)
 
+- Remote control: Fix the ``focus_window`` command not focusing the
+  top-level OS window of the specified kitty window (:iss:`1003`)
 
 0.12.1 [2018-09-08]
 ------------------------------
