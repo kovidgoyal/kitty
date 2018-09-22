@@ -67,6 +67,9 @@ Changelog
 - Remote control: Fix the ``focus_window`` command not focusing the
   top-level OS window of the specified kitty window (:iss:`1003`)
 
+- Fix using :opt:`focus_follows_mouse` causing text selection with the
+  mouse to malfunction when using multiple kitty windows (:iss:`1002`)
+
 0.12.1 [2018-09-08]
 ------------------------------
 

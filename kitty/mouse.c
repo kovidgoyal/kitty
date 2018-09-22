@@ -497,6 +497,8 @@ mouse_event(int button, int modifiers, int action) {
                 button = currently_pressed_button();
                 if (button == GLFW_MOUSE_BUTTON_LEFT) {
                     clamp_to_window = true;
+                    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                    for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
                     handle_move_event(w, button, modifiers, window_idx);
                     clamp_to_window = false;
                     return;
