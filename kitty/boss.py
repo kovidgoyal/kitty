@@ -791,6 +791,8 @@ class Boss:
         if tm is not None:
             tm.next_tab(-1)
 
+    prev_tab = previous_tab
+
     def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
         w = window or self.active_window
         if stdin:
