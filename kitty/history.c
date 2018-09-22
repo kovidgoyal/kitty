@@ -172,16 +172,8 @@ pagerhist_push(HistoryBuf *self) {
     }
     ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023);
     ph->buffer[ph->end++] = '\r';
-    if (ph->bufend) {
-#if NEXTLINE
-        /* something like wcsrchr would be more accurate, but is *slow* */
-        Py_UCS4 *newstart = (Py_UCS4 *)strchr((char *)ph->buffer + ph->end, '\n');
-        if (!newstart || newstart - ph->buffer > ph->bufend) ph->start = 0;
-        else ph->start = newstart - ph->buffer;
-#else
+    if (ph->bufend)
         ph->start = ph->end + 1 < ph->bufend ? ph->end + 1 : 0;
-#endif
-    }
 }
 
 static inline index_type
