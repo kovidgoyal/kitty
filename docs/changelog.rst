@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.12.2 [future]
+0.12.2 [2018-09-24]
 ------------------------------
 
 - A new ``last_used_layout`` function that can be mapped to a shortcut to
