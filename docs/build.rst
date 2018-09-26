@@ -52,7 +52,15 @@ If that works, you can create a script to launch |kitty|:
 
     #!/usr/bin/env python3
     import runpy
-    runpy.run_path('/path/to/kitty/dir', run_name='__main__')
+    import sys
+
+    kitty_path = '/path/to/kitty/dir'
+
+    sys.path.insert(0, kitty_path)
+    from kitty.constants import kitty_exe  # noqa: E402
+    kitty_exe.ans = __file__
+
+    runpy.run_path(kitty_path, run_name='__main__')
 
 And place it in :file:`~/bin` or :file:`/usr/bin` so that you can run |kitty| using
 just ``kitty``.
