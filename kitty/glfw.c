@@ -14,6 +14,8 @@ extern bool cocoa_toggle_fullscreen(void *w, bool);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
+extern void cocoa_update_nsgl_context(void* id);
+
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
 #error "glfw has too many keys, you should increase MAX_KEY_COUNT"
@@ -808,6 +810,11 @@ hide_mouse(OSWindow *w) {
 
 void
 swap_window_buffers(OSWindow *w) {
+#ifdef __APPLE__
+    if (w->nsgl_ctx_updated++ < 2) {
+        cocoa_update_nsgl_context(glfwGetNSGLContext(w->handle));
+    }
+#endif
     glfwSwapBuffers(w->handle);
 }
 

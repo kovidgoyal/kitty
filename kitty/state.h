@@ -126,6 +126,7 @@ typedef struct {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     double pending_scroll_pixels;
+    unsigned int nsgl_ctx_updated;
 } OSWindow;
 
 

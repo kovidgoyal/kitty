@@ -192,6 +192,7 @@ def generate_wrappers(glfw_header, glfw_native_header):
         functions.append(Function(decl))
     for line in '''\
     void* glfwGetCocoaWindow(GLFWwindow* window)
+    void* glfwGetNSGLContext(GLFWwindow *window)
     uint32_t glfwGetCocoaMonitor(GLFWmonitor* monitor)
     GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow* window, GLFWcocoatextinputfilterfun callback)
     GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWwindow *window, GLFWcocoatogglefullscreenfun callback)

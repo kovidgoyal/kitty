@@ -1848,6 +1848,10 @@ typedef void* (*glfwGetCocoaWindow_func)(GLFWwindow*);
 glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
 #define glfwGetCocoaWindow glfwGetCocoaWindow_impl
 
+typedef void* (*glfwGetNSGLContext_func)(GLFWwindow*);
+glfwGetNSGLContext_func glfwGetNSGLContext_impl;
+#define glfwGetNSGLContext glfwGetNSGLContext_impl
+
 typedef uint32_t (*glfwGetCocoaMonitor_func)(GLFWmonitor*);
 glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
 #define glfwGetCocoaMonitor glfwGetCocoaMonitor_impl
