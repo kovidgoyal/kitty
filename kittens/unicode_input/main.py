@@ -165,21 +165,20 @@ class Table:
 
             def cell(i, idx, c, desc):
                 is_current = i == self.current_idx
-                if is_current:
-                    yield sgr(color_code('gray', base=40))
-                yield colored(idx, 'green') + ' '
-                yield colored(c, 'black' if is_current else 'gray', True) + ' '
+                text = colored(idx, 'green') + ' ' + sgr('49') + c + ' '
                 w = wcswidth(c)
                 if w < 2:
-                    yield ' ' * (2 - w)
+                    text += ' ' * (2 - w)
                 if len(desc) > space_for_desc:
-                    desc = desc[:space_for_desc - 1] + '…'
-                yield faint(desc)
+                    text += desc[:space_for_desc - 1] + '…'
+                else:
+                    text += desc
                 extra = space_for_desc - len(desc)
                 if extra > 0:
-                    yield ' ' * extra
-                if is_current:
-                    yield sgr('49')
+                    text += ' ' * extra
+
+                yield styled(text, reverse=True if is_current else None)
+
         else:
             def as_parts(i, codepoint):
                 return encode_hint(i).ljust(idx_size), chr(codepoint), ''
