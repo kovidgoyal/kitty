@@ -812,6 +812,8 @@ void
 swap_window_buffers(OSWindow *w) {
 #ifdef __APPLE__
     if (w->nsgl_ctx_updated++ < 2) {
+        // Needed on Mojave for initial window render, see
+        // https://github.com/kovidgoyal/kitty/issues/887
         cocoa_update_nsgl_context(glfwGetNSGLContext(w->handle));
     }
 #endif
