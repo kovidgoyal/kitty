@@ -2148,7 +2148,7 @@ COUNT_WRAP(cursor_forward)
 
 static PyObject*
 wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
-    return PyLong_FromUnsignedLong(wcwidth_std(PyLong_AsLong(chr)));
+    return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
 }
 
 
