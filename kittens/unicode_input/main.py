@@ -21,7 +21,7 @@ from ..tui.line_edit import LineEdit
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import (
-    clear_screen, color_code, colored, cursor, faint, set_line_wrapping,
+    clear_screen, colored, cursor, faint, set_line_wrapping,
     set_window_title, sgr, styled
 )
 
