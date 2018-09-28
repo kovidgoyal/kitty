@@ -901,12 +901,12 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
 
 static inline void
 merge_groups_for_pua_space_ligature() {
-    if (G(group_idx) == 1) {
+    while (G(group_idx) > 0) {
         Group *g = G(groups), *g1 = G(groups) + 1;
         g->num_cells += g1->num_cells;
         g->num_glyphs += g1->num_glyphs;
         g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1);
-        G(group_idx) = 0;
+        G(group_idx)--;
     }
 }
 
@@ -1006,21 +1006,33 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
         ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell);
-        if (is_private_use(cpu_cell->ch) && i + 1 < line->xnum && (line->cpu_cells[i+1].ch == ' ' || line->cpu_cells[i+1].ch == 0) && cell_font_idx != BOX_FONT && cell_font_idx != MISSING_FONT) {
-            // We have a private use char followed by a space char, render it as a two cell ligature.
-            GPUCell *space_cell = line->gpu_cells + i+1;
-            // Ensure the space cell uses the foreground colors from the PUA cell
-            // This is needed because there are stupid applications like
-            // powerline that use PUA+space with different foreground colors
-            // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
-            space_cell->fg = gpu_cell->fg; space_cell->decoration_fg = gpu_cell->decoration_fg;
-            RENDER;
-            render_run(fg, line->cpu_cells + i, line->gpu_cells + i, 2, cell_font_idx, true);
-            run_font_idx = NO_FONT;
-            first_cell_in_run = i + 2;
-            prev_width = line->gpu_cells[i+1].attrs & WIDTH_MASK;
-            i++;
-            continue;
+        if (is_private_use(cpu_cell->ch)
+                && cell_font_idx != BOX_FONT
+                && cell_font_idx != MISSING_FONT) {
+            int j = 0;
+            while ((line->cpu_cells[i+1+j].ch == ' ' || line->cpu_cells[i+1+j].ch == 0)
+                    && j < MAX_NUM_EXTRA_GLYPHS
+                    && i + 1 + j < line->xnum) {
+                j++;
+                // We have a private use char followed by space(s), render it as a multi-cell ligature.
+                GPUCell *space_cell = line->gpu_cells + i+j;
+                // Ensure the space cell uses the foreground/background colors from the PUA cell.
+                // This is needed because there are stupid applications like
+                // powerline that use PUA+space with different foreground colors
+                // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
+                space_cell->fg = gpu_cell->fg;
+                space_cell->bg = gpu_cell->bg;
+                space_cell->decoration_fg = gpu_cell->decoration_fg;
+            }
+            if (j) {
+                RENDER;
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, j + 1, cell_font_idx, true);
+                run_font_idx = NO_FONT;
+                first_cell_in_run = i + 1 + j;
+                prev_width = gpu_cell->attrs & WIDTH_MASK;
+                i += j;
+                continue;
+            }
         }
         prev_width = gpu_cell->attrs & WIDTH_MASK;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
