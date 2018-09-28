@@ -159,9 +159,12 @@ class Table:
         self.last_cols, self.last_rows = cols, rows
         self.layout_dirty = False
 
+        def safe_chr(codepoint):
+            return chr(codepoint).encode('utf-8', 'replace').decode('utf-8')
+
         if self.mode is NAME:
             def as_parts(i, codepoint):
-                return encode_hint(i).ljust(idx_size), chr(codepoint), name(codepoint)
+                return encode_hint(i).ljust(idx_size), safe_chr(codepoint), name(codepoint)
 
             def cell(i, idx, c, desc):
                 is_current = i == self.current_idx
@@ -181,7 +184,7 @@ class Table:
 
         else:
             def as_parts(i, codepoint):
-                return encode_hint(i).ljust(idx_size), chr(codepoint), ''
+                return encode_hint(i).ljust(idx_size), safe_chr(codepoint), ''
 
             def cell(i, idx, c, desc):
                 yield colored(idx, 'green') + ' '

@@ -9,6 +9,8 @@ Changelog
 - macOS: Fix kitty window not being rendered on macOS Mojave until the window is
   moved or resized at least once (:iss:`887`)
 
+- Unicode input: Fix an error when searching for the string 'fir' (:iss:`1035`)
+
 
 0.12.2 [2018-09-24]
 ------------------------------
