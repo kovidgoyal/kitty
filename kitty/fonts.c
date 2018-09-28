@@ -1010,12 +1010,12 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
                 && cell_font_idx != BOX_FONT
                 && cell_font_idx != MISSING_FONT) {
             int j = 0;
-            while ((line->cpu_cells[i+1+j].ch == ' ' || line->cpu_cells[i+1+j].ch == 0)
+            while ((line->cpu_cells[i+j+1].ch == ' ' || line->cpu_cells[i+j+1].ch == 0)
                     && j < MAX_NUM_EXTRA_GLYPHS
-                    && i + 1 + j < line->xnum) {
+                    && i + j + 1 < line->xnum) {
                 j++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
-                GPUCell *space_cell = line->gpu_cells + i+j;
+                GPUCell *space_cell = line->gpu_cells + i + j;
                 // Ensure the space cell uses the foreground/background colors from the PUA cell.
                 // This is needed because there are stupid applications like
                 // powerline that use PUA+space with different foreground colors
@@ -1028,8 +1028,8 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
                 RENDER;
                 render_run(fg, line->cpu_cells + i, line->gpu_cells + i, j + 1, cell_font_idx, true);
                 run_font_idx = NO_FONT;
-                first_cell_in_run = i + 1 + j;
-                prev_width = gpu_cell->attrs & WIDTH_MASK;
+                first_cell_in_run = i + j + 1;
+                prev_width = line->gpu_cells[i+1].attrs & WIDTH_MASK;
                 i += j;
                 continue;
             }
