@@ -14,6 +14,7 @@
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8
 #define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
+#define MAX_NUM_EXTRA_GLYPHS_PUA 4
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
@@ -1012,7 +1013,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
                 && cell_font_idx != MISSING_FONT) {
             int j = 0;
             while ((line->cpu_cells[i+j+1].ch == ' ' || line->cpu_cells[i+j+1].ch == 0)
-                    && j < MAX_NUM_EXTRA_GLYPHS
+                    && j < MAX_NUM_EXTRA_GLYPHS_PUA
                     && i + j + 1 < line->xnum) {
                 j++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
