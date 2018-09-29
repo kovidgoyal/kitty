@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.12.3 [future]
+0.12.3 [2018-09-29]
 ------------------------------
 
 - macOS: Fix kitty window not being rendered on macOS Mojave until the window is
