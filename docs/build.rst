@@ -57,6 +57,25 @@ If that works, you can create a script to launch |kitty|:
 And place it in :file:`~/bin` or :file:`/usr/bin` so that you can run |kitty| using
 just ``kitty``.
 
+
+Building kitty.app on macOS from source
+-------------------------------------------
+
+Install `imagemagick`, `optipng` and `librsvg` using `brew` or similar (needed
+for the logo generation step). And run::
+
+    make app
+
+This :file:`kitty.app` unlike the released one does not include its own copy of
+python and the other dependencies. So if you ever un-install/upgrade those dependencies
+you might have to rebuild the app.
+
+Note that the released :file:`kitty.dmg` includes all dependencies, unlike the
+:file:`kitty.app` built above and is built automatically by using the :file:`kitty` branch of
+`build-calibre <https://github.com/kovidgoyal/build-calibre>`_ however, that
+is designed to run on Linux and is not for the faint of heart.
+
+
 Note for Linux/macOS packagers
 ----------------------------------
 

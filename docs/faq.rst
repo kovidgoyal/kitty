@@ -25,24 +25,6 @@ these characters are followed by a space or empty cell in which case kitty
 makes use of the extra cell to render them in two cells.
 
 
-How do I build kitty.app on macOS?
-----------------------------------------
-
-Install `imagemagick`, `optipng` and `librsvg` using `brew` or similar (needed
-for the logo generation step). And run::
-
-    make app
-
-This :file:`kitty.app` unlike the released one does not include its own copy of
-python and the other dependencies. So if you ever un-install/upgrade those dependencies
-you might have to rebuild the app.
-
-Note that the released :file:`kitty.dmg` includes all dependencies, unlike the
-:file:`kitty.app` built above and is built automatically by using the :file:`kitty` branch of
-`build-calibre <https://github.com/kovidgoyal/build-calibre>`_ however, that
-is designed to run on Linux and is not for the faint of heart.
-
-
 Using a color theme with a background color does not work well in vim?
 -----------------------------------------------------------------------
 
