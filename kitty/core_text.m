@@ -221,6 +221,15 @@ is_glyph_empty(PyObject *s, glyph_index g) {
     return bounds.size.width <= 0;
 }
 
+int
+get_glyph_width(PyObject *s, glyph_index g) {
+    CTFace *self = (CTFace*)s;
+    CGGlyph gg = g;
+    CGRect bounds;
+    CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, &gg, &bounds, 1);
+    return bounds.size.width;
+}
+
 static inline float
 scaled_point_sz(FONTS_DATA_HANDLE fg) {
     return ((fg->logical_dpi_x + fg->logical_dpi_y) / 144.0) * fg->font_sz_in_pts;
