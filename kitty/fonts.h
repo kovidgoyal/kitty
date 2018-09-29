@@ -17,6 +17,7 @@
 // API that font backends need to implement
 typedef uint16_t glyph_index;
 unsigned int glyph_id_for_codepoint(PyObject *, char_type);
+int get_glyph_width(PyObject *, glyph_index);
 bool is_glyph_empty(PyObject *, glyph_index);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, unsigned int, bool, FONTS_DATA_HANDLE);

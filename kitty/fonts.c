@@ -1008,12 +1008,25 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
         ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell);
+
         if (is_private_use(cpu_cell->ch)
                 && cell_font_idx != BOX_FONT
                 && cell_font_idx != MISSING_FONT) {
+            int cells;
+            if (cell_font_idx > 0) {
+                Font *font = (fg->fonts + cell_font_idx);
+                glyph_index glyph_id = glyph_id_for_codepoint(font->face, cpu_cell->ch);
+
+                int width = get_glyph_width(font->face, glyph_id);
+                cells = ceilf((float)width / fg->cell_width);
+            } else {
+                cells = 1;
+            }
+
             int j = 0;
             while ((line->cpu_cells[i+j+1].ch == ' ' || line->cpu_cells[i+j+1].ch == 0)
                     && j < MAX_NUM_EXTRA_GLYPHS_PUA
+                    && j < cells
                     && i + j + 1 < line->xnum) {
                 j++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
