@@ -61,8 +61,12 @@ def data_for_at(w, arg):
         return w.as_text(as_ansi=True)
     if arg == '@alternate':
         return w.as_text(alternate_screen=True)
+    if arg == '@alternate_scrollback':
+        return w.as_text(alternate_screen=True, add_history=True)
     if arg == '@ansi_alternate':
         return w.as_text(as_ansi=True, alternate_screen=True)
+    if arg == '@ansi_alternate_scrollback':
+        return w.as_text(as_ansi=True, alternate_screen=True, add_history=True)
 
 
 class DumpCommands:  # {{{
