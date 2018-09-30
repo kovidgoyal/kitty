@@ -447,10 +447,10 @@ class TestDataTypes(BaseTest):
     def test_ansi_repr(self):
         lb = filled_line_buf()
         l0 = lb.line(0)
-        self.ae(l0.as_ansi(), '\x1b[0m00000')
+        self.ae(l0.as_ansi(), '00000')
         a = []
         lb.as_ansi(a.append)
-        self.ae(a, ['\x1b[0m' + str(lb.line(i)) + '\n' for i in range(lb.ynum)])
+        self.ae(a, [str(lb.line(i)) + '\n' for i in range(lb.ynum)])
         l2 = lb.line(0)
         c = C()
         c.bold = c.italic = c.reverse = c.strikethrough = c.dim = True
@@ -458,15 +458,15 @@ class TestDataTypes(BaseTest):
         c.bg = (1 << 24) | (2 << 16) | (3 << 8) | 2
         c.decoration_fg = (5 << 8) | 1
         l2.set_text('1', 0, 1, c)
-        self.ae(l2.as_ansi(), '\x1b[0m\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
+        self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1'
                 '\x1b[22;23;27;29;39;49;59m' '0000')
         lb = filled_line_buf()
         for i in range(lb.ynum):
             lb.set_continued(i, True)
         a = []
         lb.as_ansi(a.append)
-        self.ae(a, ['\x1b[0m' + str(lb.line(i)) for i in range(lb.ynum)])
+        self.ae(a, [str(lb.line(i)) for i in range(lb.ynum)])
         hb = filled_history_buf(5, 5)
         a = []
         hb.as_ansi(a.append)
-        self.ae(a, ['\x1b[0m' + str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])
+        self.ae(a, [str(hb.line(i)) + '\n' for i in range(hb.count - 1, -1, -1)])

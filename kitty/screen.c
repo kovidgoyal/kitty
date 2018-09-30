@@ -107,7 +107,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
-        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns);
+        self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
         self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
@@ -165,8 +165,9 @@ screen_dirty_sprite_positions(Screen *self) {
 
 static inline HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
-    HistoryBuf *ans = alloc_historybuf(lines, columns);
+    HistoryBuf *ans = alloc_historybuf(lines, columns, 0);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
+    ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
     historybuf_rewrap(old, ans);
     return ans;
 }
@@ -1405,7 +1406,6 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
     static char buf[128];
     int shape = 0;
     const char *query;
-    Cursor blank_cursor = {{0}};
     switch(c) {
         case '+':
             CALLBACK("request_capabilities", "O", q);
@@ -1429,7 +1429,13 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
                 shape = snprintf(buf, sizeof(buf), "1$r%d q", shape);
             } else if (strcmp("m", query) == 0) {
                 // SGR
-                shape = snprintf(buf, sizeof(buf), "1$r%sm", cursor_as_sgr(self->cursor, &blank_cursor));
+                GPUCell blank_cell = { 0 }, cursor_cell = {
+                    .attrs = CURSOR_TO_ATTRS(self->cursor, 1),
+                    .fg = self->cursor->fg & COL_MASK,
+                    .bg = self->cursor->bg & COL_MASK,
+                    .decoration_fg = self->cursor->decoration_fg & COL_MASK,
+                };
+                shape = snprintf(buf, sizeof(buf), "1$r%sm", cell_as_sgr(&cursor_cell, &blank_cell));
             } else if (strcmp("r", query) == 0) {
                 shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
             } else {

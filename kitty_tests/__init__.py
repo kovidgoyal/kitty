@@ -4,6 +4,8 @@
 
 from unittest import TestCase
 
+from kitty.config import Options, defaults, merge_configs
+from kitty.fast_data_types import set_options
 from kitty.fast_data_types import LineBuf, Cursor, Screen, HistoryBuf
 
 
@@ -72,7 +74,9 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
     maxDiff = 2000
 
-    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20):
+    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options={}):
+        options = Options(merge_configs(defaults._asdict(), options))
+        set_options(options)
         c = Callbacks()
         return Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
 

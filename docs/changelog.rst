@@ -3,6 +3,14 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.13.0 [future]
+------------------------------
+
+- Add an option :opt:`scrollback_pager_history_size` to tell kitty to store
+  extended scrollback to use when viewing the scrollback buffer in a pager
+  (:iss:`970`)
+
+
 0.12.3 [2018-09-29]
 ------------------------------
 

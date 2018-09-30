@@ -174,10 +174,19 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
+    index_type bufsize, maxsz;
+    Py_UCS4 *buffer;
+    index_type start, end;
+    index_type bufend;
+    bool rewrap_needed;
+} PagerHistoryBuf;
+
+typedef struct {
     PyObject_HEAD
 
     index_type xnum, ynum, num_segments;
-    HistoryBufSegment* segments;
+    HistoryBufSegment *segments;
+    PagerHistoryBuf *pagerhist;
     Line *line;
     index_type start_of_data, count;
 } HistoryBuf;
@@ -254,7 +263,7 @@ const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, siz
 Line* alloc_line();
 Cursor* alloc_cursor();
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
-HistoryBuf* alloc_historybuf(unsigned int, unsigned int);
+HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
 ColorProfile* alloc_color_profile();
 PyObject* create_256_color_table();
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
@@ -267,7 +276,7 @@ void cursor_copy_to(Cursor *src, Cursor *dest);
 void cursor_reset_display_attrs(Cursor*);
 void cursor_from_sgr(Cursor *self, unsigned int *params, unsigned int count);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned int *params, unsigned int count);
-const char* cursor_as_sgr(Cursor*, Cursor*);
+const char* cell_as_sgr(GPUCell *, GPUCell *);
 
 double monotonic();
 PyObject* cm_thread_write(PyObject *self, PyObject *args);

@@ -370,6 +370,9 @@ arbitrary, command running in a new window, tab or overlay, for example::
 Would open the scrollback buffer in a new window when you press the :kbd:`F1`
 key. See :sc:`show_scrollback` for details.
 
+If you wish to store very large amounts of scrollback to view using the piping or
+:sc:`show_scrollback` features, you can use the :opt:`scrollback_pager_history_size`
+option.
 
 Frequently Asked Questions
 ---------------------------------
