@@ -1429,13 +1429,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
                 shape = snprintf(buf, sizeof(buf), "1$r%d q", shape);
             } else if (strcmp("m", query) == 0) {
                 // SGR
-                GPUCell blank_cell = { 0 }, cursor_cell = {
-                    .attrs = CURSOR_TO_ATTRS(self->cursor, 1),
-                    .fg = self->cursor->fg & COL_MASK,
-                    .bg = self->cursor->bg & COL_MASK,
-                    .decoration_fg = self->cursor->decoration_fg & COL_MASK,
-                };
-                shape = snprintf(buf, sizeof(buf), "1$r%sm", cell_as_sgr(&cursor_cell, &blank_cell));
+                shape = snprintf(buf, sizeof(buf), "1$r%sm", cursor_as_sgr(self->cursor));
             } else if (strcmp("r", query) == 0) {
                 shape = snprintf(buf, sizeof(buf), "1$r%u;%ur", self->margin_top + 1, self->margin_bottom + 1);
             } else {

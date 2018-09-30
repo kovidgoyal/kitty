@@ -528,6 +528,73 @@ set_attribute(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static inline int
+color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsigned aix_code, unsigned complex_code) {
+    switch(val & 0xff) {
+        case 1:
+            val >>= 8;
+            if (val < 16 && simple_code) {
+                return snprintf(buf, sz, "%lu;", (val < 8) ? simple_code + val : aix_code + (val - 8));
+            }
+            return snprintf(buf, sz, "%u:5:%lu;", complex_code, val);
+        case 2:
+            return snprintf(buf, sz, "%u:2:%lu:%lu:%lu;", complex_code, (val >> 24) & 0xff, (val >> 16) & 0xff, (val >> 8) & 0xff);
+        default:
+            return snprintf(buf, sz, "%u;", complex_code + 1);  // reset
+    }
+}
+
+static inline const char*
+decoration_as_sgr(uint8_t decoration) {
+    switch(decoration) {
+        case 1: return "4;";
+        case 2: return "4:2;";
+        case 3: return "4:3;";
+        default: return "24;";
+    }
+}
+
+
+const char*
+cell_as_sgr(GPUCell *cell, GPUCell *prev) {
+    static char buf[128];
+#define SZ sizeof(buf) - (p - buf) - 2
+#define P(s) { size_t len = strlen(s); if (SZ > len) { memcpy(p, s, len); p += len; } }
+    char *p = buf;
+#define CMP(attr) (attr(cell) != attr(prev))
+#define BOLD(cell) (cell->attrs & (1 << BOLD_SHIFT))
+#define DIM(cell) (cell->attrs & (1 << DIM_SHIFT))
+#define ITALIC(cell) (cell->attrs & (1 << ITALIC_SHIFT))
+#define REVERSE(cell) (cell->attrs & (1 << REVERSE_SHIFT))
+#define STRIKETHROUGH(cell) (cell->attrs & (1 << STRIKE_SHIFT))
+#define DECORATION(cell) (cell->attrs & (DECORATION_MASK << DECORATION_SHIFT))
+    bool intensity_differs = CMP(BOLD) || CMP(DIM);
+    if (intensity_differs) {
+        if (!BOLD(cell) && !DIM(cell)) { P("22;"); }
+        else { if (BOLD(cell)) P("1;"); if (DIM(cell)) P("2;"); }
+    }
+    if (CMP(ITALIC)) P(ITALIC(cell) ? "3;" : "23;");
+    if (CMP(REVERSE)) P(REVERSE(cell) ? "7;" : "27;");
+    if (CMP(STRIKETHROUGH)) P(STRIKETHROUGH(cell) ? "9;" : "29;");
+    if (cell->fg != prev->fg) p += color_as_sgr(p, SZ, cell->fg, 30, 90, 38);
+    if (cell->bg != prev->bg) p += color_as_sgr(p, SZ, cell->bg, 40, 100, 48);
+    if (cell->decoration_fg != prev->decoration_fg) p += color_as_sgr(p, SZ, cell->decoration_fg, 0, 0, DECORATION_FG_CODE);
+    if (CMP(DECORATION)) P(decoration_as_sgr((cell->attrs >> DECORATION_SHIFT) & DECORATION_MASK));
+#undef CMP
+#undef BOLD
+#undef DIM
+#undef ITALIC
+#undef REVERSE
+#undef STRIKETHROUGH
+#undef DECORATION
+#undef P
+#undef SZ
+    if (p > buf) *(p - 1) = 0;  // remove trailing semi-colon
+    *p = 0;  // ensure string is null-terminated
+    return buf;
+}
+
+
 static Py_ssize_t
 __len__(PyObject *self) {
     return (Py_ssize_t)(((Line*)self)->xnum);
