@@ -438,7 +438,7 @@ class Window:
 
     def as_text(self, as_ansi=False, add_history=False, add_pager_history=False, add_wrap_markers=False, alternate_screen=False):
         lines = []
-        add_history = add_history and not self.screen.is_using_alternate_linebuf() and not alternate_screen
+        add_history = add_history and not (self.screen.is_using_alternate_linebuf() ^ alternate_screen)
         if alternate_screen:
             f = self.screen.as_text_alternate
         else:
