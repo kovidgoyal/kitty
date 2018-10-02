@@ -198,7 +198,7 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image)
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Creating a buffer file for %d B failed: %m",
                         length);
-        return GLFW_FALSE;
+        return NULL;
     }
 
     data = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -207,7 +207,7 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image)
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: mmap failed: %m");
         close(fd);
-        return GLFW_FALSE;
+        return NULL;
     }
 
     pool = wl_shm_create_pool(_glfw.wl.shm, fd, length);
@@ -277,6 +277,8 @@ static void createDecorations(_GLFWwindow* window)
 
     if (!window->wl.decorations.buffer)
         window->wl.decorations.buffer = createShmBuffer(&image);
+    if (!window->wl.decorations.buffer)
+        return;
 
     createDecoration(&window->wl.decorations.top, window->wl.surface,
                      window->wl.decorations.buffer, opaque,
@@ -1304,6 +1306,8 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               int xhot, int yhot, int count)
 {
     cursor->wl.buffer = createShmBuffer(image);
+    if (!cursor->wl.buffer)
+        return GLFW_FALSE;
     cursor->wl.width = image->width;
     cursor->wl.height = image->height;
     cursor->wl.xhot = xhot;
