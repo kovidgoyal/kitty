@@ -571,6 +571,12 @@ static void registryHandleGlobal(void* data,
             wl_registry_bind(registry, name, &xdg_wm_base_interface, 1);
         xdg_wm_base_add_listener(_glfw.wl.wmBase, &wmBaseListener, NULL);
     }
+    else if (strcmp(interface, "zxdg_decoration_manager_v1") == 0)
+    {
+        _glfw.wl.decorationManager =
+        wl_registry_bind(registry, name,
+            &zxdg_decoration_manager_v1_interface, 1);
+    }
     else if (strcmp(interface, "wp_viewporter") == 0)
     {
         _glfw.wl.viewporter =
@@ -763,6 +769,8 @@ void _glfwPlatformTerminate(void)
         wl_shell_destroy(_glfw.wl.shell);
     if (_glfw.wl.viewporter)
         wp_viewporter_destroy(_glfw.wl.viewporter);
+    if (_glfw.wl.decorationManager)
+        zxdg_decoration_manager_v1_destroy(_glfw.wl.decorationManager);
     if (_glfw.wl.wmBase)
         xdg_wm_base_destroy(_glfw.wl.wmBase);
     if (_glfw.wl.pointer)

@@ -56,6 +56,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 
 #include "wayland-xdg-shell-client-protocol.h"
 #include "wayland-viewporter-client-protocol.h"
+#include "wayland-xdg-decoration-unstable-v1-client-protocol.h"
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
@@ -143,6 +144,7 @@ typedef struct _GLFWwindowWayland
     struct {
         struct xdg_surface*     surface;
         struct xdg_toplevel*    toplevel;
+        struct zxdg_toplevel_decoration_v1* decoration;
     } xdg;
 
     _GLFWcursor*                currentCursor;
@@ -169,6 +171,7 @@ typedef struct _GLFWwindowWayland
     GLFWbool                    justCreated;
 
     struct {
+        GLFWbool                           serverSide;
         struct wl_buffer*                  buffer;
         _GLFWdecorationWayland             top, left, right, bottom;
         int                                focus;
@@ -203,6 +206,7 @@ typedef struct _GLFWlibraryWayland
     struct wl_pointer*          pointer;
     struct wl_keyboard*         keyboard;
     struct xdg_wm_base*         wmBase;
+    struct zxdg_decoration_manager_v1*      decorationManager;
     struct wp_viewporter*       viewporter;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;

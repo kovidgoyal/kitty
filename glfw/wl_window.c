@@ -272,7 +272,7 @@ static void createDecorations(_GLFWwindow* window)
     const GLFWimage image = { 1, 1, data };
     GLFWbool opaque = (data[3] == 255);
 
-    if (!_glfw.wl.viewporter)
+    if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide)
         return;
 
     if (!window->wl.decorations.buffer)
@@ -318,6 +318,20 @@ static void destroyDecorations(_GLFWwindow* window)
     destroyDecoration(&window->wl.decorations.right);
     destroyDecoration(&window->wl.decorations.bottom);
 }
+
+static void xdgDecorationHandleConfigure(void* data,
+                                         struct zxdg_toplevel_decoration_v1* decoration,
+                                         uint32_t mode)
+{
+    _GLFWwindow* window = data;
+     window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+     if (!window->wl.decorations.serverSide)
+        createDecorations(window);
+}
+
+static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
+    xdgDecorationHandleConfigure,
+};
 
 // Makes the surface considered as XRGB instead of ARGB.
 static void setOpaqueRegion(_GLFWwindow* window)
@@ -491,9 +505,6 @@ static GLFWbool createSurface(_GLFWwindow* window,
     if (!window->wl.transparent)
         setOpaqueRegion(window);
 
-    if (window->decorated && !window->monitor)
-        createDecorations(window);
-
     return GLFW_TRUE;
 }
 
@@ -514,7 +525,8 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, int refres
             monitor->wl.output);
     }
     setIdleInhibitor(window, GLFW_TRUE);
-    destroyDecorations(window);
+    if (!window->wl.decorations.serverSide)
+        destroyDecorations(window);
 }
 
 static GLFWbool createShellSurface(_GLFWwindow* window)
@@ -550,11 +562,13 @@ static GLFWbool createShellSurface(_GLFWwindow* window)
     {
         wl_shell_surface_set_maximized(window->wl.shellSurface, NULL);
         setIdleInhibitor(window, GLFW_FALSE);
+        createDecorations(window);
     }
     else
     {
         wl_shell_surface_set_toplevel(window->wl.shellSurface);
         setIdleInhibitor(window, GLFW_FALSE);
+        createDecorations(window);
     }
 
     wl_surface_commit(window->wl.surface);
@@ -643,6 +657,27 @@ static const struct xdg_surface_listener xdgSurfaceListener = {
     xdgSurfaceHandleConfigure
 };
 
+static void setXdgDecorations(_GLFWwindow* window)
+{
+    if (_glfw.wl.decorationManager)
+    {
+        window->wl.xdg.decoration =
+            zxdg_decoration_manager_v1_get_toplevel_decoration(
+                _glfw.wl.decorationManager, window->wl.xdg.toplevel);
+        zxdg_toplevel_decoration_v1_add_listener(window->wl.xdg.decoration,
+                                                 &xdgDecorationListener,
+                                                 window);
+        zxdg_toplevel_decoration_v1_set_mode(
+            window->wl.xdg.decoration,
+            ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    }
+    else
+    {
+        window->wl.decorations.serverSide = GLFW_FALSE;
+        createDecorations(window);
+    }
+}
+
 static GLFWbool createXdgSurface(_GLFWwindow* window)
 {
     window->wl.xdg.surface = xdg_wm_base_get_xdg_surface(_glfw.wl.wmBase,
@@ -690,10 +725,12 @@ static GLFWbool createXdgSurface(_GLFWwindow* window)
     {
         xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
         setIdleInhibitor(window, GLFW_FALSE);
+        setXdgDecorations(window);
     }
     else
     {
         setIdleInhibitor(window, GLFW_FALSE);
+        setXdgDecorations(window);
     }
     if (strlen(window->wl.appId))
         xdg_toplevel_set_app_id(window->wl.xdg.toplevel, window->wl.appId);
@@ -914,6 +951,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         window->context.destroy(window);
 
     destroyDecorations(window);
+    if (window->wl.xdg.decoration)
+        zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
     if (window->wl.decorations.buffer)
         wl_buffer_destroy(window->wl.decorations.buffer);
 
@@ -1027,7 +1066,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* left, int* top,
                                      int* right, int* bottom)
 {
-    if (window->decorated && !window->monitor)
+    if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
             *top = _GLFW_DECORATION_TOP;
@@ -1169,7 +1208,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
         else if (window->wl.shellSurface)
             wl_shell_surface_set_toplevel(window->wl.shellSurface);
         setIdleInhibitor(window, GLFW_FALSE);
-        if (window->decorated)
+        if (!_glfw.wl.decorationManager)
             createDecorations(window);
     }
     _glfwInputWindowMonitor(window, monitor);
