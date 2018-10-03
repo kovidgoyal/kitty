@@ -169,12 +169,6 @@ def init_env(
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
-    has_memfd_create = test_compile(cc, '-Werror', src='''#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
-int main(void) {
-    return syscall(__NR_memfd_create, "test", 0);
-}''')
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
@@ -224,8 +218,6 @@ int main(void) {
         cflags.append('-g3')
         ldflags.append('-lprofiler')
     ldpaths = []
-    if has_memfd_create:
-        cppflags.append('-DHAS_MEMFD_CREATE')
     return Env(cc, cppflags, cflags, ldflags, ldpaths=ldpaths)
 
 
@@ -429,7 +421,7 @@ def compile_glfw(incremental, compilation_database, all_keys):
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
-            genv = glfw.init_env(env, pkg_config, at_least_version, module)
+            genv = glfw.init_env(env, pkg_config, at_least_version, test_compile, module)
         except SystemExit as err:
             if module != 'wayland':
                 raise
