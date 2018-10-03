@@ -32,16 +32,16 @@
 #include <errno.h>
 
 
-static void geometry(void* data,
-                     struct wl_output* output,
-                     int32_t x,
-                     int32_t y,
-                     int32_t physicalWidth,
-                     int32_t physicalHeight,
-                     int32_t subpixel,
-                     const char* make,
-                     const char* model,
-                     int32_t transform)
+static void outputHandleGeometry(void* data,
+                                struct wl_output* output,
+                                int32_t x,
+                                int32_t y,
+                                int32_t physicalWidth,
+                                int32_t physicalHeight,
+                                int32_t subpixel,
+                                const char* make,
+                                const char* model,
+                                int32_t transform)
 {
     struct _GLFWmonitor *monitor = data;
     char name[1024];
@@ -55,12 +55,12 @@ static void geometry(void* data,
     monitor->name = _glfw_strdup(name);
 }
 
-static void mode(void* data,
-                 struct wl_output* output,
-                 uint32_t flags,
-                 int32_t width,
-                 int32_t height,
-                 int32_t refresh)
+static void outputHandleMode(void* data,
+                            struct wl_output* output,
+                            uint32_t flags,
+                            int32_t width,
+                            int32_t height,
+                            int32_t refresh)
 {
     struct _GLFWmonitor *monitor = data;
     GLFWvidmode mode;
@@ -81,16 +81,16 @@ static void mode(void* data,
         monitor->wl.currentMode = monitor->modeCount - 1;
 }
 
-static void done(void* data, struct wl_output* output)
+static void outputHandleDone(void* data, struct wl_output* output)
 {
     struct _GLFWmonitor *monitor = data;
 
     _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
 }
 
-static void scale(void* data,
-                  struct wl_output* output,
-                  int32_t factor)
+static void outputHandleScale(void* data,
+                            struct wl_output* output,
+                            int32_t factor)
 {
     struct _GLFWmonitor *monitor = data;
 
@@ -98,10 +98,10 @@ static void scale(void* data,
 }
 
 static const struct wl_output_listener outputListener = {
-    geometry,
-    mode,
-    done,
-    scale,
+    outputHandleGeometry,
+    outputHandleMode,
+    outputHandleDone,
+    outputHandleScale,
 };
 
 
@@ -205,4 +205,3 @@ GLFWAPI struct wl_output* glfwGetWaylandMonitor(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return monitor->wl.output;
 }
-
