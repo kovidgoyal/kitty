@@ -2012,21 +2012,21 @@ void _glfwPlatformSetClipboardString(const char* string)
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard declareTypes:types owner:nil];
     [pasteboard setString:[NSString stringWithUTF8String:string]
-                  forType:NSStringPboardType];
+                  forType:NSPasteboardTypeString];
 }
 
 const char* _glfwPlatformGetClipboardString(void)
 {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
 
-    if (![[pasteboard types] containsObject:NSStringPboardType])
+    if (![[pasteboard types] containsObject:NSPasteboardTypeString])
     {
         _glfwInputError(GLFW_FORMAT_UNAVAILABLE,
                         "Cocoa: Failed to retrieve string from pasteboard");
         return NULL;
     }
 
-    NSString* object = [pasteboard stringForType:NSStringPboardType];
+    NSString* object = [pasteboard stringForType:NSPasteboardTypeString];
     if (!object)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
