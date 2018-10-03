@@ -6,7 +6,7 @@
 
 #pragma once
 
-#if defined(__linux__)
+#ifdef HAS_MEMFD_CREATE
 
 #define _GNU_SOURCE
 #include <unistd.h>

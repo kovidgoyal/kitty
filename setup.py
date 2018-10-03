@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import sysconfig
-import tempfile
 import time
 
 base = os.path.dirname(os.path.abspath(__file__))
@@ -141,11 +140,10 @@ def get_sanitize_args(cc, ccver):
 
 
 def test_compile(cc, *cflags, src=None):
-    with tempfile.NamedTemporaryFile(suffix='.c') as f:
-        src = src or 'int main(void) { return 0; }'
-        f.write(src.encode('utf-8'))
-        f.flush()
-        return subprocess.Popen([cc] + list(cflags) + [f.name, '-o', os.devnull]).wait() == 0
+    src = src or 'int main(void) { return 0; }'
+    p = subprocess.Popen([cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'], stdin=subprocess.PIPE)
+    p.stdin.write(src.encode('utf-8')), p.stdin.close()
+    return p.wait() == 0
 
 
 def first_successful_compile(cc, *cflags, src=None):
@@ -171,6 +169,12 @@ def init_env(
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
+    has_memfd_create = test_compile(cc, '-Werror', src='''#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
+int main(void) {
+    return syscall(__NR_memfd_create, "test", 0);
+}''')
     missing_braces = ''
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
@@ -220,6 +224,8 @@ def init_env(
         cflags.append('-g3')
         ldflags.append('-lprofiler')
     ldpaths = []
+    if has_memfd_create:
+        cppflags.append('-DHAS_MEMFD_CREATE')
     return Env(cc, cppflags, cflags, ldflags, ldpaths=ldpaths)
 
 

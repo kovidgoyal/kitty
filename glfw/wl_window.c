@@ -140,7 +140,7 @@ static int
 createAnonymousFile(off_t size)
 {
     int ret;
-#if defined(__linux__)
+#ifdef HAS_MEMFD_CREATE
     int fd = memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) return -1;
     // We can add this seal before calling posix_fallocate(), as the file
