@@ -32,10 +32,11 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
         ans.cflags.append('-pthread')
         ans.ldpaths.append('-pthread')
     ans.cflags.append('-fpic')
-    ans.cflags.append('-D_GLFW_' + module.upper())
-    ans.cflags.append('-D_GLFW_BUILD_DLL')
+    ans.cppflags.append('-D_GLFW_' + module.upper())
+    ans.cppflags.append('-D_GLFW_BUILD_DLL')
 
     if is_macos:
+        ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
         ans.ldpaths.extend(
             "-framework Cocoa -framework IOKit -framework CoreFoundation -framework CoreVideo".
             split()

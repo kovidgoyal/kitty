@@ -50,6 +50,11 @@
  #define NSEventTypeKeyUp NSKeyUp
 #endif
 
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
+ #define NSPasteboardTypeFileURL NSFilenamesPboardType
+ #define NSBitmapFormatAlphaNonpremultiplied NSAlphaNonpremultipliedBitmapFormat
+ #define NSPasteboardTypeString NSStringPboardType
+#endif
 
 // Returns the style mask corresponding to the window settings
 //
@@ -550,7 +555,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:[NSArray arrayWithObjects:
-                                       NSFilenamesPboardType, nil]];
+                                       NSPasteboardTypeFileURL, nil]];
     }
 
     return self;
@@ -915,7 +920,7 @@ is_ascii_control_char(char x) {
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
 {
     NSPasteboard* pasteboard = [sender draggingPasteboard];
-    NSArray* files = [pasteboard propertyListForType:NSFilenamesPboardType];
+    NSArray* files = [pasteboard propertyListForType:NSPasteboardTypeFileURL];
 
     const NSRect contentRect = [window->ns.view frame];
     _glfwInputCursorPos(window,
@@ -1940,7 +1945,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                             hasAlpha:YES
                             isPlanar:NO
                     colorSpaceName:NSCalibratedRGBColorSpace
-                        bitmapFormat:NSAlphaNonpremultipliedBitmapFormat
+                        bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
                         bytesPerRow:src->width * 4
                         bitsPerPixel:32];
         if (rep == nil)
@@ -2002,7 +2007,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 
 void _glfwPlatformSetClipboardString(const char* string)
 {
-    NSArray* types = [NSArray arrayWithObjects:NSStringPboardType, nil];
+    NSArray* types = [NSArray arrayWithObjects:NSPasteboardTypeString, nil];
 
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard declareTypes:types owner:nil];
