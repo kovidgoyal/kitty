@@ -142,7 +142,10 @@ def get_sanitize_args(cc, ccver):
 def test_compile(cc, *cflags, src=None):
     src = src or 'int main(void) { return 0; }'
     p = subprocess.Popen([cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'], stdin=subprocess.PIPE)
-    p.stdin.write(src.encode('utf-8')), p.stdin.close()
+    try:
+        p.stdin.write(src.encode('utf-8')), p.stdin.close()
+    except BrokenPipeError:
+        return False
     return p.wait() == 0
 
 
