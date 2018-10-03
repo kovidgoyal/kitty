@@ -10,6 +10,9 @@ Changelog
   extended scrollback to use when viewing the scrollback buffer in a pager
   (:iss:`970`)
 
+- Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
+  than the underlying window's cwd (:iss:`1045`)
+
 
 0.12.3 [2018-09-29]
 ------------------------------
