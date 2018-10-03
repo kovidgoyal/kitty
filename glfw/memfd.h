@@ -8,7 +8,6 @@
 
 #ifdef HAS_MEMFD_CREATE
 
-#define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/syscall.h>
 static inline int memfd_create(const char *name, unsigned int flags) {
@@ -35,6 +34,10 @@ static inline int memfd_create(const char *name, unsigned int flags) {
 #endif
 
 #else
+
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 static inline int
 createTmpfileCloexec(char* tmpname)
