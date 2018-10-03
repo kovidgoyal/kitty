@@ -27,6 +27,11 @@
 #include "internal.h"
 
 
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
+ #define NSOpenGLContextParameterSwapInterval NSOpenGLCPSwapInterval
+ #define NSOpenGLContextParameterSurfaceOpacity NSOpenGLCPSurfaceOpacity
+#endif
+
 static void makeContextCurrentNSGL(_GLFWwindow* window)
 {
     if (window)
@@ -49,7 +54,7 @@ static void swapIntervalNSGL(int interval)
 
     GLint sync = interval;
     [window->context.nsgl.object setValues:&sync
-                              forParameter:NSOpenGLCPSwapInterval];
+                              forParameter:NSOpenGLContextParameterSwapInterval];
 }
 
 static int extensionSupportedNSGL(const char* extension)
@@ -299,7 +304,7 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
     if (fbconfig->transparent)
     {
         GLint opaque = 0;
-        [window->context.nsgl.object setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+        [window->context.nsgl.object setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
     }
 
     [window->context.nsgl.object setView:window->ns.view];
@@ -332,4 +337,3 @@ GLFWAPI id glfwGetNSGLContext(GLFWwindow* handle)
 
     return window->context.nsgl.object;
 }
-
