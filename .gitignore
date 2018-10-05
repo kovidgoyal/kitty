@@ -1,6 +1,7 @@
 *.so
 *.pyc
 *.pyo
+*.swp
 tags
 build
 linux-package
