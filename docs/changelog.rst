@@ -13,6 +13,7 @@ Changelog
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 
+- Fix incorrect key repeat rate on wayland (:pull:`1055`)
 
 0.12.3 [2018-09-29]
 ------------------------------
