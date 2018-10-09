@@ -407,7 +407,7 @@ static void
 dispatchPendingKeyRepeats(id_type timer_id, void *data) {
     if (_glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return;
     glfw_xkb_handle_key_event(_glfw.wl.keyRepeatInfo.keyboardFocus, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
-    changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, ((double)_glfw.wl.keyboardRepeatRate) / 1000.0);
+    changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (1.0 / (double)_glfw.wl.keyboardRepeatRate));
     toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
 }
 
