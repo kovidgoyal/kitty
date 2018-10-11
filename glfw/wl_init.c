@@ -29,6 +29,8 @@
 #include "backend_utils.h"
 
 #include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <linux/input.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -720,7 +722,17 @@ int _glfwPlatformInit(void)
 
     if (_glfw.wl.pointer && _glfw.wl.shm)
     {
-        _glfw.wl.cursorTheme = wl_cursor_theme_load(NULL, 32, _glfw.wl.shm);
+        const char *cursorTheme = getenv("XCURSOR_THEME"), *cursorSizeStr = getenv("XCURSOR_SIZE");
+        char *cursorSizeEnd;
+        int cursorSize = 32;
+        if (cursorSizeStr)
+        {
+            errno = 0;
+            long cursorSizeLong = strtol(cursorSizeStr, &cursorSizeEnd, 10);
+            if (!*cursorSizeEnd && !errno && cursorSizeLong > 0 && cursorSizeLong <= INT_MAX)
+                cursorSize = (int)cursorSizeLong;
+        }
+        _glfw.wl.cursorTheme = wl_cursor_theme_load(cursorTheme, cursorSize, _glfw.wl.shm);
         if (!_glfw.wl.cursorTheme)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
