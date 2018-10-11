@@ -15,6 +15,8 @@ Changelog
 
 - Fix incorrect key repeat rate on wayland (:pull:`1055`)
 
+- macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 

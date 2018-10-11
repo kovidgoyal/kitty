@@ -917,17 +917,24 @@ is_ascii_control_char(char x) {
     return YES;
 }
 
+- (NSArray *)fileURLWithDraggingInfo:(id <NSDraggingInfo>)sender
+{
+    NSPasteboard *pasteboard = [sender draggingPasteboard];
+    NSDictionary *options = [NSDictionary dictionaryWithObject:@YES forKey:NSPasteboardURLReadingFileURLsOnlyKey];
+    NSArray *results = [pasteboard readObjectsForClasses:[NSArray arrayWithObject:[NSURL class]] options:options];
+    return results;
+}
+
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
 {
-    NSPasteboard* pasteboard = [sender draggingPasteboard];
-    NSArray* files = [pasteboard propertyListForType:NSPasteboardTypeFileURL];
-
     const NSRect contentRect = [window->ns.view frame];
     _glfwInputCursorPos(window,
                         [sender draggingLocation].x,
                         contentRect.size.height - [sender draggingLocation].y);
-
+    const NSArray* files = [self fileURLWithDraggingInfo:sender];
+    if (!files) return NO;
     const NSUInteger count = [files count];
+
     if (count)
     {
         NSEnumerator* e = [files objectEnumerator];
@@ -935,7 +942,7 @@ is_ascii_control_char(char x) {
         NSUInteger i;
 
         for (i = 0;  i < count;  i++)
-            paths[i] = _glfw_strdup([[e nextObject] UTF8String]);
+            paths[i] = _glfw_strdup([[[e nextObject] path] UTF8String]);
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
