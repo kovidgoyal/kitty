@@ -439,6 +439,7 @@ class TabManager:  # {{{
                 'id': tab.id,
                 'is_focused': tab is active_tab,
                 'title': tab.name or tab.title,
+                'layout': tab.current_layout.name,
                 'windows': list(tab.list_windows(active_window)),
             }
 
