@@ -46,6 +46,7 @@ def create_kitten_handler(kitten, orig_args):
     m = import_kitten_main_module(config_dir, kitten)
     ans = partial(m['end'], [kitten] + orig_args)
     ans.type_of_input = getattr(m['end'], 'type_of_input', None)
+    ans.no_ui = getattr(m['end'], 'no_ui', False)
     return ans
 
 

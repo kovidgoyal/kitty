@@ -78,3 +78,45 @@ This will send the plain text of the active window to the kitten's
 instead. If you want line wrap markers as well, use ``screen-ansi``
 or just ``screen``. For the scrollback buffer as well, use
 ``history``, ``ansi-history`` or ``screen-history``.
+
+
+Using kittens to script kitty, without any terminal UI
+-----------------------------------------------------------
+
+If you would like your kitten to script kitty, without bothering to write a
+terminal program, you can tell the kittens system to run the
+``handle_result()`` function without first running the ``main()`` function.
+
+For example, here is a kitten that "zooms/unzooms" the current terminal window
+by switching to the stack layout or back to the previous layout.
+
+Create a file in the kitty config folder, :file:`~/.config/kitty/zoom_toggle.py`
+
+.. code-block:: py
+
+   def main(args):
+      pass
+
+   def handle_result(args, answer, target_window_id, boss):
+      tab = boss.active_tab
+      if tab is not None:
+         if tab.current_layout.name == 'stack':
+            tab.last_used_layout()
+         else:
+            tab.goto_layout('stack')
+
+   handle_result.no_ui = True
+
+
+Now in kitty.conf add::
+
+   map f11 kitten zoom_toggle.py
+
+Pressing :kbd:`F11` will now act as a zoom toggle function. You can get even
+more fancy, switching the kitty OS window to fullscreen as well as changing the
+layout, by simply adding the line::
+
+    boss.toggle_fullscreen()
+
+
+to the handle_result() function, above.

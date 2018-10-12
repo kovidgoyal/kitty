@@ -642,17 +642,20 @@ class Boss:
         return output
 
     def _run_kitten(self, kitten, args=(), input_data=None, window=None):
+        orig_args, args = list(args), list(args)
+        from kittens.runner import create_kitten_handler
+        end_kitten = create_kitten_handler(kitten, orig_args)
         if window is None:
             w = self.active_window
             tab = self.active_tab
         else:
             w = window
             tab = w.tabref()
+        if end_kitten.no_ui:
+            end_kitten(None, getattr(w, 'id', None), self)
+            return
 
         if w is not None and tab is not None and w.overlay_for is None:
-            orig_args, args = list(args), list(args)
-            from kittens.runner import create_kitten_handler
-            end_kitten = create_kitten_handler(kitten, orig_args)
             args[0:0] = [config_dir, kitten]
             if input_data is None:
                 type_of_input = end_kitten.type_of_input

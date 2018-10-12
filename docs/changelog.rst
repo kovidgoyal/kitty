@@ -10,6 +10,11 @@ Changelog
   extended scrollback to use when viewing the scrollback buffer in a pager
   (:iss:`970`)
 
+- Modify the kittens sub-system to allow creating custom kittens without any
+  user interface. This is useful for creating more complex actions that can
+  be bound to key presses in :file:`kitty.conf`. See
+  `https://sw.kovidgoyal.net/kitty/kittens/custom.html`_. (:iss:`870`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 
