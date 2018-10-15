@@ -24,7 +24,7 @@ typedef struct {
     color_type url_color, background, active_border_color, inactive_border_color, bell_border_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse;
-    bool macos_option_as_alt, macos_hide_titlebar, macos_hide_from_tasks, x11_hide_window_decorations, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen;
+    bool macos_option_as_alt, macos_hide_titlebar, macos_hide_from_tasks, x11_hide_window_decorations, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen, macos_hide_menu_bar_title;
     float macos_thicken_font;
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
