@@ -544,7 +544,7 @@ update_window_title(Window *w, OSWindow *os_window) {
     if (w->title && w->title != os_window->window_title) {
         os_window->window_title = w->title;
         Py_INCREF(os_window->window_title);
-        set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
+        if (!OPT(hide_title)) set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
         if (os_window->is_focused) cocoa_update_title(w->title);
 #endif

@@ -524,6 +524,9 @@ Negative values will cause the value of :opt:`window_margin_width` to be used in
 o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
 The window padding (in pts) (blank area between the text and the window border)'''))
 
+o('hide_title', False, long_text=_('''
+Hide the kitty window title.'''))
+
 o('active_border_color', '#00ff00', option_type=to_color, long_text=_('''
 The color for the border of the active window'''))
 
