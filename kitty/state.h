@@ -31,6 +31,7 @@ typedef struct {
     float background_opacity, dim_opacity;
     bool dynamic_background_opacity;
     float inactive_text_alpha;
+    bool hide_title;
     float window_padding_width;
     Edge tab_bar_edge;
     bool sync_to_monitor;
