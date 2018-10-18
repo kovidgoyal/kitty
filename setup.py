@@ -599,9 +599,9 @@ def package(args, for_bundle=False, sh_launcher=False):
     for x in (libdir, os.path.join(ddir, 'share')):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)
-        proc = subprocess.run(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'], check=True, text=True, stderr=subprocess.PIPE)
+        proc = subprocess.run(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
         regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
-        err_msg = proc.stderr.rstrip()
+        err_msg = proc.stderr.decode('utf-8').rstrip()
         if not re.match(regex, err_msg):
             print(err_msg, file=sys.stderr)
         if not glob.glob(os.path.join(odir, '*/xterm-kitty')):
