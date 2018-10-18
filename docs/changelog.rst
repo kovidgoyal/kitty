@@ -22,9 +22,9 @@ Changelog
 
 - macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
 
-
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
+
 
 0.12.3 [2018-09-29]
 ------------------------------
