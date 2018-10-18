@@ -703,7 +703,7 @@ Specify environment variables to set in all child processes. Note that
 environment variables are expanded recursively, so if you use::
 
     env MYVAR1=a
-    env MYVAR2=${MYVAR}/${HOME}/b
+    env MYVAR2=${MYVAR1}/${HOME}/b
 
 The value of MYVAR2 will be :code:`a/<path to home directory>/b`.
 '''))

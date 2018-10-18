@@ -337,7 +337,7 @@ def expandvars(val, env):
             result = m.group()
         return result
 
-    return re.sub(r'$\{(\S+)\}', sub, val)
+    return re.sub(r'\$\{(\S+?)\}', sub, val)
 
 
 @special_handler
