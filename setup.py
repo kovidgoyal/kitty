@@ -601,9 +601,9 @@ def package(args, for_bundle=False, sh_launcher=False):
         safe_makedirs(odir)
         proc = subprocess.run(['tic', '-x', '-o' + odir, 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
         regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
-        err_msg = proc.stderr.decode('utf-8').rstrip()
-        if not re.match(regex, err_msg):
-            print(err_msg, file=sys.stderr)
+        for error in proc.stderr.decode('utf-8').splitlines():
+            if not re.match(regex, error):
+                print(error, file=sys.stderr)
         if not glob.glob(os.path.join(odir, '*/xterm-kitty')):
             raise SystemExit('tic failed to output the compiled kitty terminfo file')
     shutil.copy2('__main__.py', libdir)
