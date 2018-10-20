@@ -565,7 +565,10 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
         }
         if (send_cell_data_to_gpu(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window)) needs_render = true;
     }
-    if (OPT(mouse_hide_wait) > 0 && now - os_window->last_mouse_activity_at > OPT(mouse_hide_wait)) hide_mouse(os_window);
+    if (OPT(mouse_hide_wait) > 0 && !is_mouse_hidden(os_window)) {
+        if (now - os_window->last_mouse_activity_at >= OPT(mouse_hide_wait)) hide_mouse(os_window);
+        else set_maximum_wait(OPT(mouse_hide_wait) - now + os_window->last_mouse_activity_at);
+    }
     Tab *tab = os_window->tabs + os_window->active_tab;
     *active_window_bg = OPT(background);
     for (unsigned int i = 0; i < tab->num_windows; i++) {

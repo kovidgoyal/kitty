@@ -25,6 +25,9 @@ Changelog
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
 
+- Fix :opt:`mouse_hide_wait` only taking effect after an event such as cursor
+  blink or key press (:iss:`1073`)
+
 
 0.12.3 [2018-09-29]
 ------------------------------

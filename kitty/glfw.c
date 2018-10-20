@@ -808,6 +808,12 @@ hide_mouse(OSWindow *w) {
     glfwSetInputMode(w->handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 }
 
+bool
+is_mouse_hidden(OSWindow *w) {
+    return w->handle && glfwGetInputMode(w->handle, GLFW_CURSOR) == GLFW_CURSOR_HIDDEN;
+}
+
+
 void
 swap_window_buffers(OSWindow *w) {
 #ifdef __APPLE__

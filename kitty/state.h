@@ -173,6 +173,7 @@ void event_loop_wait(double timeout);
 void swap_window_buffers(OSWindow *w);
 void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
+bool is_mouse_hidden(OSWindow *w);
 void destroy_os_window(OSWindow *w);
 void focus_os_window(OSWindow *w, bool also_raise);
 void set_os_window_title(OSWindow *w, const char *title);
