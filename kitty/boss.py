@@ -552,6 +552,8 @@ class Boss:
         if key_action is not None:
             f = getattr(self, key_action.func, None)
             if f is not None:
+                if self.args.debug_keyboard:
+                    print('Keypress matched action:', f.__name__)
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
@@ -565,6 +567,8 @@ class Boss:
             f = getattr(tab, key_action.func, getattr(window, key_action.func, None))
             if f is not None:
                 passthrough = f(*key_action.args)
+                if self.args.debug_keyboard:
+                    print('Keypress matched action:', f.__name__)
                 if passthrough is not True:
                     return True
         return False
