@@ -27,6 +27,16 @@ def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None,
     return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env)
 
 
+def add_active_id_to_history(items, item_id, maxlen=64):
+    try:
+        items.remove(item_id)
+    except ValueError:
+        pass
+    items.append(item_id)
+    if len(items) > maxlen:
+        items.popleft()
+
+
 class Tab:  # {{{
 
     def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None):
@@ -83,11 +93,11 @@ class Tab:  # {{{
     def active_window_idx(self, val):
         try:
             old_active_window = self.windows[self._active_window_idx]
-            self.active_window_history.append(old_active_window.id)
-            if len(self.active_window_history) > 64:
-                self.active_window_history.popleft()
         except Exception:
             old_active_window = None
+        else:
+            wid = old_active_window.id if old_active_window.overlay_for is None else old_active_window.overlay_for
+            add_active_id_to_history(self.active_window_history, wid)
         self._active_window_idx = max(0, min(val, len(self.windows) - 1))
         try:
             new_active_window = self.windows[self._active_window_idx]
@@ -365,11 +375,10 @@ class TabManager:  # {{{
     def active_tab_idx(self, val):
         try:
             old_active_tab = self.tabs[self._active_tab_idx]
-            self.active_tab_history.append(old_active_tab.id)
-            if len(self.active_tab_history) > 64:
-                self.active_tab_history.popleft()
         except Exception:
             old_active_tab = None
+        else:
+            add_active_id_to_history(self.active_tab_history, old_active_tab.id)
         self._active_tab_idx = max(0, min(val, len(self.tabs) - 1))
         try:
             new_active_tab = self.tabs[self._active_tab_idx]
