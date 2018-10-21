@@ -17,7 +17,7 @@ Changelog
 
 - Add a new ``nth_window`` action that can be used to go to the nth window and
   also previously active windows, using negative numbers. Similarly,
-  ``goto_tab`` now accepts negative numbers to go to previous windows
+  ``goto_tab`` now accepts negative numbers to go to previously active tabs
   (:iss:`1040`)
 
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
