@@ -92,6 +92,10 @@ static int signal_fds[2], wakeup_fds[2];
 // before ticking over the main loop. Negative values mean wait forever.
 static double maximum_wait = -1.0;
 
+// Loop count of the main loop, increment in each iteration.
+// It's used to de-duplicate wakeups
+static long main_loop_id = 0;
+
 static inline void
 set_maximum_wait(double val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
@@ -773,11 +777,15 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
     bool has_open_windows = true;
 
+    main_loop_id = 0;
     while (has_open_windows) {
         double now = monotonic();
         if (global_state.has_pending_resizes) process_pending_resizes(now);
         render(now);
         wait_for_events();
+        // increment loop id right after wait_for_events()
+        // so that new wakeups would arrive
+        main_loop_id += 1;
 #ifdef __APPLE__
         if (cocoa_pending_actions) {
             if (cocoa_pending_actions & PREFERENCES_WINDOW) { call_boss(edit_config_file, NULL); }
@@ -985,6 +993,7 @@ io_loop(void *data) {
     size_t i;
     int ret;
     bool has_more, data_received;
+    long last_wakeup_mainloop_id = -1;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyChildMon");
@@ -1047,7 +1056,11 @@ io_loop(void *data) {
                 perror("Call to poll() failed");
             }
         }
-        if (data_received) wakeup_main_loop();
+        if (data_received && last_wakeup_mainloop_id != main_loop_id) {
+            // set before wakeup_main_loop() is better than after
+            last_wakeup_mainloop_id = main_loop_id;
+            wakeup_main_loop();
+        }
     }
     children_mutex(lock);
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
