@@ -27,6 +27,8 @@ Changelog
 
 - macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
 
+- macOS: Fix IME input for east asian languages (:iss:`910`)
+
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
 
