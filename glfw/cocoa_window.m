@@ -1791,13 +1791,13 @@ void _glfwPlatformPollEvents(void)
     for (;;)
     {
         NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                            untilDate:[NSDate distantPast]
+                                            untilDate:nil
                                                inMode:NSDefaultRunLoopMode
                                               dequeue:YES];
         if (event == nil)
             break;
 
-        [NSApp sendEvent:event];
+        if ([event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
     }
 
     [_glfw.ns.autoreleasePool drain];
