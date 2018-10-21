@@ -160,6 +160,13 @@ windows and move windows around (similar to window movement in vim)::
    map shift+down move_window up
    ...
 
+You can also define a shortcut to switch to the previously active window::
+
+   map ctrl+p nth_window -1
+
+``nth_window`` will focus the nth window for positive numbers and the
+previously active windows for negative numbers.
+
 
 Other keyboard shortcuts
 ----------------------------------

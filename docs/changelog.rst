@@ -15,6 +15,11 @@ Changelog
   be bound to key presses in :file:`kitty.conf`. See
   `https://sw.kovidgoyal.net/kitty/kittens/custom.html`_. (:iss:`870`)
 
+- Add a new ``nth_window`` action that can be used to go to the nth window and
+  also previously active windows, using negative numbers. Similarly,
+  ``goto_tab`` now accepts negative numbers to go to previous windows
+  (:iss:`1040`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 

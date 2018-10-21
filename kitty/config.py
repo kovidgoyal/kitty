@@ -173,6 +173,16 @@ def pipe(func, rest):
     return func, rest
 
 
+@func_with_args('nth_window')
+def nth_window(func, rest):
+    try:
+        num = int(rest)
+    except Exception:
+        log_error('Invalid nth_window number: {}'.format(rest))
+        num = 1
+    return func, [num]
+
+
 def parse_key_action(action):
     parts = action.split(' ', 1)
     func = parts[0]
