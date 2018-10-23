@@ -29,6 +29,9 @@ Changelog
 
 - macOS: Fix IME input for east asian languages (:iss:`910`)
 
+- macOS: Fix rendering frames-per-second very low when processing
+  large amounts of input in small chunks (:pull:`1082`)
+
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
 
