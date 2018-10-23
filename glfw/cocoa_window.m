@@ -568,6 +568,16 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     [super dealloc];
 }
 
+-(void)setLayer:(CALayer*)layer
+{
+    [super setLayer:layer];
+    if (window->context.client != GLFW_NO_API) {
+        // this is needed for initial rendering on mojave, see
+        // https://github.com/kovidgoyal/kitty/issues/887
+        [window->context.nsgl.object update];
+    }
+}
+
 - (_GLFWwindow*)glfwWindow {
     return window;
 }
