@@ -27,10 +27,13 @@ Changelog
 
 - macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
 
-- macOS: Fix IME input for east asian languages (:iss:`910`)
+- macOS: Fix IME input for East Asian languages (:iss:`910`)
 
 - macOS: Fix rendering frames-per-second very low when processing
   large amounts of input in small chunks (:pull:`1082`)
+
+- Linux: Fix match rules used as aliases in Fontconfig configuration not being
+  respected (:iss:`1085`)
 
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
