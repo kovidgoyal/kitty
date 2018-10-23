@@ -1007,7 +1007,7 @@ io_loop(void *data) {
         if (has_pending_wakeups) {
             now = monotonic();
             double time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
-            if (time_delta > 0) ret = poll(fds, self->count + EXTRA_FDS, -1);
+            if (time_delta > 0) ret = poll(fds, self->count + EXTRA_FDS, time_delta);
             else ret = 0;
         } else {
             ret = poll(fds, self->count + EXTRA_FDS, -1);
