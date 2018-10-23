@@ -1791,7 +1791,7 @@ void _glfwPlatformPollEvents(void)
     for (;;)
     {
         NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                            untilDate:nil
+                                            untilDate:[NSDate distantPast]
                                                inMode:NSDefaultRunLoopMode
                                               dequeue:YES];
         if (event == nil)
@@ -1813,7 +1813,7 @@ void _glfwPlatformWaitEvents(void)
                                         untilDate:[NSDate distantFuture]
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    [NSApp sendEvent:event];
+    if ([event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
 
     _glfwPlatformPollEvents();
 }
@@ -1825,8 +1825,7 @@ void _glfwPlatformWaitEventsTimeout(double timeout)
                                         untilDate:date
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    if (event)
-        [NSApp sendEvent:event];
+    if (event && [event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
 
     _glfwPlatformPollEvents();
 }
