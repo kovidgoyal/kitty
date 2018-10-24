@@ -343,6 +343,9 @@ get_window_dpi(GLFWwindow *w, double *x, double *y) {
     if (monitor == NULL) { PyErr_Print(); monitor = glfwGetPrimaryMonitor(); }
     float xscale = 1, yscale = 1;
     if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+    if (!xscale || !yscale) glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+    if (!xscale) xscale = 1.0;
+    if (!yscale) yscale = 1.0;
 #ifdef __APPLE__
     double factor = 72.0;
 #else
