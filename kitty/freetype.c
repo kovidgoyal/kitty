@@ -16,6 +16,10 @@
 #define HARFBUZZ_HAS_CHANGE_FONT
 #endif
 
+#if FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 7
+#define FT_Bitmap_Init FT_Bitmap_New
+#endif
+
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
 typedef struct {
