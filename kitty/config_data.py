@@ -399,7 +399,15 @@ Characters considered part of a word when double clicking. In addition to these 
 any character that is marked as an alpha-numeric character in the unicode
 database will be matched.'''))
 
-o('click_interval', 0.5, option_type=positive_float, long_text=_('''
+
+def click_interval(x):
+    if x == 'system':
+        from .fast_data_types import cocoa_get_double_click_interval
+        return cocoa_get_double_click_interval()
+    return positive_float(x)
+
+
+o('click_interval', 'system', option_type=click_interval, long_text=_('''
 The interval between successive clicks to detect
 double/triple clicks (in seconds)'''))
 

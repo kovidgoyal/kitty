@@ -267,6 +267,12 @@ cocoa_get_lang(PyObject UNUSED *self) {
     return Py_BuildValue("s", [locale UTF8String]);
 }
 
+static PyObject*
+cocoa_get_double_click_interval(PyObject UNUSED *self) {
+    double interval = [NSEvent doubleClickInterval];
+    return Py_BuildValue("f", interval);
+}
+
 void
 cocoa_set_hide_from_tasks(void) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
@@ -300,6 +306,7 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
+    {"cocoa_get_double_click_interval", (PyCFunction)cocoa_get_double_click_interval, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
