@@ -5,7 +5,6 @@
 import json
 import os
 import re
-import shutil
 import sys
 
 _plat = sys.platform.lower()
@@ -188,7 +187,7 @@ class Function:
         return ans
 
 
-def generate_wrappers(glfw_header, glfw_native_header):
+def generate_wrappers(glfw_header):
     src = open(glfw_header).read()
     functions = []
     first = None
@@ -268,53 +267,9 @@ unload_glfw() {
         f.write(code)
 
 
-def from_glfw(glfw_dir):
-    os.chdir(glfw_dir)
-    sinfo = collect_source_information()
-    files_to_copy = set()
-    for x in sinfo.values():
-        if isinstance(x, dict):
-            headers, sources = x['headers'], x['sources']
-            for name in headers + sources:
-                files_to_copy.add(os.path.abspath(os.path.join('src', name)))
-    glfw_header = os.path.abspath('include/GLFW/glfw3.h')
-    glfw_native_header = os.path.abspath('include/GLFW/glfw3native.h')
-    os.chdir(base)
-    for x in os.listdir('.'):
-        if x.rpartition('.') in ('c', 'h'):
-            os.unlink(x)
-    for src in files_to_copy:
-        shutil.copy2(src, '.')
-    shutil.copy2(glfw_header, '.')
-    json.dump(
-        sinfo,
-        open('source-info.json', 'w'),
-        indent=2,
-        ensure_ascii=False,
-        sort_keys=True
-    )
-    generate_wrappers(glfw_header, glfw_native_header)
-
-
-def to_glfw(glfw_dir):
-    src = base
-    for x in os.listdir(src):
-        if x in ('glfw.py', 'glfw3.h', '__pycache__', 'source-info.json') or x.startswith('wayland-'):
-            continue
-        xp = os.path.join(src, x)
-        shutil.copyfile(xp, os.path.join(glfw_dir, 'src', x))
-    shutil.copyfile(os.path.join(src, 'glfw3.h'), os.path.join(glfw_dir, 'include/GLFW/glfw3.h'))
-
-
 def main():
-    glfw_dir = os.path.abspath(os.path.join(base, '../../glfw'))
-    q = sys.argv[1].lower().replace('_', '-')
-    if q == 'from-glfw':
-        from_glfw(glfw_dir)
-    elif q == 'to-glfw':
-        to_glfw(glfw_dir)
-    else:
-        raise SystemExit('First argument must be one of to-glfw or from-glfw')
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    generate_wrappers('glfw3.h')
 
 
 if __name__ == '__main__':
