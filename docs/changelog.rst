@@ -38,6 +38,9 @@ Changelog
 - Linux: Fix match rules used as aliases in Fontconfig configuration not being
   respected (:iss:`1085`)
 
+- Linux: Fix a crash when using the GNU Unifont as a fallback font
+  (:iss:`1087`)
+
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
 
