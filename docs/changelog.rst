@@ -32,7 +32,7 @@ Changelog
 - macOS: Fix rendering frames-per-second very low when processing
   large amounts of input in small chunks (:pull:`1082`)
 
-- macOS: Fix incorrect text sizes calaculated when using an external display
+- macOS: Fix incorrect text sizes calculated when using an external display
   that is set to mirror the main display (:iss:`1056`)
 
 - Linux: Fix match rules used as aliases in Fontconfig configuration not being
