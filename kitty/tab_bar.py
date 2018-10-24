@@ -32,7 +32,37 @@ def draw_title(draw_data, screen, tab):
     screen.draw(tab.title)
 
 
-def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
+def draw_tab_powerline(draw_data, screen, tab, before, max_title_length, next_tab):
+    active_bg = as_rgb(color_as_int(draw_data.active_bg))
+    inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
+
+    screen.draw(' ')
+    draw_title(draw_data, screen, tab)
+    screen.draw(' ')
+    extra = screen.cursor.x - before - max_title_length
+    if extra > 0:
+        screen.cursor.x -= extra + 1
+        screen.draw('…')
+
+    end = screen.cursor.x
+
+    screen.cursor.bold = screen.cursor.italic = False
+    if next_tab is None:
+        screen.cursor.fg = screen.cursor.bg if screen.cursor.bg is not 0 else inactive_bg
+        screen.cursor.bg = as_rgb(color_as_int(draw_data.default_bg))
+        screen.draw('')
+    elif next_tab.is_active or tab.is_active:
+        screen.cursor.fg = screen.cursor.bg if screen.cursor.bg is not 0 else inactive_bg
+        screen.cursor.bg = active_bg if next_tab.is_active else inactive_bg
+        screen.draw('')
+    else:
+        screen.cursor.bg = inactive_bg
+        screen.cursor.fg = as_rgb(0x8a8a8a)
+        screen.draw('')
+
+    return end
+
+def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, next_tab):
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
     draw_title(draw_data, screen, tab)
@@ -49,7 +79,7 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
     return end
 
 
-def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length):
+def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, next_tab):
     tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
@@ -120,6 +150,8 @@ class TabBar:
         style = self.opts.tab_bar_style
         if style == "hidden":
             self.hidden = True
+        elif style == "powerline":
+            self.draw_func = draw_tab_powerline
         elif style == "separator":
             self.draw_func = draw_tab_with_separator
         else:
@@ -173,12 +205,13 @@ class TabBar:
         cr = []
         last_tab = data[-1] if data else None
 
-        for t in data:
+        for i, t in enumerate(data):
+            next_tab = data[i+1] if len(data) > i+1 else None
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            end = self.draw_func(self.draw_data, s, t, before, max_title_length)
+            end = self.draw_func(self.draw_data, s, t, before, max_title_length, next_tab)
             cr.append((before, end))
             if s.cursor.x > s.columns - max_title_length and t is not last_tab:
                 s.draw('…')
