@@ -114,6 +114,7 @@ _fc_match(FcPattern *pat) {
     FcResult result;
     FcConfigSubstitute(NULL, pat, FcMatchPattern);
     FcDefaultSubstitute(pat);
+    /* printf("fc_match = %s\n", FcNameUnparse(pat)); */
     match = FcFontMatch(NULL, pat, &result);
     if (match == NULL) { PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed"); goto end; }
     ans = pattern_as_dict(match);
@@ -145,16 +146,22 @@ end:
 static PyObject*
 fc_match(PyObject UNUSED *self, PyObject *args) {
     char *family = NULL;
-    int bold = 0, italic = 0, allow_bitmapped_fonts = 0;
+    int bold = 0, italic = 0, allow_bitmapped_fonts = 0, monospaced = 0;
     double size_in_pts = 0, dpi = 0;
     FcPattern *pat = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "|zpppdd", &family, &bold, &italic, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "|zppppdd", &family, &bold, &italic, &monospaced, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
 
     if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
+    if (monospaced) {
+        // pass the family,monospace as the family parameter to fc-match,
+        // which will fallback to using monospace if the family does not match.
+        AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)"monospace", "family");
+        AP(FcPatternAddInteger, FC_SPACING, FC_MONO, "spacing");
+    }
     if (!allow_bitmapped_fonts) {
         AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
         AP(FcPatternAddBool, FC_SCALABLE, true, "scalable");
