@@ -114,7 +114,16 @@ class TabBar:
             self.opts.tab_fade, self.opts.active_tab_background, self.opts.inactive_tab_background,
             self.opts.background
         )
-        self.draw_func = draw_tab_with_separator if self.opts.tab_bar_style == 'separator' else draw_tab_with_fade
+
+        self.hidden = False
+
+        style = self.opts.tab_bar_style
+        if style == "hidden":
+            self.hidden = True
+        elif style == "separator":
+            self.draw_func = draw_tab_with_separator
+        else:
+            self.draw_func = draw_tab_with_fade
 
     def patch_colors(self, spec):
         if 'active_tab_foreground' in spec:
@@ -132,6 +141,8 @@ class TabBar:
         )
 
     def layout(self):
+        if self.hidden:
+            return
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         if tab_bar.width < 2:
             return
