@@ -27,12 +27,10 @@
 #include <stdint.h>
 #include <dlfcn.h>
 
+#include <Carbon/Carbon.h>
 #if defined(__OBJC__)
-#import <Carbon/Carbon.h>
 #import <Cocoa/Cocoa.h>
 #else
-#include <Carbon/Carbon.h>
-#include <ApplicationServices/ApplicationServices.h>
 typedef void* id;
 #endif
 
