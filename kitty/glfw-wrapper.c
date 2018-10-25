@@ -377,9 +377,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");
 
-    *(void **) (&glfwSetX11SelectionString_impl) = dlsym(handle, "glfwSetX11SelectionString");
+    *(void **) (&glfwSetPrimarySelectionString_impl) = dlsym(handle, "glfwSetPrimarySelectionString");
 
-    *(void **) (&glfwGetX11SelectionString_impl) = dlsym(handle, "glfwGetX11SelectionString");
+    *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
 
     *(void **) (&glfwGetXKBScancode_impl) = dlsym(handle, "glfwGetXKBScancode");
 

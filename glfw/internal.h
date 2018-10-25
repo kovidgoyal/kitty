@@ -624,6 +624,10 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 
 void _glfwPlatformSetClipboardString(const char* string);
 const char* _glfwPlatformGetClipboardString(void);
+#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND)
+void _glfwPlatformSetPrimarySelectionString(const char* string);
+const char* _glfwPlatformGetPrimarySelectionString(void);
+#endif
 
 int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode);
 void _glfwPlatformUpdateGamepadGUID(char* guid);

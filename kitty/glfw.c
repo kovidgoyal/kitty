@@ -889,9 +889,10 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
 
 static PyObject*
 get_primary_selection(PYNOARG) {
-    if (glfwGetX11SelectionString) {
-        return Py_BuildValue("y", glfwGetX11SelectionString());
-    } else log_error("Failed to load glfwGetX11SelectionString");
+    if (glfwGetPrimarySelectionString) {
+        OSWindow *w = current_os_window();
+        if (w) return Py_BuildValue("y", glfwGetPrimarySelectionString(w->handle));
+    } else log_error("Failed to load glfwGetPrimarySelectionString");
     Py_RETURN_NONE;
 }
 
@@ -899,8 +900,11 @@ static PyObject*
 set_primary_selection(PyObject UNUSED *self, PyObject *args) {
     char *text;
     if (!PyArg_ParseTuple(args, "s", &text)) return NULL;
-    if (glfwSetX11SelectionString) glfwSetX11SelectionString(text);
-    else log_error("Failed to load glfwSetX11SelectionString");
+    if (glfwSetPrimarySelectionString) {
+        OSWindow *w = current_os_window();
+        if (w) glfwSetPrimarySelectionString(w->handle, text);
+    }
+    else log_error("Failed to load glfwSetPrimarySelectionString");
     Py_RETURN_NONE;
 }
 

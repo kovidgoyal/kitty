@@ -208,8 +208,8 @@ def generate_wrappers(glfw_header):
     void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, void* cocoa_key, void* cocoa_mods)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)
-    void glfwSetX11SelectionString(const char* string)
-    const char* glfwGetX11SelectionString(void)
+    void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)
+    const char* glfwGetPrimarySelectionString(GLFWwindow* window, void)
     int glfwGetXKBScancode(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
 '''.splitlines():

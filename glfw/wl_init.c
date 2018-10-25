@@ -27,6 +27,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
+#include "gtk-primary-selection-protocol.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -563,8 +564,11 @@ static void registryHandleGlobal(void* data,
                                  _glfw.wl.seatVersion);
             wl_seat_add_listener(_glfw.wl.seat, &seatListener, NULL);
         }
-        if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
-            _glfwSetupWaylandDataDevice();
+        if (_glfw.wl.seat) {
+            if (_glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) _glfwSetupWaylandDataDevice();
+            if (_glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
+                _glfwSetupWaylandPrimarySelectionDevice();
+            }
         }
     }
     else if (strcmp(interface, "xdg_wm_base") == 0)
@@ -613,6 +617,16 @@ static void registryHandleGlobal(void* data,
                              1);
         if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
             _glfwSetupWaylandDataDevice();
+        }
+    }
+    else if (strcmp(interface, "gtk_primary_selection_device_manager") == 0)
+    {
+        _glfw.wl.primarySelectionDeviceManager =
+            wl_registry_bind(registry, name,
+                             &gtk_primary_selection_device_manager_interface,
+                             1);
+        if (_glfw.wl.seat && _glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
+            _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
 

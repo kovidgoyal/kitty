@@ -125,4 +125,4 @@ if os.environ.get('WAYLAND_DISPLAY') and 'KITTY_ENABLE_WAYLAND' in os.environ an
     is_wayland = True
 
 
-supports_primary_selection = not is_macos and not is_wayland
+supports_primary_selection = not is_macos
