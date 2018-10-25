@@ -2680,6 +2680,29 @@ const char* _glfwPlatformGetClipboardString(void)
     return getSelectionString(_glfw.x11.CLIPBOARD);
 }
 
+void _glfwPlatformSetPrimarySelectionString(const char* string)
+{
+    free(_glfw.x11.primarySelectionString);
+    _glfw.x11.primarySelectionString = _glfw_strdup(string);
+
+    XSetSelectionOwner(_glfw.x11.display,
+                       _glfw.x11.PRIMARY,
+                       _glfw.x11.helperWindowHandle,
+                       CurrentTime);
+
+    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.PRIMARY) !=
+        _glfw.x11.helperWindowHandle)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "X11: Failed to become owner of primary selection");
+    }
+}
+
+const char* _glfwPlatformGetPrimarySelectionString(void)
+{
+    return getSelectionString(_glfw.x11.PRIMARY);
+}
+
 void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
 {
     if (!_glfw.vk.KHR_surface)
@@ -2849,32 +2872,6 @@ GLFWAPI Window glfwGetX11Window(GLFWwindow* handle)
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(None);
     return window->x11.handle;
-}
-
-GLFWAPI void glfwSetX11SelectionString(const char* string)
-{
-    _GLFW_REQUIRE_INIT();
-
-    free(_glfw.x11.primarySelectionString);
-    _glfw.x11.primarySelectionString = _glfw_strdup(string);
-
-    XSetSelectionOwner(_glfw.x11.display,
-                       _glfw.x11.PRIMARY,
-                       _glfw.x11.helperWindowHandle,
-                       CurrentTime);
-
-    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.PRIMARY) !=
-        _glfw.x11.helperWindowHandle)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "X11: Failed to become owner of primary selection");
-    }
-}
-
-GLFWAPI const char* glfwGetX11SelectionString(void)
-{
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    return getSelectionString(_glfw.x11.PRIMARY);
 }
 
 GLFWAPI int glfwGetXKBScancode(const char* keyName, GLFWbool caseSensitive) {

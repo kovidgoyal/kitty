@@ -1884,13 +1884,13 @@ typedef int32_t (*glfwGetX11Window_func)(GLFWwindow*);
 glfwGetX11Window_func glfwGetX11Window_impl;
 #define glfwGetX11Window glfwGetX11Window_impl
 
-typedef void (*glfwSetX11SelectionString_func)(const char*);
-glfwSetX11SelectionString_func glfwSetX11SelectionString_impl;
-#define glfwSetX11SelectionString glfwSetX11SelectionString_impl
+typedef void (*glfwSetPrimarySelectionString_func)(GLFWwindow*, const char*);
+glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl;
+#define glfwSetPrimarySelectionString glfwSetPrimarySelectionString_impl
 
-typedef const char* (*glfwGetX11SelectionString_func)();
-glfwGetX11SelectionString_func glfwGetX11SelectionString_impl;
-#define glfwGetX11SelectionString glfwGetX11SelectionString_impl
+typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
+glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
+#define glfwGetPrimarySelectionString glfwGetPrimarySelectionString_impl
 
 typedef int (*glfwGetXKBScancode_func)(const char*, int);
 glfwGetXKBScancode_func glfwGetXKBScancode_impl;

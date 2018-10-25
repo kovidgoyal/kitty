@@ -563,8 +563,11 @@ static void registryHandleGlobal(void* data,
                                  _glfw.wl.seatVersion);
             wl_seat_add_listener(_glfw.wl.seat, &seatListener, NULL);
         }
-        if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
-            _glfwSetupWaylandDataDevice();
+        if (_glfw.wl.seat) {
+            if (_glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) _glfwSetupWaylandDataDevice();
+            if (_glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
+                _glfwSetupWaylandPrimarySelectionDevice();
+            }
         }
     }
     else if (strcmp(interface, "xdg_wm_base") == 0)
@@ -613,6 +616,16 @@ static void registryHandleGlobal(void* data,
                              1);
         if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
             _glfwSetupWaylandDataDevice();
+        }
+    }
+    else if (strcmp(interface, "gtk_primary_selection_device_manager") == 0)
+    {
+        _glfw.wl.primarySelectionDeviceManager =
+            wl_registry_bind(registry, name,
+                             &gtk_primary_selection_device_manager_interface,
+                             1);
+        if (_glfw.wl.seat && _glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
+            _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
 
@@ -808,6 +821,10 @@ void _glfwPlatformTerminate(void)
         wl_data_device_destroy(_glfw.wl.dataDevice);
     if (_glfw.wl.dataDeviceManager)
         wl_data_device_manager_destroy(_glfw.wl.dataDeviceManager);
+    if (_glfw.wl.primarySelectionDevice)
+        gtk_primary_selection_device_destroy(_glfw.wl.primarySelectionDevice);
+    if (_glfw.wl.primarySelectionDeviceManager)
+        gtk_primary_selection_device_manager_destroy(_glfw.wl.primarySelectionDeviceManager);
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);
     if (_glfw.wl.display)
@@ -817,7 +834,8 @@ void _glfwPlatformTerminate(void)
     }
     closeFds(_glfw.wl.eventLoopData.wakeupFds, sizeof(_glfw.wl.eventLoopData.wakeupFds)/sizeof(_glfw.wl.eventLoopData.wakeupFds[0]));
     free(_glfw.wl.clipboardString); _glfw.wl.clipboardString = NULL;
-    free(_glfw.wl.clipboardSourceString); _glfw.wl.clipboardSourceString = NULL;
+    free(_glfw.wl.primarySelectionString); _glfw.wl.primarySelectionString = NULL;
+    free(_glfw.wl.pasteString); _glfw.wl.pasteString = NULL;
 
 }
 

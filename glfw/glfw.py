@@ -90,9 +90,12 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
 
 def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
     for protocol in env.wayland_protocols:
-        src = os.path.join(env.wayland_packagedir, protocol)
-        if not os.path.exists(src):
-            raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
+        if os.path.dirname(protocol) == 'wl_protocols':
+            src = os.path.join(dest_dir, protocol)
+        else:
+            src = os.path.join(env.wayland_packagedir, protocol)
+            if not os.path.exists(src):
+                raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
             dest = os.path.join(dest_dir, dest)
@@ -208,8 +211,8 @@ def generate_wrappers(glfw_header):
     void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, void* cocoa_key, void* cocoa_mods)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)
-    void glfwSetX11SelectionString(const char* string)
-    const char* glfwGetX11SelectionString(void)
+    void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)
+    const char* glfwGetPrimarySelectionString(GLFWwindow* window, void)
     int glfwGetXKBScancode(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
 '''.splitlines():

@@ -1375,6 +1375,22 @@ GLFWAPI const char* glfwGetClipboardString(GLFWwindow* handle)
     return _glfwPlatformGetClipboardString();
 }
 
+#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND)
+GLFWAPI void glfwSetPrimarySelectionString(GLFWwindow* handle, const char* string)
+{
+    assert(string != NULL);
+
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformSetPrimarySelectionString(string);
+}
+
+GLFWAPI const char* glfwGetPrimarySelectionString(GLFWwindow* handle)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    return _glfwPlatformGetPrimarySelectionString();
+}
+#endif
+
 GLFWAPI double glfwGetTime(void)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(0.0);

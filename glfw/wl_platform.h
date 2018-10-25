@@ -60,6 +60,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
+#include "wayland-gtk-primary-selection-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -186,11 +187,19 @@ typedef struct _GLFWwindowWayland
 
 } _GLFWwindowWayland;
 
+typedef enum _GLFWWaylandOfferType
+{
+    EXPIRED,
+    CLIPBOARD,
+    DRAG_AND_DROP,
+    PRIMARY_SELECTION
+}_GLFWWaylandOfferType ;
+
 typedef struct _GLFWWaylandDataOffer
 {
     struct wl_data_offer *id;
     const char *mime;
-    int offer_type;
+    _GLFWWaylandOfferType offer_type;
     size_t idx;
     int is_self_offer;
     int has_uri_list;
@@ -198,6 +207,17 @@ typedef struct _GLFWWaylandDataOffer
     uint32_t dnd_action;
     struct wl_surface *surface;
 } _GLFWWaylandDataOffer;
+
+typedef struct _GLFWWaylandPrimaryOffer
+{
+    struct gtk_primary_selection_offer *id;
+    const char *mime;
+    _GLFWWaylandOfferType offer_type;
+    size_t idx;
+    int is_self_offer;
+    int has_uri_list;
+    struct wl_surface *surface;
+} _GLFWWaylandPrimaryOffer;
 
 // Wayland-specific global data
 //
@@ -221,6 +241,9 @@ typedef struct _GLFWlibraryWayland
     struct wl_data_device_manager*          dataDeviceManager;
     struct wl_data_device*                  dataDevice;
     struct wl_data_source*                  dataSourceForClipboard;
+    struct gtk_primary_selection_device_manager* primarySelectionDeviceManager;
+    struct gtk_primary_selection_device*    primarySelectionDevice;
+    struct gtk_primary_selection_source*    dataSourceForPrimarySelection;
 
     int                         compositorVersion;
     int                         seatVersion;
@@ -261,11 +284,13 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     EventLoopData eventLoopData;
+    char* pasteString;
     char* clipboardString;
-    char* clipboardSourceString;
-    struct wl_data_offer* clipboardSourceOffer;
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
+    char* primarySelectionString;
+    size_t primarySelectionOffersCounter;
+    _GLFWWaylandPrimaryOffer primarySelectionOffers[8];
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -296,4 +321,5 @@ typedef struct _GLFWcursorWayland
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwSetupWaylandDataDevice();
+void _glfwSetupWaylandPrimarySelectionDevice();
 void animateCursorImage(id_type timer_id, void *data);
