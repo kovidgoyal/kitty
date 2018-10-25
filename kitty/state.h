@@ -143,6 +143,7 @@ typedef struct {
     bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
     bool in_sequence_mode;
+    bool tab_bar_hidden;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;

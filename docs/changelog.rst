@@ -20,6 +20,9 @@ Changelog
   ``goto_tab`` now accepts negative numbers to go to previously active tabs
   (:iss:`1040`)
 
+- Allow hiding the tab bar completely, by setting :opt:`tab_bar_style` to
+  ``hidden``. (:iss:`1014`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 
