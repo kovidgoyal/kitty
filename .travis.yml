@@ -106,7 +106,7 @@ install: |
     if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
         if [[ "$USE_BREW" == "1" ]]; then
             brew update;
-            brew upgrade python;
+            # brew upgrade python;
             brew install harfbuzz --without-graphite2 --without-icu4c --without-freetype;
             brew install imagemagick
             brew install optipng

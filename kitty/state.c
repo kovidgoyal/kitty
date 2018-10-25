@@ -249,7 +249,7 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
 
 void
 os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
-    if (os_window->num_tabs > 1) {
+    if (!global_state.tab_bar_hidden && os_window->num_tabs > 1) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height; central->right = os_window->viewport_width - 1;
@@ -394,6 +394,11 @@ PYWRAP1(set_options) {
     S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
+
+    GA(tab_bar_style); if (!ret) return NULL;
+    global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
+    Py_CLEAR(ret);
+    if (PyErr_Occurred()) return NULL;
 
     PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
     if (chars == NULL) return NULL;

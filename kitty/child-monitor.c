@@ -984,7 +984,8 @@ io_loop(void *data) {
     // The I/O thread loop
     size_t i;
     int ret;
-    bool has_more, data_received;
+    bool has_more, data_received, has_pending_wakeups = false;
+    double last_main_loop_wakeup_at = -1, now = -1;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyChildMon");
@@ -1003,7 +1004,14 @@ io_loop(void *data) {
             fds[EXTRA_FDS + i].events = (screen->read_buf_sz < READ_BUF_SZ ? POLLIN : 0) | (screen->write_buf_used ? POLLOUT  : 0);
             screen_mutex(unlock, read); screen_mutex(unlock, write);
         }
-        ret = poll(fds, self->count + EXTRA_FDS, -1);
+        if (has_pending_wakeups) {
+            now = monotonic();
+            double time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
+            if (time_delta >= 0) ret = poll(fds, self->count + EXTRA_FDS, (int)ceil(1000 * time_delta));
+            else ret = 0;
+        } else {
+            ret = poll(fds, self->count + EXTRA_FDS, -1);
+        }
         if (ret > 0) {
             if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
             if (fds[1].revents && POLLIN) {
@@ -1047,8 +1055,17 @@ io_loop(void *data) {
                 perror("Call to poll() failed");
             }
         }
-        if (data_received) wakeup_main_loop();
+#define WAKEUP { wakeup_main_loop(); last_main_loop_wakeup_at = now; has_pending_wakeups = false; }
+        // we only wakeup the main loop after input_delay as wakeup is an expensive operation
+        // on some platforms, such as cocoa
+        if (data_received) {
+            if ((now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
+            else has_pending_wakeups = true;
+        } else {
+            if (has_pending_wakeups && (now = monotonic()) - last_main_loop_wakeup_at > OPT(input_delay)) WAKEUP
+        }
     }
+#undef WAKEUP
     children_mutex(lock);
     for (i = 0; i < self->count; i++) children[i].needs_removal = true;
     remove_children(self);

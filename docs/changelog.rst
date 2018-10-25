@@ -20,6 +20,9 @@ Changelog
   ``goto_tab`` now accepts negative numbers to go to previously active tabs
   (:iss:`1040`)
 
+- Allow hiding the tab bar completely, by setting :opt:`tab_bar_style` to
+  ``hidden``. (:iss:`1014`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 
@@ -27,7 +30,19 @@ Changelog
 
 - macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
 
-- macOS: Fix IME input for east asian languages (:iss:`910`)
+- macOS: Fix IME input for East Asian languages (:iss:`910`)
+
+- macOS: Fix rendering frames-per-second very low when processing
+  large amounts of input in small chunks (:pull:`1082`)
+
+- macOS: Fix incorrect text sizes calculated when using an external display
+  that is set to mirror the main display (:iss:`1056`)
+
+- Linux: Fix match rules used as aliases in Fontconfig configuration not being
+  respected (:iss:`1085`)
+
+- Linux: Fix a crash when using the GNU Unifont as a fallback font
+  (:iss:`1087`)
 
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)

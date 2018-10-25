@@ -16,6 +16,10 @@
 #define HARFBUZZ_HAS_CHANGE_FONT
 #endif
 
+#if FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 7
+#define FT_Bitmap_Init FT_Bitmap_New
+#endif
+
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
 typedef struct {
@@ -232,27 +236,6 @@ load_glyph(Face *self, int glyph_index, int load_type) {
     int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
     if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
-
-    // Embedded bitmap glyph?
-    if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO && load_type != FT_LOAD_DEFAULT) {
-        FT_Bitmap bitmap;
-        FT_Bitmap_New(&bitmap);
-
-        // This also sets pixel_mode to FT_PIXEL_MODE_GRAY so we don't have to
-        error = FT_Bitmap_Convert(library, &self->face->glyph->bitmap, &bitmap, 1);
-        if (error) { set_freetype_error("Failed to convert bitmap, with error:", error); return false; }
-
-        // Normalize gray levels to the range [0..255]
-        bitmap.num_grays = 256;
-        unsigned int stride = bitmap.pitch < 0 ? -bitmap.pitch : bitmap.pitch;
-        for (unsigned int i = 0; i < bitmap.rows; ++i) {
-            // We only have 2 levels
-            for (unsigned int j = 0; j < bitmap.width; ++j) bitmap.buffer[i * stride + j] *= 255;
-        }
-        error = FT_Bitmap_Copy(library, &bitmap, &self->face->glyph->bitmap);
-        if (error) { set_freetype_error("Failed to copy bitmap, with error:", error); return false; }
-        FT_Bitmap_Done(library, &bitmap);
-    }
     return true;
 }
 
@@ -308,6 +291,14 @@ typedef struct {
 } ProcessedBitmap;
 
 static inline void
+free_processed_bitmap(ProcessedBitmap *bm) {
+    if (bm->needs_free) {
+        bm->needs_free = false;
+        free(bm->buf); bm->buf = NULL;
+    }
+}
+
+static inline void
 trim_borders(ProcessedBitmap *ans, size_t extra) {
     bool column_has_text = false;
 
@@ -324,17 +315,47 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
     ans->width -= extra;
 }
 
+static inline void
+populate_processed_bitmap(FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf) {
+    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
+    ans->rows = bitmap->rows;
+    if (copy_buf) {
+        ans->buf = calloc(ans->rows, ans->stride);
+        if (!ans->buf) fatal("Out of memory");
+        ans->needs_free = true;
+        memcpy(ans->buf, bitmap->buffer, ans->rows * ans->stride);
+    } else ans->buf = bitmap->buffer;
+    ans->start_x = 0; ans->width = bitmap->width;
+    ans->pixel_mode = bitmap->pixel_mode;
+}
 
 static inline bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
     unsigned int max_width = cell_width * num_cells;
-    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-    ans->buf = bitmap->buffer;
-    ans->start_x = 0; ans->width = bitmap->width;
-    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
-    ans->rows = bitmap->rows;
-    ans->pixel_mode = bitmap->pixel_mode;
+
+    // Embedded bitmap glyph?
+    if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
+        FT_Bitmap bitmap;
+        FT_Bitmap_Init(&bitmap);
+
+        // This also sets pixel_mode to FT_PIXEL_MODE_GRAY so we don't have to
+        int error = FT_Bitmap_Convert(library, &self->face->glyph->bitmap, &bitmap, 1);
+        if (error) { set_freetype_error("Failed to convert bitmap, with error:", error); return false; }
+
+        // Normalize gray levels to the range [0..255]
+        bitmap.num_grays = 256;
+        unsigned int stride = bitmap.pitch < 0 ? -bitmap.pitch : bitmap.pitch;
+        for (unsigned int i = 0; i < bitmap.rows; ++i) {
+            // We only have 2 levels
+            for (unsigned int j = 0; j < bitmap.width; ++j) bitmap.buffer[i * stride + j] *= 255;
+        }
+        populate_processed_bitmap(&bitmap, ans, true);
+        FT_Bitmap_Done(library, &bitmap);
+    } else {
+        populate_processed_bitmap(&self->face->glyph->bitmap, ans, false);
+    }
+
     if (ans->width > max_width) {
         size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
@@ -345,8 +366,9 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
             // bad, we just crop the bitmap on the right. See https://github.com/kovidgoyal/kitty/issues/352
         } else if (rescale && self->is_scalable && extra > 1) {
             FT_F26Dot6 char_width = self->char_width, char_height = self->char_height;
-            float ar = (float)max_width / (float)bitmap->width;
+            float ar = (float)max_width / (float)ans->width;
             if (set_font_size(self, (FT_F26Dot6)((float)self->char_width * ar), (FT_F26Dot6)((float)self->char_height * ar), self->xdpi, self->ydpi, 0, fg->cell_height)) {
+                free_processed_bitmap(ans);
                 if (!render_bitmap(self, glyph_id, ans, cell_width, cell_height, num_cells, bold, italic, false, fg)) return false;
                 if (!set_font_size(self, char_width, char_height, self->xdpi, self->ydpi, 0, fg->cell_height)) return false;
             } else return false;
@@ -504,7 +526,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         y = (float)positions[i].y_offset / 64.0f;
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
         x += (float)positions[i].x_advance / 64.0f;
-        if (bm.needs_free) free(bm.buf);
+        free_processed_bitmap(&bm);
     }
 
     // center the glyphs in the canvas

@@ -358,6 +358,7 @@ class TabManager:  # {{{
         self.os_window_id = os_window_id
         self.last_active_tab_id = None
         self.opts, self.args = opts, args
+        self.tab_bar_hidden = self.opts.tab_bar_style == 'hidden'
         self.tabs = []
         self.active_tab_history = deque()
         self.tab_bar = TabBar(self.os_window_id, opts)
@@ -395,7 +396,8 @@ class TabManager:  # {{{
                     w.focus_changed(True)
 
     def refresh_sprite_positions(self):
-        self.tab_bar.screen.refresh_sprite_positions()
+        if not self.tab_bar_hidden:
+            self.tab_bar.screen.refresh_sprite_positions()
 
     def _add_tab(self, tab):
         before = len(self.tabs)
@@ -415,12 +417,13 @@ class TabManager:  # {{{
         set_active_tab(self.os_window_id, idx)
 
     def tabbar_visibility_changed(self):
-        self.tab_bar.layout()
-        self.resize(only_tabs=True)
-        glfw_post_empty_event()
+        if not self.tab_bar_hidden:
+            self.tab_bar.layout()
+            self.resize(only_tabs=True)
+            glfw_post_empty_event()
 
     def mark_tab_bar_dirty(self):
-        if len(self.tabs) > 1:
+        if len(self.tabs) > 1 and not self.tab_bar_hidden:
             mark_tab_bar_dirty(self.os_window_id)
 
     def update_tab_bar_data(self):
@@ -428,8 +431,9 @@ class TabManager:  # {{{
 
     def resize(self, only_tabs=False):
         if not only_tabs:
-            self.tab_bar.layout()
-            self.mark_tab_bar_dirty()
+            if not self.tab_bar_hidden:
+                self.tab_bar.layout()
+                self.mark_tab_bar_dirty()
         for tab in self.tabs:
             tab.relayout()
 

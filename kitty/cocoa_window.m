@@ -100,12 +100,6 @@ cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
 }
 
 void
-cocoa_update_nsgl_context(void* id) {
-    NSOpenGLContext *ctx = id;
-    [ctx update];
-}
-
-void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
     NSMenu* bar = [[NSMenu alloc] init];

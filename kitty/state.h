@@ -127,7 +127,6 @@ typedef struct {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     double pending_scroll_pixels;
-    unsigned int nsgl_ctx_updated;
 } OSWindow;
 
 
@@ -144,6 +143,7 @@ typedef struct {
     bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
     bool in_sequence_mode;
+    bool tab_bar_hidden;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;
