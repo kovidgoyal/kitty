@@ -211,6 +211,7 @@ def generate_wrappers(glfw_header):
     void glfwSetX11SelectionString(const char* string)
     const char* glfwGetX11SelectionString(void)
     int glfwGetXKBScancode(const char* key_name, int case_sensitive)
+    void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
 '''.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))
@@ -229,7 +230,7 @@ def generate_wrappers(glfw_header):
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
-
+typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 {}
 
 const char* load_glfw(const char* path);

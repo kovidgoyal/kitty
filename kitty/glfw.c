@@ -559,7 +559,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     push_focus_history(w);
-    glfwSwapInterval(OPT(sync_to_monitor) ? 1 : 0);
+    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
     glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
@@ -982,6 +982,23 @@ get_cocoa_key_equivalent(int key, int mods, unsigned short *cocoa_key, int *coco
     glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, cocoa_mods);
 }
 #endif
+
+void
+wayland_frame_request_callback(id_type os_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        if (global_state.os_windows[i].id == os_window_id) {
+            global_state.os_windows[i].wayland_render_state = RENDER_FRAME_READY;
+            break;
+        }
+    }
+}
+
+void
+wayland_request_frame_render(OSWindow *w) {
+    glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
+    w->wayland_render_state = RENDER_FRAME_REQUESTED;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {

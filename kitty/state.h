@@ -98,6 +98,7 @@ typedef struct {
     bool is_set;
 } OSWindowGeometry;
 
+enum WAYLAND_RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
 
 typedef struct {
     void *handle;
@@ -127,6 +128,7 @@ typedef struct {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     double pending_scroll_pixels;
+    enum WAYLAND_RENDER_STATE wayland_render_state;
 } OSWindow;
 
 
@@ -204,3 +206,4 @@ typedef enum {
 void set_cocoa_pending_action(CocoaPendingAction action);
 bool application_quit_requested();
 #endif
+void wayland_request_frame_render(OSWindow *w);

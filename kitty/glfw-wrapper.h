@@ -1387,7 +1387,7 @@ typedef struct GLFWgamepadstate
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
-
+typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef int (*glfwInit_func)();
 glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
@@ -1891,5 +1891,9 @@ glfwGetX11SelectionString_func glfwGetX11SelectionString_impl;
 typedef int (*glfwGetXKBScancode_func)(const char*, int);
 glfwGetXKBScancode_func glfwGetXKBScancode_impl;
 #define glfwGetXKBScancode glfwGetXKBScancode_impl
+
+typedef void (*glfwRequestWaylandFrameEvent_func)(GLFWwindow*, unsigned long long, GLFWwaylandframecallbackfunc);
+glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
+#define glfwRequestWaylandFrameEvent glfwRequestWaylandFrameEvent_impl
 
 const char* load_glfw(const char* path);

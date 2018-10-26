@@ -1929,6 +1929,18 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int 
     glfw_xkb_update_ime_state(w, &_glfw.wl.xkb, which, a, b, c, d);
 }
 
+struct frame_callback_data {
+    unsigned long long id;
+    void(*callback)(unsigned long long id);
+};
+
+static void
+frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time) {
+    struct frame_callback_data *cbdata = (struct frame_callback_data*)data;
+    cbdata->callback(cbdata->id);
+    free(cbdata);
+    wl_callback_destroy(callback);
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////
@@ -1949,4 +1961,13 @@ GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
 
 GLFWAPI int glfwGetXKBScancode(const char* keyName, GLFWbool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
+}
+
+GLFWAPI void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, void(*callback)(unsigned long long id)) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    struct frame_callback_data *cbdata = malloc(sizeof(struct frame_callback_data));
+    cbdata->callback = callback; cbdata->id = id;
+    static const struct wl_callback_listener frame_listener = { .done = frame_handle_redraw };
+    struct wl_callback *wlcallback = wl_surface_frame(window->wl.surface);
+    wl_callback_add_listener(wlcallback, &frame_listener, cbdata);
 }
