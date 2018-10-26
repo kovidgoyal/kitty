@@ -27,7 +27,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
-#include "gtk-primary-selection-protocol.h"
+#include "wayland-gtk-primary-selection-client-protocol.h"
 
 #include <assert.h>
 #include <errno.h>

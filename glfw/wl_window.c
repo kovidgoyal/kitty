@@ -29,9 +29,7 @@
 #include "internal.h"
 #include "backend_utils.h"
 #include "memfd.h"
-#include "gtk-primary-selection-protocol.h"
-// TODO: Fix build infra.
-#include "gtk-primary-selection-protocol.c"
+#include "wayland-gtk-primary-selection-client-protocol.h"
 
 #include <stdio.h>
 #include <stdlib.h>
