@@ -1969,5 +1969,8 @@ GLFWAPI void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long
     window->wl.frameCallbackData.id = id;
     window->wl.frameCallbackData.callback = callback;
     window->wl.frameCallbackData.current_wl_callback = wl_surface_frame(window->wl.surface);
-    if (window->wl.frameCallbackData.current_wl_callback) wl_callback_add_listener(window->wl.frameCallbackData.current_wl_callback, &frame_listener, window);
+    if (window->wl.frameCallbackData.current_wl_callback) {
+        wl_callback_add_listener(window->wl.frameCallbackData.current_wl_callback, &frame_listener, window);
+        wl_surface_commit(window->wl.surface);
+    }
 }
