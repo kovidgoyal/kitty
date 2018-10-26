@@ -791,6 +791,7 @@ incrementCursorImage(_GLFWwindow* window)
             cursor->wl.currentImage += 1;
             cursor->wl.currentImage %= cursor->wl.cursor->image_count;
             setCursorImage(&cursor->wl);
+            toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, cursor->wl.cursor->image_count > 1);
             return;
         }
     }
