@@ -177,6 +177,13 @@ typedef struct _GLFWwindowWayland
         int                                focus;
     } decorations;
 
+    struct {
+        unsigned long long id;
+        void(*callback)(unsigned long long id);
+        struct wl_callback *current_wl_callback;
+    } frameCallbackData;
+
+
 } _GLFWwindowWayland;
 
 typedef struct _GLFWWaylandDataOffer
