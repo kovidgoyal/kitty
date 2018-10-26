@@ -44,6 +44,8 @@ Changelog
 - Linux: Fix a crash when using the GNU Unifont as a fallback font
   (:iss:`1087`)
 
+- Wayland: Fix copying from hidden kitty windows hanging (:iss:`1051`)
+
 - Fix expansion of env vars not working in the :opt:`env` directive
   (:iss:`1075`)
 
