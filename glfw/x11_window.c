@@ -1291,12 +1291,20 @@ static void processEvent(XEvent *event)
 
         case EnterNotify:
         {
+            // XEnterWindowEvent is XCrossingEvent
+            const int x = event->xcrossing.x;
+            const int y = event->xcrossing.y;
+
             // HACK: This is a workaround for WMs (KWM, Fluxbox) that otherwise
             //       ignore the defined cursor for hidden cursor mode
             if (window->cursorMode == GLFW_CURSOR_HIDDEN)
                 updateCursorImage(window);
 
             _glfwInputCursorEnter(window, GLFW_TRUE);
+            _glfwInputCursorPos(window, x, y);
+
+            window->x11.lastCursorPosX = x;
+            window->x11.lastCursorPosY = y;
             return;
         }
 
