@@ -402,8 +402,7 @@ database will be matched.'''))
 
 def click_interval(x):
     if x == 'system':
-        from .fast_data_types import cocoa_get_double_click_interval
-        return cocoa_get_double_click_interval()
+        return -1.0
     return positive_float(x)
 
 

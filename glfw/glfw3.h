@@ -2930,6 +2930,32 @@ GLFWAPI void glfwGetWindowFrameSize(GLFWwindow* window, int* left, int* top, int
  */
 GLFWAPI void glfwGetWindowContentScale(GLFWwindow* window, float* xscale, float* yscale);
 
+/*! @brief Returns the double click time interval.
+ *
+ *  This function returns the maximum time between clicks to count as a
+ *  double click.
+ *
+ *  The double click interval is a positive finite number greater than zero,
+ *  where zero means that no click is ever recognized as a double click. If the
+ *  system does not support a double click interval, this function always returns one half.
+ *
+ *  @return The double click interval.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
+ *  GLFW_PLATFORM_ERROR.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref double_click
+ *  @sa @ref click_interval
+ *  @sa @ref double_click_interval
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* window);
+
 /*! @brief Returns the opacity of the whole window.
  *
  *  This function returns the opacity of the window, including any decorations.

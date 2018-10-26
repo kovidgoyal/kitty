@@ -2100,6 +2100,11 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = _glfw.x11.contentScaleY;
 }
 
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+{
+    return 0.5;
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     if (window->x11.overrideRedirect)

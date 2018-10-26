@@ -1602,6 +1602,11 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
     _glfwGetMonitorContentScaleWin32(handle, xscale, yscale);
 }
 
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+{
+    return 0.5;
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     ShowWindow(window->win32.handle, SW_MINIMIZE);

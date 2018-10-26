@@ -1585,6 +1585,11 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = (float) (pixels.size.height / points.size.height);
 }
 
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+{
+    return [NSEvent doubleClickInterval];
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     [window->ns.object miniaturize:nil];

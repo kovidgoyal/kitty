@@ -529,6 +529,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     }
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) {
+        if (OPT(click_interval) < 0) {
+            OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
+        }
+
         gl_init();
         PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
         if (ret == NULL) return NULL;
