@@ -29,7 +29,6 @@
 #include "internal.h"
 #include "backend_utils.h"
 #include "memfd.h"
-#include "wayland-gtk-primary-selection-client-protocol.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1683,9 +1682,9 @@ static void mark_selection_offer(void *data, struct wl_data_device *data_device,
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == data_offer) {
-            _glfw.wl.dataOffers[i].offer_type = 1;
-        } else if (_glfw.wl.dataOffers[i].offer_type == 1) {
-            _glfw.wl.dataOffers[i].offer_type = 0;  // previous selection offer
+            _glfw.wl.dataOffers[i].offer_type = CLIPBOARD;
+        } else if (_glfw.wl.dataOffers[i].offer_type == CLIPBOARD) {
+            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
         }
     }
     prune_unclaimed_data_offers();
@@ -1695,15 +1694,15 @@ static void mark_primary_selection_offer(void *data, struct gtk_primary_selectio
         struct gtk_primary_selection_offer *primary_selection_offer) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == primary_selection_offer) {
-            _glfw.wl.primarySelectionOffers[i].offer_type = 1;
-        } else if (_glfw.wl.primarySelectionOffers[i].offer_type == 1) {
-            _glfw.wl.primarySelectionOffers[i].offer_type = 0;  // previous selection offer
+            _glfw.wl.primarySelectionOffers[i].offer_type = PRIMARY_SELECTION;
+        } else if (_glfw.wl.primarySelectionOffers[i].offer_type == PRIMARY_SELECTION) {
+            _glfw.wl.primarySelectionOffers[i].offer_type = EXPIRED;  // previous selection offer
         }
     }
     prune_unclaimed_primary_selection_offers();
 }
 
-static void set_offer_attributes(struct _GLFWWaylandDataOffer* offer, const char* mime) {
+static void set_offer_mimetype(struct _GLFWWaylandDataOffer* offer, const char* mime) {
     if (strcmp(mime, "text/plain;charset=utf-8") == 0)
         offer->mime = "text/plain;charset=utf-8";
     else if (!offer->mime && strcmp(mime, "text/plain") == 0)
@@ -1717,7 +1716,7 @@ static void set_offer_attributes(struct _GLFWWaylandDataOffer* offer, const char
 static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const char *mime) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
-            set_offer_attributes(&_glfw.wl.dataOffers[i], mime);
+            set_offer_mimetype(&_glfw.wl.dataOffers[i], mime);
             break;
         }
     }
@@ -1726,7 +1725,7 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
 static void handle_primary_selection_offer_mimetype(void *data, struct gtk_primary_selection_offer* id, const char *mime) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == id) {
-            set_offer_attributes((struct _GLFWWaylandDataOffer*)&_glfw.wl.primarySelectionOffers[i], mime);
+            set_offer_mimetype((struct _GLFWWaylandDataOffer*)&_glfw.wl.primarySelectionOffers[i], mime);
             break;
         }
     }
@@ -1806,12 +1805,12 @@ end:
 static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].offer_type = 2;
+            _glfw.wl.dataOffers[i].offer_type = DRAG_AND_DROP;
             _glfw.wl.dataOffers[i].surface = surface;
             const char *mime = _glfw.wl.dataOffers[i].has_uri_list ? URI_LIST_MIME : NULL;
             wl_data_offer_accept(id, serial, mime);
-        } else if (_glfw.wl.dataOffers[i].offer_type == 2) {
-            _glfw.wl.dataOffers[i].offer_type = 0;  // previous drag offer
+        } else if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
+            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous drag offer
         }
     }
     prune_unclaimed_data_offers();
@@ -1819,18 +1818,16 @@ static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32
 
 static void drag_leave(void *data, struct wl_data_device *wl_data_device) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == 2) {
+        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
             memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
         }
     }
 }
 
-
-
 static void drop(void *data, struct wl_data_device *wl_data_device) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == 2) {
+        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
             if (uri_list) {
                 wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
@@ -1959,11 +1956,11 @@ void _glfwPlatformSetClipboardString(const char* string)
 const char* _glfwPlatformGetClipboardString(void)
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id && _glfw.wl.dataOffers[i].mime && _glfw.wl.dataOffers[i].offer_type == 1) {
+        if (_glfw.wl.dataOffers[i].id && _glfw.wl.dataOffers[i].mime && _glfw.wl.dataOffers[i].offer_type == CLIPBOARD) {
             if (_glfw.wl.dataOffers[i].is_self_offer) return _glfw.wl.clipboardString;
-            free(_glfw.wl.clipboardSourceString);
-            _glfw.wl.clipboardSourceString = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime);
-            return _glfw.wl.clipboardSourceString;
+            free(_glfw.wl.pasteString);
+            _glfw.wl.pasteString = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime);
+            return _glfw.wl.pasteString;
         }
     }
     return NULL;
@@ -1976,6 +1973,7 @@ void _glfwPlatformSetPrimarySelectionString(const char* string)
                         "Wayland: Cannot copy no primary selection device available");
         return;
     }
+    if (_glfw.wl.primarySelectionString == string) return;
     free(_glfw.wl.primarySelectionString);
     _glfw.wl.primarySelectionString = _glfw_strdup(string);
 
@@ -2005,13 +2003,13 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
     if (_glfw.wl.dataSourceForPrimarySelection != NULL) return _glfw.wl.primarySelectionString;
 
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].id && _glfw.wl.primarySelectionOffers[i].mime && _glfw.wl.primarySelectionOffers[i].offer_type == 1) {
+        if (_glfw.wl.primarySelectionOffers[i].id && _glfw.wl.primarySelectionOffers[i].mime && _glfw.wl.primarySelectionOffers[i].offer_type == PRIMARY_SELECTION) {
             if (_glfw.wl.primarySelectionOffers[i].is_self_offer) {
                 return _glfw.wl.primarySelectionString;
             }
-            free(_glfw.wl.clipboardSourceString);
-            _glfw.wl.clipboardSourceString = read_primary_selection_offer(_glfw.wl.primarySelectionOffers[i].id, _glfw.wl.primarySelectionOffers[i].mime);
-            return _glfw.wl.clipboardSourceString;
+            free(_glfw.wl.pasteString);
+            _glfw.wl.pasteString = read_primary_selection_offer(_glfw.wl.primarySelectionOffers[i].id, _glfw.wl.primarySelectionOffers[i].mime);
+            return _glfw.wl.pasteString;
         }
     }
     return NULL;

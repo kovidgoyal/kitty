@@ -187,11 +187,19 @@ typedef struct _GLFWwindowWayland
 
 } _GLFWwindowWayland;
 
+typedef enum _GLFWWaylandOfferType
+{
+    EXPIRED,
+    CLIPBOARD,
+    DRAG_AND_DROP,
+    PRIMARY_SELECTION
+}_GLFWWaylandOfferType ;
+
 typedef struct _GLFWWaylandDataOffer
 {
     struct wl_data_offer *id;
     const char *mime;
-    int offer_type;
+    _GLFWWaylandOfferType offer_type;
     size_t idx;
     int is_self_offer;
     int has_uri_list;
@@ -204,7 +212,7 @@ typedef struct _GLFWWaylandPrimaryOffer
 {
     struct gtk_primary_selection_offer *id;
     const char *mime;
-    int offer_type;
+    _GLFWWaylandOfferType offer_type;
     size_t idx;
     int is_self_offer;
     int has_uri_list;
@@ -276,7 +284,7 @@ typedef struct _GLFWlibraryWayland
     } egl;
 
     EventLoopData eventLoopData;
-    char* clipboardSourceString;
+    char* pasteString;
     char* clipboardString;
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
