@@ -399,16 +399,9 @@ Characters considered part of a word when double clicking. In addition to these 
 any character that is marked as an alpha-numeric character in the unicode
 database will be matched.'''))
 
-
-def click_interval(x):
-    if x == 'system':
-        return -1.0
-    return positive_float(x)
-
-
-o('click_interval', 'system', option_type=click_interval, long_text=_('''
-The interval between successive clicks to detect
-double/triple clicks (in seconds)'''))
+o('click_interval', -1.0, option_type=float, long_text=_('''
+The interval between successive clicks to detect double/triple clicks (in seconds).
+Negative numbers will use the system default instead, if available or fallback to 0.5.'''))
 
 o('mouse_hide_wait', 3.0, option_type=positive_float, long_text=_('''
 Hide mouse cursor after the specified number of seconds
