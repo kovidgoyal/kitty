@@ -623,7 +623,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     os_window->is_damaged = false;
-    if (global_state.is_wayland) wayland_request_frame_render(os_window);
+    if (global_state.is_wayland && OPT(sync_to_monitor)) wayland_request_frame_render(os_window);
 #undef WD
 #undef TD
 }
