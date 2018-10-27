@@ -641,7 +641,7 @@ render(double now) {
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
         if (global_state.is_wayland && w->wayland_render_state != RENDER_FRAME_READY && OPT(sync_to_monitor)) {
             if (w->wayland_render_state == RENDER_FRAME_NOT_REQUESTED) wayland_request_frame_render(w);
-            return;
+            continue;
         }
         bool needs_render = w->is_damaged;
         make_os_window_context_current(w);
