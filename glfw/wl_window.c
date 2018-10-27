@@ -1787,15 +1787,13 @@ const static struct wl_data_device_listener data_device_listener = {
 
 static void
 copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
-    if (!_glfw.wl.dataDevice) return;
-    if (data == (void*)_glfw.wl.dataSourceForClipboard) {
-        wl_data_device_set_selection(_glfw.wl.dataDevice, data, serial);
+    if (_glfw.wl.dataDevice) {
+        if (data == (void*)_glfw.wl.dataSourceForClipboard) {
+            wl_data_device_set_selection(_glfw.wl.dataDevice, data, serial);
+        }
     }
+    wl_callback_destroy(callback);
 }
-
-const static struct wl_callback_listener copy_callback_listener = {
-    .done = copy_callback_done
-};
 
 void _glfwSetupWaylandDataDevice() {
     _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
@@ -1850,6 +1848,7 @@ void _glfwPlatformSetClipboardString(const char* string)
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "STRING");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "UTF8_STRING");
     struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
+    const static struct wl_callback_listener copy_callback_listener = {.done = copy_callback_done };
     wl_callback_add_listener(callback, &copy_callback_listener, _glfw.wl.dataSourceForClipboard);
 }
 
