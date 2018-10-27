@@ -623,7 +623,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     os_window->is_damaged = false;
-    if (global_state.is_wayland) os_window->wayland_render_state = RENDER_FRAME_NOT_REQUESTED;
+    if (global_state.is_wayland) wayland_request_frame_render(os_window);
 #undef WD
 #undef TD
 }
@@ -640,9 +640,7 @@ render(double now) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
         if (global_state.is_wayland && w->wayland_render_state != RENDER_FRAME_READY && OPT(sync_to_monitor)) {
-            if (w->wayland_render_state == RENDER_FRAME_NOT_REQUESTED) {
-                wayland_request_frame_render(w);
-            }
+            if (w->wayland_render_state == RENDER_FRAME_NOT_REQUESTED) wayland_request_frame_render(w);
             return;
         }
         bool needs_render = w->is_damaged;
