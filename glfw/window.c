@@ -721,6 +721,15 @@ GLFWAPI void glfwGetWindowContentScale(GLFWwindow* handle,
     _glfwPlatformGetWindowContentScale(window, xscale, yscale);
 }
 
+GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* handle)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(0.5f);
+    return _glfwPlatformGetDoubleClickInterval(window);
+}
+
 GLFWAPI float glfwGetWindowOpacity(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

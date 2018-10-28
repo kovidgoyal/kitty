@@ -38,6 +38,8 @@ Changelog
 - macOS: Fix incorrect text sizes calculated when using an external display
   that is set to mirror the main display (:iss:`1056`)
 
+- macOS: Use the system default double click interval (:pull:`1090`)
+
 - Linux: Fix match rules used as aliases in Fontconfig configuration not being
   respected (:iss:`1085`)
 

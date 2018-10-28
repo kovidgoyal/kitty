@@ -148,6 +148,11 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = 1.f;
 }
 
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+{
+    return 0.5;
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
 }

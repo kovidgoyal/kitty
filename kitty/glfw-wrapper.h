@@ -1544,6 +1544,10 @@ typedef void (*glfwGetWindowContentScale_func)(GLFWwindow*, float*, float*);
 glfwGetWindowContentScale_func glfwGetWindowContentScale_impl;
 #define glfwGetWindowContentScale glfwGetWindowContentScale_impl
 
+typedef double (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
+glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
+#define glfwGetDoubleClickInterval glfwGetDoubleClickInterval_impl
+
 typedef float (*glfwGetWindowOpacity_func)(GLFWwindow*);
 glfwGetWindowOpacity_func glfwGetWindowOpacity_impl;
 #define glfwGetWindowOpacity glfwGetWindowOpacity_impl

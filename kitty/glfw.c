@@ -545,6 +545,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 }}
     CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
 #undef CC
+        if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
         is_first_window = false;
     }
     OSWindow *w = add_os_window();
