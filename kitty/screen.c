@@ -366,7 +366,7 @@ draw_combining_char(Screen *self, char_type ch) {
             CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
             GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
             if ((gpu_cell->attrs & WIDTH_MASK) != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
-                if (xpos < self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
+                if (self->cursor->x <= self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
                 gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 2;
                 if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
                 else self->cursor->x++;
