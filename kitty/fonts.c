@@ -14,6 +14,7 @@
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8
 #define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
+#define MAX_NUM_EXTRA_GLYPHS_PUA 4
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
@@ -635,8 +636,13 @@ extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) 
     return ans;
 }
 
+static inline bool
+is_private_use(char_type ch) {
+    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
+}
+
 static inline void
-render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs) {
+render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, bool center_glyph) {
     static SpritePosition* sprite_position[16];
     int error = 0;
     num_cells = MIN(sizeof(sprite_position)/sizeof(sprite_position[0]), num_cells);
@@ -651,7 +657,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
 
     clear_canvas(fg);
     bool was_colored = (gpu_cells->attrs & WIDTH_MASK) == 2 && is_emoji(cpu_cells->ch);
-    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg);
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned int i = 0; i < num_cells; i++) {
@@ -901,17 +907,17 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
 
 static inline void
 merge_groups_for_pua_space_ligature() {
-    if (G(group_idx) == 1) {
+    while (G(group_idx) > 0) {
         Group *g = G(groups), *g1 = G(groups) + 1;
         g->num_cells += g1->num_cells;
         g->num_glyphs += g1->num_glyphs;
         g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1);
-        G(group_idx) = 0;
+        G(group_idx)--;
     }
 }
 
 static inline void
-render_groups(FontGroup *fg, Font *font) {
+render_groups(FontGroup *fg, Font *font, bool center_glyph) {
     unsigned idx = 0;
     ExtraGlyphs ed;
     while (idx <= G(group_idx)) {
@@ -924,7 +930,7 @@ render_groups(FontGroup *fg, Font *font) {
         int last = -1;
         for (i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) { last = i - 1; ed.data[last] = G(info)[group->first_glyph_idx + i].codepoint; }
         if ((size_t)(last + 1) < arraysz(ed.data)) ed.data[last + 1] = 0;
-        render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed);
+        render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
         idx++;
     }
 }
@@ -970,12 +976,12 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 #undef G
 
 static inline void
-render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature) {
+render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph) {
     switch(font_idx) {
         default:
             shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx]);
             if (pua_space_ligature) merge_groups_for_pua_space_ligature();
-            render_groups(fg, &fg->fonts[font_idx]);
+            render_groups(fg, &fg->fonts[font_idx], center_glyph);
             break;
         case BLANK_FONT:
             while(num_cells--) { set_sprite(first_gpu_cell, 0, 0, 0); first_cpu_cell++; first_gpu_cell++; }
@@ -989,16 +995,12 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
     }
 }
 
-static inline bool
-is_private_use(char_type ch) {
-    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
-}
-
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line) {
-#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false);
+#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph);
     FontGroup *fg = (FontGroup*)fg_;
     ssize_t run_font_idx = NO_FONT;
+    bool center_glyph = false;
     index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
@@ -1006,21 +1008,48 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
         ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell);
-        if (is_private_use(cpu_cell->ch) && i + 1 < line->xnum && (line->cpu_cells[i+1].ch == ' ' || line->cpu_cells[i+1].ch == 0) && cell_font_idx != BOX_FONT && cell_font_idx != MISSING_FONT) {
-            // We have a private use char followed by a space char, render it as a two cell ligature.
-            GPUCell *space_cell = line->gpu_cells + i+1;
-            // Ensure the space cell uses the foreground colors from the PUA cell
-            // This is needed because there are stupid applications like
-            // powerline that use PUA+space with different foreground colors
-            // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
-            space_cell->fg = gpu_cell->fg; space_cell->decoration_fg = gpu_cell->decoration_fg;
-            RENDER;
-            render_run(fg, line->cpu_cells + i, line->gpu_cells + i, 2, cell_font_idx, true);
-            run_font_idx = NO_FONT;
-            first_cell_in_run = i + 2;
-            prev_width = line->gpu_cells[i+1].attrs & WIDTH_MASK;
-            i++;
-            continue;
+
+        if (is_private_use(cpu_cell->ch)
+                && cell_font_idx != BOX_FONT
+                && cell_font_idx != MISSING_FONT) {
+            int desired_cells;
+            if (cell_font_idx > 0) {
+                Font *font = (fg->fonts + cell_font_idx);
+                glyph_index glyph_id = glyph_id_for_codepoint(font->face, cpu_cell->ch);
+
+                int width = get_glyph_width(font->face, glyph_id);
+                desired_cells = ceilf((float)width / fg->cell_width);
+            } else {
+                desired_cells = 1;
+            }
+
+            int num_spaces = 0;
+            while ((line->cpu_cells[i+num_spaces+1].ch == ' ' || line->cpu_cells[i+num_spaces+1].ch == 0)
+                    && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA
+                    && num_spaces < desired_cells
+                    && i + num_spaces + 1 < line->xnum) {
+                num_spaces++;
+                // We have a private use char followed by space(s), render it as a multi-cell ligature.
+                GPUCell *space_cell = line->gpu_cells + i + num_spaces;
+                // Ensure the space cell uses the foreground/background colors from the PUA cell.
+                // This is needed because there are stupid applications like
+                // powerline that use PUA+space with different foreground colors
+                // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
+                space_cell->fg = gpu_cell->fg;
+                space_cell->bg = gpu_cell->bg;
+                space_cell->decoration_fg = gpu_cell->decoration_fg;
+            }
+            if (num_spaces) {
+                center_glyph = true;
+                RENDER;
+                center_glyph = false;
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph);
+                run_font_idx = NO_FONT;
+                first_cell_in_run = i + num_spaces + 1;
+                prev_width = line->gpu_cells[i+num_spaces].attrs & WIDTH_MASK;
+                i += num_spaces;
+                continue;
+            }
         }
         prev_width = gpu_cell->attrs & WIDTH_MASK;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;

@@ -277,6 +277,20 @@ is_glyph_empty(PyObject *s, glyph_index g) {
 #undef M
 }
 
+int
+get_glyph_width(PyObject *s, glyph_index g) {
+    Face *self = (Face*)s;
+    if (!load_glyph(self, g, FT_LOAD_DEFAULT)) { PyErr_Print(); return false; }
+    FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+#define M self->face->glyph->metrics
+#define B self->face->glyph->bitmap
+    /* printf("glyph: %u bitmap.width: %d bitmap.rows: %d horiAdvance: %ld horiBearingX: %ld horiBearingY: %ld vertBearingX: %ld vertBearingY: %ld vertAdvance: %ld width: %ld height: %ld\n", */
+    /*         g, B.width, B.rows, M.horiAdvance, M.horiBearingX, M.horiBearingY, M.vertBearingX, M.vertBearingY, M.vertAdvance, M.width, M.height); */
+    return bitmap->width;
+#undef M
+#undef B
+}
+
 hb_font_t*
 harfbuzz_font_for_face(PyObject *self) { return ((Face*)self)->harfbuzz_font; }
 
@@ -505,11 +519,11 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 static const ProcessedBitmap EMPTY_PBM = {.factor = 1};
 
 bool
-render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg) {
+render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, bool center_glyph) {
     Face *self = (Face*)f;
     bool is_emoji = *was_colored; *was_colored = is_emoji && self->has_color;
     float x = 0.f, y = 0.f, x_offset = 0.f;
-    ProcessedBitmap bm;
+    ProcessedBitmap bm = EMPTY_PBM;
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
         bm = EMPTY_PBM;
@@ -529,12 +543,13 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         free_processed_bitmap(&bm);
     }
 
-    // center the glyphs in the canvas
-    unsigned int right_edge = (unsigned int)x, delta;
-    // x_advance is wrong for colored bitmaps that have been downsampled
-    if (*was_colored) right_edge = num_glyphs == 1 ? bm.right_edge : canvas_width;
-    if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
-        right_shift_canvas(canvas, canvas_width, cell_height, delta);
+    if (center_glyph) {
+        unsigned int right_edge = (unsigned int)x, delta;
+        // x_advance is wrong for colored bitmaps that have been downsampled
+        if (*was_colored) right_edge = num_glyphs == 1 ? bm.right_edge : canvas_width;
+        if (num_cells > 1 && right_edge < canvas_width && (delta = (canvas_width - right_edge) / 2) && delta > 1) {
+            right_shift_canvas(canvas, canvas_width, cell_height, delta);
+        }
     }
     return true;
 }

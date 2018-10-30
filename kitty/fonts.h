@@ -17,11 +17,12 @@
 // API that font backends need to implement
 typedef uint16_t glyph_index;
 unsigned int glyph_id_for_codepoint(PyObject *, char_type);
+int get_glyph_width(PyObject *, glyph_index);
 bool is_glyph_empty(PyObject *, glyph_index);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, unsigned int, bool, FONTS_DATA_HANDLE);
 void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*);
-bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE);
+bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE, bool center_glyph);
 PyObject* create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg);
 PyObject* specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE);
 PyObject* face_from_path(const char *path, int index, FONTS_DATA_HANDLE);
