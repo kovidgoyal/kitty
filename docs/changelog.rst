@@ -57,6 +57,8 @@ Changelog
 - Fix :opt:`mouse_hide_wait` only taking effect after an event such as cursor
   blink or key press (:iss:`1073`)
 
+- Fix second cell of emoji created using variation selectors not having
+  the same attributes as the first cell (:iss:`1109`)
 
 0.12.3 [2018-09-29]
 ------------------------------
