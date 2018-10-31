@@ -455,6 +455,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
     _glfwInputWindowFocus(window, GLFW_TRUE);
     updateCursorMode(window);
+    if (_glfw.ns.disabledCursorWindow != window && cursorInClientArea(window))
+    {
+        double x = 0, y = 0;
+        _glfwPlatformGetCursorPos(window, &x, &y);
+        _glfwInputCursorPos(window, x, y);
+    }
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification
