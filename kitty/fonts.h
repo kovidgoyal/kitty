@@ -34,7 +34,7 @@ PyObject* face_from_descriptor(PyObject*, FONTS_DATA_HANDLE);
 
 void sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned int *y, unsigned int *z);
 void render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride);
-void render_line(FONTS_DATA_HANDLE, Line *line);
+void render_line(FONTS_DATA_HANDLE, Line *line, index_type lnum, Cursor *cursor);
 void sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len);
 typedef void (*free_extra_data_func)(void*);
 StringCanvas render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline);

@@ -58,6 +58,7 @@ typedef struct {
 
 
 static hb_buffer_t *harfbuzz_buffer = NULL;
+static hb_feature_t no_liga_feature;
 static char_type shape_buffer[4096] = {0};
 static size_t max_texture_size = 1024, max_array_len = 1024;
 
@@ -717,7 +718,7 @@ num_codepoints_in_cell(CPUCell *cell) {
 }
 
 static inline void
-shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb_font_t *font) {
+shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb_font_t *font, bool disable_ligature) {
     if (group_state.groups_capacity <= 2 * num_cells) {
         group_state.groups_capacity = MAX(128, 2 * num_cells);  // avoid unnecessary reallocs
         group_state.groups = realloc(group_state.groups, sizeof(Group) * group_state.groups_capacity);
@@ -741,7 +742,13 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_cpu_cell = first_cpu_cell + (num_cells ? num_cells - 1 : 0);
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
-    hb_shape(font, harfbuzz_buffer, NULL, 0);
+
+    if (!disable_ligature) {
+        hb_shape(font, harfbuzz_buffer, NULL, 0);
+    } else {
+        hb_shape(font, harfbuzz_buffer, &no_liga_feature, 1);
+    }
+
     unsigned int info_length, positions_length;
     group_state.info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
     group_state.positions = hb_buffer_get_glyph_positions(harfbuzz_buffer, &positions_length);
@@ -806,8 +813,8 @@ check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell) {
 
 
 static inline void
-shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font) {
-    shape(first_cpu_cell, first_gpu_cell, num_cells, harfbuzz_font_for_face(font->face));
+shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, bool disable_ligature) {
+    shape(first_cpu_cell, first_gpu_cell, num_cells, harfbuzz_font_for_face(font->face), disable_ligature);
 #if 0
         // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
         hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, group_state.num_glyphs, (char*)canvas, sizeof(pixel) * CELLS_IN_CANVAS * cell_width * cell_height, NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
@@ -968,7 +975,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;
     }
-    shape_run(line->cpu_cells, line->gpu_cells, num, font);
+    shape_run(line->cpu_cells, line->gpu_cells, num, font, false);
 
     PyObject *ans = PyList_New(0);
     unsigned int idx = 0;
@@ -989,10 +996,10 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 #undef G
 
 static inline void
-render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph) {
+render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph, bool disable_ligature) {
     switch(font_idx) {
         default:
-            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx]);
+            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature);
             if (pua_space_ligature) merge_groups_for_pua_space_ligature();
             render_groups(fg, &fg->fonts[font_idx], center_glyph);
             break;
@@ -1009,14 +1016,21 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
 }
 
 void
-render_line(FONTS_DATA_HANDLE fg_, Line *line) {
-#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph);
+render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) {
+#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) { render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph, disable_ligature); }
     FontGroup *fg = (FontGroup*)fg_;
     ssize_t run_font_idx = NO_FONT;
     bool center_glyph = false;
-    index_type first_cell_in_run, i;
+    bool disable_ligature = false;
+    bool disable_ligature_in_line = false;
+    index_type first_cell_in_run, i, cursor_x;
     attrs_type prev_width = 0;
+    if (cursor != NULL && OPT(disable_ligatures_under_cursor)) {
+        cursor_x = cursor->x;
+        if (lnum == cursor->y) disable_ligature_in_line = true;
+    }
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
+        disable_ligature = disable_ligature_in_line && (first_cell_in_run <= cursor_x && cursor_x <= i);
         if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
@@ -1053,7 +1067,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
                 center_glyph = true;
                 RENDER
                 center_glyph = false;
-                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph);
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, disable_ligature);
                 run_font_idx = NO_FONT;
                 first_cell_in_run = i + num_spaces + 1;
                 prev_width = line->gpu_cells[i+num_spaces].attrs & WIDTH_MASK;
@@ -1245,7 +1259,7 @@ test_render_line(PyObject UNUSED *self, PyObject *args) {
     PyObject *line;
     if (!PyArg_ParseTuple(args, "O!", &Line_Type, &line)) return NULL;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    render_line((FONTS_DATA_HANDLE)font_groups, (Line*)line);
+    render_line((FONTS_DATA_HANDLE)font_groups, (Line*)line, 0, NULL);
     Py_RETURN_NONE;
 }
 
@@ -1367,6 +1381,8 @@ init_fonts(PyObject *module) {
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
+    const char* feature_str = "-calt";
+    if (!hb_feature_from_string(feature_str, strlen(feature_str), &no_liga_feature)) fatal("hb_feature_from_string() failed");
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;

@@ -65,6 +65,7 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
+    unsigned int last_rendered_cursor_x, last_rendered_cursor_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;
@@ -176,7 +177,7 @@ void screen_apply_selection(Screen *self, void *address, size_t size);
 bool screen_is_selection_dirty(Screen *self);
 bool screen_has_selection(Screen*);
 bool screen_invert_colors(Screen *self);
-void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE);
+void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool update_cursor_pos);
 bool screen_is_cursor_visible(Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool screen_selection_range_for_word(Screen *self, index_type x, index_type *, index_type *, index_type *start, index_type *end);
