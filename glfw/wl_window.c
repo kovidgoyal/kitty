@@ -1969,8 +1969,12 @@ const char* _glfwPlatformGetClipboardString(void)
 void _glfwPlatformSetPrimarySelectionString(const char* string)
 {
     if (!_glfw.wl.primarySelectionDevice) {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Cannot copy no primary selection device available");
+        static GLFWbool warned_about_primary_selection_device = GLFW_FALSE;
+        if (!warned_about_primary_selection_device) {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Wayland: Cannot copy no primary selection device available");
+            warned_about_primary_selection_device = GLFW_TRUE;
+        }
         return;
     }
     if (_glfw.wl.primarySelectionString == string) return;
