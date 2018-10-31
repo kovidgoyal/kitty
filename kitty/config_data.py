@@ -386,7 +386,7 @@ operating system's default URL handler.'''))
 o('copy_on_select', False, long_text=_('''
 Copy to clipboard on select. With this enabled, simply selecting text with
 the mouse will cause the text to be copied to clipboard. Useful on platforms
-such as macOS/Wayland that do not have the concept of primary selections. Note
+such as macOS that do not have the concept of primary selections. Note
 that this is a security risk, as all programs, including websites open in your
 browser can read the contents of the clipboard.'''))
 
