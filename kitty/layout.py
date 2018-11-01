@@ -721,7 +721,7 @@ class Grid(Layout):  # {{{
     def neighbors_for_window(self, window, windows):
         n = len(windows)
         if n < 4:
-            return Tall.neighbors_for_window(window, windows)
+            return Tall.neighbors_for_window(self, window, windows)
         try:
             n, ncols, nrows, special_rows, special_col = windows[0].layout_data
         except Exception:
