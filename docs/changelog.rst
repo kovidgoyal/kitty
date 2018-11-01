@@ -23,7 +23,7 @@ Changelog
 - Allow hiding the tab bar completely, by setting :opt:`tab_bar_style` to
   ``hidden``. (:iss:`1014`)
 
-- Allow private use unicode characters to stretchover more than a single
+- Allow private use unicode characters to stretch over more than a single
   neighboring space (:pull:`1036`)
 
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
