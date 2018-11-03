@@ -856,25 +856,25 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 53: // BACKSPACE
                     return "\x01\x7f";
                   case 54: // INSERT
-                    return "\x04\x1b\x5b\x32\x7e";
+                    return "\x06\x1b\x5b\x32\x3b\x36\x7e";
                   case 55: // DELETE
-                    return "\x04\x1b\x5b\x33\x7e";
+                    return "\x06\x1b\x5b\x33\x3b\x36\x7e";
                   case 56: // RIGHT
-                    return "\x03\x1b\x5b\x43";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x43";
                   case 57: // LEFT
-                    return "\x03\x1b\x5b\x44";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x44";
                   case 58: // DOWN
-                    return "\x03\x1b\x5b\x42";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x42";
                   case 59: // UP
-                    return "\x03\x1b\x5b\x41";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x41";
                   case 60: // PAGE_UP
-                    return "\x04\x1b\x5b\x35\x7e";
+                    return "\x06\x1b\x5b\x35\x3b\x36\x7e";
                   case 61: // PAGE_DOWN
-                    return "\x04\x1b\x5b\x36\x7e";
+                    return "\x06\x1b\x5b\x36\x3b\x36\x7e";
                   case 62: // HOME
-                    return "\x03\x1b\x5b\x48";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x48";
                   case 63: // END
-                    return "\x03\x1b\x5b\x46";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x46";
                   case 69: // F1
                     return "\x03\x1b\x4f\x50";
                   case 70: // F2
@@ -2483,25 +2483,25 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                   case 53: // BACKSPACE
                     return "\x01\x7f";
                   case 54: // INSERT
-                    return "\x04\x1b\x5b\x32\x7e";
+                    return "\x06\x1b\x5b\x32\x3b\x36\x7e";
                   case 55: // DELETE
-                    return "\x04\x1b\x5b\x33\x7e";
+                    return "\x06\x1b\x5b\x33\x3b\x36\x7e";
                   case 56: // RIGHT
-                    return "\x03\x1b\x5b\x43";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x43";
                   case 57: // LEFT
-                    return "\x03\x1b\x5b\x44";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x44";
                   case 58: // DOWN
-                    return "\x03\x1b\x5b\x42";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x42";
                   case 59: // UP
-                    return "\x03\x1b\x5b\x41";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x41";
                   case 60: // PAGE_UP
-                    return "\x04\x1b\x5b\x35\x7e";
+                    return "\x06\x1b\x5b\x35\x3b\x36\x7e";
                   case 61: // PAGE_DOWN
-                    return "\x04\x1b\x5b\x36\x7e";
+                    return "\x06\x1b\x5b\x36\x3b\x36\x7e";
                   case 62: // HOME
-                    return "\x03\x1b\x5b\x48";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x48";
                   case 63: // END
-                    return "\x03\x1b\x5b\x46";
+                    return "\x06\x1b\x5b\x31\x3b\x36\x46";
                   case 69: // F1
                     return "\x03\x1b\x4f\x50";
                   case 70: // F2
@@ -4119,25 +4119,25 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 53: // BACKSPACE
                       return "\x01\x7f";
                     case 54: // INSERT
-                      return "\x04\x1b\x5b\x32\x7e";
+                      return "\x06\x1b\x5b\x32\x3b\x36\x7e";
                     case 55: // DELETE
-                      return "\x04\x1b\x5b\x33\x7e";
+                      return "\x06\x1b\x5b\x33\x3b\x36\x7e";
                     case 56: // RIGHT
-                      return "\x03\x1b\x4f\x43";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x43";
                     case 57: // LEFT
-                      return "\x03\x1b\x4f\x44";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x44";
                     case 58: // DOWN
-                      return "\x03\x1b\x4f\x42";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x42";
                     case 59: // UP
-                      return "\x03\x1b\x4f\x41";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x41";
                     case 60: // PAGE_UP
-                      return "\x04\x1b\x5b\x35\x7e";
+                      return "\x06\x1b\x5b\x35\x3b\x36\x7e";
                     case 61: // PAGE_DOWN
-                      return "\x04\x1b\x5b\x36\x7e";
+                      return "\x06\x1b\x5b\x36\x3b\x36\x7e";
                     case 62: // HOME
-                      return "\x03\x1b\x4f\x48";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x48";
                     case 63: // END
-                      return "\x03\x1b\x4f\x46";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x46";
                     case 69: // F1
                       return "\x03\x1b\x4f\x50";
                     case 70: // F2
@@ -5746,25 +5746,25 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     case 53: // BACKSPACE
                       return "\x01\x7f";
                     case 54: // INSERT
-                      return "\x04\x1b\x5b\x32\x7e";
+                      return "\x06\x1b\x5b\x32\x3b\x36\x7e";
                     case 55: // DELETE
-                      return "\x04\x1b\x5b\x33\x7e";
+                      return "\x06\x1b\x5b\x33\x3b\x36\x7e";
                     case 56: // RIGHT
-                      return "\x03\x1b\x4f\x43";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x43";
                     case 57: // LEFT
-                      return "\x03\x1b\x4f\x44";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x44";
                     case 58: // DOWN
-                      return "\x03\x1b\x4f\x42";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x42";
                     case 59: // UP
-                      return "\x03\x1b\x4f\x41";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x41";
                     case 60: // PAGE_UP
-                      return "\x04\x1b\x5b\x35\x7e";
+                      return "\x06\x1b\x5b\x35\x3b\x36\x7e";
                     case 61: // PAGE_DOWN
-                      return "\x04\x1b\x5b\x36\x7e";
+                      return "\x06\x1b\x5b\x36\x3b\x36\x7e";
                     case 62: // HOME
-                      return "\x03\x1b\x4f\x48";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x48";
                     case 63: // END
-                      return "\x03\x1b\x4f\x46";
+                      return "\x06\x1b\x5b\x31\x3b\x36\x46";
                     case 69: // F1
                       return "\x03\x1b\x4f\x50";
                     case 70: // F2

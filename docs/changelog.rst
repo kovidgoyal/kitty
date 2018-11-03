@@ -66,6 +66,9 @@ Changelog
 - Fix focusing neighboring windows in the grid layout with less than 4 windows
   not working (:iss:`1115`)
 
+- Fix :kbd:`ctrl+shift+special` key not working in normal and application keyboard
+  modes (:iss:`1114`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 
