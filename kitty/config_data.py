@@ -992,12 +992,16 @@ k('reset_terminal', 'kitty_mod+delete', 'clear_terminal reset active', _('Reset 
     long_text=_('''
 You can create shortcuts to clear/reset the terminal. For example::
 
+    # Reset the terminal
     map kitty_mod+f9 clear_terminal reset active
+    # Clear the terminal screen by erasing all contents
     map kitty_mod+f10 clear_terminal clear active
+    # Clear the terminal scrollback by erasing it
     map kitty_mod+f11 clear_terminal scrollback active
+    # Clear the terminal screen by scrolling its contents into the scrollback
+    map kitty_mod+f12 clear_terminal scroll active
 
-These will reset screen/clear screen/clear screen+scrollback respectively. If you want to
-operate on all windows instead of just the current one, use :italic:`all` instead of :italic`active`.
+If you want to operate on all windows instead of just the current one, use :italic:`all` instead of :italic`active`.
 '''))
 k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
   add_to_default=False, long_text=_('''

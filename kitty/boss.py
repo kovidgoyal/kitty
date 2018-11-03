@@ -373,6 +373,9 @@ class Boss:
         reset = action == 'reset'
         how = 3 if action == 'scrollback' else 2
         for w in windows:
+            if action == 'scroll':
+                w.screen.scroll_until_empty()
+                continue
             w.screen.cursor.x = w.screen.cursor.y = 0
             if reset:
                 w.screen.reset()

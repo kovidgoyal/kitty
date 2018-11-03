@@ -1129,6 +1129,15 @@ screen_insert_lines(Screen *self, unsigned int count) {
 }
 
 void
+screen_scroll_until_empty(Screen *self) {
+    unsigned int num_lines_to_scroll = MIN(self->margin_bottom, self->cursor->y + 1);
+    index_type y = self->cursor->y;
+    self->cursor->y = self->margin_bottom;
+    while (num_lines_to_scroll--) screen_index(self);
+    self->cursor->y = y;
+}
+
+void
 screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
@@ -1864,6 +1873,7 @@ is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
 WRAP1E(cursor_back, 1, -1)
 WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
+WRAP0(scroll_until_empty)
 
 #define MODE_GETSET(name, uname) \
     static PyObject* name##_get(Screen *self, void UNUSED *closure) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
@@ -2170,6 +2180,7 @@ static PyMethodDef methods[] = {
     MND(cursor_back, METH_VARARGS)
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
+    MND(scroll_until_empty, METH_NOARGS)
     METHOD(current_char_width, METH_NOARGS)
     MND(insert_lines, METH_VARARGS)
     MND(delete_lines, METH_VARARGS)

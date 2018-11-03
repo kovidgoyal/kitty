@@ -208,6 +208,9 @@ Changelog
 - Add an option :opt:`env` to set environment variables in child processes
   from kitty.conf
 
+- Add an action to the ``clear_terminal`` function to scroll the screen
+  contents into the scrollback buffer (:iss:`1113`)
+
 - Implement high precision scrolling with the trackpad on platforms such as
   macOS and Wayland that implement it. (:pull:`819`)
 
