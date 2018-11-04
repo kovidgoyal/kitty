@@ -2291,6 +2291,10 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
     Atom* states;
     unsigned long i;
     GLFWbool maximized = GLFW_FALSE;
+    if (!_glfw.x11.NET_WM_STATE ||
+            !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
+            !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+        return maximized;
     const unsigned long count =
         _glfwGetWindowPropertyX11(window->x11.handle,
                                   _glfw.x11.NET_WM_STATE,
