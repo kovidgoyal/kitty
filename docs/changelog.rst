@@ -43,6 +43,8 @@ Changelog
 
 - macOS: Use the system default double click interval (:pull:`1090`)
 
+- macOS: Fix touch scrolling sensitivity low on retina screens (:iss:`1112`)
+
 - Linux: Fix match rules used as aliases in Fontconfig configuration not being
   respected (:iss:`1085`)
 
