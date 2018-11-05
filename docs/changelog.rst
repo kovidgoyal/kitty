@@ -71,6 +71,8 @@ Changelog
 - Fix :kbd:`ctrl+shift+special` key not working in normal and application keyboard
   modes (:iss:`1114`)
 
+- Add a terminfo entry for full keyboard mode.
+
 0.12.3 [2018-09-29]
 ------------------------------
 

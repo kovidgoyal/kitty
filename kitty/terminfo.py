@@ -37,6 +37,10 @@ bool_capabilities = {
     # described at:
     # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
     'Su',
+    # Indicates support for full keyboard mode (non-standard) as
+    # described at:
+    # https://github.com/kovidgoyal/kitty/blob/master/protocol-extensions.asciidoc
+    'fullkbd',
 
     # The following are entries that we don't use
     # # background color erase
@@ -432,7 +436,7 @@ termcap_aliases.update({
 queryable_capabilities = numeric_capabilities.copy()
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
-no_termcap_for = frozenset('Su Tc setrgbf setrgbb'.split())
+no_termcap_for = frozenset('Su Tc setrgbf setrgbb fullkbd'.split())
 if extra - no_termcap_for:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
 del extra

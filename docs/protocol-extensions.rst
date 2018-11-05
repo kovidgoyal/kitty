@@ -141,6 +141,8 @@ For example::
 This encoding means each key event is represented by 8 or 9 printable ascii
 only bytes, for maximum robustness.
 
+Support for this mode is indicated by the ``fullkbd`` boolean capability
+in the terminfo database, in case querying for it via DECQRM is inconvenient.
 
 .. _ext_styles:
 
