@@ -905,6 +905,7 @@ is_ascii_control_char(char x) {
     if (flags) {
         float xscale = 1, yscale = 1;
         _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+        if (xscale > 0) deltaX *= xscale;
         if (yscale > 0) deltaY *= yscale;
     }
 
