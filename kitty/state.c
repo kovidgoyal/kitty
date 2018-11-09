@@ -388,12 +388,14 @@ PYWRAP1(set_options) {
     S(window_alert_on_bell, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_traditional_fullscreen, PyObject_IsTrue);
-    S(macos_hide_titlebar, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
     S(macos_window_resizable, PyObject_IsTrue);
-    S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
+
+    GA(macos_hide_titlebar); global_state.opts.hide_window_decorations = PyObject_IsTrue(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    GA(x11_hide_window_decorations); global_state.opts.hide_window_decorations = PyObject_IsTrue(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    S(hide_window_decorations, PyObject_IsTrue);
 
     GA(tab_bar_style); if (!ret) return NULL;
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;

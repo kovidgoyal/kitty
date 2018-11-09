@@ -747,6 +747,12 @@ different the terminal you are changing it to is, various things from
 key-presses, to colors, to various advanced features may not work.
 '''))
 
+o('hide_window_decorations', False, long_text=_('''
+Hide the window decorations (title bar and window borders).
+Whether this works and exactly what effect it has depends on the window
+manager, as it is the job of the window manager/compositor to draw window
+decorations.'''))
+
 # }}}
 
 g('os')  # {{{
@@ -769,17 +775,14 @@ an arbitrary color, such as :code:`#12af59` or :code:`red`. WARNING: This option
 using a hack, as there is no proper Cocoa API for it. It sets the background
 color of the entire window and makes the titlebar transparent. As such it is
 incompatible with :opt:`background_opacity`. If you want to use both, you are
-probably better off just hiding the titlebar with :opt:`macos_hide_titlebar`.
+probably better off just hiding the titlebar with :opt:`hide_window_decorations`.
 '''))
 
 o('macos_hide_titlebar', False, long_text=_('''
-Hide the kitty window's title bar on macOS.'''))
+Deprecated, use :opt:`hide_window_decorations` instead'''))
 
 o('x11_hide_window_decorations', False, long_text=_('''
-Hide the window decorations (title bar and window borders) on X11 and Wayland.
-Whether this works and exactly what effect it has depends on the window
-manager, as it is the job of the window manager/compositor to draw window
-decorations.'''))
+Deprecated, use :opt:`hide_window_decorations` instead'''))
 
 o('macos_option_as_alt', True, long_text=_('''
 Use the option key as an alt key. With this set to no, kitty will use
