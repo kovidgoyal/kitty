@@ -395,7 +395,7 @@ PYWRAP1(set_options) {
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
 
-    GA(tab_bar_style); if (!ret) return NULL;
+    GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
     Py_CLEAR(ret);
     if (PyErr_Occurred()) return NULL;
