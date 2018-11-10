@@ -93,9 +93,7 @@ class Hints(Handler):
             return ' '
         if args.add_trailing_space == 'never':
             return ''
-        if args.multiple and args.program == '-':
-            return ' '
-        return ''
+        return ' ' if args.multiple else ''
 
     def reset(self):
         self.current_input = ''
@@ -379,7 +377,7 @@ In this mode, press :kbd:`Esc` to finish selecting.
 default=auto
 choices=auto,always,never
 Add trailing space after matched text. Defaults to auto, which adds the space
-when used together with --multiple and pasting match into the terminal window.
+when used together with --multiple.
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
