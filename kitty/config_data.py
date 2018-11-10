@@ -356,6 +356,12 @@ precision scrolling devices, not for high precision scrolling on platforms such
 as macOS and Wayland. Use negative numbers to change scroll direction.'''))
 # }}}
 
+o('touch_scroll_multiplier', 1.0, long_text=_('''
+Modify the amount scrolled by a touchpad. Note this is only used for high
+precision scrolling devices on platforms such as macOS and Wayland.
+Use negative numbers to change scroll direction.'''))
+# }}}
+
 g('mouse')  # {{{
 
 o('url_color', '#0087BD', option_type=to_color, long_text=_('''

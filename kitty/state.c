@@ -373,6 +373,7 @@ PYWRAP1(set_options) {
     S(tab_bar_edge, PyLong_AsLong);
     S(mouse_hide_wait, PyFloat_AsDouble);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
+    S(touch_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, convert_mods);
     S(rectangle_select_modifiers, convert_mods);
     S(click_interval, PyFloat_AsDouble);

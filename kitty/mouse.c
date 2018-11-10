@@ -549,7 +549,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     int s;
     bool is_high_resolution = flags & 1;
     if (is_high_resolution) {
-        yoffset *= global_state.callback_os_window->viewport_y_ratio * OPT(wheel_scroll_multiplier);
+        yoffset *= OPT(touch_scroll_multiplier);
         if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
             global_state.callback_os_window->pending_scroll_pixels = 0;  // change of direction
         }
