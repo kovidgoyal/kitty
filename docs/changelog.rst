@@ -26,6 +26,9 @@ Changelog
 - Allow private use unicode characters to stretch over more than a single
   neighboring space (:pull:`1036`)
 
+- icat kitten: Implement reading image data from STDIN, if STDIN is not
+  connected to a terminal (:iss:`1130`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 

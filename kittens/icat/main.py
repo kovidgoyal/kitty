@@ -174,7 +174,7 @@ def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=N
         write_chunked(cmd, data)
 
 
-def process(path, args):
+def process(path, args, is_tempfile):
     m = identify(path)
     ss = screen_size()
     available_width = args.place.width * (ss.width / ss.cols) if args.place else ss.width
@@ -183,7 +183,7 @@ def process(path, args):
     needs_scaling = needs_scaling or args.scale_up
     if m.fmt == 'png' and not needs_scaling:
         outfile = path
-        transmit_mode = 'f'
+        transmit_mode = 't' if is_tempfile else 'f'
         fmt = 100
         width, height = m.width, m.height
     else:
@@ -249,7 +249,8 @@ def parse_place(raw):
 help_text = (
         'A cat like utility to display images in the terminal.'
         ' You can specify multiple image files and/or directories.'
-        ' Directories are scanned recursively for image files.'
+        ' Directories are scanned recursively for image files. If STDIN'
+        ' is not a terminal, image data will be read from it as well.'
 )
 usage = 'image-file ...'
 
@@ -267,6 +268,13 @@ def main(args=sys.argv):
 
     if not sys.stdout.isatty():
         sys.stdout = open(os.ctermid(), 'w')
+    stdin_data = None
+    if not sys.stdin.isatty():
+        stdin_data = sys.stdin.buffer.read()
+        items.insert(0, stdin_data)
+        sys.stdin.close()
+        sys.stdin = open(os.ctermid(), 'r')
+
     screen_size = screen_size_function()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:
@@ -298,16 +306,22 @@ def main(args=sys.argv):
     if not items:
         raise SystemExit('You must specify at least one file to cat')
     if args.place:
-        if len(items) > 1 or os.path.isdir(items[0]):
+        if len(items) > 1 or (isinstance(items[0], str) and os.path.isdir(items[0])):
             raise SystemExit('The --place option can only be used with a single image')
         sys.stdout.buffer.write(b'\0337')  # save cursor
     for item in items:
+        is_tempfile = False
         try:
+            if isinstance(item, bytes):
+                tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
+                tf.write(item), tf.close()
+                item = tf.name
+                is_tempfile = True
             if os.path.isdir(item):
                 for x in scan(item):
                     process(item, args)
             else:
-                process(item, args)
+                process(item, args, is_tempfile)
         except NoImageMagick as e:
             raise SystemExit(str(e))
         except ConvertFailed as e:
