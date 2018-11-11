@@ -26,6 +26,9 @@ Changelog
 - Allow private use unicode characters to stretch over more than a single
   neighboring space (:pull:`1036`)
 
+- Add a new :opt:`touch_scroll_multiplier` option to modify the amount
+  scrolled by high precision scrolling devices such as touchpads (:pull:`1129`)
+
 - icat kitten: Implement reading image data from STDIN, if STDIN is not
   connected to a terminal (:iss:`1130`)
 

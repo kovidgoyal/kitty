@@ -354,6 +354,14 @@ o('wheel_scroll_multiplier', 5.0, long_text=_('''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low
 precision scrolling devices, not for high precision scrolling on platforms such
 as macOS and Wayland. Use negative numbers to change scroll direction.'''))
+
+o('touch_scroll_multiplier', 1.0, long_text=_('''
+Modify the amount scrolled by a touchpad. Note this is only used for high
+precision scrolling devices on platforms such as macOS and Wayland.
+Use negative numbers to change scroll direction.'''))
+
+# }}}
+
 # }}}
 
 g('mouse')  # {{{
