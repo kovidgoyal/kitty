@@ -33,7 +33,7 @@ Changelog
   connected to a terminal (:iss:`1130`)
 
 - hints kitten: Insert trailing spaces after matches when using the
-  ``--multiple`` option. Also add a separate ``--add-traling-space``
+  ``--multiple`` option. Also add a separate ``--add-trailing-space``
   option to control this behavior (:pull:`1132`)
 
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
