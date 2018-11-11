@@ -354,9 +354,10 @@ PYWRAP1(set_options) {
     global_state.debug_gl = debug_gl ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
-#define S(name, convert) { GA(name); global_state.opts.name = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
-    GA(kitty_mod);
-    kitty_mod = PyLong_AsLong(ret); Py_CLEAR(ret); if (PyErr_Occurred()) return NULL;
+#define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
+#define S(name, convert) SS(name, global_state.opts.name, convert)
+    SS(kitty_mod, kitty_mod, PyLong_AsLong);
+    S(hide_window_decorations, PyObject_IsTrue);
     S(visual_bell_duration, PyFloat_AsDouble);
     S(enable_audio_bell, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
@@ -388,10 +389,8 @@ PYWRAP1(set_options) {
     S(window_alert_on_bell, PyObject_IsTrue);
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_traditional_fullscreen, PyObject_IsTrue);
-    S(macos_hide_titlebar, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
     S(macos_window_resizable, PyObject_IsTrue);
-    S(x11_hide_window_decorations, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
 
@@ -428,6 +427,7 @@ PYWRAP1(set_options) {
     read_adjust(adjust_column_width);
 #undef read_adjust
 #undef S
+#undef SS
     Py_RETURN_NONE;
 }
 

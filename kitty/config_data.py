@@ -538,6 +538,12 @@ o('inactive_text_alpha', 1.0, option_type=unit_float, long_text=_('''
 Fade the text in inactive windows by the specified amount (a number between
 zero and one, with zero being fully faded).
 '''))
+
+o('hide_window_decorations', False, long_text=_('''
+Hide the window decorations (title-bar and window borders).
+Whether this works and exactly what effect it has depends on the
+window manager/operating system.
+'''))
 # }}}
 
 g('tabbar')   # {{{
@@ -771,15 +777,6 @@ color of the entire window and makes the titlebar transparent. As such it is
 incompatible with :opt:`background_opacity`. If you want to use both, you are
 probably better off just hiding the titlebar with :opt:`macos_hide_titlebar`.
 '''))
-
-o('macos_hide_titlebar', False, long_text=_('''
-Hide the kitty window's title bar on macOS.'''))
-
-o('x11_hide_window_decorations', False, long_text=_('''
-Hide the window decorations (title bar and window borders) on X11 and Wayland.
-Whether this works and exactly what effect it has depends on the window
-manager, as it is the job of the window manager/compositor to draw window
-decorations.'''))
 
 o('macos_option_as_alt', True, long_text=_('''
 Use the option key as an alt key. With this set to no, kitty will use

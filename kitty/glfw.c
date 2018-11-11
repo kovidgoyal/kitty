@@ -467,9 +467,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
 #ifdef __APPLE__
-        if (OPT(macos_hide_titlebar)) glfwWindowHint(GLFW_DECORATED, false);
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
+        if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
 
     }
@@ -478,9 +478,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, wm_class_class);
-    if (OPT(x11_hide_window_decorations)) {
-        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
-    }
+    if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {

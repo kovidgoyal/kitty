@@ -16,7 +16,7 @@ from .conf.utils import (
     parse_config_base, python_string, to_bool, to_cmdline
 )
 from .config_data import all_options, parse_mods, type_map
-from .constants import cache_dir, defconf
+from .constants import cache_dir, defconf, is_macos
 from .utils import log_error
 
 named_keys = {
@@ -312,6 +312,15 @@ special_handlers = {}
 
 def special_handler(func):
     special_handlers[func.__name__.partition('_')[2]] = func
+    return func
+
+
+def deprecated_handler(*names):
+    def special_handler(func):
+        for name in names:
+            special_handlers[name] = func
+        return func
+    return special_handler
 
 
 @special_handler
@@ -334,6 +343,15 @@ def handle_send_text(key, val, ans):
 def handle_clear_all_shortcuts(key, val, ans):
     if to_bool(val):
         ans['key_definitions'] = [None]
+
+
+@deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
+def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
+    if not hasattr(handle_deprecated_hide_window_decorations_aliases, key):
+        handle_deprecated_hide_window_decorations_aliases.key = True
+        log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
+    if to_bool(val):
+        ans['hide_window_decorations'] = True
 
 
 def expandvars(val, env):
@@ -552,4 +570,6 @@ def load_config(*paths, overrides=None):
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
+    if (is_macos and getattr(opts, 'macos_hide_titlebar', False)) or (not is_macos and getattr(opts, 'x11_hide_window_decorations', False)):
+        opts.hide_window_decorations = True
     return opts
