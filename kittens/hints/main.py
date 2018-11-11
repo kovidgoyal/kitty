@@ -84,8 +84,16 @@ class Hints(Handler):
         self.args = args
         self.window_title = _('Choose URL') if args.type == 'url' else _('Choose text')
         self.multiple = args.multiple
+        self.match_suffix = self.get_match_suffix(args)
         self.chosen = []
         self.reset()
+
+    def get_match_suffix(self, args):
+        if args.add_trailing_space == 'always':
+            return ' '
+        if args.add_trailing_space == 'never':
+            return ''
+        return ' ' if args.multiple else ''
 
     def reset(self):
         self.current_input = ''
@@ -112,7 +120,7 @@ class Hints(Handler):
                 if encode_hint(idx).startswith(self.current_input)
             ]
             if len(matches) == 1:
-                self.chosen.append(matches[0].text)
+                self.chosen.append(matches[0].text + self.match_suffix)
                 if self.multiple:
                     self.ignore_mark_indices.add(matches[0].index)
                     self.reset()
@@ -130,7 +138,7 @@ class Hints(Handler):
         elif key_event is enter_key and self.current_input:
             try:
                 idx = decode_hint(self.current_input)
-                self.chosen.append(self.index_map[idx].text)
+                self.chosen.append(self.index_map[idx].text + self.match_suffix)
                 self.ignore_mark_indices.add(idx)
             except Exception:
                 self.current_input = ''
@@ -363,6 +371,13 @@ The minimum number of characters to consider a match.
 type=bool-set
 Select multiple matches and perform the action on all of them together at the end.
 In this mode, press :kbd:`Esc` to finish selecting.
+
+
+--add-trailing-space
+default=auto
+choices=auto,always,never
+Add trailing space after matched text. Defaults to auto, which adds the space
+when used together with --multiple.
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''

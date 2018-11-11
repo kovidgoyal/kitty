@@ -29,6 +29,10 @@ Changelog
 - icat kitten: Implement reading image data from STDIN, if STDIN is not
   connected to a terminal (:iss:`1130`)
 
+- hints kitten: Insert trailing spaces after matches when using the
+  ``--multiple`` option. Also add a separate ``--add-traling-space``
+  option to control this behavior (:pull:`1132`)
+
 - Fix the ``*_with_cwd`` actions using the cwd of the overlay window rather
   than the underlying window's cwd (:iss:`1045`)
 
