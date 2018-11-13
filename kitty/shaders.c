@@ -437,11 +437,6 @@ blank_os_window(OSWindow *os_window) {
 bool
 send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window) {
     bool changed = false;
-    if (os_window->clear_count < 2) {
-        os_window->clear_count++;
-        blank_os_window(os_window);
-        changed = true;
-    }
     if (os_window->fonts_data) {
         if (cell_prepare_to_render(vao_idx, gvao_idx, screen, xstart, ystart, dx, dy, os_window->fonts_data)) changed = true;
     }

@@ -816,8 +816,11 @@ is_mouse_hidden(OSWindow *w) {
 
 
 void
-swap_window_buffers(OSWindow *w) {
-    glfwSwapBuffers(w->handle);
+swap_window_buffers(OSWindow *os_window) {
+    glfwSwapBuffers(os_window->handle);
+    // ensure all pixels are cleared to background color at least once in the
+    // new buffer
+    if (os_window->clear_count++ < 2) blank_os_window(os_window);
 }
 
 void
