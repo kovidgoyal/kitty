@@ -60,7 +60,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
-#include "wayland-gtk-primary-selection-client-protocol.h"
+#include "wayland-primary-selection-unstable-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -210,7 +210,7 @@ typedef struct _GLFWWaylandDataOffer
 
 typedef struct _GLFWWaylandPrimaryOffer
 {
-    struct gtk_primary_selection_offer *id;
+    struct zwp_primary_selection_offer_v1 *id;
     const char *mime;
     _GLFWWaylandOfferType offer_type;
     size_t idx;
@@ -241,9 +241,9 @@ typedef struct _GLFWlibraryWayland
     struct wl_data_device_manager*          dataDeviceManager;
     struct wl_data_device*                  dataDevice;
     struct wl_data_source*                  dataSourceForClipboard;
-    struct gtk_primary_selection_device_manager* primarySelectionDeviceManager;
-    struct gtk_primary_selection_device*    primarySelectionDevice;
-    struct gtk_primary_selection_source*    dataSourceForPrimarySelection;
+    struct zwp_primary_selection_device_manager_v1* primarySelectionDeviceManager;
+    struct zwp_primary_selection_device_v1*    primarySelectionDevice;
+    struct zwp_primary_selection_source_v1*    dataSourceForPrimarySelection;
 
     int                         compositorVersion;
     int                         seatVersion;

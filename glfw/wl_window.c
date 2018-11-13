@@ -1568,7 +1568,7 @@ static void _glfwSendClipboardText(void *data, struct wl_data_source *data_sourc
     send_text(_glfw.wl.clipboardString, fd);
 }
 
-static void _glfwSendPrimarySelectionText(void *data, struct gtk_primary_selection_source *primary_selection_source,
+static void _glfwSendPrimarySelectionText(void *data, struct zwp_primary_selection_source_v1 *primary_selection_source,
         const char *mime_type, int fd) {
     send_text(_glfw.wl.primarySelectionString, fd);
 }
@@ -1618,10 +1618,10 @@ static char* read_offer_string(int data_pipe) {
 
 }
 
-static char* read_primary_selection_offer(struct gtk_primary_selection_offer *primary_selection_offer, const char *mime) {
+static char* read_primary_selection_offer(struct zwp_primary_selection_offer_v1 *primary_selection_offer, const char *mime) {
     int pipefd[2];
     if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
-    gtk_primary_selection_offer_receive(primary_selection_offer, mime, pipefd[1]);
+    zwp_primary_selection_offer_v1_receive(primary_selection_offer, mime, pipefd[1]);
     close(pipefd[1]);
     return read_offer_string(pipefd[0]);
 }
@@ -1640,10 +1640,10 @@ static void data_source_canceled(void *data, struct wl_data_source *wl_data_sour
     wl_data_source_destroy(wl_data_source);
 }
 
-static void primary_selection_source_canceled(void *data, struct gtk_primary_selection_source *primary_selection_source) {
+static void primary_selection_source_canceled(void *data, struct zwp_primary_selection_source_v1 *primary_selection_source) {
     if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source)
         _glfw.wl.dataSourceForPrimarySelection = NULL;
-    gtk_primary_selection_source_destroy(primary_selection_source);
+    zwp_primary_selection_source_v1_destroy(primary_selection_source);
 }
 
 static void data_source_target(void *data, struct wl_data_source *wl_data_source, const char* mime) {
@@ -1655,7 +1655,7 @@ const static struct wl_data_source_listener data_source_listener = {
     .target = data_source_target,
 };
 
-const static struct gtk_primary_selection_source_listener primary_selection_source_listener = {
+const static struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
     .send = _glfwSendPrimarySelectionText,
     .cancelled = primary_selection_source_canceled,
 };
@@ -1672,7 +1672,7 @@ static void prune_unclaimed_data_offers() {
 static void prune_unclaimed_primary_selection_offers() {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
-            gtk_primary_selection_offer_destroy(_glfw.wl.primarySelectionOffers[i].id);
+            zwp_primary_selection_offer_v1_destroy(_glfw.wl.primarySelectionOffers[i].id);
             memset(_glfw.wl.primarySelectionOffers + i, 0, sizeof(_glfw.wl.primarySelectionOffers[0]));
         }
     }
@@ -1690,8 +1690,8 @@ static void mark_selection_offer(void *data, struct wl_data_device *data_device,
     prune_unclaimed_data_offers();
 }
 
-static void mark_primary_selection_offer(void *data, struct gtk_primary_selection_device* primary_selection_device,
-        struct gtk_primary_selection_offer *primary_selection_offer) {
+static void mark_primary_selection_offer(void *data, struct zwp_primary_selection_device_v1* primary_selection_device,
+        struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == primary_selection_offer) {
             _glfw.wl.primarySelectionOffers[i].offer_type = PRIMARY_SELECTION;
@@ -1722,7 +1722,7 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
     }
 }
 
-static void handle_primary_selection_offer_mimetype(void *data, struct gtk_primary_selection_offer* id, const char *mime) {
+static void handle_primary_selection_offer_mimetype(void *data, struct zwp_primary_selection_offer_v1* id, const char *mime) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == id) {
             set_offer_mimetype((struct _GLFWWaylandDataOffer*)&_glfw.wl.primarySelectionOffers[i], mime);
@@ -1756,7 +1756,7 @@ static const struct wl_data_offer_listener data_offer_listener = {
     .action = data_offer_action,
 };
 
-static const struct gtk_primary_selection_offer_listener primary_selection_offer_listener = {
+static const struct zwp_primary_selection_offer_v1_listener primary_selection_offer_listener = {
     .offer = handle_primary_selection_offer_mimetype,
 };
 
@@ -1781,7 +1781,7 @@ end:
     wl_data_offer_add_listener(id, &data_offer_listener, NULL);
 }
 
-static void handle_primary_selection_offer(void *data, struct gtk_primary_selection_device *gtk_primary_selection_device, struct gtk_primary_selection_offer *id) {
+static void handle_primary_selection_offer(void *data, struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1, struct zwp_primary_selection_offer_v1 *id) {
     size_t smallest_idx = SIZE_MAX, pos = 0;
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].idx && _glfw.wl.primarySelectionOffers[i].idx < smallest_idx) {
@@ -1794,12 +1794,12 @@ static void handle_primary_selection_offer(void *data, struct gtk_primary_select
             goto end;
         }
     }
-    if (_glfw.wl.primarySelectionOffers[pos].id) gtk_primary_selection_offer_destroy(_glfw.wl.primarySelectionOffers[pos].id);
+    if (_glfw.wl.primarySelectionOffers[pos].id) zwp_primary_selection_offer_v1_destroy(_glfw.wl.primarySelectionOffers[pos].id);
     memset(_glfw.wl.primarySelectionOffers + pos, 0, sizeof(_glfw.wl.primarySelectionOffers[0]));
     _glfw.wl.primarySelectionOffers[pos].id = id;
     _glfw.wl.primarySelectionOffers[pos].idx = ++_glfw.wl.primarySelectionOffersCounter;
 end:
-    gtk_primary_selection_offer_add_listener(id, &primary_selection_offer_listener, NULL);
+    zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
 static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
@@ -1869,7 +1869,7 @@ const static struct wl_data_device_listener data_device_listener = {
     .leave = drag_leave,
 };
 
-const static struct gtk_primary_selection_device_listener primary_selection_device_listener = {
+const static struct zwp_primary_selection_device_v1_listener primary_selection_device_listener = {
     .data_offer = handle_primary_selection_offer,
     .selection = mark_primary_selection_offer,
 };
@@ -1886,7 +1886,7 @@ clipboard_copy_callback_done(void *data, struct wl_callback *callback, uint32_t 
 static void
 primary_selection_copy_callback_done(void *data, struct wl_callback *callback, uint32_t serial) {
     if (_glfw.wl.primarySelectionDevice && data == (void*)_glfw.wl.dataSourceForPrimarySelection) {
-        gtk_primary_selection_device_set_selection(_glfw.wl.primarySelectionDevice, data, serial);
+        zwp_primary_selection_device_v1_set_selection(_glfw.wl.primarySelectionDevice, data, serial);
     }
     wl_callback_destroy(callback);
 }
@@ -1897,8 +1897,8 @@ void _glfwSetupWaylandDataDevice() {
 }
 
 void _glfwSetupWaylandPrimarySelectionDevice() {
-    _glfw.wl.primarySelectionDevice = gtk_primary_selection_device_manager_get_device(_glfw.wl.primarySelectionDeviceManager, _glfw.wl.seat);
-    if (_glfw.wl.primarySelectionDevice) gtk_primary_selection_device_add_listener(_glfw.wl.primarySelectionDevice, &primary_selection_device_listener, NULL);
+    _glfw.wl.primarySelectionDevice = zwp_primary_selection_device_manager_v1_get_device(_glfw.wl.primarySelectionDeviceManager, _glfw.wl.seat);
+    if (_glfw.wl.primarySelectionDevice) zwp_primary_selection_device_v1_add_listener(_glfw.wl.primarySelectionDevice, &primary_selection_device_listener, NULL);
 }
 
 static inline GLFWbool _glfwEnsureDataDevice() {
@@ -1982,21 +1982,21 @@ void _glfwPlatformSetPrimarySelectionString(const char* string)
     _glfw.wl.primarySelectionString = _glfw_strdup(string);
 
     if (_glfw.wl.dataSourceForPrimarySelection)
-        gtk_primary_selection_source_destroy(_glfw.wl.dataSourceForPrimarySelection);
-    _glfw.wl.dataSourceForPrimarySelection = gtk_primary_selection_device_manager_create_source(_glfw.wl.primarySelectionDeviceManager);
+        zwp_primary_selection_source_v1_destroy(_glfw.wl.dataSourceForPrimarySelection);
+    _glfw.wl.dataSourceForPrimarySelection = zwp_primary_selection_device_manager_v1_create_source(_glfw.wl.primarySelectionDeviceManager);
     if (!_glfw.wl.dataSourceForPrimarySelection)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Cannot copy failed to create primary selection source");
         return;
     }
-    gtk_primary_selection_source_add_listener(_glfw.wl.dataSourceForPrimarySelection, &primary_selection_source_listener, NULL);
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, clipboard_mime());
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain");
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain;charset=utf-8");
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, "TEXT");
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, "STRING");
-    gtk_primary_selection_source_offer(_glfw.wl.dataSourceForPrimarySelection, "UTF8_STRING");
+    zwp_primary_selection_source_v1_add_listener(_glfw.wl.dataSourceForPrimarySelection, &primary_selection_source_listener, NULL);
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, clipboard_mime());
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain");
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "text/plain;charset=utf-8");
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "TEXT");
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "STRING");
+    zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "UTF8_STRING");
     struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
     const static struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
     wl_callback_add_listener(callback, &primary_selection_copy_callback_listener, _glfw.wl.dataSourceForPrimarySelection);
