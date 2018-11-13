@@ -87,6 +87,11 @@ def parse_ucd():
             if category.startswith('M'):
                 marks.add(codepoint)
 
+    # Some common synonyms
+    word_search_map['bee'] |= word_search_map['honeybee']
+    word_search_map['lambda'] |= word_search_map['lamda']
+    word_search_map['lamda'] |= word_search_map['lambda']
+
 
 def split_two(line):
     spec, rest = line.split(';', 1)
@@ -360,16 +365,15 @@ def gen_names():
         root = TrieNode()
         all_trie_nodes.append(root)
 
-        def add_word(word_idx):
-            word = word_map[word_idx]
+        def add_word(word_idx, word):
             parent = root
             for letter in map(ord, word):
                 idx = parent.add_letter(letter)
                 parent = all_trie_nodes[idx]
             parent.match_offset = offsets_array[word_idx]
 
-        for i in range(len(word_map)):
-            add_word(i)
+        for i, word in enumerate(word_map):
+            add_word(i, word)
         children_array = [0]
         for node in all_trie_nodes:
             if node.children:

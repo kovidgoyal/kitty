@@ -20,3 +20,4 @@ class TestUnicodeInput(BaseTest):
         self.ae(matches('horiz', 'ell'), {0x2026, 0x22ef, 0x2b2c, 0x2b2d, 0xfe19})
         self.ae(matches('horizontal', 'ell'), {0x2026, 0x22ef, 0x2b2c, 0x2b2d, 0xfe19})
         self.assertFalse(matches('sfgsfgsfgfgsdg'))
+        self.assertIn(0x1f41d, matches('bee'))
