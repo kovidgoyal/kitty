@@ -73,7 +73,7 @@
       "unstable/pointer-constraints/pointer-constraints-unstable-v1.xml",
       "unstable/idle-inhibit/idle-inhibit-unstable-v1.xml",
       "unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
-      "wl_protocols/gtk-primary-selection.xml"
+      "unstable/primary-selection/primary-selection-unstable-v1.xml"
     ],
     "sources": [
       "wl_init.c",

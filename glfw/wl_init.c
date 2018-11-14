@@ -618,11 +618,12 @@ static void registryHandleGlobal(void* data,
             _glfwSetupWaylandDataDevice();
         }
     }
-    else if (strcmp(interface, "gtk_primary_selection_device_manager") == 0)
+    else if (strcmp(interface, "zwp_primary_selection_device_manager_v1") == 0 ||
+        strcmp(interface, "gtk_primary_selection_device_manager") == 0)
     {
         _glfw.wl.primarySelectionDeviceManager =
             wl_registry_bind(registry, name,
-                             &gtk_primary_selection_device_manager_interface,
+                             &zwp_primary_selection_device_manager_v1_interface,
                              1);
         if (_glfw.wl.seat && _glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
             _glfwSetupWaylandPrimarySelectionDevice();
@@ -822,9 +823,9 @@ void _glfwPlatformTerminate(void)
     if (_glfw.wl.dataDeviceManager)
         wl_data_device_manager_destroy(_glfw.wl.dataDeviceManager);
     if (_glfw.wl.primarySelectionDevice)
-        gtk_primary_selection_device_destroy(_glfw.wl.primarySelectionDevice);
+        zwp_primary_selection_device_v1_destroy(_glfw.wl.primarySelectionDevice);
     if (_glfw.wl.primarySelectionDeviceManager)
-        gtk_primary_selection_device_manager_destroy(_glfw.wl.primarySelectionDeviceManager);
+        zwp_primary_selection_device_manager_v1_destroy(_glfw.wl.primarySelectionDeviceManager);
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);
     if (_glfw.wl.display)
