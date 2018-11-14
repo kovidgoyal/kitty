@@ -602,6 +602,8 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
 
 static inline void
 render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows) {
+    // ensure all pixels are cleared to background color at least once in every buffer
+    if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
