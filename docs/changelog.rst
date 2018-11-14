@@ -63,7 +63,7 @@ Changelog
 
 - Wayland: Fix copying from hidden kitty windows hanging (:iss:`1051`)
 
-- Wayland: Add support for the experimental primary select protocol
+- Wayland: Add support for the primary selection protocol
   implemented by some compositors (:pull:`1095`)
 
 - Fix expansion of env vars not working in the :opt:`env` directive
