@@ -93,7 +93,7 @@
   },
   "wayland_protocols": [
     1,
-    15
+    17
   ],
   "win32": {
     "headers": [
