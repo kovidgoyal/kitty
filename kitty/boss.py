@@ -459,10 +459,10 @@ class Boss:
                     _('You must set the dynamic_background_opacity option in kitty.conf to be able to change background opacity'))
         os_window_id = window.os_window_id
         if opacity[0] in '+-':
-            opacity = background_opacity_of(os_window_id)
-            if opacity is None:
+            old_opacity = background_opacity_of(os_window_id)
+            if old_opacity is None:
                 return
-            opacity += float(opacity)
+            opacity = old_opacity + float(opacity)
         elif opacity == 'default':
             opacity = self.opts.background_opacity
         else:
