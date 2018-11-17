@@ -72,6 +72,9 @@ Changelog
 - Fix :opt:`mouse_hide_wait` only taking effect after an event such as cursor
   blink or key press (:iss:`1073`)
 
+- Fix the ``set_background_opacity`` action not working correctly
+  (:pull:`1147`)
+
 - Fix second cell of emoji created using variation selectors not having
   the same attributes as the first cell (:iss:`1109`)
 
