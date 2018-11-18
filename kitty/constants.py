@@ -7,7 +7,6 @@ import pwd
 import sys
 from collections import namedtuple
 
-
 appname = 'kitty'
 version = (0, 12, 3)
 str_version = '.'.join(map(str, version))
@@ -61,6 +60,18 @@ def _get_config_dir():
         os.makedirs(ans, exist_ok=True)
     except FileExistsError:
         raise SystemExit('A file {} already exists. It must be a directory, not a file.'.format(ans))
+    except PermissionError:
+        import tempfile
+        import atexit
+        ans = tempfile.mkdtemp(prefix='kitty-conf-')
+
+        def cleanup():
+            import shutil
+            try:
+                shutil.rmtree(ans)
+            except Exception:
+                pass
+        atexit.register(cleanup)
     return ans
 
 
