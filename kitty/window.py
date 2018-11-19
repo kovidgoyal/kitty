@@ -8,6 +8,7 @@ import sys
 import weakref
 from collections import deque
 from enum import IntEnum
+from itertools import chain
 
 from .child import cwd_of_process
 from .config import build_ansi_color_table
@@ -96,6 +97,24 @@ def setup_colors(screen, opts):
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
     screen.color_profile.set_configured_colors(*map(color_as_int, (
         opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
+
+
+def text_sanitizer(as_ansi, add_wrap_markers):
+    import re
+    pat = re.compile(r'\033[.+?m')
+
+    def remove_wrap_markers(line):
+        return line.replace('\r', '')
+
+    def remove_sgr(line):
+        return pat.sub('', line)
+
+    def remove_both(line):
+        return pat.sub('', line.replace('\r', ''))
+
+    if as_ansi:
+        return remove_both if add_wrap_markers else remove_sgr
+    return remove_wrap_markers
 
 
 class Window:
@@ -436,7 +455,7 @@ class Window:
             self.screen.reset_callbacks()
         self.screen = None
 
-    def as_text(self, as_ansi=False, add_history=False, add_pager_history=False, add_wrap_markers=False, alternate_screen=False):
+    def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False, alternate_screen=False):
         lines = []
         add_history = add_history and not (self.screen.is_using_alternate_linebuf() ^ alternate_screen)
         if alternate_screen:
@@ -446,11 +465,12 @@ class Window:
         f(lines.append, as_ansi, add_wrap_markers)
         if add_history:
             h = []
-            if add_pager_history:
-                # assert as_ansi and add_wrap_markers?
-                self.screen.historybuf.pagerhist_as_text(h.append)
+            self.screen.historybuf.pagerhist_as_text(h.append)
+            if not as_ansi or not add_wrap_markers:
+                sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
+                h = list(map(sanitizer, h))
             self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
-            lines = h + lines
+            lines = chain(h, lines)
         return ''.join(lines)
 
     @property
@@ -464,7 +484,7 @@ class Window:
     # actions {{{
 
     def show_scrollback(self):
-        data = self.as_text(as_ansi=True, add_history=True, add_pager_history=True, add_wrap_markers=True)
+        data = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = data.replace('\r\n', '\n').replace('\r', '\n')
         lines = data.count('\n')
         input_line_number = (lines - (self.screen.lines - 1) - self.screen.scrolled_by)
