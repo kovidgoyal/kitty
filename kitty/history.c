@@ -312,6 +312,8 @@ pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
     if (!ph) Py_RETURN_NONE;
 
     if (ph->rewrap_needed) pagerhist_rewrap(ph, self->xnum);
+    PyObject *nl = PyUnicode_FromString("\n");
+    if (!nl) return NULL;
 
     for (int i = 0; i < 3; i++) {
         switch(i) {
@@ -327,7 +329,8 @@ pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
             break;
         case 2:
             { Line l = {.xnum=self->xnum}; get_line(self, 0, &l); if (l.continued) continue; }
-            t = PyUnicode_FromString("\n");
+            t = nl;
+            Py_INCREF(t);
             break;
         }
         if (t == NULL) goto end;
@@ -338,6 +341,7 @@ pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
     }
 
 end:
+    Py_DECREF(nl);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
