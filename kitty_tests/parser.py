@@ -171,6 +171,11 @@ class TestParser(BaseTest):
         self.assertTrue(s.cursor.blink)
         self.ae(s.cursor.shape, CURSOR_BLOCK)
 
+        s.reset()
+        pb('\033[3 @', ('Shift left escape code not implemented',))
+        pb('\033[3 A', ('Shift right escape code not implemented',))
+        pb('\033[3;4 S', ('Select presentation directions escape code not implemented',))
+
     def test_osc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

@@ -641,8 +641,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (i > start) params[num_params++] = utoi(buf + start, i - start);
     switch(code) {
         case ICH:
+            if (end_modifier == ' ') { REPORT_ERROR("Shift left escape code not implemented"); break; }
             CALL_CSI_HANDLER1(screen_insert_characters, 1);
         case CUU:
+            if (end_modifier == ' ') { REPORT_ERROR("Shift right escape code not implemented"); break; }
             CALL_CSI_HANDLER1(screen_cursor_up2, 1);
         case CUD:
         case VPR:
@@ -758,6 +760,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case DECSCUSR:
             CALL_CSI_HANDLER1M(screen_set_cursor, 1);
         case SU:
+            if (end_modifier == ' ') { REPORT_ERROR("Select presentation directions escape code not implemented"); break; }
             CALL_CSI_HANDLER1(screen_scroll, 1);
         case SD:
             CALL_CSI_HANDLER1(screen_reverse_scroll, 1);
