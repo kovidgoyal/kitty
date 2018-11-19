@@ -98,7 +98,7 @@ class TestParser(BaseTest):
         pb('x\033[2;7@y', 'x', ('screen_insert_characters', 2), 'y')
         pb('x\033[@y', 'x', ('screen_insert_characters', 1), 'y')
         pb('x\033[345@y', 'x', ('screen_insert_characters', 345), 'y')
-        pb('x\033[345;@y', 'x', ('screen_insert_characters', 345), 'y')
+        pb('x\033[345;@y', 'x', ('CSI code 0x40 has unsupported start modifier: 0x0 or end modifier: 0x3b',), 'y')
         pb('\033[H', ('screen_cursor_position', 1, 1))
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 0)
         pb('\033[4H', ('screen_cursor_position', 4, 1))

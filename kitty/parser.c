@@ -599,6 +599,13 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     } \
     break;
 
+#define NO_MODIFIERS(modifier, special, special_msg) { \
+    if (start_modifier || end_modifier) { \
+        if (special && modifier == special) { REPORT_ERROR(special_msg); } \
+        else { REPORT_ERROR("CSI code 0x%x has unsupported start modifier: 0x%x or end modifier: 0x%x", code, start_modifier, end_modifier);} \
+        break; \
+    }}
+
     char start_modifier = 0, end_modifier = 0;
     uint32_t *buf = screen->parser_buf, code = screen->parser_buf[screen->parser_buf_pos];
     unsigned int num = screen->parser_buf_pos, start, i, num_params=0, p1, p2;
@@ -641,10 +648,10 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (i > start) params[num_params++] = utoi(buf + start, i - start);
     switch(code) {
         case ICH:
-            if (end_modifier == ' ') { REPORT_ERROR("Shift left escape code not implemented"); break; }
+            NO_MODIFIERS(end_modifier, ' ', "Shift left escape code not implemented");
             CALL_CSI_HANDLER1(screen_insert_characters, 1);
         case CUU:
-            if (end_modifier == ' ') { REPORT_ERROR("Shift right escape code not implemented"); break; }
+            NO_MODIFIERS(end_modifier, ' ', "Shift right escape code not implemented");
             CALL_CSI_HANDLER1(screen_cursor_up2, 1);
         case CUD:
         case VPR:
@@ -760,7 +767,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case DECSCUSR:
             CALL_CSI_HANDLER1M(screen_set_cursor, 1);
         case SU:
-            if (end_modifier == ' ') { REPORT_ERROR("Select presentation directions escape code not implemented"); break; }
+            NO_MODIFIERS(end_modifier, ' ', "Select presentation directions escape code not implemented");
             CALL_CSI_HANDLER1(screen_scroll, 1);
         case SD:
             CALL_CSI_HANDLER1(screen_reverse_scroll, 1);
