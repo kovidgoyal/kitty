@@ -267,7 +267,7 @@ class Window:
 
     # screen callbacks {{{
     def use_utf8(self, on):
-        get_boss().child_monitor.set_iutf8(self.window_id, on)
+        get_boss().child_monitor.set_iutf8(self.id, on)
 
     def focus_changed(self, focused):
         if focused:
