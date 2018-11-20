@@ -227,11 +227,12 @@ write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
 }
 
 index_type
-line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen) {
-#define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) return i; }
-#define WRITE_CH(val) if (i > buflen - 1) return i; buf[i++] = val;
+line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated) {
+#define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) { *truncated = true; return i; } }
+#define WRITE_CH(val) if (i > buflen - 1) { *truncated = true; return i; } buf[i++] = val;
 
     index_type limit = xlimit_for_line(self), i=0;
+    *truncated = false;
     if (limit == 0) return 0;
     char_type previous_width = 0;
 
@@ -271,7 +272,8 @@ static PyObject*
 as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     static Py_UCS4 t[5120] = {0};
-    index_type num = line_as_ansi(self, t, 5120);
+    bool truncated;
+    index_type num = line_as_ansi(self, t, 5120, &truncated);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
     return ans;
 }

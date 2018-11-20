@@ -161,6 +161,7 @@ static inline void
 pagerhist_push(HistoryBuf *self) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph) return;
+    bool truncated;
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     if (ph->start != ph->end && !l.continued) {
@@ -169,7 +170,7 @@ pagerhist_push(HistoryBuf *self) {
     if (ph->bufsize - ph->end < 1024 && !pagerhist_extend(ph)) {
         ph->bufend = ph->end; ph->end = 0;
     }
-    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023);
+    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023, &truncated);
     ph->buffer[ph->end++] = '\r';
     if (ph->bufend)
         ph->start = ph->end + 1 < ph->bufend ? ph->end + 1 : 0;
@@ -234,12 +235,13 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
     static Py_UCS4 t[5120];
     Line l = {.xnum=self->xnum};
+    bool truncated;
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
             l.continued = *attrptr(self, index_of(self, i + 1)) & CONTINUED_MASK;
         } else l.continued = false;
-        index_type num = line_as_ansi(&l, t, 5120);
+        index_type num = line_as_ansi(&l, t, 5120, &truncated);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
         PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
         if (ans == NULL) return PyErr_NoMemory();
