@@ -61,6 +61,9 @@ def color_from_int(val):
 
 def parse_color_set(raw):
     parts = raw.split(';')
+    lp = len(parts)
+    if lp % 2 != 0:
+        return
     for c, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
         try:
             c = int(c)
