@@ -9,6 +9,7 @@ logo/*.iconset
 compile_commands.json
 glad/out
 asan-launcher
+asan-launcher.dSYM
 kitty-profile
 dev
 __pycache__
