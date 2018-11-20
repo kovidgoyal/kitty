@@ -74,7 +74,9 @@ class BaseTest(TestCase):
     ae = TestCase.assertEqual
     maxDiff = 2000
 
-    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options={}):
+    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None):
+        if options is None:
+            options = {'scrollback_pager_history_size': 1024}
         options = Options(merge_configs(defaults._asdict(), options))
         set_options(options)
         c = Callbacks()
