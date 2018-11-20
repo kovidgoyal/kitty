@@ -560,8 +560,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         markedText = [[NSMutableAttributedString alloc] init];
 
         [self updateTrackingAreas];
-        [self registerForDraggedTypes:[NSArray arrayWithObjects:
-                                       NSPasteboardTypeFileURL, nil]];
+        [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
     }
 
     return self;
@@ -915,28 +914,9 @@ is_ascii_control_char(char x) {
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
-    if ((NSDragOperationGeneric & [sender draggingSourceOperationMask])
-        == NSDragOperationGeneric)
-    {
-        [self setNeedsDisplay:YES];
-        return NSDragOperationGeneric;
-    }
-
-    return NSDragOperationNone;
-}
-
-- (BOOL)prepareForDragOperation:(id <NSDraggingInfo>)sender
-{
-    [self setNeedsDisplay:YES];
-    return YES;
-}
-
-- (NSArray *)fileURLWithDraggingInfo:(id <NSDraggingInfo>)sender
-{
-    NSPasteboard *pasteboard = [sender draggingPasteboard];
-    NSDictionary *options = [NSDictionary dictionaryWithObject:@YES forKey:NSPasteboardURLReadingFileURLsOnlyKey];
-    NSArray *results = [pasteboard readObjectsForClasses:[NSArray arrayWithObject:[NSURL class]] options:options];
-    return results;
+    // HACK: We don't know what to say here because we don't know what the
+    // application wants to do with the paths
+    return NSDragOperationGeneric;
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -945,32 +925,28 @@ is_ascii_control_char(char x) {
     _glfwInputCursorPos(window,
                         [sender draggingLocation].x,
                         contentRect.size.height - [sender draggingLocation].y);
-    const NSArray* files = [self fileURLWithDraggingInfo:sender];
-    if (!files) return NO;
-    const NSUInteger count = [files count];
+    NSPasteboard* pasteboard = [sender draggingPasteboard];
+    NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
+    NSArray* urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
+                                              options:options];
+    if (!urls) return NO;
+    const NSUInteger count = [urls count];
 
     if (count)
     {
-        NSEnumerator* e = [files objectEnumerator];
         char** paths = calloc(count, sizeof(char*));
-        NSUInteger i;
 
-        for (i = 0;  i < count;  i++)
-            paths[i] = _glfw_strdup([[[e nextObject] path] UTF8String]);
+        for (NSUInteger i = 0;  i < count;  i++)
+            paths[i] = _glfw_strdup([[urls objectAtIndex:i] fileSystemRepresentation]);
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
-        for (i = 0;  i < count;  i++)
+        for (NSUInteger i = 0;  i < count;  i++)
             free(paths[i]);
         free(paths);
     }
 
     return YES;
-}
-
-- (void)concludeDragOperation:(id <NSDraggingInfo>)sender
-{
-    [self setNeedsDisplay:YES];
 }
 
 - (BOOL)hasMarkedText
