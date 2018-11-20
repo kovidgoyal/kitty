@@ -576,6 +576,7 @@ make && make docs
 
 def compile_python(base_path):
     import compileall
+    import py_compile
     try:
         from multiprocessing import cpu_count
         num_workers = max(1, cpu_count())
@@ -585,7 +586,10 @@ def compile_python(base_path):
         for f in files:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
-    compileall.compile_dir(base_path, ddir='', force=True, optimize=1, quiet=1, workers=num_workers)
+    kwargs = dict(ddir='', force=True, optimize=1, quiet=1, workers=num_workers)
+    if hasattr(py_compile, 'PycInvalidationMode'):
+        kwargs['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
+    compileall.compile_dir(base_path, **kwargs)
 
 
 def package(args, for_bundle=False, sh_launcher=False):
