@@ -67,12 +67,13 @@ alloc_pagerhist(unsigned int pagerhist_sz) {
 }
 
 static inline bool
-pagerhist_extend(PagerHistoryBuf *ph) {
+pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     if (ph->bufsize >= ph->maxsz) return false;
-    void *newbuf = PyMem_Realloc(ph->buffer, ph->bufsize * sizeof(Py_UCS4) + 1024*1024);
+    size_t newsz = ph->bufsize + MAX(1024 * 1024, minsz);
+    void *newbuf = PyMem_Realloc(ph->buffer, newsz * sizeof(Py_UCS4));
     if (!newbuf) return false;
     ph->buffer = newbuf;
-    ph->bufsize += 1024*1024 / sizeof(Py_UCS4);
+    ph->bufsize += newsz;
     return true;
 }
 
@@ -164,16 +165,33 @@ pagerhist_push(HistoryBuf *self) {
     bool truncated;
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
+#define EXPAND_IF_FULL(sz) { \
+        if (ph->bufsize - ph->end < sz && !pagerhist_extend(ph, sz)) { \
+            ph->bufend = ph->end; ph->end = 0; \
+        } \
+}
+    size_t sz = MAX(1024, ph->bufsize - ph->end);
+    sz = MAX(sz, self->xnum + self->xnum);
+    EXPAND_IF_FULL(sz);
     if (ph->start != ph->end && !l.continued) {
         ph->buffer[ph->end++] = '\n';
     }
-    if (ph->bufsize - ph->end < 1024 && !pagerhist_extend(ph)) {
-        ph->bufend = ph->end; ph->end = 0;
+    while(sz < ph->maxsz - 2) {
+        size_t num = line_as_ansi(&l, ph->buffer + ph->end, ph->bufsize - ph->end - 2, &truncated);
+        if (!truncated) {
+            ph->end += num;
+            ph->buffer[ph->end++] = '\r';
+            if (ph->bufend) {
+                ph->start = ph->end + 1 < ph->bufend ? ph->end + 1 : 0;
+            }
+            break;
+        }
+        // check if sz is too large too fit in buffer
+        if (ph->bufsize > ph->maxsz && !ph->end) break;
+        sz *= 2;
+        EXPAND_IF_FULL(sz);
     }
-    ph->end += line_as_ansi(&l, ph->buffer + ph->end, 1023, &truncated);
-    ph->buffer[ph->end++] = '\r';
-    if (ph->bufend)
-        ph->start = ph->end + 1 < ph->bufend ? ph->end + 1 : 0;
+#undef EXPAND_IF_FULL
 }
 
 static inline index_type
