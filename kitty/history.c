@@ -314,36 +314,31 @@ pagerhist_as_text(HistoryBuf *self, PyObject *callback) {
     if (!ph) Py_RETURN_NONE;
 
     if (ph->rewrap_needed) pagerhist_rewrap(ph, self->xnum);
-    PyObject *nl = PyUnicode_FromString("\n");
-    if (!nl) return NULL;
 
-    for (int i = 0; i < 3; i++) {
-        switch(i) {
-        case 0:
-            num = (ph->bufend ? ph->bufend : ph->end) - ph->start;
-            buf = ph->buffer + ph->start;
-            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-            break;
-        case 1:
-            if (!ph->bufend) continue;
+#define CALLBACK { \
+        if (t == NULL) goto end; \
+        ret = PyObject_CallFunctionObjArgs(callback, t, NULL); \
+        Py_DECREF(t); \
+        if (ret == NULL) goto end; \
+        Py_DECREF(ret); \
+}
+
+        num = (ph->bufend ? ph->bufend : ph->end) - ph->start;
+        buf = ph->buffer + ph->start;
+        t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+        CALLBACK;
+        if (ph->bufend) {
             num = ph->end; buf = ph->buffer;
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-            break;
-        case 2:
-            { Line l = {.xnum=self->xnum}; get_line(self, 0, &l); if (l.continued) continue; }
-            t = nl;
-            Py_INCREF(t);
-            break;
+            CALLBACK;
         }
-        if (t == NULL) goto end;
-        ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
-        Py_DECREF(t);
-        if (ret == NULL) goto end;
-        Py_DECREF(ret);
-    }
-
+        Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
+        if (!l.continued) {
+            t = PyUnicode_FromString("\n");
+            CALLBACK;
+        }
+#undef CALLBACK
 end:
-    Py_DECREF(nl);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
