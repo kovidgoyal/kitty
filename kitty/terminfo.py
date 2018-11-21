@@ -31,8 +31,6 @@ bool_capabilities = {
     'xenl',
     # has extra status line (window title)
     'hs',
-    # Detect truecolor support
-    'RGB',
     # Terminfo extension used by tmux to detect true color support (non-standard)
     'Tc',
     # Indicates support for styled and colored underlines (non-standard) as
@@ -438,7 +436,7 @@ termcap_aliases.update({
 queryable_capabilities = numeric_capabilities.copy()
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
-no_termcap_for = frozenset('Su Tc setrgbf setrgbb fullkbd RGB'.split())
+no_termcap_for = frozenset('Su Tc setrgbf setrgbb fullkbd'.split())
 if extra - no_termcap_for:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
 del extra
