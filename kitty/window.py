@@ -395,6 +395,8 @@ class Window:
 
     def clipboard_control(self, data):
         where, text = data.partition(';')[::2]
+        if not where:
+            where = 's0'
         if text == '?':
             response = None
             if 's' in where or 'c' in where:
