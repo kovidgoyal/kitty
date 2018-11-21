@@ -874,7 +874,7 @@ read_bytes(int fd, Screen *screen) {
     while(true) {
         len = read(fd, screen->read_buf + orig_sz, available_buffer_space);
         if (len < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR || errno == EAGAIN) continue;
             if (errno != EIO) perror("Call to read() from child fd failed");
             return false;
         }
