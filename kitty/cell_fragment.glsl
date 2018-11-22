@@ -106,7 +106,7 @@ void main() {
 #else
     // since background alpha is 1.0, it is effectively pre-multiplied
     final_color = vec4(premul_blend(fg.rgb, fg.a, background), 1.0f);
-    final_color = vec4(final_color.rgb / final_color.a, final_color.a);
+    final_color = vec4(final_color.rgb, final_color.a);
 #endif
 #endif
 
