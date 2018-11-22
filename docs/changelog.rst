@@ -86,6 +86,9 @@ Changelog
 
 - Add a terminfo entry for full keyboard mode.
 
+- Fix incorrect text-antialiasing when using very low background opacity
+  (:iss:`1005`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 
