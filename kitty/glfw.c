@@ -27,9 +27,13 @@ static void set_os_window_dpi(OSWindow *w);
 
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
-    int w, h;
-    glfwGetFramebufferSize(window->handle, &window->viewport_width, &window->viewport_height);
+    int w, h, fw, fh;
+    glfwGetFramebufferSize(window->handle, &fw, &fh);
     glfwGetWindowSize(window->handle, &w, &h);
+    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height) {
+        return; // no change, ignore
+    }
+    window->viewport_width = fw; window->viewport_height = fh;
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = (double)window->viewport_width / (double)w;
     window->viewport_y_ratio = (double)window->viewport_height / (double)h;
@@ -45,6 +49,11 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->window_height = MAX(h, 100);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
+        if (dpi_changed && global_state.is_wayland) {
+           // Fake resize event needed on weston to ensure surface is
+           // positioned correctly after DPI change
+            glfwSetWindowSize(window->handle, window->window_width, window->window_height);
+        }
     }
 }
 
@@ -338,12 +347,9 @@ current_monitor(GLFWwindow *window) {
 
 static inline void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
-    GLFWmonitor *monitor = NULL;
-    if (w) monitor = current_monitor(w);
-    if (monitor == NULL) { PyErr_Print(); monitor = glfwGetPrimaryMonitor(); }
     float xscale = 1, yscale = 1;
-    if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
-    if (!xscale || !yscale) glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+    if (w) glfwGetWindowContentScale(w, &xscale, &yscale);
+    else glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
     if (!xscale) xscale = 1.0;
     if (!yscale) yscale = 1.0;
 #ifdef __APPLE__
