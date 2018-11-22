@@ -599,8 +599,15 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)updateLayer
 {
-    if (window->context.client != GLFW_NO_API)
-        [window->context.nsgl.object update];
+    if (window->context.client != GLFW_NO_API) {
+        @try {
+            [window->context.nsgl.object update];
+        } @catch (NSException *e) {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Failed to update NSGL Context object with error: %s (%s)",
+                    [[e name] UTF8String], [[e reason] UTF8String]);
+        }
+    }
 
     _glfwInputWindowDamage(window);
 }
