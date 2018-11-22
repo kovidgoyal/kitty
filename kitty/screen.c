@@ -976,9 +976,9 @@ screen_restore_cursor(Screen *self) {
 
 void
 screen_restore_modes(Screen *self) {
-    ScreenModes *m;
+    const ScreenModes *m;
     buffer_pop(&self->modes_savepoints, m);
-    if (m == NULL) *m = empty_modes;
+    if (m == NULL) m = &empty_modes;
 #define S(name) set_mode_from_const(self, name, m->m##name)
     S(DECTCEM); S(DECSCNM); S(DECSCNM); S(DECOM); S(DECAWM); S(DECARM); S(DECCKM);
     S(BRACKETED_PASTE); S(FOCUS_TRACKING); S(EXTENDED_KEYBOARD);
