@@ -310,6 +310,7 @@ make_os_window_context_current(OSWindow *w) {
 }
 
 
+#ifndef __APPLE__
 static GLFWmonitor*
 current_monitor(GLFWwindow *window) {
     // Find the monitor that has the maximum overlap with this window
@@ -344,6 +345,7 @@ current_monitor(GLFWwindow *window) {
 
     return bestmonitor;
 }
+#endif
 
 static inline void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
