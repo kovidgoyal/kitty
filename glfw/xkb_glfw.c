@@ -255,6 +255,7 @@ load_compose_tables(_GLFWXKBData *xkb) {
     if (!xkb->states.composeState) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose state");
     }
+    xkb_compose_table_unref(compose_table);
 }
 
 GLFWbool
