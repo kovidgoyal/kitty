@@ -52,6 +52,7 @@ typedef struct {
 typedef struct {
     double at;
     int button, modifiers;
+    double x, y;
 } Click;
 
 #define CLICK_QUEUE_SZ 3
@@ -67,7 +68,10 @@ typedef struct {
     CursorShape last_cursor_shape;
     PyObject *title;
     ScreenRenderData render_data;
-    unsigned int mouse_cell_x, mouse_cell_y;
+    struct {
+        unsigned int cell_x, cell_y;
+        double x, y;
+    } mouse_pos;
     WindowGeometry geometry;
     ClickQueue click_queue;
     double last_drag_scroll_at;

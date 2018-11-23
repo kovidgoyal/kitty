@@ -89,6 +89,9 @@ Changelog
 - Fix incorrect text-antialiasing when using very low background opacity
   (:iss:`1005`)
 
+- When double or triple clicking ignore clicks if they are "far" from each
+  other (:iss:`1093`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 

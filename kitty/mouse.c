@@ -85,7 +85,7 @@ encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_proto
 
 static int
 encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
-    unsigned int x = w->mouse_cell_x + 1, y = w->mouse_cell_y + 1; // 1 based indexing
+    unsigned int x = w->mouse_pos.cell_x + 1, y = w->mouse_pos.cell_y + 1; // 1 based indexing
     Screen *screen = w->render_data.screen;
     return encode_mouse_event_impl(x, y, screen->modes.mouse_tracking_protocol, button, action, mods);
 
@@ -142,6 +142,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, OSWindow *os_window) {
         mouse_x = MIN(MAX(mouse_x, left), right);
         mouse_y = MIN(MAX(mouse_y, top), bottom);
     }
+    w->mouse_pos.x = mouse_x - left; w->mouse_pos.y = mouse_y - top;
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
     if (mouse_x >= g->right) qx = screen->columns - 1;
     else if (mouse_x >= g->left) qx = (unsigned int)((double)(mouse_x - g->left) / os_window->fonts_data->cell_width);
@@ -164,14 +165,14 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
             global_state.active_drag_in_window = 0;
             w->last_drag_scroll_at = 0;
             if (screen->selection.in_progress)
-                screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, true);
+                screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, true);
         }
         else {
             global_state.active_drag_in_window = w->id;
-            screen_start_selection(screen, w->mouse_cell_x, w->mouse_cell_y, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | GLFW_MOD_SHIFT), EXTEND_CELL);
+            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | GLFW_MOD_SHIFT), EXTEND_CELL);
         }
     } else if (screen->selection.in_progress) {
-        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, false);
     }
 }
 
@@ -201,7 +202,7 @@ static inline void
 extend_selection(Window *w) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
-        screen_update_selection(screen, w->mouse_cell_x, w->mouse_cell_y, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, false);
     }
 }
 
@@ -276,8 +277,8 @@ HANDLER(handle_move_event) {
     if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
-    bool mouse_cell_changed = x != w->mouse_cell_x || y != w->mouse_cell_y;
-    w->mouse_cell_x = x; w->mouse_cell_y = y;
+    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     bool handle_in_kitty = (
             (screen->modes.mouse_tracking_mode == ANY_MODE ||
             (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
@@ -304,14 +305,14 @@ multi_click(Window *w, unsigned int count) {
     index_type start, end;
     bool found_selection = false;
     SelectionExtendMode mode = EXTEND_CELL;
-    unsigned int y1 = w->mouse_cell_y, y2 = w->mouse_cell_y;
+    unsigned int y1 = w->mouse_pos.cell_y, y2 = w->mouse_pos.cell_y;
     switch(count) {
         case 2:
-            found_selection = screen_selection_range_for_word(screen, w->mouse_cell_x, &y1, &y2, &start, &end);
+            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end);
             mode = EXTEND_WORD;
             break;
         case 3:
-            found_selection = screen_selection_range_for_line(screen, w->mouse_cell_y, &start, &end);
+            found_selection = screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end);
             mode = EXTEND_LINE;
             break;
         default:
@@ -323,19 +324,39 @@ multi_click(Window *w, unsigned int count) {
     }
 }
 
+static inline double
+distance(double x1, double y1, double x2, double y2) {
+    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+}
+
 HANDLER(add_click) {
     ClickQueue *q = &w->click_queue;
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
     double now = monotonic();
 #define N(n) (q->clicks[q->length - n])
-    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers;
+    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
     q->length++;
+    double multi_click_allowed_radius = 1.2 * global_state.callback_os_window->fonts_data->cell_height;
     // Now dispatch the multi-click if any
-    if (q->length > 2 && N(1).at - N(3).at <= 2 * OPT(click_interval)) {
-        multi_click(w, 3);
-        q->length = 0;
-    } else if (q->length > 1 && N(1).at - N(2).at <= OPT(click_interval)) {
-        multi_click(w, 2);
+    if (q->length > 2) {
+        // possible triple-click
+        if (
+                N(1).at - N(3).at <= 2 * OPT(click_interval) &&
+                distance(N(1).x, N(1).y, N(3).x, N(3).y) <= multi_click_allowed_radius
+           ) {
+            multi_click(w, 3);
+            q->length = 0;
+        }
+    }
+    if (q->length > 1) {
+        // possible double-click
+        if (
+                N(1).at - N(2).at <= OPT(click_interval) &&
+                distance(N(1).x, N(1).y, N(2).x, N(2).y) <= multi_click_allowed_radius
+           ) {
+            multi_click(w, 2);
+        }
+
     }
 #undef N
 }
