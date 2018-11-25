@@ -101,7 +101,7 @@ def setup_colors(screen, opts):
 
 def text_sanitizer(as_ansi, add_wrap_markers):
     import re
-    pat = re.compile(r'\033[.+?m')
+    pat = re.compile(r'\033\[.+?m')
 
     def remove_wrap_markers(line):
         return line.replace('\r', '')
