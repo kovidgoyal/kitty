@@ -13,7 +13,7 @@ Changelog
 - Modify the kittens sub-system to allow creating custom kittens without any
   user interface. This is useful for creating more complex actions that can
   be bound to key presses in :file:`kitty.conf`. See
-  `https://sw.kovidgoyal.net/kitty/kittens/custom.html`_. (:iss:`870`)
+  doc:`kittens/custom`. (:iss:`870`)
 
 - Add a new ``nth_window`` action that can be used to go to the nth window and
   also previously active windows, using negative numbers. Similarly,
@@ -443,7 +443,7 @@ Changelog
 
 - Add a config option (:opt:`editor`) to set the EDITOR kitty uses (:iss:`580`)
 
-- Add a config option (:opt:`x11_hide_window_decorations`) to hide window
+- Add a config option (``x11_hide_window_decorations``) to hide window
   decorations under X11/Wayland (:iss:`607`)
 
 - Add an option to @set-window-title to make the title change non-permanent

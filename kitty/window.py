@@ -483,15 +483,26 @@ class Window:
         if pid is not None:
             return cwd_of_process(pid) or None
 
+    def pipe_data(self, text, has_wrap_markers=False):
+        text = text or ''
+        if has_wrap_markers:
+            text = text.replace('\r\n', '\n').replace('\r', '\n')
+        lines = text.count('\n')
+        input_line_number = (lines - (self.screen.lines - 1) - self.screen.scrolled_by)
+        return {
+            'input_line_number': input_line_number, 'scrolled_by': self.screen.scrolled_by,
+            'cursor_x': self.screen.cursor.x + 1, 'cursor_y': self.screen.cursor.y + 1,
+            'lines': self.screen.lines, 'columns': self.screen.columns,
+            'text': text
+        }
+
     # actions {{{
 
     def show_scrollback(self):
-        data = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
-        data = data.replace('\r\n', '\n').replace('\r', '\n')
-        lines = data.count('\n')
-        input_line_number = (lines - (self.screen.lines - 1) - self.screen.scrolled_by)
-        cmd = [x.replace('INPUT_LINE_NUMBER', str(input_line_number)) for x in self.opts.scrollback_pager]
-        get_boss().display_scrollback(self, data, cmd)
+        text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
+        data = self.pipe_data(text, has_wrap_markers=True)
+        cmd = [x.replace('INPUT_LINE_NUMBER', str(data['input_line_number'])) for x in self.opts.scrollback_pager]
+        get_boss().display_scrollback(self, data['text'], cmd)
 
     def paste(self, text):
         if text and not self.destroyed:

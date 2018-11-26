@@ -783,7 +783,7 @@ an arbitrary color, such as :code:`#12af59` or :code:`red`. WARNING: This option
 using a hack, as there is no proper Cocoa API for it. It sets the background
 color of the entire window and makes the titlebar transparent. As such it is
 incompatible with :opt:`background_opacity`. If you want to use both, you are
-probably better off just hiding the titlebar with :opt:`macos_hide_titlebar`.
+probably better off just hiding the titlebar with :opt:`hide_window_decorations`.
 '''))
 
 o('macos_option_as_alt', True, long_text=_('''
@@ -877,19 +877,9 @@ the following opens the scrollback buffer in less in an overlay window::
 
     map f1 pipe @ansi overlay less +G -R
 
-Placeholders available are: ``@text`` (which is plain text) and ``@ansi`` (which
-includes text styling escape codes). For only the current screen, use ``@screen``
-or ``@ansi_screen``. For the secondary screen, use ``@alternate`` and ``@ansi_alternate``.
-The secondary screen is the screen not currently displayed. For
-example if you run a fullscreen terminal application, the secondary screen will
-be the screen you return to when quitting the application. If you want access to the
-secondary screen scrollback, use ``@alternate_scrollback``. You can also use
-``none`` for no :file:`STDIN` input.
-
-To open in a new window, tab or new OS window, use ``window``, ``tab``, or
-``os_window`` respectively. You can also use ``none`` in which case the data
-will be piped into the program without creating any windows, useful if the
-program is a GUI program that creates its own windows. '''))
+For more details on piping screen and buffer contents to external programs,
+see :doc:`pipe`.
+'''))
 
 
 # }}}

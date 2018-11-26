@@ -48,25 +48,29 @@ def listen_on(spec):
     return s.fileno()
 
 
-def data_for_at(w, arg):
+def data_for_at(w, arg, add_wrap_markers=False):
+    def as_text(**kw):
+        kw['add_wrap_markers'] = add_wrap_markers
+        return w.as_text(**kw)
+
     if arg == '@selection':
         return w.text_for_selection()
     if arg == '@ansi':
-        return w.as_text(as_ansi=True, add_history=True)
+        return as_text(as_ansi=True, add_history=True)
     if arg == '@text':
-        return w.as_text(add_history=True)
+        return as_text(add_history=True)
     if arg == '@screen':
-        return w.as_text()
+        return as_text()
     if arg == '@ansi_screen':
-        return w.as_text(as_ansi=True)
+        return as_text(as_ansi=True)
     if arg == '@alternate':
-        return w.as_text(alternate_screen=True)
+        return as_text(alternate_screen=True)
     if arg == '@alternate_scrollback':
-        return w.as_text(alternate_screen=True, add_history=True)
+        return as_text(alternate_screen=True, add_history=True)
     if arg == '@ansi_alternate':
-        return w.as_text(as_ansi=True, alternate_screen=True)
+        return as_text(as_ansi=True, alternate_screen=True)
     if arg == '@ansi_alternate_scrollback':
-        return w.as_text(as_ansi=True, alternate_screen=True, add_history=True)
+        return as_text(as_ansi=True, alternate_screen=True, add_history=True)
 
 
 class DumpCommands:  # {{{
@@ -816,9 +820,19 @@ class Boss:
 
     def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
         w = window or self.active_window
+        env = None
         if stdin:
-            stdin = data_for_at(w, stdin)
+            add_wrap_markers = stdin.endswith('_wrap')
+            if add_wrap_markers:
+                stdin = stdin[:-len('_wrap')]
+            stdin = data_for_at(w, stdin, add_wrap_markers=add_wrap_markers)
             if stdin is not None:
+                pipe_data = w.pipe_data(stdin, has_wrap_markers=add_wrap_markers) if w else {}
+                if pipe_data:
+                    env = {
+                        'KITTY_PIPE_DATA':
+                        '{scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}'.format(**pipe_data)
+                    }
                 stdin = stdin.encode('utf-8')
         cmdline = []
         for arg in cmd:
@@ -828,7 +842,7 @@ class Boss:
                     continue
             cmdline.append(arg)
         overlay_for = w.id if as_overlay and w.overlay_for is None else None
-        return SpecialWindow(cmd, stdin, cwd_from=cwd_from, overlay_for=overlay_for)
+        return SpecialWindow(cmd, stdin, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
     def pipe(self, source, dest, exe, *args):
         cmd = [exe] + list(args)
