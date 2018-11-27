@@ -130,6 +130,11 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
             255, buf[idx] + int(255 * (1 - distance))
         )
 
+    # Ensure all space at bottom of cell is used
+    min_y = clamp_y(ceil(position + yfactor))
+    if min_y < cell_height - 1:
+        position += cell_height - 1 - min_y
+
     for x_exact in range(cell_width):
         y_exact = yfactor * cos(x_exact * xfactor) + position
         y = clamp_y(ceil(y_exact))
