@@ -173,9 +173,14 @@ static int get_exts(void) {
         num_exts_i = 0;
         glGetIntegerv(GL_NUM_EXTENSIONS, &num_exts_i);
         if (num_exts_i > 0) {
-            exts_i = (char **)realloc((void *)exts_i, (size_t)num_exts_i * (sizeof *exts_i));
-        }
-        if (exts_i == NULL) {
+            char **tmp = NULL;
+            tmp = (char **)realloc((void *)exts_i, (size_t)num_exts_i * (sizeof *exts_i));
+            if (tmp == NULL) {
+                free(exts_i);
+                return 0;
+            }
+            exts_i = tmp;
+        } else if (exts_i == NULL) {
             return 0;
         }
         for(index = 0; index < (unsigned)num_exts_i; index++) {
