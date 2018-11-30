@@ -49,6 +49,11 @@ def family_name_to_key(family):
 
 
 def find_best_match(family, bold=False, italic=False, monospaced=True):
+    # Use fc-match first, which handles multiple font families.
+    possibility = fc_match(family, bold, italic)
+    if possibility:
+        return possibility
+
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
 
@@ -58,7 +63,7 @@ def find_best_match(family, bold=False, italic=False, monospaced=True):
         monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
         return bold_score + italic_score, monospace_match
 
-    # First look for an exact match
+    # Then look for an exact match.
     for selector in ('ps_map', 'full_map', 'family_map'):
         candidates = font_map[selector].get(q)
         if candidates:
