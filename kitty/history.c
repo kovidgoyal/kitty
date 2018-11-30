@@ -73,7 +73,7 @@ pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     void *newbuf = PyMem_Realloc(ph->buffer, newsz * sizeof(Py_UCS4));
     if (!newbuf) return false;
     ph->buffer = newbuf;
-    ph->bufsize += newsz;
+    ph->bufsize = newsz;
     return true;
 }
 
