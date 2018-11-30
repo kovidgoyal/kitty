@@ -64,6 +64,7 @@ typedef struct {
     xkb_mod_mask_t          numLockMask;
     xkb_mod_index_t         unknownModifiers[256];
     _GLFWIBUSData           ibus;
+    double                  reload_time;
 
 #ifdef _GLFW_X11
     int32_t                 keyboard_device_id;

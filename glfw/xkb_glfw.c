@@ -261,6 +261,11 @@ load_compose_tables(_GLFWXKBData *xkb) {
 GLFWbool
 glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     const char *err;
+    double time = glfwGetTime();
+    /* skip back-to-back keymap reloads */
+    if (xkb->reload_time != 0.0 && time - xkb->reload_time < 2.0)
+        return GLFW_TRUE;
+    xkb->reload_time = time;
     release_keyboard_data(xkb);
     err = load_keymaps(xkb, map_str);
     if (err) {
