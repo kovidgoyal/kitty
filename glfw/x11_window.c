@@ -873,6 +873,7 @@ static const char* getSelectionString(Atom selection)
         Atom actualType;
         int actualFormat;
         unsigned long itemCount, bytesAfter;
+        double start = glfwGetTime();
         XEvent notification, dummy;
 
         XConvertSelection(_glfw.x11.display,
@@ -887,7 +888,10 @@ static const char* getSelectionString(Atom selection)
                                        SelectionNotify,
                                        &notification))
         {
-            waitForX11Event(-1);
+            double time = glfwGetTime();
+            if (time - start > 2)
+                return "";
+            waitForX11Event(2.0 - (time - start));
         }
 
         if (notification.xselection.property == None)
@@ -918,12 +922,16 @@ static const char* getSelectionString(Atom selection)
 
             for (;;)
             {
+                start = glfwGetTime();
                 while (!XCheckIfEvent(_glfw.x11.display,
                                       &dummy,
                                       isSelPropNewValueNotify,
                                       (XPointer) &notification))
                 {
-                    waitForX11Event(-1);
+                    double time = glfwGetTime();
+                    if (time - start > 2)
+                        return "";
+                    waitForX11Event(2.0 - (time - start));
                 }
 
                 XFree(data);
