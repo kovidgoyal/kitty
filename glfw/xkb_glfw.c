@@ -187,6 +187,10 @@ release_keyboard_data(_GLFWXKBData *xkb) {
     US(states, state, xkb_state_unref);
     US(states, clean_state, xkb_state_unref);
     US(states, default_state, xkb_state_unref);
+    if (xkb->compose_table) {
+        xkb_compose_table_unref(xkb->compose_table);
+        xkb->compose_table = NULL;
+    }
 #undef US
 #undef UK
 
@@ -241,18 +245,19 @@ load_states(_GLFWXKBData *xkb) {
 static void
 load_compose_tables(_GLFWXKBData *xkb) {
     /* Look up the preferred locale, falling back to "C" as default. */
-    struct xkb_compose_table* compose_table = NULL;
     const char *locale = getenv("LC_ALL");
     if (!locale) locale = getenv("LC_CTYPE");
     if (!locale) locale = getenv("LANG");
     if (!locale) locale = "C";
-    compose_table = xkb_compose_table_new_from_locale(xkb->context, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
-    if (!compose_table) {
+    xkb->compose_table = xkb_compose_table_new_from_locale(xkb->context, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
+    if (!xkb->compose_table) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose table for locale %s", locale);
         return;
     }
-    xkb->states.composeState = xkb_compose_state_new(compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
+    xkb->states.composeState = xkb_compose_state_new(xkb->compose_table, XKB_COMPOSE_STATE_NO_FLAGS);
     if (!xkb->states.composeState) {
+        xkb_compose_table_unref(xkb->compose_table);
+        xkb->compose_table = NULL;
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose state");
     }
     xkb_compose_table_unref(compose_table);
