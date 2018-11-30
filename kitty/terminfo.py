@@ -227,8 +227,8 @@ string_capabilities = {
     'rmso': r'\E[27m',
     # Exit underline mode
     'rmul': r'\E[24m',
-    # Reset string1
-    'rs1': r'\Ec',
+    # Reset string1 (empty OSC sequence to exit OSC/OTH modes, and regular reset)
+    'rs1': r'\E]\E\\\Ec',
     # Save cursor
     'sc': r'\E7',
     # Set background color
