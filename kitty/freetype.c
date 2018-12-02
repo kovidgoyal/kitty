@@ -302,6 +302,7 @@ typedef struct {
     FT_Pixel_Mode pixel_mode;
     bool needs_free;
     unsigned int factor, right_edge;
+    int bitmap_left, bitmap_top;
 } ProcessedBitmap;
 
 static inline void
@@ -330,7 +331,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
 }
 
 static inline void
-populate_processed_bitmap(FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf) {
+populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf) {
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
     if (copy_buf) {
@@ -341,6 +342,7 @@ populate_processed_bitmap(FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf
     } else ans->buf = bitmap->buffer;
     ans->start_x = 0; ans->width = bitmap->width;
     ans->pixel_mode = bitmap->pixel_mode;
+    ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
 }
 
 static inline bool
@@ -364,10 +366,10 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
             // We only have 2 levels
             for (unsigned int j = 0; j < bitmap.width; ++j) bitmap.buffer[i * stride + j] *= 255;
         }
-        populate_processed_bitmap(&bitmap, ans, true);
+        populate_processed_bitmap(self->face->glyph, &bitmap, ans, true);
         FT_Bitmap_Done(library, &bitmap);
     } else {
-        populate_processed_bitmap(&self->face->glyph->bitmap, ans, false);
+        populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
     }
 
     if (ans->width > max_width) {
@@ -480,16 +482,14 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
 }
 
 static inline void
-place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, FT_Glyph_Metrics *metrics, size_t baseline) {
+place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
     Region src = { .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x }, dest = { .bottom = cell_height, .right = cell_width };
 
     // Calculate column bounds
-    float bearing_x = (float)metrics->horiBearingX / 64.f;
-    bearing_x /= bm->factor;
-    int32_t xoff = (ssize_t)(x_offset + bearing_x);
+    int32_t xoff = (ssize_t)(x_offset + bm->bitmap_left);
     uint32_t extra;
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
@@ -500,9 +500,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     }
 
     // Calculate row bounds
-    float bearing_y = (float)metrics->horiBearingY / 64.f;
-    bearing_y /= bm->factor;
-    int32_t yoff = (ssize_t)(y_offset + bearing_y);
+    int32_t yoff = (ssize_t)(y_offset + bm->bitmap_top);
     if ((yoff > 0 && (size_t)yoff > baseline)) {
         dest.top = 0;
     } else {
@@ -538,7 +536,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, &self->face->glyph->metrics, baseline);
+        if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline);
         x += (float)positions[i].x_advance / 64.0f;
         free_processed_bitmap(&bm);
     }

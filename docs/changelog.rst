@@ -55,6 +55,9 @@ Changelog
 
 - macOS: Fix touch scrolling sensitivity low on retina screens (:iss:`1112`)
 
+- Linux: Fix incorrect rendering of some fonts when hinting is disabled at
+  small sizes (:iss:`1173`)
+
 - Linux: Fix match rules used as aliases in Fontconfig configuration not being
   respected (:iss:`1085`)
 
