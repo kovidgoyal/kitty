@@ -119,4 +119,4 @@ layout, by simply adding the line::
     boss.toggle_fullscreen()
 
 
-to the handle_result() function, above.
+to the ``handle_result()`` function, above.
