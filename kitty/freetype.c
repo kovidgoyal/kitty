@@ -460,6 +460,8 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
+    ans->bitmap_top = (float)self->face->glyph->bitmap_top / ans->factor;
+    ans->bitmap_left = (float)self->face->glyph->bitmap_left / ans->factor;
     detect_right_edge(ans);
     return true;
 }
