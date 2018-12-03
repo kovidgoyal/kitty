@@ -95,6 +95,8 @@ Changelog
 - When double or triple clicking ignore clicks if they are "far" from each
   other (:iss:`1093`)
 
+- Follow xterm's behavior for the menu key (:iss:`597`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 

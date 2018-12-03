@@ -17,11 +17,13 @@ def modify_key_bytes(keybytes, amt):
         return bytes(ans[:-1] + bytearray(b';' + amt + b'~'))
     if ans[1] == ord('O'):
         return bytes(ans[:1] + bytearray(b'[1;' + amt) + ans[-1:])
-    raise ValueError('Unknown key type')
+    raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
 
 
 def modify_complex_key(name, amt):
-    return modify_key_bytes(key_as_bytes(name), amt)
+    if not isinstance(name, bytes):
+        name = key_as_bytes(name)
+    return modify_key_bytes(name, amt)
 
 
 control_codes = {
@@ -39,6 +41,7 @@ shift_alt_codes[defines.GLFW_KEY_TAB] = key_as_bytes('kcbt')
 alt_mods = (defines.GLFW_MOD_ALT, defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT)
 ctrl_shift_mod = defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_CONTROL
 ctrl_alt_mod = defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL
+ctrl_alt_shift_mod = ctrl_alt_mod | defines.GLFW_MOD_SHIFT
 SHIFTED_KEYS = {
     defines.GLFW_KEY_TAB: key_as_bytes('kcbt'),
     defines.GLFW_KEY_HOME: key_as_bytes('kHOM'),
@@ -54,6 +57,7 @@ SHIFTED_KEYS = {
 control_alt_codes = {
     defines.GLFW_KEY_SPACE: b'\x1b\0',
 }
+control_alt_shift_codes = {}
 ASCII_C0_SHIFTED = {
     # ^@
     '2': b'\x00',
@@ -65,6 +69,20 @@ ASCII_C0_SHIFTED = {
     'SLASH': b'\x7f',
 }
 control_shift_keys = {getattr(defines, 'GLFW_KEY_' + k): v for k, v in ASCII_C0_SHIFTED.items()}
+
+
+def create_modifier_variants(keycode, terminfo_name_or_bytes, add_shifted_key=True):
+    kn = terminfo_name_or_bytes
+    smkx_key_map[keycode] = kn if isinstance(kn, bytes) else key_as_bytes(kn)
+    if add_shifted_key:
+        SHIFTED_KEYS[keycode] = modify_complex_key(kn, 2)
+    alt_codes[keycode] = modify_complex_key(kn, 3)
+    shift_alt_codes[keycode] = modify_complex_key(kn, 4)
+    control_codes[keycode] = modify_complex_key(kn, 5)
+    control_shift_keys[keycode] = modify_complex_key(kn, 6)
+    control_alt_codes[keycode] = modify_complex_key(kn, 7)
+    control_alt_shift_codes[keycode] = modify_complex_key(kn, 8)
+
 
 for kf, kn in {
     defines.GLFW_KEY_UP: 'kcuu1',
@@ -78,25 +96,16 @@ for kf, kn in {
     defines.GLFW_KEY_PAGE_UP: 'kpp',
     defines.GLFW_KEY_PAGE_DOWN: 'knp',
 }.items():
-    smkx_key_map[kf] = key_as_bytes(kn)
-    alt_codes[kf] = modify_complex_key(kn, 3)
-    shift_alt_codes[kf] = modify_complex_key(kn, 4)
-    control_codes[kf] = modify_complex_key(kn, 5)
-    control_shift_keys[kf] = modify_complex_key(kn, 6)
-    control_alt_codes[kf] = modify_complex_key(kn, 7)
+    create_modifier_variants(kf, kn, add_shifted_key=False)
 for f in range(1, 13):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
     kn = 'kf{}'.format(f)
-    smkx_key_map[kf] = key_as_bytes(kn)
-    SHIFTED_KEYS[kf] = modify_complex_key(kn, 2)
-    alt_codes[kf] = modify_complex_key(kn, 3)
-    shift_alt_codes[kf] = modify_complex_key(kn, 4)
-    control_codes[kf] = modify_complex_key(kn, 5)
-    control_alt_codes[kf] = modify_complex_key(kn, 7)
+    create_modifier_variants(kf, kn)
 for f in range(13, 26):
     kf = getattr(defines, 'GLFW_KEY_F{}'.format(f))
     kn = 'kf{}'.format(f)
     smkx_key_map[kf] = key_as_bytes(kn)
+create_modifier_variants(defines.GLFW_KEY_MENU, b'\x1b[29~')
 f = {k: k for k in '0123456789'}
 f.update({
     'COMMA': ',',
@@ -252,6 +261,8 @@ def key_to_bytes(key, smkx, extended, mods, action):
             data.append(0x1b), data.extend(control_codes[key])
         else:
             data.extend(control_alt_codes[key])
+    elif mods == ctrl_alt_shift_mod and key in control_alt_shift_codes:
+        data.extend(control_alt_shift_codes[key])
     else:
         key_map = cursor_key_mode_map[smkx]
         x = key_map.get(key)
