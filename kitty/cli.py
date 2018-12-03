@@ -275,7 +275,10 @@ def print_help_for_seq(seq, usage, message, appname):
     if print_help_for_seq.allow_pager and sys.stdout.isatty():
         import subprocess
         p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
-        p.communicate(text.encode('utf-8'))
+        try:
+            p.communicate(text.encode('utf-8'))
+        except KeyboardInterrupt:
+            raise SystemExit(1)
         raise SystemExit(p.wait())
     else:
         print(text)
