@@ -538,12 +538,14 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
-        if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline);
+        if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
+            place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline);
+        }
         x += (float)positions[i].x_advance / 64.0f;
         free_processed_bitmap(&bm);
     }
 
-    if (center_glyph) {
+    if (center_glyph && num_glyphs) {
         unsigned int right_edge = (unsigned int)x, delta;
         // x_advance is wrong for colored bitmaps that have been downsampled
         if (*was_colored) right_edge = num_glyphs == 1 ? bm.right_edge : canvas_width;
