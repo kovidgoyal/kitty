@@ -242,6 +242,9 @@ class TestDataTypes(BaseTest):
         self.ae(l0.url_end_at(0), len(l0) - 1)
         l2 = create("http://-abcd] ")
         self.ae(l2.url_end_at(0), len(l2) - 3)
+        l3 = create("http://ab.de           ")
+        self.ae(l3.url_start_at(4), 0)
+        self.ae(l3.url_start_at(5), 0)
 
         def lspace_test(n, scheme='http'):
             lf = create(' ' * n + scheme + '://acme.com')

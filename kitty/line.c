@@ -62,6 +62,13 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     do {
         char_type ch = self->cpu_cells[pos].ch;
         if (!is_url_char(ch)) return false;
+        if (pos == x) {
+            if (ch == ':') {
+                if (pos + 2 < self->xnum && self->cpu_cells[pos+1].ch == '/' && self->cpu_cells[pos + 2].ch == '/') state = SECOND_SLASH;
+            } else if (ch == '/') {
+                if (pos + 1 < self->xnum && self->cpu_cells[pos+1].ch == '/') state = FIRST_SLASH;
+            }
+        }
         switch(state) {
             case ANY:
                 if (ch == '/') state = FIRST_SLASH;

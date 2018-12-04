@@ -97,6 +97,9 @@ Changelog
 
 - Follow xterm's behavior for the menu key (:iss:`597`)
 
+- Fix hover detection of URLs not working when hovering over the first colon
+  and slash characters in short URLs (:iss:`1201`)
+
 0.12.3 [2018-09-29]
 ------------------------------
 
