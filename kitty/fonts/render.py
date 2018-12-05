@@ -5,7 +5,7 @@
 import ctypes
 import sys
 from functools import partial
-from math import ceil, pi, cos, sqrt
+from math import ceil, pi, cos, floor
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -115,33 +115,30 @@ def add_dline(buf, cell_width, position, thickness, cell_height):
 
 
 def add_curl(buf, cell_width, position, thickness, cell_height):
-    xfactor = 2.0 * pi / cell_width
-    yfactor = max(thickness, 2)
+    max_x, max_y = cell_width - 1, cell_height - 1
+    xfactor = 2.0 * pi / max_x
+    half_height = max(thickness // 2, 1)
 
-    def clamp_y(y):
-        return max(0, min(int(y), cell_height - 1))
-
-    def clamp_x(x):
-        return max(0, min(int(x), cell_width - 1))
-
-    def add_intensity(x, y, distance):
+    def add_intensity(x, y, val):
+        y += position
+        y = min(y, max_y)
         idx = cell_width * y + x
-        buf[idx] = min(
-            255, buf[idx] + int(255 * (1 - distance))
-        )
+        buf[idx] = min(255, buf[idx] + val)
 
     # Ensure all space at bottom of cell is used
-    min_y = clamp_y(ceil(position + yfactor))
-    if min_y < cell_height - 1:
-        position += cell_height - 1 - min_y
+    if position + half_height < max_y:
+        position += max_y - (position + half_height)
+    if position + half_height > max_y:
+        position -= position + half_height - max_y
 
-    for x_exact in range(cell_width):
-        y_exact = yfactor * cos(x_exact * xfactor) + position
-        y = clamp_y(ceil(y_exact))
-        x_before, x_after = map(clamp_x, (x_exact - 1, x_exact + 1))
-        for x in {x_before, x_exact, x_after}:
-            dist = sqrt((x - x_exact)**2 + (y - y_exact)**2) / 2
-            add_intensity(x, y, dist)
+    # Use the Wu antialias algorithm to draw the curve
+    # cosine waves always have slope <= 1 so are never steep
+    for x in range(cell_width):
+        y = half_height * cos(x * xfactor)
+        y1, y2 = floor(y), ceil(y)
+        i1 = int(255 * abs(y - y1))
+        add_intensity(x, y1, 255 - i1)
+        add_intensity(x, y2, i1)
 
 
 def render_special(
