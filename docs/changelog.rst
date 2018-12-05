@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.13.0 [future]
+0.13.0 [2018-12-05]
 ------------------------------
 
 - Add an option :opt:`scrollback_pager_history_size` to tell kitty to store
@@ -41,7 +41,7 @@ Changelog
 
 - Fix incorrect key repeat rate on wayland (:pull:`1055`)
 
-- macOS: Fix drag and drop of files not working on mojave (:iss:`1058`)
+- macOS: Fix drag and drop of files not working on Mojave (:iss:`1058`)
 
 - macOS: Fix IME input for East Asian languages (:iss:`910`)
 
