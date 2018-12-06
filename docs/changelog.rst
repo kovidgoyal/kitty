@@ -9,6 +9,10 @@ Changelog
 - Fix passing input via the pipe action to a program without a window not
   working.
 
+- Linux: Fix a regression in the previous release that caused automatic
+  selection of fonts when using aliases such as "monospace" to not work
+  (:iss:`1209`)
+
 0.13.0 [2018-12-05]
 ------------------------------
 
