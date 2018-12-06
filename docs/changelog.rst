@@ -13,6 +13,9 @@ Changelog
   selection of bold/italic fonts when using aliases such as "monospace" to not
   work (:iss:`1209`)
 
+- Fix resizing window smaller and then restoring causing some wrapped lines to not
+  be properly unwrapped (:iss:`1206`)
+
 0.13.0 [2018-12-05]
 ------------------------------
 

@@ -16,7 +16,7 @@
 #endif
 
 #ifndef init_dest_line
-#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]);
+#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->continued = dest->line_attrs[dest_y];
 #endif
 
 #ifndef first_dest_line
