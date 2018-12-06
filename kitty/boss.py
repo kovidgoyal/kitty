@@ -818,7 +818,7 @@ class Boss:
 
     prev_tab = previous_tab
 
-    def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
+    def process_stdin_source(self, window=None, stdin=None):
         w = window or self.active_window
         env = None
         if stdin:
@@ -834,6 +834,11 @@ class Boss:
                         '{scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}'.format(**pipe_data)
                     }
                 stdin = stdin.encode('utf-8')
+        return env, stdin
+
+    def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
+        w = window or self.active_window
+        env, stdin = self.process_stdin_source(w, stdin)
         cmdline = []
         for arg in cmd:
             if arg == '@selection':
@@ -865,7 +870,12 @@ class Boss:
             self._new_os_window(create_window(), cwd_from=cwd_from)
         else:
             import subprocess
-            subprocess.Popen(cmd)
+            env, stdin = self.process_stdin_source(stdin=source, window=window)
+            if stdin:
+                p = subprocess.Popen(cmd, env=env, stdin=subprocess.PIPE)
+                p.communicate(stdin)
+            else:
+                subprocess.Popen(cmd)
 
     def args_to_special_window(self, args, cwd_from=None):
         args = list(args)

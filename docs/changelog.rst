@@ -3,6 +3,12 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.13.1 [2018-12-05]
+------------------------------
+
+- Fix passing input via the pipe action to a program without a window not
+  working.
+
 0.13.0 [2018-12-05]
 ------------------------------
 
