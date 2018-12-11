@@ -962,4 +962,7 @@ class Boss:
 
     def safe_delete_temp_file(self, path):
         if is_path_in_temp_dir(path):
-            os.remove(path)
+            try:
+                os.remove(path)
+            except FileNotFoundError:
+                pass
