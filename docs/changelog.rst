@@ -3,6 +3,12 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.13.2 [future]
+------------------------------
+
+- Fix setting background_opacity causing window margins/padding to be slightly
+  different shade from background (:iss:`1221`)
+
 0.13.1 [2018-12-06]
 ------------------------------
 

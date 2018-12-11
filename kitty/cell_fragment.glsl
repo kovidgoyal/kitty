@@ -101,7 +101,7 @@ void main() {
 #else
     // SIMPLE
 #ifdef TRANSPARENT
-    final_color = alpha_blend_premul(fg.rgb, fg.a, background * bg_alpha, bg_alpha);
+    final_color = alpha_blend_premul(fg.rgb, fg.a, background, bg_alpha);
     final_color = vec4(final_color.rgb, final_color.a);
 #else
     // since background alpha is 1.0, it is effectively pre-multiplied
