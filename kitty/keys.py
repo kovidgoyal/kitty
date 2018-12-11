@@ -6,18 +6,8 @@ import string
 
 from . import fast_data_types as defines
 from .key_encoding import KEY_MAP
-from .terminfo import key_as_bytes
+from .terminfo import key_as_bytes, modify_key_bytes
 from .utils import base64_encode
-
-
-def modify_key_bytes(keybytes, amt):
-    ans = bytearray(keybytes)
-    amt = str(amt).encode('ascii')
-    if ans[-1] == ord('~'):
-        return bytes(ans[:-1] + bytearray(b';' + amt + b'~'))
-    if ans[1] == ord('O'):
-        return bytes(ans[:1] + bytearray(b'[1;' + amt) + ans[-1:])
-    raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
 
 
 def modify_complex_key(name, amt):

@@ -6,6 +6,22 @@ import re
 from binascii import hexlify, unhexlify
 
 
+def modify_key_bytes(keybytes, amt):
+    if amt == 0:
+        return keybytes
+    ans = bytearray(keybytes)
+    amt = str(amt).encode('ascii')
+    if ans[-1] == ord('~'):
+        return bytes(ans[:-1] + bytearray(b';' + amt + b'~'))
+    if ans[1] == ord('O'):
+        return bytes(ans[:1] + bytearray(b'[1;' + amt) + ans[-1:])
+    raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
+
+
+def encode_keystring(keybytes):
+    return keybytes.decode('ascii').replace('\033', r'\E')
+
+
 names = 'xterm-kitty', 'KovIdTTY'
 
 termcap_aliases = {
@@ -156,54 +172,8 @@ string_capabilities = {
     # 'invis': r'\E[8m',
     # Backspace
     'kbs': r'\177',
-    # Left
-    'kcub1': r'\EOD',
-    # Down
-    'kcud1': r'\EOB',
-    # Right
-    'kcuf1': r'\EOC',
-    # Up
-    'kcuu1': r'\EOA',
-    # Function keys
-    'kf1': r'\EOP',
-    'kf2': r'\EOQ',
-    'kf3': r'\EOR',
-    'kf4': r'\EOS',
-    'kf5': r'\E[15~',
-    'kf6': r'\E[17~',
-    'kf7': r'\E[18~',
-    'kf8': r'\E[19~',
-    'kf9': r'\E[20~',
-    'kf10': r'\E[21~',
-    'kf11': r'\E[23~',
-    'kf12': r'\E[24~',
-    'kf13': r'\E[1;2P',
-    'kf14': r'\E[1;2Q',
-    'kf15': r'\E[1;2R',
-    'kf16': r'\E[1;2S',
-    'kf17': r'\E[15;2~',
-    'kf18': r'\E[17;2~',
-    'kf19': r'\E[18;2~',
-    'kf20': r'\E[19;2~',
-    'kf21': r'\E[20;2~',
-    'kf22': r'\E[21;2~',
-    'kf23': r'\E[23;2~',
-    'kf24': r'\E[24;2~',
-    'kf25': r'\E[1;5P',
-    # Home
-    'khome': r'\EOH',
-    # End
-    'kend': r'\EOF',
-    # Insert character key
-    'kich1': r'\E[2~',
-    # Delete character key
-    'kdch1': r'\E[3~',
     # Mouse event has occurred
     'kmous': r'\E[M',
-    # Page down
-    'knp': r'\E[6~',
-    # Page up
-    'kpp': r'\E[5~',
     # Scroll backwards (reverse index)
     'kri': r'\E[1;2A',
     # scroll forwards (index)
@@ -270,11 +240,6 @@ string_capabilities = {
     # Select alternate charset
     'smacs': r'\E(0',
     'rmacs': r'\E(B',
-    # Shifted keys
-    'kRIT': r'\E[1;2C',
-    'kLFT': r'\E[1;2D',
-    'kEND': r'\E[1;2F',
-    'kHOM': r'\E[1;2H',
     # Special keys
     'khlp': r'',
     'kund': r'',
@@ -297,6 +262,27 @@ string_capabilities = {
     # # reset2
     # 'rs2': r'\E[!p\E[?3;4l\E[4l\E>',
 }
+
+string_capabilities.update({
+    'kf{}'.format(offset + n):
+        encode_keystring(modify_key_bytes(b'\033' + value, mod))
+    for offset, mod in {0: 0, 12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
+    for n, value in zip(range(1, 13),
+                        b'OP OQ OR OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
+    if offset + n < 64
+})
+
+string_capabilities.update({
+    name.format(unmod=unmod, key=key):
+        encode_keystring(modify_key_bytes(b'\033' + value, mod))
+    for unmod, key, value in zip(
+        'cuu1 cud1 cuf1 cub1 end home ich1 dch1 pp  np'.split(),
+        'UP   DN   RIT  LFT  END HOM  IC   DC   PRV NXT'.split(),
+        b'OA  OB   OC   OD   OF  OH   [2~  [3~  [5~ [6~'.split())
+    for name, mod in {
+        'k{unmod}': 0, 'k{key}': 2, 'k{key}3': 3, 'k{key}4': 4,
+        'k{key}5': 5, 'k{key}6': 6, 'k{key}7': 7}.items()
+})
 
 termcap_aliases.update({
     'ac': 'acsc',
@@ -346,31 +332,6 @@ termcap_aliases.update({
     'kd': 'kcud1',
     'kr': 'kcuf1',
     'ku': 'kcuu1',
-    'k1': 'kf1',
-    'k2': 'kf2',
-    'k3': 'kf3',
-    'k4': 'kf4',
-    'k5': 'kf5',
-    'k6': 'kf6',
-    'k7': 'kf7',
-    'k8': 'kf8',
-    'k9': 'kf9',
-    'k;': 'kf10',
-    'F1': 'kf11',
-    'F2': 'kf12',
-    'F3': 'kf13',
-    'F4': 'kf14',
-    'F5': 'kf15',
-    'F6': 'kf16',
-    'F7': 'kf17',
-    'F8': 'kf18',
-    'F9': 'kf19',
-    'FA': 'kf20',
-    'FB': 'kf21',
-    'FC': 'kf22',
-    'FD': 'kf23',
-    'FE': 'kf24',
-    'FF': 'kf25',
     'kh': 'khome',
     '@7': 'kend',
     'kI': 'kich1',
@@ -410,8 +371,12 @@ termcap_aliases.update({
     'ks': 'smkx',
     'ke': 'rmkx',
     '#2': 'kHOM',
+    '#3': 'kIC',
     '#4': 'kLFT',
+    '*4': 'kDC',
     '*7': 'kEND',
+    '%c': 'kNXT',
+    '%e': 'kPRV',
     '%i': 'kRIT',
     '%1': 'khlp',
     '&8': 'kund',
@@ -433,10 +398,22 @@ termcap_aliases.update({
     # 'r2': 'rs2',
 })
 
+termcap_aliases.update({
+    tc: 'kf{}'.format(n)
+    for n, tc in enumerate(
+        'k1 k2 k3 k4 k5 k6 k7 k8 k9 k; F1 F2 F3 F4 F5 F6 F7 F8 F9 FA '
+        'FB FC FD FE FF FG FH FI FJ FK FL FM FN FO FP FQ FR FS FT FU '
+        'FV FW FX FY FZ Fa Fb Fc Fd Fe Ff Fg Fh Fi Fj Fk Fl Fm Fn Fo '
+        'Fp Fq Fr'.split(), 1)})
+
 queryable_capabilities = numeric_capabilities.copy()
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
-no_termcap_for = frozenset('Su Tc setrgbf setrgbb fullkbd'.split())
+no_termcap_for = frozenset(
+    'Su Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
+        'k{}{}'.format(key, mod)
+        for key in 'UP DN RIT LFT END HOM IC DC PRV NXT'.split()
+        for mod in range(3, 8)])
 if extra - no_termcap_for:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
 del extra
