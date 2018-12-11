@@ -368,7 +368,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             if (fd == -1) ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
             img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
             close(fd);
-            if (tt == 't') unlink(fname);
+            if (tt == 't') { call_boss(safe_delete_temp_file, "s", fname); }
             else if (tt == 's') shm_unlink(fname);
             break;
         default:

@@ -201,7 +201,11 @@ Value of `t`          Meaning
 ==================    ============
 ``d``                 Direct (the data is transmitted within the escape code itself)
 ``f``                 A simple file
-``t``                 A temporary file, the terminal emulator will delete the file after reading the pixel data
+``t``                 A temporary file, the terminal emulator will delete the file after reading the pixel data. For security reasons
+                      the terminal emulator should only delete the file if it
+                      is in a known temporary directory, such as :file:`/tmp`,
+                      :file:`/dev/shm`, :file:`TMPDIR env var if present` and any platform
+                      specific temporary directories.
 ``s``                 A `POSIX shared memory object <http://man7.org/linux/man-pages/man7/shm_overview.7.html>`_.
                       The terminal emulator will delete it after reading the pixel data
 ==================    ============

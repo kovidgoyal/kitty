@@ -432,3 +432,20 @@ def get_editor():
         ans = shlex.split(ans)
         get_editor.ans = ans
     return ans
+
+
+def is_path_in_temp_dir(path):
+    if not path:
+        return False
+
+    def abspath(x):
+        if x:
+            return os.path.abspath(os.path.realpath(x))
+
+    import tempfile
+    path = abspath(path)
+    candidates = frozenset(map(abspath, ('/tmp', '/dev/shm', os.environ.get('TMPDIR', None), tempfile.gettempdir())))
+    for q in candidates:
+        if q and path.startswith(q):
+            return True
+    return False

@@ -2,13 +2,16 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import tempfile
+
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
     REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
-    parse_input_from_terminal, wcswidth, wcwidth, truncate_point_for_length
+    parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth
 )
 from kitty.rgb import to_color
-from kitty.utils import sanitize_title
+from kitty.utils import is_path_in_temp_dir, sanitize_title
 
 from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -383,6 +386,12 @@ class TestDataTypes(BaseTest):
         tp('a\033[', 'mb', text='a b', csi='m')
         tp('a\033', '_', 'x\033', '\\b', text='a b', apc='x')
         tp('a\033_', 'x', '\033', '\\', 'b', text='a b', apc='x')
+
+        for prefix in ('/tmp', tempfile.gettempdir()):
+            for path in ('a.png', 'x/b.jpg', 'y/../c.jpg'):
+                self.assertTrue(is_path_in_temp_dir(os.path.join(prefix, path)))
+        for path in ('/home/xy/d.png', '/tmp/../home/x.jpg'):
+            self.assertFalse(is_path_in_temp_dir(os.path.join(path)))
 
     def test_color_profile(self):
         c = ColorProfile()
