@@ -68,7 +68,12 @@ function, telling kitty what kind of input your kitten would like. For example:
 
 .. code-block:: py
 
-   def handle_result(...):
+   # in main, STDIN is for the kitten process
+   def main(args):
+      return sys.stdin.read()
+
+   # in handle_result, STDIN is for the kitten runner (probably a TTY)
+   def handle_result(args, stdin_data, target_window_id, boss):
       pass
 
    handle_result.type_of_input = 'text'
