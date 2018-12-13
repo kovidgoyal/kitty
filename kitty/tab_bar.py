@@ -16,26 +16,28 @@ from .window import calculate_gl_geometry
 from .rgb import alpha_blend, color_from_int
 
 TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
-DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg alpha active_bg inactive_bg default_bg')
+DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg alpha active_bg inactive_bg default_bg title_index')
 
 
 def as_rgb(x):
     return (x << 8) | 2
 
 
-def draw_title(draw_data, screen, tab):
+def draw_title(draw_data, screen, tab, index):
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
+    if draw_data.title_index:
+        screen.draw('%d:' % index)
     screen.draw(tab.title)
 
 
-def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
+def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, index):
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
-    draw_title(draw_data, screen, tab)
+    draw_title(draw_data, screen, tab, index)
     if draw_data.trailing_spaces:
         screen.draw(' ' * draw_data.trailing_spaces)
     extra = screen.cursor.x - before - max_title_length
@@ -49,17 +51,17 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length):
     return end
 
 
-def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length):
+def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index):
     tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
         screen.cursor.bg = bg
         screen.draw(' ')
-    draw_title(draw_data, screen, tab)
+    draw_title(draw_data, screen, tab, index)
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
         screen.cursor.x = before
-        draw_title(draw_data, screen, tab)
+        draw_title(draw_data, screen, tab, index)
         extra = screen.cursor.x - before - max_title_length
         if extra > 0:
             screen.cursor.x -= extra + 1
@@ -112,7 +114,7 @@ class TabBar:
         self.draw_data = DrawData(
             self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg,
             self.opts.tab_fade, self.opts.active_tab_background, self.opts.inactive_tab_background,
-            self.opts.background
+            self.opts.background, self.opts.tab_title_index
         )
         self.draw_func = draw_tab_with_separator if self.opts.tab_bar_style == 'separator' else draw_tab_with_fade
 
@@ -162,12 +164,12 @@ class TabBar:
         cr = []
         last_tab = data[-1] if data else None
 
-        for t in data:
+        for i, t in enumerate(data):
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            end = self.draw_func(self.draw_data, s, t, before, max_title_length)
+            end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1)
             cr.append((before, end))
             if s.cursor.x > s.columns - max_title_length and t is not last_tab:
                 s.draw('…')
