@@ -11,7 +11,7 @@ from .fast_data_types import (
     viewport_for_window
 )
 from .layout import Rect
-from .utils import color_as_int
+from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 from .rgb import alpha_blend, color_from_int
 
@@ -31,7 +31,14 @@ def draw_title(draw_data, screen, tab, index):
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
-    screen.draw(draw_data.title_template.format(title=tab.title, index=index))
+    try:
+        title = draw_data.title_template.format(title=tab.title, index=index)
+    except Exception as e:
+        if not hasattr(draw_title, 'template_failure_reported'):
+            draw_title.template_failure_reported = True
+            log_error('Invalid tab title template: "{}" with error: {}'.format(draw_data.title_template, e))
+        title = tab.title
+    screen.draw(title)
 
 
 def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, index):
