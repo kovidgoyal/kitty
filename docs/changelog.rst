@@ -6,7 +6,11 @@ Changelog
 0.13.2 [future]
 ------------------------------
 
-- Fix setting background_opacity causing window margins/padding to be slightly
+- Add a new option :opt:`tab_title_template` to control how tab titles
+  are formatted. In particular the template can be used to display
+  the tab number next to the title (:iss:`1223`)
+
+- Fix setting :opt:`background_opacity` causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
 - Linux: Handle keyboards with a "+" key (:iss:`1224`)

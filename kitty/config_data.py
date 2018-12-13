@@ -608,6 +608,13 @@ entries to this list.
 o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separator, long_text=_('''
 The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
 
+o('tab_title_template', '{title}', long_text=_('''
+A template to render the tab title. The default just renders
+the title. If you wish to include the tab-index as well,
+use something like: :code:`{index}: {title}`. Useful
+if you have shortcuts mapped for :code:`goto_tab N`.
+'''))
+
 o('active_tab_foreground', '#000', option_type=to_color, long_text=_('''
 Tab bar colors and styles'''))
 o('active_tab_background', '#eee', option_type=to_color)
