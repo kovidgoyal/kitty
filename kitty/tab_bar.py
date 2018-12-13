@@ -16,7 +16,9 @@ from .window import calculate_gl_geometry
 from .rgb import alpha_blend, color_from_int
 
 TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
-DrawData = namedtuple('DrawData', 'leading_spaces sep trailing_spaces bell_on_tab bell_fg alpha active_bg inactive_bg default_bg title_template')
+DrawData = namedtuple(
+    'DrawData', 'leading_spaces sep trailing_spaces bell_on_tab'
+    ' bell_fg alpha active_bg inactive_bg default_bg title_template')
 
 
 def as_rgb(x):
