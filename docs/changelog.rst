@@ -9,6 +9,8 @@ Changelog
 - Fix setting background_opacity causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
+- Linux: Handle keyboards with a "+" key (:iss:`1224`)
+
 0.13.1 [2018-12-06]
 ------------------------------
 

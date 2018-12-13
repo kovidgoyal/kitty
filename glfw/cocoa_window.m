@@ -312,6 +312,7 @@ static int translateKey(unsigned int key, GLFWbool apply_keymap)
                 K(';', SEMICOLON);
                 K('[', LEFT_BRACKET);
                 K(']', RIGHT_BRACKET);
+                K('+', PLUS);
                 K('`', GRAVE_ACCENT);
                 K('\\', BACKSLASH);
 #undef K
@@ -2218,6 +2219,7 @@ GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, unsigned sho
         K(';', SEMICOLON);
         K('[', LEFT_BRACKET);
         K(']', RIGHT_BRACKET);
+        K('+', PLUS);
         K('`', GRAVE_ACCENT);
         K('\\', BACKSLASH);
 

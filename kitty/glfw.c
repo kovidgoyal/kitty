@@ -1116,6 +1116,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_KEY_GRAVE_ACCENT);
     ADDC(GLFW_KEY_WORLD_1);
     ADDC(GLFW_KEY_WORLD_2);
+    ADDC(GLFW_KEY_PLUS);
 
 // --- Function keys -----------------------------------------------------------
     ADDC(GLFW_KEY_ESCAPE);

@@ -127,7 +127,8 @@ ENCODING = {
     'WORLD 2': 'x',
     'X': 'p',
     'Y': 'q',
-    'Z': 'r'
+    'Z': 'r',
+    'PLUS': 'Bi'
 }
 KEY_MAP = {
     32: 'A',
@@ -180,6 +181,7 @@ KEY_MAP = {
     96: 'v',
     161: 'w',
     162: 'x',
+    163: 'Bi',
     256: 'y',
     257: 'z',
     258: '0',
@@ -250,9 +252,7 @@ KEY_MAP = {
     346: 'Bg',
     347: 'Bh'
 }
-
 # END_ENCODING }}}
-
 
 text_keys = string.ascii_uppercase + string.ascii_lowercase + string.digits + '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
 
@@ -324,28 +324,35 @@ mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
 key_rmap = {}
 g = globals()
 config_key_map = {}
-config_mod_map = {'SHIFT': SHIFT, 'ALT': ALT, 'OPTION': ALT, '⌥': ALT, '⌘': SUPER, 'CMD': SUPER, 'SUPER': SUPER, 'CTRL': CTRL, 'CONTROL': CTRL}
+config_mod_map = {
+    'SHIFT': SHIFT,
+    'ALT': ALT,
+    'OPTION': ALT,
+    '⌥': ALT,
+    '⌘': SUPER,
+    'CMD': SUPER,
+    'SUPER': SUPER,
+    'CTRL': CTRL,
+    'CONTROL': CTRL
+}
 for key_name, enc in ENCODING.items():
     key_name = key_name.replace(' ', '_')
     g[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
 config_key_map.update({
-        '`': g['GRAVE_ACCENT'],
-        '-': g['MINUS'],
-        '=': g['EQUAL'],
-
-        '[': g['LEFT_BRACKET'],
-        ']': g['RIGHT_BRACKET'],
-        '\\': g['BACKSLASH'],
-
-        ';': g['SEMICOLON'],
-        "'": g['APOSTROPHE'],
-
-        ',': g['COMMA'],
-        '.': g['PERIOD'],
-        '/': g['SLASH'],
-
-        'ESC': g['ESCAPE'],
+    '`': g['GRAVE_ACCENT'],
+    '-': g['MINUS'],
+    '=': g['EQUAL'],
+    '[': g['LEFT_BRACKET'],
+    ']': g['RIGHT_BRACKET'],
+    '\\': g['BACKSLASH'],
+    ';': g['SEMICOLON'],
+    "'": g['APOSTROPHE'],
+    ',': g['COMMA'],
+    '.': g['PERIOD'],
+    '/': g['SLASH'],
+    'ESC': g['ESCAPE'],
+    '+': g['PLUS'],
 })
 
 enter_key = KeyEvent(PRESS, 0, g['ENTER'])
