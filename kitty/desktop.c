@@ -31,10 +31,15 @@ static PyObject*
 init_x11_startup_notification(PyObject UNUSED *self, PyObject *args) {
     static bool done = false;
     static const char* libname = "libstartup-notification-1.so";
+    // some installs are missing the .so symlink, so try the full name
+    static const char* libname2 = "libstartup-notification-1.so.0";
+    static const char* libname3 = "libstartup-notification-1.so.0.0.0";
     if (!done) {
         done = true;
 
         libsn_handle = dlopen(libname, RTLD_LAZY);
+        if (libsn_handle == NULL) libsn_handle = dlopen(libname2, RTLD_LAZY);
+        if (libsn_handle == NULL) libsn_handle = dlopen(libname3, RTLD_LAZY);
         if (libsn_handle == NULL) {
             PyErr_Format(PyExc_OSError, "Failed to load %s with error: %s", libname, dlerror());
             return NULL;
