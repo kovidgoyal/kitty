@@ -219,9 +219,9 @@ static struct CellUniformData cell_uniform_data = {0, .prev_inactive_text_alpha=
 static inline void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
 
-        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
+        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
 
         GLuint xnum, ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w;
@@ -260,8 +260,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
+    rd->cursor_text_color = COLOR(cursor_text_color);
 #undef COLOR
     rd->cursor_color = cursor->color; rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
+    rd->cursor_text_uses_bg = cursor_text_as_bg(screen->color_profile);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }

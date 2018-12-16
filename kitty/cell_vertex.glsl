@@ -5,13 +5,12 @@
 #define REVERSE_SHIFT {REVERSE_SHIFT}
 #define STRIKE_SHIFT {STRIKE_SHIFT}
 #define DIM_SHIFT {DIM_SHIFT}
-#define CURSOR_TEXT_COLOR {CURSOR_TEXT_COLOR}
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, url_color, url_style, inverted;
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
 
     uint xnum, ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w;
@@ -182,8 +181,9 @@ void main() {
 
     // Cursor
     cursor_color_vec = vec4(color_to_vec(cursor_color), 1.0);
-    foreground = choose_color(cell_has_block_cursor, CURSOR_TEXT_COLOR, foreground);
-    decoration_fg = choose_color(cell_has_block_cursor, CURSOR_TEXT_COLOR, decoration_fg);
+    vec3 final_cursor_text_color = mix(color_to_vec(cursor_text_color), bg, cursor_text_uses_bg);
+    foreground = choose_color(cell_has_block_cursor, final_cursor_text_color, foreground);
+    decoration_fg = choose_color(cell_has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(pos, cursor_fg_sprite_idx * uint(cell_has_cursor), ZERO, ZERO);
 #endif
     // }}}

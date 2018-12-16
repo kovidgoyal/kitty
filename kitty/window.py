@@ -56,14 +56,13 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs(semi_transparent=0, cursor_text_color=None):
+def load_shader_programs(semi_transparent=0):
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     v, f = load_shaders('cell')
 
     def color_as_vec3(x):
         return 'vec3({}, {}, {})'.format(x.red / 255, x.green / 255, x.blue / 255)
 
-    cursor_text_color = color_as_vec3(cursor_text_color) if cursor_text_color else 'bg'
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
@@ -76,7 +75,6 @@ def load_shader_programs(semi_transparent=0, cursor_text_color=None):
                 'STRIKE_SHIFT': STRIKETHROUGH,
                 'DIM_SHIFT': DIM,
                 'DECORATION_SHIFT': DECORATION,
-                'CURSOR_TEXT_COLOR': cursor_text_color,
         }.items():
             vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
         if semi_transparent:
@@ -95,8 +93,13 @@ def load_shader_programs(semi_transparent=0, cursor_text_color=None):
 
 def setup_colors(screen, opts):
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
+    cursor_text_color = opts.cursor_text_color or (12, 12, 12)
+    cursor_text_color_as_bg = 3 if cursor_text_color is None else 1
     screen.color_profile.set_configured_colors(*map(color_as_int, (
-        opts.foreground, opts.background, opts.cursor, opts.selection_foreground, opts.selection_background)))
+        opts.foreground, opts.background, opts.cursor,
+        cursor_text_color, (0, 0, cursor_text_color_as_bg),
+        opts.selection_foreground, opts.selection_background)
+    ))
 
 
 def text_sanitizer(as_ansi, add_wrap_markers):

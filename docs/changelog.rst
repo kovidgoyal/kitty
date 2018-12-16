@@ -18,6 +18,9 @@ Changelog
 - Fix Private use Unicode area characters followed by spaces at the end of text
   not being rendered correctly (:iss:`1210`)
 
+- Fix changing :opt:`cursor_text_color` via remote control not working
+  (:iss:`1229`)
+
 0.13.1 [2018-12-06]
 ------------------------------
 

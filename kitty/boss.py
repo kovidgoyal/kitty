@@ -106,6 +106,7 @@ class Boss:
         set_draw_minimal_borders(opts)
         self.window_id_map = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
+        self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences = None
         self.cached_values = cached_values
         self.os_window_map = {}
@@ -951,11 +952,13 @@ class Boss:
         if tm is not None:
             tm.move_tab(-1)
 
-    def patch_colors(self, spec, configured=False):
+    def patch_colors(self, spec, cursor_text_color, configured=False):
         if configured:
             for k, v in spec.items():
                 if hasattr(self.opts, k):
                     setattr(self.opts, k, color_from_int(v))
+            if cursor_text_color is not False:
+                self.opts.cursor_text_color = cursor_text_color
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         patch_global_colors(spec, configured)

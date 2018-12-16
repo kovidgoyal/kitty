@@ -684,7 +684,7 @@ this option, any color arguments are ignored and --configured and --all are impl
 )
 def cmd_set_colors(global_opts, opts, args):
     from .rgb import color_as_int, Color
-    colors = {}
+    colors, cursor_text_color = {}, False
     if not opts.reset:
         for spec in args:
             if '=' in spec:
@@ -692,15 +692,17 @@ def cmd_set_colors(global_opts, opts, args):
             else:
                 with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                     colors.update(parse_config(f))
+        cursor_text_color = colors.pop('cursor_text_color', False)
         colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
     return {
-            'title': ' '.join(args), 'match_window': opts.match, 'match_tab': opts.match_tab,
-            'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset, 'colors': colors, 'reset': opts.reset
+        'title': ' '.join(args), 'match_window': opts.match, 'match_tab': opts.match_tab,
+        'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
+        'colors': colors, 'reset': opts.reset, 'cursor_text_color': cursor_text_color
     }
 
 
 def set_colors(boss, window, payload):
-    from .rgb import color_as_int
+    from .rgb import color_as_int, Color
     if payload['all']:
         windows = tuple(boss.all_windows)
     else:
@@ -717,10 +719,14 @@ def set_colors(boss, window, payload):
                 windows += tuple(tab)
     if payload['reset']:
         payload['colors'] = {k: color_as_int(v) for k, v in boss.startup_colors.items()}
+        payload['cursor_text_color'] = boss.startup_cursor_text_color
     profiles = tuple(w.screen.color_profile for w in windows)
     from .fast_data_types import patch_color_profiles
-    patch_color_profiles(payload['colors'], profiles, payload['configured'])
-    boss.patch_colors(payload['colors'], payload['configured'])
+    cursor_text_color = payload.get('cursor_text_color', False)
+    if isinstance(cursor_text_color, (tuple, list, Color)):
+        cursor_text_color = color_as_int(Color(*cursor_text_color))
+    patch_color_profiles(payload['colors'], cursor_text_color, profiles, payload['configured'])
+    boss.patch_colors(payload['colors'], cursor_text_color, payload['configured'])
     default_bg_changed = 'background' in payload['colors']
     for w in windows:
         if default_bg_changed:

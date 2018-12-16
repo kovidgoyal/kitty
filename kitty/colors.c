@@ -100,8 +100,8 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
 
 static PyObject*
 patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
-    PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured;
-    if (!PyArg_ParseTuple(args, "O!O!p", &PyDict_Type, &spec, &PyTuple_Type, &profiles, &change_configured)) return NULL;
+    PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured; PyObject *cursor_text_color;
+    if (!PyArg_ParseTuple(args, "O!OO!p", &PyDict_Type, &spec, &cursor_text_color, &PyTuple_Type, &profiles, &change_configured)) return NULL;
     char key[32] = {0};
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
         snprintf(key, sizeof(key) - 1, "color%zu", i);
@@ -131,6 +131,22 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         S(foreground, default_fg); S(background, default_bg); S(cursor, cursor_color);
         S(selection_foreground, highlight_fg); S(selection_background, highlight_bg);
 #undef S
+    if (cursor_text_color != Py_False) {
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
+            self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i);
+            self->overridden.cursor_text_color = 0x111111;
+            self->overridden.cursor_text_uses_bg = 3;
+            if (cursor_text_color != Py_None) {
+                self->overridden.cursor_text_color = (PyLong_AsUnsignedLong(cursor_text_color) << 8) | 2;
+                self->overridden.cursor_text_uses_bg = 1;
+            }
+            if (change_configured) {
+                self->configured.cursor_text_color = self->overridden.cursor_text_color;
+                self->configured.cursor_text_uses_bg = self->overridden.cursor_text_uses_bg;
+            }
+            self->dirty = true;
+        }
+    }
 
     Py_RETURN_NONE;
 }
@@ -147,6 +163,14 @@ colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
         default:
             return defval;
     }
+}
+
+float
+cursor_text_as_bg(ColorProfile *self) {
+    if (self->overridden.cursor_text_uses_bg & 1) {
+        return self->overridden.cursor_text_uses_bg & 2 ? 1.f : 0.f;
+    }
+    return self->configured.cursor_text_uses_bg & 2 ? 1.f : 0.f;
 }
 
 
@@ -174,7 +198,7 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
         if (ret != 0) { Py_CLEAR(ans); return NULL; } \
     }}
     D(default_fg, foreground); D(default_bg, background);
-    D(cursor_color, cursor); D(highlight_fg, selection_foreground);
+    D(cursor_color, cursor); D(cursor_text_color, cursor_text); D(highlight_fg, selection_foreground);
     D(highlight_bg, selection_background);
 
 #undef D
@@ -236,7 +260,11 @@ set_color(ColorProfile *self, PyObject *args) {
 static PyObject*
 set_configured_colors(ColorProfile *self, PyObject *args) {
 #define set_configured_colors_doc "Set the configured colors"
-    if (!PyArg_ParseTuple(args, "II|III", &(self->configured.default_fg), &(self->configured.default_bg), &(self->configured.cursor_color), &(self->configured.highlight_fg), &(self->configured.highlight_bg))) return NULL;
+    if (!PyArg_ParseTuple(
+                args, "II|IIIII",
+                &(self->configured.default_fg), &(self->configured.default_bg),
+                &(self->configured.cursor_color), &(self->configured.cursor_text_color), &(self->configured.cursor_text_uses_bg),
+                &(self->configured.highlight_fg), &(self->configured.highlight_bg))) return NULL;
     self->dirty = true;
     Py_RETURN_NONE;
 }
@@ -286,6 +314,7 @@ default_color_table(PyObject *self UNUSED, PyObject *args UNUSED) {
 CGETSET(default_fg)
 CGETSET(default_bg)
 CGETSET(cursor_color)
+CGETSET(cursor_text_color)
 CGETSET(highlight_fg)
 CGETSET(highlight_bg)
 
@@ -293,6 +322,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(default_fg)
     GETSET(default_bg)
     GETSET(cursor_color)
+    GETSET(cursor_text_color)
     GETSET(highlight_fg)
     GETSET(highlight_bg)
     {NULL}  /* Sentinel */

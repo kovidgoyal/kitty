@@ -83,11 +83,8 @@ def talk_to_instance(args):
 
 
 def load_all_shaders(semi_transparent=0):
-    load_shader_programs(semi_transparent, load_all_shaders.cursor_text_color)
+    load_shader_programs(semi_transparent)
     load_borders_program()
-
-
-load_all_shaders.cursor_text_color = None
 
 
 def init_glfw(debug_keyboard=False):
@@ -122,7 +119,6 @@ def _run_app(opts, args):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
-    load_all_shaders.cursor_text_color = opts.cursor_text_color
     if not is_wayland and not is_macos:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
