@@ -15,6 +15,9 @@ Changelog
 
 - Linux: Handle keyboards with a "+" key (:iss:`1224`)
 
+- Fix Private use Unicode area characters followed by spaces at the end of text
+  not being rendered correctly (:iss:`1210`)
+
 0.13.1 [2018-12-06]
 ------------------------------
 

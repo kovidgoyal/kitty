@@ -1012,19 +1012,17 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
         if (is_private_use(cpu_cell->ch)
                 && cell_font_idx != BOX_FONT
                 && cell_font_idx != MISSING_FONT) {
-            int desired_cells;
+            int desired_cells = 1;
             if (cell_font_idx > 0) {
                 Font *font = (fg->fonts + cell_font_idx);
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, cpu_cell->ch);
 
                 int width = get_glyph_width(font->face, glyph_id);
                 desired_cells = ceilf((float)width / fg->cell_width);
-            } else {
-                desired_cells = 1;
             }
 
             int num_spaces = 0;
-            while ((line->cpu_cells[i+num_spaces+1].ch == ' ' || line->cpu_cells[i+num_spaces+1].ch == 0)
+            while ((line->cpu_cells[i+num_spaces+1].ch == ' ')
                     && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA
                     && num_spaces < desired_cells
                     && i + num_spaces + 1 < line->xnum) {
