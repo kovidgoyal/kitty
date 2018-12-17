@@ -487,6 +487,7 @@ const char* _glfwGetKeyName(int key)
         case GLFW_KEY_SLASH:        return "SLASH";
         case GLFW_KEY_WORLD_1:      return "WORLD 1";
         case GLFW_KEY_WORLD_2:      return "WORLD 2";
+        case GLFW_KEY_PLUS:         return "PLUS";
 
         // Function keys
         case GLFW_KEY_ESCAPE:       return "ESCAPE";
