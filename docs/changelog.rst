@@ -13,7 +13,7 @@ Changelog
 - Fix setting :opt:`background_opacity` causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
-- Linux: Handle keyboards with a "+" key (:iss:`1224`)
+- Handle keyboards with a "+" key (:iss:`1224`)
 
 - Fix Private use Unicode area characters followed by spaces at the end of text
   not being rendered correctly (:iss:`1210`)
