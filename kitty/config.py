@@ -150,6 +150,27 @@ def neighboring_window(func, rest):
     return func, [rest]
 
 
+@func_with_args('resize_window')
+def resize_window(func, rest):
+    vals = rest.split(' ', 1)
+    if len(vals) > 2:
+        log_error('resize_window needs one or two arguments, using defaults')
+        args = ['wider', 1]
+    else:
+        quality = vals[0].lower()
+        if quality not in ('taller', 'shorter', 'wider', 'narrower'):
+            log_error('Invalid quality specification: {}'.format(quality))
+            quality = 'wider'
+        increment = 1
+        if len(vals) == 2:
+            try:
+                increment = int(vals[1])
+            except Exception:
+                log_error('Invalid increment specification: {}'.format(vals[1]))
+        args = [quality, increment]
+    return func, args
+
+
 @func_with_args('move_window')
 def move_window(func, rest):
     rest = rest.lower()

@@ -199,6 +199,24 @@ class Tab:  # {{{
             return
         return 'Could not resize'
 
+    def resize_window(self, quality, increment):
+        if increment < 1:
+            raise ValueError(increment)
+        if quality == 'taller':
+            is_horizontal = False
+        elif quality == 'shorter':
+            is_horizontal = False
+            increment *= -1
+        elif quality == 'wider':
+            is_horizontal = True
+        elif quality == 'narrower':
+            is_horizontal = True
+            increment *= -1
+        else:
+            raise ValueError(quality)
+        self.resize_window_by(self.windows[self.active_window_idx].id,
+                              increment, is_horizontal)
+
     def reset_window_sizes(self):
         if self.current_layout.remove_all_biases():
             self.relayout()
