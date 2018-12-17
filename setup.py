@@ -190,7 +190,7 @@ def init_env(
     cppflags = shlex.split(cppflags)
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra -Wno-missing-field-initializers -Wall -std=c99'
+            '-Wextra -Wno-missing-field-initializers -Wall -std=c11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
             optimize,
