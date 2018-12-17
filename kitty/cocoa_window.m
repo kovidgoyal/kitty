@@ -12,6 +12,7 @@
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
+#include <objc/runtime.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
@@ -99,6 +100,23 @@ cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+// Implementation of applicationDockMenu: for the app delegate
+static NSMenu *
+get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
+    static NSMenu *dockMenu = nil;
+
+    if (!dockMenu) {
+        GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
+        dockMenu = [[NSMenu alloc] init];
+        NSMenuItem *newWindowItem = [dockMenu addItemWithTitle:@"New OS window"
+                            action:@selector(new_os_window:)
+                            keyEquivalent:@""];
+        [newWindowItem setTarget:global_menu_target];
+    }
+
+    return dockMenu;
+}
+
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -183,6 +201,12 @@ cocoa_create_global_menu(void) {
     }
 
     [bar release];
+
+    class_addMethod(
+            object_getClass([NSApp delegate]),
+            @selector(applicationDockMenu:),
+            (IMP)get_dock_menu,
+            "@@:@");
 }
 
 void
