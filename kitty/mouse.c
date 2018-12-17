@@ -584,7 +584,13 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         if (pixels < 0) s *= -1;
         global_state.callback_os_window->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
-        s = (int) round(yoffset * OPT(wheel_scroll_multiplier));
+        yoffset *= OPT(wheel_scroll_multiplier);
+        s = (int) round(yoffset);
+        if (s == 0) {
+            // Scroll at least one line
+            if (yoffset > 0) s = 1;
+            else if (yoffset < 0) s = -1;
+        }
         global_state.callback_os_window->pending_scroll_pixels = 0;
     }
     if (s == 0) return;
