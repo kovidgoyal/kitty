@@ -12,6 +12,7 @@
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
+#include <objc/runtime.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask
@@ -99,6 +100,21 @@ cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+// Implementation of applicationDockMenu: for the app delegate
+static NSMenu *dockMenu = nil;
+static NSMenu *
+get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
+    if (!dockMenu) {
+        GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
+        dockMenu = [[NSMenu alloc] init];
+        NSMenuItem *newWindowItem = [dockMenu addItemWithTitle:@"New OS window"
+                            action:@selector(new_os_window:)
+                            keyEquivalent:@""];
+        [newWindowItem setTarget:global_menu_target];
+    }
+    return dockMenu;
+}
+
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -183,6 +199,12 @@ cocoa_create_global_menu(void) {
     }
 
     [bar release];
+
+    class_addMethod(
+            object_getClass([NSApp delegate]),
+            @selector(applicationDockMenu:),
+            (IMP)get_dock_menu,
+            "@@:@");
 }
 
 void
@@ -292,6 +314,12 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
     }
 }
 
+static void
+cleanup() {
+    if (dockMenu) [dockMenu release];
+    dockMenu = nil;
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
@@ -301,5 +329,9 @@ static PyMethodDef module_methods[] = {
 bool
 init_cocoa(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (Py_AtExit(cleanup) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the cocoa_window at exit handler");
+        return false;
+    }
     return true;
 }
