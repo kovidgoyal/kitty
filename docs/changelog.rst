@@ -18,6 +18,8 @@ Changelog
 - Fix Private use Unicode area characters followed by spaces at the end of text
   not being rendered correctly (:iss:`1210`)
 
+- macOS: Add an entry to the dock menu to open a new OS window (:iss:`1242`)
+
 - Fix changing :opt:`cursor_text_color` via remote control not working
   (:iss:`1229`)
 
