@@ -20,6 +20,8 @@ Changelog
 
 - macOS: Add an entry to the dock menu to open a new OS window (:iss:`1242`)
 
+- macOS: Fix scrolling very slowly with wheel mice not working (:iss:`1238`)
+
 - Fix changing :opt:`cursor_text_color` via remote control not working
   (:iss:`1229`)
 
