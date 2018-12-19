@@ -372,7 +372,7 @@ parse_input(ChildMonitor *self) {
     }
 
     if (UNLIKELY(kill_signal_received)) {
-        global_state.close_all_windows = true;
+        global_state.terminate = true;
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -737,7 +737,6 @@ process_pending_resizes(double now) {
 static inline void
 close_all_windows() {
     for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
-    global_state.close_all_windows = false;
 }
 
 static inline bool
@@ -793,7 +792,13 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         }
 #endif
         parse_input(self);
-        if (global_state.close_all_windows) close_all_windows();
+        if (global_state.terminate) {
+            global_state.terminate = false;
+            close_all_windows();
+#ifdef __APPLE__
+            request_application_quit();
+#endif
+        }
         has_open_windows = process_pending_closes(self);
     }
     if (PyErr_Occurred()) return NULL;
